@@ -18,9 +18,9 @@ max_pool_with_argmax_resnet50
 import math
 
 from te import tik
-from te import platform as tbe_platform
 from impl import common_util
 from impl import constant_util as constant
+from te import platform as tbe_platform
 
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
@@ -61,7 +61,7 @@ def _ceil_div(value, factor):
 
 # pylint: disable=locally-disabled, too-many-instance-attributes
 # pylint: disable=too-few-public-methods
-class MaxPoolWithargmaxResnet50():
+class MaxPoolWithargmaxResnet50(object):
     """
        Function: use to finish MaxPoolWithargmax main functions
     """
@@ -237,6 +237,133 @@ class MaxPoolWithargmaxResnet50():
                               self.window_w, self.window_h,
                               1, 1, 1, 1, 4 * 56 // 16, 0, self.pad_value)
 
+    def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
+        """
+        load data from gm to ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len = instance.Scalar("uint64", name="gm_len")
+        filter_size = self.window_h * self.window_w
+        c0_dim = 16
+        ub_zero = instance.Tensor(self.input_dtype, (c0_dim,), name="ub_zero", scope=tik.scope_ubuf)
+        instance.vector_dup(c0_dim, ub_zero, self.pad_value, 1, 1, 1)
+        with instance.for_range(0, filter_size) as window_index:
+            w_index = window_index % self.window_w
+            w_loop = window_index // self.window_w
+            with instance.if_scope(w_index == 2):
+                gm_len.set_as(self.out_size_w - 1)
+            with instance.else_scope():
+                gm_len.set_as(self.out_size_w)
+            with instance.for_range(0, output_block_h) as output_block_h_index:
+                with instance.if_scope(w_index == 2):
+                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                               self.out_size_w * c0_dim],
+                                       input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h +
+                                                                     output_block_h_index) *
+                                                     self.stride_h * self. in_size_w * c0_dim +
+                                                     (w_loop * self.in_size_w + w_index) * c0_dim],
+                                       0, gm_len, 1, 1, 0)
+                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                               self.out_size_w * c0_dim + gm_len * c0_dim],
+                                       ub_zero, 0, 1, 1, 0, 0)
+                with instance.else_scope():
+                    instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                               self.out_size_w * c0_dim],
+                                       input_fmap_gm[input_gm_idx + (looph * 2 * output_block_h +
+                                                                     output_block_h_index) *
+                                                     self.stride_h * self. in_size_w * c0_dim +
+                                                     (w_loop * self.in_size_w + w_index) * c0_dim],
+                                       0, gm_len, 1, 1, 0)
+
+    def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h):
+        """
+        load data from gm to ub
+
+        Parameters
+        ----------
+        ub_buff: address of ub_buff
+        output_block_h: size of cut
+        input_fmap_gm: address of gm
+        input_gm_idx: offset of gm
+        looph: index of looph
+        loop_h: number of looph
+
+        Returns
+        -------
+        None
+        """
+        instance = self.tik_instance
+        gm_len = instance.Scalar("uint64", name="gm_len")
+        filter_size = self.window_h * self.window_w
+        c0_dim = 16
+        ub_zero = instance.Tensor(self.input_dtype, (c0_dim,), name="ub_zero", scope=tik.scope_ubuf)
+        instance.vector_dup(c0_dim, ub_zero, self.pad_value, 1, 1, 1)
+        with instance.for_range(0, filter_size) as window_index:
+            w_index = window_index % self.window_w
+            w_loop = window_index // self.window_w
+            with instance.if_scope(w_index == 2):
+                gm_len.set_as(self.out_size_w - 1)
+            with instance.else_scope():
+                gm_len.set_as(self.out_size_w)
+            with instance.for_range(0, output_block_h) as output_block_h_index:
+                with instance.if_scope(tik.all(looph == loop_h // 2 - 1, output_block_h_index == output_block_h - 1)):
+                    with instance.if_scope(w_loop == 2):
+                        instance.vector_dup(MASK, ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                          self.out_size_w * c0_dim],
+                                            self.pad_value, DSTSTRIDEM1 - 1, 1, DSTSTRIDEM1)
+                    with instance.else_scope():
+                        with instance.if_scope(w_index == 2):
+                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                       self.out_size_w * c0_dim],
+                                               input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                             output_block_h_index) *
+                                                             self.stride_h * self. in_size_w * c0_dim +
+                                                             (w_loop * self.in_size_w + w_index) * c0_dim],
+                                               0, gm_len, 1, 1, 0)
+                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                       self.out_size_w * c0_dim + gm_len * c0_dim],
+                                               ub_zero, 0, 1, 1, 0, 0)
+                        with instance.else_scope():
+                            instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                       self.out_size_w * c0_dim],
+                                               input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                             output_block_h_index) *
+                                                             self.stride_h * self. in_size_w * c0_dim +
+                                                             (w_loop * self.in_size_w + w_index) * c0_dim],
+                                               0, gm_len, 1, 1, 0)
+                with instance.else_scope():
+                    with instance.if_scope(w_index == 2):
+                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                   self.out_size_w * c0_dim],
+                                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                         output_block_h_index) *
+                                                         self.stride_h * self. in_size_w * c0_dim +
+                                                         (w_loop * self.in_size_w + w_index) * c0_dim],
+                                           0, gm_len, 1, 1, 0)
+                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                   self.out_size_w * c0_dim + gm_len * c0_dim],
+                                           ub_zero, 0, 1, 1, 0, 0)
+                    with instance.else_scope():
+                        instance.data_move(ub_buff[(window_index * output_block_h + output_block_h_index) *
+                                                   self.out_size_w * c0_dim],
+                                           input_fmap_gm[input_gm_idx + ((looph * 2 + 1) * output_block_h +
+                                                                         output_block_h_index) *
+                                                         self.stride_h * self. in_size_w * c0_dim +
+                                                         (w_loop * self.in_size_w + w_index) * c0_dim],
+                                           0, gm_len, 1, 1, 0)
+
     # pylint: disable=too-many-locals, too-many-statements
     def tik_instance_function(self, kernel_name):
         """
@@ -255,7 +382,11 @@ class MaxPoolWithargmaxResnet50():
         output_h = self.out_size_h
         output_w = self.out_size_w
         input_h, input_w = input_shape[2:4]
-        output_block_h = 4
+        check_load3d_supported = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+        output_block_h = 2
+        if check_load3d_supported:
+            output_block_h = 4
+
         loop_h = output_h // output_block_h
 
         instance = self.tik_instance
@@ -278,10 +409,10 @@ class MaxPoolWithargmaxResnet50():
         output_mask_gm = instance.Tensor("uint16", output_mask_shape,
                                          name="output_mask_gm",
                                          scope=tik.scope_gm)
-
-        l1_buff0_size = input_h * input_w * c0_dim + 32 * 1024
-        l1_buff0 = instance.Tensor(dtype, (l1_buff0_size,), name="l1_buff0",
-                                   scope=tik.scope_cbuf)
+        if check_load3d_supported:
+            l1_buff0_size = input_h * input_w * c0_dim + 32 * 1024
+            l1_buff0 = instance.Tensor(dtype, (l1_buff0_size,), name="l1_buff0",
+                                       scope=tik.scope_cbuf)
 
         ub_max_buff_size = self.stride_h * output_block_h * output_w * c0_dim
         ub_max_buff = instance.Tensor(dtype, (ub_max_buff_size,),
@@ -307,44 +438,48 @@ class MaxPoolWithargmaxResnet50():
         ub_buff1 = instance.Tensor(dtype, (ub_buff_size,),
                                    name="ub_buff1", scope=tik.scope_ubuf)
 
-        with instance.for_range(0, batch_size*c1_dim, block_num=batch_size*c1_dim) as batch_idx:
+        with instance.for_range(0, batch_size * c1_dim, block_num=batch_size * c1_dim) as batch_idx:
             batch = batch_idx / c1_dim
             loopc = batch_idx % c1_dim
             input_idx = instance.Scalar("uint64", name="input_idx")
+            input_gm_idx = instance.Scalar("uint64", name="input_gm_idx")
             input_idx.set_as(batch * c1_dim * input_h * input_w * c0_dim +
                              loopc * input_h * input_w * c0_dim)
+            input_gm_idx.set_as(input_idx)
 
             output_idx = instance.Scalar("uint64", name="output_idx")
-            output_idx.set_as(batch*c1_dim*output_h*output_w*c0_dim +
-                              loopc*output_h*output_w*c0_dim)
-
-            l1_buff0_idx = instance.Scalar("uint64", name="l1_buff0_idx")
-            l1_buff0_idx.set_as(0)
+            output_idx.set_as(batch * c1_dim * output_h * output_w * c0_dim +
+                              loopc * output_h * output_w * c0_dim)
+            if check_load3d_supported:
+                l1_buff0_idx = instance.Scalar("uint64", name="l1_buff0_idx")
+                l1_buff0_idx.set_as(0)
 
             output_mask_idx = instance.Scalar("uint64",
                                               name="output_mask_idx")
-            output_mask_idx.set_as(batch*c1_dim*mask_one_window*filter_size
-                                   + loopc*mask_one_window*filter_size)
+            output_mask_idx.set_as(batch * c1_dim * mask_one_window * filter_size
+                                   + loopc * mask_one_window * filter_size)
 
             with instance.for_range(0, loop_h // 2) as looph:
                 # ping------------------------------------------------------
-                load_fm_size = instance.Scalar("uint64")
-                load_fm_size.set_as(0)
-                with instance.if_scope(looph == 0):
-                    load_fm_size.set_as(
-                        (output_block_h * self.stride_h + 1) *
-                        input_w)
-                with instance.else_scope():
-                    load_fm_size.set_as(
-                        output_block_h * self.stride_h * input_w)
-                instance.data_move(l1_buff0[l1_buff0_idx],
-                                   input_fmap_gm[input_idx],
-                                   0, 1, load_fm_size, 0, 0)
-
                 ub_buff = ub_buff0
-                self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
-                                      looph * 2 * output_block_h *
-                                      self.stride_h)
+                # when load3d is supported
+                if check_load3d_supported:
+                    load_fm_size = instance.Scalar("uint64")
+                    load_fm_size.set_as(0)
+                    with instance.if_scope(looph == 0):
+                        load_fm_size.set_as((output_block_h * self.stride_h + 1) * input_w)
+                    with instance.else_scope():
+                        load_fm_size.set_as(output_block_h * self.stride_h * input_w)
+                    instance.data_move(l1_buff0[l1_buff0_idx],
+                                       input_fmap_gm[input_idx],
+                                       0, 1, load_fm_size, 0, 0)
+
+                    self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
+                                          looph * 2 * output_block_h *
+                                          self.stride_h)
+                #when load3d is not supported
+                else:
+                    self._load_gm_to_ub_ping(ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph)
 
                 repeat_times = (output_block_h * output_w * c0_dim //
                                 constant.MASK128)
@@ -429,31 +564,31 @@ class MaxPoolWithargmaxResnet50():
                     filter_size - 1,
                     output_block_h * output_w // c0_dim,
                     0, mask_gap)
-
-                input_idx.set_as(input_idx + load_fm_size * c0_dim)
                 output_mask_idx.set_as(output_mask_idx +
                                        output_block_h * output_w *
                                        c0_dim // 16)
-                l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
+                if check_load3d_supported:
+                    input_idx.set_as(input_idx + load_fm_size * c0_dim)
+                    l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
                 # pong------------------------------------------------------
-                load_fm_size = instance.Scalar("uint64")
-                load_fm_size.set_as(0)
-
-                with instance.if_scope(looph == loop_h // 2 - 1):
-                    load_fm_size.set_as(
-                        (output_block_h * self.stride_h - 1) * input_w)
-                with instance.else_scope():
-                    load_fm_size.set_as(
-                        output_block_h * self.stride_h * input_w)
-                instance.data_move(l1_buff0[l1_buff0_idx],
-                                   input_fmap_gm[input_idx],
-                                   0, 1, load_fm_size, 0, 0)
-
                 ub_buff = ub_buff1
-
-                self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
-                                      (looph * 2 + 1) * output_block_h *
-                                      self.stride_h)
+                # when load3d is supported
+                if check_load3d_supported:
+                    load_fm_size = instance.Scalar("uint64")
+                    load_fm_size.set_as(0)
+                    with instance.if_scope(looph == loop_h // 2 - 1):
+                        load_fm_size.set_as((output_block_h * self.stride_h - 1) * input_w)
+                    with instance.else_scope():
+                        load_fm_size.set_as(output_block_h * self.stride_h * input_w)
+                    instance.data_move(l1_buff0[l1_buff0_idx],
+                                       input_fmap_gm[input_idx],
+                                       0, 1, load_fm_size, 0, 0)
+                    self._load3d_fm_to_ub(ub_buff, l1_buff0, 0,
+                                          (looph * 2 + 1) * output_block_h *
+                                          self.stride_h)
+                # when load3d is not supported
+                else:
+                    self._load_gm_to_ub_pong(ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h)
 
                 repeat_times = (output_block_h * output_w * c0_dim //
                                 constant.MASK128)
@@ -541,11 +676,12 @@ class MaxPoolWithargmaxResnet50():
                     output_block_h * output_w // c0_dim,
                     0, mask_gap)
 
-                input_idx.set_as(input_idx + load_fm_size * c0_dim)
                 output_mask_idx.set_as(output_mask_idx +
                                        output_block_h * output_w *
                                        c0_dim // 16)
-                l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
+                if check_load3d_supported:
+                    input_idx.set_as(input_idx + load_fm_size * c0_dim)
+                    l1_buff0_idx.set_as(l1_buff0_idx + load_fm_size * 16)
 
         instance.BuildCCE(kernel_name=kernel_name,
                           inputs=(input_fmap_gm),
@@ -571,6 +707,18 @@ def is_max_pool_with_argmax_param(x, ksize, strides, padding):
     resnet50_padding = "SAME"
 
     def is_valid_shape(resnet50shape, shape):
+        """
+        check whether the shape is valid
+
+        Parameters
+        ----------
+        resnet50shape: original shape
+        shape: destination shape
+
+        Returns
+        -------
+        None
+        """
         if shape.get("dtype") != resnet50shape.get("dtype"):
             return False
 
