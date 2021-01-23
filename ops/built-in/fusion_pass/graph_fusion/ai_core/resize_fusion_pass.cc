@@ -166,13 +166,16 @@ Status ResizeFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
     OP_LOGI(op.GetName().c_str(),
             "Get attr coordinate transformation mode failed, set to default.");
   }
+  bool half_pixel_centers = false;
+  bool align_corners = false;
   if (coordinate_transformation_mode_value == "pytorch_half_pixel") {
-    ge::AttrUtils::SetBool(fuse_desc, "half_pixel_centers", true);
-  } else {
-    ge::AttrUtils::SetBool(fuse_desc, "half_pixel_centers", false);
+    half_pixel_centers = true;
+  } else if (coordinate_transformation_mode_value == "align_corners"){
+    align_corners = true;
   }
+  ge::AttrUtils::SetBool(fuse_desc, "half_pixel_centers", half_pixel_centers);
+  ge::AttrUtils::SetBool(fuse_desc, "align_corners", align_corners);
   ge::AttrUtils::SetListInt(fuse_desc, "size", output_size);
-  ge::AttrUtils::SetBool(fuse_desc, "align_corners", false);
 
   // delete attr_coordinate_transformation_mode,attr_cubic_coeff_a,
   // attr_exclude_outside,attr_extrapolation_value,attr_mode,attr_nearest_mode
