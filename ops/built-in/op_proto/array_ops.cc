@@ -38,6 +38,8 @@ const char* const kAttrShape = "attr shape";
 const char* const kAttrDtype = "attr dtype";
 const char* const kAttrAxis = "attr axis";
 const char* const kAttrNumAxes = "attr num_axes";
+const char* const kPreOpInputShapeRange = "_pre_op_in_range";
+const int64_t kMaxDimNum = 8;
 
 IMPLEMT_INFERFUNC(MatrixBandPart, MatrixBandPartInfer) {
   if (UnchangedShape(op, "x", "y") != GRAPH_SUCCESS) {
@@ -1673,6 +1675,7 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   if (input_dims == UNKNOWN_RANK) {
     td->SetShape(ge::GeShape(UNKNOWN_SHAPE));
     td->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+    td->SetShapeRange(std::vector<std::pair<int64_t, int64_t>>{{1,kMaxDimNum}});
   } else {
     int64_t size = static_cast<int64_t>(input_dims.size());
     std::vector<int64_t> size_v{size};
@@ -1686,8 +1689,14 @@ IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   std::vector<std::pair<int64_t, int64_t>> inRange;
   op_desc->MutableInputDesc("x")->GetShapeRange(inRange);
   if (!inRange.empty()) {
-    td->SetShapeRange(inRange);
-    OP_LOGD(op.GetName().c_str(), "Shape op set range success");
+    std::vector<int64_t> pre_op_range;
+    pre_op_range.resize(2*inRange.size());
+    for (int i = 0; i < pre_op_range.size(); i = i + 2) {
+      pre_op_range[i] = inRange[i/2].first;
+      pre_op_range[i + 1] = inRange[i/2].second;
+    }
+    ge::AttrUtils::SetListInt(*td, kPreOpInputShapeRange, pre_op_range);
+    OP_LOGD(op.GetName().c_str(), "Shape op set pre_op_range success");
   }
   return GRAPH_SUCCESS;
 }
@@ -1702,6 +1711,7 @@ IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
     if (input_dims == UNKNOWN_RANK) {
       td->SetShape(ge::GeShape(UNKNOWN_SHAPE));
       td->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+      td->SetShapeRange(std::vector<std::pair<int64_t, int64_t>>{{1,kMaxDimNum}});
     } else {
       int64_t size = static_cast<int64_t>(input_dims.size());
       GE_OP_LOGD(op.GetName().c_str(), "output value %ld", size);
@@ -1716,8 +1726,14 @@ IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
     std::vector<std::pair<int64_t, int64_t>> inRange;
     op_desc->MutableInputDesc(i)->GetShapeRange(inRange);
     if (!inRange.empty()) {
-      td->SetShapeRange(inRange);
-      OP_LOGD(op.GetName().c_str(), "Shape op set range success");
+      std::vector<int64_t> pre_op_range;
+      pre_op_range.resize(2*inRange.size());
+      for (int i = 0; i < pre_op_range.size(); i = i + 2) {
+        pre_op_range[i] = inRange[i/2].first;
+        pre_op_range[i + 1] = inRange[i/2].second;
+      }
+      ge::AttrUtils::SetListInt(*td, kPreOpInputShapeRange, pre_op_range);
+      OP_LOGD(op.GetName().c_str(), "ShapeN op set pre_op_range success");
     }
   }
   return GRAPH_SUCCESS;

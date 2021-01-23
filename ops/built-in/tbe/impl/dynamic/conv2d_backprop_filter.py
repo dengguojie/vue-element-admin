@@ -458,6 +458,13 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     if _is_load3d_special():
         dedy_hw_min = 1
 
+    pads_status = -1 not in pads and sum(pads) != 0
+    if -1 in dedy_shape[1:] and pads_status:
+        dict_args = {"errCode": "E60108", "reason": "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1"}
+        raise RuntimeError(
+            dict_args, error_manager_util.get_error_message(dict_args)
+        )
+
     if -1 not in pads:
         fmap_h_min = max(fmap_h_min, filter_h - pad[0] - pad[1])
         fmap_w_min = max(fmap_w_min, filter_w - pad[2] - pad[3])

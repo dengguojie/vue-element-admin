@@ -540,6 +540,8 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.check_para_dim(self.pads, "pads")
         filter_shape_nchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
 
+        if DYNAMIC_FLAG in dy_shape[1:] and (DYNAMIC_FLAG not in self.pads and sum(self.pads) != 0):
+            err_man.raise_err_specific_user("pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1.")
         if dy_shape == [-2]:
             dy_shape_nchw = [DYNAMIC_FLAG, filter_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
             dy_range_nchw = [(1, None), (filter_shape_nchw[N_DIM], filter_shape_nchw[N_DIM]), (1, None), (1, None)]
