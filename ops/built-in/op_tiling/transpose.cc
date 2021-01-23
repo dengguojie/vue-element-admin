@@ -64,8 +64,8 @@ static string PadString(string &in, int width = 0) {
     if (width == 0) {
         return s;
     }
-    if (s.size() < width) {
-        for (int i = 0; i < width - in.size(); i++) {
+    if ((int)s.size() < width) {
+        for (int i = 0; i < width - (int)in.size(); i++) {
             s += " ";
         }
     }
@@ -266,8 +266,10 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
 static bool SetElePerBlock(const CompilerInfo & compilerInfo, ShapeInfo & shapeInfo) {
     shapeInfo.elePerBlock = ElementNumPerBlock(compilerInfo.dType);
     shapeInfo.eleLenInBytes = SizeofDType(compilerInfo.dType);
+    return true;
 }
 
+/*
 static bool GetInputX(const string & opType, const TeOpParas & paras, const char * & pInputX, int64_t & inputLen) {
     OP_LOGD(opType.c_str(), "Entering GetInputX.");
 
@@ -286,6 +288,7 @@ static bool GetInputX(const string & opType, const TeOpParas & paras, const char
     OP_LOGD(opType.c_str(), "In GetInputX, inputLen = %ld", inputLen);
     return true;
 }
+*/
 
 static bool CheckTensorShape(const string & opType,
                              const ShapeInfo & shapeInfo) {
@@ -361,7 +364,7 @@ static void CalcReducePermGrad(const vector<int64_t> & reducedPerm , vector<int6
 }
 
 static bool IsIdentical(const ShapeInfo & shapeInfo) {
-    for(size_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+    for(int64_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
         if(shapeInfo.reducedPerm[i] != i) {
             return false;
         }
@@ -605,7 +608,6 @@ static void CalcWorkspaceParams(const CompilerInfo & compilerInfo,
     int64_t totalVolLogic = shapeInfo.totalVolumeLogic;
     int64_t gcd = GCD(shapeInfo.alignElement, shapeInfo.elePerBlock);
     int64_t cycleNum = shapeInfo.elePerBlock / gcd;
-    int64_t base = 0;
     int64_t v1Num = 0;
     int64_t v2Num = 0;
     int64_t v1 = 0;
@@ -902,7 +904,6 @@ static void CalcLoopInfo(const CompilerInfo &compilerInfo, const ShapeInfo &shap
         LastAxisNTLoopInfo & loopInfo = infoPerCore.loopInfo;
         int64_t dim = shapeInfo.dim;
         int64_t tuple0 = infoPerCore.initTuple[0];
-        int64_t base = infoPerCore.base;
         int64_t num = infoPerCore.num - runtimeInfo.backNum;
         int64_t levelOneSize = shapeInfo.reducedOutShape[dim - 2];
         int64_t ubBlockNum = ACCU_BLOCK_SIZE; //128 = 4KB; 200 = 6.4KB
@@ -1035,7 +1036,6 @@ bool TilingDataScenario1(const CompilerInfo & compilerInfo,
                          RuntimeInfo & runtimeInfo) {
     int64_t dim = shapeInfo.dim;
     int64_t index = 0;
-    const vector<int64_t> & perm = shapeInfo.reducedPerm;
 
     //1. src stride
     for (int64_t i = 0; i < dim; i++) {
@@ -1061,6 +1061,8 @@ bool TilingDataScenario1(const CompilerInfo & compilerInfo,
     return true;
 }
 
+
+/*
 static bool IsShapeTooBig(const ShapeInfo & shapeInfo) {
     return  (shapeInfo.totalVolumeLogic * shapeInfo.lastAxisBurstLen * BYTES_PER_BLOCK) > WORKSPACE_MAX_SIZE;
 }
@@ -1088,6 +1090,7 @@ static int64_t AlignTo32BByWorkspace(const CompilerInfo & compilerInfo,
 
     return 1;
 }
+*/
 
 static void CalcBackNum(const ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
     if (shapeInfo.lastAxisLen < shapeInfo.elePerBlock) {
@@ -1323,7 +1326,6 @@ void CalcJumpInfo(RuntimeInfo & runtimeInfo,
     int64_t nAxisIndex = 0;
     int64_t srcAxisIndex = 0;
     int64_t dstAxisIndex = 0;
-    int64_t lastAxisPerm = dim - 1;
 
     runtimeInfo.nJumpAxisNum = tm->ncr.n.size();
     runtimeInfo.dstJumpAxisNum = tm->ncr.col.size();
@@ -1404,7 +1406,6 @@ static bool IsCouldBeRow(const vector<int64_t> & row, const vector<int64_t> & ro
 static void FindLongestRowPerm(const ShapeInfo & shapeInfo, RuntimeInfo & runtimeInfo) {
     int64_t dim = shapeInfo.dim;
     int64_t re = dim - 1; //right endian
-    int64_t le = shapeInfo.perm[dim - 1]; //left endian
     int idx = GetPermIndex(shapeInfo.reducedPerm, re);
     for (int i = idx + 1; i < dim; i++) {
         runtimeInfo.rowPerm.push_back(shapeInfo.reducedPerm[i]);
@@ -1413,7 +1414,6 @@ static void FindLongestRowPerm(const ShapeInfo & shapeInfo, RuntimeInfo & runtim
 
 static void FindLongestColPerm(const ShapeInfo & shapeInfo,RuntimeInfo & runtimeInfo) {
     int64_t dim = shapeInfo.dim;
-    int64_t re = dim - 1; //right endian
     int64_t le = shapeInfo.reducedPerm[dim - 1]; //left endian
     int idx = le;
     for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
@@ -2256,8 +2256,7 @@ bool TransposeTiling(const std::string &opType,
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     //const char * pInputX = NULL;
-    int64_t inputLen = 0;
-    int64_t reserved = 0;
+    //int64_t inputLen = 0;
 
     if (GetCompileParams(opType, opInfo, compilerInfo) == false) {
         return false;

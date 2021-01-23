@@ -138,7 +138,7 @@ def max_pool3d_check_rule(input_shape, output_dtype, ksize, strides,
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides):
+def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides, data_format):
     """
     :param input_dtype: dtype of input_data
     :param output_dtype: dtype of output_data
@@ -150,12 +150,20 @@ def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides):
     # so check the dtyep here
     para_check.check_dtype(input_dtype, ["float16"], param_name="x")
     para_check.check_dtype(output_dtype, ["float16"], param_name="y")
-    if len(ksize) == 5:
-        if ksize[0] != 1 or ksize[4] != 1:
-            raise RuntimeError("ksize N and C must be 1")
-    if len(strides) == 5:
-        if strides[0] != 1 or strides[4] != 1:
-            raise RuntimeError("strides N and C must be 1")
+    if data_format == "NDHWC":
+        if len(ksize) == 5:
+            if ksize[0] != 1 or ksize[4] != 1:
+                raise RuntimeError("ksize N and C must be 1")
+        if len(strides) == 5:
+            if strides[0] != 1 or strides[4] != 1:
+                raise RuntimeError("strides N and C must be 1")
+    else:
+        if len(ksize) == 5:
+            if ksize[0] != 1 or ksize[1] != 1:
+                raise RuntimeError("ksize N and C must be 1")
+        if len(strides) == 5:
+            if strides[0] != 1 or strides[1] != 1:
+                raise RuntimeError("strides N and C must be 1")
 
 # pylint: disable=too-many-locals,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
@@ -326,7 +334,7 @@ def max_pool3d(x, y, ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
                                 dtype=input_dtype)
 
     if len(input_shape) == 6:  # len("NDC1HWC0") = 6
-        max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides)
+        max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides, data_format)
         max_pool3d_generic(tensor_in, ksize, strides,
                            padding, pads,
                            dilation, ceil_mode, data_format,

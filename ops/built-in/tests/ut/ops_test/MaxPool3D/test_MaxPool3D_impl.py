@@ -62,6 +62,22 @@ case_compiler_window_lt_stride = {
     "support_expect": True
 }
 
+case_compiler_ncdhw = {
+    "params": [{"shape" : (1, 4, 1, 4, 4, 16), "format" : "NCDHW",  "dtype" : "float16"},
+               {"shape" : (1, 1, 1, 1, 1, 16), "format" : "NCDHW",  "dtype" : "float16"},
+               (1, 1, 2, 2, 2),   #kernels
+               (1, 1, 4, 4, 4),   #strides
+               "SAME",            #padding_mode
+               (0,0,0,0,0,0),     #pads
+               (1,1,1),           #dilation
+               0,                 #ceil_mode
+               "NCDHW",           #data_format
+               ],
+    "case_name": "case_compiler_ncdhw",
+    "expect": "success",
+    "format_expect":[],
+    "support_expect": True
+}
 
 
 #=====================================precision==================================
@@ -239,13 +255,12 @@ case_precision_window_lt_stride = {
     "calc_expect_func": calc_expect_func
 }
 
-
 ut_case.add_case("all", case_compiler_window_eq_stride)
 ut_case.add_case("all", case_compiler_window_gt_stride)
 ut_case.add_case("all", case_compiler_window_lt_stride)
+ut_case.add_case("all", case_compiler_ncdhw)
 ut_case.add_precision_case("all", case_precision_window_eq_stride)
 ut_case.add_precision_case("all", case_precision_window_eq_stride_with_multiout)
 ut_case.add_precision_case("all", case_precision_window_gt_stride)
 ut_case.add_precision_case("all", case_precision_window_lt_stride)
-
 
