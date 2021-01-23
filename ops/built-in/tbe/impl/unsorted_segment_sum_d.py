@@ -102,8 +102,8 @@ def op_select_format(x, segment_ids, y, num_segments,
     ori_shape = list(x.get("shape"))
     cce_product = get_cce_product_version()
     if (ori_dtype in ("float16", "float32")) and cce_product in ("Ascend910",) and \
-            ((ori_shape in ([12288, 1024], [200704, 256])) and \
-             (num_segments in (36548, 655360, 1128960))):
+            ((ori_shape in ([12288, 1024], [200704, 256], [128, 64])) and \
+             (num_segments in (36548, 655360, 1128960, 543060))):
         input0 = gen_param(classify="input0", name="x",
                            datatype=input0_dtype,
                            format=input0_format)
