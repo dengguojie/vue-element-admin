@@ -37,7 +37,7 @@ Status ParseParamsReduceMax(const Message *op_src, ge::Operator &op_dest) {
         v_axis.push_back(attr.ints(i));
       }
       set_axes_flag = true;
-    } else if (attr.name() == "keep_dims" &&
+    } else if (attr.name() == "keepdims" &&
                attr.type() == ge::onnx::AttributeProto::INT) {
       if (attr.i() != 1) {
         keep_dims = false;

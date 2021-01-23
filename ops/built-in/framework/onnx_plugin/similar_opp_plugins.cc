@@ -40,7 +40,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Acos, Acos);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Acosh, Acosh);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Atan, Atan);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Ceil, Ceil);
-REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Clip, Relu6);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Clip, ClipByValue);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Cos, Cos);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Cosh, Cosh);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Equal, Equal);
