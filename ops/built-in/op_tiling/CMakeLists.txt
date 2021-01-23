@@ -29,6 +29,7 @@ set(_optiling_files
   conv2d_transpose.cc
   conv3d.cc
   conv_tiling.cc
+  cube_tiling.cc
   dynamic_atomic_addr_clean.cc
   eletwise.cc
   fill.cc

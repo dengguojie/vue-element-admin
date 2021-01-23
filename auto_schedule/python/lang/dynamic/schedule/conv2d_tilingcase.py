@@ -21,7 +21,6 @@ from collections import OrderedDict
 
 import te
 from te.tvm.expr import Expr
-from te.platform import cce_conf
 from te.domain.tiling.get_tiling import get_tiling
 
 from te.lang.base.operation_impl import register_tiling_case
@@ -33,14 +32,6 @@ from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils
 from te.lang.dynamic.schedule.constants import Pattern
 
-HW_MIN = 1
-N_RANGE = 4096
-H_RANGE = 4096
-W_RANGE = 4096
-W_DELTA = 1
-H_LEN = 400
-W_LEN = 400
-N_BASE = 2
 
 # noinspection PyUnusedLocal
 @register_tiling_case(pattern=Pattern.CONV2D)
@@ -82,14 +73,13 @@ def calc_conv2d(outs, option=None):
         conv_info['fused_coefficient'] = [0, 0, 2]
 
     tiling_op = Conv2dTiling(conv_info, ConvParam.dynamic_para)
-    tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area)
+    tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
     return tiling_cases
 
 
 class Conv2dTiling(CubeTilingOp):
     def __init__(self, tiling_info, dynamic_para):
-        super().__init__(tiling_info, None)
-        self.var_map = dynamic_para.get("var_map")
+        super().__init__(tiling_info, None, dynamic_para.get("var_map"))
         self.a_info = tiling_info['a_shape']
         self.a_5hd_info = tiling_info['placeholder_fmap_5hd_shape']
         self.b_info = tiling_info['b_shape']
@@ -154,7 +144,7 @@ class Conv2dTiling(CubeTilingOp):
             avoid cyclomatic complexity, handle block_dim
             """
             tiling["block_dim"] = [1, 1, 1, 1]
-            device_core_num = cce_conf.get_soc_spec("CORE_NUM")
+            device_core_num = utils.CORE_NUM
             if (self.a_info[0] > 1) and (device_core_num > 1):
                 if self.a_info[0] <= device_core_num:
                     tiling["block_dim"][0] = self.a_info[0]
@@ -194,68 +184,6 @@ class Conv2dTiling(CubeTilingOp):
 
         return tiling
 
-    def get_batch_range(self, batch):
-        """
-        get batch covering range
-        """
-
-        if "batch_n" in self.var_map:
-            core_num = cce_conf.get_soc_spec("CORE_NUM")
-            if batch >= core_num:
-                return core_num, N_RANGE
-            if core_num == N_BASE:
-                return 1, N_RANGE
-            batch_log = int(math.log(batch, N_BASE))
-            return N_BASE ** batch_log, N_BASE ** (int(batch_log + 1))
-        return batch, batch
-
-    def get_h_range(self, fmap_h, tiling):
-        """
-        get h covering range
-        """
-
-        if "fmap_h" in self.var_map:
-            if not tiling["AL1_shape"]:
-                return 1, fmap_h
-            hi_min = HW_MIN
-            if self.pad_mode != "VAR":
-                hi_min = max(self.k_h - self.cur_pads[2] - self.cur_pads[3], hi_min)
-            hi_min = max(hi_min, fmap_h - H_LEN)
-            hi_max = min(H_RANGE, fmap_h + H_LEN)
-
-            return hi_min, hi_max
-        return fmap_h, fmap_h
-
-    def get_w_range(self, fmap_h, fmap_w, tiling):
-        """
-        get w covering range
-        """
-
-        if "fmap_w" in self.var_map:
-            if not tiling["AL1_shape"]:
-                return 1, fmap_w
-            wi_min = HW_MIN
-            if self.pad_mode != "VAR":
-                wi_min = max(self.k_w - self.cur_pads[0] - self.cur_pads[1], wi_min)
-            support_w_min = wi_min
-            cur_w_size = fmap_w
-            # searching up-ward fo rw_max
-            while self._check_tiling_match(tiling, cur_w_size, fmap_h) and cur_w_size > support_w_min:
-                wi_min = cur_w_size
-                cur_w_size = cur_w_size - W_DELTA
-            # searching down-ward for w_min
-            cur_w_size = fmap_w
-            while self._check_tiling_match(tiling, cur_w_size, fmap_h) and cur_w_size <= W_RANGE:
-                wi_max = cur_w_size
-                cur_w_size = cur_w_size + W_DELTA
-
-            wi_min = max(wi_min, fmap_w - W_LEN)
-            wi_max = min(wi_max, fmap_w + W_LEN)
-            if wi_min > wi_max:
-                return 0, 0
-            return wi_min, wi_max
-        return fmap_w, fmap_w
-
     def get_tiling_range(self, tiling_in, a_shape):
         """
         get the covered area of a tiling
@@ -270,21 +198,24 @@ class Conv2dTiling(CubeTilingOp):
         -------
         list, range covered for tiling_in
         """
-
         tiling = self._preprocess_tiling(tiling_in)
         _, _, fmap_h, fmap_w, _ = a_shape
 
-        n_range_min, n_range_max = self.get_batch_range(a_shape[0])
+        paras = {
+            "var_map": self.var_map,
+            "k_h": self.k_h,
+            "k_w": self.k_w,
+            "pad_mode": self.pad_mode,
+            "pads": self.cur_pads
+        }
+        n_range_min, n_range_max = self.get_batch_range(a_shape[0], paras)
         tiling_range = [n_range_min, n_range_max]
         # check tiling covering itself situation
-
-        if not self._check_tiling_match(tiling, fmap_w, fmap_h) or fmap_h > H_RANGE or fmap_w > W_RANGE:
+        if not self.check_tiling_match(tiling, fmap_w, fmap_h) or fmap_h > utils.NHW_MAX or fmap_w > utils.NHW_MAX:
             return tiling_range + [0, 0, 0, 0]
-
-        h_range_min, h_range_max = self.get_h_range(fmap_h, tiling)
+        h_range_min, h_range_max = self.get_h_range(fmap_h, tiling, paras)
         tiling_range += [h_range_min, h_range_max]
-
-        w_range_min, w_range_max = self.get_w_range(fmap_h, fmap_w, tiling)
+        w_range_min, w_range_max = self.get_w_range(fmap_h, fmap_w, tiling, paras)
         tiling_range += [w_range_min, w_range_max]
 
         if not tiling.get("AL1_shape"):
@@ -299,19 +230,16 @@ class Conv2dTiling(CubeTilingOp):
             range_max = tiling["AL1_shape"][1] * tiling["AL0_matrix"][0] * utils.FP16_M * tiling["block_dim"][2]
             perf_ho = self.get_output_h(h_range_max)
             perf_wo = self.get_output_w(w_range_max)
-            if perf_ho * perf_wo <= range_max:
-                tiling_range = [n_range_min, n_range_max, h_range_min, h_range_max, w_range_min, w_range_max]
-            else:
-                range_inc = int((math.sqrt((h_o + w_o) ** 2 - 4 * (h_o*w_o - range_max)) - (h_o + w_o)) / 2)
+            if perf_ho * perf_wo > range_max:
+                range_inc = int((math.sqrt((h_o + w_o) ** 2 - 4 * (h_o * w_o - range_max)) - (h_o + w_o)) / 2)
                 perf_ho_max = h_o + range_inc
                 perf_wo_max = w_o + range_inc
                 perf_hi_max_rev = self._get_input_h(perf_ho_max)
                 perf_wi_max_rev = self._get_input_w(perf_wo_max)
                 perf_hi_max = min(h_range_max, perf_hi_max_rev)
                 perf_wi_max = min(w_range_max, perf_wi_max_rev)
-                tiling_range = [n_range_min, n_range_max, h_range_min, perf_hi_max, w_range_min, perf_wi_max]
+                tiling_range[3], tiling_range[5] = perf_hi_max, perf_wi_max
 
-        tiling_range = [int(v) for v in tiling_range]
         return tiling_range
 
     def assembly_case(self, tiling, coverage, cnt):
@@ -346,7 +274,6 @@ class Conv2dTiling(CubeTilingOp):
         int, al1_load_length (al1_bound) in M axis
 
         """
-
         # shape info
         h_i, w_i = curent_size, curent_size
         out_w = self.get_output_w(w_i)
@@ -392,9 +319,8 @@ class Conv2dTiling(CubeTilingOp):
 
         return li_hi * w_i
 
-    def _check_tiling_match(self, tiling, current_w, current_h):
+    def check_tiling_match(self, tiling, current_w, current_h):
         """
-
         check whether this tiling matches the shape
 
         Parameters
@@ -409,7 +335,6 @@ class Conv2dTiling(CubeTilingOp):
             False: do not match
 
         """
-
         if not tiling.get("AL1_shape"):
             return True
 

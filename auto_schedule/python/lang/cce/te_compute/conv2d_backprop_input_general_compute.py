@@ -66,9 +66,9 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         dilations,
         offset_x,
         fusion_para,
-        dynamic_para,
         kernel_name,
-        group_dict
+        group_dict,
+        var_map
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_sizes
@@ -82,7 +82,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         self.m_0, _, _ = cce_params.CUBE_MKN["float16"]["mac"]
         self._offset_x = offset_x
         self._fusion_para = fusion_para
-        self._dynamic_para = dynamic_para
+        self._var_map = var_map
         self._group_dict = group_dict
         self._real_g = self._group_dict.get(GroupDictKeys.g_extend)
         self._cou1_g = self._group_dict.get(GroupDictKeys.dy_c1_extend)
@@ -235,7 +235,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
         dilate_h, dilate_w = self._dilate_h, self._dilate_w
 
-        if self._dynamic_para:
+        if self._var_map:
             dy_filling, shape_dy_filling, dy_h = _write_select_dynamic(dy_h)
         else:
             dy_filling, shape_dy_filling, dy_h = _write_select(dy_h)
@@ -266,7 +266,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                     pad_left_before, pad_right_after)
         # stride > 1 ub->l1 may cut
         if stride_h > 1 or stride_w > 1:
-            if self._dynamic_para or _check_pad_zero(pad_list):
+            if self._var_map or _check_pad_zero(pad_list):
                 shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
                 shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
                 shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
@@ -302,7 +302,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                     name="dy_l1",
                     tag="dy_l1"
                 )
-        elif not self._dynamic_para and _check_pad_zero(pad_list):
+        elif not self._var_map and _check_pad_zero(pad_list):
             shape_up_modify = (pad_up_before - tvm_abs(pad_up_before)) // 2
             shape_left_modify = (pad_left_before - tvm_abs(pad_left_before)) // 2
             shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
@@ -349,7 +349,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
 
         if stride_h > 1 or stride_w > 1:
             dy_col = pat_conv.generate_a(dy_filling_l1, self._real_g,
-                                         self._cou1_g, self._dynamic_para)
+                                         self._cou1_g, self._var_map)
         else:
             offset = 0
             if l1_fusion_type != -1 and input_mem == 1 and valid_shape:
@@ -358,7 +358,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                 dy_filling,
                 self._real_g,
                 self._cou1_g,
-                self._dynamic_para,
+                self._var_map,
                 slice_offset=offset,
                 valid_shape=valid_shape)
 

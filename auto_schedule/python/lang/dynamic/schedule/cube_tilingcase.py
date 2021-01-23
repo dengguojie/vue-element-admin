@@ -18,6 +18,7 @@ cube ops tiling case base class
 
 import itertools
 import copy
+import math
 from functools import reduce
 from collections import defaultdict
 from collections import deque
@@ -25,15 +26,21 @@ from abc import abstractmethod
 
 from te.tvm.expr import IntImm
 from te.tvm.expr import Expr
+from te.platform import cce_conf
 
 from te.lang.base.operation_impl import add_compile_info
 
-CORE_NUM = 32
 C0_SIZE = 16
+W_DELTA = 1
+H_LEN = 400
+W_LEN = 400
+NHW_RANGE_LEN = 6
+
 class CubeTilingOp:
-    def __init__(self, tiling_info, dynamic_mode):
+    def __init__(self, tiling_info, dynamic_mode, var_map=None):
         self.tiling_info = tiling_info
         self.key = None
+        self.var_map = var_map
         self.dynamic_mode = dynamic_mode
         self.op_type = None
 
@@ -47,6 +54,70 @@ class CubeTilingOp:
                     item[i] = int(element)
                 elif isinstance(element, Expr):
                     item[i] = -1
+
+    @staticmethod
+    def get_batch_range(batch, paras):
+        """
+        get batch covering range
+        """
+        if "batch_n" in paras.get("var_map"):
+            core_num = TilingUtils.CORE_NUM
+            if batch >= core_num:
+                return core_num, TilingUtils.NHW_MAX
+            if core_num == TilingUtils.N_BASE:
+                return 1, TilingUtils.NHW_MAX
+            batch_log = int(math.log(batch, TilingUtils.N_BASE))
+            return TilingUtils.N_BASE ** batch_log, TilingUtils.N_BASE ** (int(batch_log + 1))
+        return batch, batch
+
+    @staticmethod
+    def get_h_range(fmap_h, tiling, paras):
+        """
+        get h covering range
+        """
+        if "dx_h" in paras.get("var_map") or "fmap_h" in paras.get("var_map"):
+            if not tiling["AL1_shape"]:
+                return 1, fmap_h
+            hi_min = TilingUtils.HW_MIN
+            if paras.get("pad_mode") != "VAR":
+                hi_min = max(paras.get("k_h") - paras.get("pads")[2] - paras.get("pads")[3], hi_min)
+            hi_min = max(hi_min, fmap_h - H_LEN)
+            hi_max = min(TilingUtils.NHW_MAX, fmap_h + H_LEN)
+            return hi_min, hi_max
+        return fmap_h, fmap_h
+
+    def get_w_range(self, fmap_h, fmap_w, tiling, paras):
+        """
+        get w covering range
+        """
+        if "dx_w" in paras.get("var_map") or "fmap_w" in paras.get("var_map"):
+            if not tiling["AL1_shape"]:
+                return 1, fmap_w
+            wi_min = TilingUtils.HW_MIN
+            if paras.get("pad_mode") != "VAR":
+                wi_min = max(paras.get("k_w") - paras.get("pads")[0] - paras.get("pads")[1], wi_min)
+            support_w_min = wi_min
+            cur_w_size = fmap_w
+            # searching up-ward fo rw_max
+            while self.check_tiling_match(tiling, cur_w_size, fmap_h) and cur_w_size > support_w_min:
+                wi_min = cur_w_size
+                cur_w_size = cur_w_size - W_DELTA
+            # searching down-ward for w_min
+            cur_w_size = fmap_w
+            while self.check_tiling_match(tiling, cur_w_size, fmap_h) and cur_w_size <= TilingUtils.NHW_MAX:
+                wi_max = cur_w_size
+                cur_w_size = cur_w_size + W_DELTA
+
+            wi_min = max(wi_min, fmap_w - W_LEN)
+            wi_max = min(wi_max, fmap_w + W_LEN)
+            if wi_min > wi_max:
+                return 0, 0
+            return wi_min, wi_max
+        return fmap_w, fmap_w
+
+    @abstractmethod
+    def check_tiling_match(self, tiling, current_w, current_h):
+        pass
 
     @abstractmethod
     def get_repo_tiling(self):
@@ -70,7 +141,7 @@ class TilingSelection:
         self.op = tiling_op
         self.seed_cnt = itertools.count(10000)
 
-    def calc_tiling(self, target_area):
+    def calc_tiling(self, target_area, var_names=()):
         """
         calculate tilings
 
@@ -84,7 +155,8 @@ class TilingSelection:
         """
 
         def _handle_dynamic_nhw():
-            tgt_area = [*target_area.get("batch_n"), *target_area.get("fmap_h"), *target_area.get("fmap_w")]
+            batch_name, h_name, w_name = var_names
+            tgt_area = [*target_area.get(batch_name), *target_area.get(h_name), *target_area.get(w_name)]
             if None in tgt_area:
                 seed_cnt = next(self.seed_cnt)
                 default_tiling = self.op.get_default_tiling()
@@ -93,15 +165,15 @@ class TilingSelection:
                 add_compile_info("default_range", {str(seed_cnt): tgt_area})
             else:
                 add_compile_info("tiling_type", "dynamic_tiling")
-                if "fmap_h" in self.op.var_map or "fmap_w" in self.op.var_map:
+                if h_name in self.op.var_map or w_name in self.op.var_map:
                     tiling_cases = self._calc_hw([target_area.get(key) for key in target_area])
-                elif "batch_n" in self.op.var_map:
+                elif batch_name in self.op.var_map:
                     tiling_cases = self._calc_batch([target_area.get("batch_n")])
                 else:
                     raise RuntimeError("Only dynamic N/H/W is supported")
             return tiling_cases
 
-        if self.op.op_type == "conv2d":
+        if self.op.op_type in ("conv2d", "conv2d_bp_input"):
             tiling_cases = _handle_dynamic_nhw()
         else:
             add_compile_info("dynamic_mode", self.op.dynamic_mode)
@@ -132,27 +204,27 @@ class TilingSelection:
         if self.op.op_type == "conv2d":
             block_dims = tiling["block_dim"]
             block_nums = block_dims[0] * block_dims[1] * block_dims[2]
-            if block_nums < CORE_NUM:
+            if block_nums < TilingUtils.CORE_NUM:
                 if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
-                    seed["A_shape"][0] * block_dims[1] * block_dims[2] <= CORE_NUM:
+                    seed["A_shape"][0] * block_dims[1] * block_dims[2] <= TilingUtils.CORE_NUM:
                     tiling["block_dim"][0] = seed["A_shape"][0]
                     block_dims = tiling["block_dim"]
             if tiling["BL0_matrix"] and tiling["BL1_shape"]:
                 co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
                 if block_dims[1] * tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2 < co1 and \
                     co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2) * block_dims[0] * \
-                    block_dims[2] <= CORE_NUM:
+                    block_dims[2] <= TilingUtils.CORE_NUM:
                     tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2)
                     block_dims = tiling["block_dim"]
             block_nums = block_dims[0] * block_dims[1] * block_dims[2]
-            if block_nums < CORE_NUM and tiling["AL1_shape"]:
+            if block_nums < TilingUtils.CORE_NUM and tiling["AL1_shape"]:
                 hout = self.op.get_output_h(seed["A_shape"][2])
                 wout = self.op.get_output_w(seed["A_shape"][3])
                 tmp = hout * wout // (tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1] * block_dims[2])
                 if tmp >= 1:
                     tmp = tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1]
                     used_core_num = block_dims[0] * block_dims[1]
-                    tiling["block_dim"][2] = min((hout*wout + tmp - 1) // tmp, CORE_NUM // used_core_num)
+                    tiling["block_dim"][2] = min((hout*wout + tmp - 1) // tmp, TilingUtils.CORE_NUM // used_core_num)
 
         return tiling
 
@@ -168,8 +240,9 @@ class TilingSelection:
         -------
         tilings_cases: list, calculated tilings
         """
+
         def _correct_seed_range(seed_area):
-            funcs = (max, min, max, min, max, min) if len(tgt_area) == 6 else (max, min, max, min)
+            funcs = (max, min, max, min, max, min) if len(tgt_area) == NHW_RANGE_LEN else (max, min, max, min)
             return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area, seed_area)]
 
         tgt_area = reduce(lambda x, y: x + y, tgt_area)
@@ -182,6 +255,7 @@ class TilingSelection:
             seed_hw = tuple(seed[self.op.key][2:4])
             seed["tiling"] = self._modify_core_num(seed)
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
+
             if seed_hw in seed_points_dup or _cal_overlap(seed_range, tgt_area)[0] == 0:
                 seed_points_dup.add(seed_hw)
                 continue
@@ -191,10 +265,10 @@ class TilingSelection:
             candidates[next(self.seed_cnt)] = [seed_range, seed['tiling'], seed_hw]
 
         cost_cases = self._select_tiling(tgt_area, candidates)
-        tiling_cases = [
-            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
+        tiling_cases = [self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
 
         add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
+
         repo_range = {k: v[0] for k, v in candidates.items()}
 
         # call cost model
@@ -275,6 +349,7 @@ class TilingSelection:
         -------
         tilings_cases: list, calculated tilings
         """
+
         def _correct_seed_range(seed_area):
             funcs = (max, min, max, min, max, min)
             return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area,
@@ -359,8 +434,8 @@ class TilingSelection:
             seed_cnt = next(self.seed_cnt)
             tiling_block_dims = seed["tiling"]["block_dim"]
             block_nums = tiling_block_dims[0]*tiling_block_dims[1]*tiling_block_dims[2]
-            if block_nums < CORE_NUM:
-                seed["tiling"]["block_dim"][0] = CORE_NUM // (tiling_block_dims[1]*tiling_block_dims[2])
+            if block_nums < TilingUtils.CORE_NUM:
+                seed["tiling"]["block_dim"][0] = TilingUtils.CORE_NUM // (tiling_block_dims[1]*tiling_block_dims[2])
             if self.op.op_type == "conv2d":
                 tiling = seed["tiling"]
                 if seed['A_shape'][0] > tiling["block_dim"][0] and tiling["BL1_shape"]:
@@ -388,12 +463,14 @@ class TilingSelection:
         add_compile_info("repo_seeds", repo_seeds)
         tiling_cases = [self.op.assembly_case(v[0], v[1], k)
                         for k, v in repo_selections.items()]
+
         return tiling_cases
 
     def _calc_batch_v2(self, tgt_area):
         """
         for some op_type, dynamic batch tiling have restricted coverage
         """
+
         batch_range = tuple(tgt_area[0])
         tiling_seeds = self.op.get_repo_tiling()
         repo_seeds = {}
@@ -464,7 +541,7 @@ class TilingSelection:
 
         Parameters
         ----------
-        tgt_area: tuple, hw range to be covered (h_min, h_amx, w_min, w_max)
+        tgt_area: tuple, hw range to be covered (n_min, n_max, h_min, h_amx, w_min, w_max)
         repo_tilings: dict, repo seeds tilings with id
 
         Returns
@@ -487,7 +564,6 @@ class TilingSelection:
                     continue
                 generate_area |= set(_cut_rectangle(ra, t_info[0]))
                 delete_area.add(ra)
-
             rest_area = (rest_area - delete_area) | generate_area
 
         return deque(rest_area)
@@ -548,16 +624,16 @@ class TilingSelection:
             cost_len = len(cost_cases)
             for _ in range(cost_len):
                 cut_range = cost_cases.popleft()
-                if self.op.op_type == "conv2d" and len(cut_range) == 6:
+                if self.op.op_type in ("conv2d", "conv2d_bp_input") and len(cut_range) == NHW_RANGE_LEN:
                     seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5]])
                 else:
                     seed_shape = tuple(cut_range[1::2])
                 cost_seed = self.op.get_costmodel_tiling(seed_shape)
-                seed_range = self.op.get_tiling_range(cost_seed['tiling'],
-                                                      cost_seed[self.op.key])
+                seed_range = self.op.get_tiling_range(cost_seed['tiling'], cost_seed[self.op.key])
                 if self.op.dynamic_mode == "dynamic_dhw" and seed_range[1] == -1:
                     seed_range[1] = cut_range[1]
                 is_overlap, covered_area = _cal_overlap(cut_range, seed_range)
+
                 if is_overlap:
                     gen_rects = _cut_rectangle(cut_range, seed_range)
                     cost_cases.extend(gen_rects)
@@ -731,13 +807,16 @@ class TilingUtils:
     FP16_N = 16
     FP16_SIZE = 2
     CUBE_SIZE = 16
+    N_BASE = 2
+    HW_MIN = 1
+    NHW_MAX = 4096
+    CORE_NUM = cce_conf.get_soc_spec("CORE_NUM")
 
     @staticmethod
     def icd(num_a, num_b):
         """
         upper division
         """
-
         return (num_a + num_b - 1) // num_b
 
     @staticmethod
@@ -745,5 +824,5 @@ class TilingUtils:
         """
         upper round
         """
-
         return TilingUtils.icd(num_a, num_b) * num_b
+

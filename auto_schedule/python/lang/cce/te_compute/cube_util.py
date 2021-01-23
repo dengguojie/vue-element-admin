@@ -623,7 +623,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             feature_map,
             g_after,
             c1_extend,
-            dynamic_para=None,
+            var_map=None,
             slice_offset=0,
             valid_shape=()):
         """
@@ -653,11 +653,15 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         new_pad = [self._pad_up, self._pad_down, self._pad_left, self._pad_right]
         stride = [self._stride_h, self._stride_w]
 
-        if dynamic_para is None or dynamic_para.get("dynamic_mode") == "dynamic_batch":
-            height_out, width_out = self.cal_howo(a_h, a_w)
+        if "dedy_h" in var_map:
+            height_out = var_map.get("dx_h")
         else:
-            var_map = dynamic_para.get("var_map")
-            height_out, width_out = var_map.get("dx_h"), var_map.get("dx_w")
+            height_out, _ = self.cal_howo(a_h, a_w)
+        if "dedy_w" in var_map:
+            width_out = var_map.get("dx_w")
+        else:
+            _, width_out = self.cal_howo(a_h, a_w)
+
         a_im2col_row_major_shape = (
             a_batch,
             height_out * width_out,
@@ -666,7 +670,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             kernel_w,
             a_c0
         )
-        if dynamic_para is None:
+        if not var_map:
             a_row_major = im2col_row_major(
                 a_im2col_row_major_shape,
                 feature_map,
@@ -688,7 +692,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             c1_extend * kernel_h * kernel_w,
             self._m0, a_c0
         )
-        if dynamic_para is None:
+        if not var_map:
             a_col = im2col_fractal(a_im2col_fractal_shape, a_row_major)
         else:
             img2col_para = (

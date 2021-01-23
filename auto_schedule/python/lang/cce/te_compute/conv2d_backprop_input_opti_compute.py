@@ -46,7 +46,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
 
     fusion_para : parameters of l1 fusion
 
-    dynamic_para : parameters of dynamic shape
+    var_map : dict of vars for dynamic shape
 
     kernel_name : kernel name of operator
 
@@ -69,10 +69,10 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         pad,
         output_shape,
         fusion_para,
-        dynamic_para,
         kernel_name,
         offset_x,
-        group_dict
+        group_dict,
+        var_map
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_size
@@ -99,7 +99,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         self._kernel_name = kernel_name
         self._img_h, self._img_w = [0, 0]
         self._fusion_para = fusion_para
-        self._dynamic_para = dynamic_para
+        self._var_map = var_map
         self._offset_x = offset_x
         self._pad = pad
         self._group_dict = group_dict
@@ -128,7 +128,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             name=raw_tensor.name + "_dx_zero",
             tag="init_zero"
         )
-        if self._dynamic_para and self._dynamic_para["dynamic_mode"] == "dynamic_hw":
+        if "dedy_h" in self._var_map or "dedy_w" in self._var_map:
             # because tvm.select not support dynamic shape
             dx_zero = tvm.compute(
                 (dilate_h, dilate_w, shape_c0),

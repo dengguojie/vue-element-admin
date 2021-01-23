@@ -23,6 +23,7 @@ from te.platform import get_soc_spec
 from te.platform import cce_params
 from te.utils import para_check
 from te.utils.error_manager import error_manager_util as err_man
+from te.utils.error_manager import error_manager_cube as err_man_cube
 from te.lang.cce.te_compute.cube_util import shape_to_list
 
 
@@ -274,8 +275,7 @@ def get_padlist(  # pylint: disable=too-many-locals
     shape_res,
     strides,
     shape_filters,
-    dilations,
-    dynamic_mode=None):
+    dilations):
     """
     Get pad list of int
     :param pads: "SAME" or "VALID" or list of int
@@ -283,7 +283,6 @@ def get_padlist(  # pylint: disable=too-many-locals
     :param strides:
     :param shape_filters:
     :param dilations:
-    :param dynamic_mode: "dynamic_hw" or "dynamic_batch" or None
     :return: pad list of int
     """
     fmap_h, fmap_w = shape_res[2], shape_res[3]
@@ -293,7 +292,7 @@ def get_padlist(  # pylint: disable=too-many-locals
 
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
-    if pads == 'SAME' or (dynamic_mode and -1 in pads):
+    if pads == 'SAME':
         pad_h = \
             align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = tvm.max(pad_h, 0)
@@ -392,6 +391,8 @@ def check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
     """
     if attr_min is None and attr_max is None:
         return
+    if attr_value == -1 or not isinstance(attr_value, int):
+        return
     if not attr_min is None:
         if attr_value > attr_max:
             args_dict = {
@@ -431,7 +432,6 @@ def check_attr_range(attr_name, attr_value, attr_min=None, attr_max=None):
     str,
     str,
     (dict, para_check.NONE_TYPE),
-    (str, para_check.NONE_TYPE),
     (dict, para_check.NONE_TYPE))
 def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                                 strides, pads, dilations,
@@ -440,7 +440,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                                 res_dtype,
                                 kernel_name,
                                 fusion_para=None,
-                                dynamic_mode=None,
                                 group_dict=None
                                 ):
     """
@@ -473,8 +472,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     kernel_name : Cce kernel name. Default value is "conv2d_backprop_input_cce"
 
     fusion_para: the l1 fusion para
-
-    dynamic_mode : dynamic type, "dynamic_hw" or "dynamic_batch"
 
     group_dict : The paras of group_dict.
 
@@ -517,7 +514,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 "param2_value": group_dict.get(GroupDictKeys.filter_batch_ori)
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if fmap_batch != dedy_batch:
+        if isinstance(fmap_batch, int) and fmap_batch != dedy_batch:
             args_dict = {
                 "errCode": "E60002",
                 "attr_name": "shape",
@@ -527,14 +524,14 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 "param2_value": dedy_batch
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if filter_h_dilation > fmap_h_padding:
+        if isinstance(fmap_h_padding, int) and filter_h_dilation > fmap_h_padding:
             args_dict = {
                 "errCode": "E60014",
                 "h_of_x": fmap_h_padding,
                 "h_of_filter": filter_h_dilation
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if filter_w_dilation > fmap_w_padding:
+        if isinstance(fmap_w_padding, int) and filter_w_dilation > fmap_w_padding:
             args_dict = {
                 "errCode": "E60014",
                 "h_of_x": fmap_w_padding,
@@ -550,6 +547,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                     l1fusion_l1_size = l1_size
             return l1fusion_l1_size
 
+        if not isinstance(fmap_w, int):
+            return
         c0_size = cce_params.C0_SIZE
         c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
         w_value = dedy_w * stride_w
@@ -710,7 +709,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                input_hw_mini, output_hw_mini
 
     def _check_shape_rule():
-        if dynamic_mode is None:
+        if -1 not in shape_out_backprop:
             para_check.check_shape_rule(shape_out_backprop,
                                         CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
                                         DEFAULT_MAX_SHAPE_NUM)
@@ -784,7 +783,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
 
-    pads = get_padlist(pads, input_sizes, strides, shape_filter, dilations, dynamic_mode)
+    pads = get_padlist(pads, input_sizes, strides, shape_filter, dilations)
     pad_up, pad_down, pad_left, pad_right = pads
 
     fmap_h_padding = fmap_h + pad_up + pad_down
@@ -817,28 +816,26 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max = \
         _change_hw_limitation(dedy_hw_min, fmap_hw_min, dedy_hw_max, fmap_hw_max)
 
-    if dynamic_mode is None:
-        _check_shape_relation()
+    _check_shape_relation()
 
-        # Dedy value limit
-        check_attr_range("out_backprop's H after expands", dedy_h * stride_h,
-                         dedy_hw_min, dedy_hw_max)
-        if filter_h == 1 and filter_w == 1:
-            check_attr_range("out_backprop's W after expands",
-                             dedy_w * stride_w * stride_h,
-                             dedy_hw_min, dedy_hw_max)
-        else:
-            check_attr_range("out_backprop's W after expands", dedy_w * stride_w,
-                             dedy_hw_min, dedy_hw_max)
+    # Dedy value limit
+    check_attr_range("out_backprop's H after expands", dedy_h * stride_h,
+                        dedy_hw_min, dedy_hw_max)
+    if filter_h == 1 and filter_w == 1:
+        check_attr_range("out_backprop's W after expands",
+                            dedy_w * stride_w * stride_h,
+                            dedy_hw_min, dedy_hw_max)
+    else:
+        check_attr_range("out_backprop's W after expands", dedy_w * stride_w,
+                            dedy_hw_min, dedy_hw_max)
 
     # filter value limit
     check_attr_range("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
     check_attr_range("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
 
-    if dynamic_mode is None:
-        # Fmap value limit
-        check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_hw_max)
-        check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_hw_max)
+    # Fmap value limit
+    check_attr_range("y's H", fmap_h, fmap_hw_min, fmap_hw_max)
+    check_attr_range("y's W", fmap_w, fmap_hw_min, fmap_hw_max)
 
     # stride value limit
     check_attr_range("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -849,35 +846,23 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     check_attr_range("dilations's W", dilation_w, DILATION_MIN, DILATION_MAX)
 
     # Third : value check, Mainly required by the convolution rule
-    if dynamic_mode != "dynamic_hw":
-        if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) \
-                != dedy_h:
-            args_dict = {
-                "errCode": "E60024",
-            }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) \
-                != dedy_w:
-            args_dict = {
-                "errCode": "E60025",
-            }
-            raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    if isinstance(fmap_h, int) and ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
+        err_man_cube.raise_err_specific_user("conv2d_backprop_input", "fmap_h not match dedy_h")
+    if isinstance(fmap_w, int) and ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) != dedy_w:
+        err_man_cube.raise_err_specific_user("conv2d_backprop_input", "fmap_w not match dedy_w")
 
     # Forth : L1 limitation, Mainly required by chip
-    if dynamic_mode != "dynamic_hw":
-        _check_l1_size_limit()
+    _check_l1_size_limit()
 
     # Fifth : check shape size, 64 bits limitation
     c0_size = cce_params.C0_SIZE
-    fmap_size = fmap_batch * align(fmap_channel, c0_size) * fmap_h * fmap_w
-    dedy_size = dedy_batch * align(dedy_channel, c0_size) * dedy_h * dedy_w
-    filter_size = \
-        align(filter_batch, c0_size) * align(filter_channel, c0_size) * \
-        filter_h * filter_w
-    if not dynamic_mode:
+    if -1 not in shape_out_backprop:
+        fmap_size = fmap_batch * align(fmap_channel, c0_size) * fmap_h * fmap_w
+        dedy_size = dedy_batch * align(dedy_channel, c0_size) * dedy_h * dedy_w
         _check_64bits_limitation("fmap_size", fmap_size, dtype=res_dtype)
         _check_64bits_limitation("dedy_size", dedy_size, dtype=out_backprop_dtype)
-        _check_64bits_limitation("filter_size", filter_size, dtype=filter_dtype)
+    filter_size = align(filter_batch, c0_size) * align(filter_channel, c0_size) * filter_h * filter_w
+    _check_64bits_limitation("filter_size", filter_size, dtype=filter_dtype)
 
     result = (
         shape_filter, shape_out_backprop, input_sizes, strides, pads,

@@ -18,6 +18,7 @@ public function for cube dynamic
 
 from __future__ import absolute_import
 import math
+import copy
 
 import te
 from te.tvm import api as tvm
@@ -25,6 +26,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_cube as err_man
 import te.lang.base as tbe_base
+import impl.util.util_deconv_comm as comm
 
 N_DIM = 0
 C_DIM = 1
@@ -75,6 +77,15 @@ def pos_from_format(ele_format):
     return pos_n, pos_c, pos_h, pos_w
 
 
+def set_default_para():
+    """
+    set default parameter value
+    """
+    default_para = {}
+    default_para["res_dtype"] = "float16"
+    return default_para
+
+
 class CubeParaProcess:
     """
     class of param check and preprocess for dynamic cube ops
@@ -95,6 +106,24 @@ class CubeParaProcess:
                              "output": ("NCHW", "NHWC")},
             "valid_dtype": ("float16",)
         }
+
+    def check_support_valid(self, in_shape, filter_shape):
+        """
+        check whether dynamic shape is supported for cube ops
+        """
+
+        if self.groups != 1:
+            err_man.raise_err_specific_user(
+                self.op_type, "group > 1 is not supported yet in dynamic")
+        if DYNAMIC_FLAG not in in_shape:
+            err_man.raise_err_specific_user(
+                self.op_type, "need at least one dimension is a variable.")
+        if DYNAMIC_FLAG in filter_shape:
+            err_man.raise_err_specific_user(
+                self.op_type, "dynamic weight is not supported yet.")
+        if self.dilations[H_DIM] != 1 or self.dilations[W_DIM] != 1:
+            err_man.raise_err_specific_user(
+                self.op_type, "dilations is not supported in dynamic shape yet.")
 
     def check_range_valid(self, shape, dyn_range, name, in_format):
         """
@@ -193,21 +222,85 @@ class CubeParaProcess:
         self.strides = [self.strides[pos_n], self.strides[pos_c],
                         self.strides[pos_h], self.strides[pos_w]]
 
-    def round_channel(self, in_shape, w_shape, dtype):
+    def get_output_range(self, w_shape, in_range, out_range=()):
+        """
+        calculate output range
+        """
+
+        def _get_output(x_in, k_size, pads, stride, dilation):
+            if not x_in:
+                return x_in
+            return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+
+        if DYNAMIC_FLAG in self.pads:
+            out_h_lower = ceil_div(in_range[H_DIM][0], self.strides[H_DIM])
+            out_h_upper = ceil_div(in_range[H_DIM][1], self.strides[H_DIM])
+            out_w_lower = ceil_div(in_range[W_DIM][0], self.strides[W_DIM])
+            out_w_upper = ceil_div(in_range[W_DIM][1], self.strides[W_DIM])
+        else:
+            out_h_lower = _get_output(in_range[H_DIM][0], w_shape[H_DIM],
+                                      (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                      self.dilations[H_DIM])
+            out_h_upper = _get_output(in_range[H_DIM][1], w_shape[H_DIM],
+                                      (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                      self.dilations[H_DIM])
+            out_w_lower = _get_output(in_range[W_DIM][0], w_shape[W_DIM],
+                                      (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                      self.dilations[W_DIM])
+            out_w_upper = _get_output(in_range[W_DIM][1], w_shape[W_DIM],
+                                      (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                      self.dilations[W_DIM])
+        if out_range:
+            return [out_range[N_DIM], out_range[C_DIM], (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
+        return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
+                (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
+
+    def calc_pads(self, in_shape_nc1hwc0, w_shape):
+        """
+        calculate pads
+        """
+
+        pads = self.pads
+        if DYNAMIC_FLAG in self.pads:
+            # if load2d, return [0,0,0,0]
+            if (self.op_type == "conv2d" and w_shape[H_DIM] * w_shape[W_DIM] == 1
+                    and self.strides[H_DIM] * self.strides[W_DIM] == 1):
+                pads = [0, 0, 0, 0]
+            else:
+                filter_h_dilation = (w_shape[H_DIM] - 1) * self.dilations[H_DIM] + 1
+                filter_w_dilation = (w_shape[W_DIM] - 1) * self.dilations[W_DIM] + 1
+                pad_h = (align(in_shape_nc1hwc0[H_DIM], self.strides[H_DIM]) -
+                         self.strides[H_DIM] + filter_h_dilation - in_shape_nc1hwc0[H_DIM])
+                pad_h = tvm.max(pad_h, 0)
+                pad_up = pad_h // 2
+                pad_down = pad_h - pad_up
+                pad_w = (align(in_shape_nc1hwc0[W_DIM], self.strides[W_DIM]) -
+                         self.strides[W_DIM] + filter_w_dilation - in_shape_nc1hwc0[W_DIM])
+                pad_w = tvm.max(pad_w, 0)
+                pad_left = pad_w // 2
+                pad_right = pad_w - pad_left
+                pads = pad_up, pad_down, pad_left, pad_right
+                pads = list(map(lambda x: int(x) if (isinstance(x, te.tvm.expr.IntImm)) else x, pads))
+        self.pads = pads
+
+    def round_channel(self, in_shape, w_shape, dtype, out_shape=()):
         """
         round up the channel dimension
         """
 
         if (self.op_type == "conv2d" and in_shape[C_DIM] != w_shape[C_DIM]
-                or self.op_type == "conv2d_backprop_input" and in_shape[C_DIM] != w_shape[N_DIM]):
+                or (self.op_type == "conv2d_backprop_input" and in_shape[C_DIM] != w_shape[N_DIM]
+                    and out_shape[C_DIM] != w_shape[C_DIM])):
             err_man.raise_err_scene_equal_limitation(self.op_type, "input feature map channel", "filter channel")
 
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[dtype]['mac'][1:3]
         in_shape[C_DIM] = align(in_shape[C_DIM], block_size_k)
         w_shape[N_DIM] = align(w_shape[N_DIM], block_size_n)
         w_shape[C_DIM] = align(w_shape[C_DIM], block_size_k)
+        if out_shape:
+            out_shape[C_DIM] = align(out_shape[C_DIM], block_size_k)
 
-        return in_shape, w_shape
+        return in_shape, w_shape, out_shape
 
     def set_group_para(self, in_shape, w_shape, w_dtype):
         """
@@ -247,63 +340,21 @@ class Conv2dParaProcess(CubeParaProcess):
         check whether dynamic shape is supported for conv2d
         """
 
+        super().check_support_valid(in_shape, w_shape)
         soc_version = tbe_platform.get_soc_spec("SOC_VERSION")
         if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS"):
             err_man.raise_err_specific_user(
                 self.op_type, "Hi3796CV300ES and Hi3796CV300CS don't support dynamic shape")
-        if self.groups != 1:
-            err_man.raise_err_specific_user(
-                self.op_type, "group > 1 is not supported yet in dynamic")
         if self.paras.get("offset_w"):
             err_man.raise_err_specific_user(
                 self.op_type, "offset_w is not supported in dynamic shape yet.")
-        if DYNAMIC_FLAG not in in_shape:
-            err_man.raise_err_specific_user(
-                self.op_type, "need at least one dimension is a variable.")
-        if DYNAMIC_FLAG in w_shape:
-            err_man.raise_err_specific_user(
-                self.op_type, "dynamic weight is not supported yet.")
-        if self.dilations[H_DIM] != 1 or self.dilations[W_DIM] != 1:
-            err_man.raise_err_specific_user(
-                self.op_type, "dilations is not supported in dynamic shape yet.")
 
-    def get_y_range(self, w_shape, in_range):
-        """
-        calculate output range
-        """
-
-        def _get_output(x_in, k_size, pads, stride, dilation):
-            if not x_in:
-                return x_in
-            return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
-
-        if DYNAMIC_FLAG in self.pads:
-            y_h_lower = ceil_div(in_range[H_DIM][0], self.strides[H_DIM])
-            y_h_upper = ceil_div(in_range[H_DIM][1], self.strides[H_DIM])
-            y_w_lower = ceil_div(in_range[W_DIM][0], self.strides[W_DIM])
-            y_w_upper = ceil_div(in_range[W_DIM][1], self.strides[W_DIM])
-        else:
-            y_h_lower = _get_output(in_range[H_DIM][0], w_shape[H_DIM],
-                                    (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                    self.dilations[H_DIM])
-            y_h_upper = _get_output(in_range[H_DIM][1], w_shape[H_DIM],
-                                    (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                    self.dilations[H_DIM])
-            y_w_lower = _get_output(in_range[W_DIM][0], w_shape[W_DIM],
-                                    (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                    self.dilations[W_DIM])
-            y_w_upper = _get_output(in_range[W_DIM][1], w_shape[W_DIM],
-                                    (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                    self.dilations[W_DIM])
-        return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
-                (y_h_lower, y_h_upper), (y_w_lower, y_w_upper)]
-
-    def calc_shape(self, in_shape, w_shape, in_range, y_range):
+    def _calc_shape(self, in_shape, w_shape, in_range, y_range):
         """
         calculate shape for mmad
         """
 
-        in_shape, w_shape = self.round_channel(in_shape, w_shape, self.dtype)
+        in_shape, w_shape, _ = self.round_channel(in_shape, w_shape, self.dtype)
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]['mac'][1:3]
 
         in_shape_nc1hwc0 = [in_shape[N_DIM], in_shape[C_DIM] // block_size_k,
@@ -327,33 +378,6 @@ class Conv2dParaProcess(CubeParaProcess):
             w_shape_frac_z = (w_shape[C_DIM] * w_shape[H_DIM] * w_shape[W_DIM] // block_size_k,
                               w_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
         return in_shape, w_shape, in_shape_nc1hwc0, w_shape_frac_z
-
-    def calc_pads(self, in_shape_nc1hwc0, w_shape):
-        """
-        calculate pads
-        """
-
-        pads = self.pads
-        if DYNAMIC_FLAG in self.pads:
-            # if load2d, return [0,0,0,0]
-            if w_shape[H_DIM] * w_shape[W_DIM] == 1 and self.strides[H_DIM] * self.strides[W_DIM] == 1:
-                pads = [0, 0, 0, 0]
-            else:
-                filter_h_dilation = (w_shape[H_DIM] - 1) * self.dilations[H_DIM] + 1
-                filter_w_dilation = (w_shape[W_DIM] - 1) * self.dilations[W_DIM] + 1
-                pad_h = (align(in_shape_nc1hwc0[H_DIM], self.strides[H_DIM]) -
-                         self.strides[H_DIM] + filter_h_dilation - in_shape_nc1hwc0[H_DIM])
-                pad_h = tvm.max(pad_h, 0)
-                pad_up = pad_h // 2
-                pad_down = pad_h - pad_up
-                pad_w = (align(in_shape_nc1hwc0[W_DIM], self.strides[W_DIM]) -
-                         self.strides[W_DIM] + filter_w_dilation - in_shape_nc1hwc0[W_DIM])
-                pad_w = tvm.max(pad_w, 0)
-                pad_left = pad_w // 2
-                pad_right = pad_w - pad_left
-                pads = pad_up, pad_down, pad_left, pad_right
-                pads = list(map(lambda x: int(x) if (isinstance(x, te.tvm.expr.IntImm)) else x, pads))
-        self.pads = pads
 
     def check_paras(self):
         """
@@ -394,8 +418,8 @@ class Conv2dParaProcess(CubeParaProcess):
 
         self.check_support_valid(in_shape_nchw, w_shape_nchw)
         self.get_attr_nchw(self.data_format)
-        y_range = self.get_y_range(w_shape_nchw, in_range_nchw)
-        in_shape_nchw, w_shape_nchw, in_shape_nc1hwc0, w_shape_frac_z = self.calc_shape(
+        y_range = self.get_output_range(w_shape_nchw, in_range_nchw)
+        in_shape_nchw, w_shape_nchw, in_shape_nc1hwc0, w_shape_frac_z = self._calc_shape(
             in_shape_nchw, w_shape_nchw, in_range_nchw, y_range)
         self.calc_pads(in_shape_nc1hwc0, w_shape_nchw)
         group_para = self.set_group_para(in_shape_nchw, w_shape_nchw, self.dtype)
@@ -419,3 +443,187 @@ class Conv2dParaProcess(CubeParaProcess):
         return {"input_tensor": input_tensor, "weight_tensor": weight_tensor, "bias_tensor": bias_tensor,
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
                 "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para")}
+
+class Conv2dBackpropParaProcess(CubeParaProcess):
+    """
+    class of param check and preprocess for dynamic conv2d
+    """
+
+    def __init__(self, paras):
+        super().__init__(paras)
+        self.op_type = "conv2d_backprop_input"
+        self.filters = paras.get("filters")
+        self.out_backprop = paras.get("out_backprop")
+        self.y = paras.get("y")
+        self.data_format = paras.get("data_format")
+        self.dtype = paras.get("filters").get("dtype")
+
+    def _calc_shape(self, dy_shape, filter_shape, input_size, dy_range, input_range):
+        """
+        calculate shape for mmad
+        """
+
+        dy_shape, filter_shape, input_size = self.round_channel(dy_shape, filter_shape, self.dtype, input_size)
+        block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]['mac'][1:3]
+
+        dy_shape_nc1hwc0 = [dy_shape[N_DIM], dy_shape[C_DIM] // block_size_k,
+                            dy_shape[H_DIM], dy_shape[W_DIM], block_size_k]
+
+        if dy_shape[N_DIM] == DYNAMIC_FLAG:
+            dy_shape_nc1hwc0[N_DIM] = tbe_base.var("batch_n", dy_range[N_DIM])
+            input_size[N_DIM] = dy_shape_nc1hwc0[N_DIM]
+            tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[N_DIM])
+        if dy_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
+            dy_shape_nc1hwc0[H_DIM] = tbe_base.var("dedy_h", dy_range[H_DIM])
+            input_size[H_DIM] = tbe_base.var("dx_h", input_range[H_DIM])
+            tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[H_DIM])
+            tbe_base.add_exclude_bound_var(input_size[H_DIM])
+        if dy_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
+            dy_shape_nc1hwc0[W_DIM] = tbe_base.var("dedy_w", dy_range[W_DIM])
+            input_size[W_DIM] = tbe_base.var("dx_w", input_range[W_DIM])
+            tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[W_DIM])
+            tbe_base.add_exclude_bound_var(input_size[W_DIM])
+
+        filter_shape_frac_z = (filter_shape[C_DIM] * filter_shape[H_DIM] * filter_shape[W_DIM] // block_size_k,
+                              filter_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
+        return dy_shape, filter_shape, input_size, dy_shape_nc1hwc0, filter_shape_frac_z
+
+    def _get_dy_range_dilate(self, dy_range, filter_shape):
+        """
+        get dy range after dilated
+        """
+        dy_range_dilate = dy_range
+        dy_range_dilate[H_DIM] = [x * self.strides[H_DIM] for x in dy_range[H_DIM]]
+        if filter_shape[H_DIM] == 1 and filter_shape[W_DIM] == 1:
+            dy_range_dilate[W_DIM] = [x * self.strides[H_DIM] * self.strides[W_DIM] for x in dy_range[W_DIM]]
+        else:
+            dy_range_dilate[W_DIM] = [x * self.strides[W_DIM] for x in dy_range[W_DIM]]
+        return dy_range_dilate
+
+    def check_paras(self):
+        """
+        check original paras
+        """
+
+        self.check_input_dict(self.filters, "filters", False)
+        self.check_input_dict(self.out_backprop, "out_backprop", False)
+        self.check_input_dict(self.y, "y", True)
+
+        para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
+        if self.dtype != self.y.get("dtype"):
+            err_man.raise_err_specific_user(
+                "conv2d_backprop_input", "the dtype of filter and y are not the same.")
+        if self.dtype != self.out_backprop.get("dtype"):
+            err_man.raise_err_specific_user(
+                "conv2d_backprop_input", "the dtype of filter and out_backprop are not the same.")
+
+        self.check_format(self.data_format, "output")
+        self.check_format(self.filters.get("ori_format"), "weights")
+        if self.out_backprop.get("ori_format") != self.data_format:
+            err_man.raise_err_specific_user(
+                "conv2d_backprop_input", "the format of out_backprop and data_format are not the same.")
+        if self.y.get("ori_format") != self.data_format:
+            err_man.raise_err_specific_user("the format of y and data_format are not the same.")
+        para_check.check_kernel_name(self.paras.get("kernel_name"))
+
+        dy_shape = self.out_backprop.get("ori_shape")
+        filter_shape = self.filters.get("ori_shape")
+        input_size = self.y.get("ori_shape")
+        input_range = self.y.get("range")
+        self.check_para_dim(filter_shape, "filters")
+        self.check_para_dim(self.strides, "strides")
+        self.check_para_dim(self.dilations, "dilations")
+        self.check_para_dim(self.pads, "pads")
+        filter_shape_nchw = self.get_input_nchw(filter_shape, self.filters.get("ori_format"))
+
+        if dy_shape == [-2]:
+            dy_shape_nchw = [DYNAMIC_FLAG, filter_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG]
+            dy_range_nchw = [(1, None), (filter_shape_nchw[N_DIM], filter_shape_nchw[N_DIM]), (1, None), (1, None)]
+        else:
+            self.check_para_dim(dy_shape, "out_backprop_shape")
+            dy_shape_nchw = self.get_input_nchw(dy_shape, self.data_format)
+            input_size_nchw, input_range_nchw = self.get_input_nchw(input_size, self.data_format, input_range)
+            self.check_range_valid(input_size_nchw, input_range_nchw, "input_size", self.data_format)
+            dy_range_nchw = self.get_output_range(filter_shape_nchw, input_range_nchw)
+
+        self.check_support_valid(dy_shape_nchw, filter_shape_nchw)
+        self.get_attr_nchw(self.data_format)
+
+        output_range = copy.deepcopy(dy_range_nchw)
+        if filter_shape_nchw[H_DIM] == 1 and filter_shape_nchw[W_DIM] == 1:
+            output_range[W_DIM] = (output_range[W_DIM][0],
+                                   output_range[W_DIM][1] * self.strides[H_DIM] * self.strides[W_DIM])
+        else:
+            output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
+        self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
+
+        dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_shape_nc1hwc0, filter_shape_frac_z = self._calc_shape(
+            dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw)
+        self.calc_pads(input_size_nchw, filter_shape_nchw)
+        group_para = comm.calculate_group(
+            dy_shape_nchw, input_size_nchw, filter_shape_nchw, self.groups, self.dtype, self.data_format)
+        comm.check_conv2dbp_input_params(filter_shape_nchw, dy_shape_nchw, input_size_nchw,
+                                         self.strides[2:], self.pads, self.dilations, self.dtype, self.dtype, self.dtype,
+                                         kernel_name=self.paras.get("kernel_name"),
+                                         fusion_para=None,
+                                         group_dict=group_para)
+
+        return {"dy_shape_nc1hwc0": dy_shape_nc1hwc0, "filter_shape_frac_z": filter_shape_frac_z,
+                "filter_shape": filter_shape_nchw, "input_size": input_size_nchw, "group_para": group_para}
+
+    def config_paras(self):
+        """
+        config paras and placeholders
+        """
+        param = self.check_paras()
+        input_tensor = tvm.placeholder([4], name="input_size", dtype="int32")
+        dy_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
+        filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
+
+        return {"dy_tensor": dy_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
+                "filter_shape": param.get("filter_shape"), "input_size": param.get("input_size"),
+                "group_para": param.get("group_para")}
+
+
+class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
+    """
+    class of param check and preprocess for dynamic conv2d_transpose
+    """
+
+    def __init__(self, paras):
+        super().__init__(paras)
+        self.op_type = "conv2d_transpose"
+        self.out_backprop = paras.get("x")
+
+    def check_support_valid(self, in_shape, w_shape):
+        """
+        check whether dynamic shape is supported for conv2d
+        """
+        super().check_support_valid(in_shape, w_shape)
+        if self.paras.get("offset_w"):
+            err_man.raise_err_specific_user(
+                self.op_type, "offset_w is not supported in dynamic shape yet.")
+        if self.paras.get("output_padding") != (0, 0, 0, 0):
+            err_man.raise_err_specific_user(
+                self.op_type, "output_padding is not supported in dynamic shape yet.")
+        if self.paras.get("offset_x") != 0:
+            err_man.raise_err_specific_user(
+                self.op_type, "offset_x is not supported in dynamic shape yet.")
+
+    def config_paras(self):
+        """
+        check original paras
+        """
+        param = super().check_paras()
+
+        input_tensor = tvm.placeholder([4], name="input_size", dtype="int32")
+        x_tensor = tvm.placeholder(param.get("dy_shape_nc1hwc0"), name="dedy", dtype=self.dtype)
+        filter_tensor = tvm.placeholder(param.get("filter_shape_frac_z"), name="filter", dtype=self.dtype)
+        if self.paras.get("bias"):
+            bias_tensor = tvm.placeholder((param.get("filter_shape")[N_DIM],), name="tensor_bias", dtype=self.dtype)
+        else:
+            bias_tensor = None
+
+        return {"x_tensor": x_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
+                "bias_tensor": bias_tensor, "filter_shape": param.get("filter_shape"),
+                "input_size": param.get("input_size"), "group_para": param.get("group_para")}

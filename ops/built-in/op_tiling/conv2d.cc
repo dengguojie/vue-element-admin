@@ -22,6 +22,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
+#include "cube_tiling.h"
 #include "op_log.h"
 
 using namespace std;
@@ -34,98 +35,10 @@ namespace optiling {
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-int32_t g_nDim = 0;
-int32_t g_hDim = 1;
-int32_t g_wDim = 3;
-int32_t g_nMinDim = 0;
-int32_t g_nMaxDim = 1;
-int32_t g_hMinDim = 2;
-int32_t g_hMaxDim = 3;
-int32_t g_wMinDim = 4;
-int32_t g_wMaxDim = 5;
-
-string ConvTilingBatch(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  std::string tilingID("0");
-  auto& tilingRange = opInfo.at("tiling_range");
-  for (auto it = tilingRange.begin(); it != tilingRange.end(); it++) {
-    auto& range = it.value();
-    if (curShape[g_nDim] >= range[g_nMinDim] && curShape[g_nDim] <= range[g_nMaxDim]) {
-      tilingID = it.key();
-    }
-  }
-  return tilingID;
-}
-
-string ConvTilingCostModel(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  std::string tilingID("0");
-  auto& costRange = opInfo.at("cost_range");
-  for (auto it = costRange.begin(); it != costRange.end(); it++) {
-    auto& range = it.value();
-
-    if (curShape[g_nDim] >= range[g_nMinDim] && curShape[g_nDim] <= range[g_nMaxDim] &&
-        curShape[g_hDim] >= range[g_hMinDim] && curShape[g_hDim] <= range[g_hMaxDim] &&
-        curShape[g_wDim] >= range[g_wMinDim] && curShape[g_wDim] <= range[g_wMaxDim]) {
-      tilingID = it.key();
-    }
-  }
-  return tilingID;
-}
-
-string ConvTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  int32_t seedHDim = 0;
-  int32_t seedWDim = 1;
-  int32_t minDist = 1000000;
-
-  std::string tilingID("0");
-  auto& repoRange = opInfo.at("repo_range");
-  auto& tilingSeeds = opInfo.at("repo_seeds");
-
-  for (auto it = tilingSeeds.begin(); it != tilingSeeds.end(); it++) {
-    std::vector<int32_t> seed = it.value().get<std::vector<int32_t>>();
-    auto& range = repoRange[it.key()];
-    if (curShape[g_nDim] >= range[g_nMinDim] && curShape[g_nDim] <= range[g_nMaxDim] &&
-        curShape[g_hDim] >= range[g_hMinDim] && curShape[g_hDim] <= range[g_hMaxDim] &&
-        curShape[g_wDim] >= range[g_wMinDim] && curShape[g_wDim] <= range[g_wMaxDim]) {
-        int32_t dist = abs(curShape[g_hDim] - seed[seedHDim]) + abs(curShape[g_wDim] - seed[seedWDim]);
-        if (dist < minDist) {
-          tilingID = it.key();
-          minDist = dist;
-        }
-    }
-  }
-  if (tilingID != "0") {
-    return tilingID;
-  }
-
-  tilingID = ConvTilingCostModel(curShape, opInfo);
-  return tilingID;
-}
-
-int32_t ConvTiling(const std::string& opType, const std::vector<int32_t>& curShape,
-                   const nlohmann::json& opInfo, OpRunInfo& runInfo) {
-  std::vector<std::string> varMap = opInfo.at("_vars")["10000"];
-  std::string tilingID("0");
-
-  if (opInfo["tiling_type"] == "default_tiling") {
-    tilingID = opInfo["default_range"].begin().key();
-  } else if (varMap.size() != 1) {
-    tilingID = ConvTilingNHW(curShape, opInfo);
-  } else {
-    tilingID = ConvTilingBatch(curShape, opInfo);
-  }
-  if (tilingID == "0") {
-    OP_LOGE(opType.c_str(),
-            "This shape is not covered by any tiling, "
-            "please modify range and recompile");
-    return false;
-  }
-
-  runInfo.block_dim = (uint32_t)opInfo["block_dim"][tilingID];
-  return std::stoi(tilingID);
-}
 
 bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                   OpRunInfo& runInfo) {
+  int32_t nDim = 0;
   int32_t hDim = 2;
   int32_t wDim = 3;
 
@@ -138,15 +51,15 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   GELOGD("Current format is %s, Ori format is %s", opParas.inputs[0].tensor[0].format.c_str(),
          opParas.inputs[0].tensor[0].ori_format.c_str());
 
-  int32_t n = opParas.inputs[0].tensor[0].shape[g_nDim];
+  int32_t n = opParas.inputs[0].tensor[0].shape[nDim];
   int32_t h = opParas.inputs[0].tensor[0].shape[hDim];
   int32_t w = opParas.inputs[0].tensor[0].shape[wDim];
   int32_t outH = opParas.outputs[0].tensor[0].shape[hDim];
   int32_t outW = opParas.outputs[0].tensor[0].shape[wDim];
 
-  int32_t tilingID = ConvTiling(opType, {n, h, outH, w, outW}, opCompileInfo, runInfo);
+  int32_t tilingID = CubeTiling(opType, {n, h, w}, opCompileInfo, runInfo);
 
-  GELOGD("tiling _data is %d, %d, %d, %d, %d, %d", tilingID, n, h, w, outH, outW);
+  GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, n, h, w, outH, outW);
 
   ByteBufferPut(runInfo.tiling_data, tilingID);
   std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
