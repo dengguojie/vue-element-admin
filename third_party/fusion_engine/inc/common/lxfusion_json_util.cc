@@ -146,13 +146,13 @@ namespace fe {
                                     {OpCalcInfo_MinTbeL1Space, op_calc_info.GetMinTbeL1Space()}};
     }
 
-    void SetOpSliceInfoToJson(fe::OpCalcInfo& op_calc_info, std::string & op_calc_info_str) {
+    void SetOpSliceInfoToJson(fe::OpCalcInfo& op_calc_info, std::string & op_calc_info_str, const string &slice_mode) {
         nlohmann::json l1_info_json = nlohmann::json{{fe::OP_SLICE_INFO, op_calc_info}};
         op_calc_info_str = l1_info_json.dump();
         CM_LOGD("set op_slice_info is %s", op_calc_info_str.c_str());
     }
 
-    void GetOpSliceInfoFromJson(fe::OpCalcInfo& op_calc_info, std::string & op_calc_info_str) {
+    void GetOpSliceInfoFromJson(fe::OpCalcInfo& op_calc_info, std::string & op_calc_info_str, const string &slice_mode) {
         nlohmann::json op_calc_info_json = nlohmann::json::parse(op_calc_info_str);
         op_calc_info_json.at(fe::OP_SLICE_INFO).get_to(op_calc_info);
         CM_LOGD("get op_slice_info is %s", op_calc_info_str.c_str());

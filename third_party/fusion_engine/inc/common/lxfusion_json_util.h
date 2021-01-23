@@ -21,8 +21,8 @@
 #include "op_slice_info.h"
 
 namespace fe {
-    void SetOpSliceInfoToJson(fe::OpCalcInfo &op_calc_info, std::string &op_calc_info_str);
+    void SetOpSliceInfoToJson(fe::OpCalcInfo &op_calc_info, std::string &op_calc_info_str, const string &slice_mode = fe::OP_SLICE_INFO);
 
-    void GetOpSliceInfoFromJson(fe::OpCalcInfo &op_calc_info, std::string &op_calc_info_str);
+    void GetOpSliceInfoFromJson(fe::OpCalcInfo &op_calc_info, std::string &op_calc_info_str, const string &slice_mode = fe::OP_SLICE_INFO);
 } // namespace fe
 #endif // FUSION_ENGINE_INC_COMMON_LXFUSION_JSON_UTIL_H
