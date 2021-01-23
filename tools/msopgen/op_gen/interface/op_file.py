@@ -150,15 +150,7 @@ class OPFile(metaclass=ABCMeta):
             head_str += template_str.format(name=name, type=output_type)
         # generate attr
         for attr in self.op_info.parsed_attr_info:
-            attr_name = utils.fix_name_lower_with_under(attr[0])
-            if len(attr) == 3 and attr[2] != "":
-                head_str += op_tmpl.IR_H_ATTR_WITH_VALUE.format(name=attr_name,
-                                                                type=attr[1],
-                                                                value=attr[2])
-            else:
-                head_str += op_tmpl.IR_H_ATTR_WITHOUT_VALUE.format(
-                    name=attr_name,
-                    type=attr[1])
+            head_str = self._generate_attr(attr, head_str)
         head_str += op_tmpl.IR_H_END.format(
             op_type=self.op_info.op_type,
             right_braces=utils.RIGHT_BRACES,
@@ -168,6 +160,29 @@ class OPFile(metaclass=ABCMeta):
         # create and write
         utils.make_dirs(ir_h_dir)
         utils.write_files(ir_h_path, head_str)
+
+    @staticmethod
+    def _generate_attr(attr, head_str):
+        attr_name = utils.fix_name_lower_with_under(attr[0])
+        if len(attr) == 4:
+            if attr[3] == "optional":
+                head_str += op_tmpl.IR_H_ATTR_WITH_VALUE.format(
+                    name=attr_name,
+                    type=attr[1],
+                    value=attr[2])
+            else:
+                head_str += op_tmpl.IR_H_ATTR_WITHOUT_VALUE.format(
+                    name=attr_name,
+                    type=attr[1])
+        elif len(attr) == 3 and attr[2] != "":
+            head_str += op_tmpl.IR_H_ATTR_WITH_VALUE.format(name=attr_name,
+                                                            type=attr[1],
+                                                            value=attr[2])
+        else:
+            head_str += op_tmpl.IR_H_ATTR_WITHOUT_VALUE.format(
+                name=attr_name,
+                type=attr[1])
+        return head_str
 
     def _generate_ir_cpp(self):
         cpp_str = op_tmpl.IR_CPP_HEAD.format(

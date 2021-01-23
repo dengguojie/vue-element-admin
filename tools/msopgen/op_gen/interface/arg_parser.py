@@ -69,9 +69,9 @@ class ArgParser:
         query_parser.add_argument("-i", "--input",
                                   dest="input",
                                   default="",
-                                  help="<Required> the input file, .txt or "
-                                       ".xlsx file, which needs to be existed "
-                                       "and readable",
+                                  help="<Required> the input file, %s file, "
+                                       "which needs to be existed and "
+                                       "readable." % (utils.MI_VALID_TYPE,),
                                   required=True)
         query_parser.add_argument("-out", "--output",
                                   dest="output",
@@ -84,9 +84,9 @@ class ArgParser:
         gen_parser.add_argument("-i", "--input",
                                 dest="input",
                                 default="",
-                                help="<Required> the input file, .txt or .xls "
-                                     "file, which needs to be existed and "
-                                     "readable.",
+                                help="<Required> the input file, %s file, "
+                                     "which needs to be existed and readable."
+                                     % (utils.GEN_VALID_TYPE,),
                                 required=True)
         gen_parser.add_argument("-f", "--framework",
                                 dest="framework",
@@ -121,11 +121,10 @@ class ArgParser:
 
     def _check_mi_cmd_param(self, args):
         if self.mi_cmd == utils.INPUT_ARGUMENT_CMD_MI_QUERY:
-            if not args.input.endswith(".xlsx") \
-                    and not args.input.endswith(".xls"):
+            if not args.input.endswith(utils.MI_VALID_TYPE):
                 utils.print_error_log(
-                    'The file "%s" is invalid, only supports .xlsx file. '
-                    'Please modify it.' % args.input)
+                    'The file "%s" is invalid, only supports %s file. Please '
+                    'modify it.' % (args.input, utils.MI_VALID_TYPE))
                 raise utils.MsOpGenException(
                     utils.MS_OP_GEN_INVALID_PATH_ERROR)
             utils.check_path_valid(args.input)
@@ -160,12 +159,10 @@ class ArgParser:
             sys.exit(utils.MS_OP_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR)
 
     def _check_input_path(self, args_input):
-        if not args_input.endswith(".xlsx") \
-                and not args_input.endswith(".xls") \
-                and not args_input.endswith(".txt"):
+        if not args_input.endswith(utils.GEN_VALID_TYPE):
             utils.print_error_log(
-                'The file "%s" is invalid, only supports .xlsx and .txt file. '
-                'Please modify it.' % args_input)
+                'The file "%s" is invalid, only supports %s file. Please '
+                'modify it.' % (args_input, utils.GEN_VALID_TYPE))
             raise utils.MsOpGenException(utils.MS_OP_GEN_INVALID_PATH_ERROR)
         args_op_info = os.path.realpath(args_input)
         if os.path.isfile(args_op_info) and os.access(args_op_info, os.R_OK):

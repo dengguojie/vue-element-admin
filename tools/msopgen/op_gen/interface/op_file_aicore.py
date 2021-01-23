@@ -140,19 +140,41 @@ class OpFileAiCore(OPFile):
             attr_info = ", ".join(x[0] for x in self.op_info.parsed_attr_info)
             new_str += op_tmpl.INI_ATTR_LIST.format(attr_info=attr_info)
             for attr in self.op_info.parsed_attr_info:
-                if len(attr) == 3 and attr[2] != "":
-                    new_str += op_tmpl.INI_ATTR_WITH_VALUE.format(
-                        name=attr[0],
-                        type=attr[1],
-                        defaultValue=attr[2])
-                else:
-                    new_str += op_tmpl.INI_ATTR_WITHOUT_VALUE.format(
-                        name=attr[0],
-                        type=attr[1])
+                new_str = self._generate_attr_aicore(attr, new_str)
 
         # 5.make bin file string
         new_str += op_tmpl.INI_BIN_FILE.format(name=self.op_info.fix_op_type)
         self._make_info_cfg_file(new_str)
+
+    @staticmethod
+    def _generate_attr_aicore(attr, new_str):
+        new_str += op_tmpl.INI_ATTR_TYPE_VALUE.format(name=attr[0],
+                                                      type=attr[1])
+        if len(attr) == 4:
+            new_str += op_tmpl.INI_ATTR_PARAM_TYPE.format(
+                name=attr[0],
+                paramType=attr[3]
+            )
+            if attr[2]:
+                new_str += op_tmpl.INI_ATTR_DEFAULT_VALUE.format(
+                    name=attr[0],
+                    defaultValue=attr[2]
+                )
+        elif len(attr) == 3 and attr[2] != "":
+            new_str += op_tmpl.INI_ATTR_PARAM_TYPE.format(
+                name=attr[0],
+                paramType=utils.PARAM_TYPE_OPTIONAL
+            )
+            new_str += op_tmpl.INI_ATTR_DEFAULT_VALUE.format(
+                name=attr[0],
+                defaultValue=attr[2]
+            )
+        else:
+            new_str += op_tmpl.INI_ATTR_PARAM_TYPE.format(
+                name=attr[0],
+                paramType=utils.PARAM_TYPE_REQUIRED
+            )
+        return new_str
 
     def _generate_input_output_info_cfg(self, parsed_info, template_string):
         new_str = ""

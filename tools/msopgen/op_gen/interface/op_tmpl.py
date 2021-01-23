@@ -22,14 +22,12 @@ output{index}.format={format}
 """
 INI_ATTR_LIST = """attr.list={attr_info}
 """
-INI_ATTR_WITHOUT_VALUE = """attr_{name}.type={type}
+INI_ATTR_TYPE_VALUE = """attr_{name}.type={type}
 attr_{name}.value=all
-attr_{name}.paramType=required
 """
-INI_ATTR_WITH_VALUE = """attr_{name}.type={type}
-attr_{name}.value=all
-attr_{name}.paramType=option
-attr_{name}.defaultValue={defaultValue}
+INI_ATTR_PARAM_TYPE = """attr_{name}.paramType={paramType}
+"""
+INI_ATTR_DEFAULT_VALUE = """attr_{name}.defaultValue={defaultValue}
 """
 INI_BIN_FILE = """opFile.value={name}
 opInterface.value={name}

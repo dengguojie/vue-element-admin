@@ -15,6 +15,8 @@ from .op_info_ir import IROpInfo
 from .op_info_tf import TFOpInfo
 from .op_info_ir_mindspore import MSIROpInfo
 from .op_info_tf_mindspore import MSTFOpInfo
+from .op_info_ir_json import JsonIROpInfo
+from .op_info_ir_json_mindspore import JsonMSIROpInfo
 from . import utils
 
 
@@ -29,13 +31,19 @@ class OpInfoParser:
 
     @staticmethod
     def _create_op_info(argument: ArgParser):
-        if argument.input_path.endswith(".xlsx") \
-                or argument.input_path.endswith(".xls"):
+        if argument.input_path.endswith(utils.INPUT_FILE_EXCEL):
+            utils.print_warn_log("Excel as input will be removed in future "
+                                 "version, it is recommended to use json "
+                                 "file as input. ")
             if argument.gen_flag and argument.framework in utils.FMK_MS:
                 return MSIROpInfo(argument)
             else:
                 return IROpInfo(argument)
-
+        if argument.input_path.endswith(utils.INPUT_FILE_JSON):
+            if argument.gen_flag and argument.framework in utils.FMK_MS:
+                return JsonMSIROpInfo(argument)
+            else:
+                return JsonIROpInfo(argument)
         if argument.gen_flag and argument.framework in utils.FMK_MS:
             return MSTFOpInfo(argument)
         return TFOpInfo(argument)
