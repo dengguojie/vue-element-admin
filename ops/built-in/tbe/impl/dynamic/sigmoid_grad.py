@@ -15,6 +15,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 sigmoid_grad
 """
+from functools import reduce as reduceIns
+
 from te import tvm
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
@@ -121,6 +123,8 @@ def sigmoid_grad(x,
     for (sig, dx) in ins:
         with tbe_base.compute():
             shape_sig, shape_dx = shape_util.variable_shape([sig, dx], support_broadcast=False)
+            shape_sig = [reduceIns(lambda x, y: x * y, shape_sig)]
+            shape_dx = [reduceIns(lambda x, y: x * y, shape_dx)]
             tensor_sig = tvm.placeholder(shape_sig, x_dtype, "tensor_x")
             tensor_dx = tvm.placeholder(shape_dx, dx_dtype, "tensor_dx")
             res = sigmoid_grad_compute(tensor_sig, tensor_dx, out, kernel_name)

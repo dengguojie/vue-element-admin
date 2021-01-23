@@ -12,7 +12,7 @@
  */
 #include <iostream>
 #include "error_log.h"
-#include "eletwise.h"
+
 #include "vector_tiling.h"
 
 namespace optiling {
@@ -36,9 +36,7 @@ bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const 
     TeOpParas op_paras_tmp = op_paras;
     op_paras_tmp.inputs[1].tensor[0].shape = boardcast_bias_shape;
 
-    Eletwise eletwise(op_type, op_paras_tmp, op_info);
-    bool ret = eletwise.DoTiling();
-    ret = ret && eletwise.WriteTilingData(run_info);
+    bool ret = EletwiseTiling(op_type, op_paras_tmp, op_info, run_info);
     return ret;
 }
 

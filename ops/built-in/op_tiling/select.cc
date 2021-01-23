@@ -12,8 +12,8 @@
  */
 
 #include "error_log.h"
-#include "eletwise.h"
 #include "op_tiling.h"
+#include "vector_tiling.h"
 
 namespace optiling {
 
@@ -35,9 +35,7 @@ bool SelectTiling(const std::string& op_type, const TeOpParas& op_paras, const n
 						      boardcast_condition_fill.end());
     }
     op_paras_tmp.inputs.erase(op_paras_tmp.inputs.end() - 1);
-    Eletwise eletwise(op_type, op_paras_tmp, op_info);
-    bool ret = eletwise.DoTiling();
-    ret = ret && eletwise.WriteTilingData(run_info);
+    bool ret = EletwiseTiling(op_type, op_paras_tmp, op_info, run_info);
     return ret;
 }
 

@@ -22,7 +22,6 @@
 #include <cctype>
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
-#include "eletwise.h"
 #include "vector_tiling.h"
 #include <iostream>
 
@@ -126,15 +125,7 @@ bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     op_paras_tmp.inputs[1].tensor[0].shape = std::move(broadcast_input);
     op_paras_tmp.outputs[0].tensor[0].shape = std::move(output_shape);
 
-    Eletwise eletwise(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info);
-
-    bool ret = eletwise.DoTiling();
-    if (!ret) {
-        GE_LOGE("op [%s] eletwise do tiling failed", op_type.c_str());
-        return ret;
-    }
-
-    ret = eletwise.WriteTilingData(run_info);
+    bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
     return ret;
 }
 

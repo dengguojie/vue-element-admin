@@ -12,7 +12,6 @@
  */
 
 #include <iostream>
-#include "eletwise.h"
 #include "vector_tiling.h"
 #include "error_log.h"
 #include "op_log.h"
@@ -23,8 +22,6 @@ namespace optiling {
 
 bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                    OpRunInfo& run_info) {
-                       
-    std::cout << "BNInferenceDTiling inputs size:" << op_paras.inputs.size() << std::endl;
     GELOGD("op [%s] Enter BNInferenceDTiling inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
     CHECK((op_info.count("_boardcast_mean_shape") > 0),
@@ -40,7 +37,6 @@ bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, c
     // modify shape mean & varince
     for (size_t i = 0; i < boardcast_mean_shape.size(); i++) {
         boardcast_mean_shape[i] = boardcast_mean_shape[i] == -1 ? input_shape_x[i] : boardcast_mean_shape[i];
-        std::cout << "BNInferenceDTiling inputs size:" << i  << "=>" << boardcast_mean_shape[i] << std::endl;
     }
 
     TeOpParas op_paras_tmp = op_paras;
@@ -59,11 +55,7 @@ bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, c
     }
     GELOGD("BNInferenceDTiling after erase op_paras_tmp inputs size:%d", op_paras_tmp.inputs.size());
 
-    Eletwise eletwise(op_type, op_paras_tmp, op_info);
-    bool ret = eletwise.DoTiling();
-    std::cout << "BNInferenceDTiling ret:" << ret << std::endl;
-    ret = ret && eletwise.WriteTilingData(run_info);
-
+    bool ret = EletwiseTiling(op_type, op_paras_tmp, op_info, run_info);
     return ret;
 }
 

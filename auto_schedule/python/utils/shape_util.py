@@ -99,6 +99,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
     from tbe.common.utils import refine_shapes_for_broadcast
     return refine_shapes_for_broadcast(shape1, shape2)
 
+
 def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
     """
     :param inputs: all inputs

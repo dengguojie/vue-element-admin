@@ -23,7 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "graph/debug/ge_log.h"
 #include "op_tiling.h"
-
+#include "error_log.h"
 #include "vector_tiling.h"
 #include "op_log.h"
 
@@ -41,6 +41,8 @@ bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
                 OpRunInfo& run_info) {
   GELOGI("op[%s] tiling running.", op_type.c_str());
 
+  CHECK((op_info.find("_pattern") != op_info.end()), "op [%s] : compile info not contain [_pattern]",
+        op_type.c_str());
   const std::string& pattern = op_info["_pattern"].get<std::string>();
 
   GELOGI("op[%s] tiling pattern.", pattern.c_str());

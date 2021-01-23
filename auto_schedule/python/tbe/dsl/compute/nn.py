@@ -402,7 +402,7 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
                                       "and dst shape is %s" % (str(orig_shape), str(shape))
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    valid_types = (tvm.expr.ConstExpr, tvm.expr.Var)
+    valid_types = (tvm.expr.ConstExpr, tvm.expr.Var, tvm.expr.Max, tvm.expr.Mul)
     difference = len(shape) - len(orig_shape)
     orig_shape = difference * [1] + orig_shape
     check_equal = 0

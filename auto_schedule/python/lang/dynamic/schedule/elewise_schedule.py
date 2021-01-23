@@ -24,6 +24,7 @@ from te.lang.base import operation_impl as operation
 from te.lang.base.expr_compare import expr_equal
 from te.lang.base.operation_impl import get_compile_info
 from te.lang.base.operation_impl import register_schedule
+from te.utils.error_manager.error_manager_util import get_error_message
 
 from . import CompileInfo
 from . import DTYPE_BYTE_MAPPING
@@ -344,7 +345,7 @@ class ElewiseSchedule:
 
         base_info = {"000": [self._ub_size, self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
         const_compile_info = {
-            CompileInfo.ONLY_CONST_TILING: True,
+            CompileInfo.FLAG_INFO: [True],
             CompileInfo.BASE_INFO: base_info,
             CompileInfo.BROADCAST_AXIS: broadcast_axis,
         }
@@ -845,13 +846,22 @@ def _fake_node(tensors):
         return True
 
     dtype = tensors[0].dtype
-    shape = util.shape_to_list(tensors[0].shape)
+    dim_length = max([len(t.shape) for t in tensors])
+    shape = [1] * dim_length
     for tensor_i in tensors:
         if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:
             dtype = tensor_i.type
         shape_i = util.shape_to_list(tensor_i.shape)
-        if not _shape_equal(shape, shape_i):
-            raise RuntimeError("only support same shape by multi output")
+        diff = dim_length - len(shape_i)
+        shape_i = [1] * diff + shape_i
+        for j in range(diff, dim_length):
+            if not expr_equal(shape[j], shape_i[j]):
+                if not expr_equal(shape[j], 1) and not expr_equal(1, shape_i[j]):
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "shape in the same position in multiple outputs needs to be the same"
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                shape[j] = shape_i[j]
 
     def _fake_compute(*indices):
         res_ = tvm.const(1, dtype)

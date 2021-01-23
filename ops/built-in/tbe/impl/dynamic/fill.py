@@ -81,7 +81,7 @@ def fill(dims, value, y, kernel_name="fill"):
     schedules, tensors = [], []
 
     with tbe_base.compute():
-        shape_dim = shape_util.variable_shape([dims])
+        shape_dim = shape_util.variable_shape([dims], support_broadcast=True)
         x_input = tvm.placeholder(shape, name="x_input", dtype=dtype)
         dim_input = tvm.placeholder(shape_dim[0], name="dim_input", dtype=dtype_dims)
 
@@ -94,4 +94,3 @@ def fill(dims, value, y, kernel_name="fill"):
     config = {"name": kernel_name, "tensor_list": tensors}
 
     tbe.build(schedules, config)
-    tbe_base.add_compile_info("_use_special_pattern", False)

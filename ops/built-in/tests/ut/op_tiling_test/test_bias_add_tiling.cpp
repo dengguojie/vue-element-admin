@@ -61,15 +61,15 @@ TEST_F(BiasAddTiling, BiasAdd_tiling1) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "BiasAdd";
-  std::string compileInfo = R"({"_pattern": "ElemWise", "_only_const_tiling": false, "_flag_info": [true, true, false, false, 2], "_base_info": {"100": [262144, 2, 3, 32], "210": [262144, 2, 3, 32 ] }, "_elewise_vars": {"210000000": [1000, 2000, 3000], "210010000": [1000, 2000, 3000], "221000000": [1000, 1010], "221000001": [1000, 1010, 2000, 3000], "221000002": [1000, 1010, 2000, 3001], "221000004": [1000, 1010, 2001, 3001]}, "_vars": {"210000000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "210010000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "221000000": ["dim_0_0", "dim_1_0"], "221000001": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_0"], "221000002": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_1"], "221000004": ["dim_0_0", "dim_1_0", "block_factor_1", "ub_factor_1"]}, "_boardcast_bias_shape": [1, 1, 4]})";
+  std::string compileInfo = R"({"_pattern": "ElemWise", "_flag_info": [false, false, true, true, false, true], "_base_info": {"100": [262144, 2, 3, 32], "210": [262144, 2, 3, 32 ] }, "_elewise_vars": {"210000000": [10000, 20000, 30000], "210010000": [10000, 20000, 30000], "221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"210000000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "210010000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "221000000": ["dim_0_0", "dim_1_0"], "221000001": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_0"], "221000002": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_1"], "221000004": ["dim_0_0", "dim_1_0", "block_factor_1", "ub_factor_1"]}, "_boardcast_bias_shape": [1, 1, 4]})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456a";
+  op_compile_info.key = "BiasAdd_tiling1";
   // do tilling, get runInfo
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "210000000 1 1 1 ");
+            "210000000 4 4 4 ");
 }
 
 TEST_F(BiasAddTiling, BiasAdd_tiling2) {
@@ -103,14 +103,14 @@ TEST_F(BiasAddTiling, BiasAdd_tiling2) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "BiasAdd";
-  std::string compileInfo = R"({"_pattern": "ElemWise", "_only_const_tiling": false, "_flag_info": [true, true, false, false, 2], "_base_info": {"100": [262144, 2, 3, 32], "210": [262144, 2, 3, 32 ] }, "_elewise_vars": {"210000000": [1000, 2000, 3000], "210010000": [1000, 2000, 3000], "221000000": [1000, 1010], "221000001": [1000, 1010, 2000, 3000], "221000002": [1000, 1010, 2000, 3001], "221000004": [1000, 1010, 2001, 3001]}, "_vars": {"210000000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "210010000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "221000000": ["dim_0_0", "dim_1_0"], "221000001": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_0"], "221000002": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_1"], "221000004": ["dim_0_0", "dim_1_0", "block_factor_1", "ub_factor_1"]}, "_boardcast_bias_shape": [1, 1, -1]})";
+  std::string compileInfo = R"({"_pattern": "ElemWise", "_flag_info": [false, false, true, true, false, true], "_base_info": {"100": [262144, 2, 3, 32], "210": [262144, 2, 3, 32 ] }, "_elewise_vars": {"210000000": [10000, 20000, 30000], "210010000": [10000, 20000, 30000], "221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"210000000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "210010000": ["dim_0_0", "block_factor_0", "ub_factor_0"], "221000000": ["dim_0_0", "dim_1_0"], "221000001": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_0"], "221000002": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_1"], "221000004": ["dim_0_0", "dim_1_0", "block_factor_1", "ub_factor_1"]}, "_boardcast_bias_shape": [1, 1, -1]})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456a";
+  op_compile_info.key = "BiasAdd_tiling2";
   // do tilling, get runInfo
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "221000001 1 0 1 1 ");
+            "221000001 3996001 4 124876 10407 ");
 }
 

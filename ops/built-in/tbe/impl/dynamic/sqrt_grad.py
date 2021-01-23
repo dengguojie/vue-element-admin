@@ -15,6 +15,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 sqrt_grad
 """
+from functools import reduce as reduceIns
+
 import te.lang.cce as tbe
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
@@ -100,6 +102,8 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     for (x, dx) in ins:
         with tbe_base.compute():
             x_shape, dx_shape = shape_util.variable_shape([x, dx], support_broadcast=False)
+            x_shape = [reduceIns(lambda x, y: x * y, x_shape)]
+            dx_shape = [reduceIns(lambda x, y: x * y, dx_shape)]
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_dx = tvm.placeholder(dx_shape, dx_dtype, "tensor_dx")
             res = sqrt_grad_compute(tensor_x, tensor_dx, out, kernel_name)

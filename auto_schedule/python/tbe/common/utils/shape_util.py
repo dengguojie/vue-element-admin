@@ -289,7 +289,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
     shape2 = [1] * _dv + shape2
 
     if operation.in_dynamic():
-        operation.get_context().add("_fusion", 2)
+        operation.get_context().add("_fusion", True)
         fused_shape1, fused_shape2 = \
             _dynamic_refine_shapes_for_broadcast(shape1, shape2)
     else:

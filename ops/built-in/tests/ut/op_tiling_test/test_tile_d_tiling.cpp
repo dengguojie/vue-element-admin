@@ -37,7 +37,7 @@ TEST_F(TileDTiling, TileD_tiling1) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   // dynamic_tile_d_llt_case_1
-  std::string compileInfo = R"({ "_pattern": "Broadcast", "_only_const_tiling": false, "_flag_info": [true, false, false, false, 1], "_base_info": {"000": [262144, 4, 2, 32]}, "_elewise_vars": {"1":[10200, 20000, 30000], "2":[10200, 20000, 30001], "3":[10200, 20000, 30002], "5": [10200, 20001, 30001], "6":[10200, 20001, 30002], "9":[10200, 20002, 30002]}, "_vars": {"1":["dim_2_0", "block_factor_0", "ub_factor_0"], "2": ["dim_2_0", "block_factor_0", "ub_factor_1"], "3": ["dim_2_0", "block_factor_0", "ub_factor_2"],  "5": ["dim_2_0", "block_factor_1", "ub_factor_1"], "6": ["dim_2_0", "block_factor_1", "ub_factor_2"], "9": ["dim_2_0", "block_factor_2", "ub_factor_2"]}, "_tiling_info": [1, 0, 1, 1, -1, 42763, 16, -1]})";
+  std::string compileInfo = R"({ "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false], "_base_info": {"000": [262144, 4, 2, 32]}, "_elewise_vars": {"1":[10200, 20000, 30000], "2":[10200, 20000, 30001], "3":[10200, 20000, 30002], "5": [10200, 20001, 30001], "6":[10200, 20001, 30002], "9":[10200, 20002, 30002]}, "_vars": {"1":["dim_2_0", "block_factor_0", "ub_factor_0"], "2": ["dim_2_0", "block_factor_0", "ub_factor_1"], "3": ["dim_2_0", "block_factor_0", "ub_factor_2"],  "5": ["dim_2_0", "block_factor_1", "ub_factor_1"], "6": ["dim_2_0", "block_factor_1", "ub_factor_2"], "9": ["dim_2_0", "block_factor_2", "ub_factor_2"]}, "_tiling_info": [1, 0, 1, 1, -1, 42763, 16, -1]})";
 
   std::vector<int64_t> inputA{777};
   std::vector<int64_t> output{42763, 16, 777};
@@ -62,7 +62,7 @@ TEST_F(TileDTiling, TileD_tiling1) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456";
+  op_compile_info.key = "TileD_tiling1";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);

@@ -24,7 +24,6 @@
 #include "op_tiling.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
-#include "eletwise.h"
 #include "vector_tiling.h"
 
 namespace optiling {
@@ -40,6 +39,7 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
   std::vector<int64_t> runtime_shape(op_paras.inputs[0].tensor[0].shape);
 
   // use assign init vector
+  CHECK_GT(tiling_info.size(), 0, "op [%s] : tiling_info index out of range", op_type.c_str());
   size_t shape_size = (tiling_info.size() - tiling_info[0] - 1) / 2;
   std::vector<int64_t> broadcast_input(shape_size);
   std::vector<int64_t> broadcast_multiples(shape_size);
@@ -70,9 +70,7 @@ bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
         "op [%s] : multiples_input.tensor cannot be empty", op_type.c_str());
   multiples_input.tensor[0].shape = std::move(broadcast_multiples);
   op_paras_tmp.inputs.push_back(multiples_input);
-  Eletwise eletwise(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info);
-  bool ret = eletwise.DoTiling();
-  ret = ret && eletwise.WriteTilingData(run_info);
+  bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
   return ret;
 }
 

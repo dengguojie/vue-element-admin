@@ -15,7 +15,6 @@
 #include <unordered_map>
 #include "error_log.h"
 #include "vector_tiling.h"
-#include "eletwise.h"
 
 namespace optiling {
 
@@ -46,9 +45,17 @@ bool FillTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     }
   }
 
-  int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1, std::multiplies<int64_t>());
+  int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1ll, std::multiplies<int64_t>());
 
-  TeOpParas op_paras_tmp = op_paras;
+  TeOpParas op_paras_tmp = std::move(op_paras);
+  CHECK(!op_paras_tmp.inputs.empty(),
+        "op [%s] : op_paras_tmp.inputs cannot be empty", op_type.c_str());
+  TeOpTensorArg broadcast_input(op_paras_tmp.inputs[0]);
+  op_paras_tmp.inputs.push_back(broadcast_input);
+  CHECK(!op_paras_tmp.inputs[0].tensor.empty(),
+        "op [%s] : op_paras_tmp.inputs[0].tensor cannot be empty", op_type.c_str());
+  op_paras_tmp.inputs[0].tensor[0].shape = {fused_output};
+
   CHECK(!op_paras_tmp.outputs.empty(), "op [%s] : op_paras_tmp.outputs cannot be empty", op_type.c_str());
   CHECK(!op_paras_tmp.outputs[0].tensor.empty(), "op [%s] : op_paras_tmp.outputs[0].tensor cannot be empty",
         op_type.c_str());
@@ -57,9 +64,7 @@ bool FillTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   GELOGD("fill get dims fused_output is [%d], and fuse shape size is [%d]", fused_output,
          op_paras_tmp.outputs[0].tensor[0].shape.size());
 
-  Eletwise eletwise(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info);
-  bool ret = eletwise.DoTiling();
-  ret = ret && eletwise.WriteTilingData(run_info);
+  bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
   return ret;
 }
 

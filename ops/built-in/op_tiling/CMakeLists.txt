@@ -33,6 +33,7 @@ set(_optiling_files
   deconvolution.cc
   dynamic_atomic_addr_clean.cc
   eletwise.cc
+  broadcast.cc
   fill.cc
   gather.cc
   gather_nd.cc

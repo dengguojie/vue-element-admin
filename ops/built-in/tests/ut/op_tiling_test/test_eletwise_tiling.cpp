@@ -38,7 +38,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_add_267.static_op_add_269
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "_fusion_index": [[0], [1]], "_only_const_tiling": false, "_flag_info": [true, true, true, false, 2], "_base_info": { "320": [262144, 4, 3, 32], "000": [262144, 4, 3, 32] }, "_elewise_vars": { "232000000": [10001, 20000, 30000], "0": [10100], "1": [10100, 20000, 30000], "2": [10100, 20000, 30001], "4": [10100, 20001, 30001] }, "_vars": { "232000000": ["dim_0_1", "block_factor_0", "ub_factor_0"], "0": ["dim_1_0"], "1": ["dim_1_0", "block_factor_0", "ub_factor_0"], "2": ["dim_1_0", "block_factor_0", "ub_factor_1"], "4": ["dim_1_0", "block_factor_1", "ub_factor_1"] } })";
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "_fusion_index": [[0], [1]], "_flag_info": [false, false, true, true, true, true], "_base_info": { "320": [262144, 4, 3, 32], "000": [262144, 4, 3, 32] }, "_elewise_vars": { "232000000": [10001, 20000, 30000], "0": [10100], "1": [10100, 20000, 30000], "2": [10100, 20000, 30001], "4": [10100, 20001, 30001] }, "_vars": { "232000000": ["dim_0_1", "block_factor_0", "ub_factor_0"], "0": ["dim_1_0"], "1": ["dim_1_0", "block_factor_0", "ub_factor_0"], "2": ["dim_1_0", "block_factor_0", "ub_factor_1"], "4": ["dim_1_0", "block_factor_1", "ub_factor_1"] } })";
 
   std::vector<int64_t> inputA{1, 5824};
   std::vector<int64_t> inputB{100, 1};
@@ -85,7 +85,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling2) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_exp_432.static_op_exp_433
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "_only_const_tiling": false, "_flag_info": [ false, true, false, false, 1 ], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] } })";
 
   std::vector<int64_t> inputA{1, 33, 1089};
   std::vector<int64_t> output{1, 33, 1089};
@@ -123,7 +123,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling3) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_cast_30.static_op_cast_30
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "_only_const_tiling": false, "_flag_info": [ false, true, false, false, 1 ], "_base_info": { "100": [ 262144, 4, 4, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "_flag_info": [false, false, false, true, false, false ], "_base_info": { "100": [ 262144, 4, 4, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] } })";
 
   std::vector<int64_t> inputA{128, 128, 128, 128};
   std::vector<int64_t> output{128, 128, 128, 128};
@@ -161,7 +161,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling_mul1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_cast_30.static_op_cast_30
-  std::string compileInfo = R"({ "_pattern": "Broadcast", "_only_const_tiling": false, "_flag_info": [ true, true, false, false, 1 ], "_base_info": { "100": [262144, 4, 5, 32], "120": [262144, 4, 6, 32] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ], "212000000": [10000, 10100, 10101, 10102], "212000001": [10000, 10100, 10101, 10102, 20000, 30000], "212000002": [10000, 10100, 10101, 10102, 20000, 30001], "212010002": [10000, 10100, 10101, 10102, 20000, 30001], "212000004": [10000, 10100, 10101, 10102, 20001, 30001], "212010004": [10000, 10100, 10101, 10102, 20001, 30001] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "210010000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "212000000": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2"], "212000001": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_0", "ub_factor_0"], "212000002": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_0", "ub_factor_1"], "212010002": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_0", "ub_factor_1"], "212000004": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_1", "ub_factor_1"], "212010004": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_1", "ub_factor_1"]} })";
+  std::string compileInfo = R"({ "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false ], "_base_info": { "100": [262144, 4, 5, 32], "120": [262144, 4, 6, 32] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ], "212000000": [10000, 10100, 10101, 10102], "212000001": [10000, 10100, 10101, 10102, 20000, 30000], "212000002": [10000, 10100, 10101, 10102, 20000, 30001], "212010002": [10000, 10100, 10101, 10102, 20000, 30001], "212000004": [10000, 10100, 10101, 10102, 20001, 30001], "212010004": [10000, 10100, 10101, 10102, 20001, 30001] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "210010000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ], "212000000": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2"], "212000001": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_0", "ub_factor_0"], "212000002": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_0", "ub_factor_1"], "212010002": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_0", "ub_factor_1"], "212000004": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_1", "ub_factor_1"], "212010004": [ "dim_0_0", "dim_1_0", "dim_1_1", "dim_1_2", "block_factor_1", "ub_factor_1"]} })";
 
   std::vector<std::vector<int64_t>> inputs {
     {100, 1},

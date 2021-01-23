@@ -169,7 +169,7 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     input_x["range"] = range_adapt
 
     with tbe_base.compute():
-        shape = shape_util.variable_shape([input_x])[0]
+        shape = shape_util.variable_shape([input_x], support_broadcast=True)[0]
         data = tvm.placeholder(shape, name="data", dtype=input_dtype)
         res = tile_d_compute(data, output_x, multiples_adapt, kernel_name)
 
@@ -181,4 +181,3 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     tbe.build(sch, config)
 
     tbe_base.add_compile_info("_tiling_info", tiling_info)
-    tbe_base.add_compile_info("_flag_info", [True, False, False, False, 1])

@@ -20,8 +20,8 @@ class SelectTiling : public testing::Test {
 static string to_string(const std::stringstream &tiling_data) {
   auto data = tiling_data.str();
   string result;
-  int64_t tmp = 0;
-  for (size_t i = 0; i < data.length(); i += sizeof(int64_t)) {
+  int32_t tmp = 0;
+  for (size_t i = 0; i < data.length(); i += sizeof(int32_t)) {
     memcpy(&tmp, data.c_str() + i, sizeof(tmp));
     result += std::to_string(tmp);
     result += " ";
@@ -39,9 +39,9 @@ TEST_F(SelectTiling, Select_tiling1) {
   TeOpParas opParas;
 
   vector<vector<int64_t>> input_shapes = {
-      {4},
-      {4, 4, 4, 4},
-      {4, 4, 4, 4},
+      {2, 2, 2, 2},
+      {2, 2, 2, 2},
+      {2, 2, 2, 2},
   };
 
   vector<string> dtypes = {"uint8", "float16", "float16"};
@@ -63,15 +63,15 @@ TEST_F(SelectTiling, Select_tiling1) {
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "Select";
   // std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"_boardcast_condition_fill\": [1, 1, 1]}}";
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "_only_const_tiling": false, "_flag_info": [ false, true, false, false, 1 ], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] }, "_boardcast_condition_fill": [1,1,1]})";
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "_flag_info": [false, false, false, true, false, false ], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] }, "_boardcast_condition_fill": []})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456a";
+  op_compile_info.key = "Select_tiling1";
   // do tilling, get runInfo
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "1099721627776 1099511628032 ");
+            "210000000 16 16 16 ");
 }
 
 
@@ -108,14 +108,14 @@ TEST_F(SelectTiling, Select_tiling2) {
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "Select";
   // std::string compileInfo = "{\"vars\": {\"block_dim\": 32, \"_boardcast_condition_fill\": [1, 1, 1]}}";
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "_only_const_tiling": false, "_flag_info": [ false, true, false, false, 1 ], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] }, "_boardcast_condition_fill": []})";
+  std::string compileInfo = R"({ "_pattern": "ElemWise", "_flag_info": [false, false, false, true, false, false ], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "dim_0_0", "block_factor_0", "ub_factor_0" ] }, "_boardcast_condition_fill": []})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "123456a";
+  op_compile_info.key = "Select_tiling2";
   // do tilling, get runInfo
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "1099721627776 1099511628032 ");
+            "210000000 256 256 256 ");
 }
 

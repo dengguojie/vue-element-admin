@@ -253,15 +253,11 @@ def _pre_build(schedules_list):
                     _pattern_key += (base*3)
         return str(_pattern_key).ljust(3, '0')
 
-    operation.add_compile_info(CompileInfo.ONLY_CONST_TILING, False)
+    only_const_tiling = False
     support_broadcast = operation.get_context().get("support_broadcast")
-    fusion_flag = util.get_build_cfg()
-    if fusion_flag == "disable":
-        _fusion = 0
-    else:
-        _fusion = operation.get_context().get(CompileInfo.FUSION)
-        if _fusion is None:
-            _fusion = 1
+    _fusion = operation.get_context().get(CompileInfo.FUSION)
+    if _fusion is None:
+        _fusion = False
     cpt_computes = operation.get_context().get_computes()
     use_special_pattern = False
     support_absorbable_broadcast = False
@@ -278,12 +274,14 @@ def _pre_build(schedules_list):
         is_const_shapes = True
         operation.add_compile_info(CompileInfo.CONST_SHAPES, const_shapes)
         operation.add_compile_info(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
-        flag_info = [support_broadcast, use_special_pattern, support_absorbable_broadcast, is_const_shapes, _fusion]
+        flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
+                     use_special_pattern, support_absorbable_broadcast, _fusion]
         operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
         return
     else:
         is_const_shapes = False
-    flag_info = [support_broadcast, use_special_pattern, support_absorbable_broadcast, is_const_shapes, _fusion]
+    flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
+                 use_special_pattern, support_absorbable_broadcast, _fusion]
     operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
 
     schedules = []
