@@ -87,6 +87,7 @@ set(_onnx_plugins
   common_lstm_plugin.cc
   hardmax_plugin.cc
   non_max_suppression_plugin.cc
+  roi_extractor_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include

@@ -1591,6 +1591,50 @@ COMMON_INFER_FUNC_REG(PtIou, IouInferShape);
 
 // ----------------NonMaxSuppressionV7-------------------
 
+// ----------------RoiExtractor-------------------
+IMPLEMT_COMMON_INFERFUNC(RoiExtractorInferShape) {
+  auto x0_desc = op.GetDynamicInputDesc("features", 0);
+  auto input_dtype = x0_desc.GetDataType();
+  auto x0_shape = x0_desc.GetShape();
+  auto rois_shape = op.GetInputDesc("rois").GetShape();
+
+  int64_t pooled_height;
+  int64_t pooled_width;
+  if (op.GetAttr("pooled_height", pooled_height) == ge::GRAPH_FAILED) {
+    OP_LOGI(
+        op.GetName().c_str(),
+        "GetOpAttr pooled_height failed. Use default shape.");
+    pooled_height = 7;
+  }
+  if (op.GetAttr("pooled_width", pooled_width) == ge::GRAPH_FAILED) {
+    OP_LOGI(
+        op.GetName().c_str(),
+        "GetOpAttr pooled_width failed. Use default shape.");
+    pooled_width = 7;
+  }
+
+  std::vector<int64_t> dim_tmp;
+  dim_tmp.push_back(rois_shape.GetDim(0));
+  dim_tmp.push_back(x0_shape.GetDim(1));
+  dim_tmp.push_back(pooled_height);
+  dim_tmp.push_back(pooled_width);
+  Shape valid_shape(dim_tmp);
+
+  auto td = op.GetOutputDesc("y");
+  td.SetShape(valid_shape);
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(RoiExtractor, RoiExtractorVerify) {
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(RoiExtractor, RoiExtractorInferShape);
+VERIFY_FUNC_REG(RoiExtractor, RoiExtractorVerify);
+// ----------------RoiExtractor-------------------
 
 
 }  // namespace ge
