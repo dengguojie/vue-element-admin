@@ -52,7 +52,15 @@ def get_op_support_info(x, sum, square_sum,
 def op_select_format(x, sum, square_sum,
                      kernel_name="bn_training_reduce"):
     """
-    select format dynamically
+    1. when input(x)'s ori_shape is [1, ? ,1, ?] and the format is NCHW,
+    the Op BNTrainingReduce can support NCHW.
+    > for example:
+    > x : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > the Op BNTrainingReduce can process with NC1HWC0:
+    > x : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    2. In other scenes, the Op BNTrainingReduce can support NC1HWC0 and NDC1HWC0
+    > for example:
+    > x : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
     """
     origin_format = x.get("ori_format").upper()
     origin_shape = x.get("ori_shape")

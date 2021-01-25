@@ -843,7 +843,15 @@ def get_op_support_info(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
 
 def op_select_format(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
     """
-    select format dynamically
+    1. when ori_format of x is equal to "NCHW", the ori_shape of x is
+    equal to 4 and the axis is greater than or equal to 2. the Op
+    Crop can support HC1HWC0 and ND.
+    > for example :
+    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > size : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > the Op Crop can process with NC1HWC0:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > size : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     dtype_base = [
         "float16", "float", "int32", "int8", "int16", "int64", "uint8",

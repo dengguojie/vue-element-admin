@@ -30,7 +30,20 @@ def op_select_format(x, sum, square_sum, scale, offset,
                      y, batch_mean, batch_variance, epsilon,
                      kernel_name="bn_training_update_v2"):
     """
-    select format dynamically
+    1. when input(x)'s ori_shape is [1, ? ,1, ?] and the format is NCHW
+    the Op BNTrainingUpdateV2 can support NCHW.
+    > for example:
+    > x : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > sum : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > square_sum : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > scale : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > offset : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > the Op BNTrainingUpdateV2 can process with NC1HWC0:
+    > x : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > sum : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > square_sum : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > scale : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > offset : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
     """
     origin_format = x.get("ori_format").upper()
     origin_shape = x.get("ori_shape")

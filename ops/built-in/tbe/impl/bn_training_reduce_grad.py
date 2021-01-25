@@ -55,7 +55,24 @@ def op_select_format(grads, x, diff_scale, diff_offset, scale,
                      batch_mean, batch_variance, y, epsilon,
                      kernel_name="bn_training_reduce_grad"):
     """
-    select format dynamically
+    1. when input(grads)'s ori_shape is [1, ? ,1, ?] and the format is NCHW
+    the Op BNTrainingReduceGrad can support NCHW.
+    > for example:
+    > grads : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > x : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > diff_scale : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > diff_offset : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > scale : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > batch_mean : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > batch_variance : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > the Op BNTrainingReduce can process with NC1HWC0:
+    > grads : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > x : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > diff_scale : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > diff_offset : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > scale : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > batch_mean : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > batch_variance : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
     """
     format_grads = grads.get("ori_format").upper()
     origin_shape = grads.get("ori_shape")

@@ -43,7 +43,20 @@ def get_op_support_info(in_dic, filter_dic, out_dic, stride,
 def op_select_format(in_dic, filter_dic, out_dic,
                      stride, reverse, kernel_name="pass_through"):
     """
-    select format dynamically
+    1. when the shape of input(filter) is not equal to 0. the Op
+    PassThrough can support FRACTAL_Z and NC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > filter : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > the Op Select can process with NC1HWC0:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > filter : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+
+    2. when the shape of input(filter) is equal to 0. the Op
+    PassThrough can support FRACTAL_Z.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > filter : Tensor of (shape=(16, 16, 16, 16), "NCHW")
     """
     product_version = tbe_platform.get_soc_spec("SOC_VERSION")
     if len(filter_dic['shape']) != 0:

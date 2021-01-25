@@ -56,30 +56,18 @@ def op_select_format(grads, x, batch_mean, batch_variance,
                      diff_scale, diff_offset, epsilon,
                      kernel_name="bn_training_update_grad"):
     """
-    To set supporting formats for reference according to format.
-
-    Parameters
-    ----------
-    grads: dict
-        dict of grads, A 5D Tensor for input grads.
-    x: dict
-        dict of x, A 5D Tensor for input x.
-    batch_mean: dict
-        dict of batch_mean, A 5D Tensor for input batch_mean.
-    batch_variance: dict
-        dict of batch_variance, A 5D Tensor for input batch_variance.
-    diff_scale: dict
-        dict of diff_scale, A 5D Tensor for output diff_scale.
-    diff_offset: dict
-        dict of diff_offset, A 5D Tensor for output diff_offset.
-    epsilon: float
-        A small float number added to the variance of x. Defaults to `0.0001`.
-    kernel_name: str
-        kernel name, default value is "bn_training_update_grad"
-
-    Returns
-    -------
-    param_dynamic_in_json
+    1. when input(grads)'s ori_shape is [1, ? ,1, ?] and the format is NCHW
+    the Op BNTrainingUpdateGrad can support NCHW.
+    > for example:
+    > grads : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > x : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > batch_mean : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > batch_variance : Tensor of (shape=(1, 16, 1, 16), "NCHW")
+    > the Op BNTrainingUpdateGrad can process with NC1HWC0:
+    > grads : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > x : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > batch_mean : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
+    > batch_variance : Tensor of (shape=(1, 16, 1, 2, 8), "NC1HWC0")
     """
     format_x = x.get("ori_format").upper()
     origin_shape = x.get("ori_shape")

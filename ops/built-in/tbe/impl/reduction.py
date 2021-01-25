@@ -30,20 +30,13 @@ from impl.util import util_select_op_base
 # pylint: disable=unused-argument,too-many-locals
 def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="reduction"):
     """
-    support to 5HD format
-    Parameters
-    ----------
-    input_x : input tensor
-    output_y: output tensor
-    operation : can only be one of "1:SUM, 2:ASUM (sum of abs), 3:SUMSQ (sum of sqr), 4:MEAN"
-    axis : the first axis to reduce, may be negative to index from the end
-            (e.g., -1 for the last axis).If axis == 0, the output Blob always has
-            the empty shape (count 1), performing reduction across the entire input.
-    coeff : scale for output
-    kernel_name : cce kernel name, default value is "cce_reductionLayer"
-    Returns
-    -------
-    param_dynamic_in_json
+    1. when input x's ori_shape in ["NHWC", "NCHW"] and attr axis
+    can't be dim C. the Op Reduction can support ND.
+    > for example:
+    > for example:
+    > x : Tensor of (shape=(16, 16), "ND")
+    > the Op Select can process with NC1HWC0:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     input_ori_shape = input_x.get("ori_shape")
     input_ori_format = input_x.get("ori_format")

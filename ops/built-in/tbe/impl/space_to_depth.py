@@ -106,7 +106,14 @@ def get_op_support_info(x, filter, y, block_size, data_format, kernel_name="spac
 
 def op_select_format(x, filter, y, block_size, data_format, kernel_name="space_to_depth"):
     """
-    select format dynamically
+    1. when input filter's ori_shape is not None and input x's dtype is float16,
+    the Op SpaceToDepth can support NC1HWC0, FRACTAL_Z and ND.
+    > for example:
+    > x : Tensor of (shape=(16, 16, 16, 16), "NCHW")
+    > filter : Tensor of (shape=(32, 64), "ND")
+    > the Op SpaceToDepth can process with NC1HWC0:
+    > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    > filter : Tensor of (shape=(4, 2, 16, 16), "FRACTAL_Z")
     """
     if filter is not None:
         datatype = "float16, float, int8, uint8, int16, uint16, int32," \

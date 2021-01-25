@@ -60,7 +60,12 @@ def get_op_support_info(input_x, output_y, axis, kernel_name="reverse_v2_d"):
 
 def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     """
-    select format for op
+    1. when input x's ori_format equal to "NCHW" and the 1 or 3 are not in axis.
+    the Op ReverseV2D can support ND and NCHW.
+    > for example:
+    > input_x : Tensor of (shape=(16, 16), "ND")
+    > the Op Select can process with NC1HWC0:
+    > input_x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     """
     input_ori_shape = input_x.get("ori_shape")
     input_ori_format = input_x.get("ori_format")
