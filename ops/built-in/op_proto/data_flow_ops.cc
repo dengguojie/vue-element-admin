@@ -2105,10 +2105,10 @@ IMPLEMT_COMMON_INFERFUNC(CacheAddInferShape) {
   GeShape ids_shape;
   if (WithRank(ids, 1, ids_shape) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(ids->GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "input ids must be 1-D");
+    OP_LOGE(op.GetName().c_str(), "Input ids must be 1-D");
     return GRAPH_FAILED;
   }
-  DataType output_type = DT_INT64;
+
   GeTensorDescPtr swap_in_id_desc = op_desc->MutableOutputDesc(0);
   GeTensorDescPtr swap_in_idx_desc = op_desc->MutableOutputDesc(1);
   GeTensorDescPtr swap_out_id_desc = op_desc->MutableOutputDesc(2);
@@ -2119,7 +2119,7 @@ IMPLEMT_COMMON_INFERFUNC(CacheAddInferShape) {
 
   swap_in_idx_desc->SetShape(GeShape({UNKNOWN_DIM}));
   swap_in_idx_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
-  swap_in_idx_desc->SetDataType(output_type);
+  swap_in_idx_desc->SetDataType(ids->GetDataType());
 
   swap_out_id_desc->SetShape(GeShape({UNKNOWN_DIM}));
   swap_out_id_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
@@ -2127,7 +2127,7 @@ IMPLEMT_COMMON_INFERFUNC(CacheAddInferShape) {
 
   swap_out_idx_desc->SetShape(GeShape({UNKNOWN_DIM}));
   swap_out_idx_desc->SetOriginShape(GeShape({UNKNOWN_DIM}));
-  swap_out_idx_desc->SetDataType(output_type);
+  swap_out_idx_desc->SetDataType(ids->GetDataType());
 
   if (ids_shape.GetShapeSize() != UNKNOWN_DIM) {
     std::vector<std::pair<int64_t, int64_t>> range;
@@ -2149,7 +2149,6 @@ IMPLEMT_COMMON_INFERFUNC(CacheRemoteIndexToLocalInferShape) {
   TensorDesc desc = op.GetInputDesc(1);
   TensorDesc local_idx_desc = op.GetOutputDesc(0);
   Shape ids_shape = desc.GetShape();
-  DataType output_type = DT_INT64;
   std::vector<std::pair<int64_t,int64_t>> range;
   auto status = desc.GetShapeRange(range);
   if (status != GRAPH_SUCCESS) {
@@ -2157,11 +2156,27 @@ IMPLEMT_COMMON_INFERFUNC(CacheRemoteIndexToLocalInferShape) {
   }
   local_idx_desc.SetShapeRange(range);
   local_idx_desc.SetShape(ids_shape);
-  local_idx_desc.SetDataType(output_type);
+  local_idx_desc.SetDataType(desc.GetDataType());
   return op.UpdateOutputDesc("local_idx", local_idx_desc);
 }
 
 COMMON_INFER_FUNC_REG(CacheRemoteIndexToLocal, CacheRemoteIndexToLocalInferShape);
+// ---------------------CacheRemoteIndexToLocal END-------------------------------------
+
+// --------------------------------CacheAllIndexToLocal--------------------------------
+IMPLEMT_COMMON_INFERFUNC(CacheAllIndexToLocalInferShape) {
+  DataType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS){
+    OP_LOGE(op.GetName().c_str(), "Get attr dtype error.");
+    return GRAPH_FAILED;
+  }
+  TensorDesc local_idx_desc = op.GetOutputDesc(0);
+  local_idx_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+  local_idx_desc.SetDataType(dtype);
+  return op.UpdateOutputDesc("local_idx", local_idx_desc);
+}
+
+COMMON_INFER_FUNC_REG(CacheAllIndexToLocal, CacheAllIndexToLocalInferShape);
 // ---------------------CacheRemoteIndexToLocal END-------------------------------------
 
 }  // namespace ge

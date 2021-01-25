@@ -41,4 +41,11 @@ REGISTER_CUSTOM_OP("CacheRemoteIndexToLocal")
     .OriginOpType("CacheRemoteIndexToLocal")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register CacheAllIndexToLocal op to GE
+REGISTER_CUSTOM_OP("CacheAllIndexToLocal")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("CacheAllIndexToLocal")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }
