@@ -66,6 +66,46 @@ REG_OP(RFFT)
     .OP_END_FACTORY_REG(RFFT)
 
 /**
+*@brief Inverse real-valued fast Fourier transform . \n
+
+*@par Inputs:
+*@li A complex64 tensor.
+*@li fft_length: An int32 tensor of shape [1]. The FFT length . \n
+
+*@par Outputs:
+*@li y: A float32 tensor of the same rank as `input`. The inner-most
+  dimension of `input` is replaced with the `fft_length` samples of its inverse
+  1D Fourier transform . \n
+
+*@par Third-party framework compatibility
+* Compatible with TensorFlow IRFFT operator.
+*/
+REG_OP(IRFFT)
+    .INPUT(x, TensorType({DT_COMPLEX64}))
+    .INPUT(fft_length, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT}))
+    .OP_END_FACTORY_REG(IRFFT)
+
+
+/**
+*@brief 2D fast Fourier transform. \n
+
+*@par Inputs:
+*@li A complex64 tensor..
+
+*@par Outputs:
+*@li y: A complex64 tensor of the same shape as `input`. The inner-most 2
+  dimensions of `input` are replaced with their 2D Fourier transform.\n
+
+*@par Third-party framework compatibility
+* Compatible with TensorFlow FFT2D operator.
+*/
+REG_OP(FFT2D)
+    .INPUT(x, TensorType({DT_COMPLEX64, DT_COMPLEX128}))
+    .OUTPUT(y, TensorType({DT_COMPLEX64, DT_COMPLEX128}))
+    .OP_END_FACTORY_REG(FFT2D)
+
+/**
 *@brief Calculate the one-dimensional discrete Fourier transform on the
 innermost dimension of the input. \n
 
@@ -102,6 +142,7 @@ REG_OP(IFFT2D)
     .INPUT(x, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
     .OUTPUT(y, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
     .OP_END_FACTORY_REG(IFFT2D)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_SPECTRAL_OPS_H_

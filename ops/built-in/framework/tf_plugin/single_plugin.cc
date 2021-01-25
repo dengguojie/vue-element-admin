@@ -1392,4 +1392,19 @@ REGISTER_CUSTOM_OP("IFFT2D")
     .OriginOpType("IFFT2D")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register IRFFT op to GE
+REGISTER_CUSTOM_OP("IRFFT")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("IRFFT")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register FFT2D op to GE
+REGISTER_CUSTOM_OP("FFT2D")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("FFT2D")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 }  // namespace domi

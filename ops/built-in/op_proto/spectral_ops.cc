@@ -89,6 +89,73 @@ IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
 
 INFER_FUNC_REG(RFFT, RFFTInfer);
 
+IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
+  Shape out;
+  if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input out rank must be at least 1.");
+    return GRAPH_FAILED;
+  }
+
+  Shape fft_length_input;
+  if (WithRank(op.GetInputDesc(1), 1, fft_length_input, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input fft_length_input rank must be 1.");
+    return GRAPH_FAILED;
+  }
+
+  if (fft_length_input.GetDim(0) != 1) {
+    if (fft_length_input.GetDim(0) != UNKNOWN_DIM) {
+      OP_LOGE(op.GetName().c_str(), "The fft_length_input dim-0 must be 1, real value is [%ld].", fft_length_input.GetDim(0));
+      return GRAPH_FAILED;
+    }
+  }
+
+  int64_t existing_out = out.GetDimNum();
+  int64_t dim_out = out.GetDim(existing_out - 1);
+  Tensor fft_length_tensor;
+  int status = op.GetInputConstData("fft_length", fft_length_tensor);
+  if (status != GRAPH_SUCCESS) {
+    out.SetDim(dim_out, UNKNOWN_DIM); 
+  } else {
+    const int32_t* fft_length_as_vec = reinterpret_cast<const int32_t*>(fft_length_tensor.GetData());
+    auto dim = fft_length_as_vec[0];
+    int64_t dim_replace = static_cast<int64_t>(dim);
+    out.SetDim(dim_out, dim_replace);
+  }
+
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(Shape(out));
+  y_desc.SetDataType(DT_FLOAT);
+  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(IRFFT, IRFFTInfer);
+
+IMPLEMT_INFERFUNC(FFT2D, FFT2DInfer) {
+  const static int rank = 2;
+  Shape out;
+  if (WithRankAtLeast(op.GetInputDesc(0), rank, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input out rank must be at least [%d].", rank);
+    return GRAPH_FAILED;
+  }
+
+  DataType y_type = op.GetInputDesc("x").GetDataType();
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(Shape(out));
+  y_desc.SetDataType(y_type);
+
+  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(FFT2D, FFT2DInfer);
+
 IMPLEMT_INFERFUNC(FFT, FFTInfer) {
   const char *op_name = op.GetName().c_str();
   Shape out;
@@ -130,4 +197,5 @@ IMPLEMT_INFERFUNC(IFFT2D, IFFT2DInfer) {
 }
 
 INFER_FUNC_REG(IFFT2D, IFFT2DInfer);
+
 }  // namespace ge
