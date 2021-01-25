@@ -664,16 +664,31 @@ def _extract_image_patches_schedule(res, sch_list):
         """
         split multi core, when 32B is aligned
         """
-        multi_core_factor = out_shape.copy()
+        if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
+            howo_align = BLOCK_SIZE
+        else:
+            howo_align = lcm_out_w
+
+        def _get_core_factor(multi_core_factor, core_n, core_howo, core_c):
+            multi_core_factor[0] = max(_ceil_div(out_shape[0], core_n), tiling_factor[0])
+            multi_core_factor[1] = _ceil_div(max(_ceil_div(out_shape[1], core_howo), tiling_factor[1]),
+                                             howo_align) * howo_align
+            multi_core_factor[3] = _ceil_div(max(_ceil_div(out_shape[3], core_c), tiling_factor[3]),
+                                             align_block_size) * align_block_size
+            return multi_core_factor
+
+        pre_core_n, pre_core_c, pre_core_howo = [1], [1], [1]
+        for i in range(1, device_core_num + 1):
+            multi_core_factor = _get_core_factor(out_shape.copy(), i, i, i)
+            pre_core_n.append(_ceil_div(out_shape[0], multi_core_factor[0]))
+            pre_core_howo.append(_ceil_div(out_shape[1], multi_core_factor[1]))
+            pre_core_c.append(_ceil_div(out_shape[3], multi_core_factor[3]))
+
         core_n, core_c, core_howo = _cal_multi_core_factor_3d(_ceil_div(out_shape[0], tiling_factor[0]),
                                                               _ceil_div(out_shape[3], tiling_factor[3]),
-                                                              _ceil_div(out_shape[1], tiling_factor[1]))
-
-        multi_core_factor[0] = max(_ceil_div(out_shape[0], core_n), tiling_factor[0])
-        multi_core_factor[1] = _ceil_div(max(_ceil_div(out_shape[1], core_howo), tiling_factor[1]),
-                                         align_block_size) * align_block_size
-        multi_core_factor[3] = _ceil_div(max(_ceil_div(out_shape[3], core_c), tiling_factor[3]),
-                                         align_block_size) * align_block_size
+                                                              _ceil_div(out_shape[1], tiling_factor[1]),
+                                                              pre_core_n, pre_core_c, pre_core_howo)
+        multi_core_factor = _get_core_factor(out_shape.copy(), core_n, core_howo, core_c)
 
         res_axis_list = list(res.op.axis).copy()
         res_bind_axis_list = [0 for _ in res_axis_list]
@@ -712,33 +727,58 @@ def _extract_image_patches_schedule(res, sch_list):
 
         return out_shape[dma_split_axis_id], False
 
-    def _cal_multi_core_factor(m, n):
+    def _cal_multi_core_factor(m, n, m_list, n_list):
         """
         Return the cut factors for multicore axis.
         """
+
+        m_list = list(set(m_list))
+        n_list = list(set(n_list))
+
+        m_list.sort(reverse=True)
+        n_list.sort(reverse=True)
+
         min_cycle_num = m * n
-        core_m, core_n = 1, 1
-        for i in range(min(m, device_core_num), 0, -1):
-            j = min(n, device_core_num // i)
-            tmp_cycle_num = _ceil_div(m, i) * _ceil_div(n, j)
-            if tmp_cycle_num <= min_cycle_num:
-                min_cycle_num = tmp_cycle_num
-                core_m, core_n = i, j
+        core_m, core_n = m_list[-1], n_list[-1]
+
+        for i in m_list:
+            for j in n_list:
+                if i * j > device_core_num:
+                    continue
+                tmp_cycle_num = _ceil_div(m, i) * _ceil_div(n, j)
+                if tmp_cycle_num < min_cycle_num:
+                    min_cycle_num = tmp_cycle_num
+                    core_m, core_n = i, j
+                break
         return core_m, core_n
 
-    def _cal_multi_core_factor_3d(m, n, l):
+    def _cal_multi_core_factor_3d(m, n, l, m_list, n_list, l_list):
         """
         Return the cut factors for multicore axis.
         """
+        m_list = list(set(m_list))
+        n_list = list(set(n_list))
+        l_list = list(set(l_list))
+
+        m_list.sort(reverse=True)
+        n_list.sort(reverse=True)
+        l_list.sort(reverse=True)
+
         min_cycle_num = m * n * l
-        core_m, core_n, core_l = 1, 1, 1
-        for i in range(min(m, device_core_num), 0, -1):
-            for j in range(min(n, device_core_num // i), 0, -1):
-                k = min(l, device_core_num // (i * j))
-                tmp_cycle_num = _ceil_div(m, i) * _ceil_div(n, j) * _ceil_div(l, k)
-                if tmp_cycle_num <= min_cycle_num:
-                    min_cycle_num = tmp_cycle_num
-                    core_m, core_n, core_l = i, j, k
+        core_m, core_n, core_l = m_list[-1], n_list[-1], l_list[-1]
+
+        for i in m_list:
+            for j in n_list:
+                if i * j > device_core_num:
+                    continue
+                for k in l_list:
+                    if i * j * k > device_core_num:
+                        continue
+                    tmp_cycle_num = _ceil_div(m, i) * _ceil_div(n, j) * _ceil_div(l, k)
+                    if tmp_cycle_num < min_cycle_num:
+                        min_cycle_num = tmp_cycle_num
+                        core_m, core_n, core_l = i, j, k
+                    break
         return core_m, core_n, core_l
 
     def _get_multi_core_factor(dma_split_axis_id, tiling_factor):
@@ -753,11 +793,27 @@ def _extract_image_patches_schedule(res, sch_list):
             multi_core_factor[0] = max(_ceil_div(out_shape[0], used_core_num), tiling_factor[0])
             return multi_core_factor
         else:
+            if SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * DOUBLE_BUFFER:
+                howo_align = BLOCK_SIZE
+            else:
+                howo_align = lcm_out_w
+
+            def _get_core_factor(multi_core_factor, core_n, core_howo):
+                multi_core_factor[0] = max(_ceil_div(out_shape[0], core_n), tiling_factor[0])
+                multi_core_factor[1] = _ceil_div(max(_ceil_div(out_shape[1], core_howo), tiling_factor[1]),
+                                                 howo_align) * howo_align
+                return multi_core_factor
+
+            pre_core_n, pre_core_howo = [1], [1]
+            for i in range(1, device_core_num + 1):
+                multi_core_factor = _get_core_factor(out_shape.copy(), i, i)
+                pre_core_n.append(_ceil_div(out_shape[0], multi_core_factor[0]))
+                pre_core_howo.append(_ceil_div(out_shape[1], multi_core_factor[1]))
+
             core_n, core_howo = _cal_multi_core_factor(_ceil_div(out_shape[0], tiling_factor[0]),
-                                                       _ceil_div(out_shape[1], tiling_factor[1]))
-            multi_core_factor[0] = max(_ceil_div(out_shape[0], core_n), tiling_factor[0])
-            multi_core_factor[1] = _ceil_div(max(_ceil_div(out_shape[1], core_howo), tiling_factor[1]),
-                                             align_block_size) * align_block_size
+                                                       _ceil_div(out_shape[1], tiling_factor[1]),
+                                                       pre_core_n, pre_core_howo)
+            multi_core_factor = _get_core_factor(out_shape.copy(), core_n, core_howo)
 
         return multi_core_factor
 
@@ -1184,3 +1240,4 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
         tvm.build(sch, [data_input, output_res, workspace_res], "cce", name=kernel_name)
         if fmap_c % align_block_size != 0:
             _write_workspace_info([workspace_res], kernel_name)
+
