@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef _AICPU_KERNELS_NORMALIZED_CAST_H_
 #define _AICPU_KERNELS_NORMALIZED_CAST_H_
 

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef AICPU_KERNELS_NORMALIZED_ADD_H_
 #define AICPU_KERNELS_NORMALIZED_ADD_H_
 #define EIGEN_USE_THREADS
@@ -27,7 +26,7 @@ namespace aicpu {
 class AddCpuKernel : public CpuKernel {
  public:
   AddCpuKernel() = default;
-  ~AddCpuKernel() override = default;
+  ~AddCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

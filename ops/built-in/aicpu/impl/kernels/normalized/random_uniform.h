@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #ifndef AICPU_KERNELS_NORMALIZED_RANDOM_UNIFORM_H_
 #define AICPU_KERNELS_NORMALIZED_RANDOM_UNIFORM_H_
 #define EIGEN_USE_THREADS
@@ -25,7 +24,7 @@ namespace aicpu {
 class RandomUniformCpuKernel : public CpuKernel {
  public:
   RandomUniformCpuKernel() = default;
-  ~RandomUniformCpuKernel() override = default;
+  ~RandomUniformCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:

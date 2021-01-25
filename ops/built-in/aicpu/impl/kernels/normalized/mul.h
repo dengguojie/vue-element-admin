@@ -27,7 +27,7 @@ namespace aicpu {
 class MulCpuKernel : public CpuKernel {
  public:
   MulCpuKernel() = default;
-  ~MulCpuKernel() override = default;
+  ~MulCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
