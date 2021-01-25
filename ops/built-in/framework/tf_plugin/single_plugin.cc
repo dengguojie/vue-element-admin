@@ -764,6 +764,13 @@ REGISTER_CUSTOM_OP("SparseSliceGrad")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register FakeQueue op to GE
+REGISTER_CUSTOM_OP("FakeQueue")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("FakeQueue")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register SparseSoftmax op to GE
 REGISTER_CUSTOM_OP("SparseSoftmax")
     .FrameworkType(TENSORFLOW)

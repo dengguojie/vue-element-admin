@@ -1431,6 +1431,27 @@ REG_OP(OrderedMapClear)
     .OP_END_FACTORY_REG(OrderedMapClear)
 
 /**
+*@brief Removes all elements in the underlying container. \n
+
+*@par Attributes:
+*@li capacity: An optional int that is >= 0. Defaults to "0".
+*@li memory_limit: An optional int that is >= 0. Defaults to "0".
+*@li dtypes: A list of DTypes.
+*@li container: An optional string. Defaults to "".
+*@li shared_name: An optional string. Defaults to "". \n
+
+*@attention Constraints:
+*OrderedMapClear runs on the Ascend AI CPU, which delivers poor performance.
+
+*@par Third-party framework compatibility
+*Compatible with the TensorFlow operator OrderedMapClear.
+*/
+REG_OP(FakeQueue)
+    .INPUT(resource, TensorType({DT_RESOURCE}))
+    .OUTPUT(handle, TensorType({DT_STRING_REF}))
+    .OP_END_FACTORY_REG(FakeQueue)
+
+/**
 *@brief Returns the number of incomplete elements in the underlying container. \n
 
 *@par Attributes:

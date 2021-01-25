@@ -2045,6 +2045,20 @@ IMPLEMT_INFERFUNC(DynamicGetNext, DynamicGetNextInfer) {
 
 INFER_FUNC_REG(DynamicGetNext, DynamicGetNextInfer);
 
+IMPLEMT_COMMON_INFERFUNC(FakeQueueInferShape) {
+  OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+      OP_LOGE(op.GetName().c_str(), "Op desc is NULL!");
+      return GRAPH_FAILED;
+  }
+  GeShape reader_handle_shape({2});
+  auto reader_handle_desc = op_desc->MutableOutputDesc("handle");
+  (void)FillOpDesc(reader_handle_desc, reader_handle_shape, DT_STRING_REF);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(FakeQueue, FakeQueueInferShape);
+
 // --------------------------------LruCache-------------------------------------
 IMPLEMT_COMMON_INFERFUNC(LruCacheInferShape) {
   int64_t cache_size;
