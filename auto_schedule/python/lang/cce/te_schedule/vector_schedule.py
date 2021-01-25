@@ -951,7 +951,7 @@ class VectorSchedule(object):
             "elewise_single_round": "vector_conv_rint",
             "elewise_single_rec": "vector_rec",
             "elewise_binary_sub": "elewise_binary_sub",
-            "elewise_single_cast": "elewise_single_cast",
+            "elewise_single_cast": "vector_conv",
             "elewise_single_floor": "vector_conv_floor",
             "elewise_single_ceil": "elewise_single_ceil",
             "elewise_binary_compare_lt":
