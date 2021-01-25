@@ -89,4 +89,45 @@ IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
 
 INFER_FUNC_REG(RFFT, RFFTInfer);
 
+IMPLEMT_INFERFUNC(FFT, FFTInfer) {
+  const char *op_name = op.GetName().c_str();
+  Shape out;
+  if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op_name) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "Input out rank must be at least 1.");
+    return GRAPH_FAILED;
+  }
+  DataType type = op.GetInputDesc(0).GetDataType();
+  TensorDesc y_desc = op.GetOutputDesc(0);
+  y_desc.SetShape(Shape(out));
+  y_desc.SetDataType(type);
+  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "Fail to update output.");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(FFT, FFTInfer);
+
+IMPLEMT_INFERFUNC(IFFT2D, IFFT2DInfer) {
+  const char *op_name = op.GetName().c_str();
+  Shape out;
+  if (WithRankAtLeast(op.GetInputDesc(0), 2, out, op_name) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "Input out rank must be at least 2.");
+    return GRAPH_FAILED;
+  }
+  DataType type = op.GetInputDesc(0).GetDataType();
+  TensorDesc y_desc = op.GetOutputDesc(0);
+  y_desc.SetShape(Shape(out));
+  y_desc.SetDataType(type);
+  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "Fail to update output.");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(IFFT2D, IFFT2DInfer);
 }  // namespace ge

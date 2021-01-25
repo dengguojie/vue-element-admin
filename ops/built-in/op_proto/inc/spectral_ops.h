@@ -65,6 +65,43 @@ REG_OP(RFFT)
     .OUTPUT(y, TensorType({DT_COMPLEX64}))
     .OP_END_FACTORY_REG(RFFT)
 
+/**
+*@brief Calculate the one-dimensional discrete Fourier transform on the
+innermost dimension of the input. \n
+
+*@par Inputs:
+*@li x: A Tensor. Must be the following types: complex64, complex128. \n
+
+*@par Outputs:
+*@li y: A complex tensor with the same shape as input. The innermost dimension
+of the input is replaced by its 1-dimensional Fourier transform. \n
+
+*@par Third-party framework compatibility
+* Compatible with TensorFlow FFT operator.
+*/
+REG_OP(FFT)
+    .INPUT(x, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
+    .OUTPUT(y, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
+    .OP_END_FACTORY_REG(FFT)
+
+/**
+*@brief Calculate the inverse 1-dimensional discrete Fourier transform on the
+innermost dimension of the input. \n
+
+*@par Inputs:
+*@li x: A Tensor. Must be the following types: complex64, complex128. \n
+
+*@par Outputs:
+*@li y: A complex tensor with the same shape as input. The innermost dimension
+of the input is replaced by its inverse two-dimensional Fourier transform. \n
+
+*@par Third-party framework compatibility
+* Compatible with TensorFlow IFFT2D operator.
+*/
+REG_OP(IFFT2D)
+    .INPUT(x, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
+    .OUTPUT(y, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
+    .OP_END_FACTORY_REG(IFFT2D)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_SPECTRAL_OPS_H_
