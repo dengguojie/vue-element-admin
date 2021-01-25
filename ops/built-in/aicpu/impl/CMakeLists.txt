@@ -30,6 +30,9 @@ set(local_kernels_src_files
 set(local_host_kernels_src_files
     kernels/host/transdata.cc
 )
+set(local_device_kernels_src_files
+    kernels/device/where.cc
+)
 
 if(BUILD_OPEN_PROJECT)
   set(AICPU_INCLUDE ${AICPU_OPP_ENV}/inc)
@@ -94,6 +97,7 @@ if(BUILD_OPEN_PROJECT)
 
     add_library(cpu_kernels SHARED
       ${local_kernels_src_files}
+      ${local_device_kernels_src_files}
     )
 
     target_include_directories(cpu_kernels PRIVATE
@@ -197,6 +201,8 @@ set(local_kernels_inc_path
 
 add_library(cpu_kernels SHARED
     ${local_kernels_src_files}
+    ${local_device_kernels_src_files}
+
 )
 
 add_library(cpu_kernels_host SHARED

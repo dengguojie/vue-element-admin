@@ -83,6 +83,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense_kernels.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
+  ${CPU_KERNELS_DIR}/kernels/device/where.cc
 )
 
 set(cpu_kernels_llt_src
@@ -163,6 +164,7 @@ set(_cpu_kernels_ut_files
   testcase/sparse_to_dense_kernel_utest.cpp
   testcase/fill_utest.cpp
   testcase/euqal_utest.cpp
+  testcase/where_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
