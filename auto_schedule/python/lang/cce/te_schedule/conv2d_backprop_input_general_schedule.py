@@ -23,7 +23,7 @@ from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvPattern
 from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.lang.cce.te_compute.cube_util import GroupDictKeys
-from te.lang.cce.te_schedule.util import L1CommonParam
+from tbe.dsl.static_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.tvm.schedule import InferBound
