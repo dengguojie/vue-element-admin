@@ -337,7 +337,7 @@ class Hwcn2Fractalzg(object):
                                        tp.dst_n - tp.cout_orig + 1,
                                        tp.khw * tp.dst_n * tp.c1 - tp.cout_orig + 1)
 
-                    tik_inst.vector_dup(128, self.ub_input[OFFSET_2], 0, math.ceil(tp.khw / 8), 1, 8)
+                    tik_inst.vector_dup(128, self.ub_input[OFFSET_2], 0, math.ceil(tp.g / 8), 1, 8)
                     tail_dst_addr.set_as(dst_addr + (tp.cout_orig - 1) * EPB - (EPB - tp.cin_orig))
                     with tik_inst.for_range(0, tp.g) as lg:
                         tail_block_addr.set_as(OFFSET_1 + (tp.dst_n - tp.cout_orig) * EPB + lg * tp.dst_n * EPB)
