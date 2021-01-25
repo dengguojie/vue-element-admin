@@ -25,7 +25,7 @@ ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32",
 ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32", "int8", "uint8"], (1, 16, 512, 512), (1, 1, 512, 512))
 ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32", "int8", "uint8"], (9973, 1), (9973, 1))
 ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32", "int8", "uint8"], (1024, 1024, 256), (1024, 1024, 256))
-ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32", "int8", "uint8"], (11, 33), (11, 33))
+ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32", "int32", "uint8", "bool"], (11, 33), (11, 33))
 
 
 # ============ auto gen ["Ascend910"] test cases end =================

@@ -27,4 +27,6 @@ ut_case.add_precision_case("all",
                            gen_equal_case((16,), (16,), "int32", "success"))
 ut_case.add_precision_case("all",
                            gen_equal_case((16,), (16,), "float32", "success"))
+ut_case.add_precision_case("all",
+                           gen_equal_case((3,), (3,), "bool", "success"))
 

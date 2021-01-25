@@ -135,7 +135,7 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_y, param_name="input_y")
 
-    check_list = ("float16", "float32", "int32", "int8", "uint8")
+    check_list = ("float16", "float32", "int32", "int8", "uint8", "bool")
     dtype_x = dtype_x.lower()
     para_check.check_dtype(dtype_x, check_list, param_name="input_x")
     dtype_y = dtype_y.lower()
@@ -145,6 +145,9 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
     shape_x = list(shape_x)
     shape_y = list(shape_y)
     shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
+    if dtype_x == "bool":
+        dtype_x = "int8"
+        dtype_y = "int8"
     data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_x)
     data_input_y = tvm.placeholder(shape_y, name="data_input_y", dtype=dtype_y)
 
