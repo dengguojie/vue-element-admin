@@ -60,7 +60,7 @@ def op_select_format(x, y, kernel_name="l2_loss"):
 
     base_data_type = ["float", "float16"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         base_data_type.remove("float")
 
     dtype_base_out = base_data_type.copy()

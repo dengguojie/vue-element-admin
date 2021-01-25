@@ -74,7 +74,7 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
     boxes_input = tik_instance.Tensor(boxes_type, boxes_shape, name="boxes_input",
                                       scope=tik.scope_gm)
 
-    UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 
     block_bite_size = 32
     dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(boxes_type) // 8
@@ -85,7 +85,7 @@ def prior_box_d_v2(feature, img, boxes, y, min_size, max_size, img_h=0,
     move_num = boxes_shape[0] * boxes_shape[1] * boxes_shape[2] * boxes_shape[3]
 
     burse_length = math.ceil(move_num / data_each_block)
-    result_ub_size = UB_SIZE / 4
+    result_ub_size = ub_size / 4
 
     loop_num = math.ceil((burse_length * block_bite_size) / result_ub_size)
 

@@ -114,7 +114,7 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16", "int32"]
     else:
         dtype_list = ["float16", "float32", "int32"]
