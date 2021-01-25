@@ -884,6 +884,54 @@ REG_OP(LpNorm)
     .ATTR(keepdim, Bool, false)
     .ATTR(epsilon, Float, 1e-12)
     .OP_END_FACTORY_REG(LpNorm)
+
+/**
+* @brief get complex.
+
+* @par Inputs:
+* @li real: An ND tensor of type  float32. double
+* @li imag: An ND tensor of type  float32. double \n
+*
+* @par Outputs:
+* @li out: An ND tensor of type complex64, complex128 \n
+*/
+REG_OP(Complex)
+    .INPUT(real, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .INPUT(imag, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(out, TensorType({DT_COMPLEX64, DT_COMPLEX128}))
+    .ATTR(Tout, Type, DT_COMPLEX64)
+    .OP_END_FACTORY_REG(Complex)
+
+/**
+* @brief  deal complex.
+
+* @par Inputs:
+* @li input: An ND tensor of type complex64, complex128 \n
+*
+* @par Outputs:
+* @li output: An ND tensor of type float32. double \n
+*/
+REG_OP(Imag)
+    .INPUT(input, TensorType({DT_COMPLEX64, DT_COMPLEX128}))
+    .OUTPUT(output, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .ATTR(Tout, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(Imag)
+
+/**
+* @brief  deal complex.
+
+* @par Inputs:
+* @li input: An ND tensor of type complex64, complex128 \n
+*
+* @par Outputs:
+* @li output: An ND tensor of type float32. double \n
+*/
+REG_OP(Angle)
+    .INPUT(input, TensorType({DT_COMPLEX64, DT_COMPLEX128}))
+    .OUTPUT(output, TensorType({DT_FLOAT, DT_DOUBLE}))
+    .ATTR(Tout, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(Angle)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_

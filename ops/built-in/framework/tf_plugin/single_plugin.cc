@@ -1357,4 +1357,25 @@ REGISTER_CUSTOM_OP("DenseImageWarpGrad")
     .OriginOpType("DenseImageWarpGrad")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+// register Complex op to GE
+REGISTER_CUSTOM_OP("Complex")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("Complex")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register Imag op to GE
+REGISTER_CUSTOM_OP("Imag")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("Imag")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register Angle op to GE
+REGISTER_CUSTOM_OP("Angle")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("Angle")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi

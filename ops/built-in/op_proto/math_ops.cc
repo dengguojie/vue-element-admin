@@ -804,4 +804,176 @@ COMMON_INFER_FUNC_REG(LpNorm, LpNormInfer);
 VERIFY_FUNC_REG(LpNorm, LpNormVerify);
 // ----------------LpNorm END---------------------
 
+IMPLEMT_INFERFUNC(Complex, ComplexInfer)
+{
+  TensorDesc out_desc = op.GetOutputDesc("out");
+  Shape x_shape = op.GetInputDesc("real").GetShape();
+  Shape y_shape = op.GetInputDesc("imag").GetShape();
+  DataType x_type = op.GetInputDesc("real").GetDataType();
+  DataType y_type = op.GetInputDesc("imag").GetDataType();
+  if (x_type != y_type) {
+    OP_LOGE(op.GetName().c_str(), "The type of x1 [%d] is different from that of x2 [%d]!", x_type, y_type);
+    return GRAPH_FAILED;
+  }
+  DataType Tout;
+  if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "Get attr Tout error.");
+      return GRAPH_FAILED;
+    }
+
+  out_desc.SetDataType(Tout);
+  if (op.UpdateOutputDesc("out", out_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Update out failed");
+    return GRAPH_FAILED;
+  }
+
+  if ((!RankKnown(x_shape)) || (!RankKnown(y_shape))) {
+    Shape out_shape(UNKNOWN_SHAPE);
+    if (op.UpdateOutputDesc("out", out_desc) != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "Update output failed");
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+  }
+
+  const size_t rank_x = x_shape.GetDimNum();
+  const size_t rank_y = y_shape.GetDimNum();
+  const size_t rank_out = std::max(rank_x, rank_y);
+
+  // To compute the broadcast dimensions, zip together x_shape and y_shape
+  // and pad with 1 to make them the same length.
+  std::vector<int64_t> dims;
+  int64_t dim_one = 0;
+  if (rank_x != rank_y) {
+    OP_LOGI(op.GetName().c_str(), "X1 shape dims [%lld] is not equal to x2 shape dims [%lld]!", rank_x, rank_y);
+    dim_one = 1;
+  }
+  for (size_t i = 0; i < rank_out; ++i) {
+    int64_t dim_x = 0;
+    if (i < (rank_out - rank_x)) {
+      dim_x = dim_one;
+    } else {
+      // rank_out = rank_x or i >= rank_y - rank_x.
+      for (size_t j = 0; j < x_shape.GetDimNum(); ++j) {
+        if (x_shape.GetDim(j) == UNKNOWN_DIM) {
+          dim_x = UNKNOWN_DIM;
+          break;
+        }
+      }
+      if ((i - (rank_out - rank_x)) < 0) {
+        dim_x = x_shape.GetDim(rank_x + i - (rank_out - rank_x));
+      } else {
+        dim_x = x_shape.GetDim(i - (rank_out - rank_x));
+      }
+    }
+
+    const bool dim_y_is_one = (i < (rank_out - rank_y));
+    int64_t dim_y = 0;
+    if (dim_y_is_one) {
+      dim_y = dim_one;
+    } else {
+      // rank_out = rank_y or i >= rank_x - rank_y.
+      for (size_t j = 0; j < y_shape.GetDimNum(); ++j) {
+        if (y_shape.GetDim(j) == UNKNOWN_DIM) {
+          dim_y = UNKNOWN_DIM;
+          break;
+        }
+      }
+      if ((i - (rank_out - rank_y)) < 0) {
+        dim_y = y_shape.GetDim(rank_y + i - (rank_out - rank_y));
+      } else {
+        dim_y = y_shape.GetDim(i - (rank_out - rank_y));
+      }
+    }
+
+    if ((dim_x == UNKNOWN_DIM) || (dim_y == UNKNOWN_DIM)) {
+      /* One or both dimensions is unknown.
+       * If either dimension is greater than 1, assume that the program is
+       * correct, and the other dimension will be broadcast to match it.
+       * For shape inference, if eliminate the shape checks
+       * in this code, assert that the unknown dim is either 1
+       * or the same as the known dim.
+       * If either dimension is 1, the other dimension is the output.
+       */
+      if (dim_x > 1) {
+        dims.push_back(dim_x);
+      } else if (dim_y > 1) {
+        dims.push_back(dim_y);
+      } else if (dim_x == 1) {
+        dims.push_back(dim_y);
+      } else if (dim_y == 1) {
+        dims.push_back(dim_x);
+      } else if (dim_x == dim_y) {
+        dims.push_back(dim_x);
+      } else {
+        dims.push_back(UNKNOWN_DIM);
+      }
+    } else if ((dim_x == 1) || (dim_y == 1)) {
+      // dim_x is dim_one or dim_y is dim_one.
+      if ((dim_x == 1) && (!dim_y_is_one)) {
+        // broadcast dim_x to dim_y.
+        dims.push_back(dim_y);
+      } else {
+        if (dim_y == 1) {
+          // broadcast dim_y to dim_x.
+          dims.push_back(dim_x);
+        }
+      }
+    } else {
+      int64_t dim = 0;
+      if (Merge(dim_x, dim_y, dim) != GRAPH_SUCCESS) {
+        return GRAPH_FAILED;
+      }
+      dims.push_back(dim);
+    }
+  }
+  Shape out_shape(dims);
+  out_desc.SetShape(out_shape);
+  if (op.UpdateOutputDesc("out", out_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Update output failed");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Complex, ComplexInfer);
+
+
+IMPLEMT_INFERFUNC(Imag, ImagInfer)
+{
+    TensorDesc out_desc = op.GetOutputDesc("output");
+    DataType Tout;
+    if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Get attr Tout error.");
+        return GRAPH_FAILED;
+    }
+    out_desc.SetDataType(Tout);
+    if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output failed");
+        return GRAPH_FAILED;
+    }
+    return UnchangedShape(op, "input", "output");
+}
+
+INFER_FUNC_REG(Imag, ImagInfer);
+
+
+IMPLEMT_INFERFUNC(Angle, AngleInfer)
+{
+    TensorDesc out_desc = op.GetOutputDesc("output");
+    DataType Tout;
+    if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Get attr Tout error.");
+        return  GRAPH_FAILED;
+    }
+    out_desc.SetDataType(Tout);
+    if (op.UpdateOutputDesc("output", out_desc) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Update output failed");
+        return GRAPH_FAILED;
+    }
+    return UnchangedShape(op, "input", "output");
+}
+
+INFER_FUNC_REG(Angle, AngleInfer);
+
 }  // namespace ge
