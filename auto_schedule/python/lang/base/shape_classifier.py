@@ -18,9 +18,6 @@ classifier of shape
 from enum import Enum
 from enum import auto
 
-from te.lang.base.classifier import classify_elewise
-from te.lang.base.classifier import classify_reduction
-
 
 class Mode(Enum):
     """
@@ -32,6 +29,14 @@ class Mode(Enum):
     REDUCE = auto()
 
 
+MODE_TO_STRING_MAP = {
+    Mode.NONE: "",
+    Mode.ELEWISE: "elewise",
+    Mode.ELEWISE_WITH_BROADCAST: "broadcast",
+    Mode.REDUCE: "reduce"
+}
+
+
 def classify(ins: list, mode: Mode = Mode.NONE):
     """
     classify
@@ -39,13 +44,5 @@ def classify(ins: list, mode: Mode = Mode.NONE):
     :param mode:
     :return:
     """
-    if mode == Mode.NONE:
-        return [ins]
-    if mode == Mode.ELEWISE:
-        return classify_elewise(ins, support_broadcast=False)
-    if mode == Mode.ELEWISE_WITH_BROADCAST:
-        return classify_elewise(ins, support_broadcast=True)
-    if mode == Mode.REDUCE:
-        return classify_reduction(ins)
-
-    return [ins]
+    import tbe
+    return tbe.dsl.classify(ins, MODE_TO_STRING_MAP.get(mode))

@@ -985,7 +985,7 @@ def classify(ins: list, mode: str):
     """
     classify according to mode
     :param ins:
-    :param mode:
+    :param mode: support elewise, broadcast, reduce
     :return:
     """
     return shape_classifier.classify(ins, mode)

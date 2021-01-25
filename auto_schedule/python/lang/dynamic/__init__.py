@@ -15,6 +15,5 @@
 """
 compute schedule init
 """
-# 'pylint: disable=W0622
-from .schedule.auto_schedule import schedule_cce
+from . import schedule
 from .schedule.auto_schedule import build

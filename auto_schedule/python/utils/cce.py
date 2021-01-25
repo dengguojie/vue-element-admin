@@ -16,11 +16,7 @@
 cce
 """
 from __future__ import absolute_import as _abs
-
-import te.lang.cce as static
-import te.lang.dynamic as dynamic
-from te.lang.base import operation_impl as operation
-import tbe.dsl
+import warnings
 
 
 def auto_schedule(outs, option=None):
@@ -37,6 +33,9 @@ def auto_schedule(outs, option=None):
     sch: Schedule
         The computation schedule for the op.
     """
+    warnings.warn("te.lang.cce.auto_schedule is deprecated, please replace it with the tbe.dsl.auto_schedule",
+                  DeprecationWarning)
+    import tbe
     return tbe.dsl.auto_schedule(outs, option)
 
 
@@ -46,11 +45,7 @@ def build(sch, config_map=None):
     :param config_map:
     :return:
     """
-    if operation.get_context():
-        return dynamic.build(sch, config_map)
-
-    sch = sch[0] if isinstance(sch, list) else sch
-    tensors = config_map.get("tensor_list", [])
-    if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
-        config_map["tensor_list"] = tensors[0]
-    return static.cce_build_code(sch, config_map)
+    warnings.warn("te.lang.cce.build is deprecated, please replace it with the tbe.dsl.build",
+                  DeprecationWarning)
+    import tbe
+    return tbe.dsl.build(sch, config_map)

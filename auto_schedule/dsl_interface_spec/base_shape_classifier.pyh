@@ -6,4 +6,11 @@ class Mode(Enum):
     ELEWISE_WITH_BROADCAST = auto()
     REDUCE = auto()
 
+MODE_TO_STRING_MAP = {
+    Mode.NONE: "",
+    Mode.ELEWISE: "elewise",
+    Mode.ELEWISE_WITH_BROADCAST: "broadcast",
+    Mode.REDUCE: "reduce"
+}
+
 def classify(ins: list, mode: Mode = Mode.NONE):

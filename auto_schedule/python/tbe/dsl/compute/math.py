@@ -2540,10 +2540,10 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if in_dynamic_and_static_unify():
-            if not dsl_check_support("te.lang.cce.vcmpsel", lhs.dtype):
+            if not dsl_check_support("tbe.dsl.vcmpsel", lhs.dtype):
                 dict_args = dict()
                 dict_args["errCode"] = "E90002"
-                dict_args["detailed_cause"] = "te.lang.dynamic.vcmpsel is not" \
+                dict_args["detailed_cause"] = "dynamic tbe.dsl.vcmpsel is not" \
                                               " supported [%s]!" % (lhs.dtype,)
                 raise RuntimeError(dict_args, get_error_message(dict_args))
 

@@ -44,6 +44,11 @@ DTYPE_MAP = {
     "int32": "s32",
 }
 
+DSL_SAME_API_MAP = {
+    "sum": "reduce_sum",
+    "round_to": "clip"
+}
+
 DSL_CHECK_SUPPORT_MAP = {
     "broadcast": {
         "AllSoc": ("float16", "float32", "int32", "int16", "uint16",
@@ -514,15 +519,6 @@ DSL_CHECK_SUPPORT_MAP = {
     },
 
     # common
-    "round_to": {
-        "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32"),  # int32: schedule not support
-        VERSION_MINI_NG1M: ("float16", "float32"),  # int32: schedule not support
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),  # int32: schedule not support
-    },
     "clip": {
         "AllSoc": ("float16",),
         VERSION_MINI: ("float16", "float32", "int32"),
@@ -612,8 +608,9 @@ def dsl_support_dtype(dsl_name):
     if not isinstance(dsl_name, str):
         return []
 
-    if dsl_name in ("reduce_sum", "sum"):
-        dsl_name = "reduce_sum"
+    local_dsl_name = DSL_SAME_API_MAP.get(dsl_name)
+    if local_dsl_name:
+        dsl_name = local_dsl_name
 
     if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
         all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)
@@ -637,14 +634,16 @@ def dsl_check_support(dsl_api, dtype=None):
     """
     dsl_check_support
     """
-    if not dsl_api.startswith("te.lang.cce."):
+    if not dsl_api.startswith("te.lang.cce.") and not dsl_api.startswith("tbe.dsl."):
         return False
     if (dtype is not None) and (not isinstance(dtype, str)):
         return False
 
-    dsl_name = dsl_api.split("te.lang.cce.")[-1]
-    if dsl_name in ("reduce_sum", "sum"):
-        dsl_name = "reduce_sum"
+    dsl_name = dsl_api.split(".")[-1]
+
+    local_dsl_name = DSL_SAME_API_MAP.get(dsl_name)
+    if local_dsl_name:
+        dsl_name = local_dsl_name
 
     if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
         all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)
@@ -731,10 +730,10 @@ def dtype_check_decorator(func, *args, **kwargs):
     if func_name == "vsel":
         judge_dtype = _get_vsel_dtype(args[1], args[2])
 
-    if not dsl_check_support("te.lang.cce."+func_name, judge_dtype):
+    if not dsl_check_support("tbe.dsl."+func_name, judge_dtype):
         dict_args = dict()
         dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "te.lang.cce.%s is not supported %s!" \
+        dict_args["detailed_cause"] = "tbe.dsl.%s is not supported %s!" \
                                       % (func_name, judge_dtype)
         raise RuntimeError(dict_args, get_error_message(dict_args))
 

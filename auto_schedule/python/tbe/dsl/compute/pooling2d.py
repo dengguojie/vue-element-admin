@@ -22,13 +22,13 @@ from te import tvm
 from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver
-from te.lang.cce.te_compute.common import img2col
-from te.lang.cce.te_compute.common import im2col_fractal
 from te.platform.cce_policy import get_L1_info
 from tbe.common.utils.errormgr import get_error_message
 from te.tvm.dsl_source_info import source_info_decorator
 
 from .cast import _cast
+from .common import img2col
+from .common import im2col_fractal
 from .max_pool2d import max_pool2d
 from .avg_pool2d import avg_pool2d
 
