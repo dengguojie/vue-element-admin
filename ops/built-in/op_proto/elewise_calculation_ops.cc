@@ -4105,6 +4105,62 @@ IMPLEMT_COMMON_INFERFUNC(Expm1InferShape) {
 COMMON_INFER_FUNC_REG(Expm1, Expm1InferShape);
 // ----------------Expm1 END-----------------
 
+
+// -------------------AllClose----------------------
+IMPLEMT_VERIFIER(AllClose, AllCloseVerify) {
+  float atol_data;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("atol", atol_data)) {
+    OpsGetAttrErrReport(op.GetName(), "atol");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of AllClose!");
+    return GRAPH_FAILED;
+  }
+  if (atol_data < 0) {
+    OpsAttrValueErrReport(op.GetName(), "atol", ">= 0", ConcatString(atol_data));
+    OP_LOGE(op.GetName().c_str(), "atol should >= 0!");
+    return GRAPH_FAILED;
+  }
+
+  float rtol_data;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("rtol", rtol_data)) {
+    OpsGetAttrErrReport(op.GetName(), "rtol");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of AllClose!");
+    return GRAPH_FAILED;
+  }
+  if (rtol_data < 0) {
+    OpsAttrValueErrReport(op.GetName(), "rtol", ">= 0", ConcatString(rtol_data));
+    OP_LOGE(op.GetName().c_str(), "rtol should >= 0!");
+    return GRAPH_FAILED;
+  }
+
+  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(AllCloseInferShape) {
+  TensorDesc tensordesc_num = op.GetOutputDesc("num");
+  TensorDesc tensordesc_diff = op.GetOutputDesc("diff");
+
+  std::vector<int64_t> oShapeVector;
+  Shape oShape(oShapeVector);
+  
+  tensordesc_num.SetShape(ge::Shape(oShape));
+  tensordesc_num.SetDataType(DT_INT32);
+  (void)op.UpdateOutputDesc("num", tensordesc_num);
+
+  tensordesc_diff.SetShape(ge::Shape(oShape));
+  tensordesc_diff.SetDataType(DT_FLOAT16);
+  (void)op.UpdateOutputDesc("diff", tensordesc_diff);
+
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(AllClose, AllCloseInferShape);
+VERIFY_FUNC_REG(AllClose, AllCloseVerify);
+// -------------------AllClose-------------------------
+
 // ---------------HardMax Begin-----------------
 IMPLEMT_COMMON_INFERFUNC(HardMaxInferShape)
 {

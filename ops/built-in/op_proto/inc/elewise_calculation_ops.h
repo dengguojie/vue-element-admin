@@ -3628,6 +3628,35 @@ REG_OP(Lerp)
     .OP_END_FACTORY_REG(Lerp)
 
 /**
+*@brief Returns the num value of abs(x1-x2) > atol+rtol*abs(x2) element-wise. \n
+
+*
+*@par Inputs:
+*@li x1: A tensor. Must be one of the following types: float32, float64, int32, uint8, int16, int8, complex64, int64, qint8, quint8, qint32, uint16, complex128, float16, uint32, uint64
+*@li x2: A tensor of the same type as "x1".
+*
+*@par Attributes:
+* atol: Defaults to "1e-05".
+* rtol: Defaults to "1e-03".
+*
+*@par Outputs:
+* num: A tensor of type int32.
+* diff: A tensor of type float16.
+*
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*
+*/
+REG_OP(AllClose)
+  .INPUT(x1, TensorType({ DT_FLOAT16, DT_FLOAT }))
+  .INPUT(x2, TensorType({ DT_FLOAT16, DT_FLOAT }))
+  .OUTPUT(num, TensorType({DT_INT32}))
+  .OUTPUT(diff, TensorType({DT_FLOAT16}))
+  .ATTR(atol, Float, 1e-5)
+  .ATTR(rtol, Float, 1e-3)
+  .OP_END_FACTORY_REG(AllClose)
+
+/**
 *@brief Hardmax(element in input, axis) = 1 if the element is the first maximum value along the specified axis, 0
 *otherwise The input does not need to explicitly be a 2D vector.The "axis" attribute indicates the dimension along
 *which Hardmax will be performed.The output tensor has the same shape and contains the Hardmax values of the
