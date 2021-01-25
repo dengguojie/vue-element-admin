@@ -87,6 +87,24 @@ def test_op_select_format(test_arg):
     op_select_format({"shape": (512,), "dtype": "float32", "format": "NCHW", "ori_shape": (512,),"ori_format": "NCHW"},
                      {"shape": (16, 16, 512, 512), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 512, 512),"ori_format": "NCHW"},
                      {"shape": (16, 16, 512, 512), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 512, 512), "ori_format": "NCHW"})
+    op_select_format({"shape": (33, 17, 3, 5, 3), "dtype": "float16", "format": "ND", "ori_shape": (33, 17, 3, 5, 3),"ori_format": "ND"},
+                     {"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (33, 17, 3, 5, 3), "dtype": "float16", "format": "ND", "ori_shape": (33, 17, 3, 5, 3),"ori_format": "ND"})
+    op_select_format({"shape": (16, 32, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 32, 16),"ori_format": "ND"},
+                     {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (16, 32, 16), "dtype": "float32", "format": "ND", "ori_shape": (16, 32, 16),"ori_format": "ND"})
+    op_select_format({"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (33, 17, 3, 5, 3), "dtype": "float32", "format": "ND", "ori_shape": (33, 17, 3, 5, 3),"ori_format": "ND"},
+                     {"shape": (33, 17, 3, 5, 3), "dtype": "float32", "format": "ND", "ori_shape": (33, 17, 3, 5, 3),"ori_format": "ND"})
+    op_select_format({"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 32, 16),"ori_format": "ND"},
+                     {"shape": (16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 32, 16),"ori_format": "ND"})
+    op_select_format({"shape": (1, ), "dtype": "int32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (33, 17, 3, 5, 3), "dtype": "int32", "format": "ND", "ori_shape": (33, 17, 3, 5, 3),"ori_format": "ND"},
+                     {"shape": (33, 17, 3, 5, 3), "dtype": "int32", "format": "ND", "ori_shape": (33, 17, 3, 5, 3),"ori_format": "ND"})
+    op_select_format({"shape": (16, 32, 16), "dtype": "int32", "format": "ND", "ori_shape": (16, 32, 16),"ori_format": "ND"},
+                     {"shape": (1, ), "dtype": "int32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                     {"shape": (16, 32, 16), "dtype": "int32", "format": "ND", "ori_shape": (16, 32, 16),"ori_format": "ND"})
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)

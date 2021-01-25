@@ -593,20 +593,19 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                                         datatype=",".join(dtype_total),
                                                         format=",".join(format_list1))
 
-    # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar
+    # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar,NZ+ND
     elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
         if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             if x_cdim % 16 == 0 and x_ndim % 16 == 0:
                 format_list.append("FRACTAL_Z")
+        format_list.append("FRACTAL_NZ")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * 1
-        format_list0 = format_list + format_nd * len_format_list
-        format_list1 = format_nd * len(format_list) + format_nd * len_format_list
+        format_list0 = format_list
+        format_list1 = format_nd * len(format_list)
         unknownshape_format_list = ["ND"] * len(dtype_total)
         if -1 in shape_x or -1 in shape_y:
             input0 = util_select_op_base.gen_param(classify="input0",
@@ -638,20 +637,19 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                                     datatype=",".join(dtype_total),
                                                     format=",".join(format_list0))
 
-    # ND+ND,scalar+5HD,scalar+FZ,scalar+6D
+    # ND+ND,scalar+5HD,scalar+FZ,scalar+6D,ND+NZ
     elif len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
         if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             if y_cdim % 16 == 0 and y_ndim % 16 == 0:
                 format_list.append("FRACTAL_Z")
+        format_list.append("FRACTAL_NZ")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * 1
-        format_list0 = format_list + format_nd * len_format_list
-        format_list1 = format_nd * len(format_list) + format_nd * len_format_list
+        format_list0 = format_list
+        format_list1 = format_nd * len(format_list)
         unknownshape_format_list = ["ND"] * len(dtype_total)
         if -1 in shape_x or -1 in shape_y:
             input0 = util_select_op_base.gen_param(classify="input0",
