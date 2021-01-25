@@ -593,6 +593,11 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
       }
     }
 
+    // furthermore, bottom[1] may have the empty shape, regardless of the value of
+    // axis, a scalar multiplier.
+    if ((scale_dim_num == 1) && (dims_scale[0] == 1)) {
+      dims_scale_tmp = {1};
+    }
     // update scale shape
     ge::Shape output_scale_shape = ge::Shape(dims_scale_tmp);
     TensorDesc scale_desc = op.GetInputDesc("scale");
