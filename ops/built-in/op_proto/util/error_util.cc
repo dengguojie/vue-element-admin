@@ -88,7 +88,7 @@ void OpsInputFormatErrReport(const std::string& op_name, const std::string& para
   err_map["op_name"] = op_name;
   err_map["param_name"] = param_name;
   err_map["expected_format_list"] = expected_format_list;
-  err_map["data_format"] = data_format;
+  err_map["format"] = data_format;
   std::string report_error_code = GetViewErrorCodeStr(ViewErrorCode::INVALID_INPUT_FORMAT);
   ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
 }
