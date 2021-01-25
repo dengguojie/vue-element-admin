@@ -36,7 +36,6 @@ from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import register_build_pointcut
 from te.lang.base.operation_impl import add_compile_info
 from te.lang.base.operation_impl import get_compile_info
-
 from ..base import op_tiling
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
@@ -65,22 +64,45 @@ def _get_block_size(dtype):
 
 
 def apply_compile_info(reduce_info, graph_info, tiling_list):
-    atomic = 0
     # Common_Info
+    atomic = 0
     for item in tiling_list:
         if item.is_atomic:
             atomic = 1
             break
-    max_ub_count = graph_info.max_single_tensor_ub_size
+
     core_num = get_soc_spec("CORE_NUM")
     keep_dims = 1
-    reduce_block_size = _get_block_size(reduce_info.reduce_tensor.dtype)
-    common_info = [max_ub_count, core_num, keep_dims, reduce_block_size, atomic]
+    min_block_size = _get_block_size(graph_info.min_type)
+    common_info = [core_num, keep_dims, min_block_size, atomic, graph_info.coef]
+
+    # Diff_Info
+    if get_context().get("mode") == CONST:
+        # Compile Status: pattern must as same as tiling_key of const
+        # that should be uniqueness.
+        compile_axis = get_context().get_current_compute().get("ori_axis")
+        pattern = _gen_const_tiling_key(compile_axis)
+    else:
+        pattern = _get_pattern_key(reduce_info.shape_before_reduce,
+                                   reduce_info.reduce_axis_indices)
+    max_ub_count = graph_info.tensor_ub_size_before_reduce
+    pattern_info = [pattern]
+    ub_info = [max_ub_count]
 
     pre_compile_info = get_compile_info()
     if pre_compile_info:
-        if "common_info" not in pre_compile_info.keys():
-            add_compile_info("common_info", common_info)
+        info_map = {"common_info": common_info, "pattern_info": pattern_info,
+                    "ub_info": ub_info}
+        for key in info_map.keys():
+            if key not in pre_compile_info.keys():
+                add_compile_info(key, info_map.get(key))
+            else:
+                if key != "common_info":
+                    key_info = pre_compile_info.get(key)
+                    key_info += info_map.get(key)
+                    add_compile_info(key, key_info)
+    else:
+        raise RuntimeError("pre_compile_info is Null")
 
 
 def _calc_tiling_key(reduce_info, tiling):
@@ -113,7 +135,10 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     output_dtype = tuple(compute_graph_info.output_tensor_set)[0].dtype
     axes_dtype = get_context().get_current_compute().get("axis_dtype")
     # staging axis info in ops
+    # _ori_axis: original axes from func_enter of ReduceD, maybe None while op is ReduceSum
+    # ori_axis: axes from classify, always existed
     ori_reduce_axis = get_compile_info().get("_ori_axis")
+    compile_axis = get_context().get_current_compute().get("ori_axis")
     if axes_dtype is None:
         # invoking op_tiling interface during compilation need axis info in sch
         add_compile_info("_ori_axis", reduce_axis_index)
@@ -125,6 +150,7 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     outputs = [{"shape": shape_after_reduce, "dtype": output_dtype}]
     # the flag of invoking op_tiling interface during compilation
     add_compile_info("const_shape_post", False)
+    add_compile_info("compile_pattern", _gen_const_tiling_key(compile_axis))
     run_info = op_tiling.do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
     tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int"}
     tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
@@ -592,17 +618,6 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
                                           name[idx], str(rule[idx]), value)
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    def _get_pattern_key(_shape, _reduce_idx_list):
-        pattern_key = 0
-        length = len(_shape)
-        for i in range(length):
-            if i in _reduce_idx_list:
-                pattern_key += 2 * 2 ** (length - i - 1)
-            else:
-                pattern_key += 2 ** (length - i - 1)
-
-        return pattern_key
-
     pattern = _get_pattern_key(shape, reduce_idx_list)
     pos = (db, shape_type, block_split_axis, ub_split_axis,
            pattern)
@@ -614,6 +629,18 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
     if not atomic:
         key *= -1
     return key
+
+
+def _get_pattern_key(_shape, _reduce_idx_list):
+    pattern_key = 0
+    length = len(_shape)
+    for i in range(length):
+        if i in _reduce_idx_list:
+            pattern_key += 2 * 2 ** (length - i - 1)
+        else:
+            pattern_key += 2 ** (length - i - 1)
+
+    return pattern_key
 
 
 def _gen_const_tiling_key(reduce_axis):

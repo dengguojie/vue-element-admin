@@ -24,7 +24,6 @@ from te.lang.base import operation_impl as operation
 import te.platform.cce_params as cce
 from te.platform.cce_conf import CceProductParams as Pver
 from tbe.common.utils.errormgr import get_error_message
-
 from .reduce_tilingcase import ReduceTilingCase
 from .constants import INSN_MAPPING
 from .constants import DTYPE_BYTE_MAPPING
@@ -213,7 +212,12 @@ class _VectorSchedule(object):
         for stage in self._emit_insn_map:
             scope_iter_var = self._emit_insn_map[stage]["scope"]
             instruction = self._emit_insn_map[stage]["instruction"]
-            self._schedule[stage].emit_insn(scope_iter_var, instruction)
+            extra_space = self._emit_insn_map[stage].get("extra_space")
+            if extra_space:
+                self._schedule[stage].emit_insn(scope_iter_var, instruction,
+                                                attrs=dict(storage_bound=[extra_space]))
+            else:
+                self._schedule[stage].emit_insn(scope_iter_var, instruction)
 
     @abc.abstractmethod
     def _construct_compute_graph(self, out_tensors, spec_node_list):
@@ -989,22 +993,30 @@ class ReduceAtomicSchedule(_VectorSchedule):
         """
         :return:
         """
-        # Normal Use _get_max_ub_count() for max_ub_count
-        max_ub_count = self.graph_info.max_single_tensor_ub_size
-        tensor_space = max_ub_count
+        def _get_tensor_space(_tensor):
+            if _tensor in self.graph_info.tensors_after_reduce:
+                _space = self.graph_info.tensor_ub_size_after_reduce
+            elif _tensor in self.graph_info.tensors_before_reduce:
+                _space = self.graph_info.tensor_ub_size_before_reduce
+            else:
+                raise RuntimeError("undefined tensor")
+            return _space
+
         for tensor in self._cache_read_tensors_and_buffer_map:
             read_buffer = self._cache_read_tensors_and_buffer_map[tensor]
-            self._schedule[read_buffer].set_storage_bound(tensor_space)
+            self._schedule[read_buffer].set_storage_bound(_get_tensor_space(tensor))
 
         for tensor in self._cache_write_tensors_and_buffer_map:
             write_buffer = self._cache_write_tensors_and_buffer_map[tensor]
-            self._schedule[write_buffer].set_storage_bound(tensor_space)
+            self._schedule[write_buffer].set_storage_bound(_get_tensor_space(tensor))
 
         for tensor in self._mid_output_tensors:
-            self._schedule[tensor].set_storage_bound(tensor_space)
+            self._schedule[tensor].set_storage_bound(_get_tensor_space(tensor))
 
-        self._schedule[self._final_out_tensor_ub_rf].set_storage_bound(tensor_space)
-        self._schedule[self._final_out_tensor_global].set_storage_bound(tensor_space)
+        # final output must be reduce_shape
+        _bound = self.graph_info.tensor_ub_size_after_reduce
+        self._schedule[self._final_out_tensor_ub_rf].set_storage_bound(_bound)
+        self._schedule[self._final_out_tensor_global].set_storage_bound(_bound)
 
     def _caculate_storage_align(self):
         """
@@ -1466,8 +1478,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         shape_before_reduce = self._reduce_info["shape_before_reduce_expr"]
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
-
-        max_ub_count = self._get_max_ub_count()
+        max_ub_count = self.graph_info.tensor_ub_size_before_reduce
 
         if self._reduce_case == 2:
             reordered_shape, _, orignal_to_reorder_axis_map = \
@@ -2112,7 +2123,9 @@ class ReduceAtomicSchedule(_VectorSchedule):
                     "instruction": 'dma_copy'}
             self._emit_insn_map[out_tensor] = para
 
+        # ub_tiling_tensor must be reduce_tensor
         res_tensor = self._res_tensor
+        extra_space = self.graph_info.tensor_ub_size_before_reduce
 
         if self._reduce_case == 2:
             ub_split_axis = ub_tiling_result["axis"]
@@ -2135,7 +2148,8 @@ class ReduceAtomicSchedule(_VectorSchedule):
                 res_ub_inner = ub_tiling_tensor.op.reduce_axis[-1]
 
             self._emit_insn_map[ub_tiling_tensor] = {"scope": res_ub_inner,
-                                                     "instruction": 'vector_reduce_sum'}
+                                                     "instruction": 'vector_reduce_sum',
+                                                     "extra_space": extra_space}
         elif self._reduce_case == 3:
             reduce_axis_index = self._reduce_info["reduce_axis_index"]
             ub_split_axis = ub_tiling_result["axis"]
@@ -2143,13 +2157,16 @@ class ReduceAtomicSchedule(_VectorSchedule):
             if ub_split_axis not in reduce_axis_index:
                 self._emit_insn_map[ub_tiling_tensor] = {
                     "scope": ub_tiling_tensor.op.reduce_axis[-1],
-                    "instruction": 'vector_reduce_sum'}
+                    "instruction": 'vector_reduce_sum',
+                    "extra_space": extra_space}
             else:
                 self._emit_insn_map[ub_tiling_tensor] = {"scope": res_ub_inner,
-                                                         "instruction": 'vector_reduce_sum'}
+                                                         "instruction": 'vector_reduce_sum',
+                                                         "extra_space": extra_space}
         else:
             self._emit_insn_map[ub_tiling_tensor] = {"scope": res_ub_inner,
-                                                     "instruction": 'vector_reduce_sum'}
+                                                     "instruction": 'vector_reduce_sum',
+                                                     "extra_space": extra_space}
 
         self._emit_insn_map[self._final_out_tensor_global] = {
             "scope": self._final_out_tensor_global.op.axis[0],
@@ -2204,103 +2221,6 @@ class ReduceAtomicSchedule(_VectorSchedule):
             is_keep_dims = len(self._reduce_info["shape_before_reduce"]) == len(
                 tensor.shape)
             self._reduce_info["keep_dims"] = is_keep_dims
-
-    def _get_total_width(self):
-        """
-        caculate the max useable number based on op liveness
-        return: max useable number
-        """
-        res = self._res_tensor
-
-        def _post_dfs_order(op_node, op_graph, visited, post_order):
-            if op_node in visited:
-                return
-            visited[op_node] = True
-            post_order.append(op_node)
-            if op_node in op_graph:
-                for src in op_graph[op_node]:
-                    _post_dfs_order(src, op_graph, visited, post_order)
-
-        def _op_width(op_node):
-            num_type = op_node.dtype
-            if num_type.lower() not in DTYPE_BYTE_MAPPING.keys():
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
-                                              "u8, f16, s16, u16, f32, s32, " \
-                                              "u32, s64, u64, [%s] is unsupported!" % num_type
-                raise RuntimeError(dict_args, get_error_message(dict_args))
-            tmp_width = 0
-            if op_node.op.tag is not None:
-                tag = op_node.op.tag
-                # logic use 4 fp16 temp buffer
-                if tag.find("logic") != -1:
-                    tmp_width = 4 * DTYPE_BYTE_MAPPING["float16"]
-                # cond use 3 fp16 temp buffer
-                elif tag.find("cond") != -1:
-                    tmp_width = 3 * DTYPE_BYTE_MAPPING["float16"]
-                # vsel use 3 fp16 temp buffer
-                elif tag.find("sel") != -1:
-                    tmp_width = 3 * DTYPE_BYTE_MAPPING["float16"]
-                # vcompare use 2 temp buffer
-                elif tag.find("compare") != -1:
-                    tmp_width = 2 * DTYPE_BYTE_MAPPING[num_type.lower()]
-                # vcomsel use 3 temp buffer
-                elif tag.find("cmpsel") != -1:
-                    tmp_width = 3 * DTYPE_BYTE_MAPPING[num_type.lower()]
-
-            return DTYPE_BYTE_MAPPING[num_type.lower()] + tmp_width
-
-        op_graph = {}
-        for op_node in self._origin_op:
-            src_op = list(op_node['src_buffer'])
-            src_op.reverse()
-            op_graph[op_node['dst_buffer']] = src_op
-        visited = {}
-        post_order = []
-        _post_dfs_order(res, op_graph, visited, post_order)
-        lives = [res]
-        live_width = _op_width(lives[0])
-        max_width = live_width
-        visited = {lives[0]: True}
-        for op_node in post_order:
-            if op_node in op_graph:
-                for src in op_graph[op_node]:
-                    if src in visited:
-                        continue
-                    lives.append(src)
-                    live_width += _op_width(src)
-                    visited[src] = True
-                if live_width > max_width:
-                    max_width = live_width
-            lives.remove(op_node)
-            live_width -= _op_width(op_node)
-        # for tuple sum
-        if len(self._last_output_tensors) > 1:
-            max_width += _op_width(res)
-
-        return max_width
-
-    def _get_max_ub_count(self):
-        """
-        caculate the max element num loaded in UB buffer
-        :return: max element num loaded in UB buffer
-        """
-        # div 2 for align to fp16
-        self._total_size = cceconf.get_soc_spec("UB_SIZE")
-        self._total_size = self._total_size // 2  # div 2 for double buffer
-        total_width = self._get_total_width()
-        if not total_width:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Can not calculate with no compute, " \
-                                          "total_width is [%s]" % total_width
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        max_bound = total_width * 128
-        max_ub_count = int(self._total_size // max_bound * 128)
-
-        return max_ub_count
 
     def __split_tensor_elewise_single(self, tmp_op, op_node):
         """

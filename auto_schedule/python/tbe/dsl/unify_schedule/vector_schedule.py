@@ -43,14 +43,12 @@ from te.tvm.schedule import Stage
 from te.tvm.schedule import IterVar
 from te.tvm.schedule import Schedule
 from te.lang.base import operation_impl as operation
-
 from .util import is_keepdims
 from .util import is_reduce_tensor
 from .util import get_reduce_all_axes
 from .util import get_reduce_axis_indices
 from .vector_info import ComputeGraphInfo
 from .vector_schedule_base import VectorScheduleBase
-
 
 CONST = "const"
 
@@ -138,10 +136,11 @@ class VectorSchedule(VectorScheduleBase, ABC):
         def __init__(self,
                      tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
                      axis_idx: Union[int, "VectorSchedule.Placeholder"] = None,
-                     insn: str = None):
+                     insn: str = None, attr: dict = None):
             self.tensor = tensor
             self.axis_index = axis_idx
             self.insn = insn
+            self.attr = attr
 
     def __init__(self,
                  graph_info: ComputeGraphInfo,
@@ -395,7 +394,12 @@ class VectorSchedule(VectorScheduleBase, ABC):
             emitinsn_itervar: IterVar = self.solve_placeholder(emitinsninfo.axis_index)
             if isinstance(emitinsn_itervar, int):
                 emitinsn_itervar = self.get_itervar_by_original_index(emitinsninfo.tensor, emitinsn_itervar)
-            stage.emit_insn(emitinsn_itervar, emitinsninfo.insn)
+            if emitinsninfo.attr:
+                # convert extra_space of the special insn to the pass
+                extra_space = emitinsninfo.attr.get("extra_space")
+                stage.emit_insn(emitinsn_itervar, emitinsninfo.insn, attrs=dict(storage_bound=[extra_space]))
+            else:
+                stage.emit_insn(emitinsn_itervar, emitinsninfo.insn)
 
     def _do_double_buffer(self):
         pass

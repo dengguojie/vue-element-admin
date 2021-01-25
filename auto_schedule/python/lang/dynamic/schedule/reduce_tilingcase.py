@@ -155,7 +155,6 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     return [const_tiling_case]
 
 
-@register_tiling_case(pattern=Pattern.REDUCE)
 def calc_tiling_case(outs, options=None):
     [options].clear()
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
@@ -182,7 +181,6 @@ def calc_tiling_case(outs, options=None):
     return tiling_case_list
 
 
-@register_build_pointcut(pattern=Pattern.REDUCE)
 def build_pointcut(func, *args, **kwargs):
     """
     build pointcut

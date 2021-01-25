@@ -38,7 +38,7 @@ TEST_F(ReduceTiling, ReduceTiling1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
 
-  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce", "common_info": [16384, 32, 1, 8, 0], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
+  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce", "common_info": [32, 1, 8, 1, 1], "pattern_info": [5], "ub_info": [16256], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
 
   std::vector<int64_t> input{1};
   std::vector<int64_t> output{1};

@@ -43,7 +43,6 @@ from ...base.operation_impl import register_schedule
 CONST = "const"
 
 
-@register_schedule(pattern=Pattern.REDUCE)
 def schedule(outs, tiling_case: ReduceTilingCase):
     [outs].clear()
     # Get Compute Graph Info

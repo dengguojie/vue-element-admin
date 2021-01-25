@@ -60,7 +60,8 @@ struct CompileInfo {
   bool is_keep_dims = false;
   int64_t max_ub_count;
   int32_t core_num;
-  int32_t reduce_block_size;
+  int32_t min_block_size;
+  int32_t coef;
 };
 
 class Reduce {
@@ -81,6 +82,7 @@ class Reduce {
 
   bool ProcessAtomicTiling();
   bool ProcessNormalTiling();
+  bool SpecialUBTiling();
 
   void ProcessReorderAxis(int32_t fused_type);
   bool GetUbTilingInfo();
@@ -124,13 +126,15 @@ class Reduce {
   std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
 
   bool is_last_axis_reduce;
-  std::string output_dtypeUB;
   int64_t total_output_count;
   int64_t total_reduce_count;
   int32_t pattern;
   int32_t set_reduce_mean_cof_flag;
   int32_t block_size;
   float reduce_mean_cof;
+
+  int32_t ubSizeA;
+  int32_t ubSizeB;
 };
 }  // namespace optiling
 

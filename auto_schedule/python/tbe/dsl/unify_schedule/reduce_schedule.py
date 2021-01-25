@@ -28,7 +28,6 @@ from tbe.dsl.unify_schedule import Pattern
 from te.lang.base.operation_impl import var
 from te.lang.base.operation_impl import get_context
 from te.lang.base.operation_impl import register_schedule
-
 from .util import get_dsl_insn
 from .util import is_reduce_tensor
 from .util import get_reduce_axis_indices
@@ -118,7 +117,22 @@ class ReduceSchedule(VectorSchedule):
     def _calc_storage_bound(self) -> NoReturn:
         for stage_tensor in self.forward_stage_graph_map:
             if self.forward_stage_graph_map[stage_tensor]:
-                self.storage_bound_map[stage_tensor] = self.graph_info.max_single_tensor_ub_size
+                if stage_tensor in self.graph_info.tensors_after_reduce:
+                    ub_count = self.graph_info.tensor_ub_size_after_reduce
+                elif stage_tensor in self.graph_info.tensors_before_reduce:
+                    ub_count = self.graph_info.tensor_ub_size_before_reduce
+                else:
+                    # some tensors are Placeholders
+                    if isinstance(stage_tensor, VectorSchedule.Placeholder):
+                        if stage_tensor.key[0] in self.graph_info.tensors_after_reduce:
+                            ub_count = self.graph_info.tensor_ub_size_after_reduce
+                        elif stage_tensor.key[0] in self.graph_info.tensors_before_reduce:
+                            ub_count = self.graph_info.tensor_ub_size_before_reduce
+                        else:
+                            raise RuntimeError("undefined tensor")
+                    else:
+                        raise RuntimeError("undefined tensor")
+                self.storage_bound_map[stage_tensor] = ub_count
 
     def _calc_tiling(self):
         """
@@ -225,33 +239,85 @@ class ReduceSchedule(VectorSchedule):
         pass
 
     def _calc_constraint(self):
-        ub_tiling_info = self.ub_tiling_info
-        ub_tiling_axis_idx = ub_tiling_info.tiling_axis_index
-        ub_tiling_tensor = ub_tiling_info.tiling_tensor
-        ub_tiling_factor = ub_tiling_info.factor
-        max_ub_count = self.graph_info.max_single_tensor_ub_size
-        params = (ub_tiling_tensor, list(self.graph_info.input_tensor_set)[0])
+        ub_info, blk_info = self.ub_tiling_info, self.block_tiling_info
+        ub_tensor, blk_tensor = ub_info.tiling_tensor, blk_info.tiling_tensor
+        ub_factor, blk_factor = ub_info.factor, blk_info.factor
+        ub_idx, blk_idx = ub_info.tiling_axis_index, blk_info.tiling_axis_index
+        params = (ub_tensor, )
 
-        def func(_ub_tiling_tensor: Tensor,
-                 _before_reduce_compute_tensor: Tensor) -> list:
+        def func(_ub_tiling_tensor: Tensor, ) -> list:
+            # shape after reorder must follow:
+            # [R,A],[A,R],[A,R,A],[A,R,A,R],...,[A,R,...,A,R]
+            in_shape = self.reduce_info.shape_before_reduce
+            reduce_indices = self.reduce_info.reduce_axis_indices
+            i_length, r_length = len(in_shape), len(reduce_indices)
+
+            def _reorder(_r_shape, _r_indices, _r_ou_shape):
+                # r_shape: in_shape after reorder
+                # r_indices: r_shape[x] == in_shape[r_indices[x]]
+                pos_a = 0
+                if reduce_indices[-1] == i_length - 1:
+                    pos_r = i_length - r_length  # last dim is R
+                else:
+                    pos_r = i_length - r_length - 1  # last dim is A
+                for idx, value in enumerate(in_shape):
+                    if idx == i_length-1 and idx not in reduce_indices:
+                        _r_shape[-1], _r_indices[-1] = value, idx
+                        _r_ou_shape[-1] = _r_shape[-1]
+                    elif idx in reduce_indices:
+                        _r_shape[pos_r], _r_indices[pos_r] = value, idx
+                        _r_ou_shape[pos_r] = 1
+                        pos_r += 1
+                    else:
+                        _r_shape[pos_a], _r_indices[pos_a] = value, idx
+                        _r_ou_shape[pos_a] = value
+                        pos_a += 1
+
+            r_in_shape = [0] * i_length
+            r_indices = [0] * i_length
+            r_ou_shape = [0] * i_length
             results = []
-            all_shape = self.reduce_info.shape_before_reduce
-            reduce_source_tensor = _ub_tiling_tensor.op.input_tensors[0]
-            reduce_source_tensor_ub = self.get_buffers_of(reduce_source_tensor)[0]
-            all_itervars = self.schedule[reduce_source_tensor_ub].all_iter_vars[:len(all_shape)]
-            all_reordered_itervars = self.schedule[reduce_source_tensor_ub].leaf_iter_vars[:len(all_shape)]
-            reordered_shape_indices = [all_itervars.index(itervar) for itervar in all_reordered_itervars]
-            # UB Factor smaller than max_ub_count
-            results.append(ub_tiling_factor <= max_ub_count)
-            ub_size_product = ub_tiling_factor
-            # Each UB var smaller than max_ub_count
-            reordered_ub_tiling_axis_idx = reordered_shape_indices.index(ub_tiling_axis_idx)
-            for shape_index in reordered_shape_indices[reordered_ub_tiling_axis_idx + 1:]:
-                ub_size_product *= all_shape[shape_index]
-                results.append(all_shape[shape_index] <= max_ub_count)
-            # Total UB Size smaller than max_ub_count
-            results.append(ub_size_product <= max_ub_count)
+            _reorder(r_in_shape, r_indices, r_ou_shape)
+
+            # do constraint for blk_split and output
+            r_blk_idx = r_indices.index(blk_idx)
+            max_ub_count = self.graph_info.tensor_ub_size_after_reduce
+            output_size = blk_factor
+            for _dim in r_ou_shape[r_blk_idx+1:]:
+                output_size *= _dim
+                if not isinstance(_dim <= max_ub_count, bool):
+                    results.append(_dim <= max_ub_count)
+            results.append(output_size <= max_ub_count)
+            r_in_shape[r_blk_idx] = blk_factor  # for constraint(ub)
+
+            # do constraint for ub_split and input
+            if ub_idx not in reduce_indices and ub_idx < blk_idx:
+                raise RuntimeError(
+                    "ub_idx must >= blk_idx"
+                    "while ub_idx not in reduce_indices."
+                    "ub_idx is %d, blk_idx is %d" % (ub_idx, blk_idx))
+            else:
+                input_size = ub_factor
+                r_ub_idx = r_indices.index(ub_idx)
+                max_ub_count = self.graph_info.tensor_ub_size_before_reduce
+                # [A,R,A,R,A] --> [A,A,R,R,A]
+                #                          |-->BLK(fixed)
+                #                          |-->UB(s1)
+                #                      |-->UB(s2)
+                # [A,R,A,R,A] --> [A,A,R,R,A]
+                #                    |-->BLK
+                for _dim in r_in_shape[r_ub_idx+1:]:
+                    input_size *= _dim
+                    if not isinstance(_dim <= max_ub_count, bool):
+                        results.append(_dim <= max_ub_count)
+                results.append(input_size <= max_ub_count)
+
+            # do constraint extra
+            results.append(ub_factor <= self.graph_info.tensor_ub_size_before_reduce)
+            results.append(blk_factor <= self.graph_info.tensor_ub_size_after_reduce)
+
             return results
+
         self.constraint_func_pair_list.append((params, func))
 
     def __need_storage_align(self):
@@ -386,8 +452,11 @@ class ReduceSchedule(VectorSchedule):
             if hasattr(axis_dom.min, "value") and hasattr(axis_dom.extent, "value"):
                 if first_reduce_axis.dom.min.value == 0 and first_reduce_axis.dom.extent.value == 1:
                     emit_insn_axis = self.reduce_info.reduce_axis_indices[0]
+        # Op of reduce need extra_space
+        extra_space = self.graph_info.tensor_ub_size_before_reduce
         self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor, emit_insn_axis,
-                                                               INSN_MAPPING[get_dsl_insn(reduce_ub_tensor)]))
+                                                               INSN_MAPPING[get_dsl_insn(reduce_ub_tensor)],
+                                                               {"extra_space": extra_space}))
         # Before-And-After-reduce
         before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
         after_reduce_tensors = self.get_all_consumer_stages(reduce_ub_tensor)

@@ -31,6 +31,9 @@ from typing import Iterable
 from te.tvm.tensor import Tensor
 from te.tvm.tensor import PlaceholderOp
 from te.platform.cce_conf import get_soc_spec
+from .util import get_reduce_all_axes
+from .util import get_reduce_axes
+from .constants import *
 
 
 class ComputeGraphInfo:
@@ -42,6 +45,7 @@ class ComputeGraphInfo:
         Initialize containers and try to collect info
         """
         # Basic Info
+        self.soc_ub_size = get_soc_spec("UB_SIZE")
         self.output_tensor_set: Optional[Set[Tensor]] = None
         self.tensor_consumers_map: Optional[Dict[Tensor, Set[Tensor]]] = None
         self.tensor_producers_map: Optional[Dict[Tensor, Set[Tensor]]] = None
@@ -56,7 +60,14 @@ class ComputeGraphInfo:
         self.mid_output_tensor_set: Set[Tensor] = set()
         self.mid_tensor_set: Set[Tensor] = set()
         self.endpoint_output_tensor_set: Set[Tensor] = set()
-        self.max_single_tensor_ub_size: Optional[int] = None
+        # For ReduceSch(only)
+        self.tensor_ub_size_before_reduce: Optional[int] = None
+        self.tensor_ub_size_after_reduce: Optional[int] = None
+        self.tensors_before_reduce: Optional[List[Tensor]] = []
+        self.tensors_after_reduce: Optional[List[Tensor]] = []
+        self.max_type: Optional[str] = None
+        self.min_type: Optional[str] = None
+        self.coef: Optional[int] = None
         # Do info collection
         self._collect_info(output_tensors)
         self._init_max_ub_count()
@@ -105,6 +116,26 @@ class ComputeGraphInfo:
                 self.mid_tensor_set.add(tensor)
 
     @staticmethod
+    def _eq_tvm_shape(shapeA: List, shapeB: List):
+        length_a = len(shapeA)
+        length_b = len(shapeB)
+        if length_a != length_b:
+            return False
+        for idx, _ in enumerate(range(length_a)):
+            ret_value = hasattr(shapeA[idx], "value") and hasattr(shapeB[idx], "value")
+            ret_name = hasattr(shapeA[idx], "name") and hasattr(shapeB[idx], "name")
+            if ret_value:
+                if shapeA[idx].value != shapeB[idx].value:
+                    return False
+            elif ret_name:
+                if shapeA[idx].name != shapeB[idx].name:
+                    return False
+            else:
+                if shapeA[idx] != shapeB[idx]:
+                    return False
+        return True
+
+    @staticmethod
     def dfs_compute_graph(root_tensor: Union[Iterable[Tensor], Tensor],
                           hooks: Tuple[Tuple[Callable[[Tensor], bool],
                                              Callable[[Tensor], Any],
@@ -151,19 +182,226 @@ class ComputeGraphInfo:
                                % str(type(root_tensor)))
         return list(visited_list), tensor_consumers_map, tensor_producers_map
 
-    def _init_max_ub_count(self):
-        soc_ub_size = get_soc_spec("UB_SIZE")
-        soc_ub_size = soc_ub_size // 2
-        total_width = 8
+    def get_all_tensors_before_reduce(self):
+        """
+        Strategy assumes:
+        1. the graph not exist "broadcast".
+        2. only support single reduce node.
+        """
         reduce_tensor = list(self.reduce_tensor_set)[0]
-        if reduce_tensor.dtype in ["float16"]:
-            total_width = 4
-        if not total_width:
-            raise RuntimeError("Could not get compute width")
-        max_bound = total_width * 128
-        max_ub_count = int(soc_ub_size // max_bound * 128)
+        shape_after_reduce = list(reduce_tensor.shape)
+        shape_before_reduce = list(reduce_tensor.op.input_tensors[0].shape)
+        self.max_type = self.tensor_list[0].dtype
+        self.min_type = self.tensor_list[0].dtype
 
-        self.max_single_tensor_ub_size = max_ub_count
+        for item in self.tensor_list:
+            if DTYPE_BYTE_MAPPING[item.dtype] > DTYPE_BYTE_MAPPING[self.max_type]:
+                self.max_type = item.dtype
+            elif DTYPE_BYTE_MAPPING[item.dtype] < DTYPE_BYTE_MAPPING[self.min_type]:
+                self.min_type = item.dtype
+
+            if self._eq_tvm_shape(list(item.shape), shape_before_reduce):
+                self.tensors_before_reduce.append(item)
+            elif self._eq_tvm_shape(list(item.shape), shape_after_reduce):
+                self.tensors_after_reduce.append(item)
+            else:
+                raise RuntimeError("unknown tensor")
+        if not self.tensors_after_reduce:
+            # pure data_move pattern
+            self.tensors_after_reduce = self.tensors_before_reduce
+
+    def _init_max_ub_count(self):
+        """
+        Func: Get the biggest value in node_exist_list that from different sub_graph.
+              tensors_before_reduce belong to bNode, tensors_after_reduce belong to sNode.
+              sizeof(bNode) = coef * sizeof(sNode)
+        """
+        def _analysis_dependent(dependent):
+            _dict = {"_bNodeNum": [], "_sNodeNum": []}
+            for item in dependent.keys():
+                if item in self.tensors_before_reduce:
+                    _dict["_bNodeNum"].append(item.dtype)
+                elif item in self.tensors_after_reduce:
+                    _dict["_sNodeNum"].append(item.dtype)
+                else:
+                    raise RuntimeError("tensor_i is not in discrimination.")
+            return _dict
+
+        def _current_compute_need_space(_tensor, _dict):
+            tag = _tensor.op.tag
+            dtype = _tensor.dtype
+
+            def _reduce_sum_space(_reduce_tensor):
+                if all_axes[-1] not in reduce_axes:
+                    _dict["_sNodeNum"].append(dtype)
+                    self.soc_ub_size -= 64
+                else:
+                    if len(reduce_axes) == 1:
+                        _dict["_sNodeNum"].append(dtype)
+                        self.soc_ub_size -= 4096
+                    else:
+                        _dict["_sNodeNum"].append(dtype)
+                        _dict["_bNodeNum"].append(dtype)
+                        self.soc_ub_size -= 2048
+
+            def _reduce_max_space(_reduce_tensor):
+                if dtype in ["float32", "int32"]:
+                    if all_axes[-1] not in reduce_axes:
+                        _dict["_sNodeNum"].append(dtype)
+                        self.soc_ub_size -= 64
+                    else:
+                        if len(reduce_axes) == 1:
+                            _dict["_sNodeNum"].append(dtype)
+                            self.soc_ub_size -= 512
+                        else:
+                            self.soc_ub_size -= 512
+                            _dict["_sNodeNum"].append(dtype)
+                            _dict["_bNodeNum"].append(dtype)
+                elif dtype in ["float16", ]:
+                    if all_axes[-1] not in reduce_axes:
+                        _dict["_sNodeNum"].append(dtype)
+                        self.soc_ub_size -= 64
+                    else:
+                        _dict["_sNodeNum"].append(dtype)
+                        _dict["_bNodeNum"].append(dtype)
+                        self.soc_ub_size -= 4096
+                else:
+                    raise RuntimeError("Not support dtype in reduce_max(min) is %s" % dtype)
+
+            def _reduce_prod_space(_reduce_tensor):
+                if all_axes[-1] not in reduce_axes:
+                    _dict["_sNodeNum"].append(dtype)
+                    self.soc_ub_size -= 64
+                else:
+                    if len(reduce_axes) == 1:
+                        _dict["_sNodeNum"].append(dtype)
+                        self.soc_ub_size -= 512
+                    else:
+                        self.soc_ub_size -= 512
+                        _dict["_sNodeNum"].append(dtype)
+                        _dict["_bNodeNum"].append(dtype)
+
+            if tag.find("reduce") != -1:
+                reduce_axes = get_reduce_axes(_tensor)
+                all_axes = get_reduce_all_axes(_tensor)
+                if tag in ["reduce_sum", ]:
+                    _reduce_sum_space(_tensor)
+                elif tag in ["reduce_max", "reduce_min"]:
+                    _reduce_max_space(_tensor)
+                elif tag in ["reduce_prod", ]:
+                    _reduce_prod_space(_tensor)
+                else:
+                    raise RuntimeError("Unknown reduce_insn is %s" % tag)
+            else:
+                if _tensor in self.tensors_before_reduce:
+                    _dict["_bNodeNum"].append(dtype)
+                else:
+                    _dict["_sNodeNum"].append(dtype)
+
+        def _refresh_dependent(_tensor):
+            for _tensor_i in _tensor.op.input_tensors:
+                if _tensor_i not in dependent_map:
+                    continue
+                dependent_map[_tensor_i].remove(_tensor)
+                if not dependent_map[_tensor_i]:
+                    dependent_map.pop(_tensor_i)
+
+        def _r_coexisting(_tensor, _need_space):
+            if _tensor in dependent_map:
+                _need_space.append(_analysis_dependent(dependent_map))
+                return
+
+            for _tensor_i in _tensor.op.input_tensors:
+                _r_coexisting(_tensor_i, _need_space)
+
+            curr_dict = _analysis_dependent(dependent_map)
+            _current_compute_need_space(_tensor, curr_dict)
+            _need_space.append(curr_dict)
+
+            _refresh_dependent(_tensor)
+            if _tensor not in dependent_map:
+                dependent_map[_tensor] = self.tensor_consumers_map[_tensor].copy()
+
+        def _get_max(_node_list, reduce_type, coefficients=1):
+            # _node is [{},{},...,{}]
+            # node belong to _sNodeNum that has space "1*DTYPE_BYTE_MAPPING[dtype]"
+            # node belong to _bNodeNum that has space "coefficients*DTYPE_BYTE_MAPPING[dtype]"
+            def _calc_value(_node):
+                value = 0
+                for item in _node.get("_sNodeNum"):
+                    value += DTYPE_BYTE_MAPPING[item]
+                for item in _node.get("_bNodeNum"):
+                    value += coefficients * DTYPE_BYTE_MAPPING[item]
+                return value
+
+            max_item = _node_list[0]
+            max_value = _calc_value(_node_list[0])
+            for item in _node_list:
+                item_value = _calc_value(item)
+                if max_value < item_value:
+                    max_value = item_value
+                    max_item = item
+                elif max_value == item_value and not item.get("_sNodeNum"):
+                    # reduce maybe init in begin of graph
+                    max_value = item_value
+                    max_item = item
+            # reduce maybe init in begin of graph
+            if not max_item.get("_sNodeNum"):
+                max_value += DTYPE_BYTE_MAPPING[reduce_type]
+                max_item["_sNodeNum"].append(reduce_type)
+
+            return max_item, max_value
+
+        # [Common Reduce] Find maximum sub_graph
+        self.get_all_tensors_before_reduce()
+        coexisting_quantities, dependent_map = [], {}
+        _out = list(self.output_tensor_set)[0]
+
+        for tensor_i in _out.op.input_tensors:
+            _r_coexisting(tensor_i, coexisting_quantities)
+
+        # [Common Reduce] Multi outputs
+        if not _out.op.tag == FAKE_NODE_TAG:
+            curr_dict = _analysis_dependent(dependent_map)
+            _current_compute_need_space(_out, curr_dict)
+            coexisting_quantities.append(curr_dict)
+
+        # [Common Reduce] coefficients between bNode and sNode
+        self.coef = 1
+        if self.tensors_before_reduce == self.tensors_after_reduce:
+            # pure data_move
+            self.coef = 1
+
+        # [Single Reduce] ReduceNode may be initialized in the begin of graph
+        reduce_tensors = list(self.reduce_tensor_set)
+        reduce_type = reduce_tensors[0].dtype
+        curr_dict, total_num = _get_max(coexisting_quantities, reduce_type, coefficients=self.coef)
+
+        # [Single Reduce] Find roots of reduce
+        def _r_parent(_child, _parent):
+            if not self.tensor_producers_map.get(_child):
+                # reduce_i isn't connect to input directly
+                if reduce_i not in self.tensor_consumers_map.get(_child):
+                    _parent.append(_child)
+                return
+            for _tensor in self.tensor_producers_map.get(_child):
+                _r_parent(_tensor, _parent)
+
+        reduce_parents = []
+        for reduce_i in reduce_tensors:
+            _r_parent(reduce_i, reduce_parents)
+        reduce_parents = list(set(reduce_parents))
+
+        for parent_i in reduce_parents:
+            # Reserve space for inputs' "db"
+            curr_dict["_bNodeNum"].append(parent_i.dtype)
+            total_num += DTYPE_BYTE_MAPPING[parent_i.dtype] * self.coef
+
+        # [Common Reduce] avoid bank conflict in malloc ub
+        self.soc_ub_size -= 1024
+        small_ub_size = self.soc_ub_size // total_num // 128 * 128
+        self.tensor_ub_size_before_reduce = self.coef * small_ub_size
+        self.tensor_ub_size_after_reduce = small_ub_size
 
     @staticmethod
     def set_map_deepcopy(_map: Dict[Tensor, Set[Tensor]]) -> Dict[Tensor, Set[Tensor]]:

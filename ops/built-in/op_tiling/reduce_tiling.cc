@@ -279,13 +279,27 @@ bool Reduce::FusedReduceAxis() {
 }
 
 bool Reduce::GetCompileInfo() {
-  std::vector<int32_t> info = op_info["common_info"];
-  compileInfo.max_ub_count = info[0];
-  compileInfo.core_num = info[1];
-  compileInfo.is_keep_dims = (bool)info[2];
-  compileInfo.reduce_block_size = info[3];
-  compileInfo.atomic = (bool)info[4];
-  output_dtypeUB = op_paras.inputs[0].tensor[0].dtype;
+  std::vector<int32_t> common_info = op_info["common_info"];
+  std::vector<int32_t> pattern_info = op_info["pattern_info"];
+  std::vector<int32_t> ub_info = op_info["ub_info"];
+
+  compileInfo.core_num = common_info[0];
+  compileInfo.is_keep_dims = (bool)common_info[1];
+  compileInfo.min_block_size = common_info[2];
+  compileInfo.atomic = (bool)common_info[3];
+  compileInfo.coef = common_info[4];
+
+  uint idx = 0;
+  for (auto item : pattern_info) {
+    if (item == pattern) {
+        break;
+    }
+    idx += 1;
+  }
+  if (idx >= pattern_info.size()) {
+    GE_LOGE("pattern is %d that not in pattern_info", pattern);
+  }
+  compileInfo.max_ub_count = ub_info[idx];
   is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 
   // special process(reduce_mean_d)
@@ -336,11 +350,16 @@ bool Reduce::ChooseAtomic() {
     }
   }
 
-  int32_t calc_block_size = compileInfo.reduce_block_size;
-  int32_t output_block_size = GetBlockSize(output_dtypeUB);
-  block_size = calc_block_size > output_block_size ? calc_block_size : output_block_size;
+  // block_size: would be used for storage align in whole graph(min dtype)
+  // nodes after reduce(include reduce) have same space(ubSizeA)
+  // nodes before reduce have same space(ubSizeB)
+  // ubSizeB = ubSizeA * coef (max dtype)
+  block_size = compileInfo.min_block_size;
+  ubSizeB = compileInfo.max_ub_count;
+  ubSizeA = ubSizeB / compileInfo.coef;
 
-  compileInfo.atomic = compileInfo.atomic && total_output_count <= compileInfo.max_ub_count &&
+  // better choose
+  compileInfo.atomic = compileInfo.atomic && total_output_count <= ubSizeB &&
                        total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
                        total_output_count < (int64_t)compileInfo.core_num * block_size / 2 &&
                        total_reduce_count > (int64_t)compileInfo.core_num / 2;
@@ -364,9 +383,9 @@ bool Reduce::GetUbTilingInfo() {
     }
 
     load_mul = GetReorderInputShapeMul(i, block_tiling_axis_in_reorder);
-    if (load_mul <= compileInfo.max_ub_count) {
+    if (load_mul <= ubSizeB) {
       tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[i];
-      tilingInfo.ub_tiling_factor = (compileInfo.max_ub_count / load_mul);
+      tilingInfo.ub_tiling_factor = (ubSizeB / load_mul);
 
       int64_t max_ub_tiling_factor = input_shape[tilingInfo.ub_tiling_axis];
       if (i == block_tiling_axis_in_reorder) {
@@ -497,7 +516,7 @@ void Reduce::GetNotMulCoreBlockTiling() {
 
 bool Reduce::GetBlockTilingInfo() {
   int32_t left_block_dim = 1;
-  int64_t max_ub_count = compileInfo.max_ub_count;
+  int64_t max_ub_count = ubSizeA;
   int32_t core_num = compileInfo.core_num;
 
   for (uint32_t i = 0; i < output_shape.size(); i++) {
@@ -639,7 +658,7 @@ bool Reduce::ProcessNormalTiling() {
 
   // rewrite TilingInfo(block)
   if (!GetBlockTilingInfo()) {
-    if (total_output_count > compileInfo.max_ub_count) {
+    if (total_output_count > ubSizeA) {
       GE_LOGE("GetBlockTilingInfo error.");
       return false;
     }
@@ -672,9 +691,35 @@ bool Reduce::ProcessNormalTiling() {
   return true;
 }
 
+bool Reduce::SpecialUBTiling() {
+  int32_t ub_factor = tilingInfo.ub_tiling_factor;
+  int32_t blk_factor = tilingInfo.block_tiling_factor;
+  int32_t ub_axis = tilingInfo.ub_tiling_axis;
+  int32_t blk_axis = tilingInfo.block_tiling_axis;
+  if (ub_axis != blk_axis) {
+    return true;
+  }
+  if (blk_factor%ub_factor == 0) {
+    return true;
+  }
+
+  float tailPercent = (float)(blk_factor%ub_factor) / (float)ub_factor;
+  if (tailPercent >= 0.8) {
+    return true;
+  }
+  int loop = blk_factor / ub_factor + 1;
+  ub_factor = blk_factor % loop ? blk_factor / loop + 1 : blk_factor / loop;
+  tilingInfo.ub_tiling_factor = ub_factor;
+
+  return true;
+}
+
 bool Reduce::Init() {
   // get ori input_shape
-  if (op_paras.inputs.size() > 0 && op_paras.inputs[0].tensor.size() > 0) {
+  if (op_info.count("idx_before_reduce") > 0) {
+    uint idx = op_info["idx_before_reduce"];
+    input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
+  } else if (op_paras.inputs.size() > 0 && op_paras.inputs[0].tensor.size() > 0) {
     input_shape_ori = op_paras.inputs[0].tensor[0].shape;
   } else {
     GE_LOGE("op [%s] : input shape error.", op_type.c_str());
@@ -801,11 +846,12 @@ bool Reduce::DoTiling() {
     // input(known)
     // invoking the tiling interface during runtime
     // is_const_post: "true"->runtime, "false"->compile
-    pattern = CalcConstPattern(reduce_axis_ori);
     compileInfo.is_const_post = op_info.count("const_shape_post") > 0 && op_info["const_shape_post"].get<bool>();
     if (compileInfo.is_const_post) {
+      pattern = CalcConstPattern(reduce_axis_ori);
       return ret;
     } else {
+      pattern = op_info["compile_pattern"];
       reduce_axis = reduce_axis_ori;
       input_shape = input_shape_ori;
     }
@@ -826,7 +872,7 @@ bool Reduce::DoTiling() {
     run_info.clear_atomic = false;
     ret = ret && ProcessNormalTiling();
   }
-
+  ret = ret && SpecialUBTiling();
   return ret;
 }
 
