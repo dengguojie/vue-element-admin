@@ -364,7 +364,7 @@ static void CalcReducePermGrad(const vector<int64_t> & reducedPerm , vector<int6
 }
 
 static bool IsIdentical(const ShapeInfo & shapeInfo) {
-    for(int64_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
+    for(size_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
         if(shapeInfo.reducedPerm[i] != i) {
             return false;
         }
