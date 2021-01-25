@@ -1335,8 +1335,15 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
                      add_0_axis_1_n1_o, add_0_axis_1_i)
 
     # compute_at code
-    add_0_axis_0_o, add_0_axis_0_n1_o = s[add_0].split(add_0_axis_0_o,
-                                                       nparts=block_outer)
+    nparts_factor = (add_0.shape[0].value + block_outer - 1) // block_outer
+    data_size = te.platform.get_bit_len(dtype.lower()) // 8
+    min_factor = te.platform.BLOCK_REDUCE_INT8 // data_size
+    if nparts_factor >= min_factor:
+        add_0_axis_0_o, add_0_axis_0_n1_o = s[add_0].split(add_0_axis_0_o,
+                                                           nparts=block_outer)
+    else:
+        add_0_axis_0_o, add_0_axis_0_n1_o = s[add_0].split(add_0_axis_0_o,
+                                                           factor=min_factor)
 
     s[data_labels_ub_001].compute_at(s[add_0], add_0_axis_1_n1_o)
     s[data_labels_ub_000].compute_at(s[reduce_2_ub], reduce_2_ub_reduce_axis_0_o)
