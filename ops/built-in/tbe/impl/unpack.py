@@ -114,15 +114,14 @@ def check_supported(x, y, num=None, axis=0, kernel_name="unpack"):
     The maximum number of outputs supported by the unpack must be less than 63*63
     """
     input_shape = x.get("shape")
-    real_num = _process_num_param(input_shape, num, axis, kernel_name)
+    real_num = _process_num_param(input_shape, num, axis, False, kernel_name)
     max_output_num = 63 * 63
     if real_num > max_output_num:
         return False
- 
     return True
 
 
-def _process_num_param(input_shape, num, axis, kernel_name):
+def _process_num_param(input_shape, num, axis, is_known_shape, kernel_name):
     """
     process num param
 
@@ -134,6 +133,8 @@ def _process_num_param(input_shape, num, axis, kernel_name):
         the length of the dim axis.
     axis: int.
         the axis of unapck.
+    is_known_shape: bool
+        is known shape or not
     kernel_name: str
         cce kernel name.
 
@@ -144,11 +145,26 @@ def _process_num_param(input_shape, num, axis, kernel_name):
     if num is None:
         num = input_shape[axis]
     if num is None:
-        error_manager_vector.raise_err_check_params_rules("unpack", 'shape[axis] not be None', 'shape[axis]',
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'shape[axis] not be None', 'shape[axis]',
                                                           input_shape[axis])
-    if num != input_shape[axis]:
+    if num < 1:
+        error_manager_vector.raise_err_check_params_rules(kernel_name, 'num can not smaller than 1', 'num', num)
+    # [-1, -2] means we don't known the shape currently.
+    if num != input_shape[axis] and (is_known_shape or input_shape[axis] not in [-1, -2]):
         error_manager_vector.raise_err_input_value_invalid(kernel_name, 'num', input_shape[axis], num)
     return num
+
+
+def _get_max_num_in_platform():
+    # 1536B means stack holding the param provided to the platform,
+    # 1 param takes 8 bytes, needs Multiple output param and 1 input param
+    # mini has more parameters (offset, index) than cloud
+    compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
+    if compile_plat in ("Ascend310", ):
+        max_num = (1536 // 3) // 8 - 1
+    else:
+        max_num = 1536 // 8 - 1
+    return max_num
 
 
 def _check_params(shape, num, axis, dformat, dtype, kernel_name):
@@ -196,16 +212,8 @@ def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     if axis < -len(shape) or axis >= len(shape):
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'axis', 1 - len(shape), len(shape), axis)
 
-    num = _process_num_param(shape, num, axis, kernel_name)
-
-    # 1536B means stack holding the param provided to the platform,
-    # 1 param takes 8 bytes, needs Multiple output param and 1 input param
-    # mini has more parameters (offset, index) than cloud
-    compile_plat = tbe_platform.get_soc_spec("SOC_VERSION")
-    if compile_plat in ("Ascend310", ):
-        max_num = (1536 // 3) // 8 - 1
-    else:
-        max_num = 1536 // 8 - 1
+    num = _process_num_param(shape, num, axis, True, kernel_name)
+    max_num = _get_max_num_in_platform()
     if num > max_num:
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'num', 1, max_num, num)
 
