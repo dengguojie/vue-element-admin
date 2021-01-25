@@ -27,6 +27,24 @@
 namespace ge {
 
 /**
+*@brief Computes the inverse 1-dimensional discrete Fourier transform over the
+inner-most dimension of `x`. \n
+
+*@par Inputs:
+*@li x: A Tensor. Must be the following types: complex64, complex128. \n
+
+*@par Outputs:
+*@li y: A complex tensor of the same rank as `x`. \n
+
+*@par Third-party framework compatibility
+* Compatible with TensorFlow IFFT operator.
+*/
+REG_OP(IFFT)
+    .INPUT(x, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
+    .OUTPUT(y, TensorType({DT_COMPLEX64,DT_COMPLEX128}))
+    .OP_END_FACTORY_REG(IFFT)
+
+/**
 *@brief Real-valued fast Fourier transform . \n
 
 *@par Inputs:

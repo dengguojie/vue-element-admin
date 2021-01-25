@@ -164,7 +164,7 @@ IMPLEMT_INFERFUNC(TensorListPushBack, TensorListPushBackInfer) {
   if ((!shapes_and_types.empty()) && (handle_data.size() == 1)) {
     const ShapeAndType& list_shape_type = handle_data[0];
     if (list_shape_type.GetDataType() != element_dtype) {
-      OP_LOGE(op_name, "Trying to push to list with wrong element dtype."
+      OP_LOGE(op_name,
               "List has type [%d], but trying to push element with type [%d].",
               list_shape_type.GetDataType(), element_dtype);
       return GRAPH_FAILED;
@@ -229,7 +229,7 @@ IMPLEMT_INFERFUNC(TensorListPopBack, TensorListPopBackInfer) {
   if ((!shapes_and_types.empty()) && (handle_data.size() == 1)){
     const ShapeAndType& list_shape_type = handle_data[0];
     if (list_shape_type.GetDataType() != element_dtype) {
-      OP_LOGE(op_name, "Trying to read from list with wrong element dtype."
+      OP_LOGE(op_name,
               "List has type [%d], but trying to push element with type [%d].",
               list_shape_type.GetDataType(), element_dtype);
       return GRAPH_FAILED;
@@ -298,9 +298,13 @@ IMPLEMT_INFERFUNC(TensorListElementShape, TensorListElementShapeInfer) {
     output_desc.SetDataType(type);
   } else {
     const ShapeAndType& list_shape_type = handle_data[0];
-    std::vector<int64_t> dims;
-    dims.push_back(list_shape_type.GetShape().GetDimNum());
-    output_desc.SetShape(Shape(dims));
+    if (list_shape_type.GetShape().GetDims() == UNKNOWN_RANK) {
+      output_desc.SetShape(Shape(UNKNOWN_RANK));
+    } else {
+      std::vector<int64_t> dims;
+      dims.push_back(list_shape_type.GetShape().GetDimNum());
+      output_desc.SetShape(Shape(dims));
+    }
     output_desc.SetDataType(type);
   }
 
@@ -394,8 +398,8 @@ IMPLEMT_INFERFUNC(TensorListGetItem, TensorListGetItemInfer) {
     const ShapeAndType& list_shape_type = handle_data[0];
     element_shape = list_shape_type.GetShape();
     if (list_shape_type.GetDataType() != element_dtype) {
-      OP_LOGE(op_name, "Expected list with element dtype [%d],"
-              " but got list with element dtype [%d].",
+      OP_LOGE(op_name,
+              "Expected list with element dtype [%d], but got [%d].",
               element_dtype, list_shape_type.GetDataType());
       return GRAPH_FAILED;
     }

@@ -92,6 +92,13 @@ REGISTER_CUSTOM_OP("Barrier")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register IFFT op to GE
+REGISTER_CUSTOM_OP("IFFT")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("IFFT")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register BarrierClose op to GE
 REGISTER_CUSTOM_OP("BarrierClose")
     .FrameworkType(TENSORFLOW)
