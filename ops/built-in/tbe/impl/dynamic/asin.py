@@ -39,6 +39,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from impl.util import util_compute
+from impl.util.platform_adapter import register_operator
 
 
 NUM_ONE = 1.0
@@ -170,7 +171,7 @@ def asin_compute(x, y, kernel_name="asin"):
     return res_1
 
 
-@tbe_base.register_operator("Asin")
+@register_operator("Asin")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def asin(x, y, kernel_name="asin"):
     """

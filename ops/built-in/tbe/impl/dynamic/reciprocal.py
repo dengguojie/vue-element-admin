@@ -24,6 +24,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -63,7 +64,7 @@ def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
     return res
 
 
-@tbe_base.register_operator("Reciprocal")
+@register_operator("Reciprocal")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def reciprocal(input_x, output_y, kernel_name="reciprocal"):
     """

@@ -21,6 +21,7 @@ from te import platform as tbe_platform
 import te.lang.dynamic
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # max int32
 MAX_INT32 = 2 ** 31 - 1
@@ -260,7 +261,7 @@ def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iterat
             _one_newton()
 
 
-@te.op.register_operator("DropOutDoMask")
+@register_operator("DropOutDoMask")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,

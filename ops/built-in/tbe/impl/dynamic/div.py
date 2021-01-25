@@ -24,6 +24,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 def div_compute(input_x, input_y, output_z, kernel_name="div"):
@@ -73,7 +74,7 @@ def div_compute(input_x, input_y, output_z, kernel_name="div"):
 
 
 # pylint: disable=redefined-argument-from-local
-@tbe_base.register_operator("Div")
+@register_operator("Div")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def div(input_x, input_y, output_z, kernel_name="div"):

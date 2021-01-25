@@ -18,10 +18,11 @@ gather_d
 from . import gather_v2
 import te.lang.dynamic
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=invalid-name,unused-argument
-@te.op.register_operator("Gather")
+@register_operator("Gather")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def gather(x, indices, y, validate_indices=True, kernel_name="Gather"):

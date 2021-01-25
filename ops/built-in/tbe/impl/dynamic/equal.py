@@ -23,6 +23,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2 ** (-126)
@@ -107,7 +108,7 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     return res
 
 
-@tbe_base.register_operator("Equal")
+@register_operator("Equal")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def equal(input_x, input_y, output_z, kernel_name="equal"):

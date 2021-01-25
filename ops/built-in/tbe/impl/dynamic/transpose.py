@@ -24,6 +24,7 @@ from te.platform.cce_runtime import PIPELINES
 from te.platform import cce_params
 from te import tik
 from te import platform as tbe_platform
+from impl.util.platform_adapter import register_operator
 
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -1783,7 +1784,7 @@ class Transpose(object):
         return {"compile_info": te.op.get_compile_info()}
 
 
-@te.op.register_operator("Transpose")
+@register_operator("Transpose")
 def transpose(x, perm, y, kernel_name="transpose"):
     """
     do transpose by perm attribute

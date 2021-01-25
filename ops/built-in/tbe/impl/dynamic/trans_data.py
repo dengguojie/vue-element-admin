@@ -20,8 +20,9 @@ import te.lang.dynamic
 from te.utils import para_check
 from impl.dynamic.trans_data_rnn import trans_data_rnn
 from . import trans_data_negative_target_tc
+from impl.util.platform_adapter import register_operator
 
-@te.op.register_operator("TransData")
+@register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_data"):

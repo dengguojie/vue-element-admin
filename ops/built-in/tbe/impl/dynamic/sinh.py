@@ -25,6 +25,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 # define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
@@ -86,7 +87,7 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
     return res
 
 
-@tbe_base.register_operator("Sinh")
+@register_operator("Sinh")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sinh(input_data, output_data, kernel_name="sinh"):
     """

@@ -28,6 +28,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=too-many-locals,invalid-name
@@ -134,7 +135,7 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
     return result
 
 
-@tbe_base.register_operator("ReluGrad")
+@register_operator("ReluGrad")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def relu_grad(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """

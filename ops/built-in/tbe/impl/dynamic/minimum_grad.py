@@ -27,6 +27,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 def _compare_value_int32(data_x, data_y, shape_dz):
@@ -194,7 +195,7 @@ def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
     return res
 
 
-@tbe_base.register_operator("MinimumGrad")
+@register_operator("MinimumGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

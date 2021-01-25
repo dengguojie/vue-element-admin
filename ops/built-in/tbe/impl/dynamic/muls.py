@@ -23,6 +23,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 def muls_compute(x, scalar, kernel_name="muls"):
     """
@@ -45,7 +46,7 @@ def muls_compute(x, scalar, kernel_name="muls"):
     return res
 
 
-@tbe_base.register_operator("Muls")
+@register_operator("Muls")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def muls(x, y, value, kernel_name="muls"):

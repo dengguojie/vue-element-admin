@@ -22,6 +22,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # define a scalar , value = 0
 SCALAR_ZERO = 0
@@ -92,7 +93,7 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
     return res
 
 
-@tbe_base.register_operator("LeakyReluGrad")
+@register_operator("LeakyReluGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT), para_check.KERNEL_NAME)
 def leaky_relu_grad(g, x, y, negative_slope=0, kernel_name="leaky_relu_grad"):

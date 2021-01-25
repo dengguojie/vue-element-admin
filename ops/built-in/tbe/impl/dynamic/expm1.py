@@ -27,6 +27,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # define a scalar , value = -1
@@ -193,7 +194,7 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     return res
 
 
-@tbe_base.register_operator("Expm1")
+@register_operator("Expm1")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def expm1(input_x, output_y, kernel_name="expm1"):

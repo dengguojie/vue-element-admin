@@ -24,6 +24,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 # define a scalar, value = -1
 SCALAR_NEG_ONE = -1.0
@@ -282,7 +283,7 @@ def _newton_taylor_log1p(input_x, output_y):
     return output_y
 
 
-@tbe_base.register_operator("Log1p")
+@register_operator("Log1p")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def log1p(input_x, output_y, kernel_name="log1p"):
     """

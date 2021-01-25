@@ -28,6 +28,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
@@ -65,7 +66,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     return res
 
 
-@tbe_base.register_operator("MulNoNan")
+@register_operator("MulNoNan")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_OUTPUT, KERNEL_NAME)
 def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     """

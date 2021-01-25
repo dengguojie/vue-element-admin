@@ -24,6 +24,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=invalid-name,redefined-outer-name
@@ -410,7 +411,7 @@ def get_l1_paras(x):
 
 
 # pylint: disable=locally-disabled,no-member
-@tbe_base.register_operator("BNInferenceD")
+@register_operator("BNInferenceD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,

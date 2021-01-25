@@ -21,13 +21,15 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from impl.util import fusion_util
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 SIZE_SIXTEEN = 16
 
 # pylint: disable=too-many-locals,unused-variable,invalid-name
-@tbe_base.register_fusion_compute("Add")
+@register_operator_compute("Add", op_mode="dynamic", support_fusion=False)
 def add_fusion_compute(input_x, input_y, output_z, kernel_name="add"):
     """
     add_fusion_compute
@@ -82,7 +84,7 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
     return res
 
 
-@tbe_base.register_operator("Add")
+@register_operator("Add")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def add(input_x, input_y, output_z, kernel_name="add"):

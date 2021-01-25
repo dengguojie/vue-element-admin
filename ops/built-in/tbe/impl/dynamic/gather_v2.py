@@ -20,6 +20,7 @@ import te.lang.dynamic
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 PARAMS_SIZE = 2 ** 31 - 1
 INDICES_NUM = 2 ** 31 - 1
@@ -1789,7 +1790,7 @@ class GatherV2():
                                         })
 
 
-@te.op.register_operator("GatherV2")
+@register_operator("GatherV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def gather_v2(x_dict, indices_dict, axis_dict, y_dict, kernel_name="GatherV2"):

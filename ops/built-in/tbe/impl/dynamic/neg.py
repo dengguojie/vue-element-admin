@@ -25,6 +25,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 # define a scaler, value = -1
 SCALER_NEGATIVE_ONE = -1
@@ -68,7 +69,7 @@ def neg_compute(input_x, output_y, kernel_name="neg"):
     return res
 
 
-@tbe_base.register_operator("Neg")
+@register_operator("Neg")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def neg(input_x, output_y, kernel_name="neg"):
     """

@@ -27,6 +27,7 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import check_elewise_shape_range
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -67,7 +68,7 @@ def logical_and_compute(x1, x2, y, kernel_name="logical_and"):
     return res
 
 
-@tbe_base.register_operator("LogicalAnd")
+@register_operator("LogicalAnd")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def logical_and(x1, x2, y, kernel_name="logical_and"):
     """

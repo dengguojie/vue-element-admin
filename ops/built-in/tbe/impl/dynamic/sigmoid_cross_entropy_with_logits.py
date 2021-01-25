@@ -32,6 +32,7 @@ from te.utils.op_utils import check_op_params
 from te.utils.op_utils import broadcast_shapes
 from te.utils.op_utils import check_elewise_shape_range
 from topi import generic
+from impl.util.platform_adapter import register_operator
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -139,7 +140,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
     return loss
 
 
-@tbe_base.register_operator("SigmoidCrossEntropyWithLogits")
+@register_operator("SigmoidCrossEntropyWithLogits")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoid_cross_entropy_with_logits"):
     """

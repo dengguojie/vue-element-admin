@@ -28,6 +28,7 @@ from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -64,7 +65,7 @@ def abs_compute(x, y, kernel_name="abs"):
 
 
 # pylint: disable=redefined-builtin
-@tbe_base.register_operator("Abs")
+@register_operator("Abs")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def abs(x, y, kernel_name="abs"):
     """

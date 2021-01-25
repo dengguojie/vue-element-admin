@@ -27,13 +27,15 @@ from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
 from te.utils import para_check
 from impl.util import fusion_util
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 # const value
 CONST_ZERO = 0
 
 
 # pylint: disable=invalid-name,unused-argument,redefined-argument-from-local
-@tbe_base.register_fusion_compute("Relu")
+@register_operator_compute("Relu", op_mode="dynamic", support_fusion=False)
 def relu_fusion_compute(input_x, output_y, kernel_name="relu"):
     """
     relu_fusion_compute
@@ -86,7 +88,7 @@ def relu_compute(x, y, kernel_name="relu"):
     return data_res
 
 
-@tbe_base.register_operator("Relu")
+@register_operator("Relu")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def relu(x, y, kernel_name="relu"):
     """

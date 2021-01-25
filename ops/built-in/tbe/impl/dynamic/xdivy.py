@@ -24,6 +24,7 @@ from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
 import te.lang.base as tbe_base
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # define a scalar , value = 1
@@ -121,7 +122,7 @@ def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
     return res
 
 
-@tbe_base.register_operator("Xdivy")
+@register_operator("Xdivy")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):

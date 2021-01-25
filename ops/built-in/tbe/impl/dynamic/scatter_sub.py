@@ -20,6 +20,7 @@ from te import platform as tbe_platform
 import te.lang.dynamic
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # max int64 value
 MAX_INT64_VALUE = 2**64 - 1
@@ -920,7 +921,7 @@ class ScatterSub():
                                         "indices_size": self.indices_dtype_bytes_size})
 
 # pylint: disable=unused-argument
-@te.op.register_operator("ScatterSub")
+@register_operator("ScatterSub")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def scatter_sub(var, indices, updates, var_out, use_locking=False, kernel_name="scatter_sub"):

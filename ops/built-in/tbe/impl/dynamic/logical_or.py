@@ -22,6 +22,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,invalid-name,redefined-argument-from-local
@@ -59,7 +60,7 @@ def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     return res
 
 
-@tbe_base.register_operator("LogicalOr")
+@register_operator("LogicalOr")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def logical_or(x1, x2, y, kernel_name="logical_or"):

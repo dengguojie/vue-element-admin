@@ -39,6 +39,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import functools
+from impl.util.platform_adapter import register_operator
 
 # const value
 CONST_HALF = 0.5
@@ -106,7 +107,7 @@ def _compute(data_input, shape):
     return data_res
 
 
-@tbe_base.register_operator("Atanh")
+@register_operator("Atanh")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def atanh(x, y, kernel_name="atanh"):
     """

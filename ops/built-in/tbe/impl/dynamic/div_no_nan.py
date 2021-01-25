@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 
 def div_no_nan_compute(input_x, input_y, ):
@@ -95,7 +96,7 @@ def div_no_nan_compute(input_x, input_y, ):
     return res
 
 
-@tbe_base.register_operator("DivNoNan")
+@register_operator("DivNoNan")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):

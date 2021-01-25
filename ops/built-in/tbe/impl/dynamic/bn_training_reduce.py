@@ -22,6 +22,8 @@ from te.platform import log
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util import fusion_util
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,invalid-name
@@ -66,7 +68,7 @@ def bn_training_reduce_compute(x, sum, square_sum,
     return res
 
 
-@te.op.register_fusion_compute("BnTrainingReduce")
+@register_operator_compute("BnTrainingReduce", op_mode="dynamic", support_fusion=False)
 def bn_training_reduce_fusion_compute(x, sum, square_sum,
                                       kernel_name="bn_training_reduce"):
     """
@@ -102,7 +104,7 @@ def bn_training_reduce_fusion_compute(x, sum, square_sum,
     return {"op_placeholder": [data_input], "op_res": list(res)}
 
 
-@te.op.register_operator("BnTrainingReduce")
+@register_operator("BnTrainingReduce")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def bn_training_reduce(x, sum, square_sum,

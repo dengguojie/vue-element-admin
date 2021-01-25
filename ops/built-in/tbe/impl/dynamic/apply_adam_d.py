@@ -22,6 +22,7 @@ from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=invalid-name,too-many-arguments,too-many-locals
@@ -274,7 +275,7 @@ def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, 
     return res
 
 
-@tbe_base.register_operator("ApplyAdamD")
+@register_operator("ApplyAdamD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

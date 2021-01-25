@@ -42,6 +42,7 @@ from te.utils import shape_util
 from impl.util import util_compute
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 CONST_POS_ONE = 1.0
 CONST_NA_ONE = -1.0
@@ -249,7 +250,7 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     return res
 
 
-@tbe_base.register_operator("Atan2")
+@register_operator("Atan2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, 
                             para_check.REQUIRED_OUTPUT,

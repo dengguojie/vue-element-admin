@@ -22,6 +22,7 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,redefined-argument-from-local
@@ -48,7 +49,7 @@ def square_compute(input_x, output_y, kernel_name="square"):
     return res
 
 
-@tbe_base.register_operator("Square")
+@register_operator("Square")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def square(input_x, output, kernel_name="square"):
     """

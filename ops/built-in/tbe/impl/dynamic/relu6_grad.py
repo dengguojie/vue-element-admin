@@ -32,6 +32,7 @@ from te.utils.op_utils import broadcast_shapes
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 from topi import generic
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=too-many-arguments,unused-argument
@@ -92,7 +93,7 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
 
 
 # pylint: disable=too-many-locals
-@tbe_base.register_operator("Relu6Grad")
+@register_operator("Relu6Grad")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """

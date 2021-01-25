@@ -40,6 +40,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 
 
 CONST_NEG_ONE = -1.0
@@ -80,7 +81,7 @@ def acosh_compute(input_data, output_res, kernel_name="acosh"):
     return res
 
 
-@tbe_base.register_operator("Acosh")
+@register_operator("Acosh")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def acosh(input_data, output_res, kernel_name="acosh"):
     """

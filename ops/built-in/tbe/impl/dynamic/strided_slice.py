@@ -24,6 +24,7 @@ from te import tik
 
 from impl import common_util
 from impl import constant_util as constant
+from impl.util.platform_adapter import register_operator
 
 MAX_SIZE = 2 ** 31 - 1
 
@@ -364,7 +365,7 @@ class StridedSlice:
 
 # pylint: disable=locally-disabled,too-many-arguments,
 # pylint: disable=unused-argument,too-many-locals
-@te.op.register_operator("StridedSlice")
+@register_operator("StridedSlice")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,

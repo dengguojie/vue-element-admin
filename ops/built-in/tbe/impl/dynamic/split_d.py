@@ -23,6 +23,7 @@ from te.utils.error_manager import error_manager_vector
 
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from impl.util.platform_adapter import register_operator
 
 # max int64
 MAX_INT64 = 2**64 - 1
@@ -547,7 +548,7 @@ class SplitD:
 
         return self.tik_instance
 
-@te.op.register_operator("SplitD")
+@register_operator("SplitD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def split_d(x, y, split_dim, num_split, kernel_name="split_d"):

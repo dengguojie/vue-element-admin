@@ -26,6 +26,7 @@ from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
 import te.lang.base as tbe_base
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -55,7 +56,7 @@ def floor_compute(input_x, output_y, kernel_name="floor"):
     return res
 
 
-@tbe_base.register_operator("Floor")
+@register_operator("Floor")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
                             para_check.KERNEL_NAME)
 def floor(input_x, output_y, kernel_name="floor"):

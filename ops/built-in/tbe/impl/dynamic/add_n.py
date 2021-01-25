@@ -23,6 +23,7 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements
@@ -62,7 +63,7 @@ def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     return res
 
 
-@tbe_base.register_operator("AddN")
+@register_operator("AddN")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
 def add_n(inputs, output, tensor_num, kernel_name="add_n"):

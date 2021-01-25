@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from te.lang.base.operation import add_compile_info
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=too-many-branches,too-many-arguments,too-many-locals
@@ -109,7 +110,7 @@ def reduce_mean_d_compute(x,
     return res
 
 
-@tbe_base.register_operator("ReduceMeanD")
+@register_operator("ReduceMeanD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,

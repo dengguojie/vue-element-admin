@@ -23,6 +23,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -97,7 +98,7 @@ def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     return res
 
 
-@tbe_base.register_operator("FloorMod")
+@register_operator("FloorMod")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def floor_mod(x1, x2, y, kernel_name="floor_mod"):

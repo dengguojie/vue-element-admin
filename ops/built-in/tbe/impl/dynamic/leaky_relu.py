@@ -27,6 +27,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils.error_manager import error_manager_vector
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
@@ -97,7 +98,7 @@ def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
 
     return res
 
-@tbe_base.register_operator("LeakyRelu")
+@register_operator("LeakyRelu")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):

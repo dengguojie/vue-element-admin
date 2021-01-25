@@ -26,6 +26,7 @@ from te.utils import para_check
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=too-many-locals,redefined-argument-from-local
@@ -84,7 +85,7 @@ def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
     return res
 
 
-@tbe_base.register_operator("Exp")
+@register_operator("Exp")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):

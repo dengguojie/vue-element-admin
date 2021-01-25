@@ -25,6 +25,7 @@ from te.utils.error_manager import error_manager_vector
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 
 
 
@@ -286,7 +287,7 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias")
 
 
 # pylint: disable=too-many-locals
-@tbe_base.register_operator("Bias")
+@register_operator("Bias")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,

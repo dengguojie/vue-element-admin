@@ -19,6 +19,7 @@ from te import tik
 from te import platform
 from te.utils import para_check
 import te.lang.dynamic
+from impl.util.platform_adapter import register_operator
 
 # max_int32
 MAX_INT32 = 2 ** 31 - 1
@@ -323,7 +324,7 @@ class DynamicAtomicAddrClean():
 
 
 # pylint: disable=unused-argument
-@te.op.register_operator("DynamicAtomicAddrClean")
+@register_operator("DynamicAtomicAddrClean")
 @para_check.check_op_params(para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):
     """

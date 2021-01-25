@@ -20,6 +20,7 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # pylint: disable=too-many-lines
 # UB size in byte
@@ -1261,7 +1262,7 @@ def transpose_compute(tik_inst, tensor_list, pos_perm):
             fp32_reverse_transpose(tik_inst, block_idx, trans_params)
 
 
-@te.op.register_operator("TransposeD")
+@register_operator("TransposeD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
 def transpose_d(x, y, perm, kernel_name="transpose_d"):

@@ -33,6 +33,7 @@ from impl.util.util_tik_comm_func import ub2gm
 from impl.util.util_tik_comm_func import ceil_div
 from impl import common_util
 from impl import constant_util as constant
+from impl.util.platform_adapter import register_operator
 
 MAX_SIZE = 2 ** 31 - 1
 VNCHW_BLOCK_SIZE = 512
@@ -1162,7 +1163,7 @@ def __check_params(input_values, axis):
 
 
 # pylint: disable=unused-argument
-@te.op.register_operator("ConcatV2D")
+@register_operator("ConcatV2D")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):

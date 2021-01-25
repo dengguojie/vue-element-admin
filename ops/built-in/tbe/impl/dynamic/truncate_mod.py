@@ -23,6 +23,7 @@ import te.lang.cce as tbe
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -70,7 +71,7 @@ def truncate_mod_compute(input_x, input_y, output_z,
     return res
 
 
-@tbe_base.register_operator("TruncateMod")
+@register_operator("TruncateMod")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def truncate_mod(input_x, input_y, output_z, kernel_name="truncate_mod"):

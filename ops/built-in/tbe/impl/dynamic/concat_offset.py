@@ -19,6 +19,7 @@ import te.lang.dynamic
 import te.lang.base as tbe_base
 from te import tik
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # Tiling Arg size for int64
@@ -143,7 +144,7 @@ class ConcatOffsetCompute(object):
         te.op.add_compile_info("vars", {"core_num": 1})
 
 
-@tbe_base.register_operator("ConcatOffset")
+@register_operator("ConcatOffset")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_INPUT,
                             para_check.DYNAMIC_OUTPUT, para_check.KERNEL_NAME)
 def concat_offset(concat_dim, x, y, kernel_name="concat_offset"):

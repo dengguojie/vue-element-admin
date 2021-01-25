@@ -26,6 +26,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000  # Limit of one dim
@@ -294,7 +295,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
         return _int32_process(data, dst_type)
 
 
-@tbe_base.register_operator("Cast")
+@register_operator("Cast")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def cast(input_x, output_y, dst_type, kernel_name="cast"):

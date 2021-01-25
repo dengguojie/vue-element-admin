@@ -22,6 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from te.lang.base.operation import add_compile_info
+from impl.util.platform_adapter import register_operator
 
 NONETYPE = type(None)
 
@@ -66,7 +67,7 @@ def reduce_sum_d_compute(x,
 
 
 # 'pylint: disable=too-many-locals,invalid-name
-@tbe_base.register_operator("ReduceSumD")
+@register_operator("ReduceSumD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):

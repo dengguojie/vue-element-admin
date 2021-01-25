@@ -26,6 +26,8 @@ from te import tvm
 from te.utils.error_manager import error_manager_vector
 from te.utils.error_manager import error_manager_util
 from impl.util import fusion_util
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 # General limitation of the size for input shape: 2**32 - 1
 SHAPE_SIZE_LIMIT = 2147483648
@@ -295,7 +297,7 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     return {"op_placeholder": tensor_list, "op_res": [op_res]}
 
 
-@tbe_base.register_fusion_compute("MatMul")
+@register_operator_compute("MatMul", op_mode="dynamic", support_fusion=False)
 def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
                          trans_a=False, trans_b=False, offset_x=0,
                          kernel_name="matmul"):
@@ -346,8 +348,8 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
     return {"op_placeholder": tensor_list, "op_res": [op_res]}
 
 
-@tbe_base.register_operator("MatMul")
-@tbe_base.register_operator("MatMulV2")
+@register_operator("MatMul")
+@register_operator("MatMulV2")
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
     para_check.OPTION_INPUT, para_check.OPTION_INPUT,

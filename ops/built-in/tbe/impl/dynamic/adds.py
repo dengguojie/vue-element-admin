@@ -23,6 +23,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
@@ -47,7 +48,7 @@ def adds_compute(x, scalar, kernel_name="adds"):
     return res
 
 
-@tbe_base.register_operator("Adds")
+@register_operator("Adds")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def adds(x, y, value, kernel_name="adds"):

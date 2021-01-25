@@ -29,6 +29,7 @@ from te.utils.op_utils import check_op_params
 from te.utils.op_utils import check_elewise_shape_range
 from te.utils.op_utils import REQUIRED_ATTR_STR
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=too-many-locals,unused-argument
@@ -83,7 +84,7 @@ def bias_add_compute(x, bias, y, data_format, kernel_name="bias_add"):
     return res
 
 
-@tbe_base.register_operator("BiasAdd")
+@register_operator("BiasAdd")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
                  REQUIRED_ATTR_STR, KERNEL_NAME)
 def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):

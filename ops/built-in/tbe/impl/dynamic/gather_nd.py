@@ -19,6 +19,7 @@ import te.lang.dynamic
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # data type of int32
 INT32 = "int32"
@@ -1391,7 +1392,7 @@ class GatherNd():
                                         })
 
 
-@te.op.register_operator("GatherNd")
+@register_operator("GatherNd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def gather_nd(x_dict, indices_dict, y_dict, kernel_name="GatherNd"):

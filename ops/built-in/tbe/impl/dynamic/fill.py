@@ -21,6 +21,7 @@ from te import tvm
 import te.lang.base as tbe_base
 from te.utils import shape_util
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
@@ -49,7 +50,7 @@ def fill_compute(dims, value, dtype, kernel_name="fill"):
     return res
 
 
-@tbe_base.register_operator("Fill")
+@register_operator("Fill")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def fill(dims, value, y, kernel_name="fill"):

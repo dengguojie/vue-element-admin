@@ -26,6 +26,7 @@ from te import tvm
 from te.utils.error_manager import error_manager_vector
 from te.utils.shape_util import refine_shapes_for_broadcast
 from te.utils.shape_util import broadcast_shapes
+from impl.util.platform_adapter import register_operator
 
 # define a VALUE, value = 1
 VALUE_ONE = 1
@@ -91,7 +92,7 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     return res
 
 
-@tbe_base.register_operator("Select")
+@register_operator("Select")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def select(condition, x1, x2, y, kernel_name="select"):

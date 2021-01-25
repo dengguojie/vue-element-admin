@@ -42,6 +42,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 
 CONST_ONE = 1
@@ -85,7 +86,7 @@ def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     return res
 
 
-@tbe_base.register_operator("AtanGrad")
+@register_operator("AtanGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def atan_grad(y, dy, z, kernel_name="atan_grad"):

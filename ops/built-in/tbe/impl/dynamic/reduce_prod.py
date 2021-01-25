@@ -28,6 +28,7 @@ from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import OPTION_ATTR_BOOL
 from te.utils.op_utils import KERNEL_NAME
+from impl.util.platform_adapter import register_operator
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -63,7 +64,7 @@ def reduce_prod_compute(x, axes, y, keepdims=None, kernel_name="reduce_prod"):
 
 
 # 'pylint: disable=too-many-locals,invalid-name
-@te.op.register_operator("ReduceProd")
+@register_operator("ReduceProd")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
                  OPTION_ATTR_BOOL, KERNEL_NAME)
 def reduce_prod(x, axes, y, keepdims=False, kernel_name="reduce_prod"):

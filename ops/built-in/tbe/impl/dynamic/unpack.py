@@ -26,6 +26,7 @@ import te.lang.base as tbe_base
 from te.platform import cce_build
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
 MIN_RIGHT_DIM = 8
@@ -525,7 +526,7 @@ class Unpack:
         self._build_unpack_cce()
 
 
-@tbe_base.register_operator("Unpack")
+@register_operator("Unpack")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def unpack(input_x, output_y, num=None, axis=0, kernel_name="unpack"):

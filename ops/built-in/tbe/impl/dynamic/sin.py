@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 
 # define a string name of "float16"
@@ -133,7 +134,7 @@ def sin_compute(x, y, kernel_name="sin"):
     return res
 
 
-@tbe_base.register_operator("Sin")
+@register_operator("Sin")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sin(x, y, kernel_name="sin"):
     """

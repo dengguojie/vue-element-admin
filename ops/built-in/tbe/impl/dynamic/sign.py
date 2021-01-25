@@ -30,6 +30,7 @@ from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
 import te.platform as tbe_platform
 from topi import generic
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,redefined-argument-from-local
@@ -63,7 +64,7 @@ def sign_compute(input_x, output_y, kernel_name="sign"):
     return res
 
 
-@tbe_base.register_operator("Sign")
+@register_operator("Sign")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def sign(input_x, output_y, kernel_name="sign"):
     """

@@ -26,6 +26,7 @@ from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # General limitation of the reduce size for input shape: 2**30
 SHAPE_LIMIT = 1 << 30
@@ -61,7 +62,7 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
 
 
 # pylint: disable=redefined-argument-from-local
-@tbe_base.register_operator("SqrtGrad")
+@register_operator("SqrtGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):

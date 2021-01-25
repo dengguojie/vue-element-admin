@@ -20,6 +20,7 @@ from te import platform as tbe_platform
 import te.lang.dynamic
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # max int32
@@ -139,7 +140,7 @@ class Assign:
         te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
-@te.op.register_operator("Assign")
+@register_operator("Assign")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def assign(ref, value, output, kernel_name="assign"):

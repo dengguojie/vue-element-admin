@@ -23,6 +23,7 @@ from te.utils import shape_util
 import te.lang.base as tbe_base
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -51,7 +52,7 @@ def ceil_compute(input_x, output_x, kernel_name="ceil"):
     return res
 
 
-@tbe_base.register_operator("Ceil")
+@register_operator("Ceil")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def ceil(input_x, output_x, kernel_name="ceil"):
     """

@@ -19,11 +19,12 @@ from __future__ import absolute_import
 import te.lang.dynamic
 from te.utils import para_check
 from .strided_slice import StridedSlice
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
 # pylint: disable=unused-argument,too-many-locals,redefined-builtin
-@te.op.register_operator("Slice")
+@register_operator("Slice")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def slice(x, offsets, size, y, kernel_name="slice"):

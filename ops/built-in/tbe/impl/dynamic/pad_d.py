@@ -21,6 +21,7 @@ import te.lang.dynamic
 from impl.dynamic import pad_align
 from impl.dynamic import pad_not_align
 from impl.dynamic import pad_common
+from impl.util.platform_adapter import register_operator
 
 # maximum of gm
 MAX_INT32 = 2**31 - 1
@@ -65,7 +66,7 @@ def pad_compute(obj):
     return {"compile_info": te.op.get_compile_info()}
 
 
-@te.op.register_operator("PadD")
+@register_operator("PadD")
 def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     """ calculating pad tensor by paddings parameters
 

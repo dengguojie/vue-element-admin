@@ -21,6 +21,7 @@ from te import tik
 from impl.dynamic import pad_align
 from impl.dynamic import pad_not_align
 from impl.dynamic import pad_common
+from impl.util.platform_adapter import register_operator
 
 # number of cores
 INT32_BLOCK = 8
@@ -101,7 +102,7 @@ def grad_compute(obj, mask_list):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-@te.op.register_operator("StridedSliceGrad")
+@register_operator("StridedSliceGrad")
 def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
                        end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                        kernel_name="strided_slice_grad"):

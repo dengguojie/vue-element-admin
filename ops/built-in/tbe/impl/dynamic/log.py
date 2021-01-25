@@ -32,6 +32,7 @@ from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
 from te.utils.op_utils import OPTION_ATTR_FLOAT
 from topi import generic
+from impl.util.platform_adapter import register_operator
 
 
 def _isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
@@ -113,7 +114,7 @@ def log_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
     return x_log
 
 
-@tbe_base.register_operator("Log")
+@register_operator("Log")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_ATTR_FLOAT,
                  OPTION_ATTR_FLOAT, OPTION_ATTR_FLOAT, KERNEL_NAME)
 def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):

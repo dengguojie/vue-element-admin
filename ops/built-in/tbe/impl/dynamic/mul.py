@@ -22,6 +22,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local
@@ -56,7 +57,7 @@ def mul_compute(input1, input2, output, kernel_name="mul"):
     return res
 
 
-@tbe_base.register_operator("Mul")
+@register_operator("Mul")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def mul(input1, input2, output, kernel_name="mul"):

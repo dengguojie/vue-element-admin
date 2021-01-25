@@ -25,6 +25,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # shape size limit for aicore is 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -69,7 +70,7 @@ def tanh_grad_compute(y, dy, z, kernel_name="tanh_grad"):
     return res
 
 
-@tbe_base.register_operator("TanhGrad")
+@register_operator("TanhGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def tanh_grad(y, dy, z, kernel_name="tanh_grad"):

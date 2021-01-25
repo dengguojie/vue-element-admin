@@ -40,6 +40,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 
 # scalar in asin_grad and Newton's equation
 NUM_MINUS_ONE = -1
@@ -85,7 +86,7 @@ def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     return res
 
 
-@tbe_base.register_operator("AsinGrad")
+@register_operator("AsinGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def asin_grad(y, dy, z, kernel_name="asin_grad"):

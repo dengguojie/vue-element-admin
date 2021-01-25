@@ -20,6 +20,7 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 # max int32
 MAX_INT32 = 2**31 - 1
@@ -826,7 +827,7 @@ class MaxPool:
         return self.tik_instance
 
 
-@te.op.register_operator("MaxPool")
+@register_operator("MaxPool")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)

@@ -28,6 +28,7 @@ from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from te.utils.error_manager import error_manager_vector as error_manager
+from impl.util.platform_adapter import register_operator
 
 # C0 length except int8 and uint8
 C0_16 = 16
@@ -627,7 +628,7 @@ class TransData:
 
 
 
-@te.op.register_operator("TransData")
+@register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)

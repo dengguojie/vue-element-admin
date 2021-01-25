@@ -23,6 +23,7 @@ from te import tvm
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 
 
 # define a scalar, value = -1
@@ -302,7 +303,7 @@ def _newton_taylor_xlogy(input_x, input_y, output_z):
     return output_z
 
 
-@tbe_base.register_operator("Xlogy")
+@register_operator("Xlogy")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def xlogy(input_x, input_y, output_z, kernel_name="xlogy"):

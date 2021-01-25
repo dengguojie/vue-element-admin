@@ -22,6 +22,7 @@ from te import platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from . import unsorted_segment_sum_no_atomic
+from impl.util.platform_adapter import register_operator
 
 # fp32 select key
 SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN = 1
@@ -4432,7 +4433,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                     vadd_mask)
 
 
-@te.op.register_operator("UnsortedSegmentSum")
+@register_operator("UnsortedSegmentSum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

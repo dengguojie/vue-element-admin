@@ -19,10 +19,11 @@ topk_v2
 import te.lang.base as tbe_base
 from te.utils import para_check
 from impl.dynamic.top_k_d import top_k_d
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=redefined-builtin,too-many-arguments
-@tbe_base.register_operator("TopKV2D")
+@register_operator("TopKV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

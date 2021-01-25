@@ -23,6 +23,7 @@ from te.utils import shape_util
 from te import tvm
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 # define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
@@ -82,7 +83,7 @@ def reciprocal_grad_compute(input_y, input_dy, output_data,
     return res
 
 
-@tbe_base.register_operator("ReciprocalGrad")
+@register_operator("ReciprocalGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,

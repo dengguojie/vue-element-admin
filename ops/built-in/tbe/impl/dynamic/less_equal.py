@@ -21,6 +21,7 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.platform_adapter import register_operator
 
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
@@ -108,7 +109,7 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
     return res
 
 
-@tbe_base.register_operator("LessEqual")
+@register_operator("LessEqual")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def less_equal(input_x, input_y, output_z, kernel_name="less_equal"):

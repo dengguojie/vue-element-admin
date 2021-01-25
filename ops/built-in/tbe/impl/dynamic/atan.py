@@ -41,6 +41,7 @@ import functools
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 
 
 CONST_POS_ONE = 1.0
@@ -154,7 +155,7 @@ def atan_compute(x, y, kernel_name="atan"):
     return res
 
 
-@tbe_base.register_operator("Atan")
+@register_operator("Atan")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def atan(x, y, kernel_name="atan"):
     """

@@ -21,6 +21,7 @@ from te import platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 import te.lang.dynamic
+from impl.util.platform_adapter import register_operator
 
 DTYPE_FP32 = "float32"
 DTYPE_INT32 = "int32"
@@ -709,7 +710,7 @@ def traversal_idx(tik_instance,
                            0, 0)
 
 
-@te.op.register_operator("SparseApplyProximalAdagradD")
+@register_operator("SparseApplyProximalAdagradD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

@@ -26,6 +26,7 @@ from te.lang.base.shape_classifier import Mode
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 # General limitation of the reduce size for input shape: 2**30
 SHAPE_SIZE_LIMIT = 2 ** 30
@@ -78,7 +79,7 @@ def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     return res
 
 
-@tbe_base.register_operator("SigmoidGrad")
+@register_operator("SigmoidGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def sigmoid_grad(x,

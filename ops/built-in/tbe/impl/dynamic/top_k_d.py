@@ -22,6 +22,7 @@ from enum import unique
 import te.lang.base as tbe_base
 from te.utils import para_check
 from te import tik
+from impl.util.platform_adapter import register_operator
 
 FP16_MINIMUM = -65504
 MAX_INT32 = 2**31 - 1
@@ -1354,7 +1355,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
 
 
 # pylint: disable=too-many-arguments,too-many-locals
-@tbe_base.register_operator("TopKD")
+@register_operator("TopKD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

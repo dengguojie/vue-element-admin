@@ -24,6 +24,8 @@ from te.lang.base import operation
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util import fusion_util
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=redefined-builtin
@@ -153,7 +155,7 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     return res
 
 
-@te.op.register_fusion_compute("BnTrainingUpdate")
+@register_operator_compute("BnTrainingUpdate", op_mode="dynamic", support_fusion=False)
 def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
                                          y, batch_mean, batch_variance,
                                          reserve_1, reserve_2, epsilon,
@@ -219,7 +221,7 @@ def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
             "op_res": list(res)}
 
 
-@te.op.register_operator("BnTrainingUpdate")
+@register_operator("BnTrainingUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

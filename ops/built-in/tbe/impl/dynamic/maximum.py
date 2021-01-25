@@ -20,6 +20,7 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.platform_adapter import register_operator
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -61,7 +62,7 @@ def maximum_compute(x1, x2, y, kernel_name="maximum"):
     return res
 
 
-@tbe_base.register_operator("Maximum")
+@register_operator("Maximum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def maximum(x1, x2, y, kernel_name="maximum"):

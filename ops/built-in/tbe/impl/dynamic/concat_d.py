@@ -19,9 +19,10 @@ concat
 import te.lang.dynamic
 from te.utils import para_check
 from impl.dynamic.concat_v2_d import concat_v2_d
+from impl.util.platform_adapter import register_operator
 
 
-@te.op.register_operator("ConcatD")
+@register_operator("ConcatD")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
 def concat_d(input_values, output_data, concat_dim, kernel_name="concat"):

@@ -29,6 +29,7 @@ from te.utils.op_utils import variable_shape
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from topi import generic
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -107,7 +108,7 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
     return res
 
 
-@tbe_base.register_operator("Tanh")
+@register_operator("Tanh")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def tanh(input_x, output_y, kernel_name="tanh"):
     """

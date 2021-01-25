@@ -24,6 +24,7 @@ import te.lang.base as tbe_base
 from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -59,7 +60,7 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     return result
 
 
-@tbe_base.register_operator("Sqrt")
+@register_operator("Sqrt")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sqrt(input_x, output_y, kernel_name="sqrt"):
     """

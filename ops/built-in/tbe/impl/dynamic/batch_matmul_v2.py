@@ -19,8 +19,10 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from impl.dynamic.batch_matmul import batch_matmul
 from impl.dynamic.batch_matmul import batch_matmul_fuse_compute
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
-@tbe_base.register_fusion_compute("BatchMatMul")
+@register_operator_compute("BatchMatMul", op_mode="dynamic", support_fusion=False)
 def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias, output_z,
                          trans_a=False, trans_b=False,
                          kernel_name="matmul"):
@@ -49,7 +51,7 @@ def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias, output_z,
     return batch_matmul_fuse_compute(input_x1, input_x2, bias, output_z, trans_a, trans_b, kernel_name)
 
 
-@tbe_base.register_operator("BatchMatMulV2")
+@register_operator("BatchMatMulV2")
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
     para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,

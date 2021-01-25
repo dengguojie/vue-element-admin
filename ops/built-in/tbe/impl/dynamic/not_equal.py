@@ -27,6 +27,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 import te.lang.cce as tbe
+from impl.util.platform_adapter import register_operator
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2 ** (-126)
@@ -99,7 +100,7 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     return res
 
 
-@tbe_base.register_operator("NotEqual")
+@register_operator("NotEqual")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,

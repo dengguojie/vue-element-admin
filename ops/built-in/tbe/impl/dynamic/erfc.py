@@ -27,6 +27,7 @@ from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 # define a scaler, value = 1
 SCALER_ONE = 1
 # define a scaler, value = -1
@@ -119,7 +120,7 @@ def erfc_compute(input_x, output_y, kernel_name="erfc"):
     return erfc_result
 
 
-@tbe_base.register_operator("Erfc")
+@register_operator("Erfc")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def erfc(input_x, output_y, kernel_name="erfc"):

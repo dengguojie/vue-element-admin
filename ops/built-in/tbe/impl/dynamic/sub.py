@@ -27,6 +27,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -63,7 +64,7 @@ def sub_compute(input_x, input_y, output_z, kernel_name="sub"):
     return res
 
 
-@tbe_base.register_operator("Sub")
+@register_operator("Sub")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def sub(input_x, input_y, output_z, kernel_name="sub"):

@@ -27,6 +27,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,too-many-locals
@@ -253,7 +254,7 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
 
 
 # pylint:disable=redefined-argument-from-local
-@tbe_base.register_operator("Power")
+@register_operator("Power")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def power(input_x, output_y, power=1.0, scale=1.0,

@@ -25,6 +25,7 @@ import te.lang.base as tbe_base
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 # define a string name of "float16"
 FLOAT_16 = "float16"
@@ -129,7 +130,7 @@ def tan_compute(x, y, kernel_name="tan"):
     return res
 
 
-@tbe_base.register_operator("Tan")
+@register_operator("Tan")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME

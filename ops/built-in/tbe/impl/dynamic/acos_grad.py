@@ -44,6 +44,7 @@ from te.utils.error_manager import error_manager_vector
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
 import te.lang.base as tbe_base
+from impl.util.platform_adapter import register_operator
 
 
 # newton eqation is x1 = x0(3-a*(x0^2))/2
@@ -87,7 +88,7 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     return res
 
 
-@tbe_base.register_operator("AcosGrad")
+@register_operator("AcosGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def acos_grad(y, dy, z, kernel_name="acos_grad"):

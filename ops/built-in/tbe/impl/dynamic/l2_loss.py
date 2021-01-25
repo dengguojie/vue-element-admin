@@ -28,6 +28,7 @@ from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import KERNEL_NAME
 from te.lang.base.operation import add_compile_info
+from impl.util.platform_adapter import register_operator
 
 NONETYPE = type(None)
 
@@ -63,7 +64,7 @@ def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
 
 
 # 'pylint: disable=too-many-locals,invalid-name
-@te.op.register_operator("L2Loss")
+@register_operator("L2Loss")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
                  KERNEL_NAME)
 def l2_loss(x, y, kernel_name="l2_loss"):

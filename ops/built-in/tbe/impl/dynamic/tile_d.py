@@ -20,6 +20,7 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -58,7 +59,7 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
 
 
 # pylint: disable=too-many-locals
-@tbe_base.register_operator("TileD")
+@register_operator("TileD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
 def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):

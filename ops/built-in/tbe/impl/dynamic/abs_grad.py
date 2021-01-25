@@ -45,6 +45,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 SHAPE_SIZE_LIMIT = 2147483648
 
@@ -83,7 +84,7 @@ def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
 
 
 # pylint: disable=invalid-name
-@tbe_base.register_operator("AbsGrad")
+@register_operator("AbsGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def abs_grad(y, dy, z, kernel_name="abs_grad"):

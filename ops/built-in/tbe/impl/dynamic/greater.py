@@ -27,6 +27,7 @@ from te.utils.op_utils import check_elewise_shape_range
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # min float32 value
@@ -138,7 +139,7 @@ def greater_compute(x, y, z, kernel_name="greater"):
 
 
 # pylint: disable=invalid-name
-@tbe_base.register_operator("Greater")
+@register_operator("Greater")
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def greater(x, y, z, kernel_name="greater"):
     """

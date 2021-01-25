@@ -20,6 +20,7 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # data type of int32
@@ -937,7 +938,7 @@ class SparseApplyFtrl():
                                         })
 
 
-@te.op.register_operator("SparseApplyFtrlD")
+@register_operator("SparseApplyFtrlD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

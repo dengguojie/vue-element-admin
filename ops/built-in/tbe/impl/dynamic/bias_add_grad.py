@@ -35,6 +35,7 @@ from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 from topi.cce import util as cce_util
 from impl.util import util_common
+from impl.util.platform_adapter import register_operator
 
 REDUCE_LIST = None
 
@@ -136,7 +137,7 @@ def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
     return result
 
 
-@tbe_base.register_operator("BiasAddGrad")
+@register_operator("BiasAddGrad")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, KERNEL_NAME)
 def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     """

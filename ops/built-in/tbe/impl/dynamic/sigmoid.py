@@ -25,6 +25,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -71,7 +72,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
     return tmp_rec
 
 
-@tbe_base.register_operator("Sigmoid")
+@register_operator("Sigmoid")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sigmoid(x, y, kernel_name="sigmoid"):
     """

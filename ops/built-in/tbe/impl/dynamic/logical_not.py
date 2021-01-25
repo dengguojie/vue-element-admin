@@ -27,6 +27,7 @@ from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils import shape_util
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,invalid-name,unused-argument
@@ -61,7 +62,7 @@ def logical_not_compute(x, y, kernel_name="logical_not"):
     return res_y
 
 
-@tbe_base.register_operator("LogicalNot")
+@register_operator("LogicalNot")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def logical_not(x, y, kernel_name="logical_not"):
     """

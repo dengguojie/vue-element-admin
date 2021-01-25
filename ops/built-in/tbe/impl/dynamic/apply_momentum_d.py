@@ -23,6 +23,7 @@ import te.lang.base as tbe_base
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
@@ -107,7 +108,7 @@ def apply_momentum_compute_d(var,
     return res
 
 
-@tbe_base.register_operator("ApplyMomentumD")
+@register_operator("ApplyMomentumD")
 def apply_momentum_d(var,
                      accum,
                      lr,

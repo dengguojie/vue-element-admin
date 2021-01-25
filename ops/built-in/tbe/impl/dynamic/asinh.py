@@ -44,6 +44,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from functools import reduce as reduce_ins
+from impl.util.platform_adapter import register_operator
 
 
 # shape limit
@@ -402,7 +403,7 @@ def _log_compute(data_x, res, shape):
     return res
 
 
-@tbe_base.register_operator("Asinh")
+@register_operator("Asinh")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def asinh(input_x, output_y, kernel_name="asinh"):
     """

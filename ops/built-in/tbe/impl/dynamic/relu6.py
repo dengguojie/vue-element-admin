@@ -29,6 +29,7 @@ from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=unused-argument,too-many-locals
@@ -55,7 +56,7 @@ def relu6_compute(input_x, output_y, kernel_name="relu6"):
     return final_res
 
 
-@tbe_base.register_operator("Relu6")
+@register_operator("Relu6")
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
 def relu6(input_x, output_y, kernel_name="relu6"):
     """

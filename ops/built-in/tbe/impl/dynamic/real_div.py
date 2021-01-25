@@ -25,6 +25,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -70,7 +71,7 @@ def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode="high_performa
     return res
 
 
-@tbe_base.register_operator("RealDiv")
+@register_operator("RealDiv")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
 def real_div(x1, x2, y, kernel_name="real_div", impl_mode="high_performance"):
