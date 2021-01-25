@@ -2250,20 +2250,30 @@ IMPLEMT_COMMON_INFERFUNC(TopKDInferShape) {
       return GRAPH_FAILED;
     }
   }
-  dims_in[sorted_axis] = k;
 
-  std::vector<std::pair<int64_t, int64_t>> shape_range;
-  input_desc->GetShapeRange(shape_range);
-  if (shape_range.size() > 0) {
-    shape_range[sorted_axis].second = k;
+  bool unknown_rank = IsUnknownRankShape(dims_in);
+  if (unknown_rank) {
+    output_v_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_v_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+
+    output_i_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_i_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+  } else {
+    dims_in[sorted_axis] = k;
+    std::vector<std::pair<int64_t, int64_t>> shape_range;
+    input_desc->GetShapeRange(shape_range);
+
+    if (shape_range.size() > 0) {
+      shape_range[sorted_axis].second = k;
+    }
+    output_v_desc->SetShape(GeShape(dims_in));
+    output_v_desc->SetShapeRange(shape_range);
+    output_v_desc->SetDataType(input_desc->GetDataType());
+
+    output_i_desc->SetShape(GeShape(dims_in));
+    output_i_desc->SetShapeRange(shape_range);
+    output_i_desc->SetDataType(DT_INT32);
   }
-  output_v_desc->SetShape(GeShape(dims_in));
-  output_v_desc->SetShapeRange(shape_range);
-  output_v_desc->SetDataType(input_desc->GetDataType());
-
-  output_i_desc->SetShape(GeShape(dims_in));
-  output_i_desc->SetShapeRange(shape_range);
-  output_i_desc->SetDataType(DT_INT32);
 
   return GRAPH_SUCCESS;
 }
@@ -2341,15 +2351,25 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
       }
     }
   }
-  dims_in[sorted_axis] = k;
 
-  output_v_desc->SetShape(GeShape(dims_in));
-  output_v_desc->SetShapeRange(shape_range);
-  output_v_desc->SetDataType(input_desc->GetDataType());
+  bool unknown_rank = IsUnknownRankShape(dims_in);
+  if (unknown_rank) {
+    output_v_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_v_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
 
-  output_i_desc->SetShape(GeShape(dims_in));
-  output_i_desc->SetShapeRange(shape_range);
-  output_i_desc->SetDataType(DT_INT32);
+    output_i_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_i_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+  } else {
+    dims_in[sorted_axis] = k;
+
+    output_v_desc->SetShape(GeShape(dims_in));
+    output_v_desc->SetShapeRange(shape_range);
+    output_v_desc->SetDataType(input_desc->GetDataType());
+
+    output_i_desc->SetShape(GeShape(dims_in));
+    output_i_desc->SetShapeRange(shape_range);
+    output_i_desc->SetDataType(DT_INT32);
+  }
 
   return GRAPH_SUCCESS;
 }
