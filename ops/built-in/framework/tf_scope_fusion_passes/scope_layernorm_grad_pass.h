@@ -50,7 +50,7 @@ class ScopeLayerNormGradPass : public ScopeBasePass {
 
   void FindInputIndex(const Scope* scope, int& index, const std::string& name, const std::string& base_name);
 
-  void FindOutputdXNode(const std::vector<ge::OperatorPtr>& nodes, std::string& node_def_name);
+  void FindOutputdXNode(const std::vector<ge::OperatorPtr>& nodes, std::string& node_def_name, int &index);
   void ProcessInputDy(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
   void ProcessInputX(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
   void ProcessInputGamma(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt);
