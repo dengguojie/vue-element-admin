@@ -345,7 +345,7 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
             "reason": "channel of out_backprop % groups must be 0",
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-    if input_size[1] % groups != 0:
+    if shape_res[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",
             "reason": "channel of y % groups must be 0",
