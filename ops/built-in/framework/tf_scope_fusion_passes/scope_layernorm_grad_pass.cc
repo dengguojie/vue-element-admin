@@ -137,19 +137,23 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
       continue;
     }
     // find the node whose all inputs are from this scope
-    bool find = false;
+    bool can_find = false;
+    bool all_in = true;
     OP_LOGD(kOpType, "Addn node name is %s", it.second->GetName().c_str());
-    for (size_t i = 0; i < it.second->GetInputsSize(); i++) {
+    size_t input_nums = it.second->GetInputsSize();
+    for (size_t i = 0; i < input_nums; i++) {
       // some input name contain "^", should be removed
       auto input_desc = it.second->GetInputDesc(i);
       std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
       if (nodes_map.count(input_name) != 0) {
-        find = true;
-        break;
+        can_find = true;
+      }
+      if (nodes_map.count(input_name) == 0) {
+        all_in = false;
       }
     }
 
-    if (find) {
+    if ((all_in == true && input_nums == 2) || (input_nums > 2 && can_find == true)) {
       // if the node is not in result_nodes, it will be insert to result_nodes
       bool find1 = true;
       for (auto& it1 : result_nodes) {
