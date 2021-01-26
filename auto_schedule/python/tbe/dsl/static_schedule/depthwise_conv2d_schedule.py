@@ -25,7 +25,7 @@ from te.tvm import api as tvm
 from te.platform import cce_params
 from te.platform import cce_conf
 from te.platform import cce_policy
-from .util import L1CommonParam
+from te.lang.cce.te_schedule.util import L1CommonParam
 from te.lang.cce.te_compute.depthwise_conv2d_compute import DepthwiseConv2dParam
 
 TILING_HO_TIMES = 16
