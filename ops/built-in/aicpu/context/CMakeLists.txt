@@ -77,6 +77,10 @@ if(BUILD_OPEN_PROJECT)
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
   )
 
+  target_link_libraries(cpu_kernels_context_static PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+  )
+
   set(cpu_kernels_context_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_context_static.a)
 
   set_target_properties(cpu_kernels_context_static

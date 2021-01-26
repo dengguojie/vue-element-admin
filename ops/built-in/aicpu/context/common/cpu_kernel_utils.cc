@@ -67,6 +67,26 @@ std::shared_ptr<TensorImpl> CpuKernelUtils::GetImpl(const Tensor *tensor) {
   return tensor->impl_;
 }
 
+/*
+ * get tensor name.
+ */
+std::string CpuKernelUtils::GetTensorName(const Tensor *tensor) {
+  auto impl = GetImpl(tensor);
+  KERNEL_CHECK_NULLPTR(impl, std::string(), "Get Tensor impl failed.")
+  return impl->GetName();
+}
+
+/*
+ * set tensor name.
+ */
+void CpuKernelUtils::SetTensorName(const std::string &name,
+                                   std::shared_ptr<Tensor> &tensor) {
+  KERNEL_LOG_INFO("Set tensor name[%s]", name.c_str());
+  auto impl = GetImpl(tensor.get());
+  KERNEL_CHECK_NULLPTR_VOID(impl, "Get Tensor impl failed.")
+  impl->SetName(name);
+}
+
 std::shared_ptr<TensorShape> CpuKernelUtils::CreateTensorShape() {
   auto proto_ptr = new (std::nothrow) aicpuops::TensorShape();
   KERNEL_CHECK_NULLPTR(proto_ptr, std::shared_ptr<TensorShape>(nullptr),

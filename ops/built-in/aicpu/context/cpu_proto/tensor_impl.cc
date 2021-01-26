@@ -102,11 +102,22 @@ uint64_t TensorImpl::GetDataSize() const { return tensor_->data_size(); }
 void TensorImpl::SetDataSize(uint64_t size) { tensor_->set_data_size(size); }
 
 /*
+ * get name of tensor.
+ */
+std::string TensorImpl::GetName() const { return tensor_->name(); }
+
+/*
+ * set name of tensor.
+ */
+void TensorImpl::SetName(const std::string &name) { tensor_->set_name(name); }
+
+/*
  * calculate data size by tensor shape.
  */
 int64_t TensorImpl::CalcDataSizeByShape() const {
   int64_t data_size = NumElements();
-  int32_t element_size = GetSizeByDataType(static_cast<DataType>(GetDataType()));
+  int32_t element_size =
+      GetSizeByDataType(static_cast<DataType>(GetDataType()));
   if ((data_size < 0) || (element_size < 0)) {
     KERNEL_LOG_WARN(
         "Get tensor element number[%lld] or element type size[%d] less than 0.",
