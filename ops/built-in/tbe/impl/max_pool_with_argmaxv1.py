@@ -1509,7 +1509,7 @@ class MaxPoolWithargmaxPytorch():
             with self.tik_instance.for_range(0, fmap_h_num) as index_h:  # 2
                 # the first 128
                 feature_map_w = self.fmap_w
-                self._calc_max_fun_binary_search(fmap_ub[index_h * self.fmap_w * 256], feature_map_w)
+                self._calc_max_fun_binary_search(fmap_ub[index_h * self.fmap_w * 256:], feature_map_w)
                 self.tik_instance.data_move(data_x_max[index_h * 256], fmap_ub[index_h * self.fmap_w * 256],
                                             0, 1, 256 // 16, 0, 0)
             self.tik_instance.data_move(fmap_ub, feature_map_l1, 0, 1, fmap_h_num * self.fmap_w * 16, 0, 0)
