@@ -156,11 +156,13 @@ class CceSegmentOp:
             in_shape = [i.value for i in self._op_list[self._segment_op_pos]["src_buffer"][0].shape]
 
             def refine_dime(in_shape):
-                length = len(in_shape)
+                refine_len = len(in_shape)
                 for i in range(len(in_shape)):
                     if in_shape[len(in_shape) - 1 - i] == 1:
-                        length -= 1
-                return length
+                        refine_len -= 1
+                if refine_len <= 0:
+                    refine_len = 1
+                return refine_len
 
             length = refine_dime(in_shape)
             if length == 1:
@@ -314,7 +316,7 @@ class CceSegmentOp:
         when the dim of input_tensor's shape  is 1,
         do schedule in this function
         """
-        for cache_tensor in write_cache_list[self._segment_op_pos + 1:]:
+        for cache_tensor in write_cache_list[self._segment_op_pos:]:
             self._schedule[cache_tensor].storage_align(self._schedule[cache_tensor].op.axis[0],
                                                        self.get_align_factor(cache_tensor.dtype), 0)
         for cache_tensor in read_cache_list:
