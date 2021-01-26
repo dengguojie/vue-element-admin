@@ -82,6 +82,26 @@ conv2d_transpose_op_testcase = [
         1,
         "success",
     ),
+    # bias
+    (
+        "float16",
+        "float16",
+        "float16",
+        (16, 64, 192, 320),
+        (64, 256, 1, 1),
+        (16, 256, 192, 320),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (16, 256, 192, 320),
+        True,
+        (1, 1, 1, 1),
+        "SAME",
+        (0, 0, 0, 0),
+        (1, 1, 1, 1),
+        1,
+        "success",
+    ),
     # int8
     (
         "int8",

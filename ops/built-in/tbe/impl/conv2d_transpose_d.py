@@ -659,7 +659,7 @@ def _conv2d_transpose_cce(
     )
 
     if bias:
-        input_channel = util_deconv_comm.align(dedy_channel, w_n0)
+        input_channel = util_deconv_comm.align(input_size[1], w_n0)
         tensor_bias = tvm.placeholder(
             (input_channel,), name="tensor_bias", dtype=res_dtype
         )

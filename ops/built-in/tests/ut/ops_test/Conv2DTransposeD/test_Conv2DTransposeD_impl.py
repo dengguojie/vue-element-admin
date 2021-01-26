@@ -73,6 +73,14 @@ def _gen_conv2d_transpose_case(
 
     input_sizes = input_size
     bias = None
+    if bias_flag:
+        bias = {
+            "shape": (util.align(input_sizes[1], 16),),
+            "dtype": dx_dtype,
+            "format": dx_format,
+            "ori_shape": (input_sizes[1],),
+            "ori_format": dx_format,
+        }
     # NCHW
     strides = stride
     padding = util.gen_padding_size(dx_shape, w_shape, padding, stride, dilations)
@@ -103,7 +111,7 @@ def _gen_conv2d_transpose_case(
 
 def _gen_conv2d_transpose_op_case():
     for test_case in conv2d_transpose_ut_testcase.conv2d_transpose_op_testcase:
-        ut_case.add_case(["Ascend910"], _gen_conv2d_transpose_case(*test_case))
+        ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], _gen_conv2d_transpose_case(*test_case))
 
 
 def test_op_check_supported(test_arg):
@@ -121,5 +129,5 @@ _gen_conv2d_transpose_op_case()
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 if __name__ == "__main__":
-    ut_case.run(["Ascend910"])
+    ut_case.run(["Ascend310", "Ascend710", "Ascend910"])
     sys.exit(0)
