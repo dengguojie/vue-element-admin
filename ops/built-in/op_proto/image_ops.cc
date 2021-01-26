@@ -1991,8 +1991,15 @@ IMPLEMT_INFERFUNC(DenseImageWarp, DenseImageWarpInfer) {
   y_desc.SetShape(image_shape);
   y_desc.SetDataType(image_dtype);
 
+  std::vector<std::pair<int64_t, int64_t>> image_range;
+  if (image_desc.GetShapeRange(image_range) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to get input_image range");
+    return GRAPH_FAILED;
+  }
+  y_desc.SetShapeRange(image_range);
+
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output y_desc");
+    OP_LOGE(op.GetName().c_str(), "Fail to update output y_desc");
     return GRAPH_FAILED;
   }
 
@@ -2007,7 +2014,7 @@ IMPLEMT_VERIFIER(DenseImageWarp, DenseImageWarpVerify) {
 
   if (image_shape.size() != 4 || flow_shape.size() != 4) {
     OP_LOGE(op.GetName().c_str(),
-            "Input image and flow both should be 4d, actual are %d, %d",
+            "Input image and flow both should be 4d, actual are [image:%d, flow:%d]",
             (int)image_shape.size(), (int)flow_shape.size());
     return GRAPH_FAILED;
   }
@@ -2052,9 +2059,19 @@ IMPLEMT_INFERFUNC(DenseImageWarpGrad, DenseImageWarpGradInfer) {
   grad_flow_desc.SetShape(flow_shape);
   grad_flow_desc.SetDataType(flow_dtype);
 
+  std::vector<std::pair<int64_t, int64_t>> image_range;
+  std::vector<std::pair<int64_t, int64_t>> flow_range;
+  if ((image_desc.GetShapeRange(image_range) != GRAPH_SUCCESS) ||
+      (flow_desc.GetShapeRange(flow_range) != GRAPH_SUCCESS)) {
+    OP_LOGE(op.GetName().c_str(), "Fail to get input_image or input_flow range");
+    return GRAPH_FAILED;
+  }
+  grad_image_desc.SetShapeRange(image_range);
+  grad_flow_desc.SetShapeRange(flow_range);
+
   if (op.UpdateOutputDesc("grad_image", grad_image_desc) != GRAPH_SUCCESS ||
       op.UpdateOutputDesc("grad_flow", grad_flow_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output desc.");
+    OP_LOGE(op.GetName().c_str(), "Fail to update output desc.");
     return GRAPH_FAILED;
   }
 

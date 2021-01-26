@@ -8041,12 +8041,18 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
   int32_t pad_r = pads_list[3];
 
   // formula : (width + pad_l + pad_r - ksize_dil_w) / stride_w + 1
-  const int32_t conv_out_h = (x_h + pad_u + pad_d - dil_ksize_h) / stride_h + 1;
-  const int32_t conv_out_w = (x_w + pad_l + pad_r - dil_ksize_w) / stride_w + 1;
+  int32_t conv_out_h = -1;
+  int32_t conv_out_w = -1;
+  if (x_h != -1) {
+    conv_out_h = (x_h + pad_u + pad_d - dil_ksize_h) / stride_h + 1;
+  }
+  if (x_w != -1) {
+    conv_out_w = (x_w + pad_l + pad_r - dil_ksize_w) / stride_w + 1;
+  }
 
   if (conv_out_h != offsets_h || conv_out_w != offsets_w) {
     OP_LOGE(op.GetName().c_str(),
-      "input_offsets h/w should be same as h/w after convolution, offsets: (%d, %d), conv_out: (%d, %d).",
+      "Input_offsets h/w should be same as h/w after convolution, offsets: [h:%d, w:%d], conv_out: [h:%d, w:%d].",
       offsets_h, offsets_w, conv_out_h, conv_out_w);
   }
 
@@ -8057,6 +8063,22 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
 
   auto x_dtype = x_desc.GetDataType();
   y_desc.SetDataType(x_dtype);
+
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  std::vector<std::pair<int64_t, int64_t>> offsets_range;
+  if ((x_desc.GetShapeRange(x_range) != GRAPH_SUCCESS) ||
+      (offsets_desc.GetShapeRange(offsets_range) != GRAPH_SUCCESS)) {
+    OP_LOGE(op.GetName().c_str(), "Fail to get input_x or input_offsets range");
+    return GRAPH_FAILED;
+  }
+  std::vector<std::pair<int64_t, int64_t>> y_range(x_range);
+  if ((!x_range.empty()) && (!offsets_range.empty())) {
+    y_range[pos_h].first = offsets_range[pos_h].first * ksize_h;
+    y_range[pos_h].second = offsets_range[pos_h].second * ksize_h;
+    y_range[pos_w].first = offsets_range[pos_w].first * ksize_w;
+    y_range[pos_w].second = offsets_range[pos_w].second * ksize_w;
+  }
+  y_desc.SetShapeRange(y_range);
 
   // update output desc
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
@@ -8119,9 +8141,19 @@ IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
   grad_offsets_desc.SetShape(offsets_shape);
   grad_offsets_desc.SetDataType(offsets_dtype);
 
-  if (op.UpdateOutputDesc("grad_x", grad_x_desc) != GRAPH_SUCCESS ||
-      op.UpdateOutputDesc("grad_offsets", grad_offsets_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output desc");
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  std::vector<std::pair<int64_t, int64_t>> offsets_range;
+  if ((x_desc.GetShapeRange(x_range) != GRAPH_SUCCESS) ||
+      (offsets_desc.GetShapeRange(offsets_range) != GRAPH_SUCCESS)) {
+    OP_LOGE(op.GetName().c_str(), "Fail to get input_x or input_offsets range");
+    return GRAPH_FAILED;
+  }
+  grad_x_desc.SetShapeRange(x_range);
+  grad_offsets_desc.SetShapeRange(offsets_range);
+
+  if ((op.UpdateOutputDesc("grad_x", grad_x_desc) != GRAPH_SUCCESS) ||
+      (op.UpdateOutputDesc("grad_offsets", grad_offsets_desc) != GRAPH_SUCCESS)) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update output desc");
     return GRAPH_FAILED;
   }
 
