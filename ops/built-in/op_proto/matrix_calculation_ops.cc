@@ -1476,31 +1476,31 @@ COMMON_INFER_FUNC_REG(ScatterAdd, ScatterAddInferShape);
 VERIFY_FUNC_REG(ScatterAdd, ScatterAddVerify);
 // --------------ScatterAdd END------------------
 
-IMPLEMT_COMMON_INFERFUNC(ScatterDivInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
-  return GRAPH_SUCCESS;
-}
-
+// ------------------ScatterDiv---------------------
 IMPLEMT_VERIFIER(ScatterDiv, ScatterDivVerify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType updates_dtype = op.GetInputDesc(2).GetDataType();
-  if (var_dtype != updates_dtype) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "var", "updates", ConcatString(var_dtype), ConcatString(updates_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the scatter_div op inputs "
-            "should have the same dtype!");
+  if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(ScatterDiv, ScatterDivInferShape);
+IMPLEMT_COMMON_INFERFUNC(ScatterDivInferShape) {
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ScatterDiv, ScatterDivInferShape);
 VERIFY_FUNC_REG(ScatterDiv, ScatterDivVerify);
+// --------------ScatterDiv END------------------
 
 // ----------------ScatterNdAdd------------
 IMPLEMT_VERIFIER(ScatterNdAdd, ScatterNdAddVerify) {
@@ -1661,31 +1661,31 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionMatrixInferShape) {
 COMMON_INFER_FUNC_REG(ConfusionMatrix, ConfusionMatrixInferShape);
 // ------------------ConfusionMatrix END------------------
 
-IMPLEMT_COMMON_INFERFUNC(ScatterMulInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
-  return GRAPH_SUCCESS;
-}
-
+// ------------------ScatterMul---------------------
 IMPLEMT_VERIFIER(ScatterMul, ScatterMulVerify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType updates_dtype = op.GetInputDesc(2).GetDataType();
-  if (var_dtype != updates_dtype) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "var", "updates", ConcatString(var_dtype), ConcatString(updates_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the scatter_mul op inputs "
-            "should have the same dtype!\n");
+  if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(ScatterMul, ScatterMulInferShape);
+IMPLEMT_COMMON_INFERFUNC(ScatterMulInferShape) {
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ScatterMul, ScatterMulInferShape);
 VERIFY_FUNC_REG(ScatterMul, ScatterMulVerify);
+// --------------ScatterMul END------------------
 
 // ------------------ScatterUpdate---------------------
 IMPLEMT_VERIFIER(ScatterUpdate, ScatterUpdateVerify) {
@@ -1713,57 +1713,57 @@ COMMON_INFER_FUNC_REG(ScatterUpdate, ScatterUpdateInferShape);
 VERIFY_FUNC_REG(ScatterUpdate, ScatterUpdateVerify);
 // --------------ScatterUpdate END------------------
 
-IMPLEMT_COMMON_INFERFUNC(ScatterMinInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
-  return GRAPH_SUCCESS;
-}
-
+// ------------------ScatterMin---------------------
 IMPLEMT_VERIFIER(ScatterMin, ScatterMinVerify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType updates_dtype = op.GetInputDesc(2).GetDataType();
-  if (var_dtype != updates_dtype) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "var", "updates", ConcatString(var_dtype), ConcatString(updates_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the scatter_min op inputs "
-            "should have the same dtype!\n");
+  if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(ScatterMin, ScatterMinInferShape);
+IMPLEMT_COMMON_INFERFUNC(ScatterMinInferShape) {
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ScatterMin, ScatterMinInferShape);
 VERIFY_FUNC_REG(ScatterMin, ScatterMinVerify);
+// --------------ScatterMin END------------------
+
+// ------------------ScatterMax---------------------
+IMPLEMT_VERIFIER(ScatterMax, ScatterMaxVerify) {
+  if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
 
 IMPLEMT_COMMON_INFERFUNC(ScatterMaxInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(ScatterMax, ScatterMaxVerify) {
-  DataType var_dtype = op.GetInputDesc(0).GetDataType();
-  DataType updates_dtype = op.GetInputDesc(2).GetDataType();
-  if (var_dtype != updates_dtype) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "var", "updates", ConcatString(var_dtype), ConcatString(updates_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the scatter_max op inputs "
-            "should have the same dtype!\n");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-INFER_FUNC_REG(ScatterMax, ScatterMaxInferShape);
+COMMON_INFER_FUNC_REG(ScatterMax, ScatterMaxInferShape);
 VERIFY_FUNC_REG(ScatterMax, ScatterMaxVerify);
+// --------------ScatterMax END------------------
 
 bool FullyDefined(Shape s) {
   auto dims = s.GetDims();

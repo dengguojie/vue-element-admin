@@ -363,6 +363,10 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/scatter_add.cc \
         built-in/op_tiling/scatter_sub.cc \
         built-in/op_tiling/scatter_update.cc \
+        built-in/op_tiling/scatter_max.cc \
+        built-in/op_tiling/scatter_min.cc \
+        built-in/op_tiling/scatter_mul.cc \
+        built-in/op_tiling/scatter_div.cc \
         built-in/op_tiling/eletwise.cc \
         built-in/op_tiling/reduce_tiling.cc \
         built-in/op_tiling/tiling_dispatch.cc \

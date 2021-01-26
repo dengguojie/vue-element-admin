@@ -46,6 +46,10 @@ set(_optiling_files
   scatter_nd.cc
   scatter_sub.cc
   scatter_update.cc
+  scatter_max.cc
+  scatter_min.cc
+  scatter_mul.cc
+  scatter_div.cc
   slice.cc
   sparse_apply_ftrl_d.cc
   sparse_apply_proximal_adagrad_d.cc

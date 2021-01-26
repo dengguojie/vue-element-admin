@@ -29,6 +29,10 @@ from .scatter_nd import scatter_nd
 from .scatter_add import scatter_add
 from .scatter_update import scatter_update
 from .scatter_sub import scatter_sub
+from .scatter_max import scatter_max
+from .scatter_min import scatter_min
+from .scatter_mul import scatter_mul
+from .scatter_div import scatter_div
 from .equal import equal
 from .relu import relu
 from .add import add
