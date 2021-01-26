@@ -61,7 +61,8 @@ def op_select_format(x, segment_ids, y, num_segments,
     select format dynamically
     """
     segment_ids_shape = list(segment_ids.get("shape"))
-    atomic_add = cce.api_check_support("tik.set_atomic_add")
+    atomic_add = cce.api_check_support("tik.set_atomic_add") and \
+                 cce.api_check_support("te.lang.cce.vmul", "float32")
     if len(segment_ids_shape) == 1 and not atomic_add:
         input0_dtype = "float,float"
         input0_format = "NC1HWC0,ND"
@@ -101,9 +102,7 @@ def op_select_format(x, segment_ids, y, num_segments,
     ori_dtype = x.get("dtype").lower()
     ori_shape = list(x.get("shape"))
     cce_product = get_cce_product_version()
-    if (ori_dtype in ("float16", "float32")) and cce_product in ("Ascend910",) and \
-            ((ori_shape in ([12288, 1024], [200704, 256], [128, 64])) and \
-             (num_segments in (36548, 655360, 1128960, 543060))):
+    if (ori_dtype in ("float16", "float32")) and atomic_add and (num_segments > 10000):
         input0 = gen_param(classify="input0", name="x",
                            datatype=input0_dtype,
                            format=input0_format)
