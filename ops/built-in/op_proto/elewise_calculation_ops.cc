@@ -4193,4 +4193,68 @@ INFER_FUNC_REG(HardMax, HardMaxInferShape);
 VERIFY_FUNC_REG(HardMax, HardMaxVerify);
 // ---------------HardMax END-------------------
 
+// ---------------Dot Begin-----------------
+bool InferShapeDot(Operator& op,
+                   const string& input1_name,
+                   const string input2_name,
+                   const string output_name) {
+  TensorDesc output_desc = op.GetOutputDesc(output_name);
+  TensorDesc input1_desc = op.GetInputDesc(input1_name);
+  TensorDesc input2_desc = op.GetInputDesc(input2_name);
+
+  //input dim
+  ge::Shape shape_input1 = input1_desc.GetShape();
+  ge::Shape shape_input2 = input2_desc.GetShape();
+
+  std::vector<int64_t> dims_input1 = shape_input1.GetDims();
+  std::vector<int64_t> dims_input2 = shape_input2.GetDims();
+
+  if(dims_input1.size() != dims_input2.size()) {
+      OP_LOGE("The dim of input_x and input_y not match.");
+      return false;
+  }
+
+  if(dims_input1.size() != 1) {
+      OP_LOGE("The dim of input must be 1");
+      return false;
+  }
+
+  if(dims_input1[0] != dims_input2[0]) {
+      OP_LOGE("The 0-dim of input_x and input_y not match.");
+      return false;
+  }
+  
+  std::vector<int64_t> dim_output;
+  dim_output.push_back(1);
+
+  ge::Shape output_shape = ge::Shape(dim_output);
+
+  output_desc.SetShape(output_shape);
+  output_desc.SetDataType(input1_desc.GetDataType());
+  output_desc.SetFormat(Format::FORMAT_ND);
+  op.UpdateOutputDesc(output_name, output_desc);
+  return true;
+}
+
+
+IMPLEMT_COMMON_INFERFUNC(DotInferShape) {
+  if(InferShapeDot(op, "input_x", "input_y", "output")) {
+      return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+
+IMPLEMT_VERIFIER(Dot, DotVerify) {
+  if (op.GetInputDesc("input_x").GetDataType() != op.GetInputDesc("input_y").GetDataType()) {
+      OP_LOGE("The dataType of input_x and input_y not match.");
+      return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Dot, DotInferShape);
+VERIFY_FUNC_REG(Dot, DotVerify);
+// ---------------Dot END-------------------
+
 }  // namespace ge

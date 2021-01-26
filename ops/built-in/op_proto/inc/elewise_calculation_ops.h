@@ -3679,6 +3679,26 @@ REG_OP(HardMax)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(axis, Int, -1)
     .OP_END_FACTORY_REG(HardMax)
+
+/**
+* @brief Computes the dot product (inner product) of two tensors. This function does not broadcast.
+
+* @par Inputs:
+* Two inputs, including:
+* @li input_x: A Tensor. the first tensor must be 1d. \n
+* @li input_y: A Tensor. the second tensor must be 1d. \n
+
+* @par Outputs:
+* @li output: A Tensor. Result of the two inputs, must be 1d. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch dot operator. \n
+*/
+REG_OP(Dot)
+    .INPUT(input_x, TensorType({DT_FLOAT, DT_FLOAT16, DT_UINT8, DT_INT8, DT_INT32}))
+    .INPUT(input_y, TensorType({DT_FLOAT, DT_FLOAT16, DT_UINT8, DT_INT8, DT_INT32}))
+    .OUTPUT(output, TensorType({DT_FLOAT, DT_FLOAT16, DT_UINT8, DT_INT8, DT_INT32}))
+    .OP_END_FACTORY_REG(Dot)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ELEWISE_CALCULATION_OPS_H_
