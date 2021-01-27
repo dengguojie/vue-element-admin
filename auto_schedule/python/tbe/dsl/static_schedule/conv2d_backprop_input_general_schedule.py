@@ -185,17 +185,20 @@ def general_schedule(
     fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
     cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
 
-    def _config_dynamic_mode(var_range):
+    def _get_var_map(var_range):
+        """
+        get var map from var_range
+        """
+        var_names = ["batch_n", "dedy_h", "dedy_w", "dx_h", "dx_w"]
+        var_map = {}
         if not var_range:
-            return None
-        if "batch_n" in var_range and len(var_range) == 1:
-            return "dynamic_batch"
-        for var in ("dedy_h", "dedy_w", "dx_h", "dx_w"):
-            if var in var_range:
-                return "dynamic_hw"
-        return None
+            return var_map
+        for name in var_names:
+            if name in var_range:
+                var_map[name] = var_range[name]
+        return var_map
 
-    def _fetch_tensor_info(dynamic_mode):  # pylint:disable=R0914,R0912,R0915
+    def _fetch_tensor_info(var_map):  # pylint:disable=R0914,R0912,R0915
         def _get_vadd_tensors(vadd_res_tensor):
             left_tensor = vadd_res_tensor.op.input_tensors[0]
             right_tensor = vadd_res_tensor.op.input_tensors[1]
@@ -265,12 +268,12 @@ def general_schedule(
             tensor_map["input_tensor"] = input_cache_buffer
             tensor_map["ub_list"] = ub_list
 
-        def _fill_tensor_map(c_col, dynamic_mode, tensor_map):  # pylint: disable=R0915
+        def _fill_tensor_map(c_col, var_map, tensor_map):  # pylint: disable=R0915
             a_col = c_col.op.input_tensors[0]  # im2col_fractal in L0A
             b_col = c_col.op.input_tensors[1]  # weight_transform in L0B
             b_ddr = b_col.op.input_tensors[0]  # weight in ddr
 
-            if not dynamic_mode:
+            if not var_map:
                 # im2col_row_major in L1
                 a_col_before = a_col.op.input_tensors[0]
             else:
@@ -445,7 +448,7 @@ def general_schedule(
                 else:
                     _fill_a()
 
-            if dynamic_mode:
+            if var_map:
                 _fill_a_tensormap_dynamic()
             else:
                 _fill_a_tensormap()
@@ -661,7 +664,7 @@ def general_schedule(
             )
 
         c_col = _bias_tensor()
-        tensor_map = _fill_tensor_map(c_col, dynamic_mode, tensor_map)
+        tensor_map = _fill_tensor_map(c_col, var_map, tensor_map)
         _bias_tensor_setscope()
 
         tensor_attr["fusion_param"] = _tensor_setscope()
@@ -792,8 +795,8 @@ def general_schedule(
 
     deconv_res = _get_deconv_out()
 
-    dynamic_mode = _config_dynamic_mode(var_range)
-    tensor_map, tensor_attr = _fetch_tensor_info(dynamic_mode)
+    var_map = _get_var_map(var_range)
+    tensor_map, tensor_attr = _fetch_tensor_info(var_map)
     vadd_res = tensor_map.get("vadd_res")
     c_ub_cut = tensor_map.get("c_ub_cut")
     c_ub = tensor_map.get("c_ub")
@@ -838,7 +841,7 @@ def general_schedule(
     # fetch tiling
     padu, padd, padl, padr = padding
     # n, howo, c1, k_h, k_w, c0
-    if not dynamic_mode:
+    if not var_map:
         _, howo_mad, _, kernel_h, kernel_w, _ = shape_to_list(a_col_before.shape)
     else:
         kernel_h = tensor_attr.get("kernel_h")
@@ -858,7 +861,7 @@ def general_schedule(
     # conv1d_situation
     def _check_conv1d_situation():
         if (
-            not dynamic_mode
+            not var_map
             and dx_h == 1
             and dy_h == 1
             and dilation_h == 1
@@ -919,7 +922,7 @@ def general_schedule(
 
     _kernel_name = _get_kernel_name()
 
-    if not dynamic_mode:
+    if not var_map:
         fusion_type = _get_fusion_type()
         info_dict = {
             "op_type": "conv2d_backprop_input",
@@ -1214,7 +1217,7 @@ def general_schedule(
             return
         def _attach_cub():
             # c_ub will attach on deconv_res in dynamic shape by default
-            if not dynamic_mode:
+            if not var_map:
                 status = Compare.compare(affine_cub[1:], op_shape)
             else:
                 status = Compare.LESS_EQ
@@ -1342,7 +1345,7 @@ def general_schedule(
             c_col_shape = shape_to_list(c_col.shape)
 
             # c_col will attach on c_ub or c_ddr in dynamic shape by default
-            if not dynamic_mode:
+            if not var_map:
                 status_ori = Compare.compare(affine_l0c, c_col_shape)
             else:
                 status_ori = Compare.LESS_EQ
@@ -1398,7 +1401,7 @@ def general_schedule(
         )
 
         # a_col will attach on c_col, c_ub or c_ddr in dynamic shape
-        if not dynamic_mode:
+        if not var_map:
             status_ori = Compare.compare(tiling_ori_l0a, a_col_shape)
         else:
             status_ori = Compare.LESS_EQ
@@ -1477,7 +1480,7 @@ def general_schedule(
             al0_tiling_k0
         )
 
-        if dynamic_mode == "dynamic_hw" and tiling.get("AL1_shape") == []:
+        if ("dedy_h" in var_map or "dedy_w" in var_map) and tiling.get("AL1_shape") == []:
             status = Compare.GREATE_EQ
         else:
             status = Compare.compare(
@@ -1502,7 +1505,7 @@ def general_schedule(
         else:
             w_align = dx_w
 
-        if not dynamic_mode:
+        if not var_map:
             sch_agent.same_attach(a_col_before, a_l1)
             sch[a_col_before].buffer_align(
                 (1, 1),
@@ -1588,7 +1591,7 @@ def general_schedule(
                     al1_co0
                 ]
                 sch_agent.attach_at(a_filling, a_l1, ub_shape)
-            if not dynamic_mode:
+            if not var_map:
                 sch_agent.same_attach(a_zero, a_filling)
             sch_agent.same_attach(a_ub, a_filling)
 
@@ -1636,11 +1639,11 @@ def general_schedule(
                 sch[a_ub].double_buffer()
                 sch[a_filling].double_buffer()
                 sch[a_zero].double_buffer()
-                if dynamic_mode is not None:
+                if var_map:
                     sch[a_one].double_buffer()
                     sch[vn_tensor].double_buffer()
 
-        if dynamic_mode and not tiling.get("AL1_shape"):
+        if var_map and not tiling.get("AL1_shape"):
             a_l1_db_flag = 1
         else:
             a_l1_db_flag = tiling.get("manual_pingpong_buffer").get("AL1_pbuffer")
@@ -1923,7 +1926,7 @@ def general_schedule(
             "conv_dilation_w": dilation_w
         }
 
-        if dynamic_mode:
+        if var_map:
             _dynamic_emit_insn()
         else:
             _emit_l1fusion_insn(setfmatrix_dict)
@@ -2005,7 +2008,7 @@ def general_schedule(
                 aub_h = (aub_tiling_m + stride_h - 1) // stride_h
                 al1_m = _ceil(a_l1.shape[2] * a_l1.shape[3], cl0_tiling_m0) * cl0_tiling_m0
                 if len(tiling["AL1_shape"]) != 0:
-                    k_al1, multi_m_al1 = tiling["AL1_shape"][:2]
+                    multi_m_al1 = tiling["AL1_shape"][1]
                     al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 # for aub_tiling_m is 1, then aub_h must be 1
                 if aub_tiling_m != 1:
@@ -2022,14 +2025,16 @@ def general_schedule(
         al1_bound, al1_h = _get_al1_bound()
         sch[a_l1].set_storage_bound(al1_bound)
         _set_aub_bound(al1_h)
-        if dynamic_mode == "dynamic_hw":
-            sch.set_var_range(a_ddr.shape[2], *var_range.get("dedy_h"))
-            sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
-            sch.set_var_range(output_shape[2], *var_range.get("dx_h"))
-            sch.set_var_range(output_shape[3], *var_range.get("dx_w"))
-        elif dynamic_mode == "dynamic_batch":
+        if "batch_n" in var_map:
             sch.set_var_range(a_ddr.shape[0], *var_range.get("batch_n"))
             sch.set_var_range(output_shape[0], *var_range.get("batch_n"))
+        if "dedy_h" in var_map:
+            sch.set_var_range(a_ddr.shape[2], *var_range.get("dedy_h"))
+            sch.set_var_range(output_shape[2], *var_range.get("dx_h"))
+        if "dedy_w" in var_map:
+            sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
+            sch.set_var_range(output_shape[3], *var_range.get("dx_w"))
+
         sch.disable_allocate(cce_params.scope_cbuf)
         sch.disable_allocate(cce_params.scope_ca)
         sch.disable_allocate(cce_params.scope_cb)
@@ -2172,10 +2177,10 @@ def general_schedule(
             if not tiling.get("BL0_matrix"):
                 sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
     _full_load_bl1_bl0()
-    
+
     sch_agent.apply()
     _c_col_buffer_tile()
-    if dynamic_mode is not None:
+    if var_map:
         _handle_dynamic_workspace(stride_w)
     else:
         _handle_workspace()
