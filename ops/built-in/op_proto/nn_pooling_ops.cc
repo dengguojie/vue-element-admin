@@ -3898,6 +3898,71 @@ INFER_FUNC_REG(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxInferShape);
 VERIFY_FUNC_REG(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxVerify);
 // ----------------------MaxPoolGradGradWithArgmax-----------------------
 
+static bool GetDimInFormat(const std::string& format_str, const std::string& dim_name,
+                           std::string::size_type& dim_position) {
+  dim_position = format_str.find(dim_name);
+  return dim_position != std::string::npos;
+}
+
+static bool GetOriOutput(ge::Operator& op, std:: vector<std::string::size_type> position,
+                         std::vector<int64_t> input_shape, std::vector<int64_t> filter, std::vector<int64_t> strides,
+                         std::string pad_str, std::vector<int64_t>& ori_output_shape) {
+  int64_t input_h = 0;
+  int64_t input_w = 0;
+  int64_t filter_h = 0;
+  int64_t filter_w = 0;
+  int64_t stride_h = 0;
+  int64_t stride_w = 0;
+  int64_t ori_output_h = 0;
+  int64_t ori_output_w = 0;
+
+  if (position[2] < input_shape.size() && position[3] < input_shape.size()) {
+    input_h = input_shape.at(position[2]);
+    input_w = input_shape.at(position[3]);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Input shape subscript out of bounds!");
+    return false;
+  }
+
+  if (position[2] < filter.size() && position[3] < filter.size()) {
+    filter_h = filter.at(position[2]);
+    filter_w = filter.at(position[3]);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Filter subscript out of bounds!");
+    return false;
+  }
+
+  if (position[2] < strides.size() && position[3] < strides.size()) {
+    stride_h = strides.at(position[2]);
+    stride_w = strides.at(position[3]);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Strides subscript out of bounds!");
+    return false;
+  }
+
+  if (stride_h != 0 && stride_w != 0) {
+    if (pad_str.compare("SAME") == 0) {
+      ori_output_h = (input_h + stride_h - 1) / stride_h;
+      ori_output_w = (input_w + stride_w - 1) / stride_w;
+    } else if (pad_str.compare("VALID") == 0) {
+      ori_output_h = (input_h - filter_h + stride_h) / stride_h;
+      ori_output_w = (input_w - filter_w + stride_w) / stride_w;
+    } else {
+      OP_LOGE(op.GetName().c_str(),
+              "Padding should be SAME or VALID. Actual is: %s.", pad_str.c_str());
+      return false;
+    }
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Strides cannot be 0!");
+    return false;
+  }
+
+  ori_output_shape.clear();
+  ori_output_shape = {input_shape.at(position[0]), input_shape.at(position[1]), ori_output_h, ori_output_w};
+
+  return true;
+}
+
 // ---------------------AvgPoolGrad---------------------
 IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
   Tensor orig_input_shape_tensor;
@@ -3945,6 +4010,47 @@ IMPLEMT_VERIFIER(AvgPoolGrad, AvgPoolGradVerify) {
       return GRAPH_FAILED;
     }
   }
+
+  TensorDesc tensordesc_input = op.GetInputDesc("input_grad");
+  Shape input_grad_shape = tensordesc_input.GetShape();
+
+  string::size_type n_position{0};
+  string::size_type c_position{0};
+  string::size_type h_position{0};
+  string::size_type w_position{0};
+
+  if (!GetDimInFormat(data_format, "N", n_position)) {
+    return GRAPH_FAILED;
+  }
+
+  if (!GetDimInFormat(data_format, "C", c_position)) {
+    return GRAPH_FAILED;
+  }
+
+  if (!GetDimInFormat(data_format, "H", h_position)) {
+    return GRAPH_FAILED;
+  }
+
+  if (!GetDimInFormat(data_format, "W", w_position)) {
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::string::size_type> position{n_position, c_position, h_position, w_position};
+  std::vector<int64_t> ori_output_shape;
+
+  if (!GetOriOutput(op, position, orig_input_size, ksize, strides, padding, ori_output_shape)) {
+    OP_LOGE(op.GetName().c_str(), "Get origin output failed.");
+    return GRAPH_FAILED;
+  }
+
+  if (input_grad_shape.GetDim(n_position) != ori_output_shape[0] ||
+      input_grad_shape.GetDim(c_position) != ori_output_shape[1] ||
+      input_grad_shape.GetDim(h_position) != ori_output_shape[2] ||
+      input_grad_shape.GetDim(w_position) != ori_output_shape[3]) {
+    OP_LOGE(op.GetName().c_str(), "Input grad shape is wrong!");
+    return GRAPH_FAILED;
+  }
+
   return GRAPH_SUCCESS;
 }
 
@@ -3971,12 +4077,6 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolGradInferShape) {
 COMMON_INFER_FUNC_REG(AvgPoolGrad, AvgPoolGradInferShape);
 VERIFY_FUNC_REG(AvgPoolGrad, AvgPoolGradVerify);
 // ---------------------AvgPoolGrad---------------------
-
-static bool GetDimInFormat(const std::string& format_str, const std::string& dim_name,
-                           std::string::size_type& dim_position) {
-  dim_position = format_str.find(dim_name);
-  return dim_position != std::string::npos;
-}
 
 // ---------------------AvgPoolGradD---------------------
 IMPLEMT_VERIFIER(AvgPoolGradD, AvgPoolGradDVerify) {
@@ -4015,6 +4115,47 @@ IMPLEMT_VERIFIER(AvgPoolGradD, AvgPoolGradDVerify) {
       return GRAPH_FAILED;
     }
   }
+
+  TensorDesc tensordesc_input = op.GetInputDesc("input_grad");
+  Shape input_grad_shape = tensordesc_input.GetShape();
+
+  string::size_type n_position{0};
+  string::size_type c_position{0};
+  string::size_type h_position{0};
+  string::size_type w_position{0};
+
+  if (!GetDimInFormat(data_format, "N", n_position)) {
+    return GRAPH_FAILED;
+  }
+
+  if (!GetDimInFormat(data_format, "C", c_position)) {
+    return GRAPH_FAILED;
+  }
+
+  if (!GetDimInFormat(data_format, "H", h_position)) {
+    return GRAPH_FAILED;
+  }
+
+  if (!GetDimInFormat(data_format, "W", w_position)) {
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::string::size_type> position{n_position, c_position, h_position, w_position};
+  std::vector<int64_t> ori_output_shape;
+
+  if (!GetOriOutput(op, position, orig_input_size, ksize, strides, padding, ori_output_shape)) {
+    OP_LOGE(op.GetName().c_str(), "Get origin output failed.");
+    return GRAPH_FAILED;
+  }
+
+  if (input_grad_shape.GetDim(n_position) != ori_output_shape[0] ||
+      input_grad_shape.GetDim(c_position) != ori_output_shape[1] ||
+      input_grad_shape.GetDim(h_position) != ori_output_shape[2] ||
+      input_grad_shape.GetDim(w_position) != ori_output_shape[3]) {
+    OP_LOGE(op.GetName().c_str(), "Input grad shape is wrong!");
+    return GRAPH_FAILED;
+  }
+
   return GRAPH_SUCCESS;
 }
 

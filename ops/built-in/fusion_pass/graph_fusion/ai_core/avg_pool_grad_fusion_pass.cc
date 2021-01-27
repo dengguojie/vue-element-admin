@@ -354,13 +354,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   orig_input_shape_v.push_back(static_cast<int64_t>(orig_input_shape_const_tensor_ptr[1]));
   orig_input_shape_v.push_back(static_cast<int64_t>(orig_input_shape_const_tensor_ptr[2]));
   orig_input_shape_v.push_back(static_cast<int64_t>(orig_input_shape_const_tensor_ptr[3]));
-  // orig_input_shape_v must NHWC, k_size(1,h,w,1) strides(1,h,w,1) orig_input_shape_const_tensor_ptr(N,H,W,C)
-  if (!((orig_input_shape_const_tensor_ptr[1] == k_size[1]) && (orig_input_shape_const_tensor_ptr[2] == k_size[2]) &&
-        (padding == "VALID"))) {
-    OP_LOGI(kFusedOpType.c_str(), "AvgPoolGrad DO NOT has global mode currently.");
-  } else {
-    OP_LOGI(kFusedOpType.c_str(), "AvgPoolGrad now is global mode");
-  }
+
   GeTensorPtr avg_table_assit_ptr = nullptr;
   int64_t value_table_size = avg_pool_dim_info[0] * avg_pool_dim_info[1] * avg_pool_dim_info[2] * avg_pool_dim_info[3];
 
