@@ -32,34 +32,44 @@ import te.platform as tbe_platform
 from topi import generic
 from impl.util.platform_adapter import register_operator
 
+NEG_SCALAR_MIN_FP16 = -(2 ** (-24))
+NEG_SCALAR_MIN_FP32 = -(2 ** (-126))
+SCALAR_MIN_FP16 = 2 ** (-24)
+SCALAR_MIN_FP32 = 2 ** (-126)
+
 
 # pylint: disable=unused-argument,redefined-argument-from-local
 def sign_compute(input_x, output_y, kernel_name="sign"):
     """
     compute for sign
     """
-    inp_dtype = input_x.dtype
-    fp16_max = tvm.const(32768, dtype=inp_dtype)
-    fp16_min = tvm.const(2 ** (-15), dtype=inp_dtype)
-    data_tmp = input_x
-    if inp_dtype == "float16":
-        data_tmp = tbe.round_to(input_x, 0.5, -0.5)
+    dtype = input_x.dtype.lower()
+    if dtype == "float32":
+        data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype)
+        neg_data_min = tvm.const(NEG_SCALAR_MIN_FP32, dtype=dtype)
+    elif dtype == "float16":
+        data_min = tvm.const(SCALAR_MIN_FP16, dtype=dtype)
+        neg_data_min = tvm.const(NEG_SCALAR_MIN_FP16, dtype=dtype)
+    else:
+        data_min = tvm.const(1, dtype=dtype)
+        neg_data_min = tvm.const(-1, dtype=dtype)
 
-    if inp_dtype == "int32":
-        data_tmp = tbe.cast_to(data_tmp, "float16")
-
-    new_data = tbe.vmuls(data_tmp, fp16_max)
-    tmp2 = tbe.vabs(new_data)
-    anuminate = tbe.vadds(tmp2, fp16_min)
-    rec = tbe.vrec(anuminate)
-    fp16_res = tbe.vmul(new_data, rec)
-
-    if not tbe_platform.api_check_support("te.lang.cce.round", "float32"):
-        fp16_res = tbe.cast_to(fp16_res, "float16")
-
-    int_res = tbe.round(fp16_res)
-
-    res = tbe.cast_to(int_res, inp_dtype)
+    vmax = tbe.vmaxs(input_x, neg_data_min)
+    vmin = tbe.vmins(vmax, data_min)
+    if dtype == "float32":
+        # max num of float32 is 2**126
+        max_support_fp32 = tvm.const(2 ** 62, dtype=dtype)
+        res_mul1 = tbe.vmuls(vmin, max_support_fp32)
+        res_mul2 = tbe.vmuls(res_mul1, max_support_fp32)
+        res = tbe.vmuls(res_mul2, tvm.const(2 ** 2, dtype=dtype))
+    elif dtype == "float16":
+        # max num of float16 is 2**24
+        # but cce can only support 2**12, so use 12/12 to adaptor 24
+        max_support_fp16 = tvm.const(2 ** 12, dtype=dtype)
+        res_mul1 = tbe.vmuls(vmin, max_support_fp16)
+        res = tbe.vmuls(res_mul1, max_support_fp16)
+    else:
+        res = vmin
 
     return res
 

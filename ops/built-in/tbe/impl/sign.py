@@ -37,7 +37,6 @@ def sign_compute(input_x, output_y, kernel_name="sign"):
     compute for sign
     """
     dtype = input_x.dtype.lower()
-    shape = shape_util.shape_to_list(input_x.shape)
     if dtype == "float32":
         data_min = tvm.const(SCALAR_MIN_FP32, dtype=dtype)
         neg_data_min = tvm.const(NEG_SCALAR_MIN_FP32, dtype=dtype)
