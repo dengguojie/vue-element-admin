@@ -27,6 +27,15 @@ from atexit import register
 abnormal_termination = False
 
 
+def _check_device_id(device_id):
+    if not device_id.isdigit():
+        utils.print_error_log(
+            'please enter an integer number for device id,'
+            'now is %s.' % device_id)
+        sys.exit(utils.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
+    return
+
+
 def _do_mi_cmd(args, cmd, report):
     try:
         if cmd == "get_shape":
@@ -34,6 +43,8 @@ def _do_mi_cmd(args, cmd, report):
         elif cmd == "change_shape":
             change_shape(args)
         elif cmd == "gen":
+            # check device id invaild
+            _check_device_id(args.device_id)
             # design test case list from json file
             design = CaseDesign(args.input_file, args.case_name, report)
             case_list = design.design()
@@ -41,11 +52,11 @@ def _do_mi_cmd(args, cmd, report):
             output_path = os.path.realpath(args.output_path)
             if case_list[0].get('st_mode') == 'ms_python_train':
                 ms_op_generator_instance = MsOpGenerator(
-                    case_list, output_path, True, report)
+                    case_list, output_path, args.device_id, True, report)
                 ms_op_generator_instance.generate()
             else:
-                acl_op_generator_instance = AclOpGenerator(case_list, output_path,
-                                                           True, report)
+                acl_op_generator_instance = AclOpGenerator(
+                    case_list, output_path, args.device_id, True, report)
                 acl_op_generator_instance.generate()
 
             # generate data
@@ -80,18 +91,20 @@ def _do_run_cmd(args, report):
             utils.print_error_log(
                 'The value of "soc_version" is empty. Please modify it.')
             sys.exit(utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
+        # check device id invaild
+        _check_device_id(args.device_id)
         # design test case list from json file
         design = CaseDesign(args.input_file, args.case_name, report)
         case_list = design.design()
         # create op project path and generate op test case code
         if case_list[0].get('st_mode') == 'ms_python_train':
             ms_op_generator_instance = MsOpGenerator(
-                case_list, output_path, False, report)
+                case_list, output_path, args.device_id, False, report)
             ms_op_generator_instance.generate()
         else:
             output_path = os.path.realpath(args.output_path)
-            acl_op_generator_instance = AclOpGenerator(case_list, output_path,
-                                                       False, report)
+            acl_op_generator_instance = AclOpGenerator(
+                case_list, output_path, args.device_id, False, report)
             acl_op_generator_instance.generate()
 
         # generate data
@@ -154,6 +167,10 @@ def _run_parser(run_parser):
         '-c', "--case_name", dest="case_name", default='all',
         help="<Optional> the case name to run or gen, splits with ',', "
              "like 'case0,case1'.", required=False)
+    run_parser.add_argument(
+        '-d', "--device_id", dest="device_id", default="0",
+        help="<Optional> input device id, default is 0."
+        , required=False)
 
 
 def _mi_parser(mi_parser):
@@ -204,6 +221,10 @@ def _mi_parser(mi_parser):
         '-c', "--case_name", dest="case_name", default='all',
         help="<Optional> the case name to run or gen, splits with ',', like "
              "'case0,case1'.", required=False)
+    gen_parser.add_argument(
+        '-d', "--device_id", dest="device_id", default="0",
+        help="<Optional> input device id, default is 0."
+        , required=False)
 
     # compare parse
     compare_parser.add_argument(

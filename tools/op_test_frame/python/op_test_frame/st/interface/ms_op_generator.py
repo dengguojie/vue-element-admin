@@ -119,11 +119,13 @@ class MsOpGenerator:
     Class for generating mindspore op testcode.
     """
 
-    def __init__(self, testcase_list, output_path, machine_type, report):
+    def __init__(self, testcase_list, output_path, device_id, machine_type,
+                 report):
         self.testcase_list = testcase_list
         self.machine_type = machine_type
         self._check_output_path(output_path, testcase_list)
         self.report = report
+        self.device_id = device_id
 
     def _check_output_path(self, output_path, testcase_list):
         formalized_path = os.path.realpath(output_path)
@@ -169,7 +171,8 @@ class MsOpGenerator:
         testcase_test_net_content += code_snippet.TESTCASE_IMPORT_CONTENT \
             .format(
             import_op=op_name_lower,
-            op_name=op_name)
+            op_name=op_name,
+            device_id=self.device_id)
 
         # generate test_sub_case function
         testcase_test_net_func_content = ''

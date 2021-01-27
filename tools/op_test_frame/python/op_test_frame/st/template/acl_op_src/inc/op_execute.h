@@ -10,5 +10,5 @@
 #ifndef OP_EXECUTE_H
 #define OP_EXECUTE_H
 #include "op_test_desc.h"
-bool OpExecute(OpTestDesc &opDesc);
+bool OpExecute(OpTestDesc &opDesc, uint32_t deviceId = 0);
 #endif

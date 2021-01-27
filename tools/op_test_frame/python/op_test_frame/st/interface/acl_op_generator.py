@@ -97,7 +97,7 @@ def _append_content_to_file(content, file_path):
     utils.print_info_log("Successfully appended content to " + file_path)
 
 
-def _create_exact_testcase_content(testcase_struct):
+def _create_exact_testcase_content(testcase_struct, device_id):
     input_shape_list = []
     input_data_type_list = []
     input_format_list = []
@@ -198,6 +198,7 @@ def _create_exact_testcase_content(testcase_struct):
         output_data_type=output_data_type,
         output_format=output_format,
         all_attr_code_snippet=all_attr_code_snippet,
+        device_id=device_id,
         testcase_name=testcase_struct['case_name'])
     return testcase_content, output_file_path_list
 
@@ -233,11 +234,13 @@ class AclOpGenerator:
     Class for generating acl op testcode.
     """
 
-    def __init__(self, testcase_list, output_path, machine_type, report):
+    def __init__(self, testcase_list, output_path, device_id, machine_type,
+                 report):
         self.testcase_list = testcase_list
         self.machine_type = machine_type
         self._check_output_path(output_path, testcase_list)
         self.report = report
+        self.device_id = device_id
 
     def _check_output_path(self, output_path, testcase_list):
         formalized_path = os.path.realpath(output_path)
@@ -274,7 +277,7 @@ class AclOpGenerator:
         testcase_cpp_content = ""
         for testcase_struct in self.testcase_list:
             testcase_content, output_paths = \
-                _create_exact_testcase_content(testcase_struct)
+                _create_exact_testcase_content(testcase_struct, self.device_id)
             testcase_name = testcase_struct['case_name']
             testcase_function_content = code_snippet.TESTCASE_FUNCTION.format(
                 op_name=testcase_struct['op'],

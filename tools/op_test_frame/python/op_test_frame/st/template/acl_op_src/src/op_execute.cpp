@@ -175,13 +175,22 @@ bool OpExecuteInit()
     return true;
 }
 
-bool OpExecute(OpTestDesc &opDesc)
+bool OpExecute(OpTestDesc &opDesc, uint32_t deviceId = 0)
 {
+    uint32_t deviceCount = 0;
+    aclError getDeviceStatus = aclrtGetDeviceCount(&deviceCount);
+    if (getDeviceStatus != ACL_SUCCESS) {
+        ERROR_LOG("Get Device count failed");
+        return false;
+    }
+    if (deviceId >= deviceCount) {
+        ERROR_LOG("Device[%d] is out of range, device id maximum is [%d]", deviceId, deviceCount - 1);
+        return false;
+    }
     if (OpExecuteInit() == false) {
         return false;
     }
-
-    int deviceId = 0;
+    INFO_LOG("------------------Open device[%d]------------------", deviceId);
     if (aclrtSetDevice(deviceId) != ACL_ERROR_NONE) {
         std::cerr << "Open device failed. device id = " << deviceId << std::endl;
         return false;

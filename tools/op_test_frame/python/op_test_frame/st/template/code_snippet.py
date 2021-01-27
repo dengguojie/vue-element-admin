@@ -62,7 +62,9 @@ TESTCASE_CONTENT = """
     opTestDesc.outputFilePath = {{{output_file_path}}};
     // attr parameter init
     {all_attr_code_snippet}
-    EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc), opTestDesc, "{testcase_name}");
+    // set deviceId
+    const uint32_t deviceId = {device_id};
+    EXPECT_EQ_AND_RECORD(true, OpExecute(opTestDesc, deviceId), opTestDesc, "{testcase_name}");
 """
 
 # -----mindspore test .py file--------------------------
@@ -83,7 +85,7 @@ from mindspore import Tensor
 
 # Import the definition of the {op_name} primtive.
 from {import_op} import {op_name}
-context.set_context(mode=context.GRAPH_MODE, device_target="Ascend")
+context.set_context(mode=context.GRAPH_MODE, device_target="Ascend", device_id={device_id})
 logger = logging.getLogger(__name__)
 
 """
