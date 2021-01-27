@@ -15,8 +15,8 @@
 """
 conv3d schedule
 """
-from te.lang.cce.te_schedule.conv3d_schedule import CceConv3dOp
-from te.lang.cce.te_schedule.cce_schedule import get_op_info
+from tbe.dsl.static_schedule.conv3d_schedule import CceConv3dOp
+from tbe.dsl.static_schedule.cce_schedule import get_op_info
 from te.lang.dynamic.schedule.constants import Pattern
 from te import platform as cceconf
 from te.tvm import schedule as tvm

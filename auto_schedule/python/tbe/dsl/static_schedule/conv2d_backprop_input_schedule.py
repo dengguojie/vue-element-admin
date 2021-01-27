@@ -16,8 +16,8 @@
 CceConv2dBackpropInputOp
 """
 from te.lang.cce.te_compute.conv2d_backprop_input_compute import DeconvParam
-from te.lang.cce.te_schedule.conv2d_backprop_input_general_schedule import general_schedule
-from te.lang.cce.te_schedule.conv2d_backprop_input_opti_schedule import opti_schedule
+from tbe.dsl.static_schedule.conv2d_backprop_input_general_schedule import general_schedule
+from tbe.dsl.static_schedule.conv2d_backprop_input_opti_schedule import opti_schedule
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.utils.error_manager import error_manager_util

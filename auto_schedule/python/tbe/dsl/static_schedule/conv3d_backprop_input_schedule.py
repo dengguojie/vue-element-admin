@@ -16,7 +16,7 @@
 CceConv3dBackpropInputOp
 """
 import te.platform as tbe_platform
-from te.lang.cce.te_schedule import conv3d_backprop_input_general_schedule
+from tbe.dsl.static_schedule import conv3d_backprop_input_general_schedule
 
 
 class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903

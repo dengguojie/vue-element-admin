@@ -46,25 +46,25 @@ from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
 from topi.cce import util  # pylint: disable=E0401
 
-from .util import gen_dfs_tensor_map
-from .util import generic_dispatch
+from tbe.dsl.static_schedule.util import gen_dfs_tensor_map
+from tbe.dsl.static_schedule.util import generic_dispatch
 from .cce_schedule_declarations import OpPatterns
 from .cce_schedule_declarations import OpSubPatterns
 from .cce_schedule_declarations import OpSpecTypes
 from .cce_schedule_mappings import OpPatternRecognizer
 
 from .concat_schedule import CceConcatOp
-from .conv_schedule import CceConvOp
-from .conv_schedule import reget_tensor_list
-from .conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
-from .conv2d_backprop_filter_schedule import CceConv2dBackpropFilterOp
-from .conv3d_backprop_input_schedule import CceConv3dBackpropInputOp
-from .conv3d_backprop_filter_schedule import CceConv3dBackpropFilterOp
-from .depthwise_conv2d_schedule import depthwise_conv2d_schedule
+from tbe.dsl.static_schedule.conv_schedule import CceConvOp
+from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
+from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
+from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule import CceConv2dBackpropFilterOp
+from tbe.dsl.static_schedule.conv3d_backprop_input_schedule import CceConv3dBackpropInputOp
+from tbe.dsl.static_schedule.conv3d_backprop_filter_schedule import CceConv3dBackpropFilterOp
+from tbe.dsl.static_schedule.depthwise_conv2d_schedule import depthwise_conv2d_schedule
 from .elewise_schedule import CceOp
 from .elewise_speel_schedule import CceSpeelOp
 from .mmad_schedule import mmad_schedule
-from .gemm_schedule import gemm_schedule
+from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule
 from .pooling2d_schedule import pooling2d_schedule
 from .pooling3d_schedule import pooling3d_schedule
 from .segment_schedule import CceSegmentOp
@@ -87,9 +87,9 @@ from .softmax_schedule import SoftmaxSchedule
 from .l2_loss_schedule import l2_loss_schedule
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .reduce_5hdc_schedule import Reduce5HDCSchedule
-from .conv_schedule import check_quantfuse_doubleout
+from tbe.dsl.static_schedule.conv_schedule import check_quantfuse_doubleout
 from .l2loss_mul_addn_schedule import l2loss_mul_addn_schedule
-from .conv3d_schedule import CceConv3dOp
+from tbe.dsl.static_schedule.conv3d_schedule import CceConv3dOp
 
 from .bn_update_grad_shedule import bn_update_grad_schedule
 from .bn_update_grad_schedule_nd import bn_update_grad_schedule_nd
@@ -107,10 +107,10 @@ from .strided_write_schedule import strided_write_schedule
 from .ascend_dequant_s16_schedule import ascend_dequant_s16_schedule
 from .ascend_requant_schedule import ascend_requant_schedule
 from .ascend_requant_s16_schedule import ascend_requant_s16_schedule
-from . import util as te_util  # pylint: disable=E0401
+from tbe.dsl.static_schedule import util as te_util  # pylint: disable=E0401
 from .cosine_embedding_loss_schedule import \
     cosine_embedding_loss_schedule
-from .dilation_schedule import dilation_schedule
+from tbe.dsl.static_schedule.dilation_schedule import dilation_schedule
 
 
 def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915

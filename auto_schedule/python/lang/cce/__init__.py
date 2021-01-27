@@ -103,10 +103,8 @@ from .te_compute.conv3d_backprop_input_compute import conv3d_dx
 from .te_compute.conv3d_backprop_filter_compute import conv3d_dw
 from .te_compute.util import dsl_check_support
 
-from .te_schedule.conv_schedule import CceConvOp, AutoScheduleOp
 from .te_schedule.cce_schedule import reget_tensor_list, get_op_info
 
 from .te_schedule.cce_schedule import schedule_cce
 from te.utils.cce import build
 from .te_compute.dilation_compute import dilation_compute
-from .te_schedule.dilation_schedule import dilation_schedule

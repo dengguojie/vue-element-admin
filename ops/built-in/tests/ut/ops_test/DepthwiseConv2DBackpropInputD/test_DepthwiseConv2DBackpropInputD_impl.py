@@ -86,7 +86,7 @@ def _gen_trans_data_case(param):
 
 # ============ auto gen ["Ascend910"] test cases start ===============
 for case in dp_conv2d_bp_input_op_testcase:
-    ut_case.add_case(["Ascend910"], _gen_trans_data_case(case))
+    ut_case.add_case(["Ascend910A"], _gen_trans_data_case(case))
 
 # ============ auto gen ["Ascend910"] test cases end =================
 

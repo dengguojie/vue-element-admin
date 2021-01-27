@@ -27,7 +27,7 @@ from te.platform.cce_params import scope_cbuf
 from te.platform.cce_conf import get_soc_spec
 from te.domain.tiling.get_tiling import get_tiling
 from te.lang.cce.te_compute.cube_util import shape_to_list
-from te.lang.cce.te_schedule.util import parse_tbe_compile_para
+from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
 from te.utils.error_manager import error_manager_util
 from te.lang.cce.te_compute.conv2d_backprop_filter_compute \

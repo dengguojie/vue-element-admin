@@ -336,7 +336,7 @@ def accurate_tbe_file_change(change_file_info: ChangeFileInfo, op_type_list):
         return
     for tbe_file in tbe_changed_files:
         tbe_file = str(tbe_file).strip()
-        if not ("python/te/lang/cce/te_schedule" in tbe_file or "python/te/lang/dynamic/schedule" in tbe_file):
+        if not ("auto_schedule/python/tbe/dsl/static_schedule" in tbe_file or "python/te/lang/dynamic/schedule" in tbe_file):
             continue
         if not tbe_file.endswith(".py"):
             continue

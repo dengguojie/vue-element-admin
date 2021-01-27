@@ -16,8 +16,8 @@
 conv2d schedule
 """
 from te.lang.dynamic.schedule.constants import Pattern
-from te.lang.cce.te_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
-from te.lang.cce.te_schedule.cce_schedule import get_op_info
+from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
+from tbe.dsl.static_schedule.cce_schedule import get_op_info
 
 from te.tvm import schedule as tvm
 from te.lang.base.operation_impl import register_schedule

@@ -21,7 +21,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_util
 from te.utils.error_manager import error_manager_cube
 from te.lang.cce.te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
-from te.lang.cce.te_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_filter_d_schedule
+from tbe.dsl.static_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_filter_d_schedule
 from te import tvm
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE

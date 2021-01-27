@@ -18,12 +18,12 @@ cube schedule
 
 from te import tvm
 from te.lang.base.operation_impl import register_schedule
-from te.lang.cce.te_schedule.conv_schedule import CceConvOp
-from te.lang.cce.te_schedule.conv2d_backprop_input_schedule import \
+from tbe.dsl.static_schedule.conv_schedule import CceConvOp
+from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import \
     CceConv2dBackpropInputOp
-from te.lang.cce.te_schedule.conv2d_backprop_filter_schedule import \
+from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule import \
     CceConv2dBackpropFilterOp
-from te.lang.cce.te_schedule.gemm_schedule import gemm_schedule
+from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule
 
 from . import Pattern
 

@@ -23,13 +23,13 @@ from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvPattern
 from te.lang.cce.te_compute.cube_util import shape_to_list
 from te.lang.cce.te_compute.cube_util import GroupDictKeys
-from te.lang.cce.te_schedule.util import L1CommonParam
+from tbe.dsl.static_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.tvm.schedule import InferBound
 from te.tvm.schedule import ScheduleOps
 from te.utils.error_manager import error_manager_util
-from te.lang.cce.te_schedule.util import parse_tbe_compile_para
+from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
 # default false
 DEBUG_MODE = False  # pylint: disable=C0302

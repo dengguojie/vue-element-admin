@@ -16,9 +16,6 @@
 cce schedule
 """
 from .cce_schedule import cce_build_code
-from .depthwise_conv2d_schedule import depthwise_conv2d_backprop_filter_d_schedule
-from .depthwise_conv2d_schedule import depthwise_conv2d_backprop_input_d_schedule
-from .depthwise_conv2d_schedule import depthwise_conv2d_schedule
 from .pooling2d_schedule import pooling2d_schedule
 from .pooling3d_schedule import pooling3d_schedule
 from .pooling3d_max_grad_grad_schedule import pooling3d_max_grad_grad_schedule
