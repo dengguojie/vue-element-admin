@@ -24,7 +24,7 @@ def test_conv2d_v200(test_arg):
     from impl.ascend_requant_s16 import ascend_requant_s16_compute
     from impl.ascend_requant import ascend_requant_compute
     from impl.ascend_dequant import ascend_dequant_compute
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
     testcases = {
         "op_name": "conv_v200",

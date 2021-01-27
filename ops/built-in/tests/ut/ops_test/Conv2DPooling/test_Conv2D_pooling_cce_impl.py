@@ -31,7 +31,7 @@ def test_conv2d_pooling(test_arg):
     from te import tvm
     from topi import generic
     import te.lang.cce
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
     testcases = {
             "fm_224_224_conv2d_pooling_1batch": ((1, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (3, 3), (2, 2), "SAME"),
@@ -41,15 +41,6 @@ def test_conv2d_pooling(test_arg):
             "fm_224_224_conv2d_pooling_1batch_no_bias": ((1, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 0, 1, (3, 3), (2, 2), "SAME"),
             "fm_224_224_conv2d_pooling_4batch_no_relu": ((4, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 0, (3, 3), (2, 2), "SAME"),
             "fm_224_224_conv2d_pooling_8batch_no_bias_no_relu": ((8, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 0, 0, (3, 3), (2, 2), "SAME"),
-
-            "fm_544_960_conv2d_pooling2_2_1batch": ((1, 3, 544, 960), (16, 3, 7, 7), (3, 3), (2, 2), 1, 1, (2, 2), (2, 2), "SAME"),
-            "fm_120_120_conv2d_pooling2_2_16batch": ((16, 3, 120, 120), (16, 3, 5, 5), (3, 3), (2, 2), 1, 1, (2, 2), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling2_2_8batch": ((8, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (2, 2), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling2_2_16batch": ((16, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 1, (2, 2), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling2_2_1batch_no_bias": ((1, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 0, 1, (2, 2), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling2_2_4batch_no_relu": ((4, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 1, 0, (2, 2), (2, 2), "SAME"),
-            "fm_224_224_conv2d_pooling2_2_8batch_no_bias_no_relu": ((8, 3, 224, 224), (64, 3, 7, 7), (3, 3), (2, 2), 0, 0, (2, 2), (2, 2), "SAME"),
-
     }
 
 

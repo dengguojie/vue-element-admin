@@ -28,7 +28,7 @@ def TestConvSreadSwriteConf(test_arg):
     from impl.ascend_requant import ascend_requant_compute
     from impl.conv2d import conv2d_compute
     from impl.leaky_relu import leaky_relu_compute
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
 
     def strided_read_compute(input_tensor, output_tensor, axis, stride, \

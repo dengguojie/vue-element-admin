@@ -20,7 +20,7 @@ def TestConv2dV200(test_arg):
     from impl.prelu import prelu_compute
     from impl.eltwise import eltwise_compute
     from impl.ascend_quant import ascend_quant_compute
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
     testcases = {
         "op_name": "conv_v200",

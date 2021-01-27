@@ -27,7 +27,7 @@ def test_conv_aipp(test_arg):
     from impl.leaky_relu import leaky_relu_compute
     from impl.pooling import pool_fuse_compute
     from impl.aipp import aipp_compute
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
     TEST_PLATFORM = ["Ascend310","Ascend610","Ascend710","Hi3796CV300ES"]
 

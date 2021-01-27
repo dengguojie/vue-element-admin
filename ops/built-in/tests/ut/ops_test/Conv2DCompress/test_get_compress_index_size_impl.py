@@ -7,7 +7,7 @@ ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 def test_get_compress_index_size(test_arg):
     import types
 
-    from te.lang.cce import CceConvOp
+    from tbe.dsl.static_schedule.conv_schedule import CceConvOp
 
     def freeVar(val):
         def nested():

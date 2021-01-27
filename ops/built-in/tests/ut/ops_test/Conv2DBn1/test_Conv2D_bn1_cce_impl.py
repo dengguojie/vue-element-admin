@@ -30,7 +30,7 @@ def test_bn(test_arg):
 
     import sys
     from impl.bn_training_reduce import bn_training_reduce_compute
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
     sys.path.append("./llt/ops/ut/testcase_python")
 
     testcases = {

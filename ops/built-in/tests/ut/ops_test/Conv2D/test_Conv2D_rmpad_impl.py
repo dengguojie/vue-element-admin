@@ -20,7 +20,7 @@ def test_conv2d_rmpad(test_arg):
     from impl.ascend_dequant import ascend_dequant_compute
     from impl.ascend_quant import ascend_quant_compute
     from impl.conv2d_data_rm import conv2d_data_rm_compute
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
     cce_conf.te_set_version('Ascend310')
     shape_in = (16, 1024, 7, 7)

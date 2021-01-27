@@ -37,7 +37,7 @@ def test_conv2d_lhisi(test_arg):
     from impl.ascend_quant import ascend_quant_compute
     from impl.leaky_relu import leaky_relu_compute
     from impl.eltwise import eltwise_compute
-    from te.lang.cce import AutoScheduleOp
+    from tbe.dsl.static_schedule.conv_schedule import AutoScheduleOp
 
     sys.path.append("./llt/ops/ut/testcase_python/")
 
