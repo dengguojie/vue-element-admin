@@ -53,7 +53,7 @@ class Hwcn2Fractalzg(object):
                 self.loop_src_n_base = []
                 self.loop_src_n_repeat = []
 
-            def _composite(self, pf_kernel_base, pf_kernel_repeat,
+            def composite(self, pf_kernel_base, pf_kernel_repeat,
                            pf_src_c_base, pf_src_c_repeat,
                            pf_src_n_base, pf_src_n_repeat):
                 len_k = len(pf_kernel_base)
@@ -123,7 +123,7 @@ class Hwcn2Fractalzg(object):
             self._dispatch_loop()
 
             self.pcp = self.PerCoreParam()
-            self.pcp._composite(self.pf_kernel_base, self.pf_kernel_repeat,
+            self.pcp.composite(self.pf_kernel_base, self.pf_kernel_repeat,
                                 self.pf_src_c_base, self.pf_src_c_repeat,
                                 self.pf_src_n_base, self.pf_src_c_repeat)
 
@@ -239,14 +239,15 @@ class Hwcn2Fractalzg(object):
         self.data_in = data_in
         self.data_out = data_out
 
-    def _tiling(self, shape_in, shape_out, groups):
+    def tiling(self, shape_in, shape_out, groups):
         tp = self.TilingParam(shape_in, shape_out, groups)
         return tp
 
-    def _check_params(self, shape_in, shape_out, in_dtyppe, out_dtype):
+    # pylint: unused-argument
+    def check_params(self, shape_in, shape_out, in_dtyppe, out_dtype):
         return
 
-    def _calc_src_addr(self, tp, lk, lsc, lcn, src_addr):
+    def _calc_src_addr(self, tp, lk, lsc, src_addr):
         src_addr.set_as(lk * tp.vol_cn + lsc * tp.vol_cn_ms)
 
     def _calc_dst_addr(self, tp, lk, lsc, lc1, lc0, dst_addr):
@@ -281,9 +282,8 @@ class Hwcn2Fractalzg(object):
     def _copy_in(self, tp, tik_inst, ub_offset, lk, lsc):
         src_addr = tik_inst.Scalar("int64", init_value=0)
         ub_offset.set_as(0)
-        lcn = 0
         burst_len = math.ceil(tp.src_c_ms * tp.src_n / EPB)
-        self._calc_src_addr(tp, lk, lsc, lcn, src_addr)
+        self._calc_src_addr(tp, lk, lsc, src_addr)
         tik_inst.data_move(self.ub_input[ub_offset * EPB], self.data_in[src_addr], 0, 1, burst_len, 0, 0)
         ub_offset.set_as(ub_offset + burst_len)
 
@@ -292,7 +292,7 @@ class Hwcn2Fractalzg(object):
             return False
         return (lc1 * tp.height_per_c1 + (lc0 + 1) * tp.cout_orig) % tp.dst_n == 0
 
-    def _copy_out_gt_16(self, tp, tik_inst, ub_offset, lk, lsc):
+    def _copy_out_gt_16(self, tp, tik_inst, lk, lsc):
         dst_addr = tik_inst.Scalar("int64", init_value=0)
         seq = tik_inst.Scalar("int64", init_value=0)
 
@@ -308,7 +308,7 @@ class Hwcn2Fractalzg(object):
                                    tp.khw * tp.dst_n * tp.c1 - tp.cout_orig)
                 seq.set_as(seq + 1)
 
-    def _copy_out_lt_16(self, tp, tik_inst, ub_offset, lk, lsc):
+    def _copy_out_lt_16(self, tp, tik_inst, lk, lsc):
         dst_addr = tik_inst.Scalar("int64", init_value=0)
         tail_block_addr = tik_inst.Scalar("int64", init_value=0)
         tail_start_addr = tik_inst.Scalar("int64", init_value=0)
@@ -329,13 +329,16 @@ class Hwcn2Fractalzg(object):
                                        tp.khw * tp.dst_n * tp.c1 - tp.cout_orig)
 
                 with tik_inst.else_scope():
-                    tik_inst.data_move(self.data_out[dst_addr],
-                                       self.ub_input[OFFSET_1 + seq * tp.cout_orig * EPB],
-                                       0,
-                                       tp.g,
-                                       tp.cout_orig - 1,
-                                       tp.dst_n - tp.cout_orig + 1,
-                                       tp.khw * tp.dst_n * tp.c1 - tp.cout_orig + 1)
+                    with tik_inst.if_scope(tp.cout_orig != 1):
+                        burst_len  = tik_inst.Scalar("int64", init_value=tp.cout_orig - 1)
+                        tik_inst.data_move(self.data_out[dst_addr],
+                                           self.ub_input[OFFSET_1 + seq * tp.cout_orig * EPB],
+                                           0,
+                                           tp.g,
+                                           #tp.cout_orig - 1,
+                                           burst_len,
+                                           tp.dst_n - tp.cout_orig + 1,
+                                           tp.khw * tp.dst_n * tp.c1 - tp.cout_orig + 1)
 
                     tik_inst.vector_dup(128, self.ub_input[OFFSET_2], 0, math.ceil(tp.g / 8), 1, 8)
                     tail_dst_addr.set_as(dst_addr + (tp.cout_orig - 1) * EPB - (EPB - tp.cin_orig))
@@ -349,11 +352,11 @@ class Hwcn2Fractalzg(object):
                                        0, tp.g, 1, 0, tp.khw * tp.dst_n * tp.c1 - 1)
                 seq.set_as(seq + 1)
 
-    def _copy_out(self, tp, tik_inst, ub_offset, lk, lsc):
+    def _copy_out(self, tp, tik_inst, lk, lsc):
         with tik_inst.if_scope(tp.src_c <= EPB):
-            self._copy_out_lt_16(tp, tik_inst, ub_offset, lk, lsc)
+            self._copy_out_lt_16(tp, tik_inst, lk, lsc)
         with tik_inst.else_scope():
-            self._copy_out_gt_16(tp, tik_inst, ub_offset, lk, lsc)
+            self._copy_out_gt_16(tp, tik_inst, lk, lsc)
 
     def _get_param_by_block_idx(self, block_idx, tp, pc_kernel_base, pc_kernel_repeat,
                                 pc_src_c_base, pc_src_c_repeat, pc_src_n_base, pc_src_n_repeat):
@@ -386,10 +389,11 @@ class Hwcn2Fractalzg(object):
                 with tik_inst.for_range(pc_src_c_base, pc_src_c_base + pc_src_c_repeat) as lsc:
                     self._copy_in(tp, tik_inst, ub_offset, lk, lsc)
                     self._reorder(tp, self.ub_input)
-                    self._copy_out(tp, tik_inst, ub_offset, lk, lsc)
+                    self._copy_out(tp, tik_inst, lk, lsc)
         return
 
 
+# pylint: unused-argument
 @para_check.check_input_type(dict, dict, str, str, int, str)
 def hwcn_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="hwcn_2_fractal_z_g"):
     """
@@ -420,7 +424,7 @@ def hwcn_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="hw
     data_in = tik_inst.Tensor(in_dtype, shape_in, tik.scope_gm, name="data_in")
     data_out = tik_inst.Tensor(out_dtype, shape_out, tik.scope_gm, name="data_out", is_atomic_add=True)
     instance = Hwcn2Fractalzg(tik_inst, data_in, data_out)
-    instance._check_params(shape_in, shape_out, in_dtype, out_dtype)
-    tp = instance._tiling(shape_in, shape_out, groups)
+    instance.check_params(shape_in, shape_out, in_dtype, out_dtype)
+    tp = instance.tiling(shape_in, shape_out, groups)
     instance.compute(tp, data_in, data_out)
     tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[data_in], outputs=[data_out])

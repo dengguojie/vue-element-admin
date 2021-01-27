@@ -110,12 +110,12 @@ def gen_trans_data_precision_case(src, dst, dtype, groups, case_name_val, expect
 #                           gen_trans_data_precision_case((32, 5, 3, 3), (27, 2, 16, 16),
 #                                                         "int16", 8, "hwcn_2_fractal_z_g_precision_006",
 #                                                         "success"))
-
+#
 #ut_case.add_precision_case(["Ascend910A", "Ascend310"],
 #                           gen_trans_data_precision_case((8, 32, 3, 3), (36, 1, 16, 16),
 #                                                         "int16", 2, "hwcn_2_fractal_z_g_precision_007",
 #                                                         "success"))
-
+#
 #ut_case.add_precision_case(["Ascend910A", "Ascend310"],
 #                           gen_trans_data_precision_case((320, 3, 2, 2), (24, 10, 16, 16),
 #                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_008",
@@ -125,9 +125,6 @@ def gen_trans_data_precision_case(src, dst, dtype, groups, case_name_val, expect
 #                           gen_trans_data_precision_case((320, 4, 2, 2), (32, 5, 16, 16),
 #                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_009",
 #                                                         "success"))
-
-
-
 
 
 ut_case.add_precision_case(["Ascend910A", "Ascend310"],
@@ -212,10 +209,24 @@ ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_207",
                                                          "success"))
 
+
+
 ut_case.add_precision_case(["Ascend910A", "Ascend310"],
-                           gen_trans_data_precision_case((3, 3, 16, 512), (288, 1, 16, 16),
-                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_net_208",
+                           gen_trans_data_precision_case((3, 3, 1, 256), (144, 1, 16, 16),
+                                                         "int16", 256, "hwcn_2_fractal_z_g_precision_net_301",
                                                          "success"))
+
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
+                           gen_trans_data_precision_case((3, 3, 1, 512), (288, 1, 16, 16),
+                                                         "int16", 512, "hwcn_2_fractal_z_g_precision_net_302",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
+                           gen_trans_data_precision_case((3, 3, 1, 1024), (576, 1, 16, 16),
+                                                         "int16", 1024, "hwcn_2_fractal_z_g_precision_net_303",
+                                                         "success"))
+
+
 
 
 
