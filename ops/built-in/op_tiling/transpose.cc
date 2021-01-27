@@ -240,22 +240,37 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
         return false;
     }
 
-    const int32_t* pPerm = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at("perm")));
-    if (pPerm == nullptr) {
-        OP_LOGE(opType.c_str(), "Failed to get perm pointer.");
-        return false;
+    auto tensor = std::get<2>(paras.const_inputs.at("perm"));
+    auto dType = tensor.GetTensorDesc().GetDataType();
+    
+    if (dType == ge::DataType::DT_INT64 || dType == ge::DataType::DT_UINT64) {
+        const int64_t* pPerm = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at("perm")));
+        if (pPerm == nullptr) {
+            OP_LOGE(opType.c_str(), "Failed to get perm pointer.");
+            return false;
+        }
+        int32_t size = std::get<1>(paras.const_inputs.at("perm"));
+        for (size_t i = 0; i < size / sizeof(int64_t); i++) {
+            shapeInfo.perm.push_back(pPerm[i]);
+        }
+    } else {
+        const int32_t* pPerm = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at("perm")));
+        if (pPerm == nullptr) {
+            OP_LOGE(opType.c_str(), "Failed to get perm pointer.");
+            return false;
+        }
+        int32_t size = std::get<1>(paras.const_inputs.at("perm"));
+        for (size_t i = 0; i < size / sizeof(int32_t); i++) {
+            shapeInfo.perm.push_back(pPerm[i]);
+        }
     }
 
-    int32_t size = std::get<1>(paras.const_inputs.at("perm"));
-    for (size_t i = 0; i < size/sizeof(int32_t); i++) {
-        shapeInfo.perm.push_back(pPerm[i]);
-    }
-
-    if (paras.inputs.size() == 0 || paras.inputs[0].tensor.size() == 0 ||
-        paras.outputs.size() == 0 || paras.outputs[0].tensor.size() == 0) {
-        OP_LOGE(opType.c_str(), "inputs.size=%u, inputs[0].tensor.size=%u, outputs.size=%u, outputs[0].tensor.size=%u",
-                paras.inputs.size(), paras.inputs[0].tensor.size(),
-                paras.outputs.size(), paras.outputs[0].tensor.size());
+    if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
+        OP_LOGE(opType.c_str(), "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
+    } 
+    if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
+        OP_LOGE(opType.c_str(), "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
+                                                                                  paras.outputs[0].tensor.size());
     }
     shapeInfo.inShape = paras.inputs[0].tensor[0].shape;
     shapeInfo.outShape = paras.outputs[0].tensor[0].shape;
@@ -298,9 +313,9 @@ static bool CheckTensorShape(const string & opType,
     int64_t outDims = shapeInfo.outShape.size();
     int64_t permDims = shapeInfo.perm.size();
 
-    if (inDims <= 1 || inDims != outDims || inDims != permDims) {
+    if (inDims < 1 || inDims != outDims || inDims != permDims) {
         OP_LOGE(opType.c_str(), "The dim of inputs is invalid, inDims = %d, outDims = %d, permDims = %d",
-                opType.c_str(), inDims, outDims, permDims);
+                                inDims, outDims, permDims);
         return false;
     }
 
@@ -399,8 +414,12 @@ static void  CalcOutShape(ShapeInfo & shapeInfo) {
 void RemoveAxis(ShapeInfo & shapeInfo) {
     int64_t dim = shapeInfo.inShape.size();
     if (dim == 1) {
+        shapeInfo.reducedInShape = shapeInfo.inShape;
+        shapeInfo.reducedPerm = shapeInfo.perm;
+        shapeInfo.reducedOutShape = shapeInfo.outShape;
         return;
     }
+
     vector<int64_t> & shape = shapeInfo.reducedInShape;
     shape.clear();
     vector<int64_t> delPerm;

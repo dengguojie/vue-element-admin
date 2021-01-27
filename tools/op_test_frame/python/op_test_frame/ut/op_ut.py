@@ -753,7 +753,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if expect_tensor.shape != actual_tensor.shape:
                 compare_success = False
                 err_msg += "output %d 's shape is not same, expect: [%s], actual: [%s]\n" % (
-                    idx, ",".join(expect_tensor.shape), ",".join(actual_tensor.shape))
+                    idx, ",".join([str(x) for x in expect_tensor.shape]), ",".join([str(x) for x in actual_tensor.shape]))
                 continue
             cmp_res = precision_compare_util.compare_precision(output.get("value"),
                                                                output.get("expect_value"),
