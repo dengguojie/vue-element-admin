@@ -330,20 +330,26 @@ class Conv2dBpInputTiling(CubeTilingOp):
             k_bl1 = 32
             k_bl0 = 32
 
-        if self.tiling_info["strideH_expand"] > 1 \
-                or self.tiling_info["strideW_expand"] > 1:
-            tiling["AUB_shape"] = [k_w * k_h * 16, 1, 1, 1]
-            tiling["BUB_shape"] = None
-        else:
-            tiling["AUB_shape"] = None
-            tiling["BUB_shape"] = None
+        k_aub = m_al0 = m_cl0 = 1
+        if self.tiling_info["strideH_expand"] > 1 or self.tiling_info["strideW_expand"] > 1:
+            if self.k_h == 1 and self.k_w == 1 and (self.pad_mode == "VAR" or sum(self.cur_pads) == 0):
+                # when mmad, the min unit of M is a fmp's w
+                if self.a_info[3] % 16 == 0:
+                    m_al0 = m_cl0 = self.a_info[3] // utils.FP16_M
+                else:
+                    # add one is needed by buffer_tile of ub
+                    m_al0 = m_cl0 = utils.icd(self.a_info[3], utils.FP16_M) + 1
+            else:
+                k_aub = k_w * k_h * 16
 
+        tiling["AUB_shape"] = [k_aub, 1, 1, 1] if k_aub != 1 else None
+        tiling["BUB_shape"] = None
         tiling["AL1_shape"] = [k_al1, 1, 1, 1]
         tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
-        tiling["AL0_matrix"] = [1, 1, 16, k_al0, 1, 1]
+        tiling["AL0_matrix"] = [m_al0, 1, 16, k_al0, 1, 1]
         tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
-        tiling["CL0_matrix"] = [1, 1, 16, 16, 1, 1]
-        tiling["CUB_matrix"] = [1, 1, 16, 16, 1, 1]
+        tiling["CL0_matrix"] = [1, m_cl0, 16, 16, 1, 1]
+        tiling["CUB_matrix"] = [1, m_cl0, 16, 16, 1, 1]
         tiling["block_dim"] = [1, 1, 1, 1]
         tiling["n_bef_batch_flag"] = 0
         tiling["n_bef_group_flag"] = 0
@@ -509,8 +515,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
             stride = self.stride_h
         if self.pad_mode == "VAR":
             return utils.icd(fmap_h, stride)
-        return (fmap_h + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
-                (self.k_h - 1) - 1) // stride + 1
+        return (fmap_h + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h * (self.k_h - 1) - 1) // stride + 1
 
     def get_output_w(self, fmap_w, stride=None):
         """
@@ -522,5 +527,4 @@ class Conv2dBpInputTiling(CubeTilingOp):
             stride = self.stride_w
         if self.pad_mode == "VAR":
             return utils.icd(fmap_w, stride)
-        return (fmap_w + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w *
-                (self.k_w - 1) - 1) // stride + 1
+        return (fmap_w + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w * (self.k_w - 1) - 1) // stride + 1

@@ -623,7 +623,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
             feature_map,
             g_after,
             c1_extend,
-            var_map=None,
+            var_map={},
             slice_offset=0,
             valid_shape=()):
         """
@@ -636,6 +636,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         g_after : the group after optimization
 
         c1_extend : the C1 after group extension
+
+        var_map : dict of vars for dynamic shape
 
         slice_offset : offset of fmap
 
