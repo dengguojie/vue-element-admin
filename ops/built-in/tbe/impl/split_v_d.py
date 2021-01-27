@@ -17,7 +17,8 @@ split_v_d
 """
 
 import functools
-import te.lang.cce
+from tbe.dsl.compute.array import split_compute_com
+from tbe.dsl.static_schedule.split_schedule import split_schedule_com
 from te import tik
 from te import tvm
 from te import platform as tbe_platform
@@ -322,7 +323,7 @@ def split_v_d_compute(input_value, output_data, size_splits, split_dim, num_spli
     output_tensor_list: list
         the list of output tensors, output tensor type is TVM tensor.
     """
-    output_shape_list, output_tensor_list = te.lang.cce.split_compute_com(input_value, split_dim, size_splits)
+    output_shape_list, output_tensor_list = split_compute_com(input_value, split_dim, size_splits)
     return output_shape_list, output_tensor_list
 
 
@@ -562,7 +563,7 @@ def split_v_d(input_value, output_data, size_splits, split_dim, num_split, kerne
     output_shape_list, output_tensor_list = split_v_d_compute(data, output_data, size_splits, split_dim, num_split,
                                                               kernel_name)
 
-    sch, build_list = te.lang.cce.split_schedule_com(data, split_dim, output_shape_list, output_tensor_list)
+    sch, build_list = split_schedule_com(data, split_dim, output_shape_list, output_tensor_list)
 
     with build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)

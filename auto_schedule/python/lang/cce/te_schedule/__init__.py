@@ -16,6 +16,3 @@
 cce schedule
 """
 from .cce_schedule import cce_build_code
-from .pooling2d_schedule import pooling2d_schedule
-from .pooling3d_schedule import pooling3d_schedule
-from .pooling3d_max_grad_grad_schedule import pooling3d_max_grad_grad_schedule

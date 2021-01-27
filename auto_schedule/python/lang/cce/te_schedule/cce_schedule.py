@@ -48,12 +48,12 @@ from topi.cce import util  # pylint: disable=E0401
 
 from tbe.dsl.static_schedule.util import gen_dfs_tensor_map
 from tbe.dsl.static_schedule.util import generic_dispatch
-from .cce_schedule_declarations import OpPatterns
-from .cce_schedule_declarations import OpSubPatterns
-from .cce_schedule_declarations import OpSpecTypes
-from .cce_schedule_mappings import OpPatternRecognizer
+from tbe.dsl.static_schedule.cce_schedule_declarations import OpPatterns
+from tbe.dsl.static_schedule.cce_schedule_declarations import OpSubPatterns
+from tbe.dsl.static_schedule.cce_schedule_declarations import OpSpecTypes
+from tbe.dsl.static_schedule.cce_schedule_mappings import OpPatternRecognizer
 
-from .concat_schedule import CceConcatOp
+from tbe.dsl.static_schedule.concat_schedule import CceConcatOp
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
 from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
 from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
@@ -61,54 +61,54 @@ from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule import CceConv2dBac
 from tbe.dsl.static_schedule.conv3d_backprop_input_schedule import CceConv3dBackpropInputOp
 from tbe.dsl.static_schedule.conv3d_backprop_filter_schedule import CceConv3dBackpropFilterOp
 from tbe.dsl.static_schedule.depthwise_conv2d_schedule import depthwise_conv2d_schedule
-from .elewise_schedule import CceOp
-from .elewise_speel_schedule import CceSpeelOp
-from .mmad_schedule import mmad_schedule
+from tbe.dsl.static_schedule.elewise_schedule import CceOp
+from tbe.dsl.static_schedule.elewise_speel_schedule import CceSpeelOp
+from tbe.dsl.static_schedule.mmad_schedule import mmad_schedule
 from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule
-from .pooling2d_schedule import pooling2d_schedule
-from .pooling3d_schedule import pooling3d_schedule
-from .segment_schedule import CceSegmentOp
-from .segment_speel_schedule import CceSegmentSpeelOp
-from .inplace_schedule import CceInplaceOp
+from tbe.dsl.static_schedule.pooling2d_schedule import pooling2d_schedule
+from tbe.dsl.static_schedule.pooling3d_schedule import pooling3d_schedule
+from tbe.dsl.static_schedule.segment_schedule import CceSegmentOp
+from tbe.dsl.static_schedule.segment_speel_schedule import CceSegmentSpeelOp
+from tbe.dsl.static_schedule.inplace_schedule import CceInplaceOp
 from ..te_compute import common
-from .pure_broadcast_schedule import PureBroadcastSchedule
-from .elewise_schedule_new import ElewiseSchedule
-from .bn_update_schedule import bn_update_schedule
-from .bn_reduce_schedule import bn_reduce_schedule
-from .bn_grad_reduce_schedule import BnGradReduceSchedule
-from .elewise_multi_schedule import ElewiseMultiSchedule
-from .reduce_multi_schedule import ReduceMultiSchedule
-from .reduce_mean_mid_reduce_high_performance_schedule import \
+from tbe.dsl.static_schedule.pure_broadcast_schedule import PureBroadcastSchedule
+from tbe.dsl.static_schedule.elewise_schedule_new import ElewiseSchedule
+from tbe.dsl.static_schedule.bn_update_schedule import bn_update_schedule
+from tbe.dsl.static_schedule.bn_reduce_schedule import bn_reduce_schedule
+from tbe.dsl.static_schedule.bn_grad_reduce_schedule import BnGradReduceSchedule
+from tbe.dsl.static_schedule.elewise_multi_schedule import ElewiseMultiSchedule
+from tbe.dsl.static_schedule.reduce_multi_schedule import ReduceMultiSchedule
+from tbe.dsl.static_schedule.reduce_mean_mid_reduce_high_performance_schedule import \
     reduce_mean_mid_reduce_high_performance_schedule
-from .workspace_multi_schedule import WorkspaceMultiSchedule
-from .softmax_cross_entropy_with_logits_schedule import logits_schedule
-from .l2_normalize_schedule import L2NormalizeSchedule
-from .softmax_schedule import SoftmaxSchedule
-from .l2_loss_schedule import l2_loss_schedule
-from .reduce_atomic_schedule import ReduceAtomicSchedule
-from .reduce_5hdc_schedule import Reduce5HDCSchedule
+from tbe.dsl.static_schedule.workspace_multi_schedule import WorkspaceMultiSchedule
+from tbe.dsl.static_schedule.softmax_cross_entropy_with_logits_schedule import logits_schedule
+from tbe.dsl.static_schedule.l2_normalize_schedule import L2NormalizeSchedule
+from tbe.dsl.static_schedule.softmax_schedule import SoftmaxSchedule
+from tbe.dsl.static_schedule.l2_loss_schedule import l2_loss_schedule
+from tbe.dsl.static_schedule.reduce_atomic_schedule import ReduceAtomicSchedule
+from tbe.dsl.static_schedule.reduce_5hdc_schedule import Reduce5HDCSchedule
 from tbe.dsl.static_schedule.conv_schedule import check_quantfuse_doubleout
-from .l2loss_mul_addn_schedule import l2loss_mul_addn_schedule
+from tbe.dsl.static_schedule.l2loss_mul_addn_schedule import l2loss_mul_addn_schedule
 from tbe.dsl.static_schedule.conv3d_schedule import CceConv3dOp
 
-from .bn_update_grad_shedule import bn_update_grad_schedule
-from .bn_update_grad_schedule_nd import bn_update_grad_schedule_nd
-from .layer_norm_grad_schedule import layer_norm_grad_schedule
+from tbe.dsl.static_schedule.bn_update_grad_shedule import bn_update_grad_schedule
+from tbe.dsl.static_schedule.bn_update_grad_schedule_nd import bn_update_grad_schedule_nd
+from tbe.dsl.static_schedule.layer_norm_grad_schedule import layer_norm_grad_schedule
 
-from .ascend_anti_quant_schedule import ascend_anti_quant_schedule
-from .ascend_quant_schedule import ascend_quant_schedule
-from .ascend_dequant_schedule import ascend_dequant_schedule
+from tbe.dsl.static_schedule.ascend_anti_quant_schedule import ascend_anti_quant_schedule
+from tbe.dsl.static_schedule.ascend_quant_schedule import ascend_quant_schedule
+from tbe.dsl.static_schedule.ascend_dequant_schedule import ascend_dequant_schedule
 
-from .read_select_schedule import read_select_schedule
-from .write_select_schedule import write_select_schedule
-from .strided_read_schedule import strided_read_schedule
-from .strided_write_schedule import strided_write_schedule
+from tbe.dsl.static_schedule.read_select_schedule import read_select_schedule
+from tbe.dsl.static_schedule.write_select_schedule import write_select_schedule
+from tbe.dsl.static_schedule.strided_read_schedule import strided_read_schedule
+from tbe.dsl.static_schedule.strided_write_schedule import strided_write_schedule
 
-from .ascend_dequant_s16_schedule import ascend_dequant_s16_schedule
-from .ascend_requant_schedule import ascend_requant_schedule
-from .ascend_requant_s16_schedule import ascend_requant_s16_schedule
+from tbe.dsl.static_schedule.ascend_dequant_s16_schedule import ascend_dequant_s16_schedule
+from tbe.dsl.static_schedule.ascend_requant_schedule import ascend_requant_schedule
+from tbe.dsl.static_schedule.ascend_requant_s16_schedule import ascend_requant_s16_schedule
 from tbe.dsl.static_schedule import util as te_util  # pylint: disable=E0401
-from .cosine_embedding_loss_schedule import \
+from tbe.dsl.static_schedule.cosine_embedding_loss_schedule import \
     cosine_embedding_loss_schedule
 from tbe.dsl.static_schedule.dilation_schedule import dilation_schedule
 

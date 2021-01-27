@@ -17,7 +17,8 @@ split_d
 """
 import functools
 import numpy as np
-import te.lang.cce as tbe
+from tbe.dsl.compute.array import split_compute_com
+from tbe.dsl.static_schedule.split_schedule import split_schedule_com
 import te.platform as tbe_platform
 from te import tvm
 from te import tik
@@ -453,7 +454,7 @@ def split_d_compute(input_value, output_data, split_dim, num_split, kernel_name=
 
     size_splits = [size] * num_split
 
-    output_shape_list, output_tensor_list = tbe.split_compute_com(input_value, split_dim, size_splits)
+    output_shape_list, output_tensor_list = split_compute_com(input_value, split_dim, size_splits)
 
     return output_shape_list, output_tensor_list
 
@@ -633,7 +634,7 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
     data = tvm.placeholder(shape, name="data", dtype=dtype_lower)
     output_shape_list, output_tensor_list = split_d_compute(data, output_data, split_dim, num_split, kernel_name)
 
-    sch, build_list = tbe.split_schedule_com(data, split_dim, output_shape_list, output_tensor_list)
+    sch, build_list = split_schedule_com(data, split_dim, output_shape_list, output_tensor_list)
 
     with tbe_platform.build_config:
         tvm.build(sch, build_list, "cce", name=kernel_name)
