@@ -55,18 +55,14 @@ def get_op_support_info(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
     """
     get split info
     rois: [batch, 5, max_rois_num], 5 means (batchId, x1, y1, x2, y2)
-    bbox_delta: [total_rois, num_class*4]
+    bbox_delta: [total_rois, num_class*4], total_rois = batch * max_rois_num
     score: [total_rois, num_class]
     img_info
     actual_rois_num: [batch_rois, 8]
     actual_bbox_num: [batch, num_classes]
     box: [batch, numBoxes, 8]
     """
-    if actual_rois_num_dic:
-        inputs = [0, 3, 4]
-    else:
-        inputs = [0, 3]
-    return util_select_op_base.get_split_n_info(inputs, [0, 1])
+    return util_select_op_base.get_op_cal_info(None, None, 0, 0)
 
 
 def get_params(dtype):

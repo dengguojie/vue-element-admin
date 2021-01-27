@@ -81,7 +81,15 @@ case1 = {"params": [rois_dic, bbox_delta_dic, score_dic, im_info_dic,
          "support_expect": True}
 
 
+def test_get_op_support_info(test_arg):
+    from impl.fsr_detection_output import get_op_support_info
+    get_op_support_info(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
+                        actual_rois_num_dic, actual_bbox_num_dic, box_dic,
+                        5, 0.1, 0.2)
+
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")
