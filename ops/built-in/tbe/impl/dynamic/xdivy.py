@@ -167,7 +167,6 @@ def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):
             # shape
             shape_x1, shape_x2 = shape_util.variable_shape([input_x, input_y],
                                                            support_broadcast=True)
-            shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=input_dtype_x, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=input_dtype_y, name="data_x2")

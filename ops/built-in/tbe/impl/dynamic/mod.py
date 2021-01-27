@@ -19,7 +19,6 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
-from te.utils.op_utils import refine_shapes_for_broadcast
 from topi import generic
 from topi.cce import util
 from te.utils.op_utils import *
@@ -137,7 +136,6 @@ def mod(input_x, input_y, output_z, kernel_name="mod"):
                                                                  shape_y,
                                                                  param_name_input1="input_x",
                                                                  param_name_input2="input_y")
-            reshape_x, reshape_y = refine_shapes_for_broadcast(shape_x, shape_y)
             data_x = tvm.placeholder(reshape_x, dtype=input_dtype, name="data_x")
             data_y = tvm.placeholder(reshape_y, dtype=input_dtype, name="data_y")
             res = mod_compute(data_x, data_y, output_z, kernel_name="mod")

@@ -61,7 +61,7 @@ TEST_F(BiasTiling, Bias_tiling_test_1) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "Bias";
-  std::string compileInfo = R"( {"_boardcast_bias_shape": [1, -1, -1], "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false], "_base_info": {"210": [262144, 4, 3, 32]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["dim_0_0", "dim_1_0"], "221000001": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_0"], "221000002": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_1"], "221000004": ["dim_0_0", "dim_1_0", "block_factor_1", "ub_factor_1"]}})";
+  std::string compileInfo = R"( {"_boardcast_bias_shape": [1, -1, -1], "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false], "_base_info": {"210": [262144, 4, 3, 32]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["dim_0_0", "dim_1_0"], "221000001": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_0"], "221000002": ["dim_0_0", "dim_1_0", "block_factor_0", "ub_factor_1"], "221000004": ["dim_0_0", "dim_1_0", "block_factor_1", "ub_factor_1"]}})";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Bias_tiling_test_1";

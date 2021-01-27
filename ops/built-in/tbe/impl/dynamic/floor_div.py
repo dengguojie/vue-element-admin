@@ -127,7 +127,6 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
             x_shape, y_shape = \
                 shape_util.variable_shape([input_x, input_y],
                                           support_broadcast=True)
-            x_shape, y_shape = shape_util.refine_shapes_for_broadcast(x_shape, y_shape)
             tensor_x = tvm.placeholder(x_shape, input_dtype_x, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, input_dtype_y, "tensor_y")
             res = floor_div_compute(tensor_x, tensor_y, output_z, kernel_name)

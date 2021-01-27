@@ -15,6 +15,7 @@
 """
 classifier of shape in pure elewise
 """
+from functools import reduce as reduceIns
 
 from . import util
 
@@ -55,6 +56,7 @@ class PureElewiseClassifier:
             return max([s[i] for s in self.shapes])
 
         shape = [get_dim(i) for i in range(self.dim_length)]
+        shape = [reduceIns(lambda x, y: x * y, shape)]
         return [[ConstMode.gen_in(shape) for _ in self.ins]]
 
     def _classify_var(self):

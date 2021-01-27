@@ -101,8 +101,6 @@ def sub(input_x, input_y, output_z, kernel_name="sub"):
     for (x1, x2) in ins:
         with tbe_base.compute():
             x_shape, y_shape = shape_util.variable_shape([x1, x2], support_broadcast=True)
-            x_shape, y_shape = shape_util.refine_shapes_for_broadcast(x_shape,
-                                                           y_shape)
             data1 = tvm.placeholder(x_shape, x_dtype, "data1")
             data2 = tvm.placeholder(y_shape, y_dtype, "data2")
             res = sub_compute(data1, data2, output_z, kernel_name)

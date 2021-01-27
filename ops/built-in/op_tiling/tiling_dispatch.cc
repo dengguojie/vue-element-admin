@@ -43,7 +43,9 @@ bool AutoTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
 
   CHECK((op_info.find("_pattern") != op_info.end()), "op [%s] : compile info not contain [_pattern]",
         op_type.c_str());
-  const std::string& pattern = op_info["_pattern"].get<std::string>();
+  CHECK(op_info["_pattern"].is_string(), "op [%s] : compile info[_pattern] not is string",
+        op_type.c_str());
+  const std::string& pattern = op_info["_pattern"];
 
   GELOGI("op[%s] tiling pattern.", pattern.c_str());
 

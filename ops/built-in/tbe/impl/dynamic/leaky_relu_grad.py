@@ -133,7 +133,6 @@ def leaky_relu_grad(g, x, y, negative_slope=0, kernel_name="leaky_relu_grad"):
     for (g, x) in ins:
         with tbe_base.compute():
             g_shape, x_shape = shape_util.variable_shape([g, x], support_broadcast=True)
-            g_shape, x_shape = shape_util.refine_shapes_for_broadcast(g_shape, x_shape)
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             res = leaky_relu_grad_compute(tensor_g, tensor_x, y, negative_slope,

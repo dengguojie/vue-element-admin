@@ -256,9 +256,6 @@ def _pre_build(schedules_list):
 
     only_const_tiling = False
     support_broadcast = operation.get_context().get("support_broadcast")
-    _fusion = operation.get_context().get(CompileInfo.FUSION)
-    if _fusion is None:
-        _fusion = False
     cpt_computes = operation.get_context().get_computes()
     use_special_pattern = False
     support_absorbable_broadcast = False
@@ -276,13 +273,13 @@ def _pre_build(schedules_list):
         operation.add_compile_info(CompileInfo.CONST_SHAPES, const_shapes)
         operation.add_compile_info(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
         flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
-                     use_special_pattern, support_absorbable_broadcast, _fusion]
+                     use_special_pattern, support_absorbable_broadcast]
         operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
         return
     else:
         is_const_shapes = False
     flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
-                 use_special_pattern, support_absorbable_broadcast, _fusion]
+                 use_special_pattern, support_absorbable_broadcast]
     operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
 
     schedules = []

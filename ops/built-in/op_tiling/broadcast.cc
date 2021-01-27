@@ -28,14 +28,14 @@
 
 namespace optiling {
 
-static std::unordered_map<int64_t, int64_t> split_factors{
+static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
     {1, 32767},
     {2, 32767},
     {4, 16383},
     {8, 8191},
 };
 
-static std::unordered_map<int64_t, Pattern> special_pattern{
+static const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN{
     {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
     {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
 };
@@ -84,13 +84,12 @@ bool Broadcast::Init() {
   CHECK_GE(flag_info.size(), 1, "op [%s] : flag info error", op_type.c_str());
   only_const_tiling = flag_info[0];
   if (!only_const_tiling) {
-    const size_t flag_info_size = 6;
+    const size_t flag_info_size = 5;
     CHECK_EQ(flag_info.size(), flag_info_size, "op [%s] : flag info must be _only_const_tiling, _is_const_shapes, "
-             "_is_support_broadcast, _use_special_pattern, _is_support_absorbable_broadcast and _fusion", op_type.c_str());
+             "_is_support_broadcast, _use_special_pattern, _is_support_absorbable_broadcast", op_type.c_str());
     compileInfo.is_support_broadcast = flag_info[2];
     compileInfo.use_special_pattern = flag_info[3];
     compileInfo.is_support_absorbable_broadcast = flag_info[4];
-    compileInfo.fusion_flag = flag_info[5];
   }
   return true;
 }
@@ -152,8 +151,8 @@ bool Broadcast::TrySwitchToPerfPattern() {
     }
     base /= 10;
   }
-  if (special_pattern.find(pattern_key) != special_pattern.end()) {
-    s_pattern = special_pattern[pattern_key];
+  if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
+    s_pattern = SPECIAL_PATTERN.at(pattern_key);
     if (s_pattern == BROADCAST && compileInfo.is_support_absorbable_broadcast) {
       s_pattern = fused_shape_x[0] == 1 ? SCALAR_BROADCAST : BROADCAST_SCALAR;
     }
@@ -237,8 +236,8 @@ bool Broadcast::MulTrySwitchToPerfPattern() {
       }
       base /= 10;
     }
-    if (special_pattern.find(pattern_key) != special_pattern.end()) {
-      s_pattern = special_pattern[pattern_key];
+    if (SPECIAL_PATTERN.find(pattern_key) != SPECIAL_PATTERN.end()) {
+      s_pattern = SPECIAL_PATTERN.at(pattern_key);
       dim_len = fusion_shapes[0].size();
       for (size_t i = 0; i < dim_len; i++) {
         int64_t max_output = 1;
@@ -275,42 +274,22 @@ bool Broadcast::GenerateOutputShape() {
     } else {
       ret = ret && MulTrySwitchToPerfPattern();
     }
-    if (compileInfo.fusion_flag && s_pattern == Pattern::ORIGINAL) {
+    if (s_pattern == Pattern::ORIGINAL) {
       ret = ret && RefineShapesForBroadcast();
-    } else if (s_pattern == Pattern::ORIGINAL) {
-      ret = ret && BroadcastShapes();
     }
   }
   return ret;
 }
 
-bool Broadcast::BroadcastShapes() {
-  output_shape.reserve(dim_len);
-  fusion_index = {};
-  for (size_t i = 0; i < dim_len; i++) {
-    int64_t max_output = 1;
-    int64_t min_output = 2;
-    for (size_t j = 0; j < input_num; j++) {
-      if (input_shapes[j][i] > max_output) {
-        max_output = input_shapes[j][i];
-      }
-      if (input_shapes[j][i] < min_output) {
-        min_output = input_shapes[j][i];
-      }
-    }
-    fusion_index.push_back({i});
-    output_shape.push_back(max_output);
-    if (min_output == 1 && max_output != 1) {
-      broadcast_axis[i] = true;
-    }
-  }
-  return true;
-}
-
 bool Broadcast::RefineShapesForBroadcast() {
-  CHECK((op_info.find("_fusion_index") != op_info.end()), "op [%s] : compile info not contain [_fusion_index]",
-        op_type.c_str());
-  fusion_index = op_info["_fusion_index"].get<std::vector<std::vector<size_t>>>();
+  if (!op_info.contains("_fusion_index")) {
+    fusion_index = {};
+    for (size_t i = 0; i < dim_len; i++) {
+      fusion_index.push_back({i});
+    }
+  } else {
+    fusion_index = op_info["_fusion_index"].get<std::vector<std::vector<size_t>>>();
+  }
   size_t fusion_len = fusion_index.size();
   output_shape.reserve(fusion_len);
   for (size_t i = 0; i < fusion_len; i++) {
@@ -321,6 +300,7 @@ bool Broadcast::RefineShapesForBroadcast() {
       for (const auto& k : fusion_index[i]) {
         fused *= input_shapes[j][k];
       }
+      input_shapes[j][i] = fused;
       if (fused > max_output) {
         max_output = fused;
       }
@@ -348,6 +328,8 @@ bool Broadcast::CalcTiling() {
   std::string pattern_key = keys;
   CHECK((op_info.find("_base_info") != op_info.end()), "op [%s] : compile info not contain [_base_info]",
         op_type.c_str());
+  CHECK((op_info["_base_info"].find(pattern_key) != op_info["_base_info"].end()),
+        "op [%s] : _base_info not contain [%s]", op_type.c_str(), pattern_key.c_str());
   // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
   const size_t base_info_size = 4;
   const std::vector<int64_t>& base_info = op_info["_base_info"][pattern_key];
@@ -366,7 +348,7 @@ bool Broadcast::CalcTiling() {
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1ll, std::multiplies<int64_t>());
   CHECK_LE(output_size, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str())
   CHECK_GT(output_size, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str())
-  const int64_t multi_core_threshold = 1024;
+  const int64_t multi_core_threshold = BGetElementByType(out_type) * compileInfo.core_num * DOUBLE_BUFFER_SIZE;
   if (output_size < multi_core_threshold) {
     need_multi_core = false;
   }
@@ -395,8 +377,9 @@ bool Broadcast::DoBlockTiling() {
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     output_shape[0] = block_factor;
     block_dims = std::ceil(multi_core_output * 1.0 / block_factor);
+  } else {
+    CheckUpdateBlockTiling();
   }
-  CheckUpdateBlockTiling();
   return true;
 }
 
@@ -404,7 +387,7 @@ void Broadcast::CheckUpdateBlockTiling() {
   bool need_single_core = false;
   if (is_multi_output) {
     // multi output check
-    for (auto& output: op_paras.outputs) {
+    for (const auto& output: op_paras.outputs) {
       int64_t ele_in_block = BGetElementByType(output.tensor[0].dtype);
       const auto& out_shape = output.tensor[0].shape;
       int64_t start = fusion_index[block_axis][0] - max_output_shape_size + out_shape.size();
@@ -417,11 +400,13 @@ void Broadcast::CheckUpdateBlockTiling() {
       } else {
         under_block = std::accumulate(out_shape.begin(), out_shape.end(), 1ll, std::multiplies<int64_t>());
       }
+      int64_t cur_block_factor = block_factor;
       if (cut_output % block_factor != 0 && (cut_output % block_factor) * under_block < ele_in_block) {
-        block_factor = std::min(multi_core_output, cut_output);
+        block_factor = multi_core_output;
         output_shape[block_axis] = multi_core_output;
+        cur_block_factor = std::min(multi_core_output, cut_output);
       }
-      need_single_core = cut_output % block_factor == 0 && block_factor * under_block < ele_in_block;
+      need_single_core = cut_output % cur_block_factor == 0 && cur_block_factor * under_block < ele_in_block;
       if (need_single_core) {
         break;
       }
@@ -447,8 +432,10 @@ void Broadcast::CheckUpdateBlockTiling() {
 
 bool Broadcast::DoUbTiling() {
   int64_t limit = max_available_ub;
-  if (output_shape.size() == 1 && split_factors[compileInfo.max_dtype] < max_available_ub) {
-    limit = split_factors[compileInfo.max_dtype];
+  CHECK((SPLIT_FACTORS.find(compileInfo.max_dtype) != SPLIT_FACTORS.end()),
+        "op [%s] : compileInfo max_dtype not in SPLIT_FACTORS", op_type.c_str())
+  if (output_shape.size() == 1 &&  max_available_ub > SPLIT_FACTORS.at(compileInfo.max_dtype)) {
+    limit = SPLIT_FACTORS.at(compileInfo.max_dtype);
   }
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
   int64_t under_ub_shape = 1;
@@ -524,7 +511,7 @@ void Broadcast::CheckUpdateUbTiling() {
   bool need_single_core = false;
   if (is_multi_output) {
     // multi output check
-    for (auto& output: op_paras.outputs) {
+    for (const auto& output: op_paras.outputs) {
       int64_t ele_in_block = BGetElementByType(output.tensor[0].dtype);
       const auto& out_shape = output.tensor[0].shape;
       int64_t start = fusion_index[ub_axis][0] - max_output_shape_size + out_shape.size();
@@ -592,7 +579,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
   GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), block_axis);
   GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), ub_axis);
 
-  run_info.block_dim = block_dims;
+  run_info.block_dim = static_cast<uint32_t>(block_dims);
   if (only_const_tiling) {
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(need_multi_core));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_axis));
@@ -625,9 +612,11 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
       ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
     } else {
       int64_t var_value = var;
-      int64_t operator_index = var_value % 100;
+      size_t operator_index = var_value % 100;
       var_value /= 100;
       size_t dim_index = var_value % 100;
+      CHECK_LT(operator_index, B_MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str())
+      CHECK_LT(dim_index, B_MAX_DIM_LEN, "op [%s] : more than 16 dims are not supported", op_type.c_str())
       ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shapes[operator_index][dim_index]));
     }
   }

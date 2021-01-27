@@ -104,7 +104,6 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
         with tbe_base.compute():
             # shape
             shape_x1, shape_x2 = shape_util.variable_shape([_x1, _x2], support_broadcast=True)
-            shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=inputx1_data_type, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=inputx2_data_type, name="data_x2")

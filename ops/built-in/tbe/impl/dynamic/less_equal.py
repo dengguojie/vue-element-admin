@@ -166,7 +166,6 @@ def less_equal(input_x, input_y, output_z, kernel_name="less_equal"):
             # shape
             x_shape, y_shape = shape_util.variable_shape([input_x, input_y],
                                               support_broadcast=True)
-            x_shape, y_shape = shape_util.refine_shapes_for_broadcast(x_shape, y_shape)
 
             # less_equal compute
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")

@@ -285,7 +285,6 @@ def atan2(x1, x2, y, kernel_name="atan2"):
     for (x1, x2) in ins:
         with tbe_base.compute():
             shape_y, shape_x = shape_util.variable_shape([x1, x2], support_broadcast=True)
-            shape_y, shape_x = shape_util.refine_shapes_for_broadcast(shape_y, shape_x)
             input_y = tvm.placeholder(shape_y, dtype=y_dtype, name="input_y")
             input_x = tvm.placeholder(shape_x, dtype=x_dtype, name="input_x")
             res = atan2_compute(input_y, input_x, y, kernel_name)

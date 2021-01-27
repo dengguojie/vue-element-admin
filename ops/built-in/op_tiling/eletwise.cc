@@ -30,7 +30,7 @@
 
 namespace optiling {
 
-static std::unordered_map<int64_t, int64_t> split_factors{
+static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
     {1, 32767},
     {2, 32767},
     {4, 16383},
@@ -100,7 +100,7 @@ bool Eletwise::CalcTiling() {
   }
   CHECK((op_info["_base_info"].find(pattern_key) != op_info["_base_info"].end()), "op [%s] : _base_info not contain [%s]",
         op_type.c_str(), pattern_key.c_str());
-  const std::vector<int64_t>& base_info = op_info["_base_info"][pattern_key];
+  const auto& base_info = op_info["_base_info"][pattern_key];
   const size_t base_info_size = 4;
   CHECK_EQ(base_info.size(), base_info_size, "op [%s] : base info must be _ub_size, _max_dtype, _coexisting_quantity"
            " and _core_num", op_type.c_str());
@@ -115,7 +115,7 @@ bool Eletwise::CalcTiling() {
   max_available_ub =
           (((baseInfo.ub_size / baseInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / baseInfo.max_dtype;
   CHECK_GT(output_shape.size(), 0, "op [%s] : output_shape index out of range", op_type.c_str());
-  const int64_t multi_core_threshold = 1024;
+  const int64_t multi_core_threshold = GetElementByType(out_type) * baseInfo.core_num * DOUBLE_BUFFER_SIZE;
   if (output_shape[0] < multi_core_threshold) {
     need_multi_core = false;
   }
@@ -138,7 +138,7 @@ bool Eletwise::DoBlockTiling() {
 bool Eletwise::DoUbTiling() {
   ub_axis = 0;
   ub_factor = block_factor;
-  int64_t limit = std::min(max_available_ub, split_factors[baseInfo.max_dtype]);
+  int64_t limit = std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype));
   if (limit < ub_factor) {
     int64_t ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     CHECK_GT(limit, 0, "op [%s] : ub limit error, it is [%d]", op_type.c_str(), limit)
@@ -173,7 +173,7 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
   GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), block_axis);
   GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), ub_axis);
 
-  run_info.block_dim = block_dims;
+  run_info.block_dim = static_cast<uint32_t>(block_dims);
   if (only_const_tiling) {
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(need_multi_core));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_axis));
@@ -208,6 +208,7 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
       int64_t var_value = var;
       var_value /= 100;
       size_t dim_index = var_value % 100;
+      CHECK_LT(dim_index, output_shape.size(), "op [%s] : more than 16 dims are not supported", op_type.c_str())
       ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[dim_index]));
     }
   }
@@ -222,7 +223,9 @@ bool Eletwise::DoTiling() {
   if (need_multi_core) {
     // cut block
     ret = ret && DoBlockTiling();
-    if (block_factor > std::min(max_available_ub, split_factors[baseInfo.max_dtype])) {
+    CHECK((SPLIT_FACTORS.find(baseInfo.max_dtype) != SPLIT_FACTORS.end()),
+        "op [%s] : baseInfo max_dtype not in SPLIT_FACTORS", op_type.c_str())
+    if (block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype))) {
       need_double_buffer = true;
       max_available_ub =
               (((baseInfo.ub_size / DOUBLE_BUFFER_SIZE / baseInfo.coexisting_quantity) / BLOCK_SIZE)
@@ -244,6 +247,7 @@ bool Eletwise::DoTiling() {
 bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS>& input_shapes,
                      const size_t input_num, size_t& dim_len, bool& is_pure_elementwise,
                      const std::string& op_type, const TeOpParas& op_paras) {
+  CHECK_LE(input_num, MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str())
   for (size_t i = 0; i < input_num; i++) {
     CHECK(!op_paras.inputs[i].tensor.empty(), "op [%s] : input tensor cannot be empty", op_type.c_str());
     input_shapes[i].fill(1ll);
@@ -251,6 +255,7 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS
       dim_len = op_paras.inputs[i].tensor[0].shape.size();
     }
   }
+  CHECK_LE(dim_len, MAX_DIM_LEN, "op [%s] : more than 16 dims are not supported", op_type.c_str())
   for (size_t i = 0; i < input_num; i++) {
     size_t cur_dim_len = op_paras.inputs[i].tensor[0].shape.size();
     size_t start_index = dim_len - cur_dim_len;
@@ -345,9 +350,9 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
 }
 
 void WriteConstTiling(const std::string& op_type, OpRunInfo& run_info, const int64_t& key, const int64_t& block_dims) {
-  GELOGD("op [%s] tiling key:%d", op_type.c_str(), key);
-  GELOGD("op [%s] tiling block_dims:%d", op_type.c_str(), block_dims);
-  run_info.block_dim = block_dims;
+  GELOGD("op [%s] tiling key:%lld", op_type.c_str(), key);
+  GELOGD("op [%s] tiling block_dims:%lld", op_type.c_str(), block_dims);
+  run_info.block_dim = static_cast<uint32_t>(block_dims);
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
 }
 

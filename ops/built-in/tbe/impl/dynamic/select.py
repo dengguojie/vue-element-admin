@@ -24,7 +24,6 @@ from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from te import tvm
 from te.utils.error_manager import error_manager_vector
-from te.utils.shape_util import refine_shapes_for_broadcast
 from te.utils.shape_util import broadcast_shapes
 from impl.util.platform_adapter import register_operator
 
@@ -172,7 +171,6 @@ def select(condition, x1, x2, y, kernel_name="select"):
     for (_condition, _x1) in ins:
         with tbe_base.compute():
             shape_con, shape_x = shape_util.variable_shape([_condition, _x1], support_broadcast=True)
-            shape_con, shape_x = refine_shapes_for_broadcast(shape_con, shape_x)
             flag_cloud = tbe_platform.api_check_support("te.lang.cce.vsel", "float32")
             flag_dtype = dtype_x1 in ("float32", "int32")
             if (list(con_shape) != list(shape_x1)) or ((not flag_cloud) and flag_dtype):

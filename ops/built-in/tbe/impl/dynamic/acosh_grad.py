@@ -191,9 +191,7 @@ def acosh_grad(y, dy, z, kernel_name="acosh_grad"):
     for (y, dy) in ins:
         with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([y, dy],
-                                                           support_broadcast=True)
-            shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
+            shape_x1, shape_x2 = shape_util.variable_shape([y, dy])
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=dtype, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=dtype_dy, name="data_x2")

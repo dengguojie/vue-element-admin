@@ -427,7 +427,6 @@ def asinh(input_x, output_y, kernel_name="asinh"):
     dtype_input = input_x.get("dtype")
 
     para_check.check_shape(shape_input, param_name="input_x")
-    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_input, check_list, param_name="input_x")

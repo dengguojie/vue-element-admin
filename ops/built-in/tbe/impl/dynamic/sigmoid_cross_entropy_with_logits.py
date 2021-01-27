@@ -24,7 +24,6 @@ from te import tvm
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils.op_utils import variable_shape
-from te.utils.op_utils import refine_shapes_for_broadcast
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
@@ -179,8 +178,7 @@ def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoi
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with tbe_base.compute():
-            x_shape, y_shape = variable_shape([x1, x2], support_broadcast=False)
-            shape_predict, shape_target = refine_shapes_for_broadcast(x_shape, y_shape)
+            shape_predict, shape_target = variable_shape([x1, x2], support_broadcast=False)
             data_predict = tvm.placeholder(shape_predict,
                                            name="data_predict",
                                            dtype=input_dtype_predict)

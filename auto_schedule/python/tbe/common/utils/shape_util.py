@@ -113,6 +113,48 @@ def refine_shape_axes(shape, axes):
     return refined_shape, refined_axes
 
 
+def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
+    """
+    produce broadcast shape
+    for example:
+        input: shape is [[2, 3], [3, 2, 1], [3, 1, 3]]
+        output: [1, 2, 3], [3, 2, 1], [3, 1, 3], [3, 2, 3]
+
+    Parameters
+    ----------
+    shapes : all input shapes
+
+    op_name : operator name
+
+    Returns
+    -------
+    shape : list
+        completed input shapes and max shape
+
+    """
+    max_dim_length = [len(shape) for shape in shapes]
+    input_shapes = []
+    for shape in shapes:
+        input_shapes.append([1] * (max_dim_length - len(shape)) + shape)
+    input_shapes = list(map(list, zip(*input_shapes)))
+    max_shape = [tvm.max(shape) for shape in input_shapes]
+    for value, shape in zip(max_shape, input_shapes):
+        if isinstance(value, (tvm.expr.IntImm, tvm.expr.UIntImm)):
+            for _shape in shape:
+                if not expr_equal(_shape, value) and not expr_equal(_shape, 1):
+                    error_info = {
+                        'errCode': para_check.OP_ERROR_CODE_013, 'op_name': op_name,
+                        'input1_shape': ",".join(str(i) for i in shape),
+                        'input2_shape': ",".join(str(i) for i in max_shape)}
+                    raise RuntimeError(
+                        error_info,
+                        "In op[%s], the inputs[%s] could not be broadcast "
+                        "together with shapes[%s]."
+                        % (op_name, error_info['input1_shape'], error_info['input2_shape']))
+    input_shapes = list(map(list, zip(*input_shapes)))
+    return input_shapes, max_shape
+
+
 def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
                      param_name_input1='', param_name_input2=''):
     """
@@ -199,8 +241,6 @@ def refine_shapes_for_broadcast(shape1, shape2):
 
         fused_shape1 = [1]
         fused_shape2 = [1]
-        fusion_index = []
-        current_index = []
         state = None
         mode = operation.get_context().get("mode")
         if mode == para_check.SPECIAL or mode == para_check.SPECIAL_SCALAR:
@@ -212,26 +252,17 @@ def refine_shapes_for_broadcast(shape1, shape2):
                 fused_shape1[-1] *= i_a
                 fused_shape2[-1] *= i_b
                 state = _get_state(i_a, i_b)
-                current_index.append(index)
             elif _get_state(i_a, i_b) == 4:
                 fused_shape1.append(i_a)
                 fused_shape2.append(i_b)
                 state = _get_state(i_a, i_b)
-                fusion_index.append(current_index)
-                current_index = [index]
             elif state == _get_state(i_a, i_b):
                 fused_shape1[-1] *= i_a
                 fused_shape2[-1] *= i_b
-                current_index.append(index)
             else:
                 fused_shape1.append(i_a)
                 fused_shape2.append(i_b)
                 state = _get_state(i_a, i_b)
-                fusion_index.append(current_index)
-                current_index = [index]
-
-        fusion_index.append(current_index)
-        operation.add_compile_info("_fusion_index", fusion_index)
 
         return fused_shape1, fused_shape2
 
@@ -289,7 +320,6 @@ def refine_shapes_for_broadcast(shape1, shape2):
     shape2 = [1] * _dv + shape2
 
     if operation.in_dynamic():
-        operation.get_context().add("_fusion", True)
         fused_shape1, fused_shape2 = \
             _dynamic_refine_shapes_for_broadcast(shape1, shape2)
     else:
@@ -404,8 +434,8 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
     def _mode_process():
         if mode == para_check.CONST:
             if support_broadcast:
-                input1 = inputs[0]["shape"]
-                input2 = inputs[1]["shape"]
+                input1 = inputs[0]["const_shape"]
+                input2 = inputs[1]["const_shape"]
                 const_shape = [a & b for a, b in zip(input1, input2)]
             else:
                 const_shape = inputs[0]["shape"]

@@ -27,7 +27,6 @@ from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_op_params
 from te.utils.op_utils import variable_shape
-from te.utils.op_utils import refine_shapes_for_broadcast
 from te.utils.op_utils import broadcast_shapes
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
@@ -131,7 +130,6 @@ def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     for (input_grad, input_x) in ins:
         with tbe_base.compute():
             g_shape, x_shape = variable_shape([input_grad, input_x], support_broadcast=True)
-            g_shape, x_shape = refine_shapes_for_broadcast(g_shape, x_shape)
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             res = relu6_grad_compute(tensor_g, tensor_x, output_y, kernel_name)

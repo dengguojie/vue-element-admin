@@ -120,8 +120,7 @@ def atan_grad(y, dy, z, kernel_name="atan_grad"):
     schedules, tensors = [], []
     for (y, dy) in ins:
         with tbe_base.compute():
-            shape_y, shape_dy = shape_util.variable_shape([y, dy], support_broadcast=True)
-            shape_y, shape_dy = shape_util.refine_shapes_for_broadcast(shape_y, shape_dy)
+            shape_y, shape_dy = shape_util.variable_shape([y, dy])
             data_input = tvm.placeholder(shape_y, name="input_data", dtype=dtype)
             grad = tvm.placeholder(shape_dy, name="input_grad", dtype=dtype_grad)
             res = atan_grad_compute(data_input, grad, z, kernel_name)

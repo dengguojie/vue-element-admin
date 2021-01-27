@@ -19,6 +19,7 @@ import copy
 from functools import reduce
 from enum import Enum, auto
 from tbe.common.utils.errormgr import get_error_message
+from te.lang.base import operation_impl as operation
 
 from . import util
 
@@ -51,7 +52,8 @@ class BroadcastElewiseClassifier:
         self.completed_shapes = [x["shape"] for x in self.completed_ins]
         self.completed_ranges = [x["range"] for x in self.completed_ins]
         self._update_shape_range()
-        self.f_shapes, self.f_ranges = _simplify_shape(self.completed_shapes, self.completed_ranges)
+        self.f_shapes, self.f_ranges, fusion_index = _simplify_shape(self.completed_shapes, self.completed_ranges)
+        operation.add_compile_info("_fusion_index", fusion_index)
 
         self.normalize_shapes = self._normalize()
 
@@ -194,9 +196,18 @@ class BroadcastElewiseClassifier:
         def copy(_shapes):
             return [_shape.copy() for _shape in _shapes]
 
+        def gen_const_range(_shapes):
+            ranges = []
+            for shape in _shapes:
+                ranges.append([(s, s) for s in shape])
+            return ranges
+
         ret = []
         for shapes in divide(0, [[] for _ in self.completed_ins]):
-            ret.append([ConstMode.gen_in(shapes[0]), ConstMode.gen_in(shapes[1])])
+            const_range = gen_const_range(shapes)
+            fused_shape, _, _ = _simplify_shape(shapes, const_range)
+            fused_shape = list(map(list, zip(*fused_shape)))
+            ret.append([ConstMode.gen_in(fused_shape[0], shapes[0]), ConstMode.gen_in(fused_shape[1], shapes[1])])
 
         return ret
 
@@ -395,11 +406,11 @@ class BroadcastElewiseClassifier:
             if _get_broadcast_axis_size(self.normalize_shapes) <= 1:
                 return []
 
+            t_shapes = list(map(list, zip(*self.f_shapes)))
+            t_ranges = list(map(list, zip(*self.f_ranges)))
             ins = []
-            for x in self.ins:
-                in_x = OriginalMode.gen_in(x["shape"])
-                if "range" in x:
-                    in_x["range"] = x["range"]
+            for shape, _range in zip(t_shapes, t_ranges):
+                in_x = OriginalMode.gen_in(shape, _range)
                 ins.append(in_x)
 
             return [ins]
@@ -461,9 +472,12 @@ def _simplify_shape(completed_shapes, completed_ranges):
     f_shapes = [[1] * input_length]
     f_ranges = [[(1, 1)] * input_length]
 
+    fusion_index = []
+    current_index = []
+
     all_one = str(ShapeValueType.ONE) * input_length
     state = all_one
-    for s, r in zip(transpose_shapes, transpose_ranges):
+    for index, (s, r) in enumerate(zip(transpose_shapes, transpose_ranges)):
         status = ShapeSimplifier.get_state(s, r)
         state_i = ''.join(list(map(str, status)))
         operator = ShapeSimplifier.get_operator(state, state_i)
@@ -471,14 +485,18 @@ def _simplify_shape(completed_shapes, completed_ranges):
         if operator == ShapeSimplifier.Operator.FUSED:
             f_shapes[-1] = ShapeSimplifier.combine_dim(f_shapes[-1], s)
             f_ranges[-1] = ShapeSimplifier.combine_range(f_ranges[-1], r)
+            current_index.append(index)
         else:
             f_shapes.append(list(s))
             f_ranges.append(list(r))
+            fusion_index.append(current_index)
+            current_index = [index]
 
         if state_i != all_one:
             state = state_i
 
-    return f_shapes, f_ranges
+    fusion_index.append(current_index)
+    return f_shapes, f_ranges, fusion_index
 
 
 def _is_known_broadcast(shape):
@@ -613,14 +631,14 @@ class OriginalMode:
     """
 
     @classmethod
-    def gen_in(cls, shape):
+    def gen_in(cls, shape, _range):
         """
         generate input
         :param shape:
         :return:
         """
         return {"shape": shape,
-                "range": util.generate_range(shape),
+                "range": _range,
                 "support_broadcast": True,
                 "mode": ORIGINAL,
                 }
@@ -632,7 +650,7 @@ class ConstMode:
     """
 
     @classmethod
-    def gen_in(cls, shape):
+    def gen_in(cls, shape, const_shape):
         """
         generate input
         :param shape:
@@ -640,6 +658,7 @@ class ConstMode:
         """
         return {"shape": shape,
                 "range": util.generate_range(shape),
+                "const_shape": const_shape,
                 "mode": CONST,
                 "support_broadcast": True,
                 }

@@ -172,7 +172,6 @@ def relu_grad(input_gradients, input_features, output_backprops, kernel_name="re
     for (g, x) in ins:
         with tbe_base.compute():
             g_shape, x_shape = shape_util.variable_shape([g, x], support_broadcast=True)
-            g_shape, x_shape = shape_util.refine_shapes_for_broadcast(g_shape, x_shape)
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             res = relu_grad_compute(tensor_g, tensor_x, output_backprops,

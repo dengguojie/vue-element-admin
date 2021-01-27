@@ -231,7 +231,6 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     for (_x, _bias) in ins:
         with tbe_base.compute():
             x_shape, bias_shape = shape_util.variable_shape([_x, _bias], support_broadcast=True)
-            x_shape, bias_shape = shape_util.refine_shapes_for_broadcast(x_shape, bias_shape)
             tensor_x = tvm.placeholder(x_shape, dtype_x, "tensor_x")
             tensor_bias = tvm.placeholder(bias_shape, dtype_bias, "tensor_bias")
 

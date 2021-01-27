@@ -41,7 +41,6 @@ struct CompileInfo {
   bool is_support_broadcast{false};
   bool is_support_absorbable_broadcast{false};
   bool use_special_pattern{false};
-  bool fusion_flag{false};
 };
 
 enum Pattern {
@@ -88,7 +87,6 @@ private:
   void FusionContinuousAxis(std::vector<int64_t>& fused_shape_x, std::vector<int64_t>& fused_shape_y);
   bool MulTrySwitchToPerfPattern();
   void MulFusionContinuousAxis(std::vector<std::vector<int64_t>>& fusion_shapes, size_t& fusion_length);
-  bool BroadcastShapes();
   bool RefineShapesForBroadcast();
   bool CalcTiling();
   bool DoBlockTiling();

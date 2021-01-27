@@ -109,7 +109,6 @@ def real_div(x1, x2, y, kernel_name="real_div", impl_mode="high_performance"):
     for (x1, x2) in ins:
         with tbe_base.compute():
             x_shape, y_shape = shape_util.variable_shape([x1, x2], support_broadcast=True)
-            x_shape, y_shape = shape_util.refine_shapes_for_broadcast(x_shape, y_shape)
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")
             res = real_div_compute(tensor_x, tensor_y, y, kernel_name, impl_mode)

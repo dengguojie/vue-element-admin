@@ -196,7 +196,6 @@ def asin(x, y, kernel_name="asin"):
     y_dtype = y.get("dtype").lower()
 
     para_check.check_shape(shape_input, param_name="x")
-    shape_input, _ = shape_util.refine_shape_axes(shape_input, [])
 
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="x")
@@ -223,9 +222,8 @@ def asin(x, y, kernel_name="asin"):
     for (_x,) in ins:
         with tbe_base.compute():
             x_shape = shape_util.variable_shape([_x])
-            shape_input, _ = shape_util.refine_shape_axes(x_shape[0], [])
 
-            data_input = tvm.placeholder(shape_input, dtype=x_dtype,
+            data_input = tvm.placeholder(x_shape[0], dtype=x_dtype,
                                         name="data_input")
 
             res = asin_compute(data_input, y, kernel_name)
