@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-all_close
+data_compare
 """
 import operator
 import te.lang.cce as tbe
@@ -26,16 +26,16 @@ from te.utils.error_manager import error_manager_vector
 NUM_ONE = 1.0
 NUM_ZERO = 0.0
 
-__all__ = ["all_close"]
+__all__ = ["data_compare"]
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("all_close")
-def all_close_compute(input_x, input_y, output_num, output_diff, atol, rtol,
-                              kernel_name="all_close"):
+@tbe_platform.fusion_manager.fusion_manager.register("data_compare")
+def data_compare_compute(input_x, input_y, output_num, output_diff, atol, rtol,
+                              kernel_name="data_compare"):
     """
-    algorithm: all_close
+    algorithm: data_compare
 
     calculating abs(x-y) > atol + rtol * abs(y)
 
@@ -47,10 +47,10 @@ def all_close_compute(input_x, input_y, output_num, output_diff, atol, rtol,
     rtol: default 1e-3
     output_num: shape and dtype of output
     output_diff: shape and dtype of output
-    kernel_name: cce kernel name, default value is "all_close"
+    kernel_name: cce kernel name, default value is "data_compare"
     Returns
     -------
-    the function of _all_close_compute
+    the function of _data_compare_compute
     """
 
     input_dtype = input_x.dtype
@@ -59,31 +59,24 @@ def all_close_compute(input_x, input_y, output_num, output_diff, atol, rtol,
     for i in range(len(shape)):
         shape_list.append(i)
 
-    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
-        input_x = tbe.cast_to(input_x, "float32")
-        input_y = tbe.cast_to(input_y, "float32")
-
     res_vsub = tbe.vsub(input_x, input_y)
     res_vabs = tbe.vabs(res_vsub)
 
-    atol_tensor = tbe.broadcast(tvm.const(atol, input_x.dtype),
-                                       input_x.shape)
-    rtol_tensor = tbe.broadcast(tvm.const(rtol, input_x.dtype),
-                                       input_x.shape)
+    atol_scaler = tvm.const(atol, input_dtype)
+    rtol_scaler = tvm.const(rtol, input_dtype)
 
     y_vabs = tbe.vabs(input_y)
-    res_mul = tbe.vmul(rtol_tensor, y_vabs)
-    res_vadd = tbe.vadd(atol_tensor, res_mul)
+    res_muls = tbe.vmuls(y_vabs, rtol_scaler)
+    res_vadds = tbe.vadds(res_muls, atol_scaler)
 
-    res_cmp = tbe.vcmp(res_vabs, res_vadd, 'gt')
+    res_cmp = tbe.vcmp(res_vabs, res_vadds, 'gt')
 
-    zero_rb_tensor = tbe.broadcast(tvm.const(NUM_ZERO, "float16"), input_x.shape)
-    one_rb_tensor = tbe.broadcast(tvm.const(NUM_ONE, "float16"), input_x.shape)
-    res_sel = tbe.vsel(res_cmp, one_rb_tensor, zero_rb_tensor)
+    zero_scaler = tvm.const(NUM_ZERO, "float16")
+    one_scaler = tvm.const(NUM_ONE, "float16")
+    res_sel = tbe.vsel(res_cmp, one_scaler, zero_scaler)
 
     res_sel = tbe.cast_to(res_sel, "float32")
     res_num = tbe.sum(res_sel, axis = shape_list)
-    res_num = tbe.cast_to(res_num, "int32")
 
     res_div = tbe.vdiv(res_vabs, y_vabs)
     res_mul = tbe.vmul(res_div, res_sel)
@@ -95,10 +88,10 @@ def all_close_compute(input_x, input_y, output_num, output_diff, atol, rtol,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
-def all_close(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3,
-                      kernel_name="all_close"):
+def data_compare(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3,
+                      kernel_name="data_compare"):
     """
-    abs(x-y) <= atol + rtol * abs(y)
+    abs(x-y) > atol + rtol * abs(y)
     Parameters
     ----------
     input_x : dict, include shape and dtype, support fp16 and fp32
@@ -114,7 +107,7 @@ def all_close(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3,
     rtol: default 0.001
 
     kernel_name : str
-        cce kernel name, default value is "all_close"
+        cce kernel name, default value is "data_compare"
 
     Returns
     ------
@@ -143,7 +136,8 @@ def all_close(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3,
     shape_y, _ = shape_util.refine_shape_axes(shape_y, [])
 
     # check input tensor data_type
-    check_list = ("float16", "float32")
+    check_list = ("float16", "float32", "int8", "uint8", "int32")
+
     para_check.check_dtype(in_dtype, check_list, param_name="input_x")
     para_check.check_dtype(in_y_dtype, check_list, param_name="input_y")
     in_dtype = input_x.get("dtype").lower()
@@ -156,7 +150,7 @@ def all_close(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3,
     in_data_x = tvm.placeholder(shape_x, name="shape_x", dtype=in_dtype)
     in_data_y = tvm.placeholder(shape_y, name="shape_y", dtype=in_dtype)
 
-    res_num, res_diff = all_close_compute(in_data_x, in_data_y, output_num, output_diff,
+    res_num, res_diff = data_compare_compute(in_data_x, in_data_y, output_num, output_diff,
                                           atol, rtol, kernel_name)
 
     res = [res_num, res_diff]

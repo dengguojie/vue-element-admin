@@ -3,19 +3,19 @@
 #include "op_proto_test_util.h"
 #include "elewise_calculation_ops.h"
 
-class allclose : public testing::Test {
+class datacompare : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "AllClose Proto Test SetUp" << std::endl;
+    std::cout << "DataCompare Proto Test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "AllClose Proto Test TearDown" << std::endl;
+    std::cout << "DataCompare Proto Test TearDown" << std::endl;
   }
 };
 
-TEST_F(allclose, allclose_infershape_diff_test){
-  ge::op::AllClose op;
+TEST_F(datacompare, datacompare_infershape_diff_test){
+  ge::op::DataCompare op;
   op.UpdateInputDesc("x1", create_desc({4, 3, 4}, ge::DT_FLOAT16));
   op.UpdateInputDesc("x2", create_desc({4, 3, 4}, ge::DT_FLOAT16));
   
@@ -33,8 +33,8 @@ TEST_F(allclose, allclose_infershape_diff_test){
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
-TEST_F(allclose, allclose_verify_test){
-  ge::op::AllClose op;
+TEST_F(datacompare, datacompare_verify_test){
+  ge::op::DataCompare op;
   op.UpdateInputDesc("x1", create_desc({4, 3, 4}, ge::DT_FLOAT16));
   op.UpdateInputDesc("x2", create_desc({4, 3, 4}, ge::DT_FLOAT16));
   

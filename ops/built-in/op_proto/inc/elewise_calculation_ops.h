@@ -3632,7 +3632,7 @@ REG_OP(Lerp)
 
 *
 *@par Inputs:
-*@li x1: A tensor. Must be one of the following types: float32, float64, int32, uint8, int16, int8, complex64, int64, qint8, quint8, qint32, uint16, complex128, float16, uint32, uint64
+*@li x1: A tensor. Must be one of the following types: float32, int32, uint8, int8, float16
 *@li x2: A tensor of the same type as "x1".
 *
 *@par Attributes:
@@ -3647,14 +3647,14 @@ REG_OP(Lerp)
 *Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
 *
 */
-REG_OP(AllClose)
-  .INPUT(x1, TensorType({ DT_FLOAT16, DT_FLOAT }))
-  .INPUT(x2, TensorType({ DT_FLOAT16, DT_FLOAT }))
-  .OUTPUT(num, TensorType({DT_INT32}))
+REG_OP(DataCompare)
+  .INPUT(x1, TensorType({ DT_FLOAT16, DT_FLOAT,DT_INT8, DT_UINT8, DT_INT32 }))
+  .INPUT(x2, TensorType({ DT_FLOAT16, DT_FLOAT,DT_INT8, DT_UINT8, DT_INT32 }))
+  .OUTPUT(num, TensorType({DT_FLOAT}))
   .OUTPUT(diff, TensorType({DT_FLOAT16}))
   .ATTR(atol, Float, 1e-5)
   .ATTR(rtol, Float, 1e-3)
-  .OP_END_FACTORY_REG(AllClose)
+  .OP_END_FACTORY_REG(DataCompare)
 
 /**
 *@brief Hardmax(element in input, axis) = 1 if the element is the first maximum value along the specified axis, 0

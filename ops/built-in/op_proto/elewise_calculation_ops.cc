@@ -4106,12 +4106,12 @@ COMMON_INFER_FUNC_REG(Expm1, Expm1InferShape);
 // ----------------Expm1 END-----------------
 
 
-// -------------------AllClose----------------------
-IMPLEMT_VERIFIER(AllClose, AllCloseVerify) {
+// -------------------DataCompare----------------------
+IMPLEMT_VERIFIER(DataCompare, DataCompareVerify) {
   float atol_data;
   if (ge::GRAPH_SUCCESS != op.GetAttr("atol", atol_data)) {
     OpsGetAttrErrReport(op.GetName(), "atol");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of AllClose!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of DataCompare!");
     return GRAPH_FAILED;
   }
   if (atol_data < 0) {
@@ -4123,7 +4123,7 @@ IMPLEMT_VERIFIER(AllClose, AllCloseVerify) {
   float rtol_data;
   if (ge::GRAPH_SUCCESS != op.GetAttr("rtol", rtol_data)) {
     OpsGetAttrErrReport(op.GetName(), "rtol");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of AllClose!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of DataCompare!");
     return GRAPH_FAILED;
   }
   if (rtol_data < 0) {
@@ -4138,7 +4138,7 @@ IMPLEMT_VERIFIER(AllClose, AllCloseVerify) {
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(AllCloseInferShape) {
+IMPLEMT_COMMON_INFERFUNC(DataCompareInferShape) {
   TensorDesc tensordesc_num = op.GetOutputDesc("num");
   TensorDesc tensordesc_diff = op.GetOutputDesc("diff");
 
@@ -4157,9 +4157,9 @@ IMPLEMT_COMMON_INFERFUNC(AllCloseInferShape) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(AllClose, AllCloseInferShape);
-VERIFY_FUNC_REG(AllClose, AllCloseVerify);
-// -------------------AllClose-------------------------
+COMMON_INFER_FUNC_REG(DataCompare, DataCompareInferShape);
+VERIFY_FUNC_REG(DataCompare, DataCompareVerify);
+// -------------------DataCompare-------------------------
 
 // ---------------HardMax Begin-----------------
 IMPLEMT_COMMON_INFERFUNC(HardMaxInferShape)
