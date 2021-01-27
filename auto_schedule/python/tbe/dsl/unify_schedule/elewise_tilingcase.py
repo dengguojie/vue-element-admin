@@ -164,7 +164,8 @@ def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
               "ub_tiling_axis": 0,
               "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
               "tiling_strategy": TilingStrategy.ONE_CUT,
-              "is_need_db": False
+              "is_need_db": False,
+              "is_pure_eletwise": True
               }]
 
     if enable_db_func():

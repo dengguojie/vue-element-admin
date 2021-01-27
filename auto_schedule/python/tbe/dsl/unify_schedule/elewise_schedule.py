@@ -53,6 +53,13 @@ VCMP_INPUT_NUMBER = 2
 VSEL_INPUT_NUMBER = 3
 VCMPSEL_INPUT_NUMBER = 4
 
+# TYPE DOUNDS
+TYPE_DOUNDS = {
+    1: (1, 32767),
+    2: (1, 32767),
+    4: (1, 16383),
+    8: (1, 8191),
+}
 
 @register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
 def schedule(outs, tiling_case):
@@ -307,7 +314,10 @@ class ElewiseSchedule:
         b_i = self._tiling_case["block_tiling_axis"]
         u_i = self._tiling_case["ub_tiling_axis"]
         b_bound = (1, util.get_bound(shape[b_i])[1])
-        u_bound = self._tiling_case.get("ub_factor_bound")
+        if self._is_pure_eletwise:
+            u_bound = TYPE_DOUNDS.get(self._max_dtype_bytes)
+        else:
+            u_bound = self._tiling_case.get("ub_factor_bound")
         if u_bound is None:
             u_bound = (1, util.get_bound(shape[u_i])[1])
         self._block_tiling_vars[b_i] = operation.var("block_factor_" + str(b_i), b_bound)
