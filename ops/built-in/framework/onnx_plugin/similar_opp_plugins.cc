@@ -77,6 +77,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Where, SelectV2, WhereV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Range, Range, RangeV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Expand, Expand, ExpandV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::ScatterND, TensorScatterUpdate, ScatterNDV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Dropout, Dropout, DropoutV11);
 
 //onnx::9
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Acos, Acos, AcosV9);
@@ -117,6 +118,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Identity, Identity, IdentityV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Where, SelectV2, WhereV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Range, Range, RangeV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Expand, Expand, ExpandV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Dropout, Dropout, DropoutV9);
 
 //onnx::12
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Acos, Acos, AcosV12);
@@ -157,6 +159,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Identity, Identity, IdentityV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Where, SelectV2, WhereV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Range, Range, RangeV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Expand, Expand, ExpandV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Dropout, Dropout, DropoutV12);
 
 //onnx::13
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Acos, Acos, AcosV13);
@@ -197,4 +200,5 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Identity, Identity, IdentityV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Where, SelectV2, WhereV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Range, Range, RangeV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Expand, Expand, ExpandV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Dropout, Dropout, DropoutV13);
 }  // namespace domi
