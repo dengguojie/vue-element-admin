@@ -5,7 +5,7 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("TransData", "impl.dynamic.trans_data", "trans_data")
 
-def gen_transdata_case(dynamic_input_shapes, ori_input_shapes, dtype, srcFormat, dstFormat, 
+def gen_transdata_case(dynamic_input_shapes, ori_input_shapes, dtype, srcFormat, dstFormat,
                        case_name_val, expect):
     inputs = (
         {"shape": dynamic_input_shapes,
@@ -62,6 +62,11 @@ ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
                  gen_transdata_case((-1, -1, -1, -1),
                                     (100, 2, 16, 16),
                                     "float16", "FRACTAL_Z_3D", "NDHWC", "case_6", "success"))
+
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (2, 23, 3, 3),
+                                    "float16", "NC1HWC0", "NCHW", "case_7", "success"))
 
 if __name__ == '__main__':
     with te.op.dynamic():

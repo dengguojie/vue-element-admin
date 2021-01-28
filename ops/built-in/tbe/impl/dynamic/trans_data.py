@@ -20,8 +20,10 @@ import te.lang.dynamic
 from te.utils import para_check
 from impl.dynamic.trans_data_rnn import trans_data_rnn
 from . import trans_data_negative_target_tc
+from . import trans_data_negative_target_ch
 from impl.util.platform_adapter import register_operator
 
+# pylint: disable=unused-argument
 @register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
@@ -35,5 +37,7 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
     if (src_format == "NC1HWC0" and dst_format == "NHWC") or (src_format == "FRACTAL_NZ" and dst_format == "ND") \
         or (src_format == "FRACTAL_Z_3D" and dst_format == "NDHWC"):
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
+    elif (src_format == "NC1HWC0" and dst_format == "NCHW"):
+        trans_data_negative_target_ch.trans_data_negative_target_ch(src, dst, src_format, dst_format, kernel_name)
     else:
         return trans_data_rnn(src, dst, src_format, dst_format, 0, 0, kernel_name)

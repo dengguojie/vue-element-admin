@@ -28,163 +28,32 @@ from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from te.utils.error_manager import error_manager_vector as error_manager
-from impl.util.platform_adapter import register_operator
+from .. import trans_data_common_func as tdc
 
-# C0 length except int8 and uint8
-C0_16 = 16
-# C0 length int8 and uint8
-C0_32 = 32
-# Ni length
-NI_16 = 16
+# max num of tiling params
 TILING_ARG_NUM = 128
-# size of the cube unit
-CUBE_SIZE = 16
-# max int32 value
-MAX_SIZE = 2 ** 31 - 1
-# repeat up limit for vector command
-REPEAT_LIMIT_VECT = 255
-# repeat up limit for mte
-REPEAT_LIMIT_MTE = 4095
-# strides up limit for mte
-STRIDE_LIMIT_MTE = 65535
-# mask value for float32
-MASK_64 = 64
-# mask value for float16
-MASK_128 = 128
-# float type list
-TYPE_FLOAT_LIST = ("float16", "float32")
-# used for scalar
-REG_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7)
-# used for vnchwconv
-ADDR_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
-# vnchwconv line count
-VNC_LINES = 16
-
-# pylint: disable=locally-disabled,unused-argument,too-many-branches
-# pylint: disable=too-many-locals,too-many-statements,unused-variable
-# pylint: disable=too-many-boolean-expressions
-def _ceil_div(value_x, value_y):
-    """
-    do ceil division
-    """
-
-    result = (value_x + value_y - 1) // value_y
-
-    return result
-
-def _ceil_fill(value_x, value_y):
-    """
-    do ceil filling
-    """
-
-    result = (value_x + value_y - 1) // value_y * value_y
-
-    return result
 
 def ceil_32bytes_align_count(count, dtype):
     type_size = common_util.get_data_size(dtype)
     block_count = math.ceil(count * type_size / constant.BLOCK_SIZE)
     return block_count * constant.BLOCK_SIZE // type_size
 
-
 def _gm2ub(tik_instance: tik.Tik, dest: tik.Tensor, src: tik.Tensor, count):
     dtype_size = common_util.get_data_size(src.dtype)
     burst = math.ceil(count * dtype_size / constant.BLOCK_SIZE)
     tik_instance.data_move(dest, src, 0, 1, burst, 0, 0)
 
-def _get_dtype_len(in_dtype):
-    """
-    get the byte count of certain dtype
-    """
-
-    temp_dtype = in_dtype.lower()
-
-    if temp_dtype in ("int8", "uint8"):
-        byte_len = 1
-    elif temp_dtype in ("float16", "int16", "uint16"):
-        byte_len = 2
-    elif temp_dtype in ("float32", "int32", "uint32"):
-        byte_len = 4
-    elif temp_dtype in ("int64", "uint64"):
-        byte_len = 8
-
-    return byte_len
-
-def _get_max_element_in_ub(in_dtype, ub_part, ub_size):
-    """
-    get the up limit elements in UB
-    """
-
-    byte_len = _get_dtype_len(in_dtype)
-    ub_upper_limit = 248 * 1024 // ub_part if ub_size > 248 * 1024 else ub_size // ub_part  # the unit is Byte
-    element_size = ub_upper_limit // byte_len
-
-    return element_size
-
-def _get_shape_size(sub_shape):
-    """
-    return shape size
-    """
-
-    shape_size = func_reduce(lambda x, y: x * y, sub_shape)
-
-    return shape_size
-
-def _get_c0_len(dtype):
-    """
-    get c0 length according to dtype
-    """
-
-    c0_len = C0_32 if dtype.lower() in ("int8", "uint8", "bool") else C0_16
-
-    return c0_len
-
-def _clean_ubuf(tik_inst, src, src_offset, dup_len):
-    """
-    set ubuf to zero
-    """
-
-    dtype = src.dtype.lower()
-    if dtype == "float16":
-        dtype_factor = 2
-    elif dtype == "float32":
-        dtype_factor = 1
-    batch_size = MASK_64
-
-    with tik_inst.if_scope(dup_len > 0):
-        repeat = dup_len // (batch_size * dtype_factor)
-        left_elem = dup_len % (batch_size * dtype_factor)
-        repeat_loop = repeat // REPEAT_LIMIT_VECT
-        repeat_left = repeat % REPEAT_LIMIT_VECT
-        dup_value = float(0)
-
-        with tik_inst.if_scope(repeat_loop > 0):
-            with tik_inst.for_range(0, repeat_loop) as rpt_idx:
-                tik_inst.vector_dup(MASK_64 * dtype_factor,
-                                    src[src_offset + rpt_idx * REPEAT_LIMIT_VECT * batch_size * dtype_factor],
-                                    dup_value, REPEAT_LIMIT_VECT, 1, 8)
-
-        with tik_inst.if_scope(repeat_left > 0):
-            tik_inst.vector_dup(MASK_64 * dtype_factor,
-                                src[src_offset + repeat_loop * REPEAT_LIMIT_VECT * batch_size * dtype_factor],
-                                dup_value, repeat_left, 1, 8)
-
-        with tik_inst.if_scope(left_elem > 0):
-            tik_inst.vector_dup(left_elem, src[src_offset + repeat * batch_size * dtype_factor],
-                                dup_value, 1, 1, 8)
-
 def once_vnchwconv_invert_4_fp16(args):
     """
     do cn to c1nc0 transform by once vnchwconv
     """
-
     tik_inst, dst_gm, src_ub, ub_offset, out_level1_lp, out_level1_lp_step_ub, out_level1_lp_step_out, \
     out_level0_lp, out_level0_offset_ub, out_level0_offset_out, out_level0_repeat, \
     out_level0_burst, out_level0_src_stride, out_level0_dst_stride, row_size, data_size = args
 
-    src_addr_list = [src_ub[row_size * i] for i in ADDR_IDX_LIST]
-    dst_addr_list = [src_ub[ub_offset + C0_16 * i] for i in ADDR_IDX_LIST]
-    repeat_cnt = _ceil_div(data_size, C0_16)
+    src_addr_list = [src_ub[row_size * i] for i in tdc.ADDR_IDX_LIST]
+    dst_addr_list = [src_ub[ub_offset + tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
+    repeat_cnt = tdc.ceil_div(data_size, tdc.C0_16)
     with tik_inst.new_stmt_scope():
         src_stride = tik_inst.Scalar()
         dst_stride = tik_inst.Scalar()
@@ -215,9 +84,9 @@ def twice_vnchwconv_no_invert(args):
     out_level0_lp, out_level0_offset_ub, out_level0_offset_out, out_level0_repeat, \
     out_level0_burst, out_level0_src_stride, out_level0_dst_stride, row_size, data_size, c_cnt, sub_c_size = args
 
-    src_addr_list = [src_ub[row_size * i] for i in ADDR_IDX_LIST]
-    dst_addr_list = [src_ub[ub_offset + C0_16 * i] for i in ADDR_IDX_LIST]
-    repeat_cnt = _ceil_div(data_size, C0_16)
+    src_addr_list = [src_ub[row_size * i] for i in tdc.ADDR_IDX_LIST]
+    dst_addr_list = [src_ub[ub_offset + tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
+    repeat_cnt = tdc.ceil_div(data_size, tdc.C0_16)
     with tik_inst.new_stmt_scope():
         src_stride = tik_inst.Scalar()
         dst_stride = tik_inst.Scalar()
@@ -229,15 +98,15 @@ def twice_vnchwconv_no_invert(args):
             dst_stride.set_as(16)
         tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
-    sub_c_size_block_align = _ceil_fill(sub_c_size, C0_16)
+    sub_c_size_block_align = tdc.ceil_fill(sub_c_size, tdc.C0_16)
     with tik_inst.if_scope(sub_c_size_block_align > sub_c_size):
-        _clean_ubuf(tik_inst, src_ub, 0, sub_c_size_block_align * c_cnt * VNC_LINES)
+        tdc.clean_ubuf(tik_inst, src_ub, 0, sub_c_size_block_align * c_cnt * tdc.VNC_LINES)
     tik_inst.data_move(src_ub, src_ub[ub_offset], 0, c_cnt, sub_c_size, 0, sub_c_size_block_align - sub_c_size)
 
     c0_cnt = out_level1_lp
     with tik_inst.for_range(0, c0_cnt) as c0_idx:
-        src_addr_list = [src_ub[C0_16 * i + c0_idx * C0_16 * VNC_LINES] for i in ADDR_IDX_LIST]
-        dst_addr_list = [src_ub[ub_offset + c_cnt * C0_16 * i] for i in ADDR_IDX_LIST]
+        src_addr_list = [src_ub[tdc.C0_16 * i + c0_idx * tdc.C0_16 * tdc.VNC_LINES] for i in tdc.ADDR_IDX_LIST]
+        dst_addr_list = [src_ub[ub_offset + c_cnt * tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
         repeat_cnt = c_cnt
         with tik_inst.new_stmt_scope():
             src_stride = tik_inst.Scalar()
@@ -261,17 +130,16 @@ class TransData:
         self.tik_profiling = tik.Dprofile()
 
         self.dtype = input.get("dtype").lower()
-        self.tiling_dtype = "int32"
+        self.tiling_dtype = "int64"
         self.src_format = src_format
         self.dst_format = dst_format
-        self.output_shape = (MAX_SIZE,)
-        self.input_shape = (MAX_SIZE,)
+        self.output_shape = (tdc.MAX_INT64_VALUE,)
+        self.input_shape = (tdc.MAX_INT64_VALUE,)
         self.input_size = input_size
         self.hidden_size = hidden_size
-        dtype_bytes = _get_dtype_len(self.dtype)
-        tiling_dtype_bytes = _get_dtype_len(self.tiling_dtype)
-        valid_ub_size = self.tik_profiling.get_unified_buffer_size()
-        self.ub_size = _get_max_element_in_ub(self.dtype, 1, valid_ub_size) - TILING_ARG_NUM * tiling_dtype_bytes // dtype_bytes
+        dtype_bytes = tdc.get_dtype_len(self.dtype)
+        tiling_dtype_bytes = tdc.get_dtype_len(self.tiling_dtype)
+        self.ub_size = tdc.get_max_element_in_ub(self.dtype, 1) - TILING_ARG_NUM * tiling_dtype_bytes // dtype_bytes
         tiling_gm_size = TILING_ARG_NUM
 
         tiling_gm_size_align = ceil_32bytes_align_count(tiling_gm_size, self.tiling_dtype)
@@ -397,8 +265,8 @@ class TransData:
                                         in_level0_lp.set_as(self.tiling_ub[44 + params_base + core_base])
                                         in_level0_repeat.set_as(self.tiling_ub[45 + params_base + core_base])
                                         # clean dirty data from above loops which will not be covered in last loop
-                                        _clean_ubuf(tik_inst, self.input_ub, in_level2_left * vnc_line_size,
-                                                    (C0_16 - in_level2_left) * vnc_line_size)
+                                        tdc.clean_ubuf(tik_inst, self.input_ub, in_level2_left * vnc_line_size,
+                                                    (tdc.C0_16 - in_level2_left) * vnc_line_size)
 
                                     # control in-level 0 data_move burst and out-level 0 data_move repeat and burst
                                     in_level1_lp = tik_inst.Scalar(self.tiling_dtype, name="in_level1_lp")
@@ -454,13 +322,13 @@ class TransData:
                                             in_offset_0 = in_offset_1 + level0_idx * in_level0_offset_in
                                             in_ub_offset = level0_idx * in_level0_offset_ub
                                             tik_inst.data_move(self.input_ub[in_ub_offset], self.input_tensors[in_offset_0],
-                                                               0, in_level0_repeat, _ceil_div(in_level0_burst, C0_16),
+                                                               0, in_level0_repeat, tdc.ceil_div(in_level0_burst, tdc.C0_16),
                                                                in_level0_src_stride, in_level0_dst_stride)
 
                                         args = (tik_inst, self.output_tensor[out_offset_1], self.input_ub, ub_offset,
                                                 out_level1_lp, out_level1_lp_step_ub, out_level1_lp_step_out, out_level0_lp,
                                                 out_level0_offset_ub, out_level0_offset_out, out_level0_repeat,
-                                                _ceil_div(out_level0_burst, C0_16), out_level0_src_stride,
+                                                tdc.ceil_div(out_level0_burst, tdc.C0_16), out_level0_src_stride,
                                                 out_level0_dst_stride, vnc_line_size, in_level0_burst)
                                         once_vnchwconv_invert_4_fp16(args)
 
@@ -584,14 +452,14 @@ class TransData:
                                                                         level1_idx == in_level1_lp - 1)):
                                                 in_level0_burst.set_as(in_level0_burst_t)
                                             tik_inst.data_move(self.input_ub[in_ub_offset], self.input_tensors[in_offset_0],
-                                                               0, in_level0_repeat, _ceil_div(in_level0_burst, C0_16),
+                                                               0, in_level0_repeat, tdc.ceil_div(in_level0_burst, tdc.C0_16),
                                                                in_level0_src_stride, in_level0_dst_stride)
 
                                         args = (tik_inst, self.output_tensor[out_offset_1], self.input_ub, ub_offset,
                                                 out_level1_lp, out_level1_offset_out,
                                                 out_level0_lp, out_level0_offset_ub,
                                                 out_level0_offset_out, out_level0_repeat,
-                                                _ceil_div(out_level0_burst, C0_16), out_level0_src_stride,
+                                                tdc.ceil_div(out_level0_burst, tdc.C0_16), out_level0_src_stride,
                                                 out_level0_dst_stride, vnc_line_size, in_level0_per_line_data,
                                                 in_level0_c_cnt, in_level0_sub_c_size)
                                         twice_vnchwconv_no_invert(args)
@@ -626,9 +494,6 @@ class TransData:
                                         })
         return tik_inst
 
-
-
-@register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)
@@ -637,7 +502,6 @@ def trans_data_rnn(src, dst, src_format, dst_format,
     """
     format transform for rnn
     """
-
     src_format = src_format.upper()
     dst_format = dst_format.upper()
 

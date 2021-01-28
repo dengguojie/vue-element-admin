@@ -68,6 +68,9 @@ set(_optiling_files
   transpose.cc
   trans_data.cc
   trans_data_negative_target_tc.cc
+  trans_data_positive_target_t_mode100.cc
+  trans_data_positive_target_t_mode101.cc
+  trans_data_negative_target_h_mode200.cc
   unpack.cc
   unsorted_segment_sum.cc
   gemm.cc
