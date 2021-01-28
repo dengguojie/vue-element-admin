@@ -238,6 +238,7 @@ def compare(report, run_dir):
     # 2. get case run result,
     txt = utils.read_file(result_txt)
     run_result_list = txt.split('\n')
+    is_compare = False
     for line in run_result_list:
         if len(line.split("  ")) != 3:
             continue

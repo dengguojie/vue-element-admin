@@ -14,6 +14,7 @@ try:
     import json
     import time
     import copy
+    import re
     import importlib
     from . import utils
     from .model_parser import get_model_nodes
@@ -340,19 +341,177 @@ class CaseGenerator:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
+    @staticmethod
+    def _delete_comments(content):
+        no_comments_content = re.sub(r'//.*|/\*(\s|.)*?\*/', '', content)
+        return no_comments_content.strip()
+
+    @staticmethod
+    def _check_op_proto_path_valid(path):
+        if not os.path.exists(path):
+            utils.print_warn_log(
+                'The path {} does not exist. Please check whether '
+                'the path exists.'.format(path))
+            return False
+        if not os.access(path, os.R_OK):
+            utils.print_warn_log('The path {} does not have permission to '
+                                 'read. Please check the path permission.'
+                                 .format(path))
+            return False
+        return True
+
+    def _prase_aicpu_input_output_info(self, line, input_count, output_count):
+        for op_key in utils.IN_OUT_OP_KEY_MAP.keys():
+            if line.startswith(op_key):
+                start_str = line[line.find(op_key):]
+                name = re.findall(r'[(](.*?)[,]', start_str)[0]
+                input_tensor_type = start_str[
+                                    start_str.find("{") + 1:start_str.find("}")]
+                op_info_key = ''
+                if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'input':
+                    input_count += 1
+                    op_info_key = '%s%s' % (
+                        utils.IN_OUT_OP_KEY_MAP.get(op_key), input_count)
+                if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'output':
+                    output_count += 1
+                    op_info_key = '%s%s' % (
+                        utils.IN_OUT_OP_KEY_MAP.get(op_key), output_count)
+
+                if op_info_key not in self.op_info:
+                    self.op_info[op_info_key] = {}
+
+                if op_info_key:
+                    self.op_info[op_info_key]['name'] = name
+                    self.op_info[op_info_key][
+                        'dtype'] = input_tensor_type.replace(' ', '')
+                    self.op_info[op_info_key]['format'] = ''
+        return input_count, output_count
+
+    def _prase_aicpu_attr(self, line):
+        for op_key in utils.AICPU_ATTR_LIST:
+            if line.startswith(op_key):
+                attr_str = line[line.find(op_key):]
+                name = re.findall(r'[(](.*?)[,]', attr_str)[0]
+                type_attrs = attr_str[attr_str.find(",") + 1:].strip()
+                attr_name = 'attr_%s' % name
+                if attr_name not in self.op_info:
+                    self.op_info[attr_name] = {}
+                self.op_info[attr_name]['name'] = name
+                if op_key == 'ATTR':
+                    attr_tensor_type = type_attrs.split(',')[0]
+                    self.op_info[attr_name]['defaultValue'] = \
+                        re.findall(r'[,](.*?)[)]', type_attrs)[0]
+                else:
+                    attr_tensor_type = type_attrs.split(')')[0]
+                self.op_info[attr_name][
+                    'type'] = attr_tensor_type.strip().lower()
+
+    def _prase_aicpu_op_proto(self, file_path):
+        op_name_h_text = utils.read_file(file_path)
+        if op_name_h_text:
+            reg_op_info_str = op_name_h_text[op_name_h_text.find('REG_OP'):]
+            reg_op_info_str = reg_op_info_str.strip()
+            if reg_op_info_str.startswith('REG_OP'):
+                # delete code comments in op_name.h
+                no_comments_content = self._delete_comments(reg_op_info_str)
+                new_line = no_comments_content.replace('\n', utils.EMPTY)\
+                    .replace('\r', utils.EMPTY) \
+                    .replace('\t', utils.EMPTY)
+                pattern = re.compile(utils.SPACE)
+                line = pattern.sub(utils.EMPTY, new_line)
+                line_point_list = line.split('.')
+                input_count = 0
+                output_count = 0
+                for line in line_point_list:
+                    line = line.strip()
+                    input_count, output_count = \
+                        self._prase_aicpu_input_output_info(
+                            line, input_count, output_count)
+                    self._prase_aicpu_attr(line)
+                return True
+            else:
+                return False
+        return False
+
+    def _find_aicpu_op_proto_path(self):
+        op_proto_path = os.path.realpath(
+            os.path.join(os.path.dirname(self.input_file_path),
+                         '../../../op_proto'))
+        op_proto_file_name = utils.fix_name_lower_with_under(self.op_type)\
+                             + '.h'
+        op_proto_file_path = os.path.join(op_proto_path, op_proto_file_name)
+        is_file_exist = self._check_op_proto_path_valid(op_proto_file_path)
+        is_prase_success = False
+        if is_file_exist:
+            utils.print_info_log("Start parse %s to obtain operator "
+                                 "information." % op_proto_file_path)
+            is_prase_success = self._prase_aicpu_op_proto(op_proto_file_path)
+            if is_prase_success:
+                utils.print_info_log("Finish parse %s." % op_proto_file_path)
+        if not is_file_exist or not is_prase_success:
+            utils.print_warn_log("There are unavailable operator information "
+                                 "in %s." % op_proto_file_path)
+            return False
+        return True
+
+    def _generate_aicpu_op_desc(self, value, base_case, op_key):
+        input_name = value.get('name')
+        op_format = [] if len(value['format']) == 0 else \
+            list(set(value['format'].split(',')))
+        if len(value['dtype']) == 0:
+            op_dtype = []
+        else:
+            dtype_list = list(set(value['dtype'].split(',')))
+            self._check_op_info_list_valid(
+                dtype_list,
+                list(utils.DTYPE_TO_TYPE_MAP.keys()),
+                INI_INPUT + '.dtype')
+            trans_dtype_list = []
+            for dtype_key in dtype_list:
+                if dtype_key in utils.DTYPE_TO_TYPE_MAP.keys():
+                    trans_dtype_list.append(
+                        utils.DTYPE_TO_TYPE_MAP.get(dtype_key))
+            op_dtype = trans_dtype_list
+        if op_key == 'input_desc':
+            op_desc = {'format': op_format,
+                       'type': op_dtype,
+                       'shape': [],
+                       'data_distribute': ['uniform'],
+                       'value_range': [[0.1, 1.0]]}
+            op_desc.update({'name': input_name})
+        if op_key == 'output_desc':
+            op_desc = {'format': op_format,
+                       'type': op_dtype,
+                       'shape': []}
+        base_case[op_key].append(op_desc)
+
     def _generate_aicpu_base_case(self):
+        is_find_op_proto_path = self._find_aicpu_op_proto_path()
         base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
                                   + '_001',
                      'op': self.op_type,
                      'input_desc': [],
                      'output_desc': []}
-        input_desc = {'format': [], 'type': [],
-                      'shape': [], 'data_distribute': ['uniform'],
-                      'value_range': [[0.1, 1.0]]}
-        base_case['input_desc'].append(input_desc)
-        output_desc = {'format': [], 'type': [],
-                       'shape': []}
-        base_case['output_desc'].append(output_desc)
+        if is_find_op_proto_path:
+            for (key, value) in list(self.op_info.items()):
+                if key.startswith(INI_INPUT):
+                    self._generate_aicpu_op_desc(value, base_case, 'input_desc')
+                elif key.startswith(INI_OUTPUT):
+                    self._generate_aicpu_op_desc(value, base_case,
+                                                 'output_desc')
+                elif key.startswith("attr_"):
+                    if 'attr' not in base_case:
+                        base_case['attr'] = []
+                    base_case['attr'].append(self._make_attr(key, value))
+        if not base_case['input_desc']:
+            input_desc = {'format': [], 'type': [],
+                          'shape': [], 'data_distribute': ['uniform'],
+                          'value_range': [[0.1, 1.0]]}
+            base_case['input_desc'].append(input_desc)
+        if not base_case['output_desc']:
+            output_desc = {'format': [], 'type': [],
+                           'shape': []}
+            base_case['output_desc'].append(output_desc)
         # generate base case from model
         if self.args.model_path != "":
             return self._generate_base_case_from_model(base_case, True)
@@ -382,6 +541,32 @@ class CaseGenerator:
                           'value_range': [[0.1, 1.0]]}
             input_desc.update({'name': input_name})
         base_case['input_desc'].append(input_desc)
+
+    def _generate_output_desc(self, value, base_case):
+        output_format = [] if len(value['format']) == 0 else \
+            list(set(value['format'].split(',')))
+        if len(value['dtype']) == 0:
+            output_dtype = []
+        else:
+            dtype_list = list(set(value['dtype'].split(',')))
+            self._check_op_info_list_valid(
+                dtype_list,
+                list(utils.DTYPE_TO_TYPE_MAP.keys()),
+                INI_INPUT + '.dtype')
+            trans_dtype_list = []
+            for dtype_key in dtype_list:
+                if dtype_key in utils.DTYPE_TO_TYPE_MAP.keys():
+                    trans_dtype_list.append(
+                        utils.DTYPE_TO_TYPE_MAP.get(dtype_key))
+            output_dtype = trans_dtype_list
+        if self.input_file_path.endswith(".py"):
+            output_desc = {'type': output_dtype,
+                           'shape': []}
+        else:
+            output_desc = {'format': output_format,
+                           'type': output_dtype,
+                           'shape': []}
+        base_case['output_desc'].append(output_desc)
 
     def _generate_aicore_base_case(self):
         if self.input_file_path.endswith(".py"):

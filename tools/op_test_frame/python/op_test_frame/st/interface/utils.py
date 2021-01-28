@@ -69,10 +69,18 @@ INPUT_SUFFIX_LIST = ['.ini', '.py']
 FILE_AUTHORITY = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR
 FOLDER_MASK = 0o700
 TYPE_UNDEFINED = "UNDEFINED"
-
+SPACE = ' '
+EMPTY = ''
 WRITE_FLAGS = os.O_WRONLY | os.O_CREAT
 WRITE_MODES = stat.S_IWUSR | stat.S_IRUSR
-
+IN_OUT_OP_KEY_MAP = {
+    'INPUT': 'input',
+    'DYNAMIC_INPUT': 'input',
+    'OPTIONAL_INPUT': 'input',
+    'OUTPUT': 'output',
+    'DYNAMIC_OUTPUT': 'output'
+}
+AICPU_ATTR_LIST = ['ATTR', 'REQUIRED_ATTR']
 DTYPE_TO_NUMPY_MAP = {
     'float16': np.float16,
     'float': np.float32,
@@ -87,6 +95,30 @@ DTYPE_TO_NUMPY_MAP = {
     'bool': np.bool,
     'UNDEFINED': 'UNDEFINED',
     'RESERVED': 'RESERVED'
+}
+DTYPE_TO_TYPE_MAP = {
+    "DT_FLOAT": "float",
+    "DT_BOOL":"bool",
+    "DT_INT32":"int32",
+    "DT_INT64": "int64",
+    "DT_UINT32": "uint32",
+    "DT_UINT64": "uint64",
+    "DT_INT8": "int8",
+    "DT_INT16": "int16",
+    "DT_UINT8": "uint8",
+    "DT_UINT16": "uint16",
+    "DT_QINT8": "qint8",
+    "DT_QINT16": "qint16",
+    "DT_QINT32": "qint32",
+    "DT_QUINT8": "quint8",
+    "DT_QUINT16": "quint16",
+    "DT_FLOAT16": "fp16",
+    "DT_FLOAT32": "fp32",
+    "DT_DOUBLE": "double",
+    "DT_COMPLEX64": "complex64",
+    "DT_COMPLEX128": "complex128",
+    "DT_STRING": "string",
+    "DT_RESOURCE": "resource"
 }
 
 DTYPE_TO_MINDSPORE_MAP = {
@@ -146,10 +178,10 @@ DATA_DISTRIBUTION_LIST = ['uniform', 'normal', 'beta', 'laplace', 'triangular',
 # the map according to graph/types.h
 FORMAT_ENUM_MAP = {
     "UNDEFINED": -1,
-    "NCHW": 0,   # NCHW
-    "NHWC": 1,   # NHWC
-    "ND": 2,        # Nd Tensor
-    "NC1HWC0": 3,    # NC1HWC0
+    "NCHW": 0,  # NCHW
+    "NHWC": 1,  # NHWC
+    "ND": 2,  # Nd Tensor
+    "NC1HWC0": 3,  # NC1HWC0
     "FRACTAL_Z": 4,  # FRACTAL_Z
     "NC1C0HWPAD": 5,
     "NHWC1C0": 6,
@@ -158,7 +190,7 @@ FORMAT_ENUM_MAP = {
     "C1HWNC0": 9,
     "FRACTAL_DECONV_TRANSPOSE": 10,
     "FRACTAL_DECONV_SP_STRIDE_TRANS": 11,
-    "NC1HWC0_C04": 12,    # NC1HWC0, C0 is 4
+    "NC1HWC0_C04": 12,  # NC1HWC0, C0 is 4
     "FRACTAL_Z_C04": 13,  # FRACZ, C0 is 4
     "CHWN": 14,
     "FRACTAL_DECONV_SP_STRIDE8_TRANS": 15,
@@ -274,7 +306,8 @@ def map_to_acl_format_enum(format_list):
     result_str = ""
     acl_format_list = []
     for acl_format in format_list:
-        acl_format_list.append("(aclFormat)" + str(FORMAT_ENUM_MAP.get(acl_format)))
+        acl_format_list.append(
+            "(aclFormat)" + str(FORMAT_ENUM_MAP.get(acl_format)))
     result_str += ", ".join(acl_format_list)
     return result_str
 
@@ -539,3 +572,21 @@ def make_dirs(op_dir):
         print_error_log("Unable to make dir: %s." % str(err))
         raise OpTestGenException(OP_TEST_GEN_MAKE_DIRS_ERROR)
 
+
+def fix_name_lower_with_under(name):
+    """
+    change name to lower_with_under style,
+    eg: "ConcatOffset" -> concat_offset
+    :param name: op type/input/out_put/attribute name to be fix
+    :return: name has been fixed
+    """
+    fix_name = ""
+    for index, name_str in enumerate(name):
+        if name_str.isupper():
+            if index == 0:
+                fix_name += name_str.lower()
+            else:
+                fix_name += "_" + name_str.lower()
+        else:
+            fix_name += name_str
+    return fix_name

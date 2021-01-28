@@ -215,7 +215,8 @@ TF_ATTR_TYPE_MAP = {
     "list(int)": "ListInt",
     "list(string)": "ListString",
     "list(bool)": "ListBool",
-    "list(list(int))": "ListListInt"
+    "list(list(int))": "ListListInt",
+    "list(float)": "ListFloat"
 }
 
 
