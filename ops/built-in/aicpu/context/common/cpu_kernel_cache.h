@@ -84,6 +84,13 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info);
+  
+  /*
+   * parse extend tensor bitmap information.
+   * @param ext_info: extend information
+   * @return uint32_t: 0 indicates success, while the others fail
+   */
+  uint32_t ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info);
 
   /*
    * parse extend tensor shape and types information.
@@ -130,9 +137,18 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
   std::shared_ptr<CpuKernelContext> GetCpuKernelContext(bool has_sess_info,
                                                         uint64_t kernel_id);
 
+  /*
+   * get bit status on pos
+   * @param num: input number
+   * @param pos: bit pos
+   * @return bool: bit is 1 or 0
+   */
+  bool GetBitStatus(int num, int pos);
+
  private:
   std::vector<uint64_t> io_addrs_;
   bool unknown_shape_;
+  bool run_dynamic_;
   std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type_;
   std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type_;
   char *nodedef_;

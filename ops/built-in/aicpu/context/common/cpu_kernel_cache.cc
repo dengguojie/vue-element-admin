@@ -36,6 +36,7 @@ constexpr uint32_t kMaxLRUCacheNum = 256;
 namespace aicpu {
 CpuKernelCache::CpuKernelCache()
     : unknown_shape_(false),
+      run_dynamic_(true),
       nodedef_(nullptr),
       nodedef_len_(0),
       nodedef_proto_(nullptr) {}
@@ -185,6 +186,9 @@ uint32_t CpuKernelCache::ParseExtShapeType(
 uint32_t CpuKernelCache::ParseExtShapeAndType(
     FWKAdapter::ExtInfo *ext_info,
     std::vector<FWKAdapter::ShapeAndType *> &shape_and_type) {
+  if (!run_dynamic_) {
+    return KERNEL_STATUS_OK;
+  }
   shape_and_type.clear();
   uint32_t size = (ext_info->infoLen) / sizeof(FWKAdapter::ShapeAndType);
   KERNEL_LOG_INFO("Parse extend shape and type, size[%u].", size);
@@ -226,6 +230,32 @@ uint32_t CpuKernelCache::ParseExtSessionInfo(FWKAdapter::ExtInfo *ext_info,
 }
 
 /*
+ * get bit status.
+ */
+bool CpuKernelCache::GetBitStatus(int num, int pos) {
+  return ((num & (1 << pos)) != 0);
+}
+
+/*
+ * parse bitmap information.
+ */
+uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info) {
+  if (ext_info->infoLen != sizeof(int64_t)) {
+    KERNEL_LOG_ERROR(
+        "Parse extend bitmap failed, as info length must be [%zu], but got "
+        "[%u].",
+        sizeof(int64_t), ext_info->infoLen);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  int64_t bit_map = *(reinterpret_cast<const int64_t *>(ext_info->infoMsg));
+  run_dynamic_ = (!GetBitStatus(bit_map, 0));
+  unknown_shape_ = run_dynamic_;
+  KERNEL_LOG_INFO("Run_dynamic_ is [%d].", run_dynamic_);
+  return KERNEL_STATUS_OK;
+}
+
+/*
  * parse extend information.
  */
 uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
@@ -261,6 +291,9 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
       case FWKAdapter::FWK_ADPT_EXT_SESSION_INFO:
         has_session_info = true;
         ret = ParseExtSessionInfo(ext_info, kernel_id);
+        break;
+      case FWKAdapter::FWK_ADPT_EXT_BITMAP:
+        ret = ParseExtBitMap(ext_info);
         break;
       default:
         KERNEL_LOG_INFO("Ignore infoType[%d], infoLen[%u].", ext_info->infoType,
@@ -390,6 +423,7 @@ int32_t CpuKernelCache::RunKernel(void *param) {
 
   bool has_sess_info = false;
   uint64_t kernel_id = 0;
+  run_dynamic_ = true;
   ret = ParseExtMsg(param_head, has_sess_info, kernel_id);
   if (ret != KERNEL_STATUS_OK) {
     return -1;

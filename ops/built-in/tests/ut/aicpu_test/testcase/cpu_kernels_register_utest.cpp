@@ -72,10 +72,11 @@ TEST_F(CPU_KERNEL_REGISTAR_UTest, DeviceRunKernel)
 
     std::vector<char> taskExtInfo;
     uint64_t totalLen = 0;
-    totalLen = 3 * FWKAdapter::kExtInfoHeadSize + 4 + 2 * sizeof(FWKAdapter::ShapeAndType);
+    totalLen = 4 * FWKAdapter::kExtInfoHeadSize + sizeof(int32_t) + sizeof(uint64_t) + 2 * sizeof(FWKAdapter::ShapeAndType);
     taskExtInfo.resize(totalLen, 0);
     uint32_t extInfoOffset = 0;
     char *extInfoBuf = taskExtInfo.data();
+    //init ext info 0: shapeType 
     FWKAdapter::ExtInfo *extInfo = reinterpret_cast<FWKAdapter::ExtInfo *>(extInfoBuf);
     extInfo->infoType = FWKAdapter::FWK_ADPT_EXT_SHAPE_TYPE;
     extInfo->infoLen = sizeof(int32_t);
@@ -83,7 +84,15 @@ TEST_F(CPU_KERNEL_REGISTAR_UTest, DeviceRunKernel)
     int32_t *shapeType = reinterpret_cast<int32_t *>(extInfoBuf + extInfoOffset);
     *shapeType = 3;
     extInfoOffset += extInfo->infoLen;
-    // init ext info 1: input ShapeAndType 	359
+    //init ext info 1: bitmap
+    extInfo = reinterpret_cast<FWKAdapter::ExtInfo *>(extInfoBuf + extInfoOffset);
+    extInfo->infoType = FWKAdapter::FWK_ADPT_EXT_BITMAP;
+    extInfo->infoLen = sizeof(uint64_t);
+    extInfoOffset += FWKAdapter::kExtInfoHeadSize;
+    uint64_t *bitMap = reinterpret_cast<uint64_t *>(extInfoBuf + extInfoOffset);
+    *bitMap = 0;
+    extInfoOffset += extInfo->infoLen;
+    // init ext info 2: input ShapeAndType 	359
     extInfo = reinterpret_cast<FWKAdapter::ExtInfo *>(extInfoBuf + extInfoOffset);
     extInfo->infoType = FWKAdapter::FWK_ADPT_EXT_INPUT_SHAPE;
     extInfo->infoLen = sizeof(FWKAdapter::ShapeAndType);
@@ -93,7 +102,7 @@ TEST_F(CPU_KERNEL_REGISTAR_UTest, DeviceRunKernel)
     inputs->dims[1]=4;
     inputs->dims[2]=LLONG_MIN;
     extInfoOffset += extInfo->infoLen;
-    // init ext info 2: output ShapeAndType
+    // init ext info 3: output ShapeAndType
     extInfo = reinterpret_cast<FWKAdapter::ExtInfo *>(extInfoBuf + extInfoOffset);
     extInfo->infoType = FWKAdapter::FWK_ADPT_EXT_OUTPUT_SHAPE;
     extInfo->infoLen = sizeof(FWKAdapter::ShapeAndType);
@@ -102,7 +111,7 @@ TEST_F(CPU_KERNEL_REGISTAR_UTest, DeviceRunKernel)
     outputs->dims[0]=8;
     outputs->dims[1]=2;
     outputs->dims[2]=LLONG_MIN;
-    extInfoOffset += sizeof(FWKAdapter::ShapeAndType);
+    extInfoOffset += extInfo->infoLen;
 
     AicpuParamHead paramHead = {param_len, 2, totalLen, reinterpret_cast<uintptr_t>(taskExtInfo.data())};
     char* parambase = (char*)malloc(param_len * sizeof(char));
@@ -111,7 +120,7 @@ TEST_F(CPU_KERNEL_REGISTAR_UTest, DeviceRunKernel)
     memcpy(parambase, reinterpret_cast<const char *>(&paramHead), sizeof(AicpuParamHead));
     param += sizeof(AicpuParamHead);
     memcpy(param, reinterpret_cast<const char *>(io_addrs.data()), io_addrs.size() * static_cast<uint32_t>(sizeof(uint64_t)));
-    param += io_addrs.size()* static_cast<uint32_t>(sizeof(uint64_t));
+    param += io_addrs.size() * static_cast<uint32_t>(sizeof(uint64_t));
     uint32_t nodeDefLen = nodeDefStr.length();
     memcpy(param, reinterpret_cast<const char *>(&nodeDefLen), sizeof(uint32_t));
     param += sizeof(uint32_t);
