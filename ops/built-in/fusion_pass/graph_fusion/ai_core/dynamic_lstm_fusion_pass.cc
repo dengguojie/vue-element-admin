@@ -184,6 +184,8 @@ ge::GeTensorPtr DynamicLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, boo
     int32_t wxCol = wxConstTensorDesc.GetShape().GetDim(1);
     int32_t whRow = whConstTensorDesc.GetShape().GetDim(0);
     int32_t whCol = whConstTensorDesc.GetShape().GetDim(1);
+    FUSION_PASS_CHECK(wxCol == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "wxCol can not 0"), return nullptr);
+    FUSION_PASS_CHECK(whCol == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "whCol can not 0"), return nullptr);
 
     // wxRow == whRow
     std::vector<int64_t> dimsIn;

@@ -74,6 +74,7 @@ Status SpatialTransformerDPass::StnPreAddConst(ge::NodePtr& thisNode, ge::OpDesc
   vector<int64_t> size;
   ge::AttrUtils::GetListInt(thisOpDesc, "size", size);
   FUSION_PASS_CHECK(size.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "StnPre size shape is NULL."), return FAILED);
+  FUSION_PASS_CHECK(size.size() < 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "StnPre size dims must 4."), return FAILED);
 
   ge::GeTensorPtr assitPtrW = nullptr;
   ge::GeTensorPtr assitPtrH = nullptr;
@@ -136,6 +137,8 @@ Status SpatialTransformerDPass::MakeStnPreLayer(ge::OpDescPtr& thisOpDesc, const
   vector<int64_t> shapeDims = formerInputDesc0.GetOriginShape().GetDims();
   FUSION_PASS_CHECK(shapeDims.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "SpatialTransformerD input shape is NULL."),
                     return FAILED);
+  FUSION_PASS_CHECK(shapeDims.size() < 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "SpatialTransformerD input 0 format must be NC0HWC1"),
+                  return FAILED);
 
   vector<int64_t> output_size;
   vector<float> default_theta;
@@ -297,6 +300,9 @@ Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return PARAM_INVALID);
 
   ge::OpDescPtr spatialTransformerDOpDesc = spatialTransformerDNode->GetOpDesc();
+  FUSION_PASS_CHECK(spatialTransformerDOpDesc == nullptr,
+                  OP_LOGE(FUSED_OP_TYPE.c_str(), "spatialTransformerDOpDesc is null, fusion failed."),
+                  return PARAM_INVALID);
 
   // Get Input Node
   ge::InDataAnchorPtr oriInAnchorPtr0 = spatialTransformerDNode->GetInDataAnchor(0);
@@ -384,6 +390,9 @@ Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
+    FUSION_PASS_CHECK(oriTopPeerAnchorPtri == nullptr,
+                  OP_LOGE(FUSED_OP_TYPE.c_str(), "oriTopPeerAnchorPtri is null, fusion failed."),
+                  return PARAM_INVALID);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(stnComputeNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",

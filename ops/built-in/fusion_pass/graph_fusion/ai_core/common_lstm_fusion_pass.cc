@@ -90,6 +90,8 @@ ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, bool
   int32_t wCol = wConstTensorDesc.GetShape().GetDim(2);
   int32_t rRow = rConstTensorDesc.GetShape().GetDim(1);
   int32_t rCol = rConstTensorDesc.GetShape().GetDim(2);
+  FUSION_PASS_CHECK(wCol == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "wCol can not 0"), return nullptr);
+  FUSION_PASS_CHECK(rCol == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "rCol can not 0"), return nullptr);
 
   hiddenSize = rRow / 4;
 
