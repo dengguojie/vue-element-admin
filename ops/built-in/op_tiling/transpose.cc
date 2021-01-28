@@ -267,10 +267,12 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
 
     if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
         OP_LOGE(opType.c_str(), "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
+        return false;
     } 
     if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
         OP_LOGE(opType.c_str(), "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
                                                                                   paras.outputs[0].tensor.size());
+        return false;
     }
     shapeInfo.inShape = paras.inputs[0].tensor[0].shape;
     shapeInfo.outShape = paras.outputs[0].tensor[0].shape;
@@ -699,7 +701,6 @@ static string PrintTilingInfoScenario0(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
-    cout<<logStr<<endl;
     return logStr;
 }
 
@@ -730,7 +731,6 @@ static string PrintTilingInfoScenario1(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
-    cout<<logStr<<endl;
     return logStr;
 }
 
@@ -776,7 +776,6 @@ static string PrintTilingInfoScenario2(const CompilerInfo & compilerInfo,
         logStr += to_string(loopInfo.tailTailNum, 13);
         logStr += "\n";
     }
-    cout<<logStr<<endl;
     return logStr;
 }
 
@@ -855,7 +854,6 @@ static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
-    cout<<logStr<<endl;
     return logStr;
 }
 
@@ -1854,31 +1852,31 @@ bool TransposeCalcTilingData(const string &opType,
         case SCENARIO_0:
             res = TilingDataScenario0(compilerInfo, shapeInfo, runtimeInfo);
             PrintTilingInfoScenario0(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario0(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario0(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_1:
             res = TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
             PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_2:
             res = TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
             PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_6:
             res = TilingDataScenario6(compilerInfo, shapeInfo, runtimeInfo);
             PrintTilingInfoScenario6(compilerInfo, shapeInfo, runtimeInfo);
-            OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario6(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario6(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_7:
             res = TilingDataScenario7(compilerInfo, shapeInfo, runtimeInfo);
             if (res == false) {
                 ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
-                OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
             } else {
                 PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo);
-                OP_LOGD(opType.c_str(), "%s", PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
+                OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
             }
         default:
             break;

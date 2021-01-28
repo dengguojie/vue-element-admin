@@ -239,6 +239,44 @@ TEST_F(TransposeTilingTest, stride_lt_65535) {
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 }
 
+TEST_F(TransposeTilingTest, identical_shape) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(1000);
+    shapeInfo.inShape.push_back(2000);
+    shapeInfo.outShape.push_back(1000);
+    shapeInfo.outShape.push_back(2000);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(1);
+    
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+}
+
+TEST_F(TransposeTilingTest, small_shape) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(10);
+    shapeInfo.inShape.push_back(20);
+    shapeInfo.outShape.push_back(20);
+    shapeInfo.outShape.push_back(10);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+    
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+}
+
 TEST_F(TransposeTilingTest, stride_gt_65535) {
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;
