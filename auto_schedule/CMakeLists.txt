@@ -38,8 +38,6 @@ if(EXISTS "${tbe_whl}")
     COMMAND mkdir -p ${_pkg_path_tbe}/common
     COMMAND cp -rf ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/dsl ${_pkg_path_tbe}
     COMMAND cp -rf ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/common/utils ${_pkg_path_tbe}/common
-    COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/__init__.py ${_pkg_path_tbe}
-    COMMAND cp -f ${CMAKE_CURRENT_SOURCE_DIR}/python/tbe/common/__init__.py ${_pkg_path_tbe}/common
     COMMAND ${CMAKE_COMMAND} -E copy "${AUTO_SCH_PATH}/setup.py" "${AUTO_SCH_PATH}/LICENSE" "${_purelib_path}"
     COMMENT "Copying auto schedule"
   )
