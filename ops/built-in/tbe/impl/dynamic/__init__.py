@@ -37,8 +37,10 @@ from .scatter_div import scatter_div
 from .equal import equal
 from .relu import relu
 from .add import add
+from .axpy import axpy
 from .floor_mod import floor_mod
 from .mul import mul
+from .muls import muls
 from .reduce_sum import reduce_sum
 from .reduce_sum_d import reduce_sum_d
 from .reduce_max_d import reduce_max_d
@@ -53,6 +55,7 @@ from .square import square
 from .sparse_apply_proximal_adagrad_d import sparse_apply_proximal_adagrad_d
 from .maximum import maximum
 from .minimum import minimum
+from .accumulate_nv2 import accumulate_nv2
 from .add_n import add_n
 from .greater_equal import greater_equal
 from .less import less

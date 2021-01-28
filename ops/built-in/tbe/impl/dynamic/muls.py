@@ -25,7 +25,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.util.platform_adapter import register_operator
 
-def muls_compute(x, scalar, kernel_name="muls"):
+# pylint: disable=too-many-locals,unused-argument
+def muls_compute(input_x, scalar, kernel_name="muls"):
     """
     calculating data
 
@@ -42,22 +43,22 @@ def muls_compute(x, scalar, kernel_name="muls"):
     res: TVM tensor
         the calculation results
     """
-    res = te.lang.cce.vmuls(x, scalar)
+    res = te.lang.cce.vmuls(input_x, scalar)
     return res
 
 
 @register_operator("Muls")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
-def muls(x, y, value, kernel_name="muls"):
+def muls(input_x, output_y, value, kernel_name="muls"):
     """
     calculating data
 
     Parameters
     ----------
-    x : dict
+    input_x : dict
         shape and dtype of input
-    y : dict
+    output_x : dict
         shape and dtype of output, should be same shape and type as x
     value : float
         scale
@@ -68,17 +69,17 @@ def muls(x, y, value, kernel_name="muls"):
     -------
     None
     """
-    x_dtype = x.get("dtype")
+    x_dtype = input_x.get("dtype")
     input_dtype = x_dtype.lower()
-    
+
     check_list = ["float16", "float32", "int32", "int16"]
     para_check.check_dtype(x_dtype, check_list)
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([input_x], Mode.ELEWISE)
     schedules, tensors = [], []
     scalar = tvm.const(value, dtype=input_dtype)
-    for (input_x,) in ins:
+    for (_input_x,) in ins:
         with tbe_base.compute():
-            x_shape = shape_util.variable_shape([input_x])
+            x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])
             data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)

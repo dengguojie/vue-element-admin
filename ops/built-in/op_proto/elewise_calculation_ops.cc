@@ -1120,9 +1120,147 @@ IMPLEMT_VERIFIER(AccumulateNV2, AccumulateNV2Verify) {
   return GRAPH_SUCCESS;
 }
 
+int64_t GetAccumulateNV2ConstValue(const ge::Operator& op) {
+  int64_t tensor_num;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
+    OpsGetAttrErrReport(op.GetName(), "N");
+    OP_LOGE(op.GetName().c_str(), "The add_n op GetOpAttr failed!");
+  }
+  return tensor_num;
+}
+
 IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
-  uint32_t first_input_index = 0;
-  (void)op.UpdateOutputDesc("y", op.GetDynamicInputDesc("x", first_input_index));
+  /*
+  Accumulate_nv2 has four type inputs:
+  1.empty 2.static shape 3.-1 4.-2
+  The combinations bring 15 scenes, and the 15 scenes can be classify into 4 categories:
+  1.input with no range and output no need range, and it can be divided half:
+    1.1 all input is empty
+    1.2 input only contains empty and -2 shape
+  2.input contains static shape and with no -1 shape
+  3.input contains -1 shape
+  */  
+  const int64_t infer_condition_one_one = 11;
+  const int64_t infer_condition_one_two = 12;
+  const int64_t infer_condition_two = 2;
+  const int64_t infer_condition_three = 3;
+
+  int64_t empty_num = 0;
+  int64_t static_num = 0;
+  int64_t dynamic_shape_num = 0;
+  int64_t dynamic_dim_num = 0;
+  int64_t infer_classify = 0;
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  int64_t tensor_num = GetAccumulateNV2ConstValue(op);
+
+  for (uint32_t i = 0; i < tensor_num; i++) {
+    auto input_desc = op_info->MutableInputDesc(i);
+    vector<int64_t> tempVector = input_desc->MutableShape().GetDims();
+    if (tempVector.empty()) {
+      empty_num++;
+    } else if (std::find(tempVector.begin(), tempVector.end(), -1) != tempVector.end()) {
+      dynamic_shape_num++;
+    } else if (std::find(tempVector.begin(), tempVector.end(), -2) != tempVector.end()) {
+      dynamic_dim_num++;
+    } else {
+      static_num++;
+    }
+  }
+  if (tensor_num == empty_num + dynamic_dim_num) {
+    if (tensor_num == empty_num) {
+      infer_classify = infer_condition_one_one;
+    } else {
+      infer_classify = infer_condition_one_two;
+    }
+  } else if (tensor_num == static_num || tensor_num == empty_num + static_num || tensor_num == static_num +
+             dynamic_dim_num || tensor_num == empty_num + static_num + dynamic_dim_num) {
+    infer_classify = infer_condition_two;
+  } else {
+    infer_classify = infer_condition_three;
+  }
+
+  // condition 1: all input shape is empty
+  if (infer_classify == 11) {
+    auto input_desc = op_info->MutableInputDesc(0);
+    std::vector<int64_t> shape_vector = input_desc->MutableShape().GetDims();
+    DataType x_dtype = input_desc->GetDataType();
+    auto y_desc = op_info->MutableOutputDesc("y");
+    y_desc->SetShape(GeShape(shape_vector));
+    y_desc->SetDataType(x_dtype);
+  } else if (infer_classify == 12) {
+    auto input_desc = op_info->MutableInputDesc( 0);
+    std::vector<int64_t> shape_vector = {-2};
+    DataType x_dtype = input_desc->GetDataType();
+    auto y_desc = op_info->MutableOutputDesc("y");
+    y_desc->SetShape(GeShape(shape_vector));
+    y_desc->SetDataType(x_dtype);
+  } else if (infer_classify == 2) {
+    auto input_desc = op_info->MutableInputDesc(0);
+    std::vector<int64_t> shape_vector = input_desc->MutableShape().GetDims();
+    DataType x_dtype = input_desc->GetDataType();
+    for (int64_t i = 0; i < tensor_num; i++) {
+      auto input_desc = op_info->MutableInputDesc(i);
+      std::vector<int64_t> temp_vector = input_desc->MutableShape().GetDims();
+      if (!shape_vector.empty() && !IsUnknownRankShape(shape_vector)) {
+        shape_vector = temp_vector;
+        break;
+      }
+    }
+    auto y_desc = op_info->MutableOutputDesc("y");
+    y_desc->SetShape(GeShape(shape_vector));
+    y_desc->SetDataType(x_dtype);
+    std::vector<std::pair<int64_t,int64_t>> out_range;
+    MakeUpShapeRange(shape_vector, out_range);
+    y_desc->SetShapeRange(out_range);
+  } else {
+    auto input_desc = op_info->MutableInputDesc(0);
+    std::vector<int64_t> out_shape = input_desc->MutableShape().GetDims();
+    DataType x_dtype = input_desc->GetDataType();
+    std::vector<int64_t> out_vector;
+    std::vector<std::pair<int64_t, int64_t>> out_range;
+    // Init the output shape and range
+    for (int64_t i = 0; i < tensor_num; i++) {
+      auto input_desc = op_info->MutableInputDesc(i);
+
+      std::vector<int64_t> temp_vector = input_desc->MutableShape().GetDims();
+      if (!temp_vector.empty() && !IsUnknownRankShape(temp_vector)) {
+        out_vector = temp_vector;
+        input_desc->GetShapeRange(out_range);
+        MakeUpShapeRange(out_vector, out_range);
+        break;
+      }
+    }
+    // compute the shape dims and range intersection
+    for (int64_t i = 0; i < tensor_num; i++) {
+      auto input_desc = op_info->MutableInputDesc(i);
+      std::vector<int64_t> temp_vector = input_desc->MutableShape().GetDims();
+      if (temp_vector.empty() || IsUnknownRankShape(temp_vector)) {
+        continue;
+      }
+      std::vector<std::pair<int64_t, int64_t>> temp_range;
+      input_desc->GetShapeRange(temp_range);
+      MakeUpShapeRange(temp_vector, temp_range);
+      for (size_t j = 0; j < temp_vector.size(); j++) {
+        // two condition: const == const; const > -1
+        if (temp_vector[j] >= out_vector[j]) {
+          out_vector[j] = temp_vector[j];
+          // update range: left choose the max value
+          if (temp_range[j].first >= out_range[j].first) {
+            out_range[j].first = temp_range[j].first;
+          }
+          // update range: right choose the miner value but when it was > 0
+          if ((temp_range[j].second <= out_range[j].second && temp_range[j].second > 0) ||
+              (out_range[j].second == -1 && temp_range[j].second != -1)) {
+            out_range[j].second = temp_range[j].second;
+          }
+        }
+      }
+    }
+    auto y_desc = op_info->MutableOutputDesc("y");
+    y_desc->SetShape(GeShape(out_shape));
+    y_desc->SetShapeRange(out_range);
+    y_desc->SetDataType(x_dtype);
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -2956,7 +3094,8 @@ IMPLEMT_VERIFIER(Axpy, AxpyVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AxpyInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+  bool is_dynamic_output = true;
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
