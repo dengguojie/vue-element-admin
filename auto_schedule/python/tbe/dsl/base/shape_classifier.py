@@ -24,6 +24,13 @@ BROADCAST = "broadcast"
 REDUCE = "reduce"
 
 
+CLASSIFY_SAME_PATTERN_MAP = {
+    "ElemWise": ELEWISE,
+    "Broadcast": BROADCAST,
+    "CommReduce": REDUCE
+}
+
+
 def classify(ins: list, mode: str):
     """
     classify
@@ -31,6 +38,7 @@ def classify(ins: list, mode: str):
     :param mode:
     :return:
     """
+    mode = CLASSIFY_SAME_PATTERN_MAP.get(mode, mode)
     if mode == ELEWISE:
         return classify_elewise(ins, support_broadcast=False)
     if mode == BROADCAST:

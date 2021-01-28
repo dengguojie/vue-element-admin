@@ -608,9 +608,7 @@ def dsl_support_dtype(dsl_name):
     if not isinstance(dsl_name, str):
         return []
 
-    local_dsl_name = DSL_SAME_API_MAP.get(dsl_name)
-    if local_dsl_name:
-        dsl_name = local_dsl_name
+    dsl_name = DSL_SAME_API_MAP.get(dsl_name, dsl_name)
 
     if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
         all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)
@@ -641,9 +639,7 @@ def dsl_check_support(dsl_api, dtype=None):
 
     dsl_name = dsl_api.split(".")[-1]
 
-    local_dsl_name = DSL_SAME_API_MAP.get(dsl_name)
-    if local_dsl_name:
-        dsl_name = local_dsl_name
+    dsl_name = DSL_SAME_API_MAP.get(dsl_name, dsl_name)
 
     if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
         all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)
