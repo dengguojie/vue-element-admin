@@ -1385,5 +1385,81 @@ IMPLEMT_VERIFIER(SmoothL1LossV2, SmoothL1LossV2Verify) {
 INFER_FUNC_REG(SmoothL1LossV2, SmoothL1LossV2InferShape);
 VERIFY_FUNC_REG(SmoothL1LossV2, SmoothL1LossV2Verify);
 // ----------------SmoothL1LossV2 END---------------------
+// ----------------PoissonNllLoss Begin----------------------------
+bool InferShapeAndTypePoissonNllLoss(Operator& op, 
+                                     const string& input_x, 
+                                     const string& target, 
+                                     const string& loss, 
+                                     const string& reduction) {
+    TensorDesc vOutputDesc = op.GetOutputDesc(loss);
+    DataType inputDtype = op.GetInputDesc(input_x).GetDataType();
+    Format inputFormat = op.GetInputDesc(input_x).GetFormat();
+    ge::Shape shapeX = op.GetInputDesc(input_x).GetShape();
+    ge::Shape shapeY = op.GetInputDesc(target).GetShape();
+    std::vector<int64_t> dimsX = shapeX.GetDims();
+    std::vector<int64_t> dimsY = shapeY.GetDims();
+    if (dimsX.size() < dimsY.size()) {
+        std::vector<int64_t> dimsTmp = dimsX;
+        dimsX = dimsY;
+        dimsY = dimsTmp;
+    }
+    if (dimsX.size() != dimsY.size()) {
+        int dec = dimsX.size() - dimsY.size();
+        for (int i = 0; i < dec; i++) {
+            dimsY.insert(dimsY.begin(), (int64_t)1);
+        }
+    }
+    std::vector<int64_t> dimVec;
+    if (reduction == "none") {
+        for (size_t i = 0; i < dimsX.size(); i++) {
+            if ((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1)) {
+                OP_LOGE(op.GetName().c_str(), "Input shapes are not compatible.");
+                return false;
+            }
+            int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+            dimVec.push_back(dims);
+        }
+    } else if (reduction == "mean" || reduction == "sum") {
+        int64_t one = 1;
+        dimVec.push_back(one);
+    } else {
+        OP_LOGE(op.GetName().c_str(), "Parameter reduction expects 'none', 'mean' or 'sum'.");
+        return false;
+    }
+    ge::Shape outputShape = ge::Shape(dimVec);
+    vOutputDesc.SetShape(outputShape);
+    vOutputDesc.SetDataType(inputDtype);
+    vOutputDesc.SetFormat(inputFormat);
+    op.UpdateOutputDesc(loss, vOutputDesc);
+    return true;
+}
 
+//PoissonNllLoss
+IMPLEMT_VERIFIER(PoissonNllLoss, PoissonNllLossVerify) {
+    DataType input_type_input = op.GetInputDesc("input_x").GetDataType();
+    DataType input_type_target = op.GetInputDesc("target").GetDataType();
+    if (input_type_input != input_type_target) {
+        OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+//Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(PoissonNllLossInferShape) {
+    std::string reduction_str = "";
+    op.GetAttr("reduction",reduction_str);
+    if (InferShapeAndTypePoissonNllLoss(op, "input_x", "target", "loss", reduction_str)) {
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+}
+
+//Registered inferfunction
+COMMON_INFER_FUNC_REG(PoissonNllLoss, PoissonNllLossInferShape);
+
+//Registered verify function
+VERIFY_FUNC_REG(PoissonNllLoss, PoissonNllLossVerify);
+//PoissonNllLoss
+// ----------------PoissonNllLoss END------------------------------
 }  // namespace ge
