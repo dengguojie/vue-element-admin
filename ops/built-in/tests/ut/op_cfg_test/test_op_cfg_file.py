@@ -33,26 +33,29 @@ class Test_OpConfig(unittest.TestCase):
         print("---------------------------------------------------")
 
     def test_op_config(self):
-        allow_types = ["int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "float16", "float32",
-                       "float", "bool", "double"]
-        allow_input_info_keys = ["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType",
-                                 "unknownshape_format"]
-        allow_reshape_types = ["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW", "NWC"]
-        allow_output_info_keys = ["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType", "unknownshape_format"]
-        allow_param_types = ["required", "optional", "dynamic"]
-        allow_op_pattern = ["reduce", "broadcast", "formatAgnostic"]
-        allow_attr_type = ["bool", "int", "listInt", "float", "str", "listFloat", "listListInt", "type", "listBool"]
-        allow_op_key = ["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
+        allow_types = set(["int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "float16", "float32",
+                       "float", "bool", "double"])
+        allow_input_info_keys = set(["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType",
+                                 "unknownshape_format"])
+        allow_reshape_types = set(["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW", "NWC"])
+        allow_output_info_keys = set(["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType", "unknownshape_format"])
+        allow_param_types = set(["required", "optional", "dynamic"])
+        allow_op_pattern = set(["reduce", "broadcast", "formatAgnostic"])
+        allow_attr_type = set(["bool", "int", "listInt", "float", "str", "listFloat", "listListInt", "type", "listBool"])
+        allow_op_key = set(["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
                         "binfile.name", "kernel.name",
                         "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
-                        "needCheckSupport.flag","dynamicShapeSupport.flag", "slicePattern.value"]
-        allow_attr_info_key = ["type", "value", "paramType", "defaultValue"]
+                        "needCheckSupport.flag","dynamicShapeSupport.flag", "slicePattern.value"])
+        allow_attr_info_key = set(["type", "value", "paramType", "defaultValue"])
+        allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM', 'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',
+                         'NDC1HWC0', 'FRACTAL_Z_3D', 'NC1HWC0_C04', 'HWCN', 'CHWN', 'NDHWC', 'DHWCN', 'NCDHW', 'FRACTAL_Z_C04'])
 
         def check_op_key_info(file_name, op_type, op_key_infos):
             attr_list = []
             attr_info_map = {}
             check_error_msg = []
             format_dtype_list = []
+            format_list = []
             has_format = False
             has_unkown_shape_format = False
             is_dynamic = False
@@ -77,6 +80,7 @@ class Test_OpConfig(unittest.TestCase):
                     elif input_info_key == "format":
                         has_format = True
                         format_dtype_list.append([x.strip() for x in info_value.split(",")])
+                        format_list.append([x.strip() for x in info_value.split(",")])
                     elif input_info_key == "unknownshape_format":
                         has_unkown_shape_format = True
                     elif input_info_key == "paramType":
@@ -108,6 +112,7 @@ class Test_OpConfig(unittest.TestCase):
                     elif output_info_key == "format":
                         has_format = True
                         format_dtype_list.append([x.strip() for x in info_value.split(",")])
+                        format_list.append([x.strip() for x in info_value.split(",")])
                     elif output_info_key == "unknownshape_format":
                         has_unkown_shape_format = True
                     elif output_info_key == "paramType":
@@ -168,9 +173,13 @@ class Test_OpConfig(unittest.TestCase):
                             "%s check failed, op info can't config this info: %s" % (op_type, op_key_info))
 
             if attr_list != sorted(attr_info_map.keys()):
-                # print(attr_list, attr_info_map.keys())
                 check_error_msg.append("%s check failed, attr.list is not match attr info" % op_type)
-            # print("check")
+            if len(format_list) > 0:
+                for formats in format_list:
+                    for format_item in formats:
+                        if format_item not in allow_formats:
+                            check_error_msg.append(
+                                "%s check failed: format %s is not allow" % (op_type, format_item))
             if len(format_dtype_list) > 0:
                 f_d_table_len = len(format_dtype_list[0])
                 for f_d in format_dtype_list:
@@ -181,8 +190,6 @@ class Test_OpConfig(unittest.TestCase):
             if is_pattern and has_format:
                 check_error_msg.append("%s check failed: configed op.pattern don't need config format" % op_type)
             if len(check_error_msg) != 0:
-                # print(file_name)
-                # print(check_error_msg)
                 raise AssertionError(
                     "check op cfg failed! error file: %s msg: %s" % (file_name, "\n".join(check_error_msg)))
 
@@ -214,13 +221,10 @@ class Test_OpConfig(unittest.TestCase):
             soc_path = os.path.join(ini_path, soc_dir)
             for file_name in os.listdir(soc_path):
                 if file_name.endswith(".ini"):
-                    # if "910" not in file_name:
-                    #     continue
                     file_path = os.path.join(soc_path, file_name)
                     with self.subTest("test cfg file %s" % file_name):
                         print(file_name)
                         check_cfg_info(file_path)
-                        # self.assertTrue(check_valid)
 
 
 if __name__ == "__main__":

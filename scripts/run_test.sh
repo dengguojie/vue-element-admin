@@ -46,7 +46,7 @@ run_ut() {
   
   python3.7 "${CANN_ROOT}/ops/built-in/tests/common/ci/run_op_cfg_ut.py"                     
   if [[ $? -ne 0 ]]; then
-    echo "run ops python utest failed."
+    echo "run ops cfg utest failed."
     exit $STATUS_FAILED
   fi
 
