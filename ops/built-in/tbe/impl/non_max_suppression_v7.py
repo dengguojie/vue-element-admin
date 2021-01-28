@@ -111,8 +111,10 @@ class NonMaxSuppression(object):
         # init input gm
         self.init_tik_input_mem()
         # get init value of iou_thresh,score_thresh,max_total_size
-        self.iou_thresh = self.get_iou_threshold()
-        self.score_thresh = self.get_score_threshold()
+        if self.has_iou_thresh:
+            self.iou_thresh = self.get_iou_threshold()
+        if self.has_score_thresh:
+            self.score_thresh = self.get_score_threshold()
         self.max_total_size = self.get_max_output_size(max_boxes_size)
         self.max_output_class = self.get_max_class_size(max_boxes_size)
 
@@ -125,15 +127,17 @@ class NonMaxSuppression(object):
         self.ub_max_topk = None
         self.ub_topk_index = None
         self.l1_nms_result = None
+        self.gm_nms_result = None
         self.l1_nms_result_zero = None
         self.workspace_proposal_gm = None
+        self.workspace_proposal_index_gm = None
         self.workspace_second_nms_gm = None
+        self.workspace_second_nms_index_gm = None
         self.l1_score_valid = None
         self.l1_nms_area = None
         self.l1_nms_sup = None
-        # self.proposal_topk_k = self.ub_size // 4 // 16
-        # self.proposal_topk_k = min(self.proposal_topk_k, 255 * 16)
-        self.proposal_topk_k = 2000
+        self.gm_temp = None
+        self.proposal_topk_k = ceil_div(2000, 16) * 16
         self.topk_loop_time = 0
         self.topk_loop_tail = 0
         self.single_loop = True
@@ -148,7 +152,7 @@ class NonMaxSuppression(object):
 
         # whether user set_rpn_offset, mini do not support it
         self.is_need_rpn_offset = False
-        self.is_second_nms = False
+        self.is_second_nms = True
 
         # for nms function param calc
         self.max_selected_nms_num_in_ub = \
@@ -179,9 +183,10 @@ class NonMaxSuppression(object):
         max_total_size
         """
         max_total_size_gm = self.input_gm_list[2]
-        max_total_size_temp = self.tik_instance.Tensor("int32", (16,), name="max_total_size_temp",
-                                                       scope=tik.scope_ubuf)
-        self.tik_instance.data_move(max_total_size_temp[0], max_total_size_gm[0], 0, 1, 1, 0, 0)
+        with self.tik_instance.new_stmt_scope():
+            max_total_size_temp = self.tik_instance.Tensor("int32", (16,), name="max_total_size_temp",
+                                                           scope=tik.scope_ubuf)
+            self.tik_instance.data_move(max_total_size_temp[0], max_total_size_gm[0], 0, 1, 1, 0, 0)
 
         self.max_total_size = max_box_size
         return self.max_total_size
@@ -205,27 +210,28 @@ class NonMaxSuppression(object):
         """
         # iou_threshold = iou_thres_gm[0]/(iou_thres_gm[0] + 1)
         iou_thres_gm = self.input_gm_list[3]
-        iou_threshold_um = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_um",
-                                                    scope=tik.scope_ubuf)
-        self.tik_instance.data_move(iou_threshold_um[0], iou_thres_gm[0], 0, 1, 1, 0, 0)
-        iou_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_temp",
-                                                      scope=tik.scope_ubuf)
+        with self.tik_instance.new_stmt_scope():
+            iou_threshold_um = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_um",
+                                                        scope=tik.scope_ubuf)
+            self.tik_instance.data_move(iou_threshold_um[0], iou_thres_gm[0], 0, 1, 1, 0, 0)
+            iou_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_temp",
+                                                          scope=tik.scope_ubuf)
 
-        self.tik_instance.vector_dup(16, iou_threshold_temp, 1.0, 1, 1, 1)
-        iou_threshold_temp[0].set_as(iou_threshold_um[0])
+            self.tik_instance.vector_dup(16, iou_threshold_temp, 1.0, 1, 1, 1)
+            iou_threshold_temp[0].set_as(iou_threshold_um[0])
 
-        iou_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="iou_threshold_ub", scope=tik.scope_ubuf)
-        self.tik_instance.vec_conv(16, "none", iou_threshold_ub, iou_threshold_temp, 1, 1, 2)
+            iou_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="iou_threshold_ub", scope=tik.scope_ubuf)
+            self.tik_instance.vec_conv(16, "none", iou_threshold_ub, iou_threshold_temp, 1, 1, 2)
 
-        ub_one = self.tik_instance.Tensor("float16", (16,), name="ub_one", scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(16, ub_one, 1.0, 1, 1, 1)
-        add_ub = self.tik_instance.Tensor("float16", (16,), name="add_ub", scope=tik.scope_ubuf)
-        self.tik_instance.vector_dup(16, add_ub, 1.0, 1, 1, 1)
-        self.tik_instance.vadd(16, add_ub, iou_threshold_ub, ub_one, 1, 1, 1, 1, 1, 1, 1)
-        self.tik_instance.vrec(16, ub_one, add_ub, 1, 1, 1, 1, 1)
-        self.tik_instance.vmul(16, add_ub, iou_threshold_ub, ub_one, 1, 1, 1, 1, 1, 1, 1)
-        self.iou_thresh.set_as(add_ub[0])
-        return self.iou_thresh
+            ub_one = self.tik_instance.Tensor("float16", (16,), name="ub_one", scope=tik.scope_ubuf)
+            self.tik_instance.vector_dup(16, ub_one, 1.0, 1, 1, 1)
+            add_ub = self.tik_instance.Tensor("float16", (16,), name="add_ub", scope=tik.scope_ubuf)
+            self.tik_instance.vector_dup(16, add_ub, 1.0, 1, 1, 1)
+            self.tik_instance.vadd(16, add_ub, iou_threshold_ub, ub_one, 1, 1, 1, 1, 1, 1, 1)
+            self.tik_instance.vrec(16, ub_one, add_ub, 1, 1, 1, 1, 1)
+            self.tik_instance.vmul(16, add_ub, iou_threshold_ub, ub_one, 1, 1, 1, 1, 1, 1, 1)
+            self.iou_thresh.set_as(add_ub[0])
+            return self.iou_thresh
 
     def get_score_threshold(self):
         """
@@ -235,13 +241,15 @@ class NonMaxSuppression(object):
         score_thresh
         """
         scores_thres_gm = self.input_gm_list[4]
-        score_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="score_threshold_temp",
-                                                        scope=tik.scope_ubuf)
-        self.tik_instance.data_move(score_threshold_temp[0], scores_thres_gm[0], 0, 1, 1, 0, 0)
-        score_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="score_threshold_ub", scope=tik.scope_ubuf)
-        self.tik_instance.vec_conv(16, "none", score_threshold_ub, score_threshold_temp, 1, 1, 2)
-        self.score_thresh.set_as(score_threshold_ub[0])
-        return self.score_thresh
+        with self.tik_instance.new_stmt_scope():
+            score_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="score_threshold_temp",
+                                                            scope=tik.scope_ubuf)
+            self.tik_instance.data_move(score_threshold_temp[0], scores_thres_gm[0], 0, 1, 1, 0, 0)
+            score_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="score_threshold_ub",
+                                                          scope=tik.scope_ubuf)
+            self.tik_instance.vec_conv(16, "none", score_threshold_ub, score_threshold_temp, 1, 1, 2)
+            self.score_thresh.set_as(score_threshold_ub[0])
+            return self.score_thresh
 
     def init_tik_input_mem(self):
         """init tik gm mem
@@ -265,8 +273,11 @@ class NonMaxSuppression(object):
             score_threshold_gm = self.tik_instance.Tensor("float32", self.score_threshold_shape,
                                                           name="score_threshold_gm",
                                                           scope=tik.scope_gm)
-        self.input_gm_list = [boxes_gm, scores_gm, max_output_size_gm, iou_threshold_gm,
-                              score_threshold_gm, index_id_gm]
+            self.input_gm_list = [boxes_gm, scores_gm, max_output_size_gm, iou_threshold_gm,
+                                  score_threshold_gm, index_id_gm]
+        else:
+            self.input_gm_list = [boxes_gm, scores_gm, max_output_size_gm, iou_threshold_gm,
+                                  index_id_gm]
 
     def init_tik_output_mem(self):
         """init tik gm mem
@@ -274,18 +285,22 @@ class NonMaxSuppression(object):
         # init gm output
         selected_indices_gm = self.tik_instance.Tensor("int32", self.selected_indices_shape,
                                                        name="selected_indices_gm", scope=tik.scope_gm)
-        selected_indices_ub = self.tik_instance.Tensor("int32", self.selected_indices_shape,
-                                                       name="selected_indices_ub", scope=tik.scope_ubuf)
-        dup_len = total_num(self.selected_indices_shape)
-        tik_func_vector_int32(self.tik_instance, selected_indices_ub, -1, dup_len)
-        brust_len = ceil_div(dup_len, 8)
-        self.tik_instance.data_move(selected_indices_gm, selected_indices_ub,
-                                    0, 1, brust_len, 0, 0)
+        with self.tik_instance.new_stmt_scope():
+            selected_indices_ub = self.tik_instance.Tensor("int32", self.selected_indices_shape,
+                                                           name="selected_indices_ub", scope=tik.scope_ubuf)
+            dup_len = total_num(self.selected_indices_shape)
+            tik_func_vector_int32(self.tik_instance, selected_indices_ub, -1, dup_len)
+            brust_len = ceil_div(dup_len, 8)
+            self.tik_instance.data_move(selected_indices_gm, selected_indices_ub,
+                                        0, 1, brust_len, 0, 0)
 
         self.output_gm_list = [selected_indices_gm]
         # init l1 buff for save multi class nms result, size = [classes, self.max_selected_nms_num_in_ub, 8]
         self.l1_nms_result = self.tik_instance.Tensor("float16", (self.classes, self.max_selected_nms_num_in_ub, 8),
                                                       name="l1_nms_result", scope=tik.scope_cbuf)
+        self.gm_nms_result = self.tik_instance.Tensor("float16", (self.classes, self.max_selected_nms_num_in_ub, 8),
+                                                      name="gm_nms_result", scope=tik.scope_gm, is_workspace=True)
+
         if self.is_second_nms:
             # init l1 buff for save multi class nms area, size = [self.max_selected_nms_num_in_ub]
             self.l1_nms_area = self.tik_instance.Tensor("float16", (self.max_selected_nms_num_in_ub,),
@@ -305,12 +320,19 @@ class NonMaxSuppression(object):
             loop_burst_len = (self.max_selected_nms_num_in_ub * 8) // 16
             self.tik_instance.data_move(self.l1_nms_result_zero,
                                         ub_nms_result, 0, 1, loop_burst_len, 0, 0)
+            self.tik_instance.data_move(self.gm_nms_result,
+                                        ub_nms_result, 0, 1, loop_burst_len, 0, 0)
         # workspace
         self.workspace_proposal_gm = self.tik_instance.Tensor("float16",
                                                               [self.aicore_num,
                                                                total_num(self.l1_nms_result.shape) + 128],
                                                               name="workspace_proposal_gm",
                                                               scope=tik.scope_gm, is_workspace=True)
+        self.workspace_proposal_index_gm = self.tik_instance.Tensor("float16",
+                                                                    [self.aicore_num,
+                                                                     total_num(self.l1_nms_result.shape) + 128],
+                                                                    name="workspace_proposal_index_gm",
+                                                                    scope=tik.scope_gm, is_workspace=True)
         # workspace for second nms
         if self.is_second_nms:
             self.workspace_second_nms_gm = self.tik_instance.Tensor("float16",
@@ -318,6 +340,14 @@ class NonMaxSuppression(object):
                                                                      self.boxes_num * 8],
                                                                     name="workspace_second_nms_gm",
                                                                     scope=tik.scope_gm, is_workspace=True)
+
+            self.workspace_second_nms_index_gm = self.tik_instance.Tensor("float16",
+                                                                          [self.aicore_num,
+                                                                           self.boxes_num * 8],
+                                                                          name="workspace_second_nms_index_gm",
+                                                                          scope=tik.scope_gm, is_workspace=True)
+        self.gm_temp = self.tik_instance.Tensor("float16", (16,), name="gm_temp", scope=tik.scope_gm,
+                                                is_workspace=True)
 
     def init_tik_ub_mem_for_topk(self):
         """init_tik_ub_mem_for_topk
@@ -622,32 +652,33 @@ def clip_window_compute(tik_instance, input_gm_list, input_ub_list, gm_offset,
     boxes_class = input_sorces_gm.shape[1]
     burse_len = math.ceil(copy_num / data_each_block)
 
-    batch_box_shape = [input_boxes_gm.shape[1], input_boxes_gm.shape[2]]
+    batch_box_shape = [copy_num, input_boxes_gm.shape[2]]
     box_total_size = total_num(batch_box_shape)
     box_len = math.ceil(box_total_size / data_each_block)
 
-    index_shape = [input_index_gm.shape[2], input_index_gm.shape[3]]
+    index_shape = [copy_num, input_index_gm.shape[3]]
     index_total_size = total_num(index_shape)
     index_len = math.ceil(index_total_size / data_each_block)
 
     tmp_batch_box_ub = tik_instance.Tensor("float16", batch_box_shape, name="tmp_batch_box_ub", scope=tik.scope_ubuf)
     tmp_index_ub = tik_instance.Tensor("float16", index_shape, name="tmp_index_ub", scope=tik.scope_ubuf)
 
+    real_box_offset = gm_offset[0] * input_boxes_gm.shape[1] * input_boxes_gm.shape[2] + gm_offset[3]
     tik_instance.data_move(tmp_batch_box_ub,
-                           input_boxes_gm[gm_offset[0], 0, 0],
+                           input_boxes_gm[real_box_offset],
                            0, nburst,
                            box_len, 0, 0)
     tik_instance.data_move(tmp_index_ub,
-                           input_index_gm[gm_offset[0], gm_offset[1], 0, 0],
+                           input_index_gm[gm_offset[0], gm_offset[1], gm_offset[3], 0],
                            0, nburst,
                            index_len, 0, 0)
     # for index id
-    for i in range(3):
-        for j in range(copy_num):
+    with tik_instance.for_range(0, 3) as i:
+        with tik_instance.for_range(0, copy_num) as j:
             input_index_ub[i, j].set_as(tmp_index_ub[j, i])
     # for boxes
-    for i in range(4):
-        for j in range(copy_num):
+    with tik_instance.for_range(0, 4) as i:
+        with tik_instance.for_range(0, copy_num) as j:
             input_boxes_ub[i, j].set_as(tmp_batch_box_ub[j, i])
 
     tik_instance.data_move(input_scorces_ub,
@@ -678,6 +709,8 @@ def get_sorted_proposal_compute(tik_instance, output_ub, output_index_ub, input_
     clip_window_value_list: list
         the window scalar list
     l1_valid_mask: cbuf
+
+
         num valid mask
     reduce_flag: bool
         whether reduce all box to avoid iou/vaadd overflows
@@ -1034,6 +1067,8 @@ def nms_for_single_class(batch_idx, class_idx, nms, core_idx):
     """
     # get tik instance
     tik_instance = nms.get_tik_instance()
+    global_cnt = tik_instance.Scalar(dtype="int32", init_value=0)
+
     # get first top_k proposals to ub_max_topk
     nms.init_tik_ub_mem_for_topk()
     topk_out_ub = nms.ub_max_topk
@@ -1053,36 +1088,48 @@ def nms_for_single_class(batch_idx, class_idx, nms, core_idx):
             # apply second top k proposal ub
             ub_tmp_topk = tik_instance.Tensor("float16", topk_out_ub.shape,
                                               name="ub_tmp_topk", scope=tik.scope_ubuf)
+            ub_tmp_topk_index = tik_instance.Tensor("float16", index_out_ub.shape,
+                                                    name="ub_tmp_topk_index", scope=tik.scope_ubuf)
             if nms.topk_loop_time > 1:
                 with tik_instance.for_range(1, nms.topk_loop_time) as _top_k_idx:
                     gm_offset = [batch_idx, class_idx, 0, _top_k_idx * nms.proposal_topk_k]
                     if nms.is_second_nms:
                         workspace_offset = (_top_k_idx - 1) * sorted_k * 8 + core_idx * (nms.boxes_num * 8)
                         workspace_for_save_proposal = nms.workspace_second_nms_gm[workspace_offset]
+                        workspace_for_save_index_proposal = nms.workspace_second_nms_index_gm[workspace_offset]
                     else:
                         workspace_for_save_proposal = None
+                        workspace_for_save_index_proposal = None
                     # get tmp sorted proposal to ub_tmp_topk
-                    get_sorted_proposal_compute(tik_instance, ub_tmp_topk, index_out_ub, nms.input_gm_list,
+                    get_sorted_proposal_compute(tik_instance, ub_tmp_topk, ub_tmp_topk_index, nms.input_gm_list,
                                                 gm_offset, sorted_k, sorted_k, nms.center_point_box)
                     # sorted two proposals to one proposal list output the top sorted_k
                     tik_func_sort_with_ub(tik_instance, [ub_tmp_topk, topk_out_ub],
                                           [topk_out_ub, ub_tmp_topk], sorted_k,
                                           workspace_for_save_proposal)
+                    tik_func_sort_with_ub(tik_instance, [ub_tmp_topk_index, index_out_ub],
+                                          [index_out_ub, ub_tmp_topk_index], sorted_k,
+                                          workspace_for_save_index_proposal)
 
             if nms.topk_loop_tail != 0:
                 gm_offset = [batch_idx, class_idx, 0, nms.topk_loop_time * nms.proposal_topk_k]
                 if nms.is_second_nms:
                     workspace_offset = (nms.topk_loop_time - 1) * sorted_k * 8 + core_idx * nms.boxes_num * 8
                     workspace_for_save_proposal = nms.workspace_second_nms_gm[workspace_offset]
+                    workspace_for_save_index_proposal = nms.workspace_second_nms_index_gm[workspace_offset]
                 else:
                     workspace_for_save_proposal = None
+                    workspace_for_save_index_proposal = None
                 # get tmp sorted proposal to ub_tmp_topk
-                get_sorted_proposal_compute(tik_instance, ub_tmp_topk, index_out_ub, nms.input_gm_list,
+                get_sorted_proposal_compute(tik_instance, ub_tmp_topk, ub_tmp_topk_index, nms.input_gm_list,
                                             gm_offset, nms.topk_loop_tail, sorted_k, nms.center_point_box)
                 # sorted two proposals to one proposal list output the top sorted_k
                 tik_func_sort_with_ub(tik_instance, [ub_tmp_topk, topk_out_ub],
                                       [topk_out_ub, ub_tmp_topk], sorted_k,
                                       workspace_for_save_proposal)
+                tik_func_sort_with_ub(tik_instance, [ub_tmp_topk_index, index_out_ub],
+                                      [index_out_ub, ub_tmp_topk_index], sorted_k,
+                                      workspace_for_save_index_proposal)
 
     # do nms use topk output to get nms proposals per class
     # and move result to l1
@@ -1114,6 +1161,93 @@ def nms_for_single_class(batch_idx, class_idx, nms, core_idx):
         loop_burst_len = (nms.max_selected_nms_num_in_ub * 8) // 16
         tik_instance.data_move(l1_buffer[l1_offset], nmsed_result_index_ub,
                                0, 1, loop_burst_len, 0, 0)
+        burst_lens_gm = (nms.selected_proposals_cnt * 8) // 16
+        tik_instance.data_move(nms.gm_nms_result, nmsed_result_index_ub,
+                               0, 1, burst_lens_gm, 0, 0)
+
+    # if the select nms output num of the first top 4096 highest score boxes is less the output need
+    # and the impl_mode is high_precision
+    # will do nms again from the tail boxes 4096 boxes by 4096 boxes
+    tool_loop = nms.topk_loop_time if nms.topk_loop_tail == 0 else (nms.topk_loop_time + 1)
+    if nms.is_second_nms and tool_loop >= 3:
+        # if not to output num
+        with tik_instance.for_range(1, tool_loop - 1) as _top_n_idx:
+            top_n_num_tail = tool_loop - _top_n_idx - 1
+            with tik_instance.if_scope(nms.selected_proposals_cnt < nms.max_total_size):
+                # copy a sorted proposals to topk_out_ub
+                loop_burst_len = ceil_div(sorted_k * 8, 16)
+                tik_instance.data_move(topk_out_ub, nms.workspace_second_nms_gm[core_idx * nms.boxes_num * 8],
+                                       0, 1, loop_burst_len, 0, 0)
+                tik_instance.data_move(index_out_ub, nms.workspace_second_nms_index_gm[core_idx * nms.boxes_num * 8],
+                                       0, 1, loop_burst_len, 0, 0)
+                # apply second top k proposal ub
+                with tik_instance.new_stmt_scope():
+                    ub_tmp_topk = tik_instance.Tensor("float16", topk_out_ub.shape,
+                                                      name="ub_tmp_topk", scope=tik.scope_ubuf)
+                    ub_tmp_topk_index = tik_instance.Tensor("float16", index_out_ub.shape,
+                                                            name="ub_tmp_topk_index", scope=tik.scope_ubuf)
+                    with tik_instance.for_range(0, top_n_num_tail) as _top_n_tail_idx:
+                        workspace_proposal_offset = sorted_k * 8 + _top_n_tail_idx * sorted_k * 8 + \
+                                                    core_idx * nms.boxes_num * 8
+                        tik_instance.data_move(ub_tmp_topk, nms.workspace_second_nms_gm[workspace_proposal_offset],
+                                               0, 1, loop_burst_len, 0, 0)
+                        tik_instance.data_move(ub_tmp_topk_index,
+                                               nms.workspace_second_nms_index_gm[workspace_proposal_offset],
+                                               0, 1, loop_burst_len, 0, 0)
+                        workspace_offset = _top_n_tail_idx * sorted_k * 8 + core_idx * nms.boxes_num * 8
+                        workspace_for_save_proposal = nms.workspace_second_nms_gm[workspace_offset]
+                        workspace_for_save_index_proposal = nms.workspace_second_nms_index_gm[workspace_offset]
+                        # sorted two proposals to one proposal list output the top sorted_k
+                        tik_func_sort_with_ub(tik_instance, [ub_tmp_topk, topk_out_ub],
+                                              [topk_out_ub, ub_tmp_topk], sorted_k,
+                                              workspace_for_save_proposal)
+                        tik_func_sort_with_ub(tik_instance, [ub_tmp_topk_index, index_out_ub],
+                                              [index_out_ub, ub_tmp_topk_index], sorted_k,
+                                              workspace_for_save_index_proposal)
+                # do nms use topk output to get nms proposals per class
+                # and move result to gm
+
+                with tik_instance.new_stmt_scope():
+                    nms_var = nms.init_tik_ub_mem_for_nms()
+                    nmsed_result_ub = nms_var.get("selected_proposal_ub")
+                    nmsed_result_index_ub = nms_var.get("selected_index_ub")
+                    nmsed_result_area = nms_var.get("selected_area_ub")
+                    nmsed_result_sup = nms_var.get("sup_vec_ub")
+                    # init all sup_vec to 1, mean: no select proposal
+                    tik_func_vector(tik_instance, nmsed_result_sup, 1, nms.max_selected_nms_num_in_ub)
+                    # init select nms proposal = 0
+                    l1_buffer = nms.l1_nms_result_zero
+                    loop_burst_len = (nms.max_selected_nms_num_in_ub * 8) // 16
+                    tik_instance.data_move(nmsed_result_ub, l1_buffer,
+                                           0, 1, loop_burst_len, 0, 0)
+                    tik_instance.data_move(nmsed_result_index_ub, l1_buffer,
+                                           0, 1, loop_burst_len, 0, 0)
+                    # init select nms area = 0
+                    loop_burst_len = nms.max_selected_nms_num_in_ub // 16
+                    tik_instance.data_move(nmsed_result_area, l1_buffer,
+                                           0, 1, loop_burst_len, 0, 0)
+                    global_cnt.set_as(nms.selected_proposals_cnt)
+
+                    with tik_instance.new_stmt_scope():
+                        do_nms_compute(tik_instance, nms_var, nms.get_iou_threshold())
+                    # copy one class nms result to l1
+
+                    burst_lens_gm = ((nms.selected_proposals_cnt - global_cnt) * 8) // 16
+                    with tik_instance.if_scope(global_cnt % 2 == 1):
+                        tik_instance.data_move(nms.gm_temp, nmsed_result_index_ub[(global_cnt - 1) * 8],
+                                               0, 1, 1, 0, 0)
+                        ub_temp = tik_instance.Tensor("float16", (16,), name="ub_temp", scope=tik.scope_ubuf)
+                        tik_instance.data_move(ub_temp, nms.gm_temp[8],
+                                               0, 1, 1, 0, 0)
+                        tik_instance.data_move(nms.gm_nms_result[global_cnt * 8], ub_temp,
+                                               0, 1, 1, 0, 0)
+                        tik_instance.data_move(nms.gm_nms_result[(global_cnt + 1) * 8],
+                                               nmsed_result_index_ub[(global_cnt + 1) * 8],
+                                               0, 1, burst_lens_gm, 0, 0)
+                    with tik_instance.else_scope():
+                        # if even
+                        tik_instance.data_move(nms.gm_nms_result[global_cnt * 8], nmsed_result_index_ub[global_cnt * 8],
+                                               0, 1, burst_lens_gm, 0, 0)
 
 
 def get_class_tensor(tik_instance, class_ub, class_num, len_per_class, start_class=0.0):
@@ -1201,7 +1335,8 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms):
     -------
     None
     """
-    result_total = total_num(nms.l1_nms_result.shape)
+    # result_total = total_num(nms.l1_nms_result.shape)
+    result_total = total_num(nms.gm_nms_result.shape)
     class_num = nms.classes
     # get score batch offset
     output_batch_offset = _batch_idx * nms.max_output_class * 3 * nms.classes
@@ -1209,23 +1344,23 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms):
     workspace = nms.workspace_proposal_gm
     workspace_offset = core_idx * nms.workspace_proposal_gm.shape[-1]
 
-    if nms.classes * nms.max_selected_nms_num_in_ub < nms.proposal_topk_k:
-        # when all output is less nms.proposal_topk_k
-        # only use topk with ub for output proposal
-        with tik_instance.new_stmt_scope():
-            ub_result_boxes = tik_instance.Tensor("float16", [result_total // 8, 8],
-                                                  name="ub_result_boxes", scope=tik.scope_ubuf)
-            l1_buffer = nms.l1_nms_result
-            l1_offset = [0, 0, 0]
-            loop_burst_len = result_total // 16
-            tik_instance.data_move(ub_result_boxes, l1_buffer[l1_offset],
-                                   0, 1, loop_burst_len, 0, 0)
-            if nms.classes != 1:
-                sort_within_ub(tik_instance, ub_result_boxes, result_total // 8)
+    # if nms.classes * nms.max_selected_nms_num_in_ub < nms.proposal_topk_k:
+    # when all output is less nms.proposal_topk_k
+    # only use topk with ub for output proposal
+    with tik_instance.new_stmt_scope():
+        ub_result_boxes = tik_instance.Tensor("float16", [result_total // 8, 8],
+                                              name="ub_result_boxes", scope=tik.scope_ubuf)
+        l1_buffer = nms.gm_nms_result
+        l1_offset = [0, 0, 0]
+        loop_burst_len = result_total // 16
+        tik_instance.data_move(ub_result_boxes, l1_buffer[l1_offset],
+                               0, 1, loop_burst_len, 0, 0)
+        if nms.classes != 1:
+            sort_within_ub(tik_instance, ub_result_boxes, result_total // 8)
 
-            with tik_instance.new_stmt_scope():
-                batch_multi_class_nms_copy_out(tik_instance, nms, ub_result_boxes,
-                                               output_batch_offset, workspace_offset)
+        with tik_instance.new_stmt_scope():
+            batch_multi_class_nms_copy_out(tik_instance, nms, ub_result_boxes,
+                                           output_batch_offset, workspace_offset)
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
