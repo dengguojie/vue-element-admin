@@ -1035,7 +1035,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
         ):
             TENSOR_MAP["dilate_ub"] = tensor_dilate_ub
             sch[tensor_dilate_ub].set_scope(cce_params.scope_ubuf)
-            if "dedy_h" in var_map or "dedy_w" in var_map:
+            if var_map:
                 tensor_vn = tensor_dilate_ub.op.input_tensors[1]
                 TENSOR_MAP["tensor_vn"] = tensor_vn
                 sch[tensor_vn].set_scope(cce_params.scope_ubuf)
@@ -1968,7 +1968,7 @@ def opti_schedule(
             filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
             sch[dilate_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
             sch[filling_zero_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
-            if "dedy_h" in var_map or "dedy_w" in var_map:
+            if var_map:
                 filling_one_ub = TENSOR_MAP["tensor_fillling_one"]
                 sch[filling_one_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
                 tensor_vn = TENSOR_MAP["tensor_vn"]
@@ -2053,7 +2053,7 @@ def opti_schedule(
                 filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
                 sch[dilate_ub].double_buffer()
                 sch[filling_zero_ub].double_buffer()
-                if "dedy_h" in var_map or "dedy_w" in var_map:
+                if var_map:
                     filling_one_ub = TENSOR_MAP["tensor_fillling_one"]
                     sch[filling_one_ub].double_buffer()
                     tensor_vn = TENSOR_MAP["tensor_vn"]
@@ -2270,7 +2270,7 @@ def opti_schedule(
             if bias_add_vector_ub is not None:
                 sch[dilate_ub].reused_by(filling_zero_ub, bias_add_vector_ub)
             else:
-                if "dedy_h" in var_map or "dedy_w" in var_map:
+                if var_map:
                     filling_one_ub = TENSOR_MAP["tensor_fillling_one"]
                     sch[filling_zero_ub].reused_by(filling_one_ub)
                     sch[filling_one_ub].emit_insn(
@@ -2289,7 +2289,7 @@ def opti_schedule(
                 sch[filling_zero_ub].emit_insn(
                     sch[filling_zero_ub].op.axis[0], "vector_dup"
                 )
-            if "dedy_h" in var_map or "dedy_w" in var_map:
+            if var_map:
                 vmul_at_axis = _dilate_schedule(
                     sch,
                     dilate_ub,

@@ -128,7 +128,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             name=raw_tensor.name + "_dx_zero",
             tag="init_zero"
         )
-        if "dedy_h" in self._var_map or "dedy_w" in self._var_map:
+        if self._var_map:
             # because tvm.select not support dynamic shape
             dx_zero = tvm.compute(
                 (dilate_h, dilate_w, shape_c0),

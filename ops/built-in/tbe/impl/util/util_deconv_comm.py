@@ -532,14 +532,14 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 "param2_value": dedy_batch
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if shape_out_backprop[H_DIM] != DYNAMIC_FLAG and filter_h_dilation > fmap_h_padding:
+        if DYNAMIC_FLAG not in shape_out_backprop and filter_h_dilation > fmap_h_padding:
             args_dict = {
                 "errCode": "E60014",
                 "h_of_x": fmap_h_padding,
                 "h_of_filter": filter_h_dilation
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if shape_out_backprop[W_DIM] != DYNAMIC_FLAG and filter_w_dilation > fmap_w_padding:
+        if DYNAMIC_FLAG not in shape_out_backprop and filter_w_dilation > fmap_w_padding:
             args_dict = {
                 "errCode": "E60014",
                 "h_of_x": fmap_w_padding,

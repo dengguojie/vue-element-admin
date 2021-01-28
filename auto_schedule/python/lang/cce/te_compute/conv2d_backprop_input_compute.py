@@ -423,13 +423,14 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                     dict_args, error_manager_util.get_error_message(dict_args)
                 )
 
-        if not var_map:
+        if "dedy_h" not in var_map:
             _check_max(
                 filter_h_dilation,
                 dx_h_after_pad,
                 "filter_h after dilation",
                 "dx_h after pad"
             )
+        if "dedy_w" not in var_map:
             _check_max(
                 filter_w_dilation,
                 dx_w_after_pad,
