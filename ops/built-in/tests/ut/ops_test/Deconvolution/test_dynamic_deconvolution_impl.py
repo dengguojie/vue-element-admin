@@ -30,12 +30,12 @@ def gen_dynamic_deconvolution_case(shape_filter, shape_dedy, shape_dx,
 # opti, dynamic_hw
 ut_case.add_case(
     "all",
-    gen_dynamic_deconvolution_case([32, 16, 1, 1], [1, 32, -1, -1], [1, 16, -1, -1],
+    gen_dynamic_deconvolution_case([128, 128, 3, 3], [1, 128, -1, -1], [1, 128, -1, -1],
                                         "float16", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
-                                        ((1, 1), (32, 32), (6, 26), (6, 26)),
-                                        ((1, 1), (16, 16), (6, 26), (6, 26)),
-                                        (1, 1), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
+                                        ((1, 1), (128, 128), (1, 128), (1, 128)),
+                                        ((1, 1), (128, 128), (4, 128), (4, 128)),
+                                        (1, 1), [1, 1, 1, 1], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_deconvolution_case1",
                                         "success"))
 # general, dynamic_hw
@@ -64,12 +64,12 @@ ut_case.add_case(
 # general, dynamic_batch
 ut_case.add_case(
     "all",
-    gen_dynamic_deconvolution_case([32, 16, 3, 3], [-1, 32, 8, 8], [-1, 16, 16, 16],
+    gen_dynamic_deconvolution_case([128, 128, 3, 3], [-1, 128,28, 28], [-1, 128, 28, 28],
                                         "float16", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
-                                        ((1, 10), (32, 32), (8, 8), (16, 16)),
-                                        ((1, 10), (16, 16), (8, 8), (16, 16)),
-                                        (2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
+                                        ((1, 10), (128, 128), (28, 28), (28, 28)),
+                                        ((1, 10), (128, 128), (28, 28), (28, 28)),
+                                        (1, 1), [1, 1, 1, 1], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_deconvolution_case4",
                                         "success"))
 

@@ -75,6 +75,14 @@ PADDING_SUPPORT = ('SAME', 'VALID')
 # pads valid mode to be [0, 0, 0, 0]
 PADDING_VAILD = [0, 0, 0, 0]
 
+# If dim is dynamic, the value of dim is -1
+DYNAMIC_FLAG = -1
+
+# The dim of N/H/W is 0/2/3, in the format NCHW
+N_DIM = 0
+H_DIM = 2
+W_DIM = 3
+
 
 class GroupDictKeys:
     """
@@ -514,7 +522,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 "param2_value": group_dict.get(GroupDictKeys.filter_batch_ori)
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if isinstance(fmap_batch, int) and fmap_batch != dedy_batch:
+        if shape_out_backprop[N_DIM] != DYNAMIC_FLAG and fmap_batch != dedy_batch:
             args_dict = {
                 "errCode": "E60002",
                 "attr_name": "shape",
@@ -524,14 +532,14 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 "param2_value": dedy_batch
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if isinstance(fmap_h_padding, int) and filter_h_dilation > fmap_h_padding:
+        if shape_out_backprop[H_DIM] != DYNAMIC_FLAG and filter_h_dilation > fmap_h_padding:
             args_dict = {
                 "errCode": "E60014",
                 "h_of_x": fmap_h_padding,
                 "h_of_filter": filter_h_dilation
             }
             raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
-        if isinstance(fmap_w_padding, int) and filter_w_dilation > fmap_w_padding:
+        if shape_out_backprop[W_DIM] != DYNAMIC_FLAG and filter_w_dilation > fmap_w_padding:
             args_dict = {
                 "errCode": "E60014",
                 "h_of_x": fmap_w_padding,
@@ -547,7 +555,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                     l1fusion_l1_size = l1_size
             return l1fusion_l1_size
 
-        if not isinstance(fmap_w, int):
+        if shape_out_backprop[W_DIM] == DYNAMIC_FLAG:
             return
         c0_size = cce_params.C0_SIZE
         c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
@@ -709,7 +717,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                input_hw_mini, output_hw_mini
 
     def _check_shape_rule():
-        if -1 not in shape_out_backprop:
+        if DYNAMIC_FLAG not in shape_out_backprop:
             para_check.check_shape_rule(shape_out_backprop,
                                         CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
                                         DEFAULT_MAX_SHAPE_NUM)
@@ -846,9 +854,9 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     check_attr_range("dilations's W", dilation_w, DILATION_MIN, DILATION_MAX)
 
     # Third : value check, Mainly required by the convolution rule
-    if isinstance(fmap_h, int) and ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
+    if DYNAMIC_FLAG not in shape_out_backprop and ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
         err_man_cube.raise_err_specific_user("conv2d_backprop_input", "fmap_h not match dedy_h")
-    if isinstance(fmap_w, int) and ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) != dedy_w:
+    if DYNAMIC_FLAG not in shape_out_backprop and ((fmap_w - filter_w_dilation + pad_left + pad_right) // stride_w + 1) != dedy_w:
         err_man_cube.raise_err_specific_user("conv2d_backprop_input", "fmap_w not match dedy_w")
 
     # Forth : L1 limitation, Mainly required by chip
