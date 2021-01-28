@@ -21,6 +21,8 @@
 #ifndef OPS_BUILT_IN_OP_PROTO_INC_NN_OPS_H_
 #define OPS_BUILT_IN_OP_PROTO_INC_NN_OPS_H_
 #include "graph/operator_reg.h"
+#include "nn_pooling_ops.h"
+
 namespace ge {
 /**
 * @brief Says whether the targets are in the top "k" predictions . \n
