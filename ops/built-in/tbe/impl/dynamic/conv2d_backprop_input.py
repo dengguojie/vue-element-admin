@@ -11,7 +11,7 @@ from __future__ import absolute_import
 from te import tvm
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
-from te.utils import para_check
+from tbe.common.utils import para_check
 from impl.util.util_cube_dynamic import Conv2dBackpropParaProcess
 from impl.util.util_cube_dynamic import set_default_para
 

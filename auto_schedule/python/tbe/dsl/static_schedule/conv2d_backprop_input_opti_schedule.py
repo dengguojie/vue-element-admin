@@ -28,7 +28,7 @@ from te.lang.cce.te_compute.util import int_ceil_div
 from tbe.dsl.static_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
 # Don't modify,used in log_util

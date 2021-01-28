@@ -18,7 +18,7 @@ conv3d backprop filter schudule.
 import te.platform as tbe_platform
 from te.lang.cce.te_compute import util as te_util
 from te.domain.tiling import get_tiling
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
 from te import tvm
 
 

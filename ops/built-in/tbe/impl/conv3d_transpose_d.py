@@ -18,8 +18,9 @@ conv3d_transpose_d
 import te.lang.cce as tbe
 from te.lang.cce.te_compute import conv3d_backprop_input_compute as conv3d_bp_dx
 import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm
 from impl.conv3d_backprop_input_d import check_conv3dbp_input_params
 from impl.util import util_common
@@ -260,12 +261,8 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
 
     if (isinstance(ori_shape_output_padding, (tuple, list)) and
         len(ori_shape_output_padding) != util_common.CONV3D_SHAPE_COMMON_DIM):
-        dict_args = {
-            'errCode': 'E62006',
-            'error_desc': 'output_padding should be 5-dim list/tuple',
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_one_para('E62006', 'conv3d',
+            'output_padding should be 5-dim list/tuple')
 
     # transform filter shape
     shape_filters = _transform_shape_with_format(ori_format_filters,

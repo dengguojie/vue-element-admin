@@ -19,8 +19,9 @@ import functools
 
 import te.platform as tbe_platform
 from te.lang.cce.te_compute import util as te_util
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm
 
 
@@ -46,12 +47,7 @@ def _check_shape_rule(shape, dim, name):
                            error_manager_util.get_error_message(args_dict))
     for dim_x in shape:
         if (not isinstance(dim_x, int)) or dim_x <= 0:
-            args_dict = {
-                'errCode': 'E62509',
-                'param_name': name
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_one_para('E62509', 'conv3d', name)
 
 
 def _check_attr_rule(attr, dim, attr_limit, name):
@@ -270,13 +266,9 @@ class Conv3dBackpropFilter:
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
 
         if te_util.int_ceil_div(self.weight_shape[0], 16) != self.shape_grads_6hd[2]:
-            args_dict = {
-                'errCode': 'E62504',
-                'backprop_C': str(self.shape_grads_6hd[2]),
-                'forward_shape': str(te_util.int_ceil_div(self.weight_shape[0], 16))
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_two_paras('E62504', 'conv3d',
+                    str(self.shape_grads_6hd[2]),
+                    str(te_util.int_ceil_div(self.weight_shape[0], 16)))
 
         # individual range check
         if not self.flag_all_one_case:
@@ -341,29 +333,15 @@ class Conv3dBackpropFilter:
         _check_dilation()
 
         if self.shape_x_6hd[5] != _BLOCK_SIZE:
-            args_dict = {
-                'errCode': 'E62511',
-                'shape_c0': str(self.shape_x_6hd[5])
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_one_para('E62511', 'conv3d', str(self.shape_x_6hd[5]))
 
         if self.shape_grads_6hd[5] != _BLOCK_SIZE:
-            args_dict = {
-                'errCode': 'E62511',
-                'shape_c0': str(self.shape_grads_6hd[5])
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_one_para('E62511', 'conv3d', str(self.shape_grads_6hd[5]))
+
         # batch_size should be same
         if self.shape_x_6hd[0] != self.shape_grads_6hd[0]:
-            args_dict = {
-                'errCode': 'E62503',
-                'backprop_N': str(self.shape_grads_6hd[0]),
-                'forward_shape': str(self.shape_x_6hd[0])
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_two_paras('E62503', 'conv3d',
+                    str(self.shape_grads_6hd[0]), str(self.shape_x_6hd[0]))
 
         # coupling range check
         dilation_kernel_depth = (kernel_depth - 1) * dilationd + 1

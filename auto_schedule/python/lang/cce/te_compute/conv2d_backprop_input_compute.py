@@ -29,8 +29,8 @@ from te.platform import cce_conf
 from te.platform import cce_params
 from te.lang.base.operation_impl import get_te_var
 from te.tvm.tensor import Tensor
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util
 
 NoneType = type(None)
 

@@ -25,8 +25,8 @@ from te.platform.cce_conf import intrinsic_check_support
 from te.platform.cce_conf import CceProductParams
 from te.lang.base.operation_impl import get_te_var
 from te.lang.cce.te_compute.cube_util import shape_to_list
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util
 
 from te.tvm import api as tvm
 from te.tvm.expr import Var

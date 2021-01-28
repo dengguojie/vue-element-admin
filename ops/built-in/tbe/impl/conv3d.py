@@ -20,9 +20,9 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang.cce.te_compute import conv3d_compute
 from te.platform.fusion_manager import fusion_manager
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
-from te.utils.error_manager import error_manager_cube as cube_err
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from impl.util import util_select_op_base
 from impl.util import util_common
 
@@ -515,12 +515,7 @@ def _check_input_param(fmp_shape, w_shape, fmp_dtype, w_dtype, res_dtype,
                            error_manager_util.get_error_message(dict_args))
 
     if len(pads) != _PADS_LENGTH:
-        dict_args = {
-            'errCode': 'E62501',
-            'param_name': 'pads',
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_one_para('E62501', 'conv3d', 'pads')
 
     para_check.check_shape_rule(fmp_shape, min_dim=_SHAPE_DIMS,
                                 max_dim=_SHAPE_DIMS)
@@ -645,12 +640,8 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     else:
         if w_out < 2 and h_out != 1:
             # Chip Design demand w_out must >=2 when h_out != 1
-            dict_args = {
-                'errCode': 'E62006',
-                'error_desc': 'Chip Design demand w_out must >=2 when h_out != 1'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_one_para('E62006', 'conv3d',
+                'Chip Design demand w_out must >=2 when h_out != 1')
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")

@@ -18,8 +18,9 @@ conv3d_backprop_filter_d
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.lang.cce.te_compute import conv3d_backprop_filter_compute as conv3d_bp_dw
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm
 from impl.util import util_common
 
@@ -219,10 +220,8 @@ def _process_input(x_dict,
                                error_manager_util.get_error_message(args_dict))
 
         if isinstance(pads, (tuple, list)) and len(pads) != 6:
-            args_dict = {'errCode': 'E62501', 'param_name': 'pads'}
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
-                               
+            cube_err.raise_err_one_para('E62501', 'conv3d', 'pads')
+
     ori_shape_x = x_dict.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
     ori_shape_res = y_dict.get("ori_shape")
@@ -450,9 +449,7 @@ def _check_conv3dbp_filter_params(
     def _check_attr_pads():
         # pads check
         if isinstance(pads, (tuple, list)) and len(pads) != _PADDING_SHAPE_DIM:
-            args_dict = {'errCode': 'E62501', 'param_name': 'pads'}
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_one_para('E62501', 'conv3d', 'pads')
 
         if isinstance(pads, str) and pads not in _PADDING_SUPPORT:
             args_dict = {
@@ -593,21 +590,13 @@ def _check_conv3dbp_filter_params(
 
     def _check_axis_hw():
         if fmap_batch != dedy_batch:
-            args_dict = {
-                'errCode': 'E62503',
-                'backprop_N': str(dedy_batch),
-                'forward_shape': str(fmap_batch)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_two_paras('E62503', 'conv3d',
+                    str(dedy_batch), str(fmap_batch))
+
         if dedy_channel != filter_batch:
-            args_dict = {
-                'errCode': 'E62504',
-                'backprop_C': str(dedy_channel),
-                'forward_shape': str(filter_batch)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_two_paras('E62504', 'conv3d',
+                    str(dedy_channel), str(filter_batch))
+
         if fmap_channel != filter_channel * groups:
             args_dict = {
                 'errCode': 'E60010',

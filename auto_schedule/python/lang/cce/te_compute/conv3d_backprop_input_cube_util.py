@@ -15,7 +15,7 @@
 """
 cube util.
 """
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
 from te import tvm
 
 

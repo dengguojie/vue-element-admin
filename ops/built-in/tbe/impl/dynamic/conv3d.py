@@ -24,9 +24,9 @@ from te.lang.cce.te_compute import conv3d_compute
 import te.lang.dynamic as dynamic
 import te.platform as tbe_platform
 import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
-from te.utils.error_manager import error_manager_cube as cube_err
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from impl.util import util_common
 
 BIAS_LENGTH = 1
@@ -272,21 +272,11 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     else:
         if w_out < 2:
             # Chip Design demand w_out must >=2
-            dict_args = {
-                'errCode': 'E62006',
-                'error_desc': 'Chip Design demand w_out must >=2'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand w_out must >=2')
 
         if h_out < 2:
             # Chip Design demand h_out must >=2
-            dict_args = {
-                'errCode': 'E62006',
-                'error_desc': 'Chip Design demand h_out must >=2'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand h_out must >=2')
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
@@ -394,11 +384,8 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
 
 def _ceil(x_1, x_2):
     if x_2 == 0:
-        dict_args = {}
-        dict_args['errCode'] = "E60108"
-        dict_args['reason'] = "Division by zero"
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_specific("conv3d", "Division by zero")
+
     return (x_1 + x_2 - 1) // x_2
 
 
@@ -435,13 +422,8 @@ def _get_fmap_range(in_range, in_shape, in_format):
         fmap_range = [in_range[N_DIM_6D], in_range[D_DIM_6D], (in_shape[1], in_shape[1]),
                       in_range[H_DIM_6D], in_range[W_DIM_6D]]
     else:
-        dict_args = {
-            'errCode': 'E61301',
-            'param_name_1': 'range_format',
-            'param_name_2': 'in_format',
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_equal_invalid('conv3d', 'range_format', 'in_format')
+
     return [tuple(r) for r in fmap_range]
 
 
@@ -473,12 +455,7 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
         pad_check_load2d_flag = True if sum(pads) == 0 else False
 
     if y_d_lower < 1:
-        dict_args = {
-            'errCode': 'E62006',
-            'error_desc': 'd_out must >= 1'
-        }
-        raise RuntimeError(dict_args,
-                            error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_one_para('E62006', 'conv3d', 'd_out must >= 1')
 
     load2d_pass_flag =  ((w_d == 1) and (w_h == 1) and (w_w == 1) and
                         pad_check_load2d_flag and
@@ -499,21 +476,11 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
     else:
         if y_w_lower < 2:
             # Chip Design demand w_out must >=2
-            dict_args = {
-                'errCode': 'E62006',
-                'error_desc': 'Chip Design demand w_out must >=2'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand w_out must >=2')
 
         if y_h_lower < 2:
             # Chip Design demand h_out must >=2
-            dict_args = {
-                'errCode': 'E62006',
-                'error_desc': 'Chip Design demand h_out must >=2'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand h_out must >=2')
 
     return [fmap_range[0], (y_d_lower, y_d_upper), (w_n,w_n),
             (y_h_lower, y_h_upper), (y_w_lower, y_w_upper)]
@@ -644,30 +611,14 @@ def _check_and_config_para(fmap,
                            error_manager_util.get_error_message(dict_args))
     # check dilations for it1
     if len(set(dilations)) != 1 or dilations[2] != 1:
-        dict_args = {
-            'errCode': 'E62001',
-            'dilation_h': str(dilations[2]),
-            'dilation_w': str(dilations[3]),
-            'dilation_d': str(dilations[1])
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_three_paras('E62001', 'Conv3D', str(dilations[2]),
+            str(dilations[3]), str(dilations[1]))
 
     if len(pads) != PADS_LENGTH:
-        dict_args = {
-            'errCode': 'E62501',
-            'param_name': 'pads',
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_one_para('E62501', 'conv3d', 'pads')
 
     if len(in_shape) != SHAPE_DIMS:
-        dict_args = {
-            'errCode': 'E62501',
-            'param_name': 'in_shape',
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_one_para('E62501', 'conv3d', 'in_shape')
 
     para_check.check_shape_rule(w_shape, min_dim=SHAPE_DIMS,
                                 max_dim=SHAPE_DIMS)

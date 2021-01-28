@@ -28,7 +28,7 @@ from te.platform import cce_conf
 from te.platform import cce_params
 from te.tvm.schedule import InferBound
 from te.tvm.schedule import ScheduleOps
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
 # default false

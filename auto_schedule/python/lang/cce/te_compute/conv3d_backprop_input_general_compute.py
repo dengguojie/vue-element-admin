@@ -17,7 +17,8 @@ conv3d backprop input general compute.
 """
 import te.platform as tbe_platform
 from te.lang.cce.te_compute import conv3d_backprop_input_cube_util as conv3d_dx_utils
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm
 
 _PAD_MIN = 0
@@ -192,12 +193,8 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
         for i in new_pad[2:]:
             if i < _PAD_MIN or i > _PAD_MAX:
-                dict_args = {
-                    'errCode': 'E62006',
-                    'error_desc': 'pad value in reverse process of convolution should be in [0,255]',
-                }
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_one_para('E62006', 'conv3d',
+                    'pad value in reverse process of convolution should be in [0,255]')
 
         pat_conv = conv3d_dx_utils.ConvDslPattern(kernel_h, kernel_w, new_stride, new_pad, dilate_shape)
 

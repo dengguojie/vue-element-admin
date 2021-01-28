@@ -20,7 +20,7 @@ import te.platform as tbe_platform
 from impl.util import util_deconv_comm
 from te import tvm
 from te.utils import error_manager
-from te.utils import para_check
+from tbe.common.utils import para_check
 
 # the dim of shape in conv_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4

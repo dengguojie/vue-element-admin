@@ -66,7 +66,7 @@ dilations = (1, 2, 1, 1, 1)
 case6 = _run_api_end_with_d(dilations=dilations)
 
 # test_conv3d_invalid_fmap_shape
-fmap = {'ori_shape': (-1, 8, 60, 88), 'shape': (-1, 8, 60, 88),
+fmap = {'ori_shape': (1, 8, 60, 88), 'shape': (1, 8, 60, 88),
       'ori_format': 'NDHWC', 'format': 'NDHWC', 'dtype': 'float16', "range": [(1, 10), (8, 8), (60, 60), (88, 88)]}
 case7 = _run_api_end_with_d(fmap=fmap)
 

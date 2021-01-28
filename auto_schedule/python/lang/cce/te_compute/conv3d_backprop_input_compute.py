@@ -18,10 +18,11 @@ conv3d backprop input DSL interface.
 import te.lang.cce as tbe
 from te.lang.cce.te_compute import util as te_util
 import te.platform as tbe_platform
-from te.utils import para_check
+from tbe.common.utils import para_check
 from te.lang.cce.te_compute import conv3d_backprop_input_general_compute as conv3d_bp_gen_dx
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils import shape_util
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm
 
 # fmapH, fmapW must be in [1,4096]
@@ -217,41 +218,22 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         fmap_d_padding = fmap_deep + pad_head + pad_tail
         # Check Batch Dimension
         if fmap_batch != dedy_batch:
-            dict_args = {
-                'errCode': 'E62503',
-                'backprop_N': str(dedy_batch),
-                'forward_shape': str(fmap_batch)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_two_paras('E62503', 'conv3d',
+                    str(dedy_batch), str(fmap_batch))
+
         # Check HWD dimension
         if filter_h_dilation > fmap_h_padding:
-            dict_args = {
-                'errCode': 'E62507',
-                'dim': 'H',
-                'filter_dila': str(filter_h_dilation),
-                'input_pad': str(fmap_h_padding)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_three_paras('E62507', 'conv3d', 'H',
+                str(filter_h_dilation), str(fmap_h_padding))
+
         if filter_w_dilation > fmap_w_padding:
-            dict_args = {
-                'errCode': 'E62507',
-                'dim': 'W',
-                'filter_dila': str(filter_w_dilation),
-                'input_pad': str(fmap_w_padding)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_three_paras('E62507', 'conv3d', 'W',
+                str(filter_w_dilation), str(fmap_w_padding))
+
         if filter_d_dilation > fmap_d_padding:
-            dict_args = {
-                'errCode': 'E62507',
-                'dim': 'D',
-                'filter_dila': str(filter_d_dilation),
-                'input_pad': str(fmap_d_padding)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_three_paras('E62507', 'conv3d', 'D',
+                str(filter_d_dilation), str(fmap_d_padding))
+
         if ((fmap_h_padding - filter_h_dilation) // stride_h + 1) != dedy_h:
             dict_args = {
                 'errCode': 'E60024',
@@ -306,12 +288,8 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
 
     if fmap_h != 1 and fmap_w == 1:
         # Chip Design demand fmap_w must larger than 2 when fmap != 1
-        dict_args = {
-            'errCode': 'E62006',
-            'error_desc': 'Chip Design demand input_size_w must >=2 when input_size_h != 1'
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_one_para('E62006', 'conv3d',
+            'Chip Design demand input_size_w must >=2 when input_size_h != 1')
 
     # filter value limit
     _check_attr_range("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)

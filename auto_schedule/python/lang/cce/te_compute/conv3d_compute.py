@@ -18,9 +18,9 @@ conv3d compute
 import copy
 import te.platform as tbe_platform
 from te.domain.tiling.get_tiling import get_tiling
-from te.utils.error_manager import error_manager_util
-from te.utils.error_manager import error_manager_cube as cube_err
-from te.utils import shape_util
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
+from tbe.common.utils import shape_util
 from te.lang.cce.te_compute import cube_util
 from te.lang.cce.te_compute import util as te_util
 from te.lang.base.operation_impl import get_te_var
@@ -806,12 +806,8 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     else:
         if w_out < 2 and h_out != 1:
             # Chip Design demand w_out must >=2 when h_out != 1
-            dict_args = {
-                'errCode': 'E62006',
-                'error_desc': 'Chip Design demand w_out must >=2 when h_out != 1'
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_one_para('E62006', 'conv3d',
+                'Chip Design demand w_out must >=2 when h_out != 1')
 
     # check for not bigger than L1
     l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")

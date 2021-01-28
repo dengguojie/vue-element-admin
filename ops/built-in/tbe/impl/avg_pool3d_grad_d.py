@@ -20,9 +20,9 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils.cce import auto_schedule
 from te.tvm.target import cce
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_vector
+from tbe.common.utils.errormgr import error_manager_util
 from impl.conv3d_backprop_input_d import conv3d_backprop_input_fusion_compute
 
 _BLOCK_SIZE = 16

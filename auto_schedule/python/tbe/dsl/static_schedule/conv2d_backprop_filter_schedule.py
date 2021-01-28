@@ -29,7 +29,7 @@ from te.domain.tiling.get_tiling import get_tiling
 from te.lang.cce.te_compute.cube_util import shape_to_list
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
 from te.lang.cce.te_compute.conv2d_backprop_filter_compute \
     import DynamicConv2dBpFilterParams
 # for debug, delete before publish

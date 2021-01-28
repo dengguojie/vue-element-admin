@@ -21,8 +21,8 @@ from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
 from te import tvm
 from te.platform import cce_params
-from te.utils import error_manager
-from te.utils import para_check
+from tbe.common.utils import errormgr
+from tbe.common.utils import para_check
 
 # the dim of shape in conv2d_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -279,7 +279,7 @@ def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
         dict_args["param1"] = "input_size"
         dict_args["param2"] = "ori_shape of y"
         dict_args["actual_value"] = "{}, {}".format(input_size, ori_shape_res)
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+        raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
     if len(strides) == 4:
         h_index = data_format.find("H")
         w_index = data_format.find("W")
@@ -338,19 +338,19 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
             "errCode": "E60108",
             "reason": "groups can not be 0",
         }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
     if shape_out_backprop[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",
             "reason": "channel of out_backprop % groups must be 0",
         }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
     if shape_res[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",
             "reason": "channel of y % groups must be 0",
         }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
     util_deconv_comm.check_attr_range("dilations's H", dilations[2], DILATION_MIN, DILATION_MAX)
     util_deconv_comm.check_attr_range("dilations's W", dilations[3], DILATION_MIN, DILATION_MAX)
     util_deconv_comm.check_attr_range("strides's H", strides[0], STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -393,12 +393,12 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
         args_dict = {
             "errCode": "E60024",
         }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
     if ((fmap_w - filter_w_dilation + pad_left + pad_right) // strides[1] + 1) != dedy_w:
         args_dict = {
             "errCode": "E60025",
         }
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
+        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
 
 
 def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914

@@ -23,7 +23,7 @@ from te.platform import cce_conf
 from te.platform import cce_params
 from te.tvm import api as tvm
 from te.tvm.intrin import abs as tvm_abs
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
 
 
 

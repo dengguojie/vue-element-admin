@@ -19,8 +19,8 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from impl.util import util_select_op_base
 from te import tvm
-from te.utils import error_manager
-from te.utils import para_check
+from tbe.common.utils import errormgr
+from tbe.common.utils import para_check
 
 # the dim of shape in conv_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -83,7 +83,7 @@ def _align(input_x, input_y):
             "errCode": "E60108",
             "reason": "Division by zero"
         }
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+        raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
     return (input_x + input_y - 1) // input_y * input_y
 
 
@@ -180,7 +180,7 @@ def _get_shape_by_format(ori_format, shape, param_name, support_hwcn=False):
                 "expected_format_list": format_list,
                 "format": ori_format
             }
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
     return res
 
 
@@ -384,44 +384,44 @@ def _check_shape_and_format(  # pylint: disable=W0622,C0103,R0913,R0914
             dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "out_backprop"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         if (not isinstance(ori_shape_x, (tuple, list))) or len(ori_shape_x) != 4:
             dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "x"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         if (not isinstance(ori_shape_res, (tuple, list))) or len(ori_shape_res) != 4:
             dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "y"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         if len(strides) != 2:
             dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "strides"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         if len(filter_size) != 4:
             dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "filter_size"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         if len(dilations) != 4:
             dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "dilations"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         if list(filter_size) != list(ori_shape_res):
             dict_args = {}
             dict_args["errCode"] = "E64002"
             dict_args["param1"] = "filter_size"
             dict_args["param2"] = "ori_shape of y"
             dict_args["actual_value"] = "{}, {}".format(filter_size, ori_shape_res)
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
     def _calcute_input_shape():
         if ori_format_x == "NHWC":
@@ -434,7 +434,7 @@ def _check_shape_and_format(  # pylint: disable=W0622,C0103,R0913,R0914
             dict_args["param_name"] = "x"
             dict_args["expected_format_list"] = "[{}, {}]".format("NHWC", "NCHW")
             dict_args["format"] = ori_format_x
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         if ori_format_out_backprop == "NCHW":
             shape_out = ori_shape_out_backprop
@@ -451,7 +451,7 @@ def _check_shape_and_format(  # pylint: disable=W0622,C0103,R0913,R0914
             dict_args["param_name"] = "out_backprop"
             dict_args["expected_format_list"] = "[{}, {}]".format("NHWC", "NCHW")
             dict_args["format"] = ori_format_out_backprop
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         return x_shape, shape_out
 
     ori_shape_x = x.get("ori_shape")
@@ -499,7 +499,7 @@ def _check_shape_and_format(  # pylint: disable=W0622,C0103,R0913,R0914
             "NHWC", "NCHW", "HWCN"
         )
         dict_args["format"] = ori_format_res
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+        raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
     return [shape_x,
             shape_out_backprop,
             shape_res,
@@ -627,7 +627,7 @@ def _get_shape_dilation(data_format, dilations):
         dict_args["param_name"] = "data_format"
         dict_args["expected_format_list"] = "[{}, {}]".format("NHWC", "NCHW")
         dict_args["format"] = data_format
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+        raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
     return shape_dilations
 
 
@@ -700,7 +700,7 @@ def check_conv2dbp_filter_params(
                 dict_args["attr_name"] = name
                 dict_args["value"] = str(value)
                 raise RuntimeError(
-                    dict_args, error_manager.get_error_message(dict_args)
+                    dict_args, errormgr.get_error_message(dict_args)
                 )
         elif not attr_max:
             if (not isinstance(value, int)) or value < attr_min:
@@ -710,7 +710,7 @@ def check_conv2dbp_filter_params(
                 dict_args["attr_name"] = name
                 dict_args["value"] = str(value)
                 raise RuntimeError(
-                    dict_args, error_manager.get_error_message(dict_args)
+                    dict_args, errormgr.get_error_message(dict_args)
                 )
         elif (not isinstance(value, int)) or value > attr_max or value < attr_min:
             dict_args = {}
@@ -718,7 +718,7 @@ def check_conv2dbp_filter_params(
             dict_args["range"] = "[{},{}]".format(attr_min, attr_max)
             dict_args["attr_name"] = name
             dict_args["value"] = str(value)
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
         if dtype:
@@ -729,7 +729,7 @@ def check_conv2dbp_filter_params(
             dict_args = {}
             dict_args["errCode"] = "E60020"
             dict_args["attr_name"] = attr_name
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
     def _is_conv1d_situation():
         if fmap_h_padding == 1 and filter_h_dilation == 1 and stride_h == 1:
@@ -780,7 +780,7 @@ def check_conv2dbp_filter_params(
             dict_args = dict()
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "pads"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         if isinstance(pads, str) and pads not in PADDING_SUPPORT:
             dict_args = {}
@@ -788,7 +788,7 @@ def check_conv2dbp_filter_params(
             dict_args["expected_pad_mode"] = str(PADDING_SUPPORT)
             dict_args["actual_pad_mode"] = str(pads)
 
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
     _check_attr_pads()
 
@@ -807,7 +807,7 @@ def check_conv2dbp_filter_params(
         dict_args["errCode"] = "E60023"
         dict_args["dilation_n"] = str(dilation_n)
         dict_args["dilation_c"] = str(dilation_c)
-        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+        raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
     # Second : Furture Check, Mainly required by SRS
     # ===========================================================
@@ -831,7 +831,7 @@ def check_conv2dbp_filter_params(
             'reason': "fmap's channel must be a multiple of groups"
         }
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           errormgr.get_error_message(dict_args))
 
     if dedy_channel % groups != 0:
         dict_args = {
@@ -839,7 +839,7 @@ def check_conv2dbp_filter_params(
             'reason': "outbackprop's channel must be a multiple of groups"
         }
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           errormgr.get_error_message(dict_args))
 
     # pads compute
     if pads == "SAME":
@@ -916,33 +916,33 @@ def check_conv2dbp_filter_params(
             dict_args["param1"] = "x's N"
             dict_args["param2"] = "out_backprop's N"
             dict_args["actual_value"] = "{}, {}".format(fmap_batch, dedy_batch)
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         if dedy_channel != filter_batch:
             dict_args = {}
             dict_args["errCode"] = "E64002"
             dict_args["param1"] = "out_backprop's C"
             dict_args["param2"] = "Filter's N"
             dict_args["actual_value"] = "{}, {}".format(dedy_channel, filter_batch)
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         if fmap_channel != filter_channel * groups:
             dict_args = {}
             dict_args["errCode"] = "E64002"
             dict_args["param1"] = "x's C"
             dict_args["param2"] = "y's C"
             dict_args["actual_value"] = "{}, {}".format(fmap_channel, filter_channel)
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         if filter_w_dilation > fmap_w_padding:
             dict_args = dict()
             dict_args["errCode"] = "E60015"
             dict_args["w_of_x"] = str(fmap_w_padding)
             dict_args["w_of_filter"] = str(filter_w_dilation)
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         if filter_h_dilation > fmap_h_padding:
             dict_args = dict()
             dict_args["errCode"] = "E60014"
             dict_args["h_of_x"] = str(fmap_h_padding)
             dict_args["h_of_filter"] = str(filter_h_dilation)
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
         # Third : value check, Mainly required by the convolution rule
         if (
@@ -950,11 +950,11 @@ def check_conv2dbp_filter_params(
         ) != dedy_w:
             dict_args = {}
             dict_args["errCode"] = "E60025"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
             dict_args = {}
             dict_args["errCode"] = "E60024"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
     _check_axis_hw()
 
@@ -974,7 +974,7 @@ def check_conv2dbp_filter_params(
         if (al1_min_byte + bl1_min_byte) > l1_size:
             dict_args = {}
             dict_args["errCode"] = "E60026"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
 
     _min_l1_byte()
     # Fifth : check shape size, 64 bits limitation
@@ -1070,7 +1070,7 @@ def _conv2d_backprop_filter_cce(
             dict_args = {}
             dict_args["errCode"] = "E60108"
             dict_args["reason"] = "Division by zero"
-            raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
+            raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
         return (x_1 + x_2 - 1) // x_2
 
     # dtype chek
