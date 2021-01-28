@@ -36,6 +36,7 @@ from te.lang.dynamic.schedule.constants import Pattern
 H_RANGE = 4096
 W_RANGE = 4096
 W_DELTA = 1
+D_DELTA = 1
 H_LEN = 400
 W_LEN = 400
 D_LEN = 400
@@ -346,6 +347,27 @@ class Conv3dTiling(CubeTilingOp):
 
         return int(fmap_l1_size) + int(filter_l1_size) <= utils.L1BUFFER
 
+    def _check_tiling_match_d(self, tiling, current_size):
+        """
+
+        check whether this tiling matches the shape d
+
+        Parameters
+        ----------
+        tiling : dict, result of tiling fetch
+
+        current_size : int, size of [d, h, w]
+
+        Returns
+        -------
+        bool, True: match
+            False: do not match
+        """
+
+        pad_front, pad_back, *_ = self._calc_pads(*current_size)
+
+        return pad_front == 0 and pad_back == 0
+
     def get_tiling_range(self, tiling_in, a_shape):
         """
         get the covered area of a tiling
@@ -396,12 +418,27 @@ class Conv3dTiling(CubeTilingOp):
             wi_max = cur_w_size
             cur_w_size = cur_w_size + W_DELTA
 
+        perf_di_min = 1
+        perf_di_max = -1
+        
+        # If the pad in the d direction is not 0, the k value of al0_matrix can only be a factor of C1HkWk
+        if tiling.get('AL0_matrix')[-1] != 1 or tiling.get('BL0_matrix')[-1] != 1:
+            cur_d_size = fmap_d
+            # searching down-ward for d_min
+            while self._check_tiling_match_d(tiling, [cur_d_size, fmap_h, fmap_w]):
+                perf_di_min = cur_d_size
+                cur_d_size = cur_d_size - D_DELTA
+            
+            # searching up-ward for d_max
+            cur_d_size = fmap_d
+            while self._check_tiling_match_d(tiling, [cur_d_size, fmap_h, fmap_w]):
+                perf_di_max = cur_d_size
+                cur_d_size = cur_d_size + D_DELTA
+
         perf_wi_min = max(wi_min, fmap_w - W_LEN)
         perf_wi_max = min(wi_max, fmap_w + W_LEN)
         perf_hi_max = min(hi_max, fmap_h + H_LEN)
         perf_hi_min = max(hi_min, fmap_h - H_LEN)
-        perf_di_min = 1
-        perf_di_max = -1
 
         if perf_wi_min > perf_wi_max:
             return [0, 0, 0, 0, 0, 0]
