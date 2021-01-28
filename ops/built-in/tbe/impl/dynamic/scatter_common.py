@@ -37,6 +37,18 @@ VECTOR_BYTE_SIZE = 256
 NEG_TWO = -2
 # neg one
 NEG_ONE = -1
+# int32 max value
+INT32_MAX = 2147483647
+# int32 min value
+INT32_MIN = -2147483648
+# fp32 max value
+FP32_MAX = 3.4 * (10 ** 38)
+# fp32 min value
+FP32_MIN = -3.4 * (10 ** 38)
+# fp16 max value
+FP16_MAX = 65504
+# fp16 min value
+FP16_MIN = -65504
 
 def ceil_div(value_x, value_y):
     """
@@ -263,6 +275,41 @@ class ScatterCommon():
         self.last_var_num.set_as(0)
         self.var_offset = self.tik_instance.Scalar("int32", name="var_offset")
         self.var_offset.set_as(0)
+
+    def cal_vector_dup_common(self, mask, src_ub):
+        """
+        calculate vector dup common
+
+        Parameters
+        ----------
+        mask: int32
+            operation data num
+        src_ub:
+            source tensor
+        Returns
+        -------
+        None
+        """
+        if self.var_dtype == "int32":
+            max_value = INT32_MAX
+            min_value = INT32_MIN
+        if self.var_dtype == "float16":
+            max_value = FP16_MAX
+            min_value = FP16_MIN
+        if self.var_dtype == "float32":
+            max_value = FP32_MAX
+            min_value = FP32_MIN
+
+        if self.compute_type == "vsub":
+            self.tik_instance.vector_dup(mask, src_ub, 0, 1, 1, 8)
+        if self.compute_type == "vdiv":
+            self.tik_instance.vector_dup(mask, src_ub, 1, 1, 1, 8)
+        if self.compute_type == "vmul":
+            self.tik_instance.vector_dup(mask, src_ub, 1, 1, 1, 8)
+        if self.compute_type == "vmax":
+            self.tik_instance.vector_dup(mask, src_ub, min_value, 1, 1, 8)
+        if self.compute_type == "vmin":
+            self.tik_instance.vector_dup(mask, src_ub, max_value, 1, 1, 8)
 
     def cal_scatter_common(self, mask, src1_ub, src2_ub, repeat_times):
         """
@@ -730,13 +777,13 @@ class ScatterCommon():
 
             with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat):
                 with self.tik_instance.if_scope(var_forward_offset >= self.data_num_one_repeat * 255):
-                    self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
+                    self.cal_vector_dup_common(var_forward_offset - var_num, self.updates_ub)
                     self.cal_scatter_common(self.data_num_one_repeat, self.var_ub, self.updates_ub, 255)
                     self.var_offset.set_as(255 * self.data_num_one_repeat)
                     self.last_var_num.set_as(var_forward_offset - 255 * self.data_num_one_repeat)
                 self.repeat.set_as(self.last_var_num // self.data_num_one_repeat)
                 self.mask.set_as(self.last_var_num - self.repeat * self.data_num_one_repeat)
-                self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
+                self.cal_vector_dup_common(var_forward_offset - var_num, self.updates_ub)
                 self.cal_scatter_common(self.data_num_one_repeat, self.var_ub[self.var_offset],
                                         self.updates_ub[self.var_offset], self.repeat)
                 with self.tik_instance.if_scope(self.mask != 0):
@@ -745,7 +792,7 @@ class ScatterCommon():
                                             self.updates_ub[self.data_num_one_repeat * self.repeat +
                                                             self.var_offset], 1)
             with self.tik_instance.else_scope():
-                self.tik_instance.vector_dup(var_forward_offset - var_num, self.updates_ub, 0, 1, 1, 8)
+                self.cal_vector_dup_common(var_forward_offset - var_num, self.updates_ub)
                 self.cal_scatter_common(var_forward_offset, self.var_ub, self.updates_ub, 1)
             self.tik_instance.data_move(self.var_gm[var_in_index], self.var_ub, 0, 1, self.var_burst_len, 0, 0)
 
