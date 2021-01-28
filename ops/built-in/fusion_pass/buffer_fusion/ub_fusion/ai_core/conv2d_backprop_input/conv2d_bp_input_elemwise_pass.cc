@@ -83,10 +83,27 @@ Status TbeDxElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping, vec
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do conv2d_bp_input_elemwise!");
 
   fusion_nodes = GetMatchedNodes(mapping);
+
+  // buffer fusion do not support dynamic shape now
+  vector<ge::NodePtr> dxNodes = GetMatchedNodesByDescName(PATTERN_DX, mapping);
+  for (const auto& dxNode : dxNodes){
+    vector<int64_t> input0Dims = dxNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = dxNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    vector<int64_t> allDims;
+    allDims.resize(input0Dims.size() + input1Dims.size());
+    merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
+    for (auto singleDim : allDims) {
+      if (singleDim < 0) {
+        fusion_nodes.clear();
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        return SUCCESS;
+      }
+    }
+  }
+
   // the outputData can't be fused
   for (auto& item : mapping) {
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
-
     if (opdesc != item.first->types.end()) {
       for (auto& node : item.second) {
         auto node_ptr = find(fusion_nodes.begin(), fusion_nodes.end(), node);

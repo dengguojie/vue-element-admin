@@ -78,6 +78,24 @@ Status TbeFullyconnectionElemwiseFusionPass::GetFusionNodes(const BufferFusionMa
                                                 vector<ge::NodePtr> &fusionNodes) {
   OP_LOGD("Begin to do TbeFullyconnectionElemwiseFusionPass!");
   fusionNodes = GetMatchedNodes(mapping);
+
+  // buffer fusion do not support dynamic shape now
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
+  for (const auto& matmulNode : matmulNodes){
+    vector<int64_t> input0Dims = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    vector<int64_t> allDims;
+    allDims.resize(input0Dims.size() + input1Dims.size());
+    merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
+    for (auto singleDim : allDims) {
+      if (singleDim < 0) {
+        fusionNodes.clear();
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        return SUCCESS;
+      }
+    }
+  }
+
   vector<ge::NodePtr> fcNodes = GetMatchedNodesByDescName(PATTERN_FC_MATMUL, mapping);
   vector<ge::NodePtr> reluNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE1, mapping);
   vector<ge::NodePtr> elemWiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE2, mapping);

@@ -100,6 +100,24 @@ Status TbeMatmulElemwiseFusionPass::GetFusionNodes(const BufferFusionMapping& ma
     }
   }
   fusionNodes = GetMatchedNodes(mapping);
+
+  // buffer fusion do not support dynamic shape now
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
+  for (const auto& matmulNode : matmulNodes){
+    vector<int64_t> input0Dims = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    vector<int64_t> allDims;
+    allDims.resize(input0Dims.size() + input1Dims.size());
+    merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
+    for (auto singleDim : allDims) {
+      if (singleDim < 0) {
+        fusionNodes.clear();
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        return SUCCESS;
+      }
+    }
+  }
+
   for (auto& item : mapping) {
     auto opdesc = find(item.first->types.begin(), item.first->types.end(), TBE_PATTERN_OUTPUT_NODE);
     if (opdesc != item.first->types.end()) {
