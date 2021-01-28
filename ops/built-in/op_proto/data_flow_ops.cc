@@ -2053,7 +2053,7 @@ IMPLEMT_COMMON_INFERFUNC(FakeQueueInferShape) {
   }
   GeShape reader_handle_shape({2});
   auto reader_handle_desc = op_desc->MutableOutputDesc("handle");
-  (void)FillOpDesc(reader_handle_desc, reader_handle_shape, DT_STRING_REF);
+  (void)FillOpDesc(reader_handle_desc, reader_handle_shape, DT_STRING);
   return GRAPH_SUCCESS;
 }
 
