@@ -1547,8 +1547,9 @@ IMPLEMT_VERIFIER(FusedMulApplyMomentum, FusedMulApplyMomentumVerify) {
 }
 IMPLEMT_COMMON_INFERFUNC(FusedMulApplyMomentumInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter FusedMulApplyMomentum op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "var", "accum", {"var", "accum"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(FusedMulApplyMomentum, FusedMulApplyMomentumInferShape);

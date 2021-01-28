@@ -17,10 +17,10 @@ protected:
 TEST_F(fused_mul_apply_momentum, fused_mul_apply_momentum_case) {
     ge::op::FusedMulApplyMomentum op;
 
-    op.UpdateInputDesc("var", create_desc({144,16,16,16}, ge::DT_FLOAT));
-    op.UpdateInputDesc("accumj", create_desc({144,16,16,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("var", create_desc({-1,16,16,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("accum", create_desc({-1,16,16,16}, ge::DT_FLOAT));
     op.UpdateInputDesc("lr", create_desc({1,}, ge::DT_FLOAT));
-    op.UpdateInputDesc("x1", create_desc({144,16,16,16}, ge::DT_FLOAT));
+    op.UpdateInputDesc("x1", create_desc({-1,16,16,16}, ge::DT_FLOAT));
     op.UpdateInputDesc("momentum", create_desc({1,}, ge::DT_FLOAT));
     op.UpdateInputDesc("x2", create_desc({1,}, ge::DT_FLOAT));
 
@@ -33,6 +33,6 @@ TEST_F(fused_mul_apply_momentum, fused_mul_apply_momentum_case) {
     auto output_desc = op.GetOutputDesc("var");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 
-    std::vector<int64_t> expected_output_shape = {144,16,16,16};
+    std::vector<int64_t> expected_output_shape = {-1,16,16,16};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

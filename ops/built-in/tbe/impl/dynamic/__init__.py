@@ -57,6 +57,7 @@ from .greater_equal import greater_equal
 from .less import less
 from .less_equal import less_equal
 from .floor_div import floor_div
+from .fused_mul_apply_momentum import fused_mul_apply_momentum
 from .tile_d import tile_d
 from .tile import tile
 from .apply_adam_d import apply_adam_d
