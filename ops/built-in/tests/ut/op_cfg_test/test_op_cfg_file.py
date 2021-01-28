@@ -9,7 +9,7 @@ ini_path = os.path.dirname(ini_path)  # llt/ops/llt_new
 ini_path = os.path.dirname(ini_path)  # llt/ops
 ini_path = os.path.dirname(ini_path)  # llt
 ini_path = os.path.dirname(ini_path)  #
-ini_path = os.path.join(ini_path, "cann/ops/built-in/tbe/op_info_cfg/ai_core")  #
+ini_path = os.path.join(ini_path, "ops/built-in/tbe/op_info_cfg/ai_core")  #
 
 
 class Test_OpConfig(unittest.TestCase):

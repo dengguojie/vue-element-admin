@@ -43,6 +43,13 @@ set_ut_env() {
 run_ut() {
   local pr_file="$1"
   local supported_soc="Ascend910A,Ascend310"
+  
+  python3.7 "${CANN_ROOT}/ops/built-in/tests/common/ci/run_op_cfg_ut.py"                     
+  if [[ $? -ne 0 ]]; then
+    echo "run ops python utest failed."
+    exit $STATUS_FAILED
+  fi
+
   python3.7 "${CANN_ROOT}/ops/built-in/tests/run_ut.py"                     \
                 --soc_version="${supported_soc}"                            \
                 --simulator_lib_path="${BASE_HOME}/toolkit/tools/simulator" \
@@ -53,6 +60,7 @@ run_ut() {
     echo "run ops python utest failed."
     exit $STATUS_FAILED
   fi
+
   if [[ "x$pr_file" == "x" ]]; then
     echo "run all ut case successfully."
   else
