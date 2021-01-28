@@ -361,12 +361,12 @@ IMPLEMT_VERIFIER(SoftplusGrad, SoftplusGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SoftplusGradInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "backprops")) {
-    return GRAPH_SUCCESS;
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "backprops", is_dynamic_output)) {
+    return GRAPH_FAILED;
   }
-  return GRAPH_FAILED;
+  return GRAPH_SUCCESS;
 }
-
 COMMON_INFER_FUNC_REG(SoftplusGrad, SoftplusGradInferShape);
 VERIFY_FUNC_REG(SoftplusGrad, SoftplusGradVerify);
 // ----------------SoftplusGrad END-------------------
