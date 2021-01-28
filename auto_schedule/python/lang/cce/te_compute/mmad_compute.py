@@ -1224,7 +1224,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
     def _check_alpha_beta_numb():
         if alpha_num != 1.0 or beta_num != 1.0:
-            dict_args = {
+            args_dict = {
                 'errCode': 'E61001',
                 'reason': "mmad now only supprot alpha_num = {0} and beta_num = {0}.".format(1.0)
             }
