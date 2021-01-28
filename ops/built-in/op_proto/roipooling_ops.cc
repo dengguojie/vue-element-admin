@@ -26,6 +26,7 @@
 #include <string>
 
 #include "util/util.h"
+#include "util/error_util.h"
 #include "op_log.h"
 
 namespace ge {
@@ -57,6 +58,21 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
 }
 
 IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
+  int64_t roisDimNum = op.get_input_desc_rois().GetShape().GetDimNum();
+  if (roisDimNum != 3) {
+    OpsOneInputShapeErrReport(op.GetName(), "rois shape dim", "The input shape of rois not equal 3!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of rois not equal 3, please check!");
+    return GRAPH_FAILED;
+  }
+  auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
+  auto roi_max_num = roisShape[2];
+  if (roi_max_num > 6000 || roi_max_num % 16 != 0) {
+    OpsOneInputShapeErrReport(op.GetName(), "dim 2 of rois shape",
+                              "the dim 2 of rois shape can not be greater than 6000 and can be divided by 16!");
+    OP_LOGE(op.GetName().c_str(), "The dim 2 of rois shape can not be greater than 6000 and can be divided by 16!");
+    return GRAPH_FAILED;
+  }
+
   return GRAPH_SUCCESS;
 }
 

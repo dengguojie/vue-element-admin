@@ -968,8 +968,9 @@ REG_OP(SPP)
 * Three inputs, including:
 *@li x: An NC1HWC0 tensor of type float16 or float32, describing the feature
 * map.
-*@li rois: A tensor of type float16 or float32, with shape
+*@li rois: A tensor of type float16 or float32, with 3D shape
 * [batch, 5, roi_max_num], describing the RIOs.
+* roi_max_num must be less than or equal to 6000 and must be divided by 16.
 *@li roi_actual_num: A  optional tensor of type int32, with shape [batch, 8], specifying
 * the number of ROIs per batch . \n
 
