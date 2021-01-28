@@ -1583,30 +1583,37 @@ IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
     GE_OP_LOGE(op.GetName().c_str(), "Axis_nums[%zu] must be greater than 0", axis_nums);
     return GRAPH_PARAM_INVALID;
   }
-
-  std::vector<int64_t> vec_dim;
-  Shape input_shape = op.get_input_desc_x().GetShape();
-  int64_t dim_num = input_shape.GetDimNum();
-
-  for (int64_t i = 0; i < dim_num; i++) {
-    vec_dim.push_back(input_shape.GetDim(i));
+  std::unordered_set<int64_t> values(axis_arr.begin(), axis_arr.end());
+  if (values.size() != axis_arr.size()) {
+    string reason = "Axis attribute must not contain any duplicates.";
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
+    GE_OP_LOGE(op.GetName().c_str(), "Axis attribute must not contain any duplicates.");
+    return GRAPH_PARAM_INVALID;
   }
+  Shape input_shape = op.get_input_desc_x().GetShape();
+  int64_t dim_num = input_shape.GetDimNum() + axis_nums;
+  std::vector<int64_t> vec_dim(dim_num, 0);
 
   for (size_t i = 0; i < axis_nums; i++) {
     int64_t axis = axis_arr[i];
-    if ((axis < -dim_num) || (axis > dim_num)) {
+    if ((axis < -dim_num) || (axis > (dim_num - 1))) {
       string reason = "axis[" + std::to_string(axis_nums) + "]'s range is not in [" + std::to_string(-dim_num) + ", " +
-                      std::to_string(dim_num) + "]";
+                      std::to_string(dim_num - 1) + "]";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
       GE_OP_LOGE(op.GetName().c_str(), "Axis %ld not in [%ld, %ld]", axis, -dim_num, dim_num);
       return GRAPH_PARAM_INVALID;
     }
-
     if (axis < 0) {
-      axis += dim_num + 1;
+      axis += dim_num;
     }
-
-    vec_dim.emplace(vec_dim.begin() + axis, 1);
+    vec_dim.at(axis) = 1;
+  }
+  int64_t index = 0;
+  for (int64_t i = 0; i < dim_num; i++) {
+    if (vec_dim.at(i) != 1) {
+      vec_dim.at(i) = input_shape.GetDim(index);
+      index++;
+    }
   }
 
   TensorDesc td = op.get_output_desc_y();
