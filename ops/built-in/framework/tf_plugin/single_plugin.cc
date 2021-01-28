@@ -610,6 +610,13 @@ REGISTER_CUSTOM_OP("RightShift")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register SampleDistortedBoundingBox op to GE
+REGISTER_CUSTOM_OP("SampleDistortedBoundingBox")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("SampleDistortedBoundingBox")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register SampleDistortedBoundingBoxExt2 op to GE
 REGISTER_CUSTOM_OP("SampleDistortedBoundingBoxExt2")
     .FrameworkType(TENSORFLOW)

@@ -26,4 +26,10 @@ REGISTER_CUSTOM_OP("InTopK")
     .OriginOpType("InTopKV2")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("InTopKV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("InTopKV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::TVM);
 }  // namespace domi

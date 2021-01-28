@@ -499,7 +499,7 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
   auto y_desc = op_desc->MutableOutputDesc(0);
   auto size_desc = op_desc->MutableInputDesc(1);
   auto grads_desc = op_desc->MutableInputDesc(0);
-  if (op.GetInputDesc(0).GetShape().GetShapeSize() == UNKNOWN_DIM || 
+  if (op.GetInputDesc(0).GetShape().GetShapeSize() == UNKNOWN_DIM ||
       op.GetInputDesc(1).GetShape().GetShapeSize() == UNKNOWN_DIM) {
     y_desc->SetShape(GeShape({UNKNOWN_DIM}));
     y_desc->SetDataType(grads_desc->GetDataType());
@@ -626,6 +626,61 @@ IMPLEMT_INFERFUNC(RGBToHSV, RGBToHSVInfer) {
 }
 
 INFER_FUNC_REG(RGBToHSV, RGBToHSVInfer);
+
+IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
+  bool judge = false;
+
+  Shape image_size;
+  judge = (WithRank(op.get_input_desc_image_size(), 1, image_size, op.GetName().c_str()) != GRAPH_SUCCESS);
+  if (judge) {
+    OP_LOGE(op.GetName().c_str(), "Input image_size must be 1-D");
+    return GRAPH_FAILED;
+  }
+
+  Shape bounding_boxes;
+  judge = (WithRank(op.get_input_desc_bounding_boxes(), 3, bounding_boxes, op.GetName().c_str()) != GRAPH_SUCCESS);
+  if (judge) {
+    OP_LOGE(op.GetName().c_str(), "Input bounding_boxes must be 3-D");
+    return GRAPH_FAILED;
+  }
+
+  const int64_t image_size_dim_value = op.get_input_desc_image_size().GetShape().GetDim(0);
+  const int64_t bounding_boxes_dim2_value = op.get_input_desc_bounding_boxes().GetShape().GetDim(2);
+  if ((image_size_dim_value != 3) || (bounding_boxes_dim2_value != 4)) {
+    OP_LOGE(op.GetName().c_str(),
+            "First dimention of input image_size must be 3 and third dimention of "
+            "input bounding_boxes must be 4");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc begin_desc = op.GetOutputDesc("begin");
+  begin_desc.SetShape(Shape({3}));
+  begin_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
+  if (op.UpdateOutputDesc("begin", begin_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update output begin.");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc size_desc = op.GetOutputDesc("size");
+  size_desc.SetShape(Shape({3}));
+  size_desc.SetDataType(op.GetInputDesc("image_size").GetDataType());
+  if (op.UpdateOutputDesc("size", size_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update output size.");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc bboxes_desc = op.GetOutputDesc("bboxes");
+  bboxes_desc.SetShape(Shape({1, 1, 4}));
+  bboxes_desc.SetDataType(DT_FLOAT);
+  if (op.UpdateOutputDesc("bboxes", bboxes_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Fail to update output bboxes.");
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer);
 
 IMPLEMT_INFERFUNC(SampleDistortedBoundingBoxExt2, SampleDistortedBoundingBoxExt2Infer) {
   bool judge = false;
