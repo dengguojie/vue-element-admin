@@ -84,8 +84,6 @@ class ReduceSchedule(VectorSchedule):
         for input_tensor in self.graph_info.input_tensor_set:
             if last_input_tensor is None:
                 last_input_tensor = input_tensor
-            if len(last_input_tensor.shape) != len(input_tensor.shape):
-                raise RuntimeError("SingleReduceSchedule doesn't support multiple input with different dim_num")
             self.tensor_reduced_axis_indices[input_tensor] = []
             # Check through all consumer
             waiting_tensors: List[Tensor] = [input_tensor]
@@ -460,7 +458,14 @@ class ReduceSchedule(VectorSchedule):
         # Before-And-After-reduce
         before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
         after_reduce_tensors = self.get_all_consumer_stages(reduce_ub_tensor)
+        # other tensors: which not in consumers or producers for reduce_ub_tensor
+        _other_tensors = set()
+        for _tensor in self.graph_info.tensor_list:
+            if is_reduce_tensor(_tensor):
+                continue
+            _other_tensors.add(self.get_buffers_of(_tensor)[0])
         remaining_tensors = before_reduce_tensors | after_reduce_tensors
+        remaining_tensors = remaining_tensors | _other_tensors
         for tensor in remaining_tensors:
             if tensor in self.graph_info.input_tensor_set:
                 continue

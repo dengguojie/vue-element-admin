@@ -41,6 +41,7 @@ from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import get_reduce_axis_indices
 from .util import shape_to_list
+from .util import is_reduce_tensor
 from .constants import Pattern
 from .constants import CompileInfo
 from .vector_info import ComputeGraphInfo
@@ -387,6 +388,8 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     for output_tensor in output_tensors:
         dtype = output_tensor.dtype
         if dtype != "float32":
+            return False
+        if not is_reduce_tensor(output_tensor):
             return False
     tag = reduce_tensor.op.tag
     if tag.find("sum") == -1:
