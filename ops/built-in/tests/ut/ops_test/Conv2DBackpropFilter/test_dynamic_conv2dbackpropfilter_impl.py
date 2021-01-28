@@ -197,14 +197,14 @@ ut_case.add_case(
 # dynamic_hw, pads error
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [128, 64, -1, -1], [128, 64, -1, -1],
+    gen_dynamic_conv2d_backprop_filter_case([64, 64, 2, 2], [128, 64, -1, -1], [128, 64, -1, -1],
                                         "float32", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         [(128, 128), (64, 64), (56, 71), (56, 71)],
                                         [(128, 128), (64, 64), (112, 142), (112, 142)],
                                         (1, 1, 2, 2), [1, 1, 1, 1], (1, 1, 1, 1),
                                         "dynamic_conv2d_backprop_filter_case1",
-                                        RuntimeError))
+                                        NameError))
 
 # dynamic_batch
 # ut_case.add_case(

@@ -5,16 +5,16 @@ from op_test_frame.ut import OpUT
 ut_case = OpUT("Conv2DBackpropInput", "impl.dynamic.conv2d_backprop_input",
                "conv2d_backprop_input")
 
-def gen_dynamic_conv2d_backprop_input_case(shape_filter, shape_dedy, shape_dx,
+def gen_dynamic_conv2d_backprop_input_case(shape_filter, shape_dedy, shape_dx, shape_inputsize,
                                            dtype_filter, dtype_dedy, dtype_dx,
                                            format_filter, format_dedy, format_dx,
-                                           range_dedy, range_dx,
+                                           range_dedy, range_dx, range_inputsize,
                                            strides, pads, dilations, groups,
                                            data_format, kernel_name_val, expect):
     return {"params": [
         # dx
-        {"ori_shape": shape_dx, "ori_format": format_dx,
-         "dtype": dtype_dx, "range": range_dx},
+        {"ori_shape": shape_inputsize, "ori_format": format_dx,
+         "dtype": dtype_dx, "range": range_inputsize},
         # filter
         {"ori_shape": shape_filter, "ori_format": format_filter,
          "dtype": dtype_filter},
@@ -32,11 +32,12 @@ def gen_dynamic_conv2d_backprop_input_case(shape_filter, shape_dedy, shape_dx,
 # opti, dynamic_hw
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_input_case([32, 16, 1, 1], [1, 32, -1, -1], [1, 16, -1, -1],
+    gen_dynamic_conv2d_backprop_input_case([32, 16, 1, 1], [1, 32, -1, -1], [1, 16, -1, -1],[4],
                                         "float16", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         ((1, 1), (32, 32), (6, 26), (6, 26)),
                                         ((1, 1), (16, 16), (6, 26), (6, 26)),
+                                        ((4, 4)),
                                         (1, 1, 1, 1), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_conv2d_backprop_input_case1",
                                         "success"))
@@ -66,14 +67,54 @@ ut_case.add_case(
 # general, dynamic_batch
 ut_case.add_case(
     "all",
-    gen_dynamic_conv2d_backprop_input_case([32, 16, 3, 3], [-1, 32, 8, 8], [-1, 16, 16, 16],
+    gen_dynamic_conv2d_backprop_input_case([32, 16, 3, 3], [-1, 32, 8, 8], [-1, 16, 16, 16],[4],
                                         "float16", "float16", "float16",
                                         "NCHW", "NCHW", "NCHW",
                                         ((1, 10), (32, 32), (8, 8), (16, 16)),
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
+                                        ((4, 4)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_conv2d_backprop_input_case4",
                                         "success"))
+
+# general, dynamic_batch,y and data_format are not the same
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_input_case([32, 16, 3, 3], [-1, 32, 8, 8], [-1, 16, 16, 16],[4],
+                                        "float16", "float16", "float16",
+                                        "NCHW", "NHWC", "NCHW",
+                                        ((1, 10), (32, 32), (8, 8), (16, 16)),
+                                        ((1, 10), (16, 16), (8, 8), (16, 16)),
+                                        ((4, 4)),
+                                        (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
+                                        "dynamic_conv2d_backprop_input_case4",
+                                        "failed"))
+
+# general, dynamic_batch,N dim's range is (1, None)
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_input_case([32, 16, 3, 3], [-1, 32, 8, 8], [-1, 16, 16, 16],[4],
+                                        "float16", "float16", "float16",
+                                        "NCHW", "NHWC", "NCHW",
+                                        ((1, None), (32, 32), (8, 8), (16, 16)),
+                                        ((1, None), (16, 16), (8, 8), (16, 16)),
+                                        ((4, 4)),
+                                        (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
+                                        "dynamic_conv2d_backprop_input_case4",
+                                        "failed"))
+
+
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_input_case([32, 16, 3, 3], [-1, 32, 8, 8], [-1, 16, 16, 16],[-2],
+                                        "float16", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        ((1, 10), (32, 32), (8, 8), (16, 16)),
+                                        ((1, 10), (16, 16), (8, 8), (16, 16)),
+                                        ((-2, -2)),
+                                        (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
+                                        "dynamic_conv2d_backprop_input_case4",
+                                        "failed"))
 
 if __name__ == '__main__':
     with te.op.dynamic():

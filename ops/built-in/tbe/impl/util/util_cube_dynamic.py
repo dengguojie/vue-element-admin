@@ -39,7 +39,9 @@ FORMAT_HW_DIM = 2
 FORMAT_NCHW_DIM = 4
 FORMAT_NC1HWC0_DIM = 5
 DYNAMIC_FLAG = -1
+UNKNOWN_FLAG = -2
 DIM_TO_NAME = {0: "N", 2: "H", 3: "W"}
+INPUT_SIZE_DEFAULT_SHAPE = [4]
 
 
 def ceil_div(x_1, x_2):
@@ -87,6 +89,7 @@ def set_default_para():
     """
     default_para = {}
     default_para["res_dtype"] = "float16"
+    default_para["input_size"] = {"ori_shape": INPUT_SIZE_DEFAULT_SHAPE}
     return default_para
 
 
@@ -487,6 +490,10 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.y = paras.get("y")
         self.data_format = paras.get("data_format")
         self.dtype = paras.get("filters").get("dtype")
+        if paras.get("input_size"):
+            self.input_size = paras.get("input_size")
+        else:
+            self.input_size = {"ori_shape": INPUT_SIZE_DEFAULT_SHAPE}
 
     def _calc_shape(self, dy_shape, filter_shape, input_size, dy_range, input_range):
         """
@@ -499,16 +506,16 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         dy_shape_nc1hwc0 = [dy_shape[N_DIM], dy_shape[C_DIM] // block_size_k,
                             dy_shape[H_DIM], dy_shape[W_DIM], block_size_k]
 
-        if dy_shape[N_DIM] == DYNAMIC_FLAG:
+        if input_size[N_DIM] == DYNAMIC_FLAG:
             dy_shape_nc1hwc0[N_DIM] = tbe_base.var("batch_n", dy_range[N_DIM])
             input_size[N_DIM] = dy_shape_nc1hwc0[N_DIM]
             tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[N_DIM])
-        if dy_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
+        if input_size[H_DIM] == DYNAMIC_FLAG:
             dy_shape_nc1hwc0[H_DIM] = tbe_base.var("dedy_h", dy_range[H_DIM])
             input_size[H_DIM] = tbe_base.var("dx_h", input_range[H_DIM])
             tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[H_DIM])
             tbe_base.add_exclude_bound_var(input_size[H_DIM])
-        if dy_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
+        if input_size[W_DIM] == DYNAMIC_FLAG:
             dy_shape_nc1hwc0[W_DIM] = tbe_base.var("dedy_w", dy_range[W_DIM])
             input_size[W_DIM] = tbe_base.var("dx_w", input_range[W_DIM])
             tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[W_DIM])
@@ -534,7 +541,6 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         """
         infer range from dx to dy
         """
-
         self.check_input_dict(self.y, "y", True)
 
         dy_shape = self.out_backprop.get("ori_shape")
@@ -597,6 +603,9 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.check_input_dict(self.out_backprop, "out_backprop", False)
         self.check_input_dict(self.y, "y", False)
         para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
+        if UNKNOWN_FLAG in self.input_size.get("ori_shape") or DYNAMIC_FLAG in self.input_size.get("ori_shape"):
+            err_man.raise_err_specific_user(
+                self.op_type, "dynamic shape nout support input size's shape [-1] and [-2]")
         if self.dtype != self.y.get("dtype"):
             err_man.raise_err_specific_user(
                 "conv2d_backprop_input", "the dtype of filter and y are not the same.")

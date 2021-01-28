@@ -16,12 +16,16 @@ class Conv2DBackpropInputProtoTest : public testing::Test {
   }
 };
 
-
 // dynamic opti ut with pads
 TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputOptiWithPads) {
     ge::op::Conv2DBackpropInput op;
     op.UpdateInputDesc("input_size",
-                       create_desc({4}, ge::DT_INT32));
+                       create_desc_shape_range({4},
+                                               ge::DT_INT32,
+                                               ge::FORMAT_NCHW,
+                                               {4},
+                                               ge::FORMAT_NCHW,
+                                               {{4, 4}}));
     op.UpdateInputDesc("filter", create_desc({32, 16, 1, 1}, ge::DT_FLOAT16));
     op.UpdateInputDesc("out_backprop",
                        create_desc_shape_range({1, 32, -1, -1},
@@ -30,6 +34,60 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputOptiWithPads) {
                                                {1, 32, -1, -1},
                                                ge::FORMAT_NCHW,
                                                {{1, 1}, {32, 32}, {6, 26}, {6, 26}}));
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+}
+
+// dynamic opti ut with range(6,-1)
+TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputSpecialRange) {
+    ge::op::Conv2DBackpropInput op;
+    op.UpdateInputDesc("input_size",
+                       create_desc_shape_range({4},
+                                               ge::DT_INT32,
+                                               ge::FORMAT_NCHW,
+                                               {4},
+                                               ge::FORMAT_NCHW,
+                                               {{4, 4}}));
+    op.UpdateInputDesc("filter", create_desc({32, 16, 1, 1}, ge::DT_FLOAT16));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({1, 32, -1, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {1, 32, -1, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 1}, {32, 32}, {6, -1}, {6, -1}}));
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+}
+
+// dynamic opti ut outbackprop shape [-2]
+TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputSpecialShape) {
+    ge::op::Conv2DBackpropInput op;
+    op.UpdateInputDesc("input_size",
+                       create_desc_shape_range({4},
+                                               ge::DT_INT32,
+                                               ge::FORMAT_NCHW,
+                                               {4},
+                                               ge::FORMAT_NCHW,
+                                               {{4, 4}}));
+    op.UpdateInputDesc("filter", create_desc({32, 16, 1, 1}, ge::DT_FLOAT16));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-2},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-2},
+                                               ge::FORMAT_NCHW,
+                                               {{}}));
     op.SetAttr("strides", {1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
 

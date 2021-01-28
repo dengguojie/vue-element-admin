@@ -31,9 +31,11 @@ def _conv2d_transpose_compute(input_size, x, filter, bias, offset_w,
         "output_padding": output_padding, "offset_x": offset_x, "kernel_name": kernel_name
     }
 
+    default_para = set_default_para()
+    if not input_size.get("ori_shape"):
+        ori_paras["input_size"]["ori_shape"] = default_para["input_size"]["ori_shape"]
     conv2dbp_para = Conv2dTransposeParaProcess(ori_paras)
     paras = conv2dbp_para.config_paras()
-    default_para = set_default_para()
 
     dedx = tbe.conv2d_backprop_input_compute(
         filters=paras.get("filter_tensor"),

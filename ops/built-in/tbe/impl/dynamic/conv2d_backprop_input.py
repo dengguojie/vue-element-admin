@@ -30,6 +30,8 @@ def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides
     }
 
     default_para = set_default_para()
+    if not input_size.get("ori_shape"):
+        ori_paras["input_size"]["ori_shape"] = default_para["input_size"]["ori_shape"]
     conv2dbp_para = Conv2dBackpropParaProcess(ori_paras)
     paras = conv2dbp_para.config_paras()
 
