@@ -50,6 +50,13 @@ case6 = {"params": [{"shape": (2, 2, 1027), "dtype": "float32", "format": "NCHW"
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case7 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (1, 1),"ori_format": "NCHW"},
+                    {"shape": (1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (1, 1),"ori_format": "NCHW"},
+                    [[0, 0],[0, 0]]],
+         "case_name": "pad_d_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -57,6 +64,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 
 
 def calc_expect_func(x, res, paddings):
@@ -97,6 +105,13 @@ ut_case.add_precision_case("all", {"params": [{"shape": (2, 2, 1027), "dtype": "
 ut_case.add_precision_case("all", {"params": [{"shape": (2, 2, 1024*240), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 2, 1024*240),"ori_format": "NCHW", "param_type": "input"},
                                               {"shape": (2, 16, 245767), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 16, 245767),"ori_format": "NCHW", "param_type": "output"},
                                               [[0, 0],[7, 7],[0, 7]]],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
+
+ut_case.add_precision_case("all", {"params": [{"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW", "param_type": "input"},
+                                              {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW", "param_type": "output"},
+                                              [[0, 0],]],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })

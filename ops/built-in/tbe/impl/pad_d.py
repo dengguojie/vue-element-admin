@@ -2227,6 +2227,10 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
                 in_shape.append(value)
                 in_paddings.append(list(paddings[index]))
 
+        if not in_shape:
+            in_shape = shape
+            in_paddings = paddings
+
         option, new_shape, new_paddings = _pattern_align(in_shape, in_paddings, dtype)
         if option:
             res = pad_align_reorder_ub.pad_align(new_shape, new_paddings, dtype, kernel_name)
