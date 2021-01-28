@@ -344,15 +344,11 @@ VERIFY_FUNC_REG(SigmoidGrad, SigmoidGradVerify);
 
 // ----------------Softplus-------------------
 IMPLEMT_COMMON_INFERFUNC(SoftplusInferShape) {
-  Shape features_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(features_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(Softplus, SoftplusInferShape);
 // --------------Softplus END-----------------
 

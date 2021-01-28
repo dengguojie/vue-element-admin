@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import os
 from op_test_frame.ut import ElementwiseOpUT
-import numpy as np
+from op_test_frame.common import precision_info
 import tensorflow as tf
 from tensorflow.python.ops import gen_nn_ops
-from op_test_frame.common import precision_info
-import os
+
 
 ut_case = ElementwiseOpUT("Softplus", None, None)
 
@@ -34,13 +34,13 @@ ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (16, 2, 3
 def calc_expect_func(x, y):
     x_shape = x.get("shape")
     x_value = x.get("value")
-    
+
     session_config = tf.ConfigProto(
-    allow_soft_placement=True,
-    log_device_placement=False)
-    
-    input=tf.placeholder(x_value.dtype, x_value.shape)
-    output_var =gen_nn_ops.softplus(input)
+        allow_soft_placement=True,
+        log_device_placement=False)
+
+    input = tf.placeholder(x_value.dtype, x_value.shape)
+    output_var = gen_nn_ops.softplus(input)
     with tf.Session(config=session_config) as session:
         result = session.run(output_var, feed_dict={input: x_value})
     return (result,)
@@ -73,4 +73,3 @@ if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
     ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-

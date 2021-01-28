@@ -18,6 +18,7 @@ dynamic operator
 # pylint: disable=W0622
 from __future__ import absolute_import as _abs
 
+from .softplus import softplus
 from .unsorted_segment_sum import unsorted_segment_sum
 from .div_no_nan import div_no_nan
 from .gather_nd import gather_nd
