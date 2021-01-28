@@ -129,6 +129,16 @@ TEST_F(TEST_EQUAL_UT, ExpInputBool) {
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
 }
 
+TEST_F(TEST_EQUAL_UT, NotSupportType) {
+  vector<DataType> data_types = {DT_STRING, DT_STRING, DT_STRING};
+  vector<vector<int64_t>> shapes = {{1}, {1}, {1}};
+  std::string input1[1] = {"test"};
+  std::string input2[22] = {"train"};
+  bool output[1] = {(bool)0};
+  vector<void *> datas = {(void *)input1, (void *)input2, (void *)output};
+  CREATE_NODEDEF(shapes, data_types, datas);
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_PARAM_INVALID);
+}
 ADD_CASE(Eigen::half, DT_FLOAT16)
 
 ADD_CASE(float, DT_FLOAT)

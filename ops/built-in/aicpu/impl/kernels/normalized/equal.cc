@@ -56,7 +56,7 @@ uint32_t EqualCpuKernel::Compute(CpuKernelContext &ctx) {
     EQUAL_COMPUTE_CASE(DT_COMPLEX64, std::complex<float>, ctx)
     EQUAL_COMPUTE_CASE(DT_COMPLEX128, std::complex<double>, ctx)
     default:
-      KERNEL_LOG_ERROR("Equal kernel data type [%u] not support.", data_type);
+      KERNEL_LOG_WARN("Equal kernel data type [%u] not support.", data_type);
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
