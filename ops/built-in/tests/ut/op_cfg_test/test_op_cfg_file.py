@@ -48,7 +48,7 @@ class Test_OpConfig(unittest.TestCase):
                         "needCheckSupport.flag","dynamicShapeSupport.flag", "slicePattern.value"])
         allow_attr_info_key = set(["type", "value", "paramType", "defaultValue"])
         allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM', 'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',
-                         'NDC1HWC0', 'FRACTAL_Z_3D', 'NC1HWC0_C04', 'HWCN', 'CHWN', 'NDHWC', 'DHWCN', 'NCDHW', 'FRACTAL_Z_C04'])
+                             'NDC1HWC0', 'FRACTAL_Z_3D', 'NC1HWC0_C04', 'HWCN', 'CHWN', 'NDHWC', 'DHWCN', 'NCDHW', 'NULL', 'FRACTAL_Z_C04'])
 
         def check_op_key_info(file_name, op_type, op_key_infos):
             attr_list = []
@@ -83,6 +83,8 @@ class Test_OpConfig(unittest.TestCase):
                         format_list.append([x.strip() for x in info_value.split(",")])
                     elif input_info_key == "unknownshape_format":
                         has_unkown_shape_format = True
+                        format_dtype_list.append([x.strip() for x in info_value.split(",")])
+                        format_list.append([x.strip() for x in info_value.split(",")])
                     elif input_info_key == "paramType":
                         if info_value not in allow_param_types:
                             check_error_msg.append(
@@ -115,6 +117,8 @@ class Test_OpConfig(unittest.TestCase):
                         format_list.append([x.strip() for x in info_value.split(",")])
                     elif output_info_key == "unknownshape_format":
                         has_unkown_shape_format = True
+                        format_dtype_list.append([x.strip() for x in info_value.split(",")])
+                        format_list.append([x.strip() for x in info_value.split(",")])
                     elif output_info_key == "paramType":
                         if info_value not in allow_param_types:
                             check_error_msg.append(
@@ -225,7 +229,6 @@ class Test_OpConfig(unittest.TestCase):
                     with self.subTest("test cfg file %s" % file_name):
                         print(file_name)
                         check_cfg_info(file_path)
-
 
 if __name__ == "__main__":
     unittest.main()
