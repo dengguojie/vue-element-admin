@@ -83,6 +83,7 @@ set(_onnx_plugins
   split_plugin.cc
   squeeze_plugin.cc
   sum_plugin.cc
+  slice_plugin.cc
   threshold_relu_plugin.cc
   transpose_plugin.cc
   common_lstm_plugin.cc
