@@ -155,6 +155,7 @@ from .tanh_grad import tanh_grad
 from .abs_grad import abs_grad
 from .acos_grad import acos_grad
 from .acosh_grad import acosh_grad
+from .nms_with_mask import nms_with_mask
 from .mul_no_nan import mul_no_nan
 from .reduce_max import reduce_max
 from .maximum_grad import maximum_grad

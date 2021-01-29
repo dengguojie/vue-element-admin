@@ -40,6 +40,7 @@ set(_optiling_files
   gather_nd.cc
   gather_v2.cc
   lock.cc
+  nms_with_mask.cc
   pad_common.cc
   pad_d.cc
   reduce_tiling.cc
