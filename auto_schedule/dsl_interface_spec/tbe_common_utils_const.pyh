@@ -1,0 +1,19 @@
+# source file:python/tbe/common/utils/const.py
+
+GEMM_MODE = 0
+
+GEVM_MODE = 1
+
+CONV_MODE = 2
+
+ELEMENTS_VECTOR_OP_FP16 = 128
+
+DEFAULT_MUL_VALUE = 1
+
+DEFAULT_ADD_VALUE = 0
+
+BLOCK_REDUCE = 16
+
+BLOCK_REDUCE_INT8 = 32
+
+BLOCK_VECTOR = 1

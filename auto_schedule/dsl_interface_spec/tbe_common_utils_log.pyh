@@ -1,0 +1,15 @@
+# source file:python/tbe/common/utils/log.py
+
+FILE_PATH = os.path.dirname(os.path.realpath(__file__))
+
+LOG_DEFAULT_LEVEL = logging.INFO
+
+IS_USE_SLOG = True
+
+def info(log_msg, *log_paras):
+
+def debug(log_msg, *log_paras):
+
+def warn(log_msg, *log_paras):
+
+def error(log_msg, *log_paras):

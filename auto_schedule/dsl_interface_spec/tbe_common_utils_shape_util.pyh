@@ -1,0 +1,39 @@
+# source file:python/tbe/common/utils/shape_util.py
+
+def squeeze_shape(shape):
+
+def wrap_axes_to_positive(axes, rank):
+
+def refine_shape_axes(shape, axes):
+
+def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
+
+def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME, param_name_input1='', param_name_input2=''):
+
+def refine_shapes_for_broadcast(shape1, shape2):
+
+def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
+
+def simplify_axis_shape(shape, axis):
+
+def shape_refine(shape, reduce_axis=None, keep_dims=True):
+
+def refine_axis(axis, shape):
+
+def axis_check(shape_len, axis):
+
+def produce_shapes(shape1, shape2):
+
+def check_reduce_need_refine(shape, reduce_axis, keep_dims):
+
+def scalar2tensor_one(shape):
+
+def axis_transform_5d(axis, data_format):
+
+def compare_tensor_dict_key(dict1, dict2, dict_key):
+
+def get_shape_size(shape):
+
+def cast(x, dtype):
+
+def shape_to_list(shape):
