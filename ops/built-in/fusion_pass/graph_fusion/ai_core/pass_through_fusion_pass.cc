@@ -200,6 +200,8 @@ Status PassThroughFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   vector<ge::GeTensorPtr> weights = {assitPtr};
   ge::OpDescUtils::SetWeights(passThroughNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(passThroughNode);
+  FUSION_PASS_CHECK(constInputNodes.empty(),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, fusion failed."), return PARAM_INVALID);
   NodePtr constInput = constInputNodes[0];
   constInput->GetOpDesc()->SetType(CONSTANTOP);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]: Success to do PassThroughFusionPass.", passThroughName.c_str());

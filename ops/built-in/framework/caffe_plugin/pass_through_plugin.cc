@@ -36,7 +36,7 @@ Status ParseParamsPassThrough(const Message* op_origin, ge::Operator& op_dest) {
   // get layer
   const caffe::ReorgParameter& param = layer->reorg_param();
   if (param.has_stride()) {
-    op_dest.SetAttr("stride", (int32_t)param.stride());
+    op_dest.SetAttr("stride", static_cast<int32_t>(param.stride()));
   }
   if (param.has_reverse()) {
     op_dest.SetAttr("reverse", param.reverse());
