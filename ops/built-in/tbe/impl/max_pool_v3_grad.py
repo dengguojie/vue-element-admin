@@ -1181,13 +1181,13 @@ class MaxpoolV3Grad():
                 with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
                     col_index = index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * ho_idx
                     mask_index = self.wo * C0 * ho_idx
-                    self._vector_op("vadd", col2img_fp32_ub[col_index], grad_sel_ub_fp32[mask_index],
-                                    col2img_fp32_ub[col_index], "float32", self.wo * C0 // 2,
+                    self._vector_op("vadd", col2img_fp32_ub[col_index:], grad_sel_ub_fp32[mask_index:],
+                                    col2img_fp32_ub[col_index:], "float32", self.wo * C0 // 2,
                                     stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                   self.stride_w * 16, self.stride_w * 16, 16))
-                    self._vector_op("vadd", col2img_fp32_ub[col_index + 8],
-                                    grad_sel_ub_fp32[mask_index + 8],
-                                    col2img_fp32_ub[col_index + 8], "float32", self.wo * C0 // 2,
+                    self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
+                                    grad_sel_ub_fp32[mask_index + 8:],
+                                    col2img_fp32_ub[col_index + 8:], "float32", self.wo * C0 // 2,
                                     stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                   self.stride_w * 16, self.stride_w * 16, 16))
 
@@ -1332,14 +1332,14 @@ class MaxpoolV3Grad():
                         col_index = index_h * wi * C0 + index_w * C0 + \
                                     wi * C0 * self.stride_h * h_idx
                         mask_idx = self.wo * C0 * h_idx
-                        self._vector_op("vadd", col2img_fp32_ub[col_index],
-                                        grad_sel_ub_fp32[mask_idx],
-                                        col2img_fp32_ub[col_index], "float32", self.wo * C0 // 2,
+                        self._vector_op("vadd", col2img_fp32_ub[col_index:],
+                                        grad_sel_ub_fp32[mask_idx:],
+                                        col2img_fp32_ub[col_index:], "float32", self.wo * C0 // 2,
                                         stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                       self.stride_w * 16, self.stride_w * 16, 16))
-                        self._vector_op("vadd", col2img_fp32_ub[col_index + 8],
-                                        grad_sel_ub_fp32[mask_idx + 8],
-                                        col2img_fp32_ub[col_index + 8], "float32", self.wo * C0 // 2,
+                        self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
+                                        grad_sel_ub_fp32[mask_idx + 8:],
+                                        col2img_fp32_ub[col_index + 8:], "float32", self.wo * C0 // 2,
                                         stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                       self.stride_w * 16, self.stride_w * 16, 16))
 
@@ -1513,14 +1513,14 @@ class MaxpoolV3Grad():
                         col_index = index_h * wi * C0 + index_w * C0 + \
                                     wi * C0 * self.stride_h * h_idx
                         mask_idx = self.wo * C0 * h_idx
-                        self._vector_op("vadd", col2img_fp32_ub[col_index],
-                                        grad_sel_ub_fp32[mask_idx],
-                                        col2img_fp32_ub[col_index], "float32", self.wo * C0 // 2,
+                        self._vector_op("vadd", col2img_fp32_ub[col_index:],
+                                        grad_sel_ub_fp32[mask_idx:],
+                                        col2img_fp32_ub[col_index:], "float32", self.wo * C0 // 2,
                                         stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                       self.stride_w * 16, self.stride_w * 16, 16))
-                        self._vector_op("vadd", col2img_fp32_ub[col_index + 8],
-                                        grad_sel_ub_fp32[mask_idx + 8],
-                                        col2img_fp32_ub[col_index + 8], "float32", self.wo * C0 // 2,
+                        self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
+                                        grad_sel_ub_fp32[mask_idx + 8:],
+                                        col2img_fp32_ub[col_index + 8:], "float32", self.wo * C0 // 2,
                                         stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                       self.stride_w * 16, self.stride_w * 16, 16))
 
@@ -1941,16 +1941,16 @@ class MaxpoolV3Grad():
                                         each_process_wi * C0 * self.stride_h * h_idx
                             mask_idx = each_process_wo * C0 * h_idx
 
-                            self._vector_op("vadd", col2img_fp32_ub[col_index],
-                                            grad_sel_ub_fp32[mask_idx],
-                                            col2img_fp32_ub[col_index], "float32",
+                            self._vector_op("vadd", col2img_fp32_ub[col_index:],
+                                            grad_sel_ub_fp32[mask_idx:],
+                                            col2img_fp32_ub[col_index:], "float32",
                                             each_process_wo * C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
                                                           16))
-                            self._vector_op("vadd", col2img_fp32_ub[col_index + 8],
-                                            grad_sel_ub_fp32[mask_idx + 8],
-                                            col2img_fp32_ub[col_index + 8], "float32",
+                            self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
+                                            grad_sel_ub_fp32[mask_idx + 8:],
+                                            col2img_fp32_ub[col_index + 8:], "float32",
                                             each_process_wo * C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
@@ -2233,16 +2233,16 @@ class MaxpoolV3Grad():
                             col_index = index_h * each_process_wi * C0 + index_w * C0 + \
                                         each_process_wi * C0 * self.stride_h * h_idx
                             mask_idx = each_process_wo * C0 * h_idx
-                            self._vector_op("vadd", col2img_fp32_ub[col_index],
-                                            grad_sel_ub_fp32[mask_idx],
-                                            col2img_fp32_ub[col_index], "float32",
+                            self._vector_op("vadd", col2img_fp32_ub[col_index:],
+                                            grad_sel_ub_fp32[mask_idx:],
+                                            col2img_fp32_ub[col_index:], "float32",
                                             remain_wo_nums * C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
                                                           16))
-                            self._vector_op("vadd", col2img_fp32_ub[col_index + 8],
-                                            grad_sel_ub_fp32[mask_idx + 8],
-                                            col2img_fp32_ub[col_index + 8], "float32",
+                            self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
+                                            grad_sel_ub_fp32[mask_idx + 8:],
+                                            col2img_fp32_ub[col_index + 8:], "float32",
                                             remain_wo_nums * C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
