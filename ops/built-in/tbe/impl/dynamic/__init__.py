@@ -18,6 +18,7 @@ dynamic operator
 # pylint: disable=W0622
 from __future__ import absolute_import as _abs
 
+from .softsign import softsign
 from .softplus_grad import softplus_grad
 from .softplus import softplus
 from .unsorted_segment_sum import unsorted_segment_sum
