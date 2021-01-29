@@ -13,39 +13,37 @@
 # limitations under the License.
 # ============================================================================
 
-if(BUILD_OPEN_PROJECT)
-  file(GLOB PLUGIN_TC_FILES *plugin.cpp)
-  message(STATUS PLUGIN_TC_FILES=${PLUGIN_TC_FILES})
-  add_executable(ops_cpp_onnx_plugin_utest
-    ${PLUGIN_TC_FILES}
-    )
+file(GLOB PLUGIN_TC_FILES *plugin.cpp)
+message(STATUS PLUGIN_TC_FILES=${PLUGIN_TC_FILES})
+add_executable(ops_cpp_onnx_plugin_utest
+        ${PLUGIN_TC_FILES}
+        )
 
-  target_include_directories(ops_cpp_onnx_plugin_utest PRIVATE
-    ${GTEST_INCLUDE}
-    ${METADEF_INCLUDE}/graph
-    ${ATC_INCLUDE}/parser
-    )
+target_include_directories(ops_cpp_onnx_plugin_utest PRIVATE
+        ${GTEST_INCLUDE}
+        ${METADEF_INCLUDE}/graph
+        ${ATC_INCLUDE}/parser
+        )
 
-  target_compile_definitions(ops_cpp_onnx_plugin_utest PRIVATE
-    _GLIBCXX_USE_CXX11_ABI=0
-    )
+target_compile_definitions(ops_cpp_onnx_plugin_utest PRIVATE
+        _GLIBCXX_USE_CXX11_ABI=0
+        )
 
-  target_compile_options(ops_cpp_onnx_plugin_utest PUBLIC
-    -O0
-    -Dgoogle=ascend_private
-    )
+target_compile_options(ops_cpp_onnx_plugin_utest PUBLIC
+        -O0
+        -Dgoogle=ascend_private
+        )
 
-  target_link_libraries(ops_cpp_onnx_plugin_utest PRIVATE
-    -Wl,--whole-archive
-    ops_all_onnx_plugin_llt
-    opsproto_llt
-    -Wl,--no-whole-archive
-    fmk_onnx_parser
-    )
+target_link_libraries(ops_cpp_onnx_plugin_utest PRIVATE
+        -Wl,--whole-archive
+        ops_all_onnx_plugin_llt
+        opsproto_llt
+        -Wl,--no-whole-archive
+        fmk_onnx_parser
+        )
 
-  add_custom_command(
-    TARGET  ops_cpp_onnx_plugin_utest POST_BUILD
-    COMMAND export LD_LIBRARY_PATH=${ASCEND_ATC_DIR} && ./ops_cpp_onnx_plugin_utest
-    COMMENT "Run ops plugin utest"
-  )
-endif()
+add_custom_command(
+        TARGET ops_cpp_onnx_plugin_utest POST_BUILD
+        COMMAND export LD_LIBRARY_PATH=${ASCEND_ATC_DIR} && ./ops_cpp_onnx_plugin_utest
+        COMMENT "Run ops plugin utest"
+)
