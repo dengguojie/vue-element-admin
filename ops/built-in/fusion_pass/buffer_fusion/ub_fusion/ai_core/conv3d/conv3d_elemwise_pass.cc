@@ -103,8 +103,26 @@ Status TbeConv3dElemwisePass::GetFusionNodes(const BufferFusionMapping& mapping,
   }
 
   fusion_nodes = GetMatchedNodes(mapping);
+
+  // buffer fusion do not support dynamic shape now
+  vector<ge::NodePtr> conv3dNodes = GetMatchedNodesByDescName(PATTERN_CONV3D, mapping);
+  for (const auto& conv3dNode : conv3dNodes){
+    vector<int64_t> input0Dims = conv3dNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = conv3dNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    vector<int64_t> allDims;
+    allDims.resize(input0Dims.size() + input1Dims.size());
+    merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
+    for (auto singleDim : allDims) {
+      if (singleDim < 0) {
+        fusion_nodes.clear();
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        return SUCCESS;
+      }
+    }
+  }
+
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do conv3d_elemwise!");
-  
+
   return SUCCESS;
 }
 
