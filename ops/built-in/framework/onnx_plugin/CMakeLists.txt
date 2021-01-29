@@ -32,7 +32,7 @@ set(_onnx_plugins
   ascend_requant_plugin.cc
   ascend_requant_s16_plugin.cc
   batch_normalization_plugin.cc
-  BatchMultiClassNonMaxSuppression_plugin.cc
+  batch_multi_class_non_max_suppression_plugin.cc
   concat_plugin.cc
   conv2d_plugin.cc
   div_plugin.cc
