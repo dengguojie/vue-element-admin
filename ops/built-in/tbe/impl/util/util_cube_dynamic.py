@@ -167,7 +167,8 @@ class CubeParaProcess:
             if dim[0] == DYNAMIC_FLAG:
                 if not dim[1]:
                     err_man.raise_err_specific_user(self.op_type, "must specify range when shape is -1")
-                _check_range(dim[1], index)
+                if dim[1][1]:
+                    _check_range(dim[1], index)
 
     def check_para_dim(self, seq, seq_name):
         """
