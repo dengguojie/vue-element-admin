@@ -25,59 +25,68 @@
 #include <string>
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
-using std::map;
-using std::string;
-using std::vector;
-using namespace ge;
-using namespace std;
-
 namespace fe {
-struct PassRemoveEdge {
-  InDataAnchorPtr inAnchorPtr;
-  OutDataAnchorPtr outAnchorPtr;
+    struct PassRemoveEdge {
+        ge::InDataAnchorPtr inAnchorPtr;
+        ge::OutDataAnchorPtr outAnchorPtr;
 };
 
 // Match result.
-struct PassMatchResult {
-  NodePtr batchNormPtr;
-  vector<OutDataAnchorPtr> bnInAnchorVec;
-  vector<InDataAnchorPtr> bnOutAnchorVec;
-  vector<NodePtr> variableNodeVec;
-  vector<NodePtr> assignSubNodeVec;
-  vector<NodePtr> subNodeVec;
-  vector<NodePtr> mulNodeVec;
-  vector<NodePtr> dataNodeVec;
-  vector<OutDataAnchorPtr> dataNodeOutAnchorVec;
-  vector<NodePtr> constNodeVec;
-  NodePtr outNodePtr;
-  vector<NodePtr> switchNodeVec;
-  vector<NodePtr> fwkNodeVec;
-  vector<NodePtr> castInVec;
-  vector<NodePtr> castOutVec;
-  vector<PassRemoveEdge> removeEdgeVec;
-  vector<OutDataAnchorPtr> bnOtherOutAnchorVec;
+    struct PassMatchResult {
+        ge::NodePtr batchNormPtr;
+        std::vector<ge::OutDataAnchorPtr> bnInAnchorVec;
+        std::vector<ge::InDataAnchorPtr> bnOutAnchorVec;
+        std::vector<ge::NodePtr> variableNodeVec;
+        std::vector<ge::NodePtr> assignSubNodeVec;
+        std::vector<ge::NodePtr> subNodeVec;
+        std::vector<ge::NodePtr> mulNodeVec;
+        std::vector<ge::NodePtr> dataNodeVec;
+        std::vector<ge::OutDataAnchorPtr> dataNodeOutAnchorVec;
+        std::vector<ge::NodePtr> constNodeVec;
+        ge::NodePtr outNodePtr;
+        std::vector<ge::NodePtr> switchNodeVec;
+        std::vector<ge::NodePtr> fwkNodeVec;
+        std::vector<ge::NodePtr> castInVec;
+        std::vector<ge::NodePtr> castOutVec;
+        std::vector<PassRemoveEdge> removeEdgeVec;
+        std::vector<ge::OutDataAnchorPtr> bnOtherOutAnchorVec;
 };
 
 class FusedBatchnormFusionPass : public PatternFusionBasePass {
- protected:
-  vector<FusionPattern*> DefinePatterns() override;
-  Status Run(ge::ComputeGraph& graph) override;
-  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+    public:
+    FusedBatchnormFusionPass() {
+        FUSED_OP_TYPE = "BNTrainingReduce_BNTrainingUpdate";
+        PASS_OP_TYPE_BATCHNORM = "BatchNorm";
+        PASS_OP_TYPE_SUB = "Sub";
+        PASS_OP_TYPE_BNREDUCE = "BNTrainingReduce";
+        PASS_OP_TYPE_BNUPDATE = "BNTrainingUpdate";
+        STREAM_LABEL = "_stream_label";
+    }
+    protected:
+    std::vector<FusionPattern*> DefinePatterns() override;
+    Status Run(ge::ComputeGraph& graph) override;
+    Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<ge::NodePtr>& fusionNodes) override;
 
- private:
-  Status MatchPass(ge::ComputeGraph& graph, vector<PassMatchResult>& passMatchResultVec);
-  Status GetAllBatchNormNodes(ge::ComputeGraph& graph, vector<NodePtr>& batchNormNodeVec);
-  Status MatchBatchNormNode(NodePtr bnNodePtr, PassMatchResult& matchResult);
-  Status MatchSubNode(NodePtr subNodePtr, PassMatchResult& matchResult);
-  Status FusionGraphWithPass(ge::ComputeGraph& graph, PassMatchResult& matchResult);
+    Status MatchPass(ge::ComputeGraph& graph, std::vector<PassMatchResult>& passMatchResultVec);
+    Status GetAllBatchNormNodes(ge::ComputeGraph& graph, std::vector<ge::NodePtr>& batchNormNodeVec);
+    Status MatchBatchNormNode(ge::NodePtr bnNodePtr, PassMatchResult& matchResult);
+    Status MatchSubNode(ge::NodePtr subNodePtr, PassMatchResult& matchResult);
+    Status FusionGraphWithPass(ge::ComputeGraph& graph, PassMatchResult& matchResult);
 
-  NodePtr FindInputNode(NodePtr nodePtr, string opType, PassMatchResult& matchResult, bool isRemoveEdge);
-  NodePtr FindOutputNode(NodePtr nodePtr, string opType, PassMatchResult& matchResult, bool isRemoveEdge);
-  NodePtr FindOutputNodeByName(NodePtr nodePtr, string opName, PassMatchResult& matchResult, bool isRemoveEdge);
-  NodePtr FindInputNodeByIndex(NodePtr nodePtr, unsigned int index, PassMatchResult& matchResult, bool isRemoveEdge);
-  Status SetOutputTensorDescAttr(uint16_t originOutputIndex, uint16_t fuseOutputIndex, ge::NodePtr originNode,
-                                 ge::NodePtr fuseNode);
-  const string FUSED_OP_TYPE = "BNTrainingReduce_BNTrainingUpdate";
+    ge::NodePtr FindInputNode(ge::NodePtr nodePtr, std::string opType, PassMatchResult& matchResult, bool isRemoveEdge);
+    ge::NodePtr FindOutputNode(ge::NodePtr nodePtr, std::string opType, PassMatchResult& matchResult, bool isRemoveEdge);
+    ge::NodePtr FindOutputNodeByName(ge::NodePtr nodePtr, std::string opName, PassMatchResult& matchResult, bool isRemoveEdge);
+    ge::NodePtr FindInputNodeByIndex(ge::NodePtr nodePtr, unsigned int index, PassMatchResult& matchResult, bool isRemoveEdge);
+    Status SetOutputTensorDescAttr(uint16_t originOutputIndex, uint16_t fuseOutputIndex, ge::NodePtr originNode,
+                                   ge::NodePtr fuseNode);
+
+    std::string FUSED_OP_TYPE;
+    std::string PASS_OP_TYPE_BATCHNORM;
+    std::string PASS_OP_TYPE_SUB;
+
+    std::string PASS_OP_TYPE_BNREDUCE;
+    std::string PASS_OP_TYPE_BNUPDATE;
+    std::string STREAM_LABEL;
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_FUSEDBATCHNORM_FUSION_PASS_H_

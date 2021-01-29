@@ -143,7 +143,7 @@ def batch_norm_grad_compute(y_backprop, x, scale, reserve_space_1,
     # output_offset
     offset_backprop = tbe.vadds(offset_backprop, tvm.const(SCALAR_ZERO, "float32"))
 
-    if format_data != "NC1HWC0":
+    if format_data not in ("NC1HWC0", "NDC1HWC0"):
         scale_backprop = tbe.sum(scale_backprop, axis, False)
         offset_backprop = tbe.sum(offset_backprop, axis, False)
 
@@ -220,12 +220,12 @@ def _format_check(arg_input, data_format):
     None
     """
     format_data = arg_input.get("format")
-    if format_data not in ("NHWC", "NCHW", "NC1HWC0"):
+    if format_data not in ("NHWC", "NCHW", "NC1HWC0", "NDC1HWC0"):
         error_manager_vector.raise_err_input_format_invalid("batch_norm_grad", "arg_input", \
-                                                            ["NHWC", "NCHW", "NC1HWC0"], format_data)
-    if data_format not in ("NHWC", "NCHW"):
+                                                            ["NHWC", "NCHW", "NC1HWC0", "NDC1HWC0"], format_data)
+    if data_format not in ("NHWC", "NCHW", "NCDHW", "NDHWC"):
         error_manager_vector.raise_err_input_format_invalid("batch_norm_grad", "data_format", \
-                                                            ["NHWC", "NCHW"], data_format)
+                                                            ["NHWC", "NCHW", "NCDHW", "NDHWC"], data_format)
 
 
 def _check_shape_len(shape_y_backprop, shape_x, shape_scale,
@@ -265,15 +265,14 @@ def _check_shape_len(shape_y_backprop, shape_x, shape_scale,
             error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
                                                                "scale,reserve_space_1,reserve_space_2", error_detail)
     else:
-        if len(shape_y_backprop) != 5 or len(shape_x) != 5 or len(
-                shape_scale) != 5:
-            error_detail = "This operator can only support 5D, " \
+        if len(shape_y_backprop) not in (5, 6) or len(shape_scale) not in (5, 6):
+            error_detail = "This operator can only support 5D or 6D, " \
                            "but (y_backprop,x,scale)'s shape length is %d,%d,%d" \
                            %(len(shape_y_backprop), len(shape_x), len(shape_scale))
             error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
                                                                "y_backprop,x,scale", error_detail)
-        if len(shape_reserve_space_1) != 5 or len(shape_reserve_space_2) != 5:
-            error_detail = "the shape length of reserve_space_1 and reserve_space_2 is not 5!"
+        if len(shape_reserve_space_1) not in (5, 6) or len(shape_reserve_space_2) not in (5, 6):
+            error_detail = "the shape length of reserve_space_1 and reserve_space_2 is not 5 or 6!"
             error_manager_vector.raise_err_two_input_shape_invalid("batch_norm_grad", "reserve_space_1", \
                                                                "reserve_space_2", error_detail)
 
@@ -304,29 +303,29 @@ def _check_shape(shape_y_backprop, shape_x, shape_scale, shape_reserve_space_1,
     para_check.check_shape(shape_scale, param_name="scale")
     para_check.check_shape(shape_reserve_space_1, param_name="reserve_space_1")
     para_check.check_shape(shape_reserve_space_2, param_name="reserve_space_2")
-
-    if data_format == "NHWC":
-        if shape_scale[-1] != shape_y_backprop[-1]:
+    if data_format in ("NHWC", "NCHW"):
+        shape_c0 = shape_y_backprop[-1] if data_format == "NHWC" else shape_y_backprop[1]
+        if shape_scale[-1] != shape_c0:
             error_detail = "shape_scale's last dim must be same as shape_y_backprop's!"
             error_manager_vector.raise_err_two_input_shape_invalid("batch_norm_grad", "scale", \
                                                                    "y_backprop", error_detail)
-    elif data_format == "NCHW":
-        if shape_scale[-1] != shape_y_backprop[1]:
-            error_detail = "shape_scale's last dim must be same as shape_y_backprop's second dim!"
-            error_manager_vector.raise_err_two_input_shape_invalid("batch_norm_grad", "scale", \
-                                                                   "y_backprop", error_detail)
     else:
-        dim_c1 = shape_y_backprop[1]
-        dim_c0 = shape_y_backprop[4]
-        if dim_c0 != 16:
-            error_detail = "shape_y_backprop last dim must be 16"
-            error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
-                                                               "y_backprop", error_detail)
-        if shape_scale[0] != 1 or shape_scale[2] != 1 or shape_scale[3] != 1:
+        shape_n = shape_scale[0]
+        if data_format == "NDC1HWC0":
+            shape_h = shape_scale[3]
+            shape_w = shape_scale[4]
+            dim_c1 = shape_y_backprop[2]
+            shape_c1 = shape_scale[2]
+        else:
+            shape_h = shape_scale[2]
+            shape_w = shape_scale[3]
+            dim_c1 = shape_y_backprop[1]
+            shape_c1 = shape_scale[1]
+        if shape_n != 1 or shape_h != 1 or shape_w != 1:
             error_detail = "Dimensions except Dimension C must be one for shape_scale"
             error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
                                                                "scale", error_detail)
-        if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
+        if shape_c1 != dim_c1:
             error_detail = "Dimension C must be equal"
             error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
                                                                "scale", error_detail)
@@ -365,6 +364,13 @@ def _change_shape(shape_scale, shape_reserve_space_1, shape_reserve_space_2,
             1, 1]
         shape_reserve_space_2_change = [1] + list(shape_reserve_space_2) + [
             1, 1]
+    elif data_format == "NDC1HWC0":
+        shape_scale_change = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3],
+                              shape_scale[4], shape_scale[5]]
+        shape_reserve_space_1_change = [shape_reserve_space_1[0] * shape_reserve_space_1[1], shape_reserve_space_1[2],
+                                        shape_reserve_space_1[3], shape_reserve_space_1[4], shape_reserve_space_1[5]]
+        shape_reserve_space_2_change = [shape_reserve_space_2[0] * shape_reserve_space_2[1], shape_reserve_space_2[2],
+                                        shape_reserve_space_2[3], shape_reserve_space_2[4], shape_reserve_space_2[5]]
     else:
         shape_scale_change = shape_scale
         shape_reserve_space_1_change = shape_reserve_space_1
@@ -481,6 +487,10 @@ def batch_norm_grad(y_backprop, x, scale, reserve_space_1, reserve_space_2,
 
     shape_list = _change_shape(shape_scale, shape_reserve_space_1,
                                shape_reserve_space_2, format_data)
+    if format_data == "NDC1HWC0":
+        shape_y_backprop = [shape_y_backprop[0] * shape_y_backprop[1], shape_y_backprop[2],
+                            shape_y_backprop[3], shape_y_backprop[4], shape_y_backprop[5]]
+        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
 
     y_backprop = tvm.placeholder(shape_y_backprop, name="y_backprop",
                                  dtype=y_backprop_dtype)

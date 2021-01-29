@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("BatchNorm", "impl.batch_norm", "batch_norm")
+ut_case = OpUT("BatchNorm3d", "impl.batch_norm3d", "batch_norm3d")
 
 def gen_batch_norm_case(shape_x, shape_scale, shape_mean, shape_reserve, dtype_x,
                         dtype_other, format, case_name_val, expect):
@@ -23,14 +23,9 @@ def gen_batch_norm_case(shape_x, shape_scale, shape_mean, shape_reserve, dtype_x
 
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
-                 gen_batch_norm_case((1,2,3,4,16), (1,2,1,1,16), (0,), (), "float16",
-                                     "float32", "NC1HWC0", "batch_norm_1", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
                  gen_batch_norm_case((1,1,2,3,4,16), (1,1,2,1,1,16), (0,), (), "float16",
                                      "float32", "NDC1HWC0", "batch_norm_4", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
-                 gen_batch_norm_case((2,16,384,576,16), (1,16,1,1,16), (1,16,1,1,16), (), "float16",
-                                     "float32", "NC1HWC0", "batch_norm_3", "success"))
+
 if __name__ == '__main__':
     # ut_case.run("Ascend910")
     ut_case.run()

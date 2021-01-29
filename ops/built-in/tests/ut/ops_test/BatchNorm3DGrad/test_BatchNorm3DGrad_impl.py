@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("BatchNormGrad", None, None)
+ut_case = OpUT("BatchNorm3dGrad", None, None)
 
 def gen_batch_norm_grad_case(shape_x, shape_scale, shape_offset, shape_mean, shape_variance, dtype_x,
                             dtype_other, format, case_name_val, expect):
@@ -26,9 +26,6 @@ def gen_batch_norm_grad_case(shape_x, shape_scale, shape_offset, shape_mean, sha
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
                  gen_batch_norm_grad_case((2,1,1,3,4,16), (2,1,1,3,4,16), (1,1,1,1,1,16), (1,1,1,1,1,16), (1,1,1,1,1,16), "float16",
                                             "float32", "NDC1HWC0", "batch_norm_grad_2", "success"))
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
-                 gen_batch_norm_grad_case((2,3,4,2), (2,3,4,2), (2,), (2,), (2,), "float16",
-                                            "float32", "NHWC", "batch_norm_grad_1", "success"))
 
 if __name__ == '__main__':
     ut_case.run()

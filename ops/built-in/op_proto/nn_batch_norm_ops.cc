@@ -60,6 +60,39 @@ INFER_FUNC_REG(BatchNorm, BatchNormInferShape);
 VERIFY_FUNC_REG(BatchNorm, BatchNormVerify);
 // -----------------------------BatchNorm END----------------------------
 
+// -----------------------------BatchNorm3D------------------------------
+IMPLEMT_VERIFIER(BatchNorm3D, BatchNorm3DVerify) {
+  if (!CheckTwoInputDtypeSame(op, "scale", "offset")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(BatchNorm3D, BatchNorm3DInferShape) {
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
+    if (data_format != "NDHWC" && data_format != "NCDHW") {
+      string expected_format_list = ConcatString("NDHWC, NCDHW");
+      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
+      OP_LOGE(op.GetName().c_str(),
+              "data_format only "
+              "support 'NDHWC' and 'NCDHW'.");
+      return GRAPH_FAILED;
+    }
+  }
+  if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "scale", {"batch_mean", "batch_variance", "reserve_space_1", "reserve_space_2"})) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(BatchNorm3D, BatchNorm3DInferShape);
+VERIFY_FUNC_REG(BatchNorm3D, BatchNorm3DVerify);
+// -----------------------------BatchNorm3D END----------------------------
+
 // -----------------------------BatchNormExt2------------------------------
 IMPLEMT_VERIFIER(BatchNormExt2, BatchNormExt2Verify) {
   if (!CheckTwoInputDtypeSame(op, "input_scale", "input_offset")) {
@@ -168,6 +201,57 @@ IMPLEMT_INFERFUNC(BatchNormGrad, BatchNormGradInferShape) {
 INFER_FUNC_REG(BatchNormGrad, BatchNormGradInferShape);
 VERIFY_FUNC_REG(BatchNormGrad, BatchNormGradVerify);
 // ---------------------------BatchNormGrad END-----------------------------
+
+// ---------------------------BatchNorm3DGrad------------------------------
+IMPLEMT_VERIFIER(BatchNorm3DGrad, BatchNorm3DGradVerify) {
+  if (!CheckTwoInputDtypeSame(op, "y_backprop", "x")) {
+    return GRAPH_FAILED;
+  }
+  if ((!CheckTwoInputDtypeSame(op, "scale", "reserve_space_1")) ||
+      (!CheckTwoInputDtypeSame(op, "scale", "reserve_space_2"))) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(BatchNorm3DGrad, BatchNorm3DGradInferShape) {
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
+    if (data_format != "NDHWC" && data_format != "NCDHW") {
+      string expected_format_list = ConcatString("NDHWC, NCDHW");
+      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
+      OP_LOGE(op.GetName().c_str(),
+              "data_format only "
+              "support 'NDHWC' and 'NCDHW'.");
+      return GRAPH_FAILED;
+    }
+  }
+
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "x", "y_backprop", {"x_backprop"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "scale", {"scale_backprop", "offset_backprop"})) {
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> oShapeVector;
+  // update reserve_space_4
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_desc = op_info->MutableOutputDesc("reserve_space_4");
+  output_desc->SetShape(GeShape(oShapeVector));
+  output_desc->SetDataType(DT_FLOAT);
+
+  // update reserve_space_5
+  output_desc = op_info->MutableOutputDesc("reserve_space_5");
+  output_desc->SetShape(GeShape(oShapeVector));
+  output_desc->SetDataType(DT_FLOAT);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(BatchNorm3DGrad, BatchNorm3DGradInferShape);
+VERIFY_FUNC_REG(BatchNorm3DGrad, BatchNorm3DGradVerify);
+// ---------------------------BatchNorm3DGrad END-----------------------------
 
 // ---------------------------BatchNormGradExt2------------------------------
 IMPLEMT_VERIFIER(BatchNormGradExt2, BatchNormGradExt2Verify) {

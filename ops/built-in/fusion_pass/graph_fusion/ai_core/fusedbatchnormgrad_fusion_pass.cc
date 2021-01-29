@@ -36,26 +36,9 @@
 #include "pattern_fusion_util.h"
 
 namespace fe {
-
-static const string PATTERN_FUSEDBATCHNORMGRAD = "BatchNormGrad";
-
-static const string PASS_OP_TYPE_BATCHNORMGRAD = "BatchNormGrad";
-static const string PASS_OP_TYPE_BNREDUCEGRAD = "BNTrainingReduceGrad";
-static const string PASS_OP_TYPE_BNUPDATEGRAD = "BNTrainingUpdateGrad";
-
-/* BatchNormGrad */
-static const std::string BATCHNORMGRAD_ATTR_MODE = "mode";
-static const std::string BATCHNORMGRAD_ATTR_EPSILON = "epsilon";
-static const std::string BATCHNORMGRAD_ATTR_USE_GLOBAL_STATS = "use_global_stats";
-static const std::string BATCHNORMGRAD_ATTR_SCALE = "scale";
-static const std::string BATCHNORMGRAD_ATTR_BIAS = "bias";
-static const std::string BATCHNORMGRAD_ATTR_TRAINING = "is_training";
-
-static const std::string STREAM_LABEL = "_stream_label";
-
 vector<FusionPattern*> FusedBatchNormGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("FusedBatchNormGradFusion");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern(PATTERN_FUSEDBATCHNORMGRAD);
   pattern->AddOpDesc(PATTERN_FUSEDBATCHNORMGRAD, {PASS_OP_TYPE_BATCHNORMGRAD}).SetOutput(PATTERN_FUSEDBATCHNORMGRAD);
   patterns.push_back(pattern);
   return patterns;

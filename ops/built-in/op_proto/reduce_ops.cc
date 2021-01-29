@@ -1043,6 +1043,113 @@ INFER_FUNC_REG(BNTrainingUpdateV3, BNTrainingUpdateV3InferShape);
 VERIFY_FUNC_REG(BNTrainingUpdateV3, BNTrainingUpdateV3Verify);
 // --------------BNTrainingUpdateV3 End--------------------
 
+// ----------------BN3DTrainingReduce-------------------
+IMPLEMT_COMMON_INFERFUNC(BN3DTrainingReduceInferShape) {
+  auto tensordesc = op.GetInputDesc("x");
+  auto shape = tensordesc.GetShape();
+  auto format = tensordesc.GetFormat();
+  std::vector<int64_t> shapeVector = shape.GetDims();
+  size_t dimNum = shapeVector.size();
+  std::vector<int64_t> oShapeVector;
+
+  if (format == FORMAT_NDHWC) {
+    if (dimNum == 5) {
+      oShapeVector.push_back(shapeVector[4]);
+    } else {
+      OpsInputShapeDimErrReport(op.GetName(), "x", "5", "5", ConcatString(dimNum));
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 4 when NDHWC.", shapeVector.size());
+      return GRAPH_FAILED;
+    }
+  } else if (format == FORMAT_NCDHW) {
+    if (dimNum >= 2 && dimNum <= 5) {
+      oShapeVector.push_back(shapeVector[1]);
+    } else {
+      OpsInputShapeDimErrReport(op.GetName(), "x", "5", "5", ConcatString(dimNum));
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 2-4 when NCDHW.", shapeVector.size());
+      return GRAPH_FAILED;
+    }
+  } else if (format == FORMAT_NDC1HWC0) {
+    if (dimNum == 6) {
+      oShapeVector.push_back(1);
+      oShapeVector.push_back(1);
+      oShapeVector.push_back(shapeVector[2]);
+      oShapeVector.push_back(1);
+      oShapeVector.push_back(1);
+      oShapeVector.push_back(shapeVector[5]);
+    } else {
+      OpsInputShapeDimErrReport(op.GetName(), "x", "6", "6", ConcatString(dimNum));
+      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 5 when NDC1HWC0.", shapeVector.size());
+      return GRAPH_FAILED;
+    }
+  } else {
+    OpsInputFormatErrReport(op.GetName().c_str(), "inputFormat", "NCHW or NHWC or NCDHW or NDHWC", ConcatString(format));
+    OP_LOGE(op.GetName().c_str(), "This op can only support NCHW , NHWC, NDHWC, NCDHW, NDC1HWC0");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc td = op.GetOutputDesc("sum");
+  Shape oShape(oShapeVector);
+  td.SetShape(oShape);
+  td.SetDataType(DT_FLOAT);
+  op.UpdateOutputDesc("sum", td);
+  op.UpdateOutputDesc("square_sum", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(BN3DTrainingReduce, BN3DTrainingReduceInferShape);
+// ------------------BN3DTrainingReduce END-----------------
+
+// ----------------BN3DTrainingReduceGrad-------------------
+IMPLEMT_VERIFIER(BN3DTrainingReduceGrad, BN3DTrainingReduceGradVerify) {
+  if (!CheckTwoInputDtypeSame(op, "grads", "x")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(BN3DTrainingReduceGrad, ELMTWISE_INFER_SHAPEANDTYPE("grads", "y"));
+
+VERIFY_FUNC_REG(BN3DTrainingReduceGrad, BN3DTrainingReduceGradVerify);
+// ----------------BN3DTrainingReduceGrad END---------------
+
+// -------------------BN3DTrainingUpdate--------------------
+IMPLEMT_COMMON_INFERFUNC(BN3DTrainingUpdateInferShape) {
+  auto shape = op.GetInputDesc("x").GetShape();
+  auto output_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(shape);
+  td.SetDataType(output_dtype);
+  op.UpdateOutputDesc("y", td);
+
+  auto shape_scale = op.GetInputDesc("scale").GetShape();
+  auto output_dtype_scale = op.GetInputDesc("scale").GetDataType();
+
+  TensorDesc td_mean = op.GetOutputDesc("mean");
+  td_mean.SetShape(shape_scale);
+  td_mean.SetDataType(output_dtype_scale);
+  op.UpdateOutputDesc("mean", td_mean);
+
+  TensorDesc td_variance = op.GetOutputDesc("variance");
+  td_variance.SetShape(shape_scale);
+  td_variance.SetDataType(output_dtype_scale);
+  op.UpdateOutputDesc("variance", td_variance);
+
+  TensorDesc td_batch_mean = op.GetOutputDesc("batch_mean");
+  td_batch_mean.SetShape(shape_scale);
+  td_batch_mean.SetDataType(output_dtype_scale);
+  op.UpdateOutputDesc("batch_mean", td_batch_mean);
+
+  TensorDesc td_batch_variance = op.GetOutputDesc("batch_variance");
+  td_batch_variance.SetShape(shape_scale);
+  td_batch_variance.SetDataType(output_dtype_scale);
+  op.UpdateOutputDesc("batch_variance", td_batch_variance);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(BN3DTrainingUpdate, BN3DTrainingUpdateInferShape);
+// ------------------BN3DTrainingUpdate END---------------------
+
 // ------------------------BNInfer--------------------------
 IMPLEMT_VERIFIER(BNInfer, BNInferVerify) {
   return GRAPH_SUCCESS;
@@ -1080,6 +1187,34 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingUpdateGradInferShape) {
 COMMON_INFER_FUNC_REG(BNTrainingUpdateGrad, BNTrainingUpdateGradInferShape);
 VERIFY_FUNC_REG(BNTrainingUpdateGrad, BNTrainingUpdateGradVerify);
 // ----------------BNTrainingUpdateGrad END-------------------
+
+// ------------------BN3DTrainingUpdateGrad---------------------
+IMPLEMT_VERIFIER(BN3DTrainingUpdateGrad, BN3DTrainingUpdateGradVerify) {
+  if (!CheckTwoInputDtypeSame(op, "grads", "x")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_COMMON_INFERFUNC(BN3DTrainingUpdateGradInferShape) {
+  auto shape = op.GetInputDesc("batch_mean").GetShape();
+  auto output_dtype = op.GetInputDesc("batch_mean").GetDataType();
+
+  TensorDesc td_diff_scale = op.GetOutputDesc("diff_scale");
+  td_diff_scale.SetShape(shape);
+  td_diff_scale.SetDataType(output_dtype);
+  op.UpdateOutputDesc("diff_scale", td_diff_scale);
+
+  TensorDesc td_diff_offset = op.GetOutputDesc("diff_offset");
+  td_diff_offset.SetShape(shape);
+  td_diff_offset.SetDataType(output_dtype);
+  op.UpdateOutputDesc("diff_offset", td_diff_scale);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(BN3DTrainingUpdateGrad, BN3DTrainingUpdateGradInferShape);
+VERIFY_FUNC_REG(BN3DTrainingUpdateGrad, BN3DTrainingUpdateGradVerify);
+// ----------------BN3DTrainingUpdateGrad END-------------------
 
 // ----------------BNInferGrad-------------------------
 IMPLEMT_VERIFIER(BNInferGrad, BNInferGradVerify) {

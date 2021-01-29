@@ -39,15 +39,8 @@
 #include "fp16_t.hpp"
 #include "graph_optimizer/fusion_common/fusion_statistic_recorder.h"
 
+using namespace ge;
 namespace fe {
-
-static const string PASS_OP_TYPE_BATCHNORM = "BatchNorm";
-static const string PASS_OP_TYPE_SUB = "Sub";
-
-static const string PASS_OP_TYPE_BNREDUCE = "BNTrainingReduce";
-static const string PASS_OP_TYPE_BNUPDATE = "BNTrainingUpdate";
-static const string STREAM_LABEL = "_stream_label";
-
 vector<FusionPattern*> FusedBatchnormFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   return patterns;
@@ -553,7 +546,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
       OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constDataFp32);
       if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constDataFp32)) {
         OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
-	return FAILED;
+    return FAILED;
       }
     } else {
       float* constDataPtr = (float*)constTensor.GetData();
@@ -561,7 +554,7 @@ Status FusedBatchnormFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph, Pa
       OP_LOGI(FUSED_OP_TYPE.c_str(), "factor is %f", constData);
       if (!AttrUtils::SetFloat(bnUpdateNode->GetOpDesc(), "factor", constData)) {
         OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to set attr factor for bn update node.");
-	return FAILED;
+    return FAILED;
       }
     }
   } else {

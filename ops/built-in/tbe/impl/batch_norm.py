@@ -115,12 +115,12 @@ def _format_check(arg_input, data_format):
     None
     """
     format_data = arg_input.get("format")
-    if format_data not in ("NHWC", "NCHW", "NC1HWC0"):
+    if format_data not in ("NHWC", "NCHW", "NC1HWC0", "NDC1HWC0"):
         error_manager_vector.raise_err_input_format_invalid("batch_norm", "arg_input", \
-                                                            ["NHWC", "NCHW", "NC1HWC0"], format_data)
-    if data_format not in ("NHWC", "NCHW"):
+                                                            ["NHWC", "NCHW", "NC1HWC0", "NDC1HWC0"], format_data)
+    if data_format not in ("NHWC", "NCHW", "NCDHW", "NDHWC"):
         error_manager_vector.raise_err_input_format_invalid("batch_norm", "data_format", \
-                                                            ["NHWC", "NCHW"], data_format)
+                                                            ["NHWC", "NCHW", "NCDHW", "NDHWC"], data_format)
 
 
 def _check_dims_equal(shape_x, shape, data_format):
@@ -146,6 +146,15 @@ def _check_dims_equal(shape_x, shape, data_format):
             error_manager_vector.raise_err_input_shape_invalid("batch_norm", \
                                                                "x", error_detail)
         if shape[0] != 1 or shape[2] != 1 or shape[3] != 1:
+            error_detail = "Dimension N,H,W of scale,offset,mean,variance must be 1"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm", \
+                                                               "scale,offset,mean,variance", error_detail)
+    elif data_format == "NDC1HWC0":
+        if shape_x[2] != shape[2] or shape_x[5] != shape[5]:
+            error_detail = "The dimensions C1 C0 of shape_x and shape must be equal"
+            error_manager_vector.raise_err_input_shape_invalid("batch_norm", \
+                                                               "x", error_detail)
+        if shape[0] != 1 or shape[3] != 1 or shape[4] != 1:
             error_detail = "Dimension N,H,W of scale,offset,mean,variance must be 1"
             error_manager_vector.raise_err_input_shape_invalid("batch_norm", \
                                                                "scale,offset,mean,variance", error_detail)
@@ -181,6 +190,10 @@ def _check_shape_dims(shape, data_format, is_x=False):
         if len(shape) != 5:
             raise RuntimeError(
                 "The input shape only support 5D Tensor")
+    elif data_format == "NDC1HWC0":
+        if len(shape) != 6:
+            raise RuntimeError(
+                "The input shape only support 6D Tensor")
     elif is_x:
         if len(shape) != 4:
             raise RuntimeError(
@@ -327,7 +340,7 @@ def _fused_batch_norm_inf_compute(x, scale, offset, mean, variance,
     scaler_zero = 0.0
     res_batch_mean = tbe.vadds(mean, scaler_zero)
     res_batch_var = tbe.vadds(variance, scaler_zero)
-    if format_data != "NC1HWC0":
+    if format_data not in ("NC1HWC0", "NDC1HWC0"):
         res_batch_mean = tbe.sum(res_batch_mean, axis, False)
         res_batch_var = tbe.sum(res_batch_var, axis, False)
     res = [res_y, res_batch_mean, res_batch_var]
@@ -335,7 +348,7 @@ def _fused_batch_norm_inf_compute(x, scale, offset, mean, variance,
     if not is_py:
         res_reserve_space_1 = tbe.vadds(mean, scaler_zero)
         res_reserve_space_2 = tbe.vadds(variance, scaler_zero)
-        if format_data != "NC1HWC0":
+        if format_data not in ("NC1HWC0", "NDC1HWC0"):
             res_reserve_space_1 = tbe.sum(res_reserve_space_1, axis, False)
             res_reserve_space_2 = tbe.sum(res_reserve_space_2, axis, False)
         res = res + [res_reserve_space_1, res_reserve_space_2]
@@ -397,7 +410,7 @@ def _fused_batch_norm_train_compute(x, scale, offset, epsilon,
         res_y = tbe.cast_to(res_y, "float16")
 
     res_batch_mean = tbe.vmuls(mean_sum, num_rec)
-    if format_data != "NC1HWC0":
+    if format_data not in ("NC1HWC0", "NDC1HWC0"):
         res_batch_mean = tbe.sum(res_batch_mean, axis, False)
 
     if num == 1:
@@ -405,14 +418,14 @@ def _fused_batch_norm_train_compute(x, scale, offset, epsilon,
     else:
         batch_var_scaler = float(num)/(num - 1)
     res_batch_var = tbe.vmuls(var_muls, batch_var_scaler)
-    if format_data != "NC1HWC0":
+    if format_data not in ("NC1HWC0", "NDC1HWC0"):
         res_batch_var = tbe.sum(res_batch_var, axis, False)
 
     res = [res_y, res_batch_mean, res_batch_var]
     if not is_py:
         res_reserve_space_1 = tbe.vmuls(mean_sum, num_rec)
         res_reserve_space_2 = tbe.vmuls(var_sum, num_rec)
-        if format_data != "NC1HWC0":
+        if format_data not in ("NC1HWC0", "NDC1HWC0"):
             res_reserve_space_1 = tbe.sum(res_reserve_space_1, axis, False)
             res_reserve_space_2 = tbe.sum(res_reserve_space_2, axis, False)
         res = res + [res_reserve_space_1, res_reserve_space_2]
@@ -579,6 +592,14 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
         if not is_training:
             shape_mean = [1] + list(shape_mean) + [1, 1]
             shape_variance = [1] + list(shape_variance) + [1, 1]
+    elif format_data == "NDC1HWC0":
+        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
+        shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
+        shape_offset = shape_scale
+        if not is_training:
+            shape_mean = [shape_mean[0] * shape_mean[1], shape_mean[2], shape_mean[3], shape_mean[4], shape_mean[5]]
+            shape_variance = [shape_variance[0] * shape_variance[1], shape_variance[2], shape_variance[3],
+                              shape_variance[4], shape_variance[5]]
 
     x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
     scale_input = tvm.placeholder(shape_scale, name="scale_input",
