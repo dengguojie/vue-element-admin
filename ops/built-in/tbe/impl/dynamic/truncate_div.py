@@ -139,10 +139,8 @@ def truncate_div(input_x, input_y, output_x, kernel_name="truncate_div"):
         with tbe_base.compute():
             x_shape, y_shape = \
                 shape_util.variable_shape([_input_x, _input_y], support_broadcast=True)
-            reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(x_shape,
-                                                                          y_shape)
-            data1 = tvm.placeholder(reshape_x, dtype=x_dtype, name="data1")
-            data2 = tvm.placeholder(reshape_y, dtype=y_dtype, name="data2")
+            data1 = tvm.placeholder(x_shape, dtype=x_dtype, name="data1")
+            data2 = tvm.placeholder(y_shape, dtype=y_dtype, name="data2")
             res = truncate_div_compute(data1, data2, output_x, kernel_name)
             tensors.append([data1, data2, res])
         with tvm.target.cce():

@@ -30,12 +30,14 @@
 
 namespace optiling {
 
-static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
-    {1, 32767},
-    {2, 32767},
-    {4, 16383},
-    {8, 8191},
-};
+namespace {
+  static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
+      {1, 32767},
+      {2, 32767},
+      {4, 16383},
+      {8, 8191},
+  };
+}
 
 const int64_t GetElementByType(const std::string& dtype) {
   // element nums in one block, default, fp16, int16, uin16
@@ -86,28 +88,30 @@ bool Eletwise::GenerateOutputShape() {
   const std::vector<int64_t>& shapes = op_paras.outputs[0].tensor[0].shape;
   int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1ll, std::multiplies<int64_t>());
   CHECK_LE(fused_output, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
+  CHECK_GT(fused_output, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str());
   output_shape = {fused_output};
   return true;
 }
 
 bool Eletwise::CalcTiling() {
-  CHECK((op_info.find("_base_info") != op_info.end()), "op [%s] : compile info not contain [_base_info]",
-        op_type.c_str());
   // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
   std::string pattern_key = "100";
   if (only_const_tiling || !use_special_pattern) {
     pattern_key = "000";
   }
-  CHECK((op_info["_base_info"].find(pattern_key) != op_info["_base_info"].end()), "op [%s] : _base_info not contain [%s]",
-        op_type.c_str(), pattern_key.c_str());
-  const auto& base_info = op_info["_base_info"][pattern_key];
-  const size_t base_info_size = 4;
-  CHECK_EQ(base_info.size(), base_info_size, "op [%s] : base info must be _ub_size, _max_dtype, _coexisting_quantity"
-           " and _core_num", op_type.c_str());
-  baseInfo.ub_size = base_info[0];
-  baseInfo.max_dtype = base_info[1];
-  baseInfo.coexisting_quantity = base_info[2];
-  baseInfo.core_num = base_info[3];
+  try {
+    const auto& base_info = op_info.at("_base_info").at(pattern_key);
+    const size_t base_info_size = 4;
+    CHECK_EQ(base_info.size(), base_info_size, "op [%s] : base info must be _ub_size, _max_dtype, _coexisting_quantity"
+            " and _core_num", op_type.c_str());
+    baseInfo.ub_size = base_info[0];
+    baseInfo.max_dtype = base_info[1];
+    baseInfo.coexisting_quantity = base_info[2];
+    baseInfo.core_num = base_info[3];
+  } catch (const std::exception &e) {
+    GELOGD("op [%s] : get compile_info[_base_info] error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
   CHECK_GT(baseInfo.coexisting_quantity, 0, "op [%s] : baseInfo coexisting_quantity error, it is [%d]",
            op_type.c_str(), baseInfo.coexisting_quantity);
   CHECK_GT(baseInfo.max_dtype, 0, "op [%s] : baseInfo max_dtype error, it is [%d]",
@@ -126,9 +130,9 @@ bool Eletwise::DoBlockTiling() {
   int64_t cur_core = baseInfo.core_num;
   int64_t ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
   block_axis = 0;
-  CHECK((!output_shape.empty()), "op [%s] : output shape cannot be empty", op_type.c_str())
+  CHECK((!output_shape.empty()), "op [%s] : output shape cannot be empty", op_type.c_str());
   CHECK_GT(baseInfo.core_num, 0, "op [%s] : baseInfo core_num error, it is [%d]",
-           op_type.c_str(), baseInfo.core_num)
+           op_type.c_str(), baseInfo.core_num);
   block_factor = std::ceil(output_shape[0] * 1.0 / cur_core);
   block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
   block_dims = std::ceil(output_shape[0] * 1.0 / block_factor);
@@ -141,7 +145,7 @@ bool Eletwise::DoUbTiling() {
   int64_t limit = std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype));
   if (limit < ub_factor) {
     int64_t ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
-    CHECK_GT(limit, 0, "op [%s] : ub limit error, it is [%d]", op_type.c_str(), limit)
+    CHECK_GT(limit, 0, "op [%s] : ub limit error, it is [%d]", op_type.c_str(), limit);
     int64_t ub_for_num = std::ceil(ub_factor * 1.0 / limit);
     int64_t adjust_factor = std::ceil(ub_factor * 1.0 / ub_for_num);
     int64_t align_factor = std::ceil(adjust_factor * 1.0 / ele_in_block);
@@ -193,24 +197,27 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
       str_key = "10000";
     }
   }
-  CHECK((op_info.find("_elewise_vars") != op_info.end()), "op [%s] : compile info not contain [_elewise_vars]", op_type.c_str());
-  CHECK((op_info["_elewise_vars"].find(str_key) != op_info["_elewise_vars"].end()), "op [%s] : _base_info not contain [%s]",
-        op_type.c_str(), str_key.c_str());
-  const auto& all_vars = op_info["_elewise_vars"][str_key];
-  for (const auto& var : all_vars) {
-    if (var >= 30000) {
-      CHECK((ub_axis >= 0), "op [%s] : Not cut ub", op_type.c_str())
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
-    } else if (var >= 20000) {
-      CHECK((ub_axis >= 0), "op [%s] : Not cut block", op_type.c_str())
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
-    } else {
-      int64_t var_value = var;
-      var_value /= 100;
-      size_t dim_index = var_value % 100;
-      CHECK_LT(dim_index, output_shape.size(), "op [%s] : more than 16 dims are not supported", op_type.c_str())
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[dim_index]));
+  try {
+    const auto& all_vars = op_info.at("_elewise_vars").at(str_key);
+    for (const auto& var : all_vars) {
+      if (var >= 30000) {
+        CHECK((ub_axis >= 0), "op [%s] : Not cut ub", op_type.c_str());
+        ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
+      } else if (var >= 20000) {
+        CHECK((block_axis >= 0), "op [%s] : Not cut block", op_type.c_str());
+        ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
+      } else {
+        int64_t var_value = var;
+        var_value /= 100;
+        size_t dim_index = var_value % 100;
+        CHECK_LT(dim_index, output_shape.size(),
+            "op [%s] : dim_index out of range output_shape index", op_type.c_str());
+        ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(output_shape[dim_index]));
+      }
     }
+  } catch (const std::exception &e) {
+    GELOGD("op [%s] : get compile_info[_elewise_vars] error. Error message: %s", op_type.c_str(), e.what());
+    return false;
   }
   return true;
 }
@@ -224,7 +231,7 @@ bool Eletwise::DoTiling() {
     // cut block
     ret = ret && DoBlockTiling();
     CHECK((SPLIT_FACTORS.find(baseInfo.max_dtype) != SPLIT_FACTORS.end()),
-        "op [%s] : baseInfo max_dtype not in SPLIT_FACTORS", op_type.c_str())
+        "op [%s] : baseInfo max_dtype not in SPLIT_FACTORS", op_type.c_str());
     if (block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype))) {
       need_double_buffer = true;
       max_available_ub =
@@ -244,10 +251,10 @@ bool Eletwise::DoTiling() {
   return ret;
 }
 
-bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS>& input_shapes,
+bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes,
                      const size_t input_num, size_t& dim_len, bool& is_pure_elementwise,
                      const std::string& op_type, const TeOpParas& op_paras) {
-  CHECK_LE(input_num, MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str())
+  CHECK_LE(input_num, B_MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str());
   for (size_t i = 0; i < input_num; i++) {
     CHECK(!op_paras.inputs[i].tensor.empty(), "op [%s] : input tensor cannot be empty", op_type.c_str());
     input_shapes[i].fill(1ll);
@@ -255,7 +262,7 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS
       dim_len = op_paras.inputs[i].tensor[0].shape.size();
     }
   }
-  CHECK_LE(dim_len, MAX_DIM_LEN, "op [%s] : more than 16 dims are not supported", op_type.c_str())
+  CHECK_LE(dim_len, B_MAX_DIM_LEN, "op [%s] : more than 16 dims are not supported", op_type.c_str());
   for (size_t i = 0; i < input_num; i++) {
     size_t cur_dim_len = op_paras.inputs[i].tensor[0].shape.size();
     size_t start_index = dim_len - cur_dim_len;
@@ -284,27 +291,26 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS
 bool MatchConstShape(const std::string& op_type,
                      const nlohmann::json& op_info,
                      const std::vector<int64_t>& const_shapes,
-                     const std::vector<int64_t>& const_block_dims,
                      size_t& key_index) {
-  CHECK((op_info.find("_const_shapes") != op_info.end()),
-      "op [%s] : compile info not contain [_const_shapes]", op_type.c_str());
-  const std::vector<std::vector<int64_t>>& compile_const_shapes =
-          op_info["_const_shapes"].get<std::vector<std::vector<int64_t>>>();
-  for (size_t i = 0; i < compile_const_shapes.size(); i++) {
-    bool shape_equal = true;
-    CHECK_EQ(const_shapes.size(), compile_const_shapes[i].size(),
-        "op [%s] : input shape and const shape not match", op_type.c_str());
-    CHECK_EQ(const_block_dims.size(), compile_const_shapes.size(),
-        "op [%s] : block dims and const shape not match", op_type.c_str());
-    for (size_t j = 0; j < compile_const_shapes[i].size(); j++) {
-      if (const_shapes[j] != compile_const_shapes[i][j]) {
-        shape_equal = false;
+  try {
+    const auto& compile_const_shapes = op_info.at("_const_shapes");
+    for (size_t i = 0; i < compile_const_shapes.size(); i++) {
+      bool shape_equal = true;
+      CHECK_EQ(const_shapes.size(), compile_const_shapes[i].size(),
+          "op [%s] : input shape and const shape not match", op_type.c_str());
+      for (size_t j = 0; j < compile_const_shapes[i].size(); j++) {
+        if (const_shapes[j] != compile_const_shapes[i][j].get<int64_t>()) {
+          shape_equal = false;
+        }
+      }
+      if (shape_equal) {
+        key_index = i;
+        break;
       }
     }
-    if (shape_equal) {
-      key_index = i;
-      break;
-    }
+  } catch (const std::exception &e) {
+    GELOGD("op [%s] : get compile_info[_const_shapes] error. Error message: %s", op_type.c_str(), e.what());
+    return false;
   }
   return true;
 }
@@ -314,9 +320,6 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
                   int64_t& key, int64_t& block_dims) {
   GELOGI("op [%s]: tiling running", op_type.c_str());
   size_t key_index = 0;
-  CHECK((op_info.find("_const_block_dims") != op_info.end()), "op [%s] : compile info not contain [_const_block_dims]",
-        op_type.c_str());
-  const std::vector<int64_t>& const_block_dims = op_info["_const_block_dims"].get<std::vector<int64_t>>();
   bool ret = true;
   if (is_support_broadcast) {
     bool verify_input =
@@ -337,14 +340,18 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
     for (size_t i = 0; i < input_shape_x.size(); i++) {
       const_shapes[i] = static_cast<uint64_t>(input_shape_x[i]) & static_cast<uint64_t>(input_shape_y[i]);
     }
-    ret = MatchConstShape(op_type, op_info, const_shapes, const_block_dims, key_index);
-  } else {
-    CHECK(!const_block_dims.empty(), "op [%s] : block dims and const shape not match", op_type.c_str());
+    ret = MatchConstShape(op_type, op_info, const_shapes, key_index);
   }
   if (ret) {
-    CHECK_GT(const_block_dims.size(), key_index, "op [%s] : const_block_dims index out of range", op_type.c_str());
-    block_dims = const_block_dims[key_index];
-    key = 100000000 + key_index;
+    try {
+      const auto& const_block_dims = op_info["_const_block_dims"];
+      CHECK_GT(const_block_dims.size(), key_index, "op [%s] : const_block_dims index out of range", op_type.c_str());
+      block_dims = const_block_dims[key_index].get<int64_t>();
+      key = 100000000 + key_index;
+    } catch (const std::exception &e) {
+      GELOGD("op [%s] : get compile_info[_const_block_dims] error. Error message: %s", op_type.c_str(), e.what());
+      return false;
+    }
   }
   return ret;
 }
@@ -358,12 +365,16 @@ void WriteConstTiling(const std::string& op_type, OpRunInfo& run_info, const int
 
 bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                     OpRunInfo& run_info) {
-  std::array<std::array<int64_t, MAX_DIM_LEN>, MAX_INPUT_NUMS> input_shapes{};
-  CHECK((op_info.find("_flag_info") != op_info.end()), "op [%s] : compile info not contain [_flag_info]",
-        op_type.c_str());
-  const std::vector<bool>& flag_info = op_info["_flag_info"];
+  std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS> input_shapes{};
+  std::vector<bool> flag_info;
+  try {
+    flag_info = op_info.at("_flag_info").get<std::vector<bool>>();
+  } catch (const std::exception &e) {
+    GELOGD("op [%s] : get compile_info[_flag_info] error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
   bool is_const = false;
-  bool is_support_broadcast = false;
+  bool is_support_broadcast = true;
   if (flag_info.size() > 2) {
     is_const = flag_info[1];
     is_support_broadcast = flag_info[2];
@@ -379,7 +390,7 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
     if (ret) {
       WriteConstTiling(op_type, run_info, key, block_dims);
     }
-  } else if (is_pure_elementwise) {
+  } else if (is_pure_elementwise || !is_support_broadcast) {
     Eletwise eletwise(op_type, op_paras, op_info, flag_info);
     ret = eletwise.DoTiling();
     ret = ret && eletwise.WriteTilingData(run_info);

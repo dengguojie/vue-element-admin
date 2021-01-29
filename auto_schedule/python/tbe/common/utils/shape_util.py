@@ -132,14 +132,22 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
         completed input shapes and max shape
 
     """
-    max_dim_length = [len(shape) for shape in shapes]
+    max_dim_length = max([len(list(shape)) for shape in shapes])
     input_shapes = []
     for shape in shapes:
-        input_shapes.append([1] * (max_dim_length - len(shape)) + shape)
+        input_shapes.append([1] * (max_dim_length - len(shape)) + list(shape))
     input_shapes = list(map(list, zip(*input_shapes)))
-    max_shape = [tvm.max(shape) for shape in input_shapes]
+    max_shape = []
+    for shape in input_shapes:
+        no_one_shape = [s for s in shape if not expr_equal(s, 1)]
+        if len(no_one_shape) == 0:
+            max_shape.append(1)
+        elif len(no_one_shape) == 1:
+            max_shape.append(no_one_shape[0])
+        else:
+            max_shape.append(tvm.max(*no_one_shape))
     for value, shape in zip(max_shape, input_shapes):
-        if isinstance(value, (tvm.expr.IntImm, tvm.expr.UIntImm)):
+        if isinstance(value, (_expr.IntImm, _expr.UIntImm)):
             for _shape in shape:
                 if not expr_equal(_shape, value) and not expr_equal(_shape, 1):
                     error_info = {
@@ -152,30 +160,17 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
                         "together with shapes[%s]."
                         % (op_name, error_info['input1_shape'], error_info['input2_shape']))
     input_shapes = list(map(list, zip(*input_shapes)))
-    return input_shapes, max_shape
+    return (*input_shapes, max_shape)
 
 
 def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
                      param_name_input1='', param_name_input2=''):
     """
-    two input shapes produce three output shape
+    two input shapes produce third output shape
     """
-    def _generate_dynamic_output(_shape1_i, _shape2_i, out_shape, index):
-        if not expr_equal(_shape1_i, _shape2_i):
-            if isinstance(_shape1_i, int):
-                if _shape1_i == 1:
-                    out_shape.append(_shape2_i)
-                else:
-                    out_shape.append(_shape1_i)
-            elif isinstance(_shape2_i, int):
-                if _shape2_i == 1:
-                    out_shape.append(_shape1_i)
-                else:
-                    out_shape.append(_shape2_i)
-            else:
-                out_shape.append(tvm.max(_shape1_i, _shape2_i))
-        else:
-            out_shape.append(_shape1_i)
+
+    if operation.in_dynamic():
+        return unify_broadcast_shapes([shape1, shape2], op_name)
 
     shape1 = list(shape1)
     shape2 = list(shape2)
@@ -204,10 +199,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
                 "together with shapes[%s][%s]."
                 % (op_name, param_name_input1, param_name_input2,
                    error_info['input1_shape'], error_info['input2_shape']))
-        if operation.in_dynamic():
-            _generate_dynamic_output(shape1_i, shape2_i, out_shape, i)
-        else:
-            out_shape.append(shape1_i if expr_equal(shape2_i, 1) else shape2_i)
+        out_shape.append(shape1_i if expr_equal(shape2_i, 1) else shape2_i)
 
     if swapped:
         shape1, shape2 = shape2, shape1
@@ -219,53 +211,6 @@ def refine_shapes_for_broadcast(shape1, shape2):
     """
     Fusing the axes for the input shapes
     """
-    def _dynamic_refine_shapes_for_broadcast(shape1, shape2):
-        """
-        Fusing the axes for the input shapes
-        """
-        def _equals_one(_x):
-            if isinstance(_x, _expr.ConstExpr):
-                return _x.value == 1
-            if isinstance(_x, int):
-                return _x == 1
-            return False
-
-        def _get_state(_a, _b):
-            if expr_equal(_a, _b):
-                return 1
-            if _equals_one(_a):
-                return 2
-            if _equals_one(_b):
-                return 3
-            return 4
-
-        fused_shape1 = [1]
-        fused_shape2 = [1]
-        state = None
-        mode = operation.get_context().get("mode")
-        if mode == para_check.SPECIAL or mode == para_check.SPECIAL_SCALAR:
-            return shape1, shape2
-        for index, (i_a, i_b) in enumerate(zip(shape1, shape2)):
-            if _equals_one(i_a) and _equals_one(i_b):
-                pass
-            elif state is None:
-                fused_shape1[-1] *= i_a
-                fused_shape2[-1] *= i_b
-                state = _get_state(i_a, i_b)
-            elif _get_state(i_a, i_b) == 4:
-                fused_shape1.append(i_a)
-                fused_shape2.append(i_b)
-                state = _get_state(i_a, i_b)
-            elif state == _get_state(i_a, i_b):
-                fused_shape1[-1] *= i_a
-                fused_shape2[-1] *= i_b
-            else:
-                fused_shape1.append(i_a)
-                fused_shape2.append(i_b)
-                state = _get_state(i_a, i_b)
-
-        return fused_shape1, fused_shape2
-
     def _const_refine_shapes_for_broadcast(shape1, shape2):
         def _delete_one(shape1, shape2):
             # delete 1 when both 1
@@ -319,12 +264,8 @@ def refine_shapes_for_broadcast(shape1, shape2):
     _dv = len(shape1) - len(shape2)
     shape2 = [1] * _dv + shape2
 
-    if operation.in_dynamic():
-        fused_shape1, fused_shape2 = \
-            _dynamic_refine_shapes_for_broadcast(shape1, shape2)
-    else:
-        fused_shape1, fused_shape2 = \
-            _const_refine_shapes_for_broadcast(shape1, shape2)
+    fused_shape1, fused_shape2 = \
+        _const_refine_shapes_for_broadcast(shape1, shape2)
 
     if swapped:
         fused_shape1, fused_shape2 = fused_shape2, fused_shape1

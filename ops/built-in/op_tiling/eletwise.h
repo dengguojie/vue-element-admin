@@ -29,9 +29,6 @@
 
 namespace optiling {
 
-static const size_t MAX_DIM_LEN = 16;
-static const size_t MAX_INPUT_NUMS = 70;
-
 struct BaseInfo {
   int64_t ub_size{0};
   int64_t max_dtype{0};

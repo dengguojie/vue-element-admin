@@ -124,10 +124,8 @@ def truncate_mod(input_x, input_y, output_z, kernel_name="truncate_mod"):
         with tbe_base.compute():
             x_shape, y_shape = \
                 shape_util.variable_shape([_input_x, _input_y], support_broadcast=True)
-            reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(x_shape,
-                                                                      y_shape)
-            data1 = tvm.placeholder(reshape_x, dtype=dtype_x, name="data1")
-            data2 = tvm.placeholder(reshape_y, dtype=dtype_y, name="data2")
+            data1 = tvm.placeholder(x_shape, dtype=dtype_x, name="data1")
+            data2 = tvm.placeholder(y_shape, dtype=dtype_y, name="data2")
             res = truncate_mod_compute(data1, data2, output_z, kernel_name)
             tensors.append([data1, data2, res])
         with tvm.target.cce():

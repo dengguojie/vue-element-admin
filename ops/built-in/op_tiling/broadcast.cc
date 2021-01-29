@@ -28,17 +28,19 @@
 
 namespace optiling {
 
-static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
-    {1, 32767},
-    {2, 32767},
-    {4, 16383},
-    {8, 8191},
-};
+namespace {
+  static const std::unordered_map<int64_t, int64_t> SPLIT_FACTORS{
+      {1, 32767},
+      {2, 32767},
+      {4, 16383},
+      {8, 8191},
+  };
 
-static const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN{
-    {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
-    {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
-};
+  static const std::unordered_map<int64_t, Pattern> SPECIAL_PATTERN{
+      {100, Pattern::COMMON},    {120, Pattern::COMMON_BROADCAST}, {121, Pattern::COMMON_BROADCAST_COMMON},
+      {200, Pattern::BROADCAST}, {210, Pattern::BROADCAST_COMMON},
+  };
+}
 
 const int64_t BGetElementByType(const std::string& dtype) {
   // element nums in one block, default, fp16, int16, uin16
@@ -260,12 +262,15 @@ bool Broadcast::GenerateOutputShape() {
   broadcast_axis.fill(false);
   if (only_const_tiling) {
     output_shape = op_paras.outputs[0].tensor[0].shape;
-    CHECK((op_info.find("_broadcast_axis") != op_info.end()),
-        "op [%s] : compile info not contain [_broadcast_axis]", op_type.c_str());
-    const std::vector<bool>& b_axis = op_info["_broadcast_axis"];
-    for (size_t i = 0; i < b_axis.size(); i++) {
-      broadcast_axis[i] = b_axis[i];
-      fusion_index.push_back({i});
+    try {
+      const auto& b_axis = op_info.at("_broadcast_axis");
+      for (size_t i = 0; i < b_axis.size(); i++) {
+        broadcast_axis[i] = b_axis[i];
+        fusion_index.push_back({i});
+      }
+    } catch (const std::exception &e) {
+      GELOGD("op [%s] : get compile_info[_broadcast_axis] error. Error message: %s", op_type.c_str(), e.what());
+      return false;
     }
   } else {
     CHECK(compileInfo.is_support_broadcast, "op [%s] : compile shape and runtime shape not same", op_type.c_str());
@@ -288,7 +293,12 @@ bool Broadcast::RefineShapesForBroadcast() {
       fusion_index.push_back({i});
     }
   } else {
-    fusion_index = op_info["_fusion_index"].get<std::vector<std::vector<size_t>>>();
+    try {
+      fusion_index = op_info.at("_fusion_index").get<std::vector<std::vector<size_t>>>();
+    } catch (const std::exception &e) {
+      GELOGD("op [%s] : get compile_info[_fusion_index] error. Error message: %s", op_type.c_str(), e.what());
+      return false;
+    }
   }
   size_t fusion_len = fusion_index.size();
   output_shape.reserve(fusion_len);
@@ -326,19 +336,20 @@ bool Broadcast::CalcTiling() {
     key_len--;
   }
   std::string pattern_key = keys;
-  CHECK((op_info.find("_base_info") != op_info.end()), "op [%s] : compile info not contain [_base_info]",
-        op_type.c_str());
-  CHECK((op_info["_base_info"].find(pattern_key) != op_info["_base_info"].end()),
-        "op [%s] : _base_info not contain [%s]", op_type.c_str(), pattern_key.c_str());
-  // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
-  const size_t base_info_size = 4;
-  const std::vector<int64_t>& base_info = op_info["_base_info"][pattern_key];
-  CHECK_EQ(base_info.size(), base_info_size, "op [%s] : base info must be _ub_size, _max_dtype, _coexisting_quantity"
-           " and _core_num", op_type.c_str());
-  compileInfo.ub_size = base_info[0];
-  compileInfo.max_dtype = base_info[1];
-  compileInfo.coexisting_quantity = base_info[2];
-  compileInfo.core_num = base_info[3];
+  try {
+    const auto& base_info = op_info.at("_base_info").at(pattern_key);
+    // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
+    const size_t base_info_size = 4;
+    CHECK_EQ(base_info.size(), base_info_size, "op [%s] : base info must be _ub_size, _max_dtype, _coexisting_quantity"
+            " and _core_num", op_type.c_str());
+    compileInfo.ub_size = base_info[0];
+    compileInfo.max_dtype = base_info[1];
+    compileInfo.coexisting_quantity = base_info[2];
+    compileInfo.core_num = base_info[3];
+  } catch (const std::exception &e) {
+    GELOGD("op [%s] : get compile_info[_base_info] error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
   CHECK_GT(compileInfo.coexisting_quantity, 0, "op [%s] : compileInfo coexisting_quantity error, it is [%d]",
            op_type.c_str(), compileInfo.coexisting_quantity);
   CHECK_GT(compileInfo.max_dtype, 0, "op [%s] : compileInfo max_dtype error, it is [%d]",
@@ -346,8 +357,8 @@ bool Broadcast::CalcTiling() {
   max_available_ub =
           (((compileInfo.ub_size / compileInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / compileInfo.max_dtype;
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1ll, std::multiplies<int64_t>());
-  CHECK_LE(output_size, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str())
-  CHECK_GT(output_size, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str())
+  CHECK_LE(output_size, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
+  CHECK_GT(output_size, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str());
   const int64_t multi_core_threshold = BGetElementByType(out_type) * compileInfo.core_num * DOUBLE_BUFFER_SIZE;
   if (output_size < multi_core_threshold) {
     need_multi_core = false;
@@ -599,26 +610,28 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
     key_len--;
   }
   std::string str_key = keys + key_len + 1;
-  CHECK((op_info.find("_elewise_vars") != op_info.end()), "op [%s] : compile info not contain [_elewise_vars]", op_type.c_str());
-  CHECK((op_info["_elewise_vars"].find(str_key) != op_info["_elewise_vars"].end()), "op [%s] : _elewise_vars not contain [%s]",
-        op_type.c_str(), str_key.c_str());
-  const auto& all_vars = op_info["_elewise_vars"][str_key];
-  for (const auto& var : all_vars) {
-    if (var >= 30000) {
-      CHECK((ub_axis >= 0), "op [%s] : Not cut ub", op_type.c_str())
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
-    } else if (var >= 20000) {
-      CHECK((ub_axis >= 0), "op [%s] : Not cut block", op_type.c_str())
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
-    } else {
-      int64_t var_value = var;
-      size_t operator_index = var_value % 100;
-      var_value /= 100;
-      size_t dim_index = var_value % 100;
-      CHECK_LT(operator_index, B_MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str())
-      CHECK_LT(dim_index, B_MAX_DIM_LEN, "op [%s] : more than 16 dims are not supported", op_type.c_str())
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shapes[operator_index][dim_index]));
+  try {
+    const auto& all_vars = op_info.at("_elewise_vars").at(str_key);
+    for (const auto& var : all_vars) {
+      if (var >= 30000) {
+        CHECK((ub_axis >= 0), "op [%s] : Not cut ub", op_type.c_str());
+        ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
+      } else if (var >= 20000) {
+        CHECK((block_axis >= 0), "op [%s] : Not cut block", op_type.c_str());
+        ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
+      } else {
+        int64_t var_value = var;
+        size_t operator_index = var_value % 100;
+        var_value /= 100;
+        size_t dim_index = var_value % 100;
+        CHECK_LT(operator_index, B_MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str());
+        CHECK_LT(dim_index, B_MAX_DIM_LEN, "op [%s] : more than 16 dims are not supported", op_type.c_str());
+        ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shapes[operator_index][dim_index]));
+      }
     }
+  } catch (const std::exception &e) {
+    GELOGD("op [%s] : get compile_info[_elewise_vars] error. Error message: %s", op_type.c_str(), e.what());
+    return false;
   }
   return true;
 }

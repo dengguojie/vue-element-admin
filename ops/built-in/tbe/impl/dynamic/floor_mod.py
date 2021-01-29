@@ -156,7 +156,6 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
     for (x1, x2) in ins:
         with tbe_base.compute():
             shape_x, shape_y = shape_util.variable_shape([x1, x2], support_broadcast=True)
-            shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
             input_data_x = tvm.placeholder(shape_x, name="input_data_x",
                                            dtype=dtype_x)
             input_data_y = tvm.placeholder(shape_y, name="input_data_y",
