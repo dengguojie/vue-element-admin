@@ -422,7 +422,7 @@ class Conv3dTiling(CubeTilingOp):
         perf_di_max = -1
         
         # If the pad in the d direction is not 0, the k value of al0_matrix can only be a factor of C1HkWk
-        if tiling.get('AL0_matrix')[-1] != 1 or tiling.get('BL0_matrix')[-1] != 1:
+        if tiling.get('AL0_matrix') and tiling.get('AL0_matrix')[-1] != 1:
             cur_d_size = fmap_d
             # searching down-ward for d_min
             while self._check_tiling_match_d(tiling, [cur_d_size, fmap_h, fmap_w]):
