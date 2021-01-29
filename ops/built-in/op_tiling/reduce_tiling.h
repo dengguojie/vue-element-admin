@@ -28,6 +28,7 @@
 #include "vector_tiling.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 

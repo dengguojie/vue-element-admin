@@ -199,8 +199,13 @@ void Reduce::EliminateOne() {
 bool Reduce::ConstInputProcPost() {
   // runtime
   std::string pattern_str = std::to_string(pattern);
-  run_info.block_dim = op_info["_block_dims"][pattern_str].get<std::int32_t>();
-  run_info.clear_atomic = op_info["_atomic_flags"][pattern_str].get<bool>();
+  try {
+    run_info.block_dim = op_info["_block_dims"][pattern_str].get<std::int32_t>();
+    run_info.clear_atomic = op_info["_atomic_flags"][pattern_str].get<bool>();
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get block_dim or clear_atomic error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
   ByteBufferPut(run_info.tiling_data, pattern);
   return true;
 }
@@ -279,15 +284,34 @@ bool Reduce::FusedReduceAxis() {
 }
 
 bool Reduce::GetCompileInfo() {
-  std::vector<int32_t> common_info = op_info["common_info"];
-  std::vector<int32_t> pattern_info = op_info["pattern_info"];
-  std::vector<int32_t> ub_info = op_info["ub_info"];
+  std::vector<int32_t> common_info;
+  std::vector<int32_t> pattern_info;
+  std::vector<int32_t> ub_info;
+  try {
+    CHECK((op_info.find("common_info") != op_info.end()), "op [%s] : compile info not contain [common_info]",
+          op_type.c_str());
+    CHECK((op_info.find("pattern_info") != op_info.end()), "op [%s] : compile info not contain [pattern_info]",
+          op_type.c_str());
+    CHECK((op_info.find("ub_info") != op_info.end()), "op [%s] : compile info not contain [ub_info]",
+          op_type.c_str());
+    common_info = op_info["common_info"].get<std::vector<int32_t>>();
+    pattern_info = op_info["pattern_info"].get<std::vector<int32_t>>();
+    ub_info = op_info["ub_info"].get<std::vector<int32_t>>();
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get common_info, pattern_info, ub_info error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
 
-  compileInfo.core_num = common_info[0];
-  compileInfo.is_keep_dims = (bool)common_info[1];
-  compileInfo.min_block_size = common_info[2];
-  compileInfo.atomic = (bool)common_info[3];
-  compileInfo.coef = common_info[4];
+  try {
+    compileInfo.core_num = common_info[0];
+    compileInfo.is_keep_dims = (bool)common_info[1];
+    compileInfo.min_block_size = common_info[2];
+    compileInfo.atomic = (bool)common_info[3];
+    compileInfo.coef = common_info[4];
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get compileInfo[common_info] error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
 
   uint idx = 0;
   for (auto item : pattern_info) {
@@ -298,7 +322,10 @@ bool Reduce::GetCompileInfo() {
   }
   if (idx >= pattern_info.size()) {
     GE_LOGE("pattern is %d that not in pattern_info", pattern);
+    return false;
   }
+  CHECK_EQ(pattern_info.size(), ub_info.size(), "op [%s] : pattern_info's size "
+           "should be as same as ub_info", op_type.c_str());
   compileInfo.max_ub_count = ub_info[idx];
   is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 
@@ -754,12 +781,19 @@ bool Reduce::Init() {
     }
   } else {
     // axis_known
-    const auto& reduce_axis_tmp = op_info["_ori_axis"];
-    reduce_axis_ori.resize(reduce_axis_tmp.size());
-    size_t i = 0;
-    for (const auto& axis : reduce_axis_tmp) {
-      reduce_axis_ori[i] = axis;
-      i++;
+    CHECK((op_info.find("_ori_axis") != op_info.end()), "op [%s] : compile info not contain [_ori_axis]",
+          op_type.c_str());
+    try {
+      const auto& reduce_axis_tmp = op_info["_ori_axis"];
+      reduce_axis_ori.resize(reduce_axis_tmp.size());
+      size_t i = 0;
+      for (const auto& axis : reduce_axis_tmp) {
+        reduce_axis_ori[i] = axis;
+        i++;
+      }
+    } catch (const std::exception &e) {
+      GE_LOGE("op [%s]: get compileInfo[_ori_axis] error. Error message: %s", op_type.c_str(), e.what());
+      return false;
     }
   }
 
@@ -851,7 +885,14 @@ bool Reduce::DoTiling() {
       pattern = CalcConstPattern(reduce_axis_ori);
       return ret;
     } else {
-      pattern = op_info["compile_pattern"];
+      try {
+        CHECK((op_info.find("compile_pattern") != op_info.end()), "op [%s] : compile info not contain [compile_pattern]",
+              op_type.c_str());
+        pattern = op_info["compile_pattern"].get<std::int32_t>();
+      } catch (const std::exception &e) {
+        GE_LOGE("op [%s]: get compile_pattern error. Error message: %s", op_type.c_str(), e.what());
+        return false;
+      }
       reduce_axis = reduce_axis_ori;
       input_shape = input_shape_ori;
     }
