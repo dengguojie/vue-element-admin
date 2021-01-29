@@ -131,25 +131,39 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeShape ConcatDInputShape_0 = ConcatDInputTensor_0.GetShape();
         int64_t dimnum = ConcatDInputShape_0.GetDimNum();
         auto axis = concat_dim;
+        Format input_format = ConcatDInputTensor_0.GetFormat();
+        if (input_format == ge::FORMAT_FRACTAL_NZ) {
+          int64_t length_shape = ConcatDInputShape_0.GetDims().size();
+          if (length_shape == 4) {
+            axis = 1 - axis;
+          } else if (axis == length_shape - 2) {
+            axis = length_shape - 1;
+          } else if (axis == length_shape - 1) {
+            axis = length_shape - 2;
+          }
+        }
         if (axis < 0) {
           axis += (dimnum);
         }
+        int64_t ori_size = 0;
         for (int64_t n = 0; n < num_concat; n++) {
           ge::GeTensorDesc ConcatDInputTensor_1 = ConcatdDesc_orig->GetInputDesc(63 * i + n);
           ge::GeShape ConcatDInputShape_1 = ConcatDInputTensor_1.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_1.GetDim(axis);
+          int64_t dim_axis_value_ori = ConcatDInputTensor_1.GetOriginShape().GetDim(concat_dim);
           if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatDFusionPass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
           size += dim_axis_value;
+          ori_size += dim_axis_value_ori;
         }
         ge::GeTensorDesc ConcatDOutputTensor_1 = ConcatdDesc->GetOutputDesc(0);
         ge::GeShape ConcatDOutputShape_1 = ConcatDOutputTensor_1.GetShape();
         ConcatDOutputShape_1.SetDim(axis, size);
         ConcatDOutputTensor_1.SetShape(ConcatDOutputShape_1);
         ge::GeShape ConcatDOriginOutputShape_1 = ConcatDOutputTensor_1.GetOriginShape();
-        ConcatDOriginOutputShape_1.SetDim(axis, size);
+        ConcatDOriginOutputShape_1.SetDim(concat_dim, ori_size);
         ConcatDOutputTensor_1.SetOriginShape(ConcatDOriginOutputShape_1);
         ConcatdDesc->UpdateOutputDesc(0, ConcatDOutputTensor_1);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_1);
@@ -200,25 +214,39 @@ Status ConcatDFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         ge::GeShape ConcatDInputShape_3 = ConcatDInputTensor_3.GetShape();
         int64_t dimnum = ConcatDInputShape_3.GetDimNum();
         auto axis = concat_dim;
+        Format input_format = ConcatDInputTensor_3.GetFormat();
+        if (input_format == ge::FORMAT_FRACTAL_NZ) {
+          int64_t length_shape = ConcatDInputShape_3.GetDims().size();
+          if (length_shape == 4) {
+            axis = 1 - axis;
+          } else if (axis == length_shape - 2) {
+            axis = length_shape - 1;
+          } else if (axis == length_shape - 1) {
+            axis = length_shape - 2;
+          }
+        }
         if (axis < 0) {
           axis += (dimnum);
         }
+        int64_t ori_size = 0;
         for (int32_t n = 0; n < num_concat; n++) {
           ge::GeTensorDesc ConcatDInputTensor_2 = ConcatdDesc_orig->GetInputDesc(n + 63 * i);
           ge::GeShape ConcatDInputShape_2 = ConcatDInputTensor_2.GetShape();
           int64_t dim_axis_value = ConcatDInputShape_2.GetDim(axis);
+          int64_t dim_axis_value_ori = ConcatDInputTensor_2.GetOriginShape().GetDim(concat_dim);
           if (PatternFusionUtil::IsUnknownShape(dim_axis_value)) {
             OP_LOGE(FUSED_OP_TYPE.c_str(), "ZConcatDFusionPass cannot be applied for unknown shape.");
             return NOT_CHANGED;
           }
           size += dim_axis_value;
+          ori_size += dim_axis_value_ori;
         }
         ge::GeTensorDesc ConcatDOutputTensor_2 = LastConcatDDesc->GetOutputDesc(0);
         ge::GeShape ConcatDOutputShape_2 = ConcatDOutputTensor_2.GetShape();
         ConcatDOutputShape_2.SetDim(axis, size);
         ConcatDOutputTensor_2.SetShape(ConcatDOutputShape_2);
         ge::GeShape ConcatDOriginOutputShape_2 = ConcatDOutputTensor_2.GetOriginShape();
-        ConcatDOriginOutputShape_2.SetDim(axis, size);
+        ConcatDOriginOutputShape_2.SetDim(concat_dim, ori_size);
         ConcatDOutputTensor_2.SetOriginShape(ConcatDOriginOutputShape_2);
         LastConcatDDesc->UpdateOutputDesc(0, ConcatDOutputTensor_2);
         ConcatdBaseDesc->UpdateInputDesc(i, ConcatDOutputTensor_2);

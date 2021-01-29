@@ -184,8 +184,6 @@ TEST_F(dynamic_rnn_grad_fusion_test, dynamic_rnn_grad_fusion_test_1) {
   bool findMatMulV2 = false;
   bool findSplit = false;
   bool findConcat = false;
-  bool findBatchMatmul = false;
-  bool findReduceSum = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
         if (node->GetType() == "BasicLSTMCellCStateGradV2") {
             findBasicLSTMCellCStateGradV2 = true;
@@ -203,20 +201,10 @@ TEST_F(dynamic_rnn_grad_fusion_test, dynamic_rnn_grad_fusion_test_1) {
             findConcat = true;
         }
 
-        if (node->GetType() == "BatchMatMul") {
-            findBatchMatmul = true;
-        }
-
-        if (node->GetType() == "ReduceSumD") {
-            findReduceSum = true;
-        }
-
     }
 
   EXPECT_EQ(findBasicLSTMCellCStateGradV2, true);
   EXPECT_EQ(findMatMulV2, true);
   EXPECT_EQ(findSplit, true);
   EXPECT_EQ(findConcat, true);
-  EXPECT_EQ(findBatchMatmul, true);
-  EXPECT_EQ(findReduceSum, true);
 }
