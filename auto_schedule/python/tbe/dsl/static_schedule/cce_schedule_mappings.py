@@ -85,6 +85,7 @@ OP_PATTERN_RULES = {
     # Normal schedules
     OpPatternRules.simple_pattern_rule: (OpPatterns.MATMUL_V2_PATTERN,
                                          OpPatterns.MATMUL_PATTERN,
+                                         OpPatterns.GEMM_PATTERN,
                                          OpPatterns.POOL2D_PATTERN,
                                          OpPatterns.POOL3D_PATTERN,
                                          OpPatterns.MAX_POOL_PATTERN,
@@ -130,6 +131,7 @@ SIMPLE_MAPPING = {
     OpPatterns.CONV3D_BACKPROP_INPUT_PATTERN: OpFlags.conv3d_backprop_input_flag,
     OpPatterns.MATMUL_PATTERN: OpFlags.matmul_flag,
     OpPatterns.MATMUL_V2_PATTERN: OpFlags.matmul_v2_flag,
+    OpPatterns.GEMM_PATTERN: OpFlags.gemm_flag,
     OpPatterns.POOL2D_PATTERN: (OpFlags.pool2d_avg_flag,
                                 OpFlags.pool2d_max_flag,
                                 OpFlags.pool2d_gap_flag,

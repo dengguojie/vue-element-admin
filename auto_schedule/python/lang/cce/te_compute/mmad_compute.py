@@ -919,7 +919,8 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                                 quantize_params=quantize_params,
                                 format_out=format_out,
                                 compress_index=compress_index,
-                                attrs=attrs)
+                                attrs=attrs,
+                                kernel_name=kernel_name)
 
     return result
 
@@ -938,7 +939,8 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         quantize_params=None,
         format_out=None,
         compress_index=None,
-        attrs={}):
+        attrs={},
+        kernel_name="matmul"):
     """
     algorithm: mmad
     calculating  matrix multiplication, C=alpha_num*A*B+beta_num*C
@@ -3070,7 +3072,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                         name='tensor_c_gm', tag="matmul_gemv",
                         attrs={'shape': out_shape_ori,
                                'format': format_out})
-
+    tensor_c_ub.op.attrs["kernel_name"] = kernel_name
     return tensor_c_gm
 
 

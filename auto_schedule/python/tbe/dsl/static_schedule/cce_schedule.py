@@ -178,6 +178,16 @@ def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915
     return op_info
 
 
+def set_op_pattern(all_tags, op_info):
+    """
+    change pattern to GEMM when comes batchmamul+reduceSum.
+    """
+    op_pattern = op_info['pattern']
+    if "reduce_sum" in all_tags:
+        op_pattern = OpPatterns.GEMM_PATTERN
+    op_info['pattern'] = op_pattern
+
+
 def remove_redundant_cast_op(res, outs):
     """
     ->....->res_fp32_1-->res_fp16-->res_fp32_2
@@ -249,6 +259,30 @@ def rl_search_proc(outs, option):
     return schedule, tensor_list, real_outs
 
 
+def get_all_tags(res):
+    """
+    get all tags
+    :param res: tensor
+    :return: list
+    """
+    tensor_tags = set()
+
+    def get_tag(tenosr):
+        """
+        find all tag
+        :param tensor: tensor
+        :return: all tags
+        """
+        tensor_list = tenosr.op.input_tensors
+        tensor_tags.add(tenosr.op.tag)
+        for one_tensor in tensor_list:
+            tensor_tags.add(one_tensor.op.tag)
+            get_tag(one_tensor)
+
+    get_tag(res)
+    return tensor_tags
+
+
 def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     """
     schedule cce
@@ -288,6 +322,11 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
 
     # set pattern
     op_pattern = op_info['pattern']
+    if op_pattern == OpPatterns.MATMUL_PATTERN:
+        all_tags = get_all_tags(outs[0])
+        set_op_pattern(all_tags, op_info)
+    op_pattern = op_info['pattern']
+
     fusion_manager.set_current_op_pattern(op_pattern.value)
 
     # to list placeholder type tensor
@@ -971,7 +1010,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             schedule_valid = reduce_mean_mid_reduce_high_performance_schedule(outs, sch_list)
             if schedule_valid:
                 return schedule, spec_mid_list, outs
-    if 'sub_pattern' in op_info.keys():
+    if 'sub_pattern' in op_info.keys() and pattern != OpPatterns.GEMM_PATTERN:
         sub_pattern = op_info['sub_pattern']
         if sub_pattern == OpSubPatterns.REDUCE_ATOMIC_PATTERN:
             atomic_sch = ReduceAtomicSchedule()
@@ -1152,6 +1191,8 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         cce_conv2d_backprop_filter_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.MATMUL_PATTERN:
         mmad_schedule(outs, sch_list)  # pylint: disable=W0631
+    elif pattern == OpPatterns.GEMM_PATTERN:
+        gemm_schedule(outs[0], sch_list)
     elif pattern == OpPatterns.POOL2D_PATTERN:
         pooling2d_schedule(outs[0], sch_list)
     elif pattern == OpPatterns.POOL3D_PATTERN:
