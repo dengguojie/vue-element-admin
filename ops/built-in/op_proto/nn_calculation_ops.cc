@@ -3503,11 +3503,11 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   auto x_tensor = op.GetInputDesc("x");
   auto w_tensor = op.GetInputDesc("filter");
 
-  auto x_shape = x_tensor.GetShape().GetDims();
-  auto w_shape = w_tensor.GetShape().GetDims();
+  auto x_shape = x_tensor.GetOriginShape().GetDims();
+  auto w_shape = w_tensor.GetOriginShape().GetDims();
 
-  auto x_format = x_tensor.GetFormat();
-  auto w_format = w_tensor.GetFormat();
+  auto x_format = x_tensor.GetOriginFormat();
+  auto w_format = w_tensor.GetOriginFormat();
 
   std::vector<int32_t> stride_list;
   std::vector<int32_t> dilation_list;
