@@ -124,19 +124,19 @@ case13 = {"params": [{"shape": (15, 64, 568, 568), "dtype": "float16", "format":
          "support_expect": True}
 
 # TODO fix me, this comment, run failed
-ut_case.add_case("Ascend910", case1)
-ut_case.add_case("Ascend910", case2)
-ut_case.add_case("Ascend910", case3)
-ut_case.add_case("Ascend910", case4)
-ut_case.add_case("Ascend910", case5)
-ut_case.add_case("Ascend910", case6)
-ut_case.add_case("Ascend910", case7)
-ut_case.add_case("Ascend910", case8)
-ut_case.add_case("Ascend910", case9)
-ut_case.add_case("Ascend910", case10)
-ut_case.add_case("Ascend910", case11)
-ut_case.add_case("Ascend910", case12)
-ut_case.add_case("Ascend910", case13)
+ut_case.add_case("Ascend910A", case1)
+ut_case.add_case("Ascend910A", case2)
+ut_case.add_case("Ascend910A", case3)
+ut_case.add_case("Ascend910A", case4)
+ut_case.add_case("Ascend910A", case5)
+ut_case.add_case("Ascend910A", case6)
+ut_case.add_case("Ascend910A", case7)
+ut_case.add_case("Ascend910A", case8)
+ut_case.add_case("Ascend910A", case9)
+ut_case.add_case("Ascend910A", case10)
+ut_case.add_case("Ascend910A", case11)
+ut_case.add_case("Ascend910A", case12)
+ut_case.add_case("Ascend910A", case13)
 
 case_fz = {"params": [{"shape": (1*16*16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),"ori_format": "NCHW"},
                     {"shape": (1*16*16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),"ori_format": "NCHW"},
@@ -146,7 +146,7 @@ case_fz = {"params": [{"shape": (1*16*16, 1, 16, 16), "dtype": "float16", "forma
          "expect": "success",
          "support_expect": True}
 
-ut_case.add_case("Ascend910", case_fz)
+ut_case.add_case("Ascend910A", case_fz)
 
 def calc_expect_func(x, y, begin, size):
     expect = tf.slice(x['value'], begin, size)
@@ -154,19 +154,19 @@ def calc_expect_func(x, y, begin, size):
         expect_data = sess.run(expect)
     return expect_data
 
-ut_case.add_precision_case("Ascend910", {"params": [{"shape": (5, 13, 4), "dtype": "int32", "format": "NCHW", "ori_shape": (5, 13, 4),"ori_format": "NCHW", "param_type": "input"},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (5, 13, 4), "dtype": "int32", "format": "NCHW", "ori_shape": (5, 13, 4),"ori_format": "NCHW", "param_type": "input"},
                                               {"shape": (2, 12, 3), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 12, 3),"ori_format": "NCHW", "param_type": "output"},
                                               (0, 1, 1), (2, -1, -1)],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
-ut_case.add_precision_case("Ascend910", {"params": [{"shape": (13, 7, 5, 5), "dtype": "int8", "format": "NCHW", "ori_shape": (13, 7, 5, 5),"ori_format": "NCHW", "param_type": "input"},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (13, 7, 5, 5), "dtype": "int8", "format": "NCHW", "ori_shape": (13, 7, 5, 5),"ori_format": "NCHW", "param_type": "input"},
                                               {"shape": (1, 1, 1, 1), "dtype": "int8", "format": "NCHW", "ori_shape": (1, 1, 1, 1),"ori_format": "NCHW", "param_type": "output"},
                                               (0, 0, 0, 0), (1, 1, 1, 1)],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
-ut_case.add_precision_case("Ascend910", {"params": [{"shape": (65, 75), "dtype": "float32", "format": "NCHW", "ori_shape": (65, 75),"ori_format": "NCHW", "param_type": "input"},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (65, 75), "dtype": "float32", "format": "NCHW", "ori_shape": (65, 75),"ori_format": "NCHW", "param_type": "input"},
                                               {"shape": (15, 33), "dtype": "float32", "format": "NCHW", "ori_shape": (15, 33),"ori_format": "NCHW", "param_type": "output"},
                                               (13, 25), (15, 33)],
                                    "calc_expect_func": calc_expect_func,
@@ -177,4 +177,4 @@ ut_case.add_precision_case("Ascend910", {"params": [{"shape": (65, 75), "dtype":
 
 
 if __name__ == "__main__":
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
