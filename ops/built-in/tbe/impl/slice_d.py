@@ -547,81 +547,6 @@ def _get_end(shape, begin, size):
     return end
 
 
-def _make_perf_params(output_shape, input_shape, input_begin, input_end, input_strides):
-    last_same = False
-    perf_size = 0
-    perf_output_shape = []
-    perf_input_shape = []
-    perf_input_begin = []
-    perf_input_end = []
-    perf_input_strides = []
-    for i, _ in enumerate(input_shape):
-        if input_shape[i] != output_shape[i]:
-            last_same = False
-            perf_output_shape.append(output_shape[i])
-            perf_input_shape.append(input_shape[i])
-            perf_input_begin.append(input_begin[i])
-            perf_input_end.append(input_end[i])
-            perf_input_strides.append(input_strides[i])
-            perf_size += 1
-            continue
-
-        if not last_same:
-            last_same = True
-            perf_output_shape.append(output_shape[i])
-            perf_input_shape.append(input_shape[i])
-            perf_input_begin.append(input_begin[i])
-            perf_input_end.append(input_end[i])
-            perf_input_strides.append(input_strides[i])
-            perf_size += 1
-            continue
-
-        index = perf_size - 1
-        perf_output_shape[index] *= output_shape[i]
-        perf_input_shape[index] *= input_shape[i]
-        perf_input_begin[index] = 0
-        perf_input_end[index] = perf_input_shape[index]
-        perf_input_strides[index] = 1
-
-    if len(perf_input_shape) > 1 and perf_input_shape[-1] == perf_output_shape[-1] and perf_input_strides[-2] == 1:
-        index = -2
-        perf_output_shape[index] *= perf_output_shape[-1]
-        perf_input_shape[index] *= perf_input_shape[-1]
-        perf_input_begin[index] *= perf_input_shape[-1]
-        perf_input_end[index] *= perf_input_shape[-1]
-        perf_input_strides[index] = 1
-
-        perf_output_shape.pop(-1)
-        perf_input_shape.pop(-1)
-        perf_input_begin.pop(-1)
-        perf_input_end.pop(-1)
-        perf_input_strides.pop(-1)
-
-    if (perf_output_shape[0] == perf_input_shape[0] and
-            perf_output_shape[0] % AICORE_NUM == 0 and
-            perf_output_shape[0] != AICORE_NUM):
-        first_dim = perf_output_shape[0]
-        perf_output_shape.insert(0, AICORE_NUM)
-        perf_input_shape.insert(0, AICORE_NUM)
-        perf_input_begin.insert(0, 0)
-        perf_input_end.insert(0, AICORE_NUM)
-        perf_input_strides.insert(0, 1)
-        loop = first_dim // AICORE_NUM
-        perf_output_shape[1] = loop
-        perf_input_shape[1] = loop
-        perf_input_begin[1] = 0
-        perf_input_end[1] = loop
-        perf_input_strides[1] = 1
-
-    output_shape = perf_output_shape
-    input_shape = perf_input_shape
-    input_begin = perf_input_begin
-    input_end = perf_input_end
-    input_strides = perf_input_strides
-
-    return output_shape, input_shape, input_begin, input_end, input_strides
-
-
 def _update_params(shape, begin, size):
     """
     update the shape, begin and size parameters
@@ -653,12 +578,6 @@ def _update_params(shape, begin, size):
         begin_new.pop()
         flag -= 1
 
-    strides = [1] * len(begin_new)
-    end_new = list(map(lambda x, y: x + y, begin_new, out_shape_new))
-    out_shape_new, input_shape_new, begin_new, _, _ = _make_perf_params(out_shape_new, input_shape_new,
-                                                                        begin_new,
-                                                                        end_new,
-                                                                        strides)
     return input_shape_new, begin_new, out_shape_new
 
 
