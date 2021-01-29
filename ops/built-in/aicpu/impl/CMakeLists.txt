@@ -145,7 +145,7 @@ if(BUILD_OPEN_PROJECT)
     cann_install(
       TARGET      cpu_kernels
       FILES       $<TARGET_FILE:cpu_kernels>
-      DESTINATION "${INSTALL_PATH}/aicpu/aicpu_kernels_device/lib64"
+      DESTINATION "${INSTALL_PATH}/aicpu/aicpu_kernels_device"
     )
 
     set(COPY_TO_PATH ${OPS_AICPU_PATH}/${SUB_SO_WITH_VERSION})
