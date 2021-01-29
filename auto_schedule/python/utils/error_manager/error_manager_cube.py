@@ -758,3 +758,37 @@ def raise_err_return_value_invalid(expect_value, real_value):
     }
     msg = get_error_message(args_dict)
     raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_env_set_invalid(env_name, expect_value):
+    """
+    the environment path [%s] is not set or invalid, expect [%s]. %
+    (env_name,expect_value)
+    :param env_name
+    :param expect_value
+    :return
+    """
+    args_dict = {
+        "errCode": "E68016",
+        "env_name": env_name,
+        "expect_value": expect_value,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)
+
+
+def raise_err_model_imcompatible_with_type(tiling_model, tiling_type):
+    """
+    the [%s] model does not support [%s] type. %
+    (tiling_model,tiling_type)
+    :param tiling_model
+    :param tiling_type
+    :return
+    """
+    args_dict = {
+        "errCode": "E68017",
+        "tiling_model": tiling_model,
+        "tiling_type": tiling_type,
+    }
+    msg = get_error_message(args_dict)
+    raise_runtime_error_cube(args_dict, msg)

@@ -1170,6 +1170,16 @@
       "argList": "expect_value,real_value"
     },
     {
+      "errCode": "E68016",
+      "errMessage": "the environment path [%s] is not set or invalid, expect [%s].",
+      "argList": "env_name,expect_value"
+    },
+    {
+      "errCode": "E68017",
+      "errMessage": "the [%s] model does not support [%s] type.",
+      "argList": "tiling_model,tiling_type"
+    },
+    {
       "errCode": "E68050",
       "errMessage": "[%s] close failed.",
       "argList": "param_name"
