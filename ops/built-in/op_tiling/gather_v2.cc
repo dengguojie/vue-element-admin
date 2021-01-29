@@ -522,8 +522,8 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
   int64_t halfRemainParamsElem = halfRemainUbSize / paramsDSize;
   int64_t halfUbParamsElem = halfUbSize / paramsDSize;
 
-  if (runParams.paramsPre >= coreNum && (runParams.paramsRow * paramsDSize < BLOCK_SIZE ||
-      runParams.paramsRow * paramsDSize % BLOCK_SIZE == 0)) {
+  if (runParams.paramsPre >= coreNum && paramsRowCeil <= halfUbParamsElem &&
+      (runParams.paramsRow * paramsDSize < BLOCK_SIZE || runParams.paramsRow * paramsDSize % BLOCK_SIZE == 0)) {
     // block tiling: params_pre tiling
     runParams.need_core_num = coreNum;
     runParams.tail_process_core = 0;
