@@ -132,24 +132,38 @@ def unify_broadcast_shapes(shapes: list, op_name=para_check.OP_NAME):
         completed input shapes and max shape
 
     """
+    def _greater_one(_value):
+        if isinstance(_value, (_expr.IntImm, _expr.UIntImm)):
+            return _value.value > 1
+        elif isinstance(_value, int):
+            return _value > 1
+        return False
+
+    def _max(_shape):
+        no_one_shape = [s for s in _shape if not expr_equal(s, 1)]
+        if len(no_one_shape) == 0:
+            max_value = 1
+        elif len(no_one_shape) == 1:
+            max_value = no_one_shape[0]
+        else:
+            max_value = tvm.max(*no_one_shape)
+            for value in no_one_shape:
+                if _greater_one(value):
+                    max_value = value
+                    break
+        return max_value
+
     max_dim_length = max([len(list(shape)) for shape in shapes])
     input_shapes = []
     for shape in shapes:
         input_shapes.append([1] * (max_dim_length - len(shape)) + list(shape))
     input_shapes = list(map(list, zip(*input_shapes)))
-    max_shape = []
-    for shape in input_shapes:
-        no_one_shape = [s for s in shape if not expr_equal(s, 1)]
-        if len(no_one_shape) == 0:
-            max_shape.append(1)
-        elif len(no_one_shape) == 1:
-            max_shape.append(no_one_shape[0])
-        else:
-            max_shape.append(tvm.max(*no_one_shape))
+    max_shape = [_max(shape) for shape in input_shapes]
+    const_type = (_expr.IntImm, _expr.UIntImm, int)
     for value, shape in zip(max_shape, input_shapes):
-        if isinstance(value, (_expr.IntImm, _expr.UIntImm)):
+        if isinstance(value, const_type):
             for _shape in shape:
-                if not expr_equal(_shape, value) and not expr_equal(_shape, 1):
+                if isinstance(_shape, const_type) and not expr_equal(_shape, value) and not expr_equal(_shape, 1):
                     error_info = {
                         'errCode': para_check.OP_ERROR_CODE_013, 'op_name': op_name,
                         'input1_shape': ",".join(str(i) for i in shape),
