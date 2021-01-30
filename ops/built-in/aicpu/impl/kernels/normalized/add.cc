@@ -82,11 +82,13 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
                        KERNEL_STATUS_PARAM_INVALID, "Get input[1] data failed")
   KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get output data failed")
+
   KERNEL_LOG_INFO(
       "Add kernel, input[0]: size is [%llu]; input[1]: size is [%llu]; output: "
       "size is [%llu].",
       calc_info.input_0->GetDataSize(), calc_info.input_1->GetDataSize(),
       calc_info.output->GetDataSize());
+  
   // broadcast input
   Bcast bcast;
   if (bcast.GenerateBcastInfo(calc_info) != KERNEL_STATUS_OK) {
@@ -163,6 +165,7 @@ void AddCpuKernel::AddCalculate(BCalcInfo &calc_info) {
   Eigen::DSizes<Eigen::DenseIndex, RANK> shape_out;
   Eigen::array<Eigen::DenseIndex, RANK> bcast_0;
   Eigen::array<Eigen::DenseIndex, RANK> bcast_1;
+
   for (int32_t i = 0; i < RANK; i++) {
     reshape_0[i] = calc_info.reshape_0[i];
     reshape_1[i] = calc_info.reshape_1[i];

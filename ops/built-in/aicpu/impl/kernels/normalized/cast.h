@@ -22,6 +22,7 @@
 namespace aicpu {
 class CastCpuKernel : public CpuKernel {
  public:
+  CastCpuKernel() = default;
   ~CastCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 

@@ -95,6 +95,7 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
   (void)bcast.GetBcastVec(calc_info);
+
  // choose eigen calculate function depend on rank of input
   switch (static_cast<int32_t>(calc_info.shape_out.size())) {
     case 0: {
@@ -163,6 +164,7 @@ void MulCpuKernel::MulCalculate(BCalcInfo &calc_info) {
   Eigen::DSizes<Eigen::DenseIndex, RANK> shape_out;
   Eigen::array<Eigen::DenseIndex, RANK> bcast_0;
   Eigen::array<Eigen::DenseIndex, RANK> bcast_1;
+
   for (int32_t i = 0; i < RANK; i++) {
     reshape_0[i] = calc_info.reshape_0[i];
     reshape_1[i] = calc_info.reshape_1[i];
