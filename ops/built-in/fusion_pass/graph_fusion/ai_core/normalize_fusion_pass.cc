@@ -100,7 +100,12 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   std::vector<int64_t> input_shape_vector = input_shape.GetDims();
   std::vector<int64_t> output_shape_vector;
   unsigned int shapeSize = input_shape_vector.size();
-
+ 
+  FUSION_PASS_CHECK(
+    shapeSize != 4,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node %s's Only Support 4 dim", fusedNode->GetName().c_str()),
+    return PARAM_INVALID);
+  
   if (across_spatial) {
     output_shape_vector.push_back(input_shape_vector[0]);
     output_shape_vector.push_back(1);

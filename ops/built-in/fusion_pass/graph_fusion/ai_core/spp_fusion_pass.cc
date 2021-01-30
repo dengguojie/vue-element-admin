@@ -47,9 +47,9 @@ Status SPPPass::MakePoolingLayer(ge::OpDescPtr& poolingOpDesc, const ge::GeTenso
                                  int64_t poolMethod) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter SPP make pooling layer");
   vector<int64_t> shapeDims = inputDesc.GetOriginShape().GetDims();
-  if (shapeDims.empty()) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "SPP input shape is NULL");
-    return FAILED;
+  if (shapeDims.empty() || shapeDims.size() < 4) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "SPP input shapedims is less than 4");
+    return PARAM_INVALID;
   }
   for (size_t i = 1; i <= 3; i++) {
     auto dim = shapeDims[i];
@@ -157,6 +157,9 @@ Status SPPPass::MakeConcatLayer(ge::OpDescPtr& concatOpDesc, vector<ge::OpDescPt
   for (uint64_t i = 0; i < bottomSize; i++) {
     ge::GeTensorDesc bottomOutputDesc = fatherOp[i]->GetOutputDesc(0);
     vector<int64_t> shapeDims = bottomOutputDesc.GetOriginShape().GetDims();
+    FUSION_PASS_CHECK(shapeDims.size() < 4,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "SPP output shape dims is less than 4."),
+                      return PARAM_INVALID;);
     for (size_t i = 1; i <= 3; i++) {
       auto dim = shapeDims[i];
       if (PatternFusionUtil::IsUnknownShape(dim)) {
@@ -281,6 +284,9 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
 
     for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
       ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
+      FUSION_PASS_CHECK(oriTopPeerAnchorPtri == nullptr,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "SPP output anchor ptr is null, fusion failed."),
+                        return FAILED;);
       ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(singlePoolingNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
@@ -336,6 +342,9 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
 
   for (uint64_t i = 0; i < oriTopPeerAnchors.size(); i++) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = oriTopPeerAnchors.at(i);
+    FUSION_PASS_CHECK(oriTopPeerAnchorPtri == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "SPP output anchor ptr is null, fusion failed."),
+                      return FAILED;);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "add edge from src node[%s] to dst node[%s] failed.",
