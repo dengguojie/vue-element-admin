@@ -311,7 +311,7 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
             return False
 
     src_dtypes = ["float32", "int32"]
-    if src_dtype in src_dtypes:
+    if src_dtype in src_dtypes and not dynamic_flag:
         shape_length = len(shape_a)
         shape_length_b = len(shape_b)
         if shape_length != shape_length_b:

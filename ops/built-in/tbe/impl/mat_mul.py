@@ -258,7 +258,7 @@ def check_supported(input_x1,
         para_check.check_shape(shape_b, param_name="input_x2")
     target_type = ["float32", "int32"]
     res = True
-    if src_dtype in target_type:
+    if src_dtype in target_type and not dynamic_flag:
         if len(shape_a) != 2 and len(shape_b) != 2:
             res = False
         elif trans_a:
