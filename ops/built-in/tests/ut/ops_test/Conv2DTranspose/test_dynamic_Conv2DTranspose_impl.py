@@ -46,6 +46,19 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_input_case1",
                                         "success"))
 
+# opti, dynamic_hw, range(n,None)
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_transpose_case([32, 16, 1, 1], [1, 32, -1, -1], [1, 16, -1, -1],[4],
+                                        "float16", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        ((1, 1), (32, 32), (6, None), (6, None)),
+                                        ((1, 1), (16, 16), (6, None), (6, None)),
+                                        ((4, 4)),
+                                        (1, 1, 1, 1), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
+                                        "dynamic_conv2d_backprop_input_case1",
+                                        "success"))
+
 # general, dynamic_batch
 ut_case.add_case(
     "all",

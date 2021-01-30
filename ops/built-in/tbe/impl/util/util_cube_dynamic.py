@@ -696,22 +696,34 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
 
         if DYNAMIC_FLAG in self.pads:
             dx_h_lower = (dy_range[H_DIM][0]-1) * self.strides[H_DIM]+1
-            dx_h_upper = min(dy_range[H_DIM][1] * self.strides[H_DIM], self.valid_paras.get("hw_max"))
+            if not dy_range[H_DIM][1]:
+                dx_h_upper = dy_range[H_DIM][1]
+            else:
+                dx_h_upper = min(dy_range[H_DIM][1] * self.strides[H_DIM], self.valid_paras.get("hw_max"))
             dx_w_lower = (dy_range[W_DIM][0]-1) * self.strides[W_DIM]+1
-            dx_w_upper = min(dy_range[W_DIM][1] * self.strides[W_DIM], self.valid_paras.get("hw_max"))
+            if not dy_range[W_DIM][1]:
+                dx_w_upper = dy_range[W_DIM][1]
+            else:
+                dx_w_upper = min(dy_range[W_DIM][1] * self.strides[W_DIM], self.valid_paras.get("hw_max"))
         else:
             dx_h_lower = max(_get_lower_input(dy_range[H_DIM][0], w_shape[H_DIM],
                                       (self.pads[0], self.pads[1]), self.strides[H_DIM],
                                       self.dilations[H_DIM]), self.valid_paras.get("nhw_min"))
-            dx_h_upper = min(_get_higher_input(dy_range[H_DIM][1], w_shape[H_DIM],
-                                      (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                      self.dilations[H_DIM]), self.valid_paras.get("hw_max"))
+            if not dy_range[H_DIM][1]:
+                dx_h_upper = dy_range[H_DIM][1]
+            else:
+                dx_h_upper = min(_get_higher_input(dy_range[H_DIM][1], w_shape[H_DIM],
+                                          (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                          self.dilations[H_DIM]), self.valid_paras.get("hw_max"))
             dx_w_lower = max(_get_lower_input(dy_range[W_DIM][0], w_shape[W_DIM],
                                       (self.pads[2], self.pads[3]), self.strides[W_DIM],
                                       self.dilations[W_DIM]), self.valid_paras.get("nhw_min"))
-            dx_w_upper = min(_get_higher_input(dy_range[W_DIM][1], w_shape[W_DIM],
-                                      (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                      self.dilations[W_DIM]), self.valid_paras.get("hw_max"))
+            if not dy_range[W_DIM][1]:
+                dx_w_upper = dy_range[W_DIM][1]
+            else:
+                dx_w_upper = min(_get_higher_input(dy_range[W_DIM][1], w_shape[W_DIM],
+                                          (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                          self.dilations[W_DIM]), self.valid_paras.get("hw_max"))
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
         return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
@@ -841,15 +853,21 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
         dx_h_lower = max(_get_input(dy_range[H_DIM][0], w_shape[H_DIM],
                                   (self.pads[0], self.pads[1]), self.strides[H_DIM],
                                   self.dilations[H_DIM]), self.valid_paras.get("nhw_min"))
-        dx_h_upper = min(_get_input(dy_range[H_DIM][1], w_shape[H_DIM],
-                                  (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                  self.dilations[H_DIM]), self.valid_paras.get("hw_max"))
+        if not dy_range[H_DIM][1]:
+            dx_h_upper = dy_range[H_DIM][1]
+        else:
+            dx_h_upper = min(_get_input(dy_range[H_DIM][1], w_shape[H_DIM],
+                                      (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                      self.dilations[H_DIM]), self.valid_paras.get("hw_max"))
         dx_w_lower = max(_get_input(dy_range[W_DIM][0], w_shape[W_DIM],
                                   (self.pads[2], self.pads[3]), self.strides[W_DIM],
                                   self.dilations[W_DIM]), self.valid_paras.get("nhw_min"))
-        dx_w_upper = min(_get_input(dy_range[W_DIM][1], w_shape[W_DIM],
-                                  (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                  self.dilations[W_DIM]), self.valid_paras.get("hw_max"))
+        if not dy_range[W_DIM][1]:
+            dx_w_upper = dy_range[W_DIM][1]
+        else:
+            dx_w_upper = min(_get_input(dy_range[W_DIM][1], w_shape[W_DIM],
+                                      (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                      self.dilations[W_DIM]), self.valid_paras.get("hw_max"))
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
         return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),

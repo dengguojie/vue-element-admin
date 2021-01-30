@@ -38,6 +38,19 @@ ut_case.add_case(
                                         (1, 1), [1, 1, 1, 1], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_deconvolution_case1",
                                         "success"))
+
+# opti, dynamic_hw
+ut_case.add_case(
+    "all",
+    gen_dynamic_deconvolution_case([128, 128, 3, 3], [1, 128, -1, -1], [1, 128, -1, -1],
+                                        "float16", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        ((1, 1), (128, 128), (1, None), (1, None)),
+                                        ((1, 1), (128, 128), (4, None), (4, None)),
+                                        (1, 1), [1, 1, 1, 1], (1, 1, 1, 1), 1, "NCHW",
+                                        "dynamic_deconvolution_case1",
+                                        "success"))
+
 # general, dynamic_hw
 ut_case.add_case(
     "all",
@@ -46,6 +59,18 @@ ut_case.add_case(
                                         "NCHW", "NCHW", "NCHW",
                                         ((1, 1), (32, 32), (4, 24), (4, 24)),
                                         ((1, 1), (16, 16), (6, 26), (6, 26)),
+                                        (1, 1), [0,0,0,0], (1, 1, 1, 1), 1, "NCHW",
+                                        "dynamic_deconvolution_case2",
+                                        "success"))
+
+# general, dynamic_hw
+ut_case.add_case(
+    "all",
+    gen_dynamic_deconvolution_case([32, 16, 3, 3], [1, 32, -1, -1], [1, 16, -1, -1],
+                                        "float16", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        ((1, 1), (32, 32), (4, None), (4, None)),
+                                        ((1, 1), (16, 16), (6, None), (6, None)),
                                         (1, 1), [0,0,0,0], (1, 1, 1, 1), 1, "NCHW",
                                         "dynamic_deconvolution_case2",
                                         "success"))
