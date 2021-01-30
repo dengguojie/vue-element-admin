@@ -20,6 +20,7 @@ from .api import ceil
 from .api import floor
 from .api import round
 from .api import trunc
+from .api import round_half_up
 from .api import round_to
 from .api import cast_to
 from .api import concat
@@ -76,6 +77,7 @@ from .api import unsorted_segment_mean
 from .api import unsorted_segment_prod
 from .api import cce_build_code
 from .api import auto_schedule
+from .api import pooling3d_max_grad_grad
 
 from .te_compute.common import cast_to_round, calculate_one_or_zero
 from .te_compute.conv_compute import conv
@@ -95,7 +97,6 @@ from .te_compute.mmad_compute import matmul
 from .te_compute.mmad_compute import get_matmul_performance_format
 from .te_compute.gemm_compute import gemm
 from .te_compute.pooling2d_compute import get_caffe_out_size_and_pad
-from .te_compute.pooling3d_max_grad_grad_compute import pooling3d_max_grad_grad
 from .te_compute.conv2d_backprop_filter_compute import conv2d_backprop_filter_compute
 from .te_compute.conv2d_backprop_input_compute import conv2d_backprop_input_compute
 from .te_compute.conv3d_compute import conv3d

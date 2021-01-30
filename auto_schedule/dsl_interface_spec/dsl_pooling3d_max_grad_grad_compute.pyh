@@ -1,5 +1,0 @@
-# source file:python/te/lang/cce/te_compute/pooling3d_max_grad_grad_compute.py
-
-def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor, ksize, strides, pads=(0, 0, 0, 0, 0, 0), data_format="NDHWC", padding="SAME"):
-
-def max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor, ksize, strides, pads=(0, 0, 0, 0, 0, 0), data_format="NDHWC", padding="SAME"):

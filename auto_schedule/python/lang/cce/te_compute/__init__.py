@@ -21,7 +21,7 @@ schedule.
 """
 # pylint: disable=redefined-builtin
 from .broadcast_compute import broadcast
-from .cast_compute import ceil, floor, round, trunc, round_half_up, round_d
+from .cast_compute import ceil, floor, round, trunc, round_half_up
 from .common import round_to, cast_to, cast_to_round
 from .concat_compute import concat
 from .conv_compute import conv, ConvParam, check_conv_shape, conv_compress

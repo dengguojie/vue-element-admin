@@ -1,5 +1,0 @@
-# source file:python/te/lang/cce/te_compute/split_compute.py
-
-def split_compute_com(data, split_dim, size_splits):
-
-def split(data, split_dim, size_splits):

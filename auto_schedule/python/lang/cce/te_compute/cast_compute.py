@@ -22,54 +22,18 @@ from te import tvm
 from te.platform import intrinsic_check_support
 from te.utils.error_manager.error_manager_util import get_error_message
 from te.utils.shape_util import shape_to_list
-from te.tvm.dsl_source_info import source_info_decorator
+from ..api import ceil
+from ..api import floor
+from ..api import round
+from ..api import trunc
+from ..api import round_half_up
 from .util import auto_cast_tensor
 from .util import is_cast_support
 from .util import get_cast_type
 from .util import check_input_tensor_shape
-from .util import dsl_support_dtype
-from .util import DTYPE_MAP
-from .util import in_dynamic_and_static_unify
 
 
 NAME_INDEX = [0]
-
-
-@decorator
-def _auto_cast_of_cast(func, *args, **kwargs):
-    '''
-    auto cast dectorator.
-    Before calling elewise api, check the input tensor is supported by the intr.
-    If not supported, casting the input tensor to supported dtype.
-    Only static shape support auto cast.
-    (On condition that the cast type is supported.
-    If the cast type is not supported,raising a RuntimeError).
-    '''
-    if in_dynamic_and_static_unify():
-        return func(*args, **kwargs)
-    intr = func.__name__
-
-    if len(args) == 1:
-        if not isinstance(args[0], tvm.tensor.Tensor):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The first input type must be [%s]," \
-                                          " while type is [%s]" % ('tvm.tensor', type(args[0]))
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        raw_tensor = args[0]
-
-        supported_dtypes = dsl_support_dtype(intr)
-        if not supported_dtypes:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "[%s] is not supported!" % intr
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-        temp_tensor = auto_cast_tensor(raw_tensor, intr, supported_dtypes)
-
-        return func(temp_tensor)
-
-    return func(*args, **kwargs)
 
 
 def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
@@ -124,126 +88,6 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
         cast_type = "trunc"
     return _cast_op(raw_tensor, dst_dtype, 'elewise_single_' + cast_type,
                     is_auto_cast=is_auto_cast)
-
-
-@source_info_decorator()
-@_auto_cast_of_cast
-def ceil(raw_tensor):
-    """
-    cast tensor from src_type to dst_dtype with ceiling method
-
-    Parameters
-    ----------
-    raw_tensor : wrapped_tensor or tvm.tensor
-
-    Returns
-    -------
-    wrapped_tensor : casted tensor
-    """
-    dst_dtype = "int32"
-    return _cast_op(raw_tensor, dst_dtype, "elewise_single_ceil")
-
-
-@source_info_decorator()
-@_auto_cast_of_cast
-def floor(raw_tensor):
-    """
-    cast tensor from src_type to dst_dtype with flooring method
-
-    Parameters
-    ----------
-    raw_tensor : wrapped_tensor or tvm.tensor
-
-    Returns
-    -------
-    wrapped_tensor : casted tensor
-    """
-    dst_dtype = "int32"
-    return _cast_op(raw_tensor, dst_dtype, "elewise_single_floor")
-
-
-# pylint: disable=redefined-builtin
-@source_info_decorator()
-@_auto_cast_of_cast
-def round(raw_tensor):
-    """
-    cast tensor from src_type to dst_dtype with rounding method
-
-    Parameters
-    ----------
-    raw_tensor : wrapped_tensor or tvm.tensor
-
-    Returns
-    -------
-    wrapped_tensor : casted tensor
-    """
-    dst_dtype = "int32"
-    return _cast_op(raw_tensor, dst_dtype, "elewise_single_round")
-
-
-@source_info_decorator()
-@_auto_cast_of_cast
-def trunc(raw_tensor):
-    """
-    cast tensor from src_type to dst_dtype with trunc method
-
-    Parameters
-    ----------
-    raw_tensor : wrapped_tensor or tvm.tensor
-
-    Returns
-    -------
-    wrapped_tensor : casted tensor
-    """
-    src_dtype = raw_tensor.dtype.lower()
-    cast_type = DTYPE_MAP[src_dtype] + "2s32z"
-    is_support = intrinsic_check_support("Intrinsic_vconv", cast_type)
-    if not is_support:
-        dict_args = dict()
-        dict_args["errCode"] = "E90002"
-        dict_args["detailed_cause"] = "the target platform is not " \
-                                      "support %s trunc" % src_dtype
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    dst_dtype = "int32"
-    return _cast_op(raw_tensor, dst_dtype, "elewise_single_trunc")
-
-
-@source_info_decorator()
-def round_half_up(raw_tensor):
-    """
-    cast tensor from src_type to dst_dtype with rounding method
-
-    Parameters
-    ----------
-    raw_tensor : wrapped_tensor or tvm.tensor
-
-    Returns
-    -------
-    wrapped_tensor : casted tensor
-    """
-    src_dtype = raw_tensor.dtype.lower()
-    cast_type = DTYPE_MAP[src_dtype] + "2s32a"
-    is_support_round_d = intrinsic_check_support("Intrinsic_vconv", cast_type)
-    if not is_support_round_d:
-        dict_args = dict()
-        dict_args["errCode"] = "E90002"
-        dict_args["detailed_cause"] = "the target platform is not " \
-                                      "support %s round" % src_dtype
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-
-    dst_dtype = "int32"
-    return _cast_op(raw_tensor, dst_dtype, "elewise_single_round_d")
-
-
-@source_info_decorator()
-def round_d(raw_tensor):
-    """
-    cast tensor from src_type to dst_dtype with rounding method
-    """
-    warnings.warn("round_d is expired, please replace it with the func round_half_up",
-                  DeprecationWarning)
-    return round_half_up(raw_tensor)
 
 
 def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):

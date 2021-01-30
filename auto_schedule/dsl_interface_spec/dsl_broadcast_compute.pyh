@@ -1,5 +1,0 @@
-# source file:python/te/lang/cce/te_compute/broadcast_compute.py
-
-NAME_INDEX = [0]
-
-def broadcast(var, shape, output_dtype=None):

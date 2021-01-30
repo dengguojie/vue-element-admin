@@ -31,51 +31,16 @@ from .elewise_compute import vmin
 from .elewise_compute import vabs
 from .elewise_compute import vmul
 from .elewise_compute import vrec
-from .elewise_compute import _cast_tensors_for_instr
 from .broadcast_compute import broadcast
-# pylint: disable=redefined-builtin
-from .cast_compute import _cast
-from .cast_compute import floor
-from .cast_compute import round
 from .cast_compute import round_half_up
+from ..api import round_to
+from ..api import cast_to
 from .util import check_input_tensor_shape
 from .util import DTYPE_MAP
 
 
 _BLOCK_SIZE = cce_params.BLOCK_REDUCE
 _BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8
-
-
-@source_info_decorator()
-def round_to(data, max_value, min_value):
-    """
-    round data to [min_value,max_value]
-
-    Parameters
-    ----------
-    data : tvm.tensor
-        tensors need to change dtype
-
-    max_value/min_value : float
-        the range of res
-
-    Returns
-    -------
-    tensor : tvm.tensor ,elements in tensor is in range [min_value,max_value]
-    """
-    if isinstance(data, tvm.tensor.Tensor):
-        check_input_tensor_shape(data)
-    tensor_vmuls = _cast_tensors_for_instr("vmuls", [data, 0])
-    data_tmp = vmuls(tensor_vmuls[0], tensor_vmuls[1])
-    tensor_vadds = _cast_tensors_for_instr("vadds", [data_tmp, min_value])
-    data_min = vadds(tensor_vadds[0], tensor_vadds[1])
-    tensor_vadds_tmp = _cast_tensors_for_instr("vadds", [data_tmp, max_value])
-    data_max = vadds(tensor_vadds_tmp[0], tensor_vadds_tmp[1])
-    tensor_vmax = _cast_tensors_for_instr("vmax", [data, data_min])
-    data1 = vmax(tensor_vmax[0], tensor_vmax[1])
-    tensor_vmin = _cast_tensors_for_instr("vmin", [data1, data_max])
-    data1 = vmin(tensor_vmin[0], tensor_vmin[1])
-    return data1
 
 
 @source_info_decorator()
@@ -112,85 +77,6 @@ def cast_to_round(data, dtype):
     return round_half_up(data)
 
 
-# pylint: disable=too-many-locals, invalid-name
-@source_info_decorator()
-def cast_to(data, dtype, f1628IntegerFlag=True):
-    """
-    a wrapped cast operations , cast data to the type of dtype
-
-    Parameters
-    ----------
-    data : tvm.tensor
-        tensors need to change dtype
-
-    dtype : string
-        dst dtype need to cast to
-
-    f1628IntegerFlag : bool
-        before fp16->int8/uint8, the data is all interger or not. default value
-        is False.
-
-    Returns
-    -------
-    tensor : tvm.tensor
-    """
-    if isinstance(data, tvm.tensor.Tensor):
-        data_dtype = getattr(data, 'dtype')
-    else:
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The cast input type must be " \
-                                      "tvm.tensor, while is [%s]" % type(data)
-        raise RuntimeError(dict_args, get_error_message(dict_args))
-    check_input_tensor_shape(data)
-
-    if (data_dtype.lower() == "float32") and (dtype == "int32") and \
-            not intrinsic_check_support("Intrinsic_vconv", "f322s32z"):
-        fp32_max = tvm.const(2147483648, dtype="float32")
-        fp32_min = tvm.const(2**(-31), dtype="float32")
-        data1 = round_to(data, 0.5, -0.5)
-        new_data = vmuls(data1, fp32_max)
-        tmp2 = vabs(new_data)
-        tmp3 = vadds(tmp2, fp32_min)
-        fp32_res = vmul(new_data, vrec(tmp3))
-        if not cceconf.cce_conf.api_check_support("te.lang.cce.round", "float32"):
-            fp32_res = _cast(fp32_res, dst_dtype="float16")
-        sign_res = round(fp32_res)  # get the sign data[-1,0,1]
-        abs_data = vabs(data)
-        if not cceconf.cce_conf.api_check_support("te.lang.cce.floor", "float32"):
-            abs_data = _cast(abs_data, dst_dtype="float16")
-        floor_data = floor(abs_data)  # get the floor data
-        res = vmul(floor_data, sign_res)
-        return res
-
-    if (data_dtype.lower() == "float16") and (dtype == "int32") and \
-            not intrinsic_check_support("Intrinsic_vconv", "f162s32z"):
-        fp16_max = tvm.const(32768, dtype="float16")
-        fp16_min = tvm.const(2 ** (-15), dtype="float16")
-
-        data1 = round_to(data, 0.5, -0.5)
-
-        new_data = vmuls(data1, fp16_max)
-        tmp2 = vabs(new_data)
-        tmp3 = vadds(tmp2, fp16_min)
-        fp16_res = vmul(new_data, vrec(tmp3))
-        sign_res = round(fp16_res)
-
-        floor_data = floor(vabs(data))
-        res = vmul(floor_data, sign_res)
-        return res
-
-    if (data_dtype.lower() == "float16") and (dtype in (
-            'int8', 'uint8')) and not f1628IntegerFlag:
-        fp16_half = tvm.const(-0.5, dtype="float16")
-        data = vadds(data, fp16_half)
-
-    if data_dtype == dtype:
-        return data
-
-    return _cast(data, dst_dtype=dtype, is_auto_cast=False)
-
-
 # pylint: disable=too-many-arguments
 def img2col(input_img,
             col_shape,
@@ -208,35 +94,6 @@ def img2col(input_img,
         DeprecationWarning)
     from tbe.dsl.compute.common import img2col
     return img2col(input_img, col_shape, filter_h, filter_w, pad, stride, tag, padding_value)
-
-
-# pylint: disable=too-many-arguments
-def _img2col_with_block_pad(img_tensor, filter_h, filter_w, output_h, output_w,
-                            pad, stride):
-    """
-    img2col_with_block_pad
-    """
-    # img2col NC1HWC0
-    img_shape = list(img_tensor.shape)
-    output_hw = output_h * output_w
-    img_shape = list(img_shape)
-    col_shape = (img_shape[0], output_hw, img_shape[1], filter_h, filter_w,
-                 img_shape[4])
-    col = img2col(img_tensor, col_shape, filter_h, filter_w, pad, stride)
-
-    output_hw_pad = (output_hw + _BLOCK_SIZE - 1) \
-        // _BLOCK_SIZE * _BLOCK_SIZE
-    col_pad_shape = (img_shape[0], output_hw_pad, img_shape[1], filter_h,
-                     filter_w, img_shape[4])
-    col_pad = tvm.compute(
-        col_pad_shape,
-        lambda n, howo_mad, c1, kh, kw, c0: tvm.select(
-            howo_mad < output_hw, col(n, howo_mad, c1, kh, kw, c0),
-            tvm.const(0, img_tensor.dtype)),
-        name='A_im2col_after_load3d',
-        tag='im2col_row_major')
-
-    return col, col_pad
 
 
 # pylint: disable=too-many-arguments
