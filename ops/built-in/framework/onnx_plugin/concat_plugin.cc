@@ -24,20 +24,16 @@
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
-#include "graph.h"
-#include "all_ops.h"
+
 #include "op_log.h"
 
-using namespace std;
-using namespace ge;
-using ge::Operator;
 namespace domi {
-using NodeProto = ge::onnx::NodeProto;
-using OpDesc = std::shared_ptr<ge::OpDesc>;
-static const int DEFAULT_CONCAT_DIM = 0;
 
-Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
-  const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
+static const int DEFAULT_CONCAT_DIM = 1;
+
+Status ParseParamsConcat(const Message* op_src, ge::Operator& op_dest) {
+  OP_LOGI("Concat", "[PLUGIN_CONCAT]---------ParseParams Concat start----------");
+  const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (nullptr == node) {
     OP_LOGE("Concat", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
@@ -46,8 +42,7 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
   int concat_dim = 0;
   bool set_axis_flag = false;
   for (const auto& attr : node->attribute()) {
-    if (attr.name() == "axis" &&
-        attr.type() == ge::onnx::AttributeProto::INT) {
+    if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
       concat_dim = attr.i();
       set_axis_flag = true;
       break;
@@ -60,56 +55,16 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("concat_dim", concat_dim);
 
   int n = node->input_size();
-  OP_LOGI("Concat", "[PLUGIN_CONCAT]-input_size=%d ", n);
+  OP_LOGI("Concat", "[PLUGIN_CONCAT]----------input_size=%d----------", n);
   op_dest.SetAttr("N", n);
-  OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  std::shared_ptr<ge::OpDesc> op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   op_desc->AddDynamicInputDesc("x", n);
   return SUCCESS;
 }
 
-Status ParseParamsConcatCall(const Message* op_src, ge::Operator& op_dest) {
-  OP_LOGI("Concat", "ParseParams Concat start");
-  if (OpConcatUpdateInfo(op_src, op_dest) != SUCCESS) {
-    return FAILED;
-  }
-  op_dest.SetAttr("original_type", "ai.onnx::11::Concat");
-  return SUCCESS;
-}
-
-Status ParseOpToGraphConcat(const ge::Operator &op, Graph &graph) {
-  int input_size = 0;
-  op.GetAttr("N", input_size);
-  std::vector<ge::Operator> inputs;
-  std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
-  if (input_size == 0) {
-    OP_LOGE("ParseOpToGraphConcat", "input_size must ge 1");
-    return FAILED;
-  } else if (input_size == 1) {
-    auto data_op = op::Data("data").set_attr_index(0);
-    auto identity_op = op::Identity("identity").set_input_x(data_op);
-    inputs.push_back(data_op);
-    output_indexs.emplace_back(identity_op, std::vector<size_t>{0});
-  } else {
-    int concat_dim = DEFAULT_CONCAT_DIM;
-    op.GetAttr("concat_dim", concat_dim);
-    auto concat_op = op::ConcatD("ConcatD")
-                       .create_dynamic_input_x(input_size)
-                       .set_attr_concat_dim(concat_dim);
-    for (int i = 0; i < input_size; ++i) {
-      auto data_op = op::Data().set_attr_index(i);
-      concat_op.set_dynamic_input_x(i, data_op);
-      inputs.push_back(data_op);
-    }
-    output_indexs.emplace_back(concat_op, std::vector<size_t>{0});        
-  }
-  graph.SetInputs(inputs).SetOutputs(output_indexs);
-  return SUCCESS;
-}
-
-REGISTER_CUSTOM_OP("PartitionedCall")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::Concat")
-  .ParseParamsFn(ParseParamsConcatCall)
-  .ParseOpToGraphFn(ParseOpToGraphConcat)
-  .ImplyType(ImplyType::TVM);
+REGISTER_CUSTOM_OP("ConcatD")
+    .FrameworkType(ONNX)
+    .OriginOpType("ai.onnx::11::Concat")
+    .ParseParamsFn(ParseParamsConcat)
+    .ImplyType(ImplyType::TVM);
 }  // namespace domi
