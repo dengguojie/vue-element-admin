@@ -233,6 +233,8 @@ def create_attr_value_str(attr_value):
     :return: none
     """
     if isinstance(attr_value, list):
+        if not attr_value:
+            return "{}"
         if isinstance(attr_value[0], list):
             res_str = "{"
             num_list_str_list = []
@@ -486,12 +488,6 @@ def check_attr_value_valid(attr):
         if not isinstance(attr['value'], list):
             print_error_log(
                 'The value (%s) is invalid. The value of "%s" for "attr" '
-                'only supports %s. Please modify it.'
-                % (attr['value'], attr['name'], attr_type))
-            raise OpTestGenException(OP_TEST_GEN_INVALID_DATA_ERROR)
-        if len(attr['value']) == 0:
-            print_error_log(
-                'The value (%s) is empty. The value of "%s" for "attr" '
                 'only supports %s. Please modify it.'
                 % (attr['value'], attr['name'], attr_type))
             raise OpTestGenException(OP_TEST_GEN_INVALID_DATA_ERROR)

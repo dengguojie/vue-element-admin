@@ -96,6 +96,8 @@ class CaseGenerator:
                 if attr_type == 'listListInt':
                     default_value = self._parse_list_list_int_value(
                         default_value_str)
+                if default_value_str == "[]":
+                    return []
                 value_list = default_value_str[1:-1].split(',')
                 if attr_type == 'listInt':
                     default_value = list(map(int, value_list))
