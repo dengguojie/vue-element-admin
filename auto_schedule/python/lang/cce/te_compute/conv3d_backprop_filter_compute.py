@@ -68,14 +68,10 @@ def _check_attr_rule(attr, dim, attr_limit, name):
                            error_manager_util.get_error_message(args_dict))
     for attr_x in attr:
         if (not isinstance(attr_x, int)) or attr_x < attr_min or attr_x > attr_max:
-            args_dict = {
-                'errCode': 'E60011',
-                'range': '[{},{}]'.format(attr_min, attr_max),
-                'attr_name': name,
-                'value': str(attr_x)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_attr_range_invalid("conv3d",
+                "[{},{}]".format(attr_min, attr_max),
+                name,
+                str(attr_x))
 
 
 def _check_variable_range(variable, minimum, maximum, name):
@@ -84,14 +80,10 @@ def _check_variable_range(variable, minimum, maximum, name):
 
     """
     if variable < minimum or variable > maximum:
-        args_dict = {
-            'errCode': 'E60011',
-            'range': '[{},{}]'.format(minimum, maximum),
-            'attr_name': name,
-            'value': str(variable)
-        }
-        raise RuntimeError(args_dict,
-                           error_manager_util.get_error_message(args_dict))
+        cube_err.raise_err_attr_range_invalid("conv3d",
+            "[{},{}]".format(minimum, maximum),
+            name,
+            str(variable))
 
 
 def _check_addressing_rule(shape, byte_count, limit):
@@ -102,14 +94,10 @@ def _check_addressing_rule(shape, byte_count, limit):
     # product of all dimension
     product = functools.reduce(lambda x, y: x * y, shape[:])
     if product * byte_count > limit:
-        args_dict = {
-            'errCode': 'E60011',
-            'range': '(,{}]'.format(limit),
-            'attr_name': 'address_byte',
-            'value': str(product * byte_count)
-        }
-        raise RuntimeError(args_dict,
-                           error_manager_util.get_error_message(args_dict))
+        cube_err.raise_err_attr_range_invalid("conv3d",
+            "(,{}]".format(limit),
+            "address_byte",
+            str(product * byte_count))
 
 
 class Conv3dBackpropFilter:
@@ -313,6 +301,7 @@ class Conv3dBackpropFilter:
             dilation_min = 1
             dilation_max = 255
             if dilationn != 1 or dilationc != 1:
+
                 args_dict = {
                     'errCode': 'E62510'
                 }
@@ -321,14 +310,10 @@ class Conv3dBackpropFilter:
             dilation_dhw = [dilationd, dilationh, dilationw]
             for item in dilation_dhw:
                 if item < dilation_min or item > dilation_max:
-                    args_dict = {
-                        'errCode': 'E60011',
-                        'range': '[{},{}]'.format(dilation_min, dilation_max),
-                        'attr_name': 'dilation_dhw',
-                        'value': str(item)
-                    }
-                    raise RuntimeError(args_dict,
-                        error_manager_util.get_error_message(args_dict))
+                    cube_err.raise_err_attr_range_invalid("conv3d",
+                        "[{},{}]".format(dilation_min, dilation_max),
+                        "dilation_dhw",
+                        str(item))
 
         _check_dilation()
 
@@ -348,40 +333,22 @@ class Conv3dBackpropFilter:
         computed_grads_depth = (fmap_depth - dilation_kernel_depth +
                                 pad_front + pad_back)//stride_depth + 1
         if computed_grads_depth != grads_depth:
-            args_dict = {
-                'errCode': 'E60000',
-                'param_name': 'grads_depth',
-                'expected_value': str(grads_depth),
-                'input_value': str(computed_grads_depth)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_input_params_not_expected("conv3d", "grads_depth",
+                str(grads_depth), str(computed_grads_depth))
 
         dilation_kernel_height = (kernel_height - 1) * dilationh + 1
         computed_grads_height = (fmap_height - dilation_kernel_height +
                                  pad_top + pad_bottom)//stride_height + 1
         if computed_grads_height != grads_height:
-            args_dict = {
-                'errCode': 'E60000',
-                'param_name': 'grads_height',
-                'expected_value': str(grads_height),
-                'input_value': str(computed_grads_height)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_input_params_not_expected("conv3d", "grads_height",
+                str(grads_height), str(computed_grads_height))
 
         dilation_kernel_width = (kernel_width - 1) * dilationw + 1
         computed_grads_width = (fmap_width - dilation_kernel_width +
                                 pad_left + pad_right)//stride_width + 1
         if computed_grads_width != grads_width:
-            args_dict = {
-                'errCode': 'E60000',
-                'param_name': 'grads_width',
-                'expected_value': str(grads_width),
-                'input_value': str(computed_grads_width)
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_input_params_not_expected("conv3d", "grads_width",
+                str(grads_width), str(computed_grads_width))
 
         fmap_depth_after_pad = fmap_depth + pad_front + pad_back
         fmap_height_after_pad = fmap_height + pad_top + pad_bottom
@@ -389,41 +356,21 @@ class Conv3dBackpropFilter:
         if (dilation_kernel_height > fmap_height_after_pad
             or dilation_kernel_width > fmap_width_after_pad
             or dilation_kernel_depth > fmap_depth_after_pad):
-            args_dict = {
-                'errCode': 'E60108',
-                'reason': 'depth/height/width of filter '
-                          'cannot exceed that of x.'
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+            cube_err.raise_err_specific("conv3d",
+                "depth/height/width of filter cannot exceed that of x.")
 
         def _check_pad():
             if pad_front >= dilation_kernel_depth or pad_back >= dilation_kernel_depth:
-                args_dict = {
-                    'errCode': 'E60108',
-                    'reason': 'pad in front/back should '
-                              'less than depth of filter.'
-                }
-                raise RuntimeError(args_dict,
-                    error_manager_util.get_error_message(args_dict))
+                cube_err.raise_err_specific("conv3d",
+                    "pad in front/back should less than depth of filter.")
 
             if pad_top >= dilation_kernel_height or pad_bottom >= dilation_kernel_height:
-                args_dict = {
-                    'errCode': 'E60108',
-                    'reason': 'pad in up/down should '
-                              'less than height of filter.'
-                }
-                raise RuntimeError(args_dict,
-                    error_manager_util.get_error_message(args_dict))
+                cube_err.raise_err_specific("conv3d",
+                    "pad in up/down should less than height of filter.")
 
             if pad_left >= dilation_kernel_width or pad_right >= dilation_kernel_width:
-                args_dict = {
-                    'errCode': 'E60108',
-                    'reason': 'pad in left/right should '
-                              'less than width of filter.'
-                }
-                raise RuntimeError(args_dict,
-                    error_manager_util.get_error_message(args_dict))
+                cube_err.raise_err_specific("conv3d",
+                    "pad in left/right should less than width of filter.")
 
         _check_pad()
 

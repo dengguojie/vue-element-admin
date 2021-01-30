@@ -15,7 +15,6 @@
 """
 cube util.
 """
-from tbe.common.utils.errormgr import error_manager_util
 from te import tvm
 
 
@@ -500,12 +499,9 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         m_0 = self._m0
         m_1 = c_m // m_0
         if not ((m_1 - 1)*m_0) < ho_wo <= c_m:
-            dict_args = {
-                'errCode': 'E60011',
-                'attr_name': 'Hout*Wout',
-                'range': '[{}, {}]'.format(((m_1 - 1)*m_0), c_m),
-                'value': str(ho_wo)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_attr_range_invalid("conv3d",
+                "[{},{}]".format(((m_1 - 1)*m_0), c_m),
+                "Hout*Wout",
+                str(ho_wo))
+
         return tensor_c

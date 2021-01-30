@@ -211,45 +211,22 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
         _tiling_check_pbuffer()
         if stride_h == 1 and stride_w == 1 and dsl_flag == False:
             if tiling.get("AUB_shape") is not None:
-                dict_args = {
-                    'errCode': 'E62306',
-                    'desc': 'stride = 1 but AUB_shape is not None.',
-                }
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_specific("conv3d",
+                    'stride = 1 but AUB_shape is not None.')
 
         if tiling.get("BL0_matrix") == [] and tiling.get("BL1_shape") != []:
-            dict_args = {
-                'errCode': 'E62306',
-                'desc': 'BL0 full load but BL1 not!',
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_specific("conv3d", "BL0 full load but BL1 not!")
 
     def _tiling_check_value():
         if tiling.get("BL0_matrix"):
             if al0_tiling_ka != bl0_tiling_kb:
-                dict_args = {
-                    'errCode': 'E62306',
-                    'desc': 'in BL0_matrix, ka != kb',
-                }
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_specific("conv3d", "in BL0_matrix, ka != kb")
+
             if bl0_tiling_nb != cl0_tiling_nc:
-                dict_args = {
-                    'errCode': 'E62306',
-                    'desc': 'in BL0_matrix, nb != nc.',
-                }
-                raise RuntimeError(dict_args, error_manager_util.get_error_message(
-                    dict_args))
+                cube_err.raise_err_specific("conv3d", "in BL0_matrix, nb != nc.")
 
         if al0_tiling_ma != cl0_tiling_mc:
-            dict_args = {
-                'errCode': 'E62306',
-                'desc': 'ma != mc.',
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_specific("conv3d", "ma != mc.")
 
     def _tiling_check_none():
         if ((tiling.get("AL1_shape") is None) or
@@ -327,19 +304,10 @@ def general_schedule(tensor, sch_list):  # pylint:disable=R0914, R0915
 
         if tiling.get("BL1_shape"):
             if al1_tiling_k > bl1_tiling_k and al1_tiling_k % bl1_tiling_k != 0:
-                dict_args = {
-                    'errCode': 'E62306',
-                    'desc': 'k_AL1 > k_BL1 but k_AL1 % k_BL1 != 0.'
-                }
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_specific("conv3d", "k_AL1 > k_BL1 but k_AL1 % k_BL1 != 0.")
+
             if bl1_tiling_k > al1_tiling_k and bl1_tiling_k % al1_tiling_k != 0:
-                dict_args = {
-                    'errCode': 'E62306',
-                    'desc': 'k_BL1 > k_AL1 but k_BL1 % k_AL1 != 0.'
-                }
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_specific("conv3d", "k_BL1 > k_AL1 but k_BL1 % k_AL1 != 0.")
 
     def _tiling_check_pbuffer():
         if stride_h > 1 or stride_w > 1:

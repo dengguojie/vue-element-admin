@@ -587,7 +587,7 @@
     {
         "errCode": "E62006",
         "errMessage": "In op[%s],[%s].",
-        "argList": "op_name,error_desc"
+        "argList": "op_name,para1"
     },
     {
         "errCode": "E62301",
@@ -617,7 +617,7 @@
     {
         "errCode": "E62306",
         "errMessage": "In op[%s], [%s].",
-        "argList": "op_name,desc"
+        "argList": "op_name,para1"
     },
     {
         "errCode": "E62501",

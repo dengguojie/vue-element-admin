@@ -25,7 +25,6 @@ def raise_err_one_para(err_code, op_name, para1):
             the block num, actual input is [%s]."
     E62302: "In op[%s], the second value of BL1_shape should be even number,
             but actually it is [%s]."
-    E62306: "In op[%s], [%s]."
     E62501: "In op[%s], [%s] should be 6d list"
     E62509: "In op[%s], the type of axis of [%s] must be positive int."
     E62511: "In op[%s], C0 must be 16,  but actually it is [%s]."

@@ -156,14 +156,10 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     """
     def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
         if attr_value < attr_min or attr_value > attr_max:
-            dict_args = {
-                'errCode': 'E60011',
-                'range': '[{},{}]'.format(attr_min, attr_max),
-                'attr_name': attr_name,
-                'value': str(attr_value)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_attr_range_invalid("conv3d",
+                "[{},{}]".format(attr_min, attr_max),
+                attr_name,
+                str(attr_value))
 
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
         if dtype is None:

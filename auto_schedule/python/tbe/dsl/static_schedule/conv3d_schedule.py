@@ -525,13 +525,8 @@ class CceConv3dOp:
         for index0, index1 in zip(matrix_list[0:3], matrix_cab):
             if te_util.get_and_res(tiling[index0], tiling[index1]):
                 if tiling[index0][0] != tiling[index1][1]:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': "wrong tiling: tiling['%s'][0] must equal to"
-                                " tiling['%s'][1]" % (index0, index1)
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific('conv3d',
+                        "tiling['%s'][0] must equal to tiling['%s'][1]" % (index0, index1))
 
         if w_dtype != "float16":
             dict_args = {

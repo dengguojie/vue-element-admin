@@ -120,69 +120,36 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             cl0_matrix = tiling.get("CL0_matrix")
             if al1_shape:
                 if al1_shape[0] % al0_matrix[1] != 0:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': 'k of AL1_shape should be integral '
-                                'multiple of AL0_matrix'
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific("conv3d",
+                        "k of AL1_shape should be integral multiple of AL0_matrix")
+
                 if al1_shape[1] < 1:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': 'm of AL1_shape should be integral '
-                                'multiple of AL0_matrix'
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific("conv3d",
+                        "m of AL1_shape should be integral multiple of AL0_matrix")
 
             if bl1_shape:
                 if (bl1_shape[0] // _CUBE_DIM) % bl0_matrix[0] != 0:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': 'k of BL1_shape should be integral '
-                                'multiple of BL0_matrix'
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific("conv3d",
+                        "k of BL1_shape should be integral multiple of BL0_matrix")
+
                 if bl1_shape[1] < 1:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': 'n of BL1_shape should be integral '
-                                'multiple of BL0_matrix'
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific("conv3d",
+                        "n of BL1_shape should be integral multiple of BL0_matrix")
 
             if al0_matrix:
                 if al0_matrix[0] != cl0_matrix[1]:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': 'mc of AL0_matrix and CL0_matrix '
-                                'should be same'
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific("conv3d",
+                        "mc of AL0_matrix and CL0_matrix should be same")
 
             if bl0_matrix:
                 if bl0_matrix[1] != cl0_matrix[0]:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': 'nc of BL0_matrix and CL0_matrix '
-                                'should be same'
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific("conv3d",
+                        "nc of BL0_matrix and CL0_matrix should be same")
 
             if al0_matrix and bl0_matrix:
                 if al0_matrix[1] != bl0_matrix[0]:
-                    dict_args = {
-                        'errCode': 'E62306',
-                        'desc': 'k of AL0_matrix and BL0_matrix '
-                                'should be same'
-                    }
-                    raise RuntimeError(dict_args,
-                        error_manager_util.get_error_message(dict_args))
+                    cube_err.raise_err_specific("conv3d",
+                        "k of AL0_matrix and BL0_matrix should be same")
 
         def _tiling_buffer_check():
             """
@@ -200,20 +167,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             cl0_matrix = tiling.get("CL0_matrix")
             cub_matrix = tiling.get("CUB_matrix")
             if cl0_matrix[0] % cub_matrix[0] != 0 or cl0_matrix[1] != cub_matrix[1]:
-                dict_args = {
-                    'errCode': 'E62306',
-                    'desc': 'invalid CUB_matrix value'
-                }
-                raise RuntimeError(dict_args,
-                    error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_specific("conv3d", "invalid CUB_matrix value")
+
             # blockIdx must be positive int
             if block_cout < 1:
-                dict_args = {
-                    'errCode': 'E62306',
-                    'desc': 'blockIdx must be positive int'
-                }
-                raise RuntimeError(dict_args,
-                    error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_specific("conv3d", "blockIdx must be positive int")
 
             # only support no dbuffer/ dbuffer
             if al1_pbuff not in (1, 2):
@@ -297,14 +255,10 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                     bl1_align_factor * stride_height) * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
             l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
             if (al1_min_byte + bl1_min_byte) > l1_size:
-                dict_args = {
-                    'errCode': 'E60011',
-                    'range': '(,{}]'.format(l1_size),
-                    'attr_name': 'al1_and_bl1_byte',
-                    'value': str(al1_min_byte + bl1_min_byte)
-                }
-                raise RuntimeError(dict_args,
-                    error_manager_util.get_error_message(dict_args))
+                cube_err.raise_err_attr_range_invalid("conv3d",
+                    "(,{}]".format(l1_size),
+                    "al1_and_bl1_byte",
+                    str(al1_min_byte + bl1_min_byte))
 
         def _atomic_add(sch, res_cc, res_ub, res_ddr):
             """

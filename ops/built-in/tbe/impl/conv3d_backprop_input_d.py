@@ -431,14 +431,10 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     """
     def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
         if attr_value < attr_min or attr_value > attr_max:
-            dict_args = {
-                'errCode': 'E60011',
-                'range': '[{},{}]'.format(attr_min, attr_max),
-                'attr_name': attr_name,
-                'value': str(attr_value)
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_attr_range_invalid("conv3d",
+                "[{},{}]".format(attr_min, attr_max),
+                attr_name,
+                str(attr_value))
 
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
         if dtype is None:
@@ -493,19 +489,13 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         fmap_d_padding = fmap_deep + pad_head + pad_tail
         # Check Batch Dimension
         if fmap_channel != filter_channel * groups:
-            dict_args = {
-                'errCode': 'E60108',
-                'reason': "Shape error: Fmap's C must be equal to Filter'C * groups."
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_specific("conv3d",
+                    "Shape error: Fmap's C must be equal to Filter'C * groups.")
+
         if dedy_channel != filter_batch:
-            dict_args = {
-                'errCode': 'E60108',
-                'reason': "Shape error: Dedy's C must be equal to Filter'N."
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_specific("conv3d",
+                    "Shape error: Dedy's C must be equal to Filter'N.")
+
         if fmap_batch != dedy_batch:
             cube_err.raise_err_two_paras('E62503', 'conv3d',
                 str(dedy_batch), str(fmap_batch))
@@ -570,14 +560,12 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
+
     _, dilation_d, dilation_h, dilation_w, _ = dilations
     if dilation_d != 1:
-        dict_args = {
-            'errCode': 'E60038',
-            'desc': 'dilation in D dimension only supports 1',
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        cube_err.raise_err_specific("conv3d",
+            "dilation in D dimension only supports 1.")
+
     # dtype check
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()

@@ -220,13 +220,10 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         w_k1, kernel_cout1, kernel_cout0, w_k0 = list(i.value for i in kernels.shape)
         kernel_h, kernel_w, kernel_d = self._kernel_h, self._kernel_w, self._kernel_d
         if w_k1 % (kernel_h * kernel_w) != 0:
-            dict_args = {
-                'errCode': 'E60108',
-                'reason': 'the reduce axis of weight could not be divided by'
-                          ' {}*{} '.format(kernel_h, kernel_w),
-            }
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            cube_err.raise_err_specific('conv3d',
+                'the reduce axis of weight could not be divided by'
+                          ' {}*{} '.format(kernel_h, kernel_w))
+
         real_g = self.real_g
         kernel_cin1 = w_k1 // (kernel_w * kernel_h * real_g * kernel_d)
         shape_w_l1 = (real_g,
