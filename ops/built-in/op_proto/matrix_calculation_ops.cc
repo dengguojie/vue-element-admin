@@ -688,6 +688,7 @@ void InferShapeMatMul::NormalizeShapeAndRange() {
       NormalizeRange(op_name, infer_shape_bias[i], infer_range_bias[i], infer_range_bias[i]);
     }
   }
+
 }
 
 bool InferShapeMatMul::InferMKN() {

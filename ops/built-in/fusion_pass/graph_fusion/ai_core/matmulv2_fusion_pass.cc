@@ -88,6 +88,9 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Set transpose_x2 attr failed."), return FAILED);
 
   std::vector<int64_t> oldDims = matMulV2Node->GetOpDesc()->GetInputDesc(CONST_INDEX).GetShape().GetDims();
+  FUSION_PASS_CHECK(oldDims.size() < 2,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "matmul shape length is not 2."),
+                    return FAILED);
   vector<int64_t> newDims;
   newDims.push_back(oldDims[1]);
   newDims.push_back(oldDims[0]);

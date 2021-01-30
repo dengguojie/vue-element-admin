@@ -288,8 +288,8 @@ ge::GeTensorPtr ALSTMFusionPass::ProcessWxh(ge::NodePtr fusedNode, bool& failSta
     float* wxData = (float*)wxTensorPtr->GetData().data();
     float* whData = (float*)whTensorPtr->GetData().data();
 
-    memset_s(wxhPaddData.get(), targetRow * destWhCol, 0, targetRow * destWhCol);
-
+    auto retMemWxh = memset_s(wxhPaddData.get(), targetRow * destWhCol, 0, targetRow * destWhCol);
+    FUSION_PASS_CHECK(retMemWxh != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM weightsWh get space failed, fusion failed."), failStatus=true);
     float* dstWeight = wxhPaddData.get();
     int32_t oldSingleCol = whCol / 4;
     int32_t singleCol = (oldSingleCol + 15) / 16 * 16;
@@ -376,7 +376,8 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
       0, biasTensorDesc);
     unique_ptr<float[]> biasPadData(new (std::nothrow) float[tar_bias_dim]());
 
-    memset_s(biasPadData.get(), tar_bias_dim, 0, tar_bias_dim);
+    auto retMemBias = memset_s(biasPadData.get(), tar_bias_dim, 0, tar_bias_dim);
+    FUSION_PASS_CHECK(retMemBias != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "LSTM Bias get space failed, fusion failed."), failStatus=true);
     float* dstBias = biasPadData.get();
     float* srcBias = (float*)biasTensorPtr->GetData().data();
     for (int32_t repeat = 0; repeat < 4; repeat++) {

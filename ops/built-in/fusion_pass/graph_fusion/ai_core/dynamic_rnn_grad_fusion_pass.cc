@@ -324,7 +324,7 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
   ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
   int64_t num_split_x = dynamicRNNGradDesc->GetInputDesc(7).GetShape().GetDim(0);
   FUSION_PASS_CHECK(resultNode.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "resultNode is null, fusion failed."), failStatus=true);
-
+  FUSION_PASS_CHECK(resultNode.size() != 3, OP_LOGE(FUSED_OP_TYPE.c_str(), "resultNode lenght is not there, fusion failed."), failStatus=true);
   vector<ge::NodePtr> basic_lstm_cell_state_grad_nodes = resultNode[0];
   vector<ge::NodePtr> matmul_nodes = resultNode[1];
   vector<ge::NodePtr> split_nodes = resultNode[2];
@@ -1263,6 +1263,8 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   bool failStatus = false;
   // get dynamicRNNGradNode
   ge::NodePtr dynamicRNNGradNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(dynamicRNNGradNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Get DynamicRnnGrad Node Failed, fusion failed."),
+                    return FAILED);
 
   if (PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(8).GetShape().GetDim(0)) ||
       PatternFusionUtil::IsUnknownShape(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(7).GetShape().GetDim(0)) ||
