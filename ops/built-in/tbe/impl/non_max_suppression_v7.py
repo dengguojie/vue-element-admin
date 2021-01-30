@@ -741,8 +741,8 @@ def get_sorted_proposal_compute(tik_instance, output_ub, output_index_ub, input_
             clip_window_compute(tik_instance, input_gm_list, input_ub_list, gm_offset,
                                 copy_num)
         # step 5- change_coordinate_frame if len(clip_window_value_list) == 6. will do change_coordinate_frame
-        # with tik_instance.new_stmt_scope():
-        #     change_coordinate_frame_compute(tik_instance, ub_tmp_boxes, copy_num)
+        with tik_instance.new_stmt_scope():
+            change_coordinate_frame_compute(tik_instance, ub_tmp_boxes, copy_num)
         # step 6- trans to proposal
         boxes_list = [ub_tmp_boxes[0, 0], ub_tmp_boxes[1, 0], ub_tmp_boxes[2, 0], ub_tmp_boxes[3, 0]]
         index_list = [ub_tmp_index[0, 0], ub_tmp_index[1, 0], ub_tmp_index[2, 0]]
@@ -831,8 +831,8 @@ def tik_func_vmuls(tik_instance, dst_ub, src_ub, value, do_len):
 def change_coordinate_frame_compute(tik_instance, ub_tmp_boxes, do_num):
     """change_coordinate_frame_compute
     """
-    h_scale_scale = tik_instance.Scalar(dtype="float16", init_value=0.01)
-    w_scale_scale = tik_instance.Scalar(dtype="float16", init_value=0.01)
+    h_scale_scale = tik_instance.Scalar(dtype="float16", init_value=0.15)
+    w_scale_scale = tik_instance.Scalar(dtype="float16", init_value=0.15)
     tik_func_vmuls(tik_instance, ub_tmp_boxes[0, :], ub_tmp_boxes[0, :], h_scale_scale, do_num)
     tik_func_vmuls(tik_instance, ub_tmp_boxes[1, :], ub_tmp_boxes[1, :], w_scale_scale, do_num)
     tik_func_vmuls(tik_instance, ub_tmp_boxes[2, :], ub_tmp_boxes[2, :], h_scale_scale, do_num)
