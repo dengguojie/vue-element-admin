@@ -169,8 +169,12 @@ class DataGenerator:
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
                 try:
-                    calc_func_params_tmp.append({
-                        'value': data})
+                    input_dic = {
+                        'value': data,
+                        'dtype': input_desc.get('type'),
+                        'shape': input_desc.get('shape')
+                    }
+                    calc_func_params_tmp.append(input_dic)
                     data.tofile(file_path)
                     os.chmod(file_path, utils.WRITE_MODES)
                 except OSError as error:
@@ -179,8 +183,23 @@ class DataGenerator:
                             file_path, error))
                     raise utils.OpTestGenException(
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
-                param_info_list.append("{input_name}".format(
-                    input_name=input_desc.get('name')))
+                if input_desc.get('name'):
+                    param_info_list.append("{input_name}".format(
+                        input_name=input_desc.get('name')))
+                else:
+                    param_info_list.append("input_{index}".format(index=index))
+            # get output param
+            for index, output_desc in enumerate(case['output_desc']):
+                output_dic = {
+                    'dtype': output_desc.get('type'),
+                    'shape': output_desc.get('shape')
+                }
+                calc_func_params_tmp.append(output_dic)
+                if output_desc.get('name'):
+                    param_info_list.append("{output_name}".format(
+                        output_name=output_desc.get('name')))
+                else:
+                    param_info_list.append("output_{index}".format(index=index))
             # get attr param
             if case.get('attr'):
                 for index, attr in enumerate(case['attr']):

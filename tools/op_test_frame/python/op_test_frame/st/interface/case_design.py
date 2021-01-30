@@ -627,7 +627,11 @@ class CaseDesign:
                     output_index = index
                     if index >= len(output_case_list[0]):
                         output_index = index % len(output_case_list)
-                    for output_case in output_case_list:
+                    for out_index, output_case in enumerate(output_case_list):
+                        if json_obj[OUTPUT_DESC][out_index].get('name'):
+                            output_name = \
+                                json_obj[OUTPUT_DESC][out_index].get('name')
+                            output_case[index].update({'name': output_name})
                         case[OUTPUT_DESC].append(output_case[output_index])
                     self._parse_expect_output_param(case, pyfile, function)
                     case_idx += 1

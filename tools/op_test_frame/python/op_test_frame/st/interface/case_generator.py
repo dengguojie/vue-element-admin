@@ -458,7 +458,7 @@ class CaseGenerator:
         return True
 
     def _generate_aicpu_op_desc(self, value, base_case, op_key):
-        input_name = value.get('name')
+        varible_name = value.get('name')
         op_format = [] if len(value['format']) == 0 else \
             list(set(value['format'].split(',')))
         if len(value['dtype']) == 0:
@@ -481,11 +481,12 @@ class CaseGenerator:
                        'shape': [],
                        'data_distribute': ['uniform'],
                        'value_range': [[0.1, 1.0]]}
-            op_desc.update({'name': input_name})
         if op_key == 'output_desc':
             op_desc = {'format': op_format,
                        'type': op_dtype,
                        'shape': []}
+        if varible_name is not None:
+            op_desc.update({'name': varible_name})
         base_case[op_key].append(op_desc)
 
     def _generate_aicpu_base_case(self):
@@ -545,32 +546,6 @@ class CaseGenerator:
             input_desc.update({'name': input_name})
         base_case['input_desc'].append(input_desc)
 
-    def _generate_output_desc(self, value, base_case):
-        output_format = [] if len(value['format']) == 0 else \
-            list(set(value['format'].split(',')))
-        if len(value['dtype']) == 0:
-            output_dtype = []
-        else:
-            dtype_list = list(set(value['dtype'].split(',')))
-            self._check_op_info_list_valid(
-                dtype_list,
-                list(utils.DTYPE_TO_TYPE_MAP.keys()),
-                INI_INPUT + '.dtype')
-            trans_dtype_list = []
-            for dtype_key in dtype_list:
-                if dtype_key in utils.DTYPE_TO_TYPE_MAP.keys():
-                    trans_dtype_list.append(
-                        utils.DTYPE_TO_TYPE_MAP.get(dtype_key))
-            output_dtype = trans_dtype_list
-        if self.input_file_path.endswith(".py"):
-            output_desc = {'type': output_dtype,
-                           'shape': []}
-        else:
-            output_desc = {'format': output_format,
-                           'type': output_dtype,
-                           'shape': []}
-        base_case['output_desc'].append(output_desc)
-
     def _generate_aicore_base_case(self):
         if self.input_file_path.endswith(".py"):
             base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
@@ -588,6 +563,7 @@ class CaseGenerator:
             if key.startswith(INI_INPUT):
                 self._generate_input_desc(value, base_case)
             elif key.startswith(INI_OUTPUT):
+                output_name = value.get('name')
                 output_format = [] if len(value['format']) == 0 else \
                     list(set(value['format'].split(',')))
                 output_dtype = [] if len(value['dtype']) == 0 else \
@@ -599,6 +575,7 @@ class CaseGenerator:
                     output_desc = {'format': output_format,
                                    'type': output_dtype,
                                    'shape': []}
+                    output_desc.update({'name': output_name})
                 base_case['output_desc'].append(output_desc)
             elif key.startswith("attr_"):
                 if 'attr' not in base_case:
