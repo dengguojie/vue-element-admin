@@ -1,0 +1,15 @@
+onnx-reduce_max_test:{
+/
+XY"	ReduceMax*
+axes@ *
+keepdims test_reduce_max_case_1Z
+X
+
+
+
+b
+Y
+
+
+
+B

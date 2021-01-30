@@ -28,7 +28,6 @@ Status ParseParamsReduceMax(const Message *op_src, ge::Operator &op_dest) {
   }
 
   std::vector<int> v_axis;
-  bool set_axes_flag = false;
   bool keep_dims = true;
   for (const auto &attr : node->attribute()) {
     if (attr.name() == "axes" &&
@@ -36,7 +35,6 @@ Status ParseParamsReduceMax(const Message *op_src, ge::Operator &op_dest) {
       for (int i = 0; i < attr.ints_size(); i++) {
         v_axis.push_back(attr.ints(i));
       }
-      set_axes_flag = true;
     } else if (attr.name() == "keepdims" &&
                attr.type() == ge::onnx::AttributeProto::INT) {
       if (attr.i() != 1) {
@@ -44,13 +42,11 @@ Status ParseParamsReduceMax(const Message *op_src, ge::Operator &op_dest) {
       }
     }
   }
-  if (set_axes_flag) {
-    op_dest.SetAttr("axes", v_axis);
-  } else {
-    OP_LOGE("ReduceMax", "onnx ReduceMax op has no axes attr");
+  if (v_axis.size() == 0){
+	  v_axis =	{};
   }
+  op_dest.SetAttr("axes", v_axis);
   op_dest.SetAttr("keep_dims", keep_dims);
-
   return SUCCESS;
 }
 
