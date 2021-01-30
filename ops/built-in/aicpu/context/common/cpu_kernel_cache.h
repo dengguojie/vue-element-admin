@@ -143,12 +143,11 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param pos: bit pos
    * @return bool: bit is 1 or 0
    */
-  bool GetBitStatus(int num, int pos);
+  bool GetBitStatus(uint64_t num, uint64_t pos);
 
  private:
   std::vector<uint64_t> io_addrs_;
   bool unknown_shape_;
-  bool run_dynamic_;
   std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type_;
   std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type_;
   char *nodedef_;

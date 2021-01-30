@@ -36,7 +36,6 @@ constexpr uint32_t kMaxLRUCacheNum = 256;
 namespace aicpu {
 CpuKernelCache::CpuKernelCache()
     : unknown_shape_(false),
-      run_dynamic_(true),
       nodedef_(nullptr),
       nodedef_len_(0),
       nodedef_proto_(nullptr) {}
@@ -186,7 +185,7 @@ uint32_t CpuKernelCache::ParseExtShapeType(
 uint32_t CpuKernelCache::ParseExtShapeAndType(
     FWKAdapter::ExtInfo *ext_info,
     std::vector<FWKAdapter::ShapeAndType *> &shape_and_type) {
-  if (!run_dynamic_) {
+  if (!unknown_shape_) {
     return KERNEL_STATUS_OK;
   }
   shape_and_type.clear();
@@ -232,7 +231,7 @@ uint32_t CpuKernelCache::ParseExtSessionInfo(FWKAdapter::ExtInfo *ext_info,
 /*
  * get bit status.
  */
-bool CpuKernelCache::GetBitStatus(int num, int pos) {
+bool CpuKernelCache::GetBitStatus(uint64_t num, uint64_t pos) {
   return ((num & (1 << pos)) != 0);
 }
 
@@ -248,10 +247,9 @@ uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  int64_t bit_map = *(reinterpret_cast<const int64_t *>(ext_info->infoMsg));
-  run_dynamic_ = (!GetBitStatus(bit_map, 0));
-  unknown_shape_ = run_dynamic_;
-  KERNEL_LOG_INFO("Run_dynamic_ is [%d].", run_dynamic_);
+  uint64_t bit_map = *(reinterpret_cast<const int64_t *>(ext_info->infoMsg));
+  unknown_shape_ = (!GetBitStatus(bit_map, 0));
+  KERNEL_LOG_INFO("Unknown_shape_ is [%d].", unknown_shape_);
   return KERNEL_STATUS_OK;
 }
 
@@ -423,7 +421,6 @@ int32_t CpuKernelCache::RunKernel(void *param) {
 
   bool has_sess_info = false;
   uint64_t kernel_id = 0;
-  run_dynamic_ = true;
   ret = ParseExtMsg(param_head, has_sess_info, kernel_id);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
