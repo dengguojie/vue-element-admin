@@ -25,14 +25,14 @@ const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 2;
 const char *kLess = "Less";
 
-#define LESS_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
-  case (DTYPE): {                                      \
-    uint32_t result = LessCompute<TYPE>(CTX);          \
-    if (result != KERNEL_STATUS_OK) {                  \
-      KERNEL_LOG_ERROR("Less kernel compute failed."); \
-      return result;                                   \
-    }                                                  \
-    break;                                             \
+#define LESS_COMPUTE_CASE(DTYPE, TYPE, CTX, CALCINFO)    \
+  case (DTYPE): {                                        \
+    uint32_t result = LessCompute<TYPE>(CTX, CALCINFO);  \
+    if (result != KERNEL_STATUS_OK) {                    \
+      KERNEL_LOG_ERROR("Less kernel compute failed.");   \
+      return result;                                     \
+    }                                                    \
+    break;                                               \
   }
 }
 
@@ -40,21 +40,23 @@ namespace aicpu {
 uint32_t LessCpuKernel::Compute(CpuKernelContext &ctx) {
   // check params
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
+                      "Less check input and output number failed.");
+  BCalcInfo calc_info;
+  KERNEL_HANDLE_ERROR(LessCheck(ctx, calc_info),
                       "Less check params failed.");
-
   auto data_type = ctx.Input(0)->GetDataType();
   switch (data_type) {
-    LESS_COMPUTE_CASE(DT_INT8, int8_t, ctx)
-    LESS_COMPUTE_CASE(DT_INT16, int16_t, ctx)
-    LESS_COMPUTE_CASE(DT_INT32, int32_t, ctx)
-    LESS_COMPUTE_CASE(DT_INT64, int64_t, ctx)
-    LESS_COMPUTE_CASE(DT_UINT8, uint8_t, ctx)
-    LESS_COMPUTE_CASE(DT_UINT16, uint16_t, ctx)
-    LESS_COMPUTE_CASE(DT_UINT32, uint32_t, ctx)
-    LESS_COMPUTE_CASE(DT_UINT64, uint64_t, ctx)
-    LESS_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
-    LESS_COMPUTE_CASE(DT_FLOAT, float, ctx)
-    LESS_COMPUTE_CASE(DT_DOUBLE, double, ctx)
+    LESS_COMPUTE_CASE(DT_INT8, int8_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_INT16, int16_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_INT32, int32_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_INT64, int64_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_UINT8, uint8_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_UINT16, uint16_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_UINT32, uint32_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_UINT64, uint64_t, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_FLOAT, float, ctx, calc_info)
+    LESS_COMPUTE_CASE(DT_DOUBLE, double, ctx, calc_info)
     default:
       KERNEL_LOG_ERROR("Less kernel data type [%u] not support.", data_type);
       return KERNEL_STATUS_PARAM_INVALID;
@@ -63,9 +65,7 @@ uint32_t LessCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-template <typename T>
-uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx) {
-  CalcInfo calc_info;
+uint32_t LessCpuKernel::LessCheck(CpuKernelContext &ctx, BCalcInfo &calc_info) {
   calc_info.input_0 = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(calc_info.input_0, KERNEL_STATUS_PARAM_INVALID,
                        "Get input 0 failed.")
@@ -95,19 +95,18 @@ uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx) {
       calc_info.input_1->GetDataSize(), calc_info.output->GetData(),
       calc_info.output->GetDataSize());
 
-
   Bcast bcast;
   KERNEL_HANDLE_ERROR(bcast.GenerateBcastInfo(calc_info),
                       "Generate broadcast info failed.")
   (void)bcast.BCastIndexes(calc_info.x_indexes, calc_info.y_indexes);
   (void)bcast.GetBcastVec(calc_info);
 
-  return LessCalculate<T>(ctx, calc_info);
+  return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t LessCpuKernel::LessCalculate(CpuKernelContext &ctx,
-                                      CalcInfo &calc_info) {
+uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx,
+                                    BCalcInfo &calc_info) {
   auto input_x1 = reinterpret_cast<T *>(calc_info.input_0->GetData());
   auto input_x2 = reinterpret_cast<T *>(calc_info.input_1->GetData());
   auto output_y = reinterpret_cast<bool *>(calc_info.output->GetData());
@@ -121,7 +120,7 @@ uint32_t LessCpuKernel::LessCalculate(CpuKernelContext &ctx,
     }
   };
   KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, 1, shard_less),
-                      "Less Calculate failed.")
+                      "Less Compute failed.")
   return KERNEL_STATUS_OK;
 }
 

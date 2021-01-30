@@ -20,8 +20,8 @@
 #include "cpu_context.h"
 
 namespace aicpu {
-struct CalcInfo {
-  CalcInfo() : input_0(nullptr), input_1(nullptr), output(nullptr) {}
+struct BCalcInfo {
+  BCalcInfo() : input_0(nullptr), input_1(nullptr), output(nullptr) {}
   Tensor *input_0;
   Tensor *input_1;
   Tensor *output;
@@ -39,8 +39,8 @@ class Bcast {
   Bcast() = default;
   ~Bcast() = default;
 
-  uint32_t GenerateBcastInfo(const CalcInfo &calc_info);
-  void GetBcastVec(CalcInfo &calc_info);
+  uint32_t GenerateBcastInfo(const BCalcInfo &calc_info);
+  void GetBcastVec(BCalcInfo &calc_info);
   void BCastIndexes(std::vector<int64_t> &x_indexes,
                     std::vector<int64_t> &y_indexes);
 

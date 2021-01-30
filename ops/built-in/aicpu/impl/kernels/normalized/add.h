@@ -43,14 +43,14 @@ class AddCpuKernel : public CpuKernel {
    * @param calc_info data used to calculate
    * @return true: aligned, false: not aligned
    */
-  static bool AlignedCheck(const CalcInfo &calc_info);
+  static bool AlignedCheck(const BCalcInfo &calc_info);
 
   /**
    * @brief Eigen calculate for all types
    * @param calc_info data used to calculate
    */
   template <int32_t RANK, typename T, int32_t OPTION>
-  static void AddCalculate(CalcInfo &calc_info);
+  static void AddCalculate(BCalcInfo &calc_info);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_ADD_H_

@@ -154,8 +154,8 @@ set(_cpu_kernels_ut_files
   testcase/reshape_utest.cpp
   testcase/round_utest.cpp
   testcase/strided_slice_utest.cpp
-  testcase/less_kernel_utest.cpp
-  testcase/logging_kernel_utest.cpp
+  testcase/less_utest.cpp
+  testcase/logging_utest.cpp
   testcase/top_k_utest.cpp
   testcase/ceil_utest.cpp
   testcase/realdiv_utest.cpp
@@ -165,7 +165,7 @@ set(_cpu_kernels_ut_files
   testcase/split_v_utest.cpp
   testcase/random_uniform_utest.cpp
   testcase/strided_slice_v2_utest.cpp
-  testcase/sparse_to_dense_kernel_utest.cpp
+  testcase/sparse_to_dense_utest.cpp
   testcase/fill_utest.cpp
   testcase/euqal_utest.cpp
   testcase/where_utest.cpp

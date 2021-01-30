@@ -64,7 +64,7 @@ uint32_t EqualCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t EqualCpuKernel::EqualCompute(CpuKernelContext &ctx) {
-  CalcInfo calc_info;
+  BCalcInfo calc_info;
   calc_info.input_0 = ctx.Input(0);
   calc_info.input_1 = ctx.Input(1);
   calc_info.output = ctx.Output(0);
@@ -94,7 +94,7 @@ uint32_t EqualCpuKernel::EqualCompute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t EqualCpuKernel::EqualCalculate(CpuKernelContext &ctx,
-                                      CalcInfo &calc_info) {
+                                      BCalcInfo &calc_info) {
   auto input_x1 = reinterpret_cast<T *>(calc_info.input_0->GetData());
   auto input_x2 = reinterpret_cast<T *>(calc_info.input_1->GetData());
   auto output_y = reinterpret_cast<bool *>(calc_info.output->GetData());

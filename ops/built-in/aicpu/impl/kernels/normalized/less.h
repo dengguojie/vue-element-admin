@@ -31,11 +31,10 @@ class LessCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  template <typename T>
-  static uint32_t LessCompute(CpuKernelContext &ctx);
+  static uint32_t LessCheck(CpuKernelContext &ctx, BCalcInfo &calc_info);
 
   template <typename T>
-  static uint32_t LessCalculate(CpuKernelContext &ctx, CalcInfo &calc_info);
+  static uint32_t LessCompute(CpuKernelContext &ctx, BCalcInfo &calc_info);
 };
 }  // namespace aicpu
 #endif

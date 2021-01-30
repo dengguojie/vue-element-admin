@@ -24,7 +24,7 @@ const int64_t kNoBroadcastValue = 1;
 }
 
 namespace aicpu {
-uint32_t Bcast::GenerateBcastInfo(const CalcInfo &calc_info) {
+uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {
   const std::vector<int64_t> &shape_x =
       calc_info.input_0->GetTensorShape()->GetDimSizes();
   const std::vector<int64_t> &shape_y =
@@ -91,7 +91,7 @@ uint32_t Bcast::GenerateBcastInfo(const CalcInfo &calc_info) {
   return KERNEL_STATUS_OK;
 }
 
-void Bcast::GetBcastVec(CalcInfo &calc_info) {
+void Bcast::GetBcastVec(BCalcInfo &calc_info) {
   calc_info.reshape_0 = std::move(x_reshape_);
   calc_info.reshape_1 = std::move(y_reshape_);
   calc_info.shape_out = std::move(shape_out_);
@@ -110,7 +110,7 @@ void Bcast::BCastIndexes(std::vector<int64_t> &x_indexes,
   int64_t y_dim = 1;
   int64_t out_dim = 1;
 
-  // If x and y are both scalar, then shape_out_ is empty
+  // If shape_out_ is not empty, get dim of shape vector
   if (!shape_out_.empty()) {
     x_dim = x_reshape_.at(0);
     y_dim = y_reshape_.at(0);

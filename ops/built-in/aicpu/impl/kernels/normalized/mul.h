@@ -44,7 +44,7 @@ class MulCpuKernel : public CpuKernel {
    * @param calc_info data used to calculate
    * @return true: aligned, false: not aligned
    */
-  static bool AlignedCheck(const CalcInfo &calc_info);
+  static bool AlignedCheck(const BCalcInfo &calc_info);
 
   /**
    * @brief compute for all types
@@ -52,7 +52,7 @@ class MulCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <int32_t RANK, typename T, int32_t OPTION>
-  static void MulCalculate(CalcInfo &calc_info);
+  static void MulCalculate(BCalcInfo &calc_info);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_MUL_H_

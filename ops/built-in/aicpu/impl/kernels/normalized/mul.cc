@@ -73,7 +73,7 @@ uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
-  CalcInfo calc_info;
+  BCalcInfo calc_info;
   calc_info.input_0 = ctx.Input(kFirstInputIndex);
   calc_info.input_1 = ctx.Input(kSecondInputIndex);
   calc_info.output = ctx.Output(kFirstOutputIndex);
@@ -119,14 +119,14 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-bool MulCpuKernel::AlignedCheck(const CalcInfo &calc_info) {
+bool MulCpuKernel::AlignedCheck(const BCalcInfo &calc_info) {
   return AddrAlignedCheck(calc_info.input_0->GetData()) &&
          AddrAlignedCheck(calc_info.input_1->GetData()) &&
          AddrAlignedCheck(calc_info.output->GetData());
 }
 
 template <int32_t RANK, typename T, int32_t OPTION>
-void MulCpuKernel::MulCalculate(CalcInfo &calc_info) {
+void MulCpuKernel::MulCalculate(BCalcInfo &calc_info) {
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input_0(
       static_cast<T *>(calc_info.input_0->GetData()),
       calc_info.input_0->GetTensorShape()->NumElements());

@@ -45,7 +45,7 @@ class EqualCpuKernel : public CpuKernel {
    * @return status code
    */
   template <typename T>
-  uint32_t EqualCalculate(CpuKernelContext &ctx, CalcInfo &calc_info);
+  uint32_t EqualCalculate(CpuKernelContext &ctx, BCalcInfo &calc_info);
 };
 }  // namespace aicpu
 #endif
