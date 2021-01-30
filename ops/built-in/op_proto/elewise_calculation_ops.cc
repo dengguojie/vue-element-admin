@@ -4396,4 +4396,28 @@ COMMON_INFER_FUNC_REG(Dot, DotInferShape);
 VERIFY_FUNC_REG(Dot, DotVerify);
 // ---------------Dot END-------------------
 
+// ---------------IsClose Begin-----------------
+IMPLEMT_VERIFIER(IsClose, IsCloseVerify)
+{
+    if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(IsCloseInferShape)
+{
+    Format input_format = op.GetInputDesc("x1").GetFormat();
+    Shape x1_shape = op.GetInputDesc("x1").GetShape();
+    TensorDesc td = op.GetOutputDesc("y");
+    td.SetShape(ge::Shape(x1_shape));
+    td.SetDataType(DT_BOOL);
+    td.SetFormat(input_format);
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(IsClose, IsCloseInferShape);
+VERIFY_FUNC_REG(IsClose, IsCloseVerify);
+// ---------------IsClose END-----------------
+
 }  // namespace ge
