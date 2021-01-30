@@ -43,8 +43,8 @@ uint32_t ParseExtSessionInfo(AicpuParamHead *param_head,
     if (ext_info == nullptr) {
       KERNEL_LOG_ERROR(
           "Extend info is nullptr, extend info length[%u], extend info "
-          "addr[%p], offset[%u].",
-          param_head->extInfoLength, param_head->extInfoAddr, offset);
+          "offset[%u].",
+          param_head->extInfoLength, offset);
       return KERNEL_STATUS_PARAM_INVALID;
     }
 

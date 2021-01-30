@@ -29,7 +29,7 @@ const char *kGetCPUNumFunc = "GetCPUNum";
 namespace aicpu {
 DeviceSharder::DeviceSharder(DeviceType device) : Sharder(device) {
   sharder_ = dlopen(kSharderPath, RTLD_LAZY | RTLD_GLOBAL);
-  if (sharder_ == NULL) {
+  if (sharder_ == nullptr) {
     KERNEL_LOG_WARN("Device sharder dlopen so[%s] failed, error[%s]",
                     kSharderPath, dlerror());
     parallel_for_ = nullptr;
