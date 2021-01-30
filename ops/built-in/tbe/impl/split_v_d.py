@@ -396,6 +396,9 @@ def op_select_format(input_value, output_data, size_splits, split_dim, num_split
     if size_equal != 1:
         is_support_other_5hd = False
 
+    if output_org_format_list[0] in ("NCHW",) and input_ori_shape[0] == 1:
+        is_support_other_5hd = False
+
     dtype_base = ["float16", "float", "int32", "int8", "int16", "int64", "uint8", "uint16", "uint32", "uint64"]
     dtype_5hd = ["float16", "float", "int32", "int8", "int16", "uint16", "uint32"]
     dtype_base_out = dtype_base.copy()

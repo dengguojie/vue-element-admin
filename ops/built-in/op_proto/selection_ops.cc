@@ -178,7 +178,10 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceGradInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends({"shape", "begin", "end", "strides"});
   auto dim_vector = op.GetInputDesc("shape").GetShape().GetDims();
-
+  if (dim_vector.empty()) {
+    OP_LOGE(op.GetName().c_str(), "The dims of input is empty!");
+    return GRAPH_FAILED;
+  }
   if (op.GetInputConstData("shape", output_shape_tensor) != GRAPH_SUCCESS) {
     OP_LOGD("OP[SSGInferShape]", "SSGInferShape BRANCH0.");
     OP_LOGI(op.GetName().c_str(), "Get constValue failed of [shape]");
@@ -633,6 +636,10 @@ IMPLEMT_COMMON_INFERFUNC(RangeInferShape) {
     float assist_num_one = std::abs(delta_multiples[0]);
     int64_t res = 0;
     DataType input_dtype = ge::DT_FLOAT;
+    if (assist_num_one < 1e-6) {
+      OP_LOGE(op.GetName().c_str(), "the value of delta should not be zero");
+      return GRAPH_FAILED;
+    }
     if (start_dtype == ge::DT_INT32 && limit_dtype == ge::DT_INT32 && delta_dtype == ge::DT_INT32) {
       res = static_cast<int>(ceil(float(assist_num) / assist_num_one));
     } else if (start_dtype == ge::DT_INT64 && limit_dtype == ge::DT_INT64 && delta_dtype == ge::DT_INT64) {
@@ -1741,6 +1748,10 @@ IMPLEMT_COMMON_INFERFUNC(SegmentMaxInferShape) {
   }
 
   auto output_shape_dims = input_desc.GetShape().GetDims();
+  if (output_shape_dims.empty()) {
+    OP_LOGE(op.GetName().c_str(), "The dims of input is empty!");
+    return GRAPH_FAILED;
+  }
   output_shape_dims[0] = first_axis_dims;
   Shape output_shape(output_shape_dims);
   DataType input_dtype = input_desc.GetDataType();
@@ -1814,6 +1825,10 @@ IMPLEMT_COMMON_INFERFUNC(SegmentMaxDInferShape) {
   int64_t first_axis_dims = (*std::max_element(segment_ids.begin(), segment_ids.end())) + 1;
 
   auto output_shape_dims = input_desc.GetShape().GetDims();
+  if (output_shape_dims.empty()) {
+    OP_LOGE(op.GetName().c_str(), "The dims of input is empty!");
+    return GRAPH_FAILED;
+  }
   output_shape_dims[0] = first_axis_dims;
   for (auto item : output_shape_dims) {
     OP_LOGI("segment_max_d", "shape dims:%lld.", item);
@@ -3200,6 +3215,10 @@ IMPLEMT_COMMON_INFERFUNC(PassThroughInferShape) {
   if (GRAPH_SUCCESS != op.GetAttr("stride", stride)) {
     stride = 2;
   }
+  if (stride == 0) {
+    OP_LOGE(op.GetName().c_str(), "stride[%d] error.", stride);
+    return GRAPH_FAILED;
+  }
   if (GRAPH_SUCCESS != op.GetAttr("reverse", reverse)) {
     reverse = false;
   }
@@ -4345,7 +4364,10 @@ bool InferShapeAndTypeSliceLastDim(Operator& op, const string& x_name,
     OP_LOGE(op.GetName().c_str(), "Failed to get the length");
     return false;
   }
-
+  if (stride == 0) {
+    OP_LOGE(op.GetName().c_str(), "stride[%d] error.", stride);
+    return GRAPH_FAILED;
+  }
   length = (end - begin - 1 + stride) / stride;
 
   for (size_t i = 0; i < dims_x.size(); i++) {
