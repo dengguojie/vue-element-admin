@@ -19,14 +19,32 @@
 #include "cpu_kernel.h"
 
 namespace aicpu {
+struct TransArgs {
+  const uint8_t *data;
+  std::vector<int64_t> src_shape;
+  std::vector<int64_t> dst_shape;
+  DataType src_data_type;
+};
 class TransDataCpuKernel : public CpuKernel {
  public:
   ~TransDataCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
+
  private:
   template <typename T>
   uint32_t DealData(T *input_Data, T *output_data, Tensor *input_tensor,
                     Tensor *out_put_tensor, int64_t group);
+  uint32_t FormatTransferHwcnToFZC04(TransArgs &args, uint8_t *output_addr,
+                                     uint64_t length);
+  uint32_t PaddingOne(TransArgs &args, std::shared_ptr<uint8_t> &dst);
+  uint32_t PaddingTwo(TransArgs &args, std::shared_ptr<uint8_t> &dst);
+  uint32_t GetPaddingOneShape(const TransArgs &args,
+                              std::vector<int64_t> &dst_shape);
+  uint32_t GetPaddingTwoShape(const TransArgs &args,
+                              std::vector<int64_t> &dst_shape);
+  uint32_t Transpose(TransArgs &args, const std::vector<int64_t> &perm_arg,
+                     std::shared_ptr<uint8_t> &dst);
+  int64_t GetCubeSizeByDataType(DataType data_type);
 };
 }  // namespace aicpu
 #endif
