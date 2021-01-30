@@ -29,3 +29,10 @@ class JsonMSIROpInfo(JsonIROpInfo):
                                  "just ignore the warning."
                                  % (ir_name, ir_type))
         return ""
+
+    @staticmethod
+    def _init_op_format(input_output_map, prefix, input_output_name,
+                        ir_type_list):
+        op_format = ",".join("ND" for _ in ir_type_list)
+        op_format = op_format.split(",")
+        return op_format

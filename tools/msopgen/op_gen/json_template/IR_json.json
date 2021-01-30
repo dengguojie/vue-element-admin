@@ -1,8 +1,8 @@
 [
 {
-	"op":"Conv2DTik",
+	"op":"Conv2D",
 	"input_desc":[{
-		"name":"x1",
+		"name":"x",
 		"param_type":"required",
 		"format":[
 			"ND",
@@ -10,11 +10,11 @@
 		],
 		"type":[
 			"fp16",
-			"fp32"
+			"int16"
 		]
 	},
 	{
-		"name":"x2",
+		"name":"filter",
 		"param_type":"required",
 		"format":[
 			"ND",
@@ -22,7 +22,7 @@
 		],
 		"type":[
 			"fp16",
-			"fp32"
+			"int16"
 		]
 	}
 	],
@@ -35,68 +35,25 @@
 		],
 		"type":[
 			"fp16",
-			"fp32"
+			"int16"
 		]
 	}
 	],
 	"attr":[{
 		"name":"strides",
-		"param_type":"optional",
-		"type":"list_int",
-		"default_value":[1,1,1,1]
+		"param_type":"required",
+		"type":"list_int"
 	},
 	{
 		"name":"pads",
-		"param_type":"optional",
-		"type":"list_int",
-		"default_value":[1,1,1,1]
+		"param_type":"required",
+		"type":"list_int"
 	},
 	{
 		"name":"dilations",
-		"param_type": "required",
+		"param_type": "optional",
 		"type":"list_int",
-		"default_value":""
-	}
-	]
-},
-{
-	"op":"MatmulTik",
-	"input_desc":[{
-		"name":"x1",
-		"param_type":"required",
-		"format":[
-			"ND"
-		],
-		"type":[
-			"int8",
-			"uint8",
-			"int32"
-		]
-	},
-	{
-		"name":"x2",
-		"param_type":"required",
-		"format":[
-			"ND"
-		],
-		"type":[
-			"int8",
-			"uint8",
-			"int32"
-		]
-	}
-	],
-	"output_desc":[{
-		"name":"y",
-		"param_type":"required",
-		"format":[
-			"ND"
-		],
-		"type":[
-			"int8",
-			"uint8",
-			"int32"
-		]
+		"default_value":[1,1,1,1]
 	}
 	]
 }

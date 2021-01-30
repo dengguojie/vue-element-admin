@@ -146,10 +146,10 @@ class OpFileAiCore(OPFile):
         new_str += op_tmpl.INI_BIN_FILE.format(name=self.op_info.fix_op_type)
         self._make_info_cfg_file(new_str)
 
-    @staticmethod
-    def _generate_attr_aicore(attr, new_str):
+    def _generate_attr_aicore(self, attr, new_str):
+        attr_type = self._mapping_attr_type_for_ini(attr[1])
         new_str += op_tmpl.INI_ATTR_TYPE_VALUE.format(name=attr[0],
-                                                      type=attr[1])
+                                                      type=attr_type)
         if len(attr) == 4:
             new_str += op_tmpl.INI_ATTR_PARAM_TYPE.format(
                 name=attr[0],
@@ -215,6 +215,18 @@ class OpFileAiCore(OPFile):
             info_path = os.path.join(soc_dir, self.op_info.fix_op_type +
                                      ".ini")
             utils.write_files(info_path, new_str)
+
+    @staticmethod
+    def _mapping_attr_type_for_ini(attr_type):
+        attr_type = attr_type.strip()
+        if attr_type in utils.INI_ATTR_TYPE_MAP:
+            return utils.INI_ATTR_TYPE_MAP.get(attr_type)
+        utils.print_warn_log("The attr type '%s' "
+                             "is unsupported for .ini file. "
+                             "Please check the attr type. If "
+                             "you aren't having problems, just ignore "
+                             "the warning." % attr_type)
+        return ""
 
     @staticmethod
     def _mapping_info_cfg_type(op_type):

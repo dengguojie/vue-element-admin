@@ -1,8 +1,8 @@
 [
 {
-	"op":"Conv2DTik",
+	"op":"Conv2D",
 	"input_desc":[{
-		"name":"x1",
+		"name":"x",
 		"param_type":"required",
 		"type":[
 			"I8_NHWC",
@@ -10,7 +10,7 @@
 		]
 	},
 	{
-		"name":"x2",
+		"name":"filter",
 		"param_type":"required",
 		"type":[
 			"I8_NHWC",
@@ -29,21 +29,19 @@
 	],
 	"attr":[{
 		"name":"strides",
-		"param_type":"optional",
-		"type":"list_int",
-		"default_value":[1,1,1,1]
+		"param_type":"required",
+		"type":"list_int"
 	},
 	{
 		"name":"pads",
-		"param_type":"optional",
-		"type":"list_int",
-		"default_value":[1,1,1,1]
+		"param_type":"required",
+		"type":"list_int"
 	},
 	{
 		"name":"dilations",
-		"param_type": "required",
+		"param_type": "optional",
 		"type":"list_int",
-		"default_value":""
+		"default_value":[1,1,1,1]
 	}
 	]
 }

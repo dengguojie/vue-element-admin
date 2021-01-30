@@ -206,6 +206,22 @@ IR_ATTR_TYPE_MAP = {
     "list_type": "ListType"
 }
 
+INI_ATTR_TYPE_MAP = {
+    "Int": "int",
+    "Float": "float",
+    "String": "str",
+    "Bool": "bool",
+    "Tensor": "tensor",
+    "Type": "type",
+    "ListInt": "listInt",
+    "ListFloat": "listFloat",
+    "ListString": "listStr",
+    "ListBool": "listBool",
+    "ListTensor": "listTensor",
+    "ListType": "listType",
+    "ListListInt": "listListInt"
+}
+
 TF_ATTR_TYPE_MAP = {
     "int": "Int",
     "float": "Float",

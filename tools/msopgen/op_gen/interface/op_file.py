@@ -161,28 +161,41 @@ class OPFile(metaclass=ABCMeta):
         utils.make_dirs(ir_h_dir)
         utils.write_files(ir_h_path, head_str)
 
-    @staticmethod
-    def _generate_attr(attr, head_str):
+    def _generate_attr(self, attr, head_str):
         attr_name = utils.fix_name_lower_with_under(attr[0])
+        attr_type = attr[1]
         if len(attr) == 4:
             if attr[3] == "optional":
+                default_value = self._deal_with_default_value(attr_type,
+                                                              attr[2])
                 head_str += op_tmpl.IR_H_ATTR_WITH_VALUE.format(
                     name=attr_name,
-                    type=attr[1],
-                    value=attr[2])
+                    type=attr_type,
+                    value=default_value)
             else:
                 head_str += op_tmpl.IR_H_ATTR_WITHOUT_VALUE.format(
                     name=attr_name,
-                    type=attr[1])
+                    type=attr_type)
         elif len(attr) == 3 and attr[2] != "":
+            default_value = self._deal_with_default_value(attr_type,
+                                                          attr[2])
             head_str += op_tmpl.IR_H_ATTR_WITH_VALUE.format(name=attr_name,
-                                                            type=attr[1],
-                                                            value=attr[2])
+                                                            type=attr_type,
+                                                            value=default_value
+                                                            )
         else:
             head_str += op_tmpl.IR_H_ATTR_WITHOUT_VALUE.format(
                 name=attr_name,
-                type=attr[1])
+                type=attr_type)
         return head_str
+
+    @staticmethod
+    def _deal_with_default_value(attr_type, default_value):
+        if attr_type.startswith("List"):
+            if isinstance(default_value, list):
+                default_value = str(default_value).replace('[', '{') \
+                    .replace(']', '}')
+        return default_value
 
     def _generate_ir_cpp(self):
         cpp_str = op_tmpl.IR_CPP_HEAD.format(
