@@ -636,6 +636,13 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
     return GRAPH_SUCCESS;
   }
 
+  auto imagesDimNum = images_desc.GetShape().GetDimNum();
+  if (((images_desc.GetFormat() == FORMAT_NCHW || images_desc.GetFormat() == FORMAT_NHWC) && imagesDimNum < 4)
+      || (images_desc.GetFormat() == FORMAT_NC1HWC0_C04 && imagesDimNum < 5)) {
+      OpsOneInputShapeErrReport(op.GetName(), "images shape dims", "The input shape of images is invalid");
+      OP_LOGE(op.GetName().c_str(), "The input shape of images is invalid");
+      return GRAPH_FAILED;
+  }
   if (images_desc.GetFormat() == FORMAT_NCHW) {
     batch = images_shape[0];
     // channel = images_shape[1];

@@ -87,6 +87,7 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
     OP_LOGE(FUSED_OP_TYPE.c_str(), "MapIndexFusionPass cannot be applied for unknown shape.");
     return FAILED;
   }
+  FUSION_PASS_CHECK(xLength <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "xShape is invalid!"), return PARAM_INVALID);
   int64_t number = ((dataSeqLength / xLength + 7) / 8) * 8;
   int64_t dataSeqNewLength = number * xLength;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "dataSeqLength = %ld, number = %ld, dataSeqNewLength = %ld", dataSeqLength, number,
@@ -115,7 +116,9 @@ Status MapIndexFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   dataSeqNode->GetOpDesc()->UpdateOutputDesc(0, dataSeqTensorDesc);
 
   std::unique_ptr<int32_t[]> NewDataSeq(new (std::nothrow) int32_t[dataSeqNewLength]());
-  memset_s(NewDataSeq.get(), dataSeqNewLength, 0, dataSeqNewLength);
+  auto retMem = memset_s(NewDataSeq.get(), dataSeqNewLength, 0, dataSeqNewLength);
+  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE(FUSED_OP_TYPE.c_str(), "memset_s function failed!"),
+                    return PARAM_INVALID);
 
   int32_t* dataSeqNewData = NewDataSeq.get();
   int32_t* dataSeqOldData = (int32_t*)(dataSeqTensorPtr->GetData().data());

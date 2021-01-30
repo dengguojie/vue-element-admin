@@ -58,6 +58,13 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
 }
 
 IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
+  int64_t xDimNum = op.get_input_desc_x().GetShape().GetDimNum();
+  if (xDimNum < 4) {
+    OpsOneInputShapeErrReport(op.GetName(), "x shape", "The rank of x shape is smaller than 4!");
+    OP_LOGE(op.GetName().c_str(), "The rank of x shape is smaller than 4!");
+    return GRAPH_FAILED;
+  }
+
   int64_t roisDimNum = op.get_input_desc_rois().GetShape().GetDimNum();
   if (roisDimNum != 3) {
     OpsOneInputShapeErrReport(op.GetName(), "rois shape dim", "The input shape of rois not equal 3!");

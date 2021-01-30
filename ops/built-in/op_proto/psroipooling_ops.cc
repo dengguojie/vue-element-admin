@@ -32,9 +32,9 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
   auto output_dim = op.get_attr_output_dim();
   auto group_size = op.get_attr_group_size();
   // The value of group_size must be less than 128
-  if (group_size >= 128) {
+  if (group_size <= 0 || group_size >= 128) {
     OP_LOGE(op.GetName().c_str(), "The value of group_size not support, is %ld", group_size);
-    OpsAttrValueErrReport(op.GetName(), "group_size", "less than 128", ConcatString(group_size));
+    OpsAttrValueErrReport(op.GetName(), "group_size", "less than 128 and greater than 0", ConcatString(group_size));
     return GRAPH_FAILED;
   }
 
