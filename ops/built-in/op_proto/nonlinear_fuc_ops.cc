@@ -52,7 +52,33 @@ IMPLEMT_COMMON_INFERFUNC(GeluGradInferShape) {
 COMMON_INFER_FUNC_REG(GeluGrad, GeluGradInferShape);
 VERIFY_FUNC_REG(GeluGrad, GeluGradVerify);
 // ----------------------GeluGrad END----------------------
+//-----------------------ELUGRADV2-------------------------
+IMPLEMT_COMMON_INFERFUNC(EluGradV2InferShape){
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    DataType input_dtype = op.GetInputDesc("activations").GetDataType();
+    Format input_format = op.GetInputDesc("activations").GetFormat();
+    ge::Shape input_shape = op.GetInputDesc("activations").GetShape();
+    output_desc.SetDataType(input_dtype);
+    output_desc.SetFormat(input_format);
+    output_desc.SetShape(input_shape);
+    (void)op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+}
 
+IMPLEMT_VERIFIER(EluGradV2, EluGradV2Verify){
+    // Check Whether the two input tensor data types are consistent
+    DataType input_type_grads = op.GetInputDesc("grads").GetDataType();
+    DataType input_type_activations = op.GetInputDesc("activations").GetDataType();
+    if(input_type_activations != input_type_grads) {
+        OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(EluGradV2, EluGradV2InferShape);
+VERIFY_FUNC_REG(EluGradV2, EluGradV2Verify);
+//-----------------------ELUGRADV2 END---------------------
 // ----------------------Gelu----------------------
 IMPLEMT_COMMON_INFERFUNC(GeluInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
