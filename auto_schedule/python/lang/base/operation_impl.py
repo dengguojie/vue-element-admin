@@ -15,495 +15,10 @@
 """
 operation impl
 """
-import functools
-import threading
-from dataclasses import dataclass
+import contextlib
 from typing import Any
 from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Tuple
 from typing import Union
-
-from te.tvm import api as tvm
-from te.utils.error_manager.error_manager_util import get_error_message
-
-# 'pylint: disable=C0103
-_contexts = {}
-
-_operators = {}
-_fusion_computes = {}
-_computes = {}  # type: Dict[Tuple[str, str], Compute]
-_schedules = {}
-_tiling_cases = {}
-_builds = {}
-
-
-@dataclass
-class Compute:
-    """
-    The attribute of registered compute.
-    """
-    func: Callable[..., Any]
-    op_mode: str
-    support_fusion: bool
-
-
-def _get_contexts():
-    return _contexts.setdefault(threading.currentThread().ident, [])
-
-
-class OperatorContext:
-    """
-    OperatorContext
-    """
-
-    def __init__(self, mode: str):
-        self.mode = mode
-
-        self.op_type = None
-        self.pattern = None
-
-        self.vars = []
-        self.computes = []
-        self.current_compute = None
-
-        self._addition = {"compile_info": {}, "build_args": {}}
-        self._exclude_bound_vars = []
-
-    def __enter__(self):
-        _get_contexts().append(self)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        _get_contexts().pop()
-
-    def get_mode(self):
-        """
-        :return:
-        """
-        return self.mode
-
-    def set_op_type(self, op_type):
-        """
-        :param op_type:
-        :return:
-        """
-        self.op_type = op_type
-
-    def get_op_type(self):
-        """
-        :return:
-        """
-        return self.op_type
-
-    def set_pattern(self, pattern):
-        """
-        :param pattern:
-        :return:
-        """
-        self.pattern = pattern
-
-    def get_pattern(self):
-        """
-        :return:
-        """
-        return self.pattern
-
-    def add_var(self, var_):
-        """
-        :param var_:
-        :return:
-        """
-        if self.computes:
-            self.computes[-1].add_var(var_)
-        else:
-            self.vars.append(var_)
-
-    def get_vars(self):
-        """
-        :return:
-        """
-        return self.vars
-
-    def begin_compute(self, _compute):
-        """
-        :param _compute:
-        :return:
-        """
-        if self.current_compute is not None:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Exist not finished compute context."
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-
-        self.computes.append(_compute)
-        self.current_compute = _compute
-
-    def end_compute(self, _compute):
-        """
-        :param _compute:
-        :return:
-        """
-        if self.current_compute != _compute:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Compute context not match."
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-        self.current_compute = None
-
-    def get_computes(self):
-        """
-        :return:
-        """
-        return self.computes
-
-    def get_current_compute(self) -> Optional['ComputeContext']:
-        """
-        :return:
-        """
-        return self.computes[-1] if self.computes else None
-
-    def add(self, key, value):
-        """
-        :param key:
-        :param value:
-        :return:
-        """
-        self._addition[key] = value
-
-    def get(self, key):
-        """
-        :param key:
-        :return:
-        """
-        return self._addition.get(key)
-
-    def set_default(self, key, value):
-        """
-        :param key:
-        :param value:
-        :return:
-        """
-        if key not in self._addition:
-            self.add(key, value)
-        return self.get(key)
-
-    def compute_default(self, key, func):
-        """
-        :param key:
-        :param func:
-        :return:
-        """
-        if key not in self._addition:
-            self.add(key, func())
-        return self.get(key)
-
-    def get_var(self, name):
-        """
-        :param name:
-        :return:
-        """
-        c_cmp = self.get_current_compute()
-        if c_cmp is not None:
-            var0 = c_cmp.get_var(name)
-            if var0 is not None:
-                return var0
-        for var_i in self.vars:
-            if var_i.get_name() == name:
-                return var_i
-        return None
-
-    def add_exclude_bound_var(self, var_):
-        """
-        :param var_:
-        :return:
-        """
-        if self.computes:
-            self.computes[-1].add_exclude_bound_var(var_)
-        else:
-            self._exclude_bound_vars.append(var_)
-
-    def get_exclude_bound_vars(self):
-        """
-        :return:
-        """
-        return self._exclude_bound_vars
-
-
-class ComputeContext:
-    """
-    ComputeContext
-    """
-
-    def __init__(self, _operator=None):
-        self.operator = get_context() if _operator is None else _operator
-        self.vars = []
-        self.schedules = []
-        self.current_schedule = None
-
-        self._addition = {}
-        self._exclude_bound_vars = []
-
-    def __enter__(self):
-        self.operator.begin_compute(self)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.operator.end_compute(self)
-
-    def begin_schedule(self, _schedule):
-        """
-        :param _schedule:
-        :return:
-        """
-        if self.current_schedule is not None:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Exist not finished compute context."
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-        self.schedules.append(_schedule)
-        self.current_schedule = _schedule
-
-    def end_schedule(self, _schedule):
-        """
-        :param _schedule:
-        :return:
-        """
-        if self.current_schedule != _schedule:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Schedule context not match."
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-        self.current_schedule = None
-
-    def get_schedules(self):
-        """
-        :return:
-        """
-        return self.schedules
-
-    def get_current_schedule(self):
-        """
-        :return:
-        """
-        return self.current_schedule
-
-    def get_operator_context(self):
-        return self.operator
-
-    def add_var(self, var_):
-        """
-        :param var_:
-        :return:
-        """
-        if self.schedules:
-            self.schedules[-1].add_var(var_)
-        else:
-            self.vars.append(var_)
-
-    def get_vars(self):
-        """
-        :return:
-        """
-        return self.vars
-
-    def get_var(self, name):
-        """
-        :param name:
-        :return:
-        """
-        c_sch = self.get_current_schedule()
-        if c_sch is not None:
-            var0 = c_sch.get_var(name)
-            if var0 is not None:
-                return var0
-        for var_i in self.vars:
-            if var_i.get_name() == name:
-                return var_i
-        return None
-
-    def add(self, key, value):
-        """
-        :param key:
-        :param value:
-        :return:
-        """
-        self._addition[key] = value
-
-    def get(self, key):
-        """
-        :param key:
-        :return:
-        """
-        return self._addition.get(key)
-
-    def set_default(self, key, value):
-        """
-        :param key:
-        :param value:
-        :return:
-        """
-        if key not in self._addition:
-            self.add(key, value)
-        return self.get(key)
-
-    def compute_default(self, key, func):
-        """
-        :param key:
-        :param func:
-        :return:
-        """
-        if key not in self._addition:
-            self.add(key, func())
-        return self.get(key)
-
-    def add_exclude_bound_var(self, var_):
-        """
-        :param var_:
-        :return:
-        """
-        if self.schedules:
-            self.schedules[-1].add_exclude_bound_var(var_)
-        else:
-            self._exclude_bound_vars.append(var_)
-
-    def get_exclude_bound_vars(self):
-        """
-        :return:
-        """
-        return self._exclude_bound_vars
-
-
-class ScheduleContext:
-    """
-    ScheduleContext
-    """
-
-    def __init__(self, _compute=None):
-        self.compute = get_context().get_current_compute() \
-            if _compute is None else _compute
-        self.vars = []
-
-        self._addition = {}
-        self._exclude_bound_vars = []
-
-    def __enter__(self):
-        self.compute.begin_schedule(self)
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.compute.end_schedule(self)
-
-    def get_compute_context(self):
-        return self.compute
-
-    def add_var(self, var_):
-        """
-        :param var_:
-        :return:
-        """
-        self.vars.append(var_)
-
-    def get_vars(self):
-        """
-        :return:
-        """
-        return self.vars
-
-    def get_var(self, name):
-        """
-        :param name:
-        :return:
-        """
-        for var_i in self.vars:
-            if var_i.get_name() == name:
-                return var_i
-        return None
-
-    def add(self, key, value):
-        """
-        :param key:
-        :param value:
-        :return:
-        """
-        self._addition[key] = value
-
-    def get(self, key):
-        """
-        :param key:
-        :return:
-        """
-        return self._addition.get(key)
-
-    def set_default(self, key, value):
-        """
-        :param key:
-        :param value:
-        :return:
-        """
-        if key not in self._addition:
-            self.add(key, value)
-        return self.get(key)
-
-    def compute_default(self, key, func):
-        """
-        :param key:
-        :param func:
-        :return:
-        """
-        if key not in self._addition:
-            self.add(key, func())
-        return self.get(key)
-
-    def add_exclude_bound_var(self, var_):
-        """
-        :param var_:
-        :return:
-        """
-        self._exclude_bound_vars.append(var_)
-
-    def get_exclude_bound_vars(self):
-        """
-        :return:
-        """
-        return self._exclude_bound_vars
-
-
-class Var:
-    """
-    Var
-    """
-
-    def __init__(self, name, bound, dtype, addition=None):
-        self.tvm_var = tvm.var(name, dtype=dtype)
-        self.name = name
-        self.bound = bound
-        self.addition = addition
-
-    def get_tvm_var(self):
-        """
-        :return:
-        """
-        return self.tvm_var
-
-    def get_name(self):
-        """
-        :return:
-        """
-        return self.name
-
-    def get_bound(self):
-        """
-        :return:
-        """
-        return self.bound
-
-    def get_addition(self):
-        """
-        :return:
-        """
-        return self.addition
 
 
 def register_operator(op_type, pattern=None):
@@ -512,19 +27,7 @@ def register_operator(op_type, pattern=None):
     :param pattern:
     :return:
     """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            context = get_context()
-            context.set_op_type(op_type)
-            context.set_pattern(pattern)
-            return func(*args, **kwargs)
-
-        _operators[op_type] = wrapper
-        return wrapper
-
-    return decorator
+    return _get_new_operation().register_operator(op_type, pattern)
 
 
 def get_operator(op_type):
@@ -532,7 +35,7 @@ def get_operator(op_type):
     :param op_type:
     :return:
     """
-    return _operators.get(op_type)
+    return _get_new_operation().get_operator(op_type)
 
 
 def register_schedule(pattern):
@@ -540,20 +43,7 @@ def register_schedule(pattern):
     :param pattern:
     :return:
     """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        if isinstance(pattern, (tuple, list)):
-            for p in pattern:
-                _schedules[p] = wrapper
-        else:
-            _schedules[pattern] = wrapper
-        return wrapper
-
-    return decorator
+    return _get_new_operation().register_schedule(pattern)
 
 
 def get_schedule(pattern):
@@ -561,7 +51,7 @@ def get_schedule(pattern):
     :param pattern:
     :return:
     """
-    return _schedules.get(pattern)
+    return _get_new_operation().get_schedule(pattern)
 
 
 def register_tiling_case(pattern):
@@ -569,21 +59,7 @@ def register_tiling_case(pattern):
     :param pattern:
     :return:
     """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        if isinstance(pattern, (tuple, list)):
-            for p in pattern:
-                _tiling_cases[p] = wrapper
-        else:
-            _tiling_cases[pattern] = wrapper
-
-        return wrapper
-
-    return decorator
+    return _get_new_operation().register_tiling_case(pattern)
 
 
 def get_tiling_case(pattern):
@@ -591,7 +67,7 @@ def get_tiling_case(pattern):
     :param pattern:
     :return:
     """
-    return _tiling_cases.get(pattern)
+    return _get_new_operation().get_tiling_case(pattern)
 
 
 def register_fusion_compute(op_type):
@@ -599,16 +75,7 @@ def register_fusion_compute(op_type):
     :param op_type:
     :return:
     """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        _fusion_computes[op_type] = wrapper
-        return wrapper
-
-    return decorator
+    return _get_new_operation().register_fusion_compute(op_type)
 
 
 def get_fusion_compute(op_type):
@@ -616,7 +83,7 @@ def get_fusion_compute(op_type):
     :param op_type:
     :return:
     """
-    return _fusion_computes.get(op_type)
+    return _get_new_operation().get_fusion_compute(op_type)
 
 
 def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
@@ -627,31 +94,18 @@ def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
     :param support_fusion:
     :return:
     """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        _computes[(op_type, op_mode)] = Compute(wrapper, op_mode, support_fusion)
-        return wrapper
-
-    return decorator
+    return _get_new_operation().register_op_compute(op_type, op_mode, support_fusion)
 
 
 def get_op_compute(op_type, op_mode="dynamic", verbose=False):
-    # type: (str, str, bool) -> Union[Callable, Compute, None]
+    # type: (str, str, bool) -> Union[Callable, Any, None]
     """
     :param op_type:
     :param op_mode:
     :param verbose:
     :return:
     """
-    compute_ = _computes.get((op_type, op_mode))
-    if compute_:
-        return compute_ if verbose else compute_.func
-
-    return None
+    return _get_new_operation().get_op_compute(op_type, op_mode, verbose)
 
 
 def register_build_pointcut(pattern):
@@ -659,21 +113,7 @@ def register_build_pointcut(pattern):
     :param pattern:
     :return:
     """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        if isinstance(pattern, (tuple, list)):
-            for p in pattern:
-                _builds[p] = wrapper
-        else:
-            _builds[pattern] = wrapper
-
-        return wrapper
-
-    return decorator
+    return _get_new_operation().register_build_pointcut(pattern)
 
 
 def get_build_pointcut(pattern):
@@ -681,7 +121,7 @@ def get_build_pointcut(pattern):
     :param pattern:
     :return:
     """
-    return _builds.get(pattern)
+    return _get_new_operation().get_build_pointcut(pattern)
 
 
 def var(name, bound=None, dtype="int32", addition=None):
@@ -692,43 +132,36 @@ def var(name, bound=None, dtype="int32", addition=None):
     :param addition:
     :return:
     """
-    var_ = Var(name, bound, dtype, addition)
-    context = get_context()
-    if context is not None:
-        context.add_var(var_)
-    return var_.get_tvm_var()
+    return _get_new_operation().var(name, bound, dtype, addition)
 
 
-def get_te_var(name) -> Var:
+def get_te_var(name):
     """
     :param name:
     :return:
     """
-    context = get_context()
-    return context.get_var(name) if context else None
+    return _get_new_operation().get_te_var(name)
 
 
 def in_dynamic():
     """
     :return:
     """
-    context = get_context()
-    return context is not None and context.get_mode() == "dynamic"
+    return _get_new_operation().in_dynamic()
 
 
 def get_op_mode():
     """
     :return:
     """
-    context = get_context()
-    return context.get_mode() if context else None
+    return _get_new_operation().get_op_mode()
 
 
-def get_context() -> Optional[OperatorContext]:
+def get_context():
     """
     :return:
     """
-    return _get_contexts()[-1] if _get_contexts() else None
+    return _get_new_operation().get_context()
 
 
 def add_compile_info(key, value):
@@ -737,7 +170,7 @@ def add_compile_info(key, value):
     :param value:
     :return:
     """
-    get_compile_info()[key] = value
+    _get_new_operation().add_compile_info(key, value)
 
 
 def compute_compile_info(key, func):
@@ -754,8 +187,7 @@ def get_compile_info() -> dict:
     """
     :return:
     """
-    context = get_context()
-    return context.get("compile_info")
+    return _get_new_operation().get_compile_info()
 
 
 def add_build_arg(key, value):
@@ -764,7 +196,7 @@ def add_build_arg(key, value):
     :param value:
     :return:
     """
-    get_build_args()[key] = value
+    _get_new_operation().add_build_arg(key, value)
 
 
 def compute_build_arg(key, func):
@@ -781,8 +213,7 @@ def get_build_args() -> dict:
     """
     :return:
     """
-    context = get_context()
-    return context.get("build_args")
+    return _get_new_operation().get_build_args()
 
 
 def add_exclude_bound_var(var_):
@@ -790,30 +221,37 @@ def add_exclude_bound_var(var_):
     :param var_:
     :return:
     """
-    context = get_context()
-    context.add_exclude_bound_var(var_)
+    _get_new_operation().add_exclude_bound_var(var_)
 
 
 def static():
     """
     :return:
     """
-    return OperatorContext("static")
+    return operator("static")
 
 
 def dynamic():
     """
     :return:
     """
-    return OperatorContext("dynamic")
+    return operator("dynamic")
 
 
+# noinspection PyProtectedMember
+@contextlib.contextmanager
 def operator(mode="static"):
     """
     :param mode:
     :return:
     """
-    return OperatorContext(mode)
+    context = _get_new_operation().OperatorContext()
+    context_proxy = _get_new_operation().OperatorContextProxy(mode, context)
+    _get_new_operation()._get_contexts().append(context_proxy)
+    try:
+        yield context
+    finally:
+        _get_new_operation()._get_contexts().pop()
 
 
 def compute(_operator=None):
@@ -821,7 +259,7 @@ def compute(_operator=None):
     :param _operator:
     :return:
     """
-    return ComputeContext(_operator)
+    return _get_new_operation().compute(_operator)
 
 
 def schedule(_compute=None):
@@ -829,4 +267,9 @@ def schedule(_compute=None):
     :param _compute:
     :return:
     """
-    return ScheduleContext(_compute)
+    return _get_new_operation().schedule(_compute)
+
+
+def _get_new_operation():
+    from tbe.dsl.base import operation as new_operation
+    return new_operation

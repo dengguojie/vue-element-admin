@@ -18,7 +18,7 @@ build
 from __future__ import absolute_import as _abs
 
 from tbe.dsl.static_schedule.cce_schedule import cce_build_code as static_build
-from te.lang.base import operation_impl as operation
+from tbe.dsl.base import operation
 
 from .unify_auto_schedule import build as dynamic_build
 

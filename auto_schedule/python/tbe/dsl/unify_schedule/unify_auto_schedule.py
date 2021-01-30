@@ -18,7 +18,7 @@ corresponding schedule template for user's compute
 """
 from te import platform as cce
 from te import tvm
-from te.lang.base import operation_impl as operation
+from tbe.dsl.base import operation
 from te.tvm.build_module import BuildConfigs
 from te.platform import cce_conf
 from tbe.common.utils.errormgr import get_error_message
@@ -47,10 +47,18 @@ def schedule_cce(outs, option=None):
         f_m = cce.fusion_manager.fusion_manager
         op_type = operation.get_context().get_op_type()
         compute = operation.get_op_compute(op_type, verbose=True)
+
         if compute is None or compute.support_fusion is False:
-            f_m.set_current_op_pattern(Pattern.OPAQUE)
+            fusion_pattern = Pattern.OPAQUE
         else:
-            f_m.set_current_op_pattern(pattern)
+            fusion_pattern = pattern
+
+        # noinspection PyProtectedMember
+        if operation._in_compatible_mode():
+            f_m.set_current_op_pattern(fusion_pattern)
+        else:
+            operation.get_op_context().add_build_res("pattern", fusion_pattern)
+
         return None
 
     tiling_case_func = operation.get_tiling_case(pattern)
@@ -60,7 +68,7 @@ def schedule_cce(outs, option=None):
     schedule_func = operation.get_schedule(pattern)
     for tiling_case in tiling_case_ret:
         param_outs = original_outs.copy()
-        with operation.ScheduleContext() as context:
+        with operation.schedule() as context:
             sch = schedule_func(param_outs, tiling_case)
             if sch is not None:
                 util.add_sch_additional_entry(sch, "original_outs", original_outs)

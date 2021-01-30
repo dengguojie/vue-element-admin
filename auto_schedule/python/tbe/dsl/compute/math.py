@@ -20,7 +20,7 @@ from decorator import decorator
 import tbe.dsl
 from te import tvm
 from te.platform import intrinsic_check_support
-from te.lang.base import operation_impl as operation_context
+from tbe.dsl.base import operation as operation_context
 from tbe.dsl.base.expr_compare import expr_equal as equal
 from te.platform.cce_conf import CceProductParams as pver
 from tbe.common.utils.errormgr import get_error_message

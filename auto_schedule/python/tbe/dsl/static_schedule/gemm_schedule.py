@@ -20,8 +20,8 @@ from functools import reduce  # pylint: disable=C0302
 
 from te import tvm
 from te.domain.tiling.get_tiling import get_tiling
-from te.lang.base.operation_impl import in_dynamic
-from te.lang.base.operation_impl import get_te_var
+from tbe.dsl.base.operation import in_dynamic
+from tbe.dsl.base.operation import get_te_var
 from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.platform import cce_conf

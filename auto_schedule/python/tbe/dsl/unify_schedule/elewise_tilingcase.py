@@ -15,16 +15,17 @@
 """
 elewise tiling case
 """
-from enum import Enum, auto  # pylint: disable=E0611
+from enum import Enum  # pylint: disable=E0611
+from enum import auto
+
+from tbe.dsl.base import operation
+from tbe.dsl.base.operation import register_build_pointcut
+from tbe.dsl.base.operation import register_tiling_case
 
 from . import CompileInfo
 from . import DTYPE_BYTE_MAPPING
 from . import Pattern
 from . import util
-
-from te.lang.base import operation_impl as operation
-from te.lang.base.operation_impl import register_build_pointcut
-from te.lang.base.operation_impl import register_tiling_case
 
 COMMON = "common"
 BROADCAST = "broadcast"

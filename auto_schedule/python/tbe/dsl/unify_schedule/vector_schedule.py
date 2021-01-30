@@ -42,7 +42,7 @@ from te.tvm.schedule import Split
 from te.tvm.schedule import Stage
 from te.tvm.schedule import IterVar
 from te.tvm.schedule import Schedule
-from te.lang.base import operation_impl as operation
+from tbe.dsl.base import operation
 from .util import is_keepdims
 from .util import is_reduce_tensor
 from .util import get_reduce_all_axes

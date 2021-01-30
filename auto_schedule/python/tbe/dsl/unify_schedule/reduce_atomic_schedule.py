@@ -20,7 +20,7 @@ import copy
 
 from te import platform as cceconf
 from te import tvm
-from te.lang.base import operation_impl as operation
+from tbe.dsl.base import operation
 import te.platform.cce_params as cce
 from te.platform.cce_conf import CceProductParams as Pver
 from tbe.common.utils.errormgr import get_error_message

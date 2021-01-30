@@ -20,10 +20,10 @@ from copy import deepcopy
 
 from te import tvm
 from tbe.dsl.base import op_tiling
-from te.lang.base import operation_impl as operation
+from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
-from te.lang.base.operation_impl import get_compile_info
-from te.lang.base.operation_impl import register_schedule
+from tbe.dsl.base.operation import get_compile_info
+from tbe.dsl.base.operation import register_schedule
 
 from . import CompileInfo
 from . import DTYPE_BYTE_MAPPING

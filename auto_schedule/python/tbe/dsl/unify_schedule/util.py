@@ -26,7 +26,7 @@ from te.tvm.expr import Var
 from te.tvm.expr import Reduce
 from te.tvm.tensor import Tensor
 from te.tvm.tensor import PlaceholderOp
-from te.lang.base import operation_impl as operation
+from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.common.utils.errormgr import get_error_message
 

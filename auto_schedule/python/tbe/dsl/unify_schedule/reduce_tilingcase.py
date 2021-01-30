@@ -31,11 +31,11 @@ from te.tvm.expr import Var
 from te.tvm.expr import IntImm
 from te.platform.cce_conf import get_soc_spec
 from te.platform.cce_conf import CceProductParams as Version
-from te.lang.base.operation_impl import get_context
-from te.lang.base.operation_impl import register_tiling_case
-from te.lang.base.operation_impl import register_build_pointcut
-from te.lang.base.operation_impl import add_compile_info
-from te.lang.base.operation_impl import get_compile_info
+from tbe.dsl.base.operation import get_context
+from tbe.dsl.base.operation import register_tiling_case
+from tbe.dsl.base.operation import register_build_pointcut
+from tbe.dsl.base.operation import add_compile_info
+from tbe.dsl.base.operation import get_compile_info
 from ..base import op_tiling
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes

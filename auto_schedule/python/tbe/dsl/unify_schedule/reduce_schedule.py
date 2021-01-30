@@ -25,9 +25,9 @@ from typing import NoReturn
 # Third-party Packages
 from te.tvm.tensor import Tensor
 from tbe.dsl.unify_schedule import Pattern
-from te.lang.base.operation_impl import var
-from te.lang.base.operation_impl import get_context
-from te.lang.base.operation_impl import register_schedule
+from tbe.dsl.base.operation import var
+from tbe.dsl.base.operation import get_context
+from tbe.dsl.base.operation import register_schedule
 from .util import get_dsl_insn
 from .util import is_reduce_tensor
 from .util import get_reduce_axis_indices
