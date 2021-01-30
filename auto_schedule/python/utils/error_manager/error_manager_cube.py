@@ -777,7 +777,7 @@ def raise_err_env_set_invalid(env_name, expect_value):
     raise_runtime_error_cube(args_dict, msg)
 
 
-def raise_err_model_imcompatible_with_type(tiling_model, tiling_type):
+def raise_err_model_incompatible_with_type(tiling_model, tiling_type):
     """
     the [%s] model does not support [%s] type. %
     (tiling_model,tiling_type)
