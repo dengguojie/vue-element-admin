@@ -242,12 +242,10 @@ class CaseGenerator:
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
             if value not in support_list:
-                utils.print_error_log(
+                utils.print_warn_log(
                     'The value(%s) of "%s" is invalid. '
                     'Only supports %s. Please modify it.' % (
                         value, op_info_key, support_list))
-                raise utils.OpTestGenException(
-                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
 
     def _check_op_info(self):
         utils.print_info_log('Start to check valid for op info.')
@@ -405,8 +403,11 @@ class CaseGenerator:
                         re.findall(r'[,](.*?)[)]', type_attrs)[0]
                 else:
                     attr_tensor_type = type_attrs.split(')')[0]
-                self.op_info[attr_name][
-                    'type'] = attr_tensor_type.strip().lower()
+                if attr_tensor_type.istitle():
+                    self.op_info[attr_name]['type'] =\
+                        attr_tensor_type.strip().lower()
+                else:
+                    self.op_info[attr_name]['type'] = attr_tensor_type.strip()
 
     def _prase_aicpu_op_proto(self, file_path):
         op_name_h_text = utils.read_file(file_path)

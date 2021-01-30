@@ -98,8 +98,8 @@ DTYPE_TO_NUMPY_MAP = {
 }
 DTYPE_TO_TYPE_MAP = {
     "DT_FLOAT": "float",
-    "DT_BOOL":"bool",
-    "DT_INT32":"int32",
+    "DT_BOOL": "bool",
+    "DT_INT32": "int32",
     "DT_INT64": "int64",
     "DT_UINT32": "uint32",
     "DT_UINT64": "uint64",
@@ -107,18 +107,8 @@ DTYPE_TO_TYPE_MAP = {
     "DT_INT16": "int16",
     "DT_UINT8": "uint8",
     "DT_UINT16": "uint16",
-    "DT_QINT8": "qint8",
-    "DT_QINT16": "qint16",
-    "DT_QINT32": "qint32",
-    "DT_QUINT8": "quint8",
-    "DT_QUINT16": "quint16",
-    "DT_FLOAT16": "fp16",
-    "DT_FLOAT32": "fp32",
-    "DT_DOUBLE": "double",
-    "DT_COMPLEX64": "complex64",
-    "DT_COMPLEX128": "complex128",
-    "DT_STRING": "string",
-    "DT_RESOURCE": "resource"
+    "DT_FLOAT16": "float16",
+    "DT_FLOAT32": "float"
 }
 
 DTYPE_TO_MINDSPORE_MAP = {
