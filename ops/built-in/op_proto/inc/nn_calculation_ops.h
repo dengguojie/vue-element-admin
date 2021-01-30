@@ -1624,7 +1624,7 @@ REG_OP(Conv2DTransposeD)
  * of the input.
  * @li ksize: A tuple/list of 2 integers.kernel size.
 *@par Attributes:
- * Three attributes:
+ * Four attributes:
  * @li dilations: A tuple/list of 4 integers, The dilation factor for each dimension
  * of input.  Defaults to [1, 1, 1, 1]
  * @li data_format: An optional string from: "NCHW", "NHWC". Defaults to "NCHW". Specify the data format of the input x.

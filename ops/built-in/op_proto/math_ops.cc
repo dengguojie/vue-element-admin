@@ -829,6 +829,7 @@ IMPLEMT_INFERFUNC(Complex, ComplexInfer)
 
   if ((!RankKnown(x_shape)) || (!RankKnown(y_shape))) {
     Shape out_shape(UNKNOWN_SHAPE);
+    out_desc.SetShape(out_shape);
     if (op.UpdateOutputDesc("out", out_desc) != GRAPH_SUCCESS) {
       OP_LOGE(op.GetName().c_str(), "Update output failed");
       return GRAPH_FAILED;
