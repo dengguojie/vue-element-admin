@@ -362,11 +362,11 @@ def correct_pads(input_shape, ksize, strides, pads):
     if (wo - 1) * stride_w >= input_w + pads[4]:
         wo = wo - 1
     if do > 1:
-        pad_after = (do - 1) * stride_d + ksize_d - input_d - pad_before
+        pad_after = max((do - 1) * stride_d + ksize_d - input_d - pad_before, 0)
     if ho > 1:
-        pad_bottom = (ho - 1) * stride_h + ksize_h - input_h - pad_top
+        pad_bottom = max((ho - 1) * stride_h + ksize_h - input_h - pad_top, 0)
     if wo > 1:
-        pad_right = (wo - 1) * stride_w + ksize_w - input_w - pad_left
+        pad_right = max((wo - 1) * stride_w + ksize_w - input_w - pad_left, 0)
 
     return [pad_before, pad_after, pad_top, pad_bottom, pad_left, pad_right]
 

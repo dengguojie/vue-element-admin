@@ -40,10 +40,8 @@ using namespace std;
 using namespace ge;
 
 namespace fe {
-static const string kPatternTopK = "TopK";
+static const string kPatternTopK = "topk";
 static const string kConstantOp = "Constant";
-static const string kPatternTopKD = "TopKD";
-static const string kPatternTopKV2D = "TopKV2D";
 static const string kPatternTranspose = "TransposeD";
 
 Status PermVecGen(int64_t dim_size, int64_t dim_aim, vector<int64_t>& perm) {
@@ -84,7 +82,7 @@ vector<FusionPattern*> TopKFusionPass::DefinePatterns() {
   FusionPattern* pattern = new (nothrow) FusionPattern("TopKFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "New a pattern object failed."), return patterns);
   // define origin graph
-  pattern->AddOpDesc(kPatternTopK, {"TopK"}).SetOutput(kPatternTopK);
+  pattern->AddOpDesc(kPatternTopK, {"TopK", "TopKV2"}).SetOutput(kPatternTopK);
   patterns.push_back(pattern);
   return patterns;
 }
@@ -96,6 +94,8 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   OpDescPtr topk_desc = topk_node->GetOpDesc();
   FUSION_PASS_CHECK(topk_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "The topk_desc is null, fusion failed."),
                     return PARAM_INVALID);
+  // may find TopKV2, use TopK instead
+  topk_desc->SetType("TopK");
 
   // The value of sorted cannot be false in aicore
   bool sorted = true;
@@ -144,7 +144,7 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   string node_name = topk_node->GetName();
 
   OpDescPtr fusion_desc_ptr = AttrUtils::CloneOpDesc(topk_desc);
-  fusion_desc_ptr->SetType(kPatternTopKD);
+  fusion_desc_ptr->SetType("TopKD");
   vector<int> attr_index_vec;
   for (size_t i = 0; i < topk_attr_info.size(); i++) {
     attr_index_vec.push_back(topk_attr_info[i].attrIndex);
@@ -202,7 +202,7 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   Status ret = SUCCESS;
   NodePtr fusion_node = topk_node;
   if (!is_topk_v2) {
-    ret = PatternFusionUtil::ConstToAttrWithNode(graph, topk_node, kPatternTopKD, topk_attr_info, fusion_node);
+    ret = PatternFusionUtil::ConstToAttrWithNode(graph, topk_node, "TopKD", topk_attr_info, fusion_node);
   }
   fusion_nodes.push_back(fusion_node);
 
@@ -221,7 +221,8 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   GeShape assit_shape(assit_dim_info);
   GeTensorDesc tensor_desc(GeShape(), FORMAT_NCHW, DT_FLOAT16);
   tensor_desc.SetShape(assit_shape);
-  tensor_desc.SetFormat(FORMAT_NCHW);
+  tensor_desc.SetFormat(FORMAT_ND);
+  tensor_desc.SetOriginFormat(FORMAT_ND);
   FUSION_PASS_MAKE_SHARED((assit_ptr = make_shared<GeTensor>(tensor_desc, reinterpret_cast<uint8_t*>(inputAssit.get()),
                                                              kAssistLen * 2 * sizeof(uint16_t))),
                           assit_ptr = nullptr;
@@ -237,9 +238,9 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
   NodePtr const_input = const_input_nodes[0];
   const_input->GetOpDesc()->SetType(kConstantOp);
   if (is_topk_v2) {
-    topk_desc->SetType(kPatternTopKV2D);
+    topk_desc->SetType("TopKV2D");
   } else {
-    topk_desc->SetType(kPatternTopKD);
+    topk_desc->SetType("TopKD");
   }
 
   OpDescPtr topkd_desc = fusion_node->GetOpDesc();

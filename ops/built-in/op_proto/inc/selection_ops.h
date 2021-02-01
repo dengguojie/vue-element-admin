@@ -857,8 +857,8 @@ REG_OP(SliceDV2)
 * @li sorted = true
 * @li It's unstable sorted indices on the platform of Ascend310
 
-* @par Third-party framework compatibility
-* @li Compatible with the TensorFlow operator TopK.
+* @par Restrictions:
+* Warning: THIS FUNCTION IS DEPRECATED. Please use TopKV2 instead.
 */
 REG_OP(TopKD)
     .INPUT(x, TensorType::RealNumberType())
@@ -870,6 +870,44 @@ REG_OP(TopKD)
     .ATTR(dim, Int, -1)
     .ATTR(largest, Bool, true)
     .OP_END_FACTORY_REG(TopKD)
+
+/**
+* @brief Finds values and indices of the "k" largest elements for the last
+* dimension . \n
+
+* @par Inputs:
+* Two inputs, including:
+* @li x: A 1D or higher tensor of type BasicType, with the last dimension
+* at least "k".
+* @li k: A 0D Tensor of type int32.
+* Number of top elements to look for along the last dimension (along each row
+* for matrices) . \n
+
+* @par Attributes:
+* @li sorted: An optional bool. Defaults to true.
+* If true, the resulting "k" elements will be sorted by the values in descending
+* order.
+* @li dim: An optional int. Defaults to -1. For reserved use.
+* @li largest: An optional bool. Defaults to true. For reserved use. \n
+
+* @par Outputs:
+* @li values: A Tensor, specifying the sorted data. Has the same type as
+* "input".
+* @li indices: A Tensor of type int32, specifying the indices of sorted data . \n
+
+* @see TopK()
+* @par Third-party framework compatibility
+* @li Compatible with the TensorFlow operator TopKV2.
+*/
+REG_OP(TopKV2)
+    .INPUT(x, TensorType::RealNumberType())
+    .INPUT(k, TensorType({DT_INT32}))
+    .OUTPUT(values, TensorType::RealNumberType())
+    .OUTPUT(indices, TensorType({DT_INT32}))
+    .ATTR(sorted, Bool, true)
+    .ATTR(dim, Int, -1)
+    .ATTR(largest, Bool, true)
+    .OP_END_FACTORY_REG(TopKV2)
 
 /**
 * @brief Finds values and indices of the "k" largest elements for the last

@@ -2233,108 +2233,17 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
 COMMON_INFER_FUNC_REG(OneHot, OneHotInferShape);
 // ----------------OneHot END----------------------
 
-// ----------------TopKD Op Start-------------------
-IMPLEMT_COMMON_INFERFUNC(TopKDInferShape) {
+static bool TopKInferCommon(Operator &op, int64_t k) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto output_v_desc = op_info->MutableOutputDesc("values");
   auto output_i_desc = op_info->MutableOutputDesc("indices");
 
-  int32_t k;
-  if (op.GetAttr("k", k) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr k failed");
-    return GRAPH_FAILED;
-  }
-
   std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
   int32_t dim_size = dims_in.size();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
-    return GRAPH_FAILED;
-  }
-  int32_t dim = dim_size - 1;
-  int32_t sorted_axis = dim;
-
-  if (op.GetAttr("dim", dim) == GRAPH_SUCCESS) {
-    sorted_axis = dim;
-    if (sorted_axis < 0) {
-      sorted_axis += dim_size;
-    }
-    if (sorted_axis > dim_size) {
-      OP_LOGE(op.GetName().c_str(), "Dim is out of shape size.");
-      return GRAPH_FAILED;
-    }
-  }
-
-  bool unknown_rank = IsUnknownRankShape(dims_in);
-  if (unknown_rank) {
-    output_v_desc->SetShape(GeShape(UNKNOWN_RANK));
-    output_v_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
-
-    output_i_desc->SetShape(GeShape(UNKNOWN_RANK));
-    output_i_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
-  } else {
-    dims_in[sorted_axis] = k;
-    std::vector<std::pair<int64_t, int64_t>> shape_range;
-    input_desc->GetShapeRange(shape_range);
-
-    if (shape_range.size() > 0) {
-      shape_range[sorted_axis].second = k;
-    }
-    output_v_desc->SetShape(GeShape(dims_in));
-    output_v_desc->SetShapeRange(shape_range);
-    output_v_desc->SetDataType(input_desc->GetDataType());
-
-    output_i_desc->SetShape(GeShape(dims_in));
-    output_i_desc->SetShapeRange(shape_range);
-    output_i_desc->SetDataType(DT_INT32);
-  }
-
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(TopKD, TopKDInferShape);
-// ----------------TopKD Op End-------------------
-
-// ----------------TopK Op-------------------
-IMPLEMT_VERIFIER(TopK, TopKVerify) { return GRAPH_SUCCESS; }
-
-IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
-  const vector<string> depend_names = {"k"};
-  PREPARE_DYNAMIC_SHAPE(depend_names);
-
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto output_v_desc = op_info->MutableOutputDesc("values");
-  auto output_i_desc = op_info->MutableOutputDesc("indices");
-
-  Tensor k_tensor;
-  bool unkonwn_dim_flag{false};
-  if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "Get constdata failed, unknown dim.");
-    unkonwn_dim_flag = true;
-  }
-
-  // Tensor::GetData() return a uint8 ptr. However the definition of k is int32.
-  // So here use int32* ptr to get the k value
-  int64_t k = UNKNOWN_DIM;
-  if (!unkonwn_dim_flag && k_tensor.GetData() != nullptr) {
-    DataType dtype = op.GetInputDesc("k").GetDataType();
-    if (dtype == DT_INT32) {
-      k = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(k_tensor.GetData())));
-    } else if (dtype == DT_INT64) {
-      k = *(reinterpret_cast<int64_t*>(k_tensor.GetData()));
-    } else {
-      OP_LOGE(op.GetName().c_str(), "The type of k Error!");
-      return GRAPH_FAILED;
-    }
-  }
-
-  std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
-  int32_t dim_size = dims_in.size();
-  if (dim_size <= 0) {
-    OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
-    return GRAPH_FAILED;
+    return false;
   }
 
   int32_t dim = dim_size - 1;
@@ -2344,15 +2253,15 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
     if (sorted_axis < 0) {
       sorted_axis += dim_size;
     }
-    if (sorted_axis > dim_size) {
+    if (sorted_axis >= dim_size) {
       OP_LOGE(op.GetName().c_str(), "Dim is out of shape size.");
-      return GRAPH_FAILED;
+      return false;
     }
   }
   std::vector<std::pair<int64_t, int64_t>> shape_range;
   input_desc->GetShapeRange(shape_range);
   if (shape_range.size() > 0) {
-    if (k > 0) {
+    if (k > 0 && sorted_axis < shape_range.size()) {
       shape_range[sorted_axis].first = k;
       shape_range[sorted_axis].second = k;
     }
@@ -2385,13 +2294,110 @@ IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
     output_i_desc->SetShapeRange(shape_range);
     output_i_desc->SetDataType(DT_INT32);
   }
+  return true;
+}
 
+// ----------------TopKD Op Start-------------------
+IMPLEMT_COMMON_INFERFUNC(TopKDInferShape) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+
+  int32_t k;
+  if (op.GetAttr("k", k) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr k failed");
+    return GRAPH_FAILED;
+  }
+
+  if (TopKInferCommon(op, k) == false) {
+    OP_LOGE(op.GetName().c_str(), "TopKInferCommon Failed.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(TopKD, TopKDInferShape);
+// ----------------TopKD Op End-------------------
+
+// ----------------TopK Op-------------------
+IMPLEMT_VERIFIER(TopK, TopKVerify) { return GRAPH_SUCCESS; }
+
+IMPLEMT_COMMON_INFERFUNC(TopKInferShape) {
+  const vector<string> depend_names = {"k"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+
+  Tensor k_tensor;
+  bool unkonwn_dim_flag{false};
+  if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "Get constdata failed, unknown dim.");
+    unkonwn_dim_flag = true;
+  }
+
+  // Tensor::GetData() return a uint8 ptr. However the definition of k is int32.
+  // So here use int32* ptr to get the k value
+  int64_t k = UNKNOWN_DIM;
+  if (!unkonwn_dim_flag && k_tensor.GetData() != nullptr) {
+    DataType dtype = op.GetInputDesc("k").GetDataType();
+    if (dtype == DT_INT32) {
+      k = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(k_tensor.GetData())));
+    } else if (dtype == DT_INT64) {
+      k = *(reinterpret_cast<int64_t*>(k_tensor.GetData()));
+    } else {
+      OP_LOGE(op.GetName().c_str(), "The type of k Error!");
+      return GRAPH_FAILED;
+    }
+  }
+
+  if (TopKInferCommon(op, k) == false) {
+    OP_LOGE(op.GetName().c_str(), "TopKInferCommon Failed.");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(TopK, TopKInferShape);
 VERIFY_FUNC_REG(TopK, TopKVerify);
 // ----------------TopK Op End-------------------
+
+// ----------------TopKV2 Op---------------------
+IMPLEMT_VERIFIER(TopKV2, TopKV2Verify) { return GRAPH_SUCCESS; }
+IMPLEMT_COMMON_INFERFUNC(TopKV2InferShape) {
+  const vector<string> depend_names = {"k"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+
+  Tensor k_tensor;
+  bool unkonwn_dim_flag{false};
+  if (op.GetInputConstData("k", k_tensor) != GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "Get constdata failed, unknown dim.");
+    unkonwn_dim_flag = true;
+  }
+
+  // Tensor::GetData() return a uint8 ptr. However the definition of k is int32.
+  // So here use int32* ptr to get the k value
+  int64_t k = UNKNOWN_DIM;
+  if (!unkonwn_dim_flag && k_tensor.GetData() != nullptr) {
+    DataType dtype = op.GetInputDesc("k").GetDataType();
+    if (dtype == DT_INT32) {
+      k = static_cast<int64_t>(*(reinterpret_cast<int32_t*>(k_tensor.GetData())));
+    } else if (dtype == DT_INT64) {
+      k = *(reinterpret_cast<int64_t*>(k_tensor.GetData()));
+    } else {
+      OP_LOGE(op.GetName().c_str(), "The type of k Error!");
+      return GRAPH_FAILED;
+    }
+  }
+
+  if (TopKInferCommon(op, k) == false) {
+    OP_LOGE(op.GetName().c_str(), "TopKInferCommon Failed.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(TopKV2, TopKV2InferShape);
+VERIFY_FUNC_REG(TopKV2, TopKV2Verify);
+// ----------------TopKV2 Op End-----------------
 
 // ----------------ScatterNd-------------------
 IMPLEMT_COMMON_INFERFUNC(ScatterNdInferShape) {
