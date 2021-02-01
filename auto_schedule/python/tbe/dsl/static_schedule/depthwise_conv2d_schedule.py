@@ -1187,7 +1187,35 @@ def _elewise_deq_sigmiod_mul(out, tensor_dict):
     tensor_dict["rec_4"] = tensor_dict["rec_5"].op.input_tensors[0]
     tensor_dict["add_2"] = tensor_dict["rec_4"].op.input_tensors[0]
     tensor_dict["rec_3"] = tensor_dict["rec_4"].op.input_tensors[1]
-    if cce_conf.is_v200_version_new():
+    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+        tensor_dict["rec_2"] = tensor_dict["rec_3"].op.input_tensors[0]
+        tensor_dict["rec_1"] = tensor_dict["rec_2"].op.input_tensors[0]
+        tensor_dict["rec_0"] = tensor_dict["rec_1"].op.input_tensors[0]
+        tensor_dict["rec_n"] = tensor_dict["rec_0"].op.input_tensors[1]
+        tensor_dict["exp"] = tensor_dict["add_2"].op.input_tensors[0]
+    tensor_dict["muls"] = tensor_dict["exp"].op.input_tensors[0]
+    tensor_dict = _elewise_deq_sigmiod_mul2(tensor_dict)
+    tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
+    tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
+    tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[0]
+    tensor_dict["im2col_row_major"] = tensor_dict["im2col_fractal"].op.input_tensors[0]
+    tensor_dict["fmap"] = tensor_dict["im2col_row_major"].op.input_tensors[0]
+    return tensor_dict
+
+
+def _elewise_deq_sigmiod_mul_online(out, tensor_dict):
+    """
+    elewise_deq_sigmoid_mul
+    """
+    tensor_dict["fused_c_dtype"] = "float16"
+    tensor_dict["rec_7"] = out.op.input_tensors[0]
+    tensor_dict["float16_mul_input_tensor"] = out.op.input_tensors[1]
+    tensor_dict["rec_6"] = tensor_dict["rec_7"].op.input_tensors[0]
+    tensor_dict["rec_5"] = tensor_dict["rec_6"].op.input_tensors[0]
+    tensor_dict["rec_4"] = tensor_dict["rec_5"].op.input_tensors[0]
+    tensor_dict["add_2"] = tensor_dict["rec_4"].op.input_tensors[0]
+    tensor_dict["rec_3"] = tensor_dict["rec_4"].op.input_tensors[1]
+    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
         tensor_dict["rec_2"] = tensor_dict["rec_3"].op.input_tensors[0]
         tensor_dict["rec_1"] = tensor_dict["rec_2"].op.input_tensors[0]
         tensor_dict["rec_0"] = tensor_dict["rec_1"].op.input_tensors[0]
@@ -1254,6 +1282,8 @@ def _elewise_binary_mul(out, tensor_dict):
         tensor_dict = _elewise_deq_mul(out, tensor_dict)
     elif out.op.input_tensors[0].op.tag == 'dequant2_remove_pad':
         tensor_dict = _elewise_deq2_mul(out, tensor_dict)
+    elif out.op.input_tensors[0].op.name[:3] == "rec":
+        tensor_dict = _elewise_deq_sigmiod_mul_online(out, tensor_dict)
     else:
         tensor_dict["fusion_type_new"] = 2
         tensor_dict["depthwise_res"] = out.op.input_tensors[0]
@@ -1598,7 +1628,7 @@ def _set_sch_int32_phase1_dequant2_sigmoid_mul(tensor_dict, attrs_dict, out, sch
     sch[tensor_dict["rec_4"]].compute_inline()
     sch[tensor_dict["rec_3"]].set_scope(cce_params.scope_ubuf)
     sch[tensor_dict["rec_3"]].compute_inline()
-    if cce_conf.is_v200_version_new():
+    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
         sch[tensor_dict["rec_2"]].set_scope(cce_params.scope_ubuf)
         sch[tensor_dict["rec_2"]].compute_inline()
         sch[tensor_dict["rec_1"]].set_scope(cce_params.scope_ubuf)
@@ -1648,7 +1678,7 @@ def _set_sch_int32_phase1_dequant_sigmoid_mul(tensor_dict, attrs_dict, out, buf,
         sch[tensor_dict["rec_4"]].compute_inline()
         sch[tensor_dict["rec_3"]].set_scope(cce_params.scope_ubuf)
         sch[tensor_dict["rec_3"]].compute_inline()
-        if cce_conf.is_v200_version_new():
+        if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].set_scope(cce_params.scope_ubuf)
             sch[tensor_dict["rec_2"]].compute_inline()
             sch[tensor_dict["rec_1"]].set_scope(cce_params.scope_ubuf)
@@ -1861,7 +1891,7 @@ def _sch_flag_is_dequant2(sch, tensor_dict, attrs_dict, res_cut_dict):
         sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-        if cce_conf.is_v200_version_new():
+        if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
@@ -1910,7 +1940,7 @@ def _sch_flag_is_dequant(sch, tensor_dict, attrs_dict, res_cut_dict):
         sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-        if cce_conf.is_v200_version_new():
+        if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
@@ -2164,7 +2194,7 @@ def _flag_is_dequant_sigmoid_mul(tensor_dict, sch, attrs_dict):
     sch[tensor_dict["rec_5"]].emit_insn(sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
     sch[tensor_dict["rec_4"]].emit_insn(sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
     sch[tensor_dict["rec_3"]].emit_insn(sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
-    if cce_conf.is_v200_version_new():
+    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
         sch[tensor_dict["rec_2"]].emit_insn(sch[tensor_dict["rec_2"]].op.axis[0], 'vector_auto')
         sch[tensor_dict["rec_1"]].emit_insn(sch[tensor_dict["rec_1"]].op.axis[0], 'vector_auto')
         sch[tensor_dict["rec_0"]].emit_insn(sch[tensor_dict["rec_0"]].op.axis[0], 'vector_auto')
@@ -2332,7 +2362,7 @@ def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out):
                 sch[tensor_dict["rec_5"]].emit_insn(sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_4"]].emit_insn(sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_3"]].emit_insn(sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
-                if cce_conf.is_v200_version_new():
+                if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
                     sch[tensor_dict["rec_2"]].emit_insn(sch[tensor_dict["rec_2"]].op.axis[0],
                                                         'vector_auto')
                     sch[tensor_dict["rec_1"]].emit_insn(sch[tensor_dict["rec_1"]].op.axis[0],
@@ -2399,7 +2429,7 @@ def _avoid_complexity_mul(out, tensor_dict, attrs_dict, sch):
             sch[tensor_dict["rec_4"]].compute_inline()
             sch[tensor_dict["rec_3"]].set_scope(cce_params.scope_ubuf)
             sch[tensor_dict["rec_3"]].compute_inline()
-            if cce_conf.is_v200_version_new():
+            if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
                 sch[tensor_dict["rec_2"]].set_scope(cce_params.scope_ubuf)
                 sch[tensor_dict["rec_2"]].compute_inline()
                 sch[tensor_dict["rec_1"]].set_scope(cce_params.scope_ubuf)
@@ -2683,14 +2713,14 @@ def _relu_mul_handle(out, sch, attrs_dict, tensor_dict, res_cut_dict):
                 sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-                if cce_conf.is_v200_version_new():
-                    sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], 
+                if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+                    sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]],
                                                          res_cut_dict["res_mcut_iio"])
-                    sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], 
+                    sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]],
                                                          res_cut_dict["res_mcut_iio"])
-                    sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], 
+                    sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]],
                                                          res_cut_dict["res_mcut_iio"])
-                    sch[tensor_dict["rec_n"]].compute_at(sch[attrs_dict["out"]], 
+                    sch[tensor_dict["rec_n"]].compute_at(sch[attrs_dict["out"]],
                                                          res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["muls"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["add_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
