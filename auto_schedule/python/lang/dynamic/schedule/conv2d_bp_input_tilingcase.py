@@ -108,6 +108,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
             self._modify_repo_tiling(tiling_mess)
             # in dx_opti, tiling's C_shape returned from repository is 0,
             # we calculate C_shape according to A_shape and stride
+            if tiling_mess["C_shape"][0] == -1:
+                tiling_mess["C_shape"][0] = tiling_mess["A_shape"][0]
             if tiling_mess["C_shape"][2] == 0:
                 tiling_mess["C_shape"][2] = tiling_mess["A_shape"][2] * self.stride_h
             if tiling_mess["C_shape"][3] == 0:

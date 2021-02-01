@@ -61,7 +61,7 @@ class CubeTilingOp:
         get batch covering range
         """
         if "batch_n" in paras.get("var_map"):
-            core_num = TilingUtils.CORE_NUM
+            core_num = cce_conf.get_soc_spec("CORE_NUM")
             if batch >= core_num:
                 return core_num, TilingUtils.NHW_MAX
             if core_num == TilingUtils.N_BASE:
@@ -203,27 +203,28 @@ class TilingSelection:
         if self.op.op_type == "conv2d":
             block_dims = tiling["block_dim"]
             block_nums = block_dims[0] * block_dims[1] * block_dims[2]
-            if block_nums < TilingUtils.CORE_NUM:
+            if block_nums < cce_conf.get_soc_spec("CORE_NUM"):
                 if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
-                    seed["A_shape"][0] * block_dims[1] * block_dims[2] <= TilingUtils.CORE_NUM:
+                    seed["A_shape"][0] * block_dims[1] * block_dims[2] <= cce_conf.get_soc_spec("CORE_NUM"):
                     tiling["block_dim"][0] = seed["A_shape"][0]
                     block_dims = tiling["block_dim"]
             if tiling["BL0_matrix"] and tiling["BL1_shape"]:
                 co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
                 if block_dims[1] * tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2 < co1 and \
                     co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2) * block_dims[0] * \
-                    block_dims[2] <= TilingUtils.CORE_NUM:
+                    block_dims[2] <= cce_conf.get_soc_spec("CORE_NUM"):
                     tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2)
                     block_dims = tiling["block_dim"]
             block_nums = block_dims[0] * block_dims[1] * block_dims[2]
-            if block_nums < TilingUtils.CORE_NUM and tiling["AL1_shape"]:
+            if block_nums < cce_conf.get_soc_spec("CORE_NUM") and tiling["AL1_shape"]:
                 hout = self.op.get_output_h(seed["A_shape"][2])
                 wout = self.op.get_output_w(seed["A_shape"][3])
                 tmp = hout * wout // (tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1] * block_dims[2])
                 if tmp >= 1:
                     tmp = tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1]
                     used_core_num = block_dims[0] * block_dims[1]
-                    tiling["block_dim"][2] = min((hout*wout + tmp - 1) // tmp, TilingUtils.CORE_NUM // used_core_num)
+                    tiling["block_dim"][2] = min(
+                        (hout*wout + tmp - 1) // tmp, cce_conf.get_soc_spec("CORE_NUM") // used_core_num)
 
         return tiling
 
@@ -433,8 +434,9 @@ class TilingSelection:
             seed_cnt = next(self.seed_cnt)
             tiling_block_dims = seed["tiling"]["block_dim"]
             block_nums = tiling_block_dims[0]*tiling_block_dims[1]*tiling_block_dims[2]
-            if block_nums < TilingUtils.CORE_NUM:
-                seed["tiling"]["block_dim"][0] = TilingUtils.CORE_NUM // (tiling_block_dims[1]*tiling_block_dims[2])
+            if block_nums < cce_conf.get_soc_spec("CORE_NUM"):
+                seed["tiling"]["block_dim"][0] = (cce_conf.get_soc_spec("CORE_NUM")
+                // (tiling_block_dims[1]*tiling_block_dims[2]))
             if self.op.op_type == "conv2d":
                 tiling = seed["tiling"]
                 if seed['A_shape'][0] > tiling["block_dim"][0] and tiling["BL1_shape"]:
@@ -809,7 +811,6 @@ class TilingUtils:
     N_BASE = 2
     HW_MIN = 1
     NHW_MAX = 4096
-    CORE_NUM = cce_conf.get_soc_spec("CORE_NUM")
 
     @staticmethod
     def icd(num_a, num_b):
