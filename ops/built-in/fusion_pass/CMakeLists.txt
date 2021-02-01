@@ -287,6 +287,11 @@ if(ENABLE_TEST STREQUAL "")
     # TODO: Fix warnings
     # -Werror
   )
+
+  target_compile_definitions(ops_fusion_pass_aicore PRIVATE
+    $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
+    )
+
   if(BUILD_OPEN_PROJECT)
     cann_install(
       TARGET      ops_fusion_pass_aicore
@@ -343,6 +348,9 @@ target_compile_options(ops_fusion_pass_vectorcore PRIVATE
   -Dgoogle=ascend_private
 )
 
+target_compile_definitions(ops_fusion_pass_vectorcore PRIVATE
+  $<$<STREQUAL:${BUILD_OPEN_PROJECT},True>:ONLY_COMPILE_OPEN_SRC>
+  )
 
 if(BUILD_OPEN_PROJECT)
   cann_install(
