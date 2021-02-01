@@ -391,7 +391,7 @@ def extract_image_patches_compute(fmap,
     ub_res_shape = (fmap_n, out_h * out_w, kernel_h * kernel_w, fmap_c1 * align_block_size)
     ub_res = tvm.compute(ub_res_shape, lambda *i: workspace_res[i], name="ub_res")
 
-    if c_in_real == 1:
+    if c_in_real == 1 and dtype_input not in ('int8', 'uint8'):
         out_shape = (fmap_n, out_h * out_w, kernel_h * kernel_w)
         c = tvm.reduce_axis((0, workspace_shape[-1]), "c")
         output_res = tvm.compute(out_shape,
@@ -952,7 +952,7 @@ def _extract_image_patches_schedule(res, sch_list):
         sch[workspace_res].emit_insn(workspace_axis_inner_list[0], tbe_platform.DMA_COPY)
         sch[ub_res].emit_insn(ub_res.op.axis[0], tbe_platform.DMA_COPY)
         if reg_mov:
-            if c_in_real == 1:
+            if c_in_real == 1 and dtype_input not in ('int8', 'uint8'):
                 sch[reg_mov_ub].emit_insn(reg_mov_ub.op.axis[0], tbe_platform.REDUCE_SUM)
             else:
                 sch[reg_mov_ub].emit_insn(reg_mov_ub.op.axis[0], tbe_platform.DATA_MOV)
