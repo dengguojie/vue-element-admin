@@ -20,7 +20,7 @@ using NodeProto = ge::onnx::NodeProto;
 using OpDesc = std::shared_ptr<ge::OpDesc>;
 static const uint32_t MIN_INPUT_NUM = 2;
 Status ParseParamsMin(const Message* op_src, ge::Operator& op_dest) {
-  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
+  const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("ParseParamsMin", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;

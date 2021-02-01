@@ -20,7 +20,7 @@
 namespace domi {
 Status ParseParamsMax(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node =
-      reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
+      dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("Max", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;

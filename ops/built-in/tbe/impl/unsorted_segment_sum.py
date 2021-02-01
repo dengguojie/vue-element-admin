@@ -60,7 +60,21 @@ def op_select_format(x, segment_ids, num_segments, y,
         input1_format = "ND,ND,ND"
         input2_dtype = "int32,int32,int32"
         input2_format = "ND,ND,ND"
-
+    ori_dtype = x.get("dtype").lower()
+    if ori_dtype in ("float16", "float32") and len(segment_ids_shape) == 1:
+        input0_dtype = "float,float"
+        input0_format = "NC1HWC0,ND"
+        input1_dtype = "int32,int32"
+        input1_format = "ND,ND"
+        input2_dtype = "int32,int32"
+        input2_format = "ND,ND"
+    elif ori_dtype in ("float16", "float32") and len(segment_ids_shape) > 1:
+        input0_dtype = "float"
+        input0_format = "ND"
+        input1_dtype = "int32"
+        input1_format = "ND"
+        input2_dtype = "int32"
+        input2_format = "ND"
     input0 = gen_param(classify="input0", name="x",
                        datatype=input0_dtype,
                        format=None,
