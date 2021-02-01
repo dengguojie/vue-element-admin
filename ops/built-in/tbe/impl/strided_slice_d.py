@@ -19,11 +19,13 @@ strided_slice_d
 import copy
 import math
 import functools
+import itertools
 
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
 from te.domain.rl_bank import rl_bank
+from te.utils.error_manager import error_manager_vector
 from impl import strided_slice_for_last_dim
 from impl import copy_only
 from impl import strided_slice_two_turn_one
@@ -33,6 +35,8 @@ from impl import strided_slice_for_last_dim_mte
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 SHRINK_AXIS = -1
 NEW_AXIS = -2
@@ -58,7 +62,7 @@ def get_op_support_info(input_x,
     shape_x_len = len(input_x.get("shape"))
     slice_len = len(begin)
     if format_x == "ND" and new_axis_mask == 0 and shrink_axis_mask == 0:
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(slice_len, shape_x_len):
             split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
             axis_split_matrix.append(split_0)
@@ -409,8 +413,8 @@ def strided_slice_d_compute(input_data,
 
     for i, diff_begin_end_i in enumerate(diff_begin_end):
 
-        if diff_begin_end_i == 0 and (new_axis_mask & 2**i) != 2**i:
-            shrink_axis_mask_temp = shrink_axis_mask_temp + 2**i
+        if diff_begin_end_i == 0 and (new_axis_mask & 2 ** i) != 2 ** i:
+            shrink_axis_mask_temp = shrink_axis_mask_temp + 2 ** i
     shrink_axis_mask = shrink_axis_mask | shrink_axis_mask_temp
 
     output_shape = [
@@ -428,10 +432,10 @@ def strided_slice_d_compute(input_data,
         """
         for i, _ in enumerate(zip(begin_shape, stride_shape)):
             if i == 0:
-                index_org = (index[i] * stride_shape[i] + begin_shape[i], )
+                index_org = (index[i] * stride_shape[i] + begin_shape[i],)
             else:
                 index_org = index_org + (index[i] * stride_shape[i] +
-                                         begin_shape[i], )
+                                         begin_shape[i],)
         return index_org
 
     output = tvm.compute(output_shape,
@@ -463,7 +467,7 @@ def _check_parameter(input_shape, begin, end, strides, ellipsis_mask,
 
     if ellipsis_mask != 0:
         for i, _ in enumerate(input_shape):
-            if (ellipsis_mask & 2**i) == 2**i:
+            if (ellipsis_mask & 2 ** i) == 2 ** i:
                 ellipsis_dim += 1
         if ellipsis_dim > 1:
             print("only suppot 1 dim of ellipsis")
@@ -774,6 +778,183 @@ def _check_tik_branch(sch_input_shape, output_shape, begin, end, strides):
 
     return result
 
+
+def _ceil_div(value, block):
+    """
+    integrate the input value by block
+
+    """
+    return (value + block - 1) // block
+
+
+def _update_params_for_other_format(input_shape, begin, end, strides, input_format, input_ori_format):
+    """
+    update begin, end,  strides base on  ori_format
+    """
+    align_c0 = 16
+    begin = list(begin)
+    end = list(end)
+    strides = list(strides)
+    if input_format in ["NDC1HWC0"]:
+        # when NDC1HWC0 will update the C1 and C0 for begin, end and strides
+        # ex: begin [N, D, C, H, W] -> [N, D, C // 16, H, W, 0]
+        #     end  [N, D, C, H, W] -> [N, D, (C + 15) // 16, H, W, 16]
+        #     strides  [N, D, C, H, W] -> [N, D, 1, H, W, 1]
+        #     strides[c] only support 1
+        begin_ndchw = [begin[input_ori_format.index("N")], begin[input_ori_format.index("D")],
+                       begin[input_ori_format.index("C")],
+                       begin[input_ori_format.index("H")], begin[input_ori_format.index("W")]]
+        end_ndchw = [end[input_ori_format.index("N")], end[input_ori_format.index("D")],
+                     end[input_ori_format.index("C")],
+                     end[input_ori_format.index("H")], end[input_ori_format.index("W")]]
+        strides_ndchw = [strides[input_ori_format.index("N")], strides[input_ori_format.index("D")],
+                         strides[input_ori_format.index("C")],
+                         strides[input_ori_format.index("H")], strides[input_ori_format.index("W")]]
+        input_shape_ndchw = [input_shape[input_ori_format.index("N")], input_shape[input_ori_format.index("D")],
+                             input_shape[input_ori_format.index("C")],
+                             input_shape[input_ori_format.index("H")], input_shape[input_ori_format.index("W")]]
+        # strides[c] ！= 1，raise exception
+        # begin[c] is not c0 align, raise exception
+        # end[c] is not c0 align and end[c] != input_shape[c], raise exception
+        if strides_ndchw[2] != 1 or begin_ndchw[2] % align_c0 != 0 or (
+                end_ndchw[2] % align_c0 != 0 and end_ndchw[2] != input_shape_ndchw[2]):
+            error_manager_vector.raise_err_specific_reson("strided_slice_d", "Parameter Invalid!")
+
+        begin_c1 = begin_ndchw[2] // align_c0
+        begin_c0 = 0
+        end_c1 = _ceil_div(end_ndchw[2], align_c0)
+        end_c0 = 16
+        strides_c1 = 1
+        strides_c0 = 1
+
+        begin_new = [begin_ndchw[0], begin_ndchw[1],
+                     begin_c1, begin_ndchw[3], begin_ndchw[4], begin_c0]
+        end_new = [end_ndchw[0], end_ndchw[1],
+                   end_c1, end_ndchw[3], end_ndchw[4], end_c0]
+        strides_new = [strides_ndchw[0], strides_ndchw[1],
+                       strides_c1, strides_ndchw[3], strides_ndchw[4], strides_c0]
+        return begin_new, end_new, strides_new
+    return begin, end, strides
+
+
+def get_fused_str(format_char_list):
+    """get_fused_str for format
+    """
+    format_iter = itertools.permutations(format_char_list, len(format_char_list))
+    format_char_list = list(format_iter)
+    format_str_list = []
+    for i, char_list in enumerate(format_char_list):
+        format_str_list.append(''.join(list(char_list)))
+
+    return format_str_list
+
+
+def op_select_format(input_x,
+                     output_x,
+                     begin,
+                     end,
+                     strides=None,
+                     begin_mask=0,
+                     end_mask=0,
+                     ellipsis_mask=0,
+                     new_axis_mask=0,
+                     shrink_axis_mask=0,
+                     kernel_name="strided_slice_d"):
+    """
+        select format dynamically
+        op_select_format support desc:
+        1. when:
+        input x's ori_shape is 5
+        strides[c] = 1,begins[c] is c0 align
+        end[c] is 16 align or end[c] = ori_shape[c]
+        The Op StridedSliceD can support 6HD
+        > for example:
+        > input_x : Tensor (shape=(16, 16, 16, 16, 32), "NDHWC")
+        > begin : [0, 0, 0, 0, 0]
+        > end : [0, 0, 0, 0, 16]
+        > strides : [1, 1, 1, 1, 1]
+        > begin_mask : 0
+        > end_mask : 0
+        > ellipsis_mask : 0
+        > new_axis_mask : 0
+        > shrink_axis_mask : 0
+        > the Op StridedSliceD can process with NDC1HWC0:
+        > input_x : Tensor of (shape=(16, 16, 2, 16, 16, 16), "NDC1HWC0")
+        > output_x: Tensor of (shape=(16, 16, 1, 16, 16, 16), "NDC1HWC0")
+
+        2. In other scenes, The Op StridedSliceD only support ND
+        > for example:
+        > input_x : Tensor (shape=(16, 16, 16, 16, 32), "NDHWC")
+        > begin : [0, 0, 0, 0, 1]
+        > end : [0, 0, 0, 0, 15]
+        > strides : [1, 1, 1, 1, 1]
+    """
+    input_ori_shape = input_x.get("ori_shape")
+    input_ori_format = input_x.get("ori_format")
+    input_shape = input_x.get("shape")
+    hd_format_c0 = 16
+    begin = list(begin)
+    end = list(end)
+    if strides is None:
+        strides = _fill_list_with_ones(len(input_shape))
+    else:
+        strides = list(strides)
+    if not _check_parameter(input_ori_shape, begin, end, strides, ellipsis_mask,
+                            new_axis_mask, shrink_axis_mask):
+        error_manager_vector.raise_err_specific_reson("strided_slice_d", "Parameter Invalid!")
+
+    # update input_shape, begin_shape, end_shape
+    output_shape, input_shape, begin, end, strides = _infer_shape(input_ori_shape, begin, end,
+                                                                  strides, begin_mask, end_mask,
+                                                                  ellipsis_mask, new_axis_mask,
+                                                                  shrink_axis_mask)
+
+    # charge whether support 6HD
+    # conditions:
+    # 1.C dim in begin is c0 align
+    # 2.C dim in end is c0 align or C dim in end is equal to C dim in shape
+    # 3.C dim in strides is 1
+    hd_support_format = get_fused_str(["N", "D", "C", "H", "W"])
+    is_support_hd = False
+    if list(input_shape) == list(input_ori_shape) and len(input_ori_format) == len(
+            input_ori_shape) and input_ori_format in hd_support_format and len(input_shape) == len(output_shape):
+        dict_zip_begin = dict(zip(list(input_ori_format), begin))
+        dict_zip_end = dict(zip(list(input_ori_format), end))
+        dict_zip_strides = dict(zip(list(input_ori_format), strides))
+        dict_zip_shape = dict(zip(list(input_ori_format), input_ori_shape))
+        begin_c_align_flag = dict_zip_begin["C"] % hd_format_c0 == 0
+        end_c_align_flag = dict_zip_end["C"] % hd_format_c0 == 0 or dict_zip_end["C"] == dict_zip_shape["C"]
+        strides_c_align_flag = dict_zip_strides["C"] == 1
+        if begin_c_align_flag and end_c_align_flag and strides_c_align_flag:
+            is_support_hd = True
+
+    base_data_type = ["float", "float16", "int8", "int32", "uint8", "bool"]
+    other_data_type = ["float", "float16", "int32"]
+
+    vadd_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vadd", "float32")
+    if not vadd_support_fp32:
+        base_data_type.remove("float")
+        other_data_type.remove("float")
+
+    dtype_base_out = base_data_type.copy()
+    format_base_out = ["ND"] * len(base_data_type)
+    if is_support_hd:
+        dtype_base_out = dtype_base_out + other_data_type
+        format_base_out = format_base_out + ["NDC1HWC0"] * len(other_data_type)
+
+    dtype_str = ','.join(dtype_base_out)
+    format_str = ','.join(format_base_out)
+
+    input0 = gen_param(
+        classify="input0", name="x", datatype=dtype_str, format=format_str)
+    output0 = gen_param(
+        classify="output0", name="y", datatype=dtype_str, format=format_str)
+    param_list = [input0, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -834,6 +1015,9 @@ def strided_slice_d(input_x,
     None
     """
     input_shape = input_x.get("shape")
+    input_ori_shape = input_x.get("ori_shape")
+    input_format = input_x.get("format")
+    input_ori_format = input_x.get("ori_format")
     input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "uint8", "bool", "int8")
 
@@ -844,20 +1028,26 @@ def strided_slice_d(input_x,
     end = list(end)
     strides = list(strides)
 
-    if not _check_parameter(input_shape, begin, end, strides, ellipsis_mask,
+    if not _check_parameter(input_ori_shape, begin, end, strides, ellipsis_mask,
                             new_axis_mask, shrink_axis_mask):
         raise RuntimeError("Parameter Invalid!")
 
     # update input_shape, begin_shape, end_shape
-    input_shape, begin, end, strides = _init_parameter(input_shape, begin, end,
-                                                       strides, begin_mask, end_mask,
-                                                       ellipsis_mask, new_axis_mask,
-                                                       shrink_axis_mask)
+    input_shape_new, begin, end, strides = _init_parameter(input_ori_shape, begin, end,
+                                                           strides, begin_mask, end_mask,
+                                                           ellipsis_mask, new_axis_mask,
+                                                           shrink_axis_mask)
 
     if strides is None:
         strides = _fill_list_with_ones(len(input_shape))
     else:
         strides = list(strides)
+    # update begin, end, strides according to format
+    if input_format == "NDC1HWC0":
+        begin, end, strides = _update_params_for_other_format(input_ori_shape, begin, end,
+                                                              strides, input_format, input_ori_format)
+    else:
+        input_shape = input_shape_new.copy()
 
     input_tensor = tvm.placeholder(input_shape,
                                    dtype=input_dtype,
@@ -897,7 +1087,7 @@ def strided_slice_d(input_x,
     output_shape_one = list(output_shape)
     if ellipsis_mask == 0 and shrink_axis_mask != 0:
         for i, _ in enumerate(list(input_shape)):
-            if (shrink_axis_mask & 2**i) == 2**i:
+            if (shrink_axis_mask & 2 ** i) == 2 ** i:
                 output_shape_one.insert(i, 1)
     output_shape = tuple(output_shape_one)
 
@@ -935,32 +1125,32 @@ def strided_slice_d(input_x,
         for i in range(0, (len(input_shape) - 1)):
             head_size = head_size * input_shape[i]
         if input_dtype == "float32" and input_shape[-1] == 2 and \
-           begin_shape[len(begin_shape) - 1] == 0  and end_shape[len(begin_shape) - 1] == 1 \
-           and head_size > 128:
+                begin_shape[len(begin_shape) - 1] == 0 and end_shape[len(begin_shape) - 1] == 1 \
+                and head_size > 128:
             strided_slice_two_turn_one.strided_slice_two_turn_one(input_x, output_x, kernel_name)
             return
         if input_list[-1] > 80 and output_shape[-1] == 80:
             res1 = strided_slice_fast_last_dim.strided_slice_last_dim_only(input_shape, input_dtype,
-                                               output_shape, begin_shape,
-                                               kernel_name)
+                                                                           output_shape, begin_shape,
+                                                                           kernel_name)
             if res1:
                 return
         if input_list[-1] >= 32 and input_list[-1] < 7500 and len(output_shape) > 1 and \
-           output_shape[-1] >= 32:
+                output_shape[-1] >= 32:
             res = strided_slice_for_last_dim_mte.strided_slice_last_dim_mte(input_shape, input_dtype,
-                                             output_shape, begin_shape,
-                                             kernel_name)
+                                                                            output_shape, begin_shape,
+                                                                            kernel_name)
             if res:
                 return
         res = strided_slice_for_last_dim.strided_slice_last_dim(input_shape, input_dtype,
-                                     output_shape, begin_shape,
-                                     end_shape, stride_shape,
-                                     kernel_name)
+                                                                output_shape, begin_shape,
+                                                                end_shape, stride_shape,
+                                                                kernel_name)
         if res:
             return
         res1 = strided_slice_last_dim_one.strided_slice_last_dim_one(input_shape, input_dtype,
-                                          output_shape, begin_shape,
-                                          kernel_name)
+                                                                     output_shape, begin_shape,
+                                                                     kernel_name)
         if res1:
             return
 
