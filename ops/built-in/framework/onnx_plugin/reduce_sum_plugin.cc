@@ -20,51 +20,99 @@
  */
 #include <string>
 #include <vector>
-
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
-
 #include "op_log.h"
+#include "all_ops.h"
+#include "graph.h"
+
+using namespace std;
+using namespace ge;
+using ge::Operator;
 
 namespace domi {
 
-Status ParseParamsReduceSum(const Message* op_src, ge::Operator& op_dest) {
+Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
+{
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-    OP_LOGE("ReduceSum", "Dynamic cast op_src to NodeProto failed.");
-    return FAILED;
+      OP_LOGE("ReduceSum", "Dynamic cast op_src to NodeProto failed.");
+      return FAILED;
   }
 
-  std::vector<int> v_axis;
-  bool set_axes_flag = false;
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+
+  // 1.add dynamic input and out
+  opDesc->AddDynamicInputDesc("x", 2);
+  opDesc->AddDynamicOutputDesc("output", 1);
+
+  // 2.set original_type
+  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::11::ReduceSum");
+
+  std::vector<int> v_axes;
   bool keep_dims = true;
+
   for (const auto& attr : node->attribute()) {
-    if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      for (int i = 0; i < attr.ints_size(); i++) {
-        v_axis.push_back(attr.ints(i));
+      if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      // std::copy(attr.ints().begin(), attr.ints().end(), v_axes.begin());
+          for (int i = 0; i<attr.ints_size(); i++){
+              v_axes.push_back(attr.ints(i));
+          }
       }
-      set_axes_flag = true;
-    } else if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
-      if (attr.i() != 1) {
-        keep_dims = false;
+      else if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
+          if (attr.i() != 1) {
+              keep_dims = true;
+          }
       }
-    }
   }
-  if (set_axes_flag) {
-    op_dest.SetAttr("axes", v_axis);
-  } else {
-    OP_LOGI("ReduceSum", "onnx ReduceSum op has no axes attr, use default.");
-  }
+
+  // 3.set attr if needed
+  int num = v_axes.size();
+  ge::TensorDesc tensorDesc;
+  std::vector<int64_t> dims = {num};
+  ge::Shape shape(dims);
+  tensorDesc.SetShape(shape);
+  tensorDesc.SetDataType(DT_INT32);
+
+  ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(v_axes.data()), v_axes.size() * sizeof(int));
+  op_dest.SetAttr("axes", tensor);
   op_dest.SetAttr("keep_dims", keep_dims);
 
   return SUCCESS;
 }
 
+static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
+{
+  auto data0 = op::Data("data0").set_attr_index(0);
+  ge::Tensor value;
+  if (op.GetAttr("axes", value) != SUCCESS) {
+      OP_LOGE("Reducesum", "get value from op failed");
+      return FAILED;
+  }
+
+  auto data1 = op::Const("data1").set_attr_value(value);
+  auto reducesum = op::ReduceSum().set_input_x(data0).set_input_axes(data1);
+
+  bool flag = false;
+  if (op.GetAttr("keep_dims", flag) != SUCCESS) {
+      OP_LOGE("Reducesum", "get keep_dims from op failed");
+      return FAILED;
+  }
+  reducesum.set_attr_keep_dims(flag);
+
+  std::vector<Operator> inputs{data0};
+  std::vector<std::pair<Operator, std::vector<size_t> > > output_indexs;
+  output_indexs.emplace_back(reducesum, vector<std::size_t>{0});
+  graph.SetInputs(inputs).SetOutputs(output_indexs);
+  return SUCCESS;
+}
+
 // register ReduceSum op info to GE
-REGISTER_CUSTOM_OP("ReduceSumD")
-    .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::ReduceSum")
-    .ParseParamsFn(ParseParamsReduceSum)
-    .ImplyType(ImplyType::TVM);
+REGISTER_CUSTOM_OP("PartitionedCall")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::11::ReduceSum")
+  .ParseParamsFn(parse_params_reduce_sum)
+  .ParseOpToGraphFn(ParseOpToGraphReduceSum)
+  .ImplyType(ImplyType::TVM);
 }  // namespace domi
