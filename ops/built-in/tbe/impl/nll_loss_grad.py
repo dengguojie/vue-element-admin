@@ -97,9 +97,10 @@ class NllLossGradCompute:
     -------
     None
     """
-    def __init__(self, x, y_grad, target, weight, reduction, kernel_name):
+    def __init__(self, x, y_grad, target, weight, reduction, ignore_index, kernel_name):
         self.init_tik_instance()
         self.reduction = reduction
+        self.ignore_index = ignore_index
         self.kernel_name = kernel_name
         self.x_shape = x.get("shape")
         self.x_dtype = x.get("dtype").lower()
@@ -110,6 +111,9 @@ class NllLossGradCompute:
         self.weight_shape = weight.get("shape")
         self.weight_dtype = weight.get("dtype").lower()
         self.x_dim = len(self.x_shape)
+        self.c_dim = self.x_shape[-1]
+        self.invalid_target = (ignore_index < 0 or ignore_index >= self.c_dim) \
+            and ignore_index != -100 and self.reduction == "mean"
         self.init_size()
         self.init_gm()
 
@@ -163,6 +167,9 @@ class NllLossGradCompute:
         self.total_weight_ub_size = NUM_SIXTYFOUR
         self.weight_ub_size = math.ceil(self.weight_shape[0]/NUM_SIXTYFOUR) * \
                               NUM_SIXTYFOUR
+        if self.invalid_target:
+            # reserve 32b for ignore_index
+            self.weight_ub_size += 8
         self.dup_ub_size = math.ceil(self.x_shape[-1]/NUM_SIXTYFOUR) * \
                            NUM_SIXTYFOUR
         self.y_grad_gm_size = self.y_grad_shape[0]
@@ -304,10 +311,18 @@ class NllLossGradCompute:
                                                   [self.target_ub_size],
                                                   name="target_ub",
                                                   scope=tik.scope_ubuf)
-        self.weight_ub = self.tik_instance.Tensor(self.weight_dtype,
-                                                  [self.weight_ub_size],
-                                                  name="weight_ub",
-                                                  scope=tik.scope_ubuf)
+        if self.invalid_target:
+            self.temp_weight_ub = self.tik_instance.Tensor(self.weight_dtype,
+                                                           [self.weight_ub_size],
+                                                           name="temp_weight_ub",
+                                                           scope=tik.scope_ubuf)
+            self.zero_weight_ub = self.temp_weight_ub[0:8]
+            self.weight_ub = self.temp_weight_ub[8:]
+        else:
+            self.weight_ub = self.tik_instance.Tensor(self.weight_dtype,
+                                                      [self.weight_ub_size],
+                                                      name="weight_ub",
+                                                      scope=tik.scope_ubuf)
         self.refactor_weight_ub = self.tik_instance.Tensor(
             self.weight_dtype, [self.refactor_weight_ub_size],
             name="refactor_weight_ub", scope=tik.scope_ubuf)
@@ -604,6 +619,9 @@ class NllLossGradCompute:
         self.target_ub_size = math.ceil(self.max_line/64)*64
         self.total_weight_ub_size = NUM_SIXTYFOUR
         self.weight_ub_size = math.ceil(self.c_dim/64)*64
+        if self.invalid_target:
+            # reserve 32b for ignore_index
+            self.weight_ub_size += 8
         self.refactor_weight_ub_size = self.target_ub_size
 
         #compute burst and repeat time
@@ -661,6 +679,25 @@ class NllLossGradCompute:
                                        dst[index*offset], self.total_weight_ub,
                                        repeat, 1, 1, 1, 8, 8, 0)
 
+    def _set_valid_target(self, names, var):
+        """
+        set valid target when target index is out c range, x set 0, weight set -1.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        None
+        """
+        if not self.invalid_target:
+            return
+
+        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
+                                                names["index_x" + str(var)] >= self.c_dim)):
+            names["index_x" + str(var)].set_as(0)
+            names["index_x" + "w" + str(var)].set_as(-1)
+
     def select_valid_value(self, line_num, line_size, dst, src, target,
                            dst_need_index=True, src_need_index=True):
         """
@@ -684,29 +721,42 @@ class NllLossGradCompute:
         names = locals()
         for i in range(0, vars_num):
             names["index_x" + str(i)] = self.tik_instance.Scalar(dtype="int32")
+            if self.invalid_target:
+                names["index_x" + "w" + str(i)] = self.tik_instance.Scalar(dtype="int32")
         with self.tik_instance.for_range(0, loop_num) as time:
             offset_set = 8 * time
             for i in range(0, vars_num):
                 names["index_x" + str(i)].set_as(target[offset_set + i])
+                if self.invalid_target:
+                    names["index_x" + "w" + str(i)].set_as(target[offset_set + i])
+
             for i in range(0, vars_num):
                 dst_offset = (offset_set+i)*line_size +\
                              names["index_x" + str(i)]
                 src_offset = names["index_x" + str(i)]
+                if self.invalid_target:
+                    src_offset = names["index_x" + "w" + str(i)]
                 if not dst_need_index:
                     dst_offset = (offset_set+i)*line_size
                 if not src_need_index:
                     src_offset = offset_set+i
+                self._set_valid_target(names, i)
                 dst[dst_offset].set_as(src[src_offset])
         for i in range(0, last_line):
             names["index_x" + str(i)].set_as(target[loop_num*8 + i])
+            if self.invalid_target:
+                names["index_x" + "w" + str(i)].set_as(target[loop_num*8 + i])
         for i in range(0, last_line):
             dst_offset = (loop_num*8+i)*line_size + \
                              names["index_x" + str(i)]
             src_offset = names["index_x" + str(i)]
+            if self.invalid_target:
+                src_offset = names["index_x" + "w" + str(i)]
             if not dst_need_index:
                 dst_offset = (loop_num*8+i)*line_size
             if not src_need_index:
                 src_offset = loop_num*8+i
+            self._set_valid_target(names, i)
             dst[dst_offset].set_as(src[src_offset])
 
     def _normal_two_tim_process(self, line_num, core_offset,
@@ -795,6 +845,9 @@ class NllLossGradCompute:
                     0, 1, 1, 0, 0)
                 self.tik_instance.data_move(
                     self.y_grad_ub, self.data_y_grad, 0, 1, 1, 0, 0)
+
+            if self.invalid_target:
+                self.tik_instance.vector_dup(8, self.zero_weight_ub, 0, 1, 1, 8)
 
             self.tik_instance.data_move(self.weight_ub, self.data_weight,
                                         0, 1, self.weight_burst, 0, 0)
@@ -894,5 +947,5 @@ def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
     _shape_and_dtype_check(x, y_grad, target, weight, total_weight,
                            reduction, kernel_name)
     nll_loss_function = NllLossGradCompute(x, y_grad, target, weight,
-                                              reduction, kernel_name)
+                                           reduction, ignore_index, kernel_name)
     return nll_loss_function.nll_loss_compute_start()

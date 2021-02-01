@@ -74,11 +74,12 @@ class NllLossCompute:
     -------
     None
     """
-    def __init__(self, x, target, weight, reduction, kernel_name):
+    def __init__(self, x, target, weight, reduction, ignore_index, kernel_name):
         self.init_tik_instance()
         self.target = target
         self.weight = weight
         self.reduction = reduction
+        self.ignore_index = ignore_index
         self.kernel_name = kernel_name
         self.x_dtype = x.get("dtype").lower()
         self.x_shape = x.get("shape")
@@ -89,6 +90,8 @@ class NllLossCompute:
         self.x_dims = len(self.x_shape)
         self.n_dim = self.x_shape[0]
         self.c_dim = self.x_shape[-1]
+        self.invalid_target = (ignore_index < 0 or ignore_index >= self.c_dim) \
+            and ignore_index != -100 and self.reduction == "mean"
         self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
             "Unified_Buffer") - TWO_KB
         self.init_gm_size()
@@ -492,6 +495,35 @@ class NllLossCompute:
                                             self.weight_ub, 1, 1, 1, 0, 0)
         self.tik_instance.data_move(self.output, self.x_ub, 1, 1, 1, 0, 0)
 
+    def _set_valid_target(self, names, var, src, valid_target=None):
+        """
+        set valid target when target index is out c range, x set 0, weight set -1.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        new target index
+        """
+        if not self.invalid_target:
+            return None
+
+        if valid_target is not None:
+            names["index_x" + str(var)].set_as(valid_target)
+            return valid_target
+
+        with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
+                                                names["index_x" + str(var)] >= self.c_dim)):
+            if src.name == "x_ub":
+                valid_target = 0
+            else:
+                valid_target = -1
+
+            names["index_x" + str(var)].set_as(valid_target)
+
+        return valid_target
+
     def select_valid_value(self, line_num, src1_line_size, src2_line_size,
                            dst1, src1, dst2, src2, target, line_offset=0):
         """
@@ -520,24 +552,26 @@ class NllLossCompute:
             for i in range(0, vars_num):
                 names["index_x" + str(i)].set_as(
                     target[offset_set + i + line_offset])
+
             for i in range(0, vars_num):
                 dst_offset = offset_set+i
-                src1_offset = dst_offset*src1_line_size + \
-                              names["index_x" + str(i)]
-                src2_offset = dst_offset*src2_line_size + \
-                              names["index_x" + str(i)]
+                self._set_valid_target(names, i, src1)
+                src1_offset = dst_offset*src1_line_size + names["index_x" + str(i)]
                 dst1[dst_offset].set_as(src1[src1_offset])
                 if self.reduction != "mean" or self.big_target:
+                    src2_offset = dst_offset*src2_line_size + names["index_x" + str(i)]
                     dst2[dst_offset].set_as(src2[src2_offset])
+
         for i in range(0, last_line):
             names["index_x" + str(i)].set_as(
                 target[loop_num*8 + i + line_offset])
         for i in range(0, last_line):
             dst_offset = loop_num*8+i
+            self._set_valid_target(names, i, src1)
             src1_offset = dst_offset*src1_line_size + names["index_x" + str(i)]
-            src2_offset = dst_offset*src2_line_size + names["index_x" + str(i)]
             dst1[dst_offset].set_as(src1[src1_offset])
             if self.reduction != "mean" or self.big_target:
+                src2_offset = dst_offset*src2_line_size + names["index_x" + str(i)]
                 dst2[dst_offset].set_as(src2[src2_offset])
 
     def _none_and_sum_compute_process(self, line, repeat, offset,
@@ -700,9 +734,17 @@ class NllLossCompute:
         self.tik_instance.set_atomic_add(0)
 
     def _init_mean_ub(self):
-        self.temp_weight_ub = self.tik_instance.Tensor(
-            "float32", [self.weight_ub_size],
-            name="temp_weight_ub", scope=tik.scope_ubuf)
+        if self.invalid_target:
+            self.weight_ub = self.tik_instance.Tensor(
+                "float32", [self.weight_ub_size],
+                name="weight_ub", scope=tik.scope_ubuf)
+            self.zero_weight_ub = self.weight_ub[0:8]
+            self.temp_weight_ub = self.weight_ub[8:]
+        else:
+            self.temp_weight_ub = self.tik_instance.Tensor(
+                "float32", [self.weight_ub_size],
+                name="temp_weight_ub", scope=tik.scope_ubuf)
+
         self.target_ub = self.tik_instance.Tensor(
             "float32", [self.target_ub_size],
             name="target_ub", scope=tik.scope_ubuf)
@@ -728,6 +770,10 @@ class NllLossCompute:
         with self.tik_instance.for_range(0, self.core_num,
                                          block_num=self.core_num) as cycle:
             self._init_mean_ub()
+
+            if self.invalid_target:
+                self.tik_instance.vector_dup(8, self.zero_weight_ub, 0, 1, 1, 8)
+
             self.tik_instance.data_move(self.temp_weight_ub, self.data_weight,
                                         0, 1, math.ceil(self.c_dim/8), 0, 0)
             self.tik_instance.data_move(self.target_ub, self.data_target, 0, 1,
@@ -1201,5 +1247,5 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean",
     """
     _shape_and_dtype_check(x, target, weight, kernel_name)
     nll_loss_function = NllLossCompute(x, target, weight,
-                                         reduction, kernel_name)
+                                       reduction, ignore_index, kernel_name)
     return nll_loss_function.nll_loss_compute_start()
