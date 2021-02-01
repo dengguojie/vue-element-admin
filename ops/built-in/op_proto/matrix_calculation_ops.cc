@@ -2226,6 +2226,23 @@ COMMON_INFER_FUNC_REG(IndexAdd, IndexAddInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(IndexAdd, IndexAddVerify);
 // ----------------IndexAdd END---------------------
+// ---------------Triu--------------
+IMPLEMT_COMMON_INFERFUNC(TriuInferShape) {
+  Shape input_shape = op.GetInputDesc(0).GetShape();
+  DataType input_dtype = op.GetInputDesc(0).GetDataType();
+  TensorDesc td = op.GetOutputDesc(0);
+  td.SetShape(ge::Shape(input_shape));
+  td.SetDataType(input_dtype);
+  (void)op.UpdateOutputDesc("y", td);
+  return GRAPH_SUCCESS;
+}
 
+IMPLEMT_VERIFIER(Triu, TriuVerify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Triu, TriuInferShape);
+VERIFY_FUNC_REG(Triu, TriuVerify);
+// ----------------Triu END----------------
 }  // namespace ge
 

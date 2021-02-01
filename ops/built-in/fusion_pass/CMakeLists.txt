@@ -251,6 +251,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/fusedbatchnorm3d_fusion_pass.cc
   graph_fusion/ai_core/fusedbatchnorm3dgrad_fusion_pass.cc
   graph_fusion/ai_core/conv2d_backprop_input_bias_add_fusion_pass.cc
+  graph_fusion/ai_core/triu_fusion_pass.cc
 )
 
 set(ops_fusion_pass_path "${INSTALL_PATH}/opp/fusion_pass/built_in")
