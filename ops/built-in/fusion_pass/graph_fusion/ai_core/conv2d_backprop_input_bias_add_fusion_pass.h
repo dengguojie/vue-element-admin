@@ -26,17 +26,17 @@
 namespace fe {
 class Conv2DbpInputBiasAddFusionPass : public PatternFusionBasePass {
 protected:
-    vector<FusionPattern*> DefinePatterns() override;
-    Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
+  vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
 private:
-    Status convert_dx_to_transpose(ge::ComputeGraph &graph, Mapping &mapping,
-                                   vector<ge::NodePtr> &fusion_nodes);
-    Status connect_edges(ge::NodePtr &conv_node, ge::NodePtr &bias_node,
-                         ge::NodePtr &bias_const_node, ge::NodePtr &conv2d_transpose_d);
-    void set_in_out_op_and_attr(ge::OpDescPtr &conv_op, ge::OpDescPtr &bias_const_op,
-                                ge::OpDescPtr &conv2d_transpose_d_op);
-    const string FUSED_OP_TYPE = "Conv2DBackpropInputD";
+  Status convert_dx_to_transpose(ge::ComputeGraph &graph, Mapping &mapping,
+                                 vector<ge::NodePtr> &fusion_nodes);
+  Status connect_edges(ge::NodePtr &conv_node, ge::NodePtr &bias_node,
+                       ge::NodePtr &bias_const_node, ge::NodePtr &conv2d_transpose_d);
+  void set_in_out_op_and_attr(ge::OpDescPtr &conv_op, ge::OpDescPtr &bias_const_op,
+                              ge::OpDescPtr &conv2d_transpose_d_op);
+  const string FUSED_OP_TYPE = "Conv2DBackpropInputD";
 };
 }  // namespace fe
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_CONV2DBACKPROP_INPUT_BIAS_ADD_FUSION_PASS_H_

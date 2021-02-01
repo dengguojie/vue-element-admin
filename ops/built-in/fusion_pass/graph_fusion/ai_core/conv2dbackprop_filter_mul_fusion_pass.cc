@@ -58,73 +58,73 @@ static const std::string CONV2DBPFILTER = "Conv2DBackpropFilterD";
 NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
                                             ge::NodePtr& dwOutNode,
                                             ge::Format& inputOriginFormat) {
-    ge::NodePtr mulNode = nullptr;
+  ge::NodePtr mulNode = nullptr;
 
-    // create a new node desc
-    std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
-    mulDesc = std::make_shared<ge::OpDesc>(dwOutNode->GetName() + "_mul_layer", "Mul");
-    FUSION_PASS_CHECK(mulDesc == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed"),
+  // create a new node desc
+  std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
+  mulDesc = std::make_shared<ge::OpDesc>(dwOutNode->GetName() + "_mul_layer", "Mul");
+  FUSION_PASS_CHECK(mulDesc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed"),
+                    return nullptr);
+
+  // get and set mulDesc's inputDesc
+  ge::GeTensorDesc inputDesc = dwOutNode->GetOpDesc()->GetOutputDesc(0);
+  ge::GeShape mulShape = inputDesc.GetShape();
+  inputDesc.SetShape(mulShape);
+  inputDesc.SetOriginShape(mulShape);
+  inputDesc.SetOriginFormat(inputOriginFormat);
+  inputDesc.SetDataType(ge::DT_FLOAT);
+  inputDesc.SetOriginDataType(ge::DT_FLOAT);
+  // create and set mulDesc's outputDesc
+  ge::GeTensorDesc outputDesc;
+  outputDesc.SetShape(mulShape);
+  outputDesc.SetOriginShape(mulShape);
+  outputDesc.SetOriginFormat(inputOriginFormat);
+  outputDesc.SetDataType(ge::DT_FLOAT);
+  outputDesc.SetOriginDataType(ge::DT_FLOAT);
+  // mulDesc setInput inputDesc & outputDesc
+  FUSION_PASS_CHECK(mulDesc->AddInputDesc(inputDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc input failed"),
+                    return nullptr);
+  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(outputDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc output failed"),
+                    return nullptr);
+  // graph add mulNode by mulDesc
+  mulNode = graph.AddNode(mulDesc);
+  FUSION_PASS_CHECK(mulNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul node failed"),
+                    return nullptr);
+
+  // modify edge info
+  ge::OutDataAnchorPtr dwAnchorPtr1 = dwOutNode->GetOutDataAnchor(0);
+  for (auto postAnchorPtr0 : dwAnchorPtr1->GetPeerInDataAnchors()) {
+    /*
+     * dwAnchorPtr1 : the edge to dw node
+     * postAnchorPtr0 : the edges from dw node
+     *       |    ---> outdata anchor (dwAnchorPtr1)
+     *       v
+     *       dw
+     *     |  |  |  ---> indata anchors (postAnchorPtr0)
+     *     v  v  v
+     */
+
+    // remove edge between dw and next node
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(postAnchorPtr0, dwAnchorPtr1) != SUCCESS,
+                      OP_LOGI(FUSED_OP_TYPE.c_str(),
+                              "remove edge between dw and dw's next node failed"),
                       return nullptr);
 
-    // get and set mulDesc's inputDesc
-    ge::GeTensorDesc inputDesc = dwOutNode->GetOpDesc()->GetOutputDesc(0);
-    ge::GeShape mulShape = inputDesc.GetShape();
-    inputDesc.SetShape(mulShape);
-    inputDesc.SetOriginShape(mulShape);
-    inputDesc.SetOriginFormat(inputOriginFormat);
-    inputDesc.SetDataType(ge::DT_FLOAT);
-    inputDesc.SetOriginDataType(ge::DT_FLOAT);
-    // create and set mulDesc's outputDesc
-    ge::GeTensorDesc outputDesc;
-    outputDesc.SetShape(mulShape);
-    outputDesc.SetOriginShape(mulShape);
-    outputDesc.SetOriginFormat(inputOriginFormat);
-    outputDesc.SetDataType(ge::DT_FLOAT);
-    outputDesc.SetOriginDataType(ge::DT_FLOAT);
-    // mulDesc setInput inputDesc & outputDesc
-    FUSION_PASS_CHECK(mulDesc->AddInputDesc(inputDesc) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc input failed"),
+    // add edge between mul and next node
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0),postAnchorPtr0) != SUCCESS,
+                      OP_LOGI(FUSED_OP_TYPE.c_str(),
+                              "add edge between mul node and dw's next node failed"),
                       return nullptr);
-    FUSION_PASS_CHECK(mulDesc->AddOutputDesc(outputDesc) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc output failed"),
-                      return nullptr);
-    // graph add mulNode by mulDesc
-    mulNode = graph.AddNode(mulDesc);
-    FUSION_PASS_CHECK(mulNode == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul node failed"),
-                      return nullptr);
-
-    // modify edge info
-    ge::OutDataAnchorPtr dwAnchorPtr1 = dwOutNode->GetOutDataAnchor(0);
-    for (auto postAnchorPtr0 : dwAnchorPtr1->GetPeerInDataAnchors()) {
-        /*
-         * dwAnchorPtr1 : the edge to dw node
-         * postAnchorPtr0 : the edges from dw node
-         *         |        ---> outdata anchor (dwAnchorPtr1)
-         *         v
-         *         dw
-         *       |  |  |    ---> indata anchors (postAnchorPtr0)
-         *       v  v  v
-         */
-
-        // remove edge between dw and next node
-        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(postAnchorPtr0, dwAnchorPtr1) != SUCCESS,
-                          OP_LOGI(FUSED_OP_TYPE.c_str(),
-                                  "remove edge between dw and dw's next node failed"),
-                          return nullptr);
-
-        // add edge between mul and next node
-        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0),postAnchorPtr0) != SUCCESS,
-                          OP_LOGI(FUSED_OP_TYPE.c_str(),
-                                  "add edge between mul node and dw's next node failed"),
-                          return nullptr);
-    }
-    // add edge between dw and mul
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(dwAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
-                      OP_LOGI(FUSED_OP_TYPE.c_str(), "add edge between dw node and mul node failed"),
-                      return nullptr);
-    return mulNode;
+  }
+  // add edge between dw and mul
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(dwAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "add edge between dw node and mul node failed"),
+                    return nullptr);
+  return mulNode;
 }
 
 /*!
@@ -137,78 +137,80 @@ NodePtr Conv2DbpFilterMulFusionPass::AddMul(ge::ComputeGraph& graph,
 Status Conv2DbpFilterMulFusionPass::AddAssit(ge::ComputeGraph& graph,
                                              ge::NodePtr& mulNode,
                                              const int64_t matrixSize) {
-    // get OriginDesc info
-    ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
-    ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
-    ge::GeShape inputDesc0Shape = inputDesc0.GetOriginShape();
-    vector<int64_t> inDimInfo  = inputDesc0Shape.GetDims();
+  // get OriginDesc info
+  ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
+  ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
+  ge::GeShape inputDesc0Shape = inputDesc0.GetOriginShape();
+  vector<int64_t> inDimInfo  = inputDesc0Shape.GetDims();
 
-    // create inputAssit & fill data by NnSet
-    FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize id Invalid"), return PARAM_INVALID);
-    unique_ptr<float[]> inputAssit(new (std::nothrow) float[matrixSize]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
-                      return PARAM_INVALID);
-    Status ret = NnSet(matrixSize, FLOAT_NUM_ONE, *reinterpret_cast<float*>(inputAssit.get()));
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed"), return ret);
+  // create inputAssit & fill data by NnSet
+  FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize id Invalid"), return PARAM_INVALID);
+  unique_ptr<float[]> inputAssit(new (std::nothrow) float[matrixSize]());
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+                    return PARAM_INVALID);
+  Status ret = NnSet(matrixSize, FLOAT_NUM_ONE, *reinterpret_cast<float*>(inputAssit.get()));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed"), return ret);
 
-    // create and set assitDesc
-    ge::GeTensorDesc assitDesc;
-    ge::GeShape assitShapeOrigin(inDimInfo);
-    assitDesc.SetFormat(inputDesc0OriginFormat);
-    assitDesc.SetOriginFormat(inputDesc0OriginFormat);
-    assitDesc.SetShape(assitShapeOrigin);
-    assitDesc.SetOriginShape(assitShapeOrigin);
-    assitDesc.SetDataType(ge::DT_FLOAT);
-    assitDesc.SetOriginDataType(ge::DT_FLOAT);
+  // create and set assitDesc
+  ge::GeTensorDesc assitDesc;
+  ge::GeShape assitShapeOrigin(inDimInfo);
+  assitDesc.SetFormat(inputDesc0OriginFormat);
+  assitDesc.SetOriginFormat(inputDesc0OriginFormat);
+  assitDesc.SetShape(assitShapeOrigin);
+  assitDesc.SetOriginShape(assitShapeOrigin);
+  assitDesc.SetDataType(ge::DT_FLOAT);
+  assitDesc.SetOriginDataType(ge::DT_FLOAT);
 
-    // create assitTensorPtr by assitDesc & add assit node by SetWeights
-    ge::GeTensorPtr assitPtr = nullptr;
-    FUSION_PASS_MAKE_SHARED((assitPtr = std::make_shared<ge::GeTensor>(
-                            assitDesc, reinterpret_cast<uint8_t*>(inputAssit.get()), matrixSize * sizeof(float))),
-                            assitPtr = nullptr;
-                            return PARAM_INVALID);
-    vector<ge::GeTensorPtr> weights = {assitPtr};
-    ge::OpDescUtils::SetWeights(mulNode, weights);
+  // create assitTensorPtr by assitDesc & add assit node by SetWeights
+  ge::GeTensorPtr assitPtr = nullptr;
+  FUSION_PASS_MAKE_SHARED((assitPtr = std::make_shared<ge::GeTensor>(
+                                        assitDesc,
+                                        reinterpret_cast<uint8_t*>(inputAssit.get()),
+                                        matrixSize * sizeof(float))),
+                          assitPtr = nullptr;
+                          return PARAM_INVALID);
+  vector<ge::GeTensorPtr> weights = {assitPtr};
+  ge::OpDescUtils::SetWeights(mulNode, weights);
 
-    // set constInput Type to 'Const'
-    auto constInputNodes = OpDescUtils::GetConstInputs(mulNode);
-    NodePtr constInput = nullptr;
-    if (constInputNodes.size() != 0) {
-        constInput = constInputNodes[0];
-    } else {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, fusion failed");
-        return PARAM_INVALID;
-    }
-    constInput->GetOpDesc()->SetType(CONSTATNOP);
+  // set constInput Type to 'Const'
+  auto constInputNodes = OpDescUtils::GetConstInputs(mulNode);
+  NodePtr constInput = nullptr;
+  if (constInputNodes.size() != 0) {
+    constInput = constInputNodes[0];
+  } else {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, fusion failed");
+    return PARAM_INVALID;
+  }
+  constInput->GetOpDesc()->SetType(CONSTATNOP);
 
-    return SUCCESS;
+  return SUCCESS;
 }
 
 /*!
  * @brief: Define dw+mul pattern.
  * The graph struct need to adapt is shown as follows:
  *
- *                      dw   const
- *                       |    /
- *                      mul
- *                       |
- *                     output
+ *            dw   const
+ *             |  /
+ *            mul
+ *             |
+ *           output
  *
  *  Notice: the struct can be captured by
- *          dw + mul pattern
+ *      dw + mul pattern
  *  @return vector<FusionPattern*> All valid patterns.
  */
 
 vector<FusionPattern*> Conv2DbpFilterMulFusionPass::DefinePatterns() {
-    vector<FusionPattern*> patterns;
+  vector<FusionPattern*> patterns;
 
-    FusionPattern* pattern = new (std::nothrow) FusionPattern("Conv2DbpFilterMulFusionPass");
-    FUSION_PASS_CHECK(pattern == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "new pattern obj failed"),
-                      return patterns);
-    pattern->AddOpDesc(PATTERN_CONV2DBPFILTER, {CONV2DBPFILTER}).SetOutput(PATTERN_CONV2DBPFILTER);
-    patterns.push_back(pattern);
-    return patterns;
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("Conv2DbpFilterMulFusionPass");
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "new pattern obj failed"),
+                    return patterns);
+  pattern->AddOpDesc(PATTERN_CONV2DBPFILTER, {CONV2DBPFILTER}).SetOutput(PATTERN_CONV2DBPFILTER);
+  patterns.push_back(pattern);
+  return patterns;
 }
 
 /*!
@@ -219,73 +221,73 @@ vector<FusionPattern*> Conv2DbpFilterMulFusionPass::DefinePatterns() {
  * @return bool: fusion status ok or not.
  */
 Status Conv2DbpFilterMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& new_nodes) {
-    // dwNode info
-    ge::NodePtr dwNode = GetNodeFromMapping(PATTERN_CONV2DBPFILTER, mapping);
-    FUSION_PASS_CHECK(dwNode == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "dw Node is null, fusion failed"),
-                      return PARAM_INVALID);
-    ge::OpDescPtr dwDesc = dwNode->GetOpDesc();
-    FUSION_PASS_CHECK(dwDesc == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "dw Node's Desc is null, fusion failed"),
-                      return PARAM_INVALID);
-    ge::GeTensorDesc dwOutputDesc = dwDesc->GetOutputDesc(0);
-    ge::GeShape dwOutputShape = dwOutputDesc.GetShape();
-    ge::Format dwOutputOriginFormat = dwOutputDesc.GetOriginFormat();
+  // dwNode info
+  ge::NodePtr dwNode = GetNodeFromMapping(PATTERN_CONV2DBPFILTER, mapping);
+  FUSION_PASS_CHECK(dwNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "dw Node is null, fusion failed"),
+                    return PARAM_INVALID);
+  ge::OpDescPtr dwDesc = dwNode->GetOpDesc();
+  FUSION_PASS_CHECK(dwDesc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "dw Node's Desc is null, fusion failed"),
+                    return PARAM_INVALID);
+  ge::GeTensorDesc dwOutputDesc = dwDesc->GetOutputDesc(0);
+  ge::GeShape dwOutputShape = dwOutputDesc.GetShape();
+  ge::Format dwOutputOriginFormat = dwOutputDesc.GetOriginFormat();
 
-    // get dw's out node shape info
-    vector<int64_t> outputDimInfo = dwOutputShape.GetDims();
-    int64_t filterN = 0;
-    int64_t filterC = 0;
-    int64_t filterH = 0;
-    int64_t filterW = 0;
-    int64_t groups = 0;
-    ge::AttrUtils::GetInt(dwNode->GetOpDesc(), "groups", groups);
-    if (groups <= 1) {
-        return NOT_CHANGED;
-    }
-    if (outputDimInfo.size() == 4) {
-        if (dwOutputOriginFormat == FORMAT_NHWC){
-            filterN = outputDimInfo[0];
-            filterH = outputDimInfo[1];
-            filterW = outputDimInfo[2];
-            filterC = outputDimInfo[3];
-        } else if (dwOutputOriginFormat == FORMAT_NCHW){
-            filterN = outputDimInfo[0];
-            filterC = outputDimInfo[1];
-            filterH = outputDimInfo[2];
-            filterW = outputDimInfo[3];
-        } else if (dwOutputOriginFormat == FORMAT_HWCN){
-            filterH = outputDimInfo[0];
-            filterW = outputDimInfo[1];
-            filterC = outputDimInfo[2];
-            filterN = outputDimInfo[3];
-        } else {
-            OP_LOGE(FUSED_OP_TYPE.c_str(), "outputOriginFormat only support NHWC and NCHW and HWCN");
-            return NOT_CHANGED;
-        }
+  // get dw's out node shape info
+  vector<int64_t> outputDimInfo = dwOutputShape.GetDims();
+  int64_t filterN = 0;
+  int64_t filterC = 0;
+  int64_t filterH = 0;
+  int64_t filterW = 0;
+  int64_t groups = 0;
+  ge::AttrUtils::GetInt(dwNode->GetOpDesc(), "groups", groups);
+  if (groups <= 1) {
+    return NOT_CHANGED;
+  }
+  if (outputDimInfo.size() == 4) {
+    if (dwOutputOriginFormat == FORMAT_NHWC){
+      filterN = outputDimInfo[0];
+      filterH = outputDimInfo[1];
+      filterW = outputDimInfo[2];
+      filterC = outputDimInfo[3];
+    } else if (dwOutputOriginFormat == FORMAT_NCHW){
+      filterN = outputDimInfo[0];
+      filterC = outputDimInfo[1];
+      filterH = outputDimInfo[2];
+      filterW = outputDimInfo[3];
+    } else if (dwOutputOriginFormat == FORMAT_HWCN){
+      filterH = outputDimInfo[0];
+      filterW = outputDimInfo[1];
+      filterC = outputDimInfo[2];
+      filterN = outputDimInfo[3];
     } else {
-        OP_LOGW(FUSED_OP_TYPE.c_str(), "dimInfo is not right");
-        return NOT_CHANGED;
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "outputOriginFormat only support NHWC and NCHW and HWCN");
+      return NOT_CHANGED;
     }
-    int64_t matrixSize = filterN *  filterC * filterH * filterW;
-    FUSION_PASS_CHECK(matrixSize <= 0,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize Invalid"),
-                      return PARAM_INVALID);
-    FUSION_PASS_CHECK(filterN % groups != 0,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "filterN is not a multiple of groups"),
-                      return PARAM_INVALID);
+  } else {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "dimInfo is not right");
+    return NOT_CHANGED;
+  }
+  int64_t matrixSize = filterN *  filterC * filterH * filterW;
+  FUSION_PASS_CHECK(matrixSize <= 0,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize Invalid"),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(filterN % groups != 0,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "filterN is not a multiple of groups"),
+                    return PARAM_INVALID);
 
-    // add nodes
-    ge::NodePtr mulNode = AddMul(graph, dwNode, dwOutputOriginFormat);
-    FUSION_PASS_CHECK(mulNode == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul Node failed"),
-                      return PARAM_INVALID);
+  // add nodes
+  ge::NodePtr mulNode = AddMul(graph, dwNode, dwOutputOriginFormat);
+  FUSION_PASS_CHECK(mulNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mul Node failed"),
+                    return PARAM_INVALID);
 
-    FUSION_PASS_CHECK(AddAssit(graph, mulNode, matrixSize) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add assit failed"),
-                      return PARAM_INVALID);
+  FUSION_PASS_CHECK(AddAssit(graph, mulNode, matrixSize) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add assit failed"),
+                    return PARAM_INVALID);
 
-    return SUCCESS;
+  return SUCCESS;
 }
 
 REGISTER_PASS("Conv2DbpFilterMulFusionPass", BUILT_IN_GRAPH_PASS, Conv2DbpFilterMulFusionPass);
