@@ -56,8 +56,8 @@ Status UpdateAttrFromOnnx(const NodeProto* node, AvgPoolAttr& node_attr) {
         OP_LOGE("AveragePool", "Only support strides.size() = 2");
         return FAILED;
       }
-      node_attr.kernel_shape[2] = attr.ints(0);
-      node_attr.kernel_shape[3] = attr.ints(1);
+      node_attr.strides[2] = attr.ints(0);
+      node_attr.strides[3] = attr.ints(1);
     }
     if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.ints().size() != 4) {
@@ -65,10 +65,10 @@ Status UpdateAttrFromOnnx(const NodeProto* node, AvgPoolAttr& node_attr) {
         return FAILED;
       }
       node_attr.pads.resize(attr.ints().size());
-      node_attr.kernel_shape[0] = attr.ints(0);
-      node_attr.kernel_shape[1] = attr.ints(2);
-      node_attr.kernel_shape[2] = attr.ints(1);
-      node_attr.kernel_shape[3] = attr.ints(3);
+      node_attr.pads[0] = attr.ints(0);
+      node_attr.pads[1] = attr.ints(2);
+      node_attr.pads[2] = attr.ints(1);
+      node_attr.pads[3] = attr.ints(3);
     }
   }
   return SUCCESS;
