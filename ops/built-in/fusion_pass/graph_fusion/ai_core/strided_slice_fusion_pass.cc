@@ -63,6 +63,8 @@ Status ConstToAttrStridedSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& map
   std::string fusion_op_type = "StridedSliceD";
   // PatternFusionUtil patternFusionUtil;
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::OpDescPtr fuseDesc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(fuseDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
@@ -80,9 +82,6 @@ Status ConstToAttrStridedSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& map
       return NOT_CHANGED;
     }
   }
-
-  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node is null, fusion failed."),
-                    return PARAM_INVALID);
 
   std::vector<PassAttrInfo> attr_infos = {
       {1, "begin", "SetListInt"}, {2, "end", "SetListInt"}, {3, "strides", "SetListInt"}};

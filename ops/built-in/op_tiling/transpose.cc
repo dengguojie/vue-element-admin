@@ -286,27 +286,6 @@ static bool SetElePerBlock(const CompilerInfo & compilerInfo, ShapeInfo & shapeI
     return true;
 }
 
-/*
-static bool GetInputX(const string & opType, const TeOpParas & paras, const char * & pInputX, int64_t & inputLen) {
-    OP_LOGD(opType.c_str(), "Entering GetInputX.");
-
-    if (paras.const_inputs.find("x") == paras.const_inputs.end()) {
-        OP_LOGE(opType.c_str(), "No x in const_inputs.");
-        return false;
-    }
-
-    pInputX = reinterpret_cast<const char*>(std::get<0>(paras.const_inputs.at("x")));
-    if (pInputX == nullptr) {
-        OP_LOGE(opType.c_str(), "Failed to get x pointer.");
-        return false;
-    }
-
-    inputLen = std::get<1>(paras.const_inputs.at("x"));
-    OP_LOGD(opType.c_str(), "In GetInputX, inputLen = %ld", inputLen);
-    return true;
-}
-*/
-
 static bool CheckTensorShape(const string & opType,
                              const ShapeInfo & shapeInfo) {
     OP_LOGD(opType.c_str(), "Entering CheckTensorShape.");
@@ -316,14 +295,21 @@ static bool CheckTensorShape(const string & opType,
     int64_t permDims = shapeInfo.perm.size();
 
     if (inDims < 1 || inDims != outDims || inDims != permDims) {
-        OP_LOGE(opType.c_str(), "The dim of inputs is invalid, inDims = %d, outDims = %d, permDims = %d",
+        OP_LOGE(opType.c_str(), "The dim of inputs is invalid, inDims = %ld, outDims = %ld, permDims = %ld",
                                 inDims, outDims, permDims);
         return false;
     }
 
-    for (int64_t i=0; i < inDims; i++){
+    for (int64_t i = 0; i < inDims; i++) {
         if (shapeInfo.inShape[shapeInfo.perm[i]] != shapeInfo.outShape[i]) {
             OP_LOGE(opType.c_str(), "The dim of inputs or outputs conflict with perm.", opType.c_str());
+            return false;
+        }
+    }
+
+    for (int64_t i = 0; i < inDims; i++) {
+        if (shapeInfo.inShape[i] <= 0 || shapeInfo.outShape[i] <= 0) {
+            OP_LOGE(opType.c_str(), "Invalid shape, %ld, %ld, %ld", i, shapeInfo.inShape[i], shapeInfo.outShape[i]);
             return false;
         }
     }
@@ -1147,8 +1133,8 @@ static void Split(int64_t val,
                   int64_t factor,
                   int64_t elePerBlock,
                   vector<pair<int64_t, int64_t>> & range) {
-    if (factor == 1) {
-            range.push_back({0,val});
+    if (factor == 1 || factor == 0) {
+        range.push_back({0,val});
     } else {
         int64_t perCore = Align32BCeil(ceil(val * 1.0 / factor), elePerBlock);
         for (int64_t i = 0; i < factor - 1; i++) {
@@ -1911,6 +1897,10 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     info.ubSizeCouldUse = info.ubSize - UB_RESERVED_BLOCK_SIZE;
     info.dType = allVars["dtype"].get<std::string>();
     info.fp16Times = (SizeofDType(info.dType) + 1) / 2; //add 1 for int8
+    if (info.coreNum == 0) {
+        OP_LOGE(opType.c_str(), "The core count cannot be zero!");
+        return false;
+    }
 
     OP_LOGD(opType.c_str(), "GetCompileParams, coreNum[%d], ubSize[%d] blocks, dType[%s].",
            info.coreNum, info.ubSize, info.dType.c_str());
@@ -2272,8 +2262,6 @@ bool TransposeTiling(const std::string &opType,
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
-    //const char * pInputX = NULL;
-    //int64_t inputLen = 0;
 
     if (GetCompileParams(opType, opInfo, compilerInfo) == false) {
         return false;
@@ -2284,11 +2272,6 @@ bool TransposeTiling(const std::string &opType,
     if (CheckTensorShape(opType, shapeInfo) == false) {
         return false;
     }
-    /*
-    if (GetInputX(opType, opParas, pInputX, inputLen) == false) {
-        return false;
-    }
-    */
 
     ReduceAxis(opType, compilerInfo, shapeInfo);
 

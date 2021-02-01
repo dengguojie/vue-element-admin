@@ -149,13 +149,13 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   }
 
   ge::OpDescPtr fusedConcatv2dOpDesc = AttrUtils::CloneOpDesc(concatv2dNode->GetOpDesc());
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "fusedConcatv2dOpDesc %s, optye %s, input %ld, output %ld",
-          fusedConcatv2dOpDesc->GetName().c_str(), fusedConcatv2dOpDesc->GetType().c_str(),
-          fusedConcatv2dOpDesc->GetAllInputsDesc().size(), fusedConcatv2dOpDesc->GetAllOutputsDesc().size());
   FUSION_PASS_CHECK(
       fusedConcatv2dOpDesc == nullptr,
       OP_LOGI(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.", concatv2dNode->GetName().c_str()),
       return PARAM_INVALID);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "fusedConcatv2dOpDesc %s, optye %s, input %ld, output %ld",
+          fusedConcatv2dOpDesc->GetName().c_str(), fusedConcatv2dOpDesc->GetType().c_str(),
+          fusedConcatv2dOpDesc->GetAllInputsDesc().size(), fusedConcatv2dOpDesc->GetAllOutputsDesc().size());
   fusedConcatv2dOpDesc->SetName(concatv2dNode->GetName());
   fusedConcatv2dOpDesc->SetType(CONCATV2D);
 

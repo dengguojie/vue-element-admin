@@ -37,6 +37,7 @@
 
 using namespace ge;
 namespace fe {
+static float EPSILON = 0.0000001;
 static const char* FUSED_NODE = "Range";
 static const string PATTERN_FUSED_NODE = "Range";
 
@@ -164,6 +165,8 @@ Status RangeFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Nod
   OutDataAnchorPtr limit_anchor_out = limit_anchor_in->GetPeerOutAnchor();
   OutDataAnchorPtr delta_anchor_out = delta_anchor_in->GetPeerOutAnchor();
   Format const_format = range_op.GetInputDesc("start").GetFormat();
+  FUSION_PASS_CHECK((fabs(delta_fp) < EPSILON), OP_LOGE(FUSED_OP_TYPE.c_str(), "Devide by 0 exception."),
+                    return PARAM_INVALID);
   int dim_num = int(ceil(abs(limit_fp - start_fp) / abs(delta_fp)));
 
   // generate assist

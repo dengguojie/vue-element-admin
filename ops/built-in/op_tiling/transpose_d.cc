@@ -39,23 +39,29 @@ const std::vector<int64_t> PERM_1_2_0 = {1, 2, 0};
 const std::vector<int64_t> PERM_2_0_1 = {2, 0, 1};
 const std::vector<int64_t> PERM_2_1_0 = {2, 1, 0};
 
-int64_t GetFloorDiv(const int64_t& uValue, const int64_t& dValue) {
+int64_t GetFloorDiv(const int64_t uValue, const int64_t dValue) {
   int64_t resValue = 0;
 
+  if (dValue == 0) {
+      return uValue;
+  }
   resValue = uValue / dValue;
 
   return resValue;
 }
 
-int64_t GetCeilDiv(const int64_t& uValue, const int64_t& dValue) {
+int64_t GetCeilDiv(const int64_t uValue, const int64_t dValue) {
   int64_t resValue = 0;
 
+  if (dValue == 0) {
+      return uValue;
+  }
   resValue = (uValue + dValue - 1) / dValue;
 
   return resValue;
 }
 
-int64_t GetMul(const int64_t& lValue, const int64_t& rValue) {
+int64_t GetMul(const int64_t lValue, const int64_t rValue) {
   int64_t resValue = 0;
 
   resValue = lValue * rValue;
@@ -63,15 +69,18 @@ int64_t GetMul(const int64_t& lValue, const int64_t& rValue) {
   return resValue;
 }
 
-int64_t GetMod(const int64_t& lValue, const int64_t& rValue) {
+int64_t GetMod(const int64_t lValue, const int64_t rValue) {
   int64_t resValue = 0;
 
+  if (rValue == 0) {
+      return lValue;
+  }
   resValue = lValue % rValue;
 
   return resValue;
 }
 
-int64_t GetSub(const int64_t& lValue, const int64_t& rValue) {
+int64_t GetSub(const int64_t lValue, const int64_t rValue) {
   int64_t resValue = 0;
 
   resValue = lValue - rValue;
@@ -79,7 +88,7 @@ int64_t GetSub(const int64_t& lValue, const int64_t& rValue) {
   return resValue;
 }
 
-int64_t GetMax(const int64_t& lValue, const int64_t& rValue) {
+int64_t GetMax(const int64_t lValue, const int64_t rValue) {
   int64_t resValue = 0;
 
   if (lValue > rValue) {
@@ -91,7 +100,7 @@ int64_t GetMax(const int64_t& lValue, const int64_t& rValue) {
   return resValue;
 }
 
-int64_t GetMin(const int64_t& lValue, const int64_t& rValue) {
+int64_t GetMin(const int64_t lValue, const int64_t rValue) {
   int64_t resValue = 0;
 
   if (lValue < rValue) {
@@ -104,6 +113,16 @@ int64_t GetMin(const int64_t& lValue, const int64_t& rValue) {
 }
 
 bool CheckTensorShape(const std::string& opType, const TeOpParas& opParas, std::vector<int64_t>& inPerm) {
+  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
+    OP_LOGE(opType.c_str(), "op [TransposeD] TransposeDTiling: input shape error");
+    return false;
+  }
+
+  if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
+    OP_LOGE(opType.c_str(), "op [TransposeD] TransposeDTiling: output shape error");
+    return false;
+  }
+
   std::vector<int64_t> inShape = opParas.inputs[0].tensor[0].shape;
   std::vector<int64_t> outShape = opParas.outputs[0].tensor[0].shape;
   int64_t inDims = inShape.size();
@@ -374,6 +393,10 @@ bool Float32Axis2Axis1Axis0Tiling(int64_t& dBytes, int64_t& coreNum, int64_t& ub
 bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
                       OpRunInfo& runInfo) {
   GELOGI("op[%s] tiling running.", opType.c_str());
+  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
+    OP_LOGE(opType.c_str(), "op [TransposeD] TransposeDTiling: input shape error");
+    return false;
+  }
 
   // get compile info
   int64_t ubSize = 0;
@@ -413,6 +436,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
   }
 
   if (inPerm == PERM_1_0) {
+    if (inShape.size() != 2) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 2!", opType.c_str());
+      return false;
+    }
     tilingMode = 101;
     bAxis = inShape[0];
     cAxis = inShape[1];
@@ -426,6 +453,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     }
 
   } else if (inPerm == PERM_1_2_0) {
+    if (inShape.size() != 3) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      return false;
+    }
     tilingMode = 1201;
     bAxis = inShape[0];
     cAxis = GetMul(inShape[1], inShape[2]);
@@ -439,6 +470,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     }
 
   } else if (inPerm == PERM_2_0_1) {
+    if (inShape.size() != 3) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      return false;
+    }
     tilingMode = 2011;
     bAxis = GetMul(inShape[0], inShape[1]);
     cAxis = inShape[2];
@@ -452,6 +487,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     }
 
   } else if (inPerm == PERM_0_2_1) {
+    if (inShape.size() != 3) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      return false;
+    }
     tilingMode = 211;
     aAxis = inShape[0];
     bAxis = inShape[1];
@@ -466,6 +505,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     }
 
   } else if (inPerm == PERM_0_1) {
+    if (inShape.size() != 2) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 2!", opType.c_str());
+      return false;
+    }
     tilingMode = 11;
     bAxis = inShape[0];
     cAxis = inShape[1];
@@ -480,6 +523,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     }
 
   } else if (inPerm == PERM_0_1_2) {
+    if (inShape.size() != 3) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      return false;
+    }
     tilingMode = 121;
     bAxis = inShape[0];
     cAxis = GetMul(inShape[1], inShape[2]);
@@ -494,6 +541,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     }
 
   } else if (inPerm == PERM_1_0_2) {
+    if (inShape.size() != 3) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      return false;
+    }
     aAxis = inShape[0];
     bAxis = inShape[1];
     cAxis = inShape[2];
@@ -508,6 +559,10 @@ bool TransposeDTiling(const std::string& opType, const TeOpParas& opParas, const
     }
 
   } else if (inPerm == PERM_2_1_0) {
+    if (inShape.size() != 3) {
+      OP_LOGE("op[%s] TransposeDTiling: the shape dimension should be 3!", opType.c_str());
+      return false;
+    }
     tilingMode = 2101;
     aAxis = inShape[0];
     bAxis = inShape[1];

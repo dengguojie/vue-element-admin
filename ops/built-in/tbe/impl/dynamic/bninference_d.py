@@ -486,7 +486,7 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
     # compute mean shape
     mean["shape"] = shape_mean
 
-    tbe_base.add_compile_info("_boardcast_mean_shape", shape_mean)
+    tbe_base.add_compile_info("_broadcast_mean_shape", shape_mean)
 
     mean_range = []
     for i, _range in enumerate(x["range"]):

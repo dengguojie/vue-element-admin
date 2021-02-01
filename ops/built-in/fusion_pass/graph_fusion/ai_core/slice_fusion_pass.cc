@@ -62,6 +62,8 @@ vector<FusionPattern*> ConstToAttrSlicePass::DefinePatterns() {
 Status ConstToAttrSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // PatternFusionUtil patternFusionUtil;
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's Node is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::OpDescPtr fuseDesc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(fuseDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);

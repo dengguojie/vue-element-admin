@@ -23,6 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
+#include "../op_proto/util/error_util.h"
 #include "op_log.h"
 
 namespace optiling {
@@ -32,6 +33,12 @@ bool ConcatOffsetTiling(const std::string& op_type,
                         const nlohmann::json& op_info,
                         OpRunInfo& run_info) {
     using namespace ge;
+    if (op_paras.inputs.empty() || op_paras.inputs[1].tensor.empty()) {
+      ge::OpsOneInputShapeErrReport(op_type.c_str(), "x",
+                                    "The input may be empty");
+      OP_LOGE(op_type.c_str(), "op [ConcatOffsetTiling] : input shape error");
+      return false;
+    }
     const std::vector<int64_t>& x_shape = op_paras.inputs[1].tensor[0].shape;
     int64_t input_num = x_shape.size() == 0 ? 1 : x_shape[0];
     ByteBufferPut(run_info.tiling_data, input_num);

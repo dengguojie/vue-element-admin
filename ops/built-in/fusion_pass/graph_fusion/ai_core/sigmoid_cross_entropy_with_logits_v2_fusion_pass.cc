@@ -138,7 +138,8 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
 
   // get sigmoidNode
   ge::NodePtr sigmoidNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-
+  FUSION_PASS_CHECK(sigmoidNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "sigmoidNode is null, fusion failed."),
+                    return PARAM_INVALID);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(sigmoidNode);
 
   if (GRAPH_SUCCESS != op.GetAttr(reductionAttr, reduction)) {

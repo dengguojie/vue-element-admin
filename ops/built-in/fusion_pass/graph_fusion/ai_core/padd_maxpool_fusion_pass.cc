@@ -124,6 +124,12 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of paddings is not match.");
     return NOT_CHANGED;
   }
+  for (int i = 0; i < 4; i++) {
+    if (paddings[i].size() != 2) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of paddings[%d] is not match.", i);
+      return NOT_CHANGED;
+    }
+  }
   if (ksize.size() != 4) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of ksize is not match.");
     return NOT_CHANGED;

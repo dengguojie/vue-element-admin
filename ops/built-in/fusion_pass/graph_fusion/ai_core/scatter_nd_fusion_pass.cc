@@ -84,7 +84,7 @@ Status ScatterNdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   int64_t indicesLen = 1;
   for (int64_t i = 0; i < indicesDimNum - 1; i++) {
     if (PatternFusionUtil::IsUnknownShape(indicesShape[i])) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ScatterNdFusionPass cannot be applied for unknown shape.");
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "ScatterNdFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
     indicesLen = indicesLen * indicesShape[i];
@@ -92,10 +92,14 @@ Status ScatterNdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   int64_t updateSize = 1;
   for (int64_t i = 0; i < updateDimNum; i++) {
     if (PatternFusionUtil::IsUnknownShape(updateShape[i])) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ScatterNdFusionPass cannot be applied for unknown shape.");
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "ScatterNdFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
     updateSize = updateSize * updateShape[i];
+  }
+  if (indicesLen == 0) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "indicesShape contains invalid value 0.");
+    return NOT_CHANGED;
   }
   int64_t updataSlice = updateSize / indicesLen;
   int64_t dataSize = 0;

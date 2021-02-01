@@ -140,6 +140,11 @@ bool GetCompileParams(const nlohmann::json& opCompileInfoJson, std::string& srcF
   }
   group = allVars["group"].get<std::int64_t>();
 
+  if (blockDim == 0) {
+    OP_LOGE("op [TransDataTiling] : Core count cannot be zero!");
+    return false;
+  }
+
   OP_LOGD(opType.c_str(), "GetCompileParams, srcFormat[%s], dstFormat[%s], \
           dType[%s], ubSize[%d], blockDim[%d], inputSize[%d], hiddenSize[%d], group[%d].",
           srcFormat.c_str(), dstFormat.c_str(), dType.c_str(), ubSize, blockDim, inputSize, hiddenSize, group);
@@ -147,8 +152,8 @@ bool GetCompileParams(const nlohmann::json& opCompileInfoJson, std::string& srcF
   return true;
 }
 
-bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape, std::string srcFormat,
-                    std::string dstFormat, std::vector<int64_t>& combAxis, int64_t c0Len, int64_t group,
+bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape, std::string& srcFormat,
+                    std::string& dstFormat, std::vector<int64_t>& combAxis, int64_t c0Len, int64_t group,
                     std::vector<int64_t>& inShapeNew, std::vector<int64_t>& outShapeNew, std::string& realSrcFormat,
                     std::string& realDstFormat) {
   int32_t combAxisCnt = combAxis.size();

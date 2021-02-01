@@ -95,6 +95,10 @@ Status TransposeReshapeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   }
   vector<int64_t> reshapeDimInfo = reshapeDesc->GetOutputDesc(0).GetOriginShape().GetDims();
   vector<int64_t> transposeDimInfo = transDesc->GetInputDesc(0).GetOriginShape().GetDims();
+  if (reshapeDimInfo.size() == 0 || transposeDimInfo.size() == 0) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The dimension size is zero!.");
+    return NOT_CHANGED;
+  }
 
   if (PatternFusionUtil::IsUnknownShape(reshapeDimInfo[0]) ||
       PatternFusionUtil::IsUnknownShape(reshapeDimInfo[reshapeDimInfo.size() - 1]) ||

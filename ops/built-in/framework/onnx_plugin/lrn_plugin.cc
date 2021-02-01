@@ -19,7 +19,7 @@
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsLRN(const Message *op_src, ge::Operator &op_dst) {
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+  const NodeProto *node = dynamic_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
     OP_LOGE("LRN", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
@@ -47,7 +47,7 @@ Status ParseParamsLRN(const Message *op_src, ge::Operator &op_dst) {
     OP_LOGE("LRN", "Message do not have attr size");
     return FAILED;
   }
-  // 判断属性是否是偶数
+
   int even_base = 2;
   if (size % even_base == 0) {
     OP_LOGE("LRN", "Attr size must be odd num");

@@ -75,9 +75,13 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   splitAttrInfo.push_back(split_dim);
   FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
+  ge::OpDescPtr fuse_desc1 = fused_node1->GetOpDesc();
+  FUSION_PASS_CHECK(fuse_desc1 == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
+                    return PARAM_INVALID);
   int64_t num_split;
-  ge::AttrUtils::GetInt(fused_node1->GetOpDesc(), "num_split", num_split);
-  ge::GeTensorDesc SplitInputTensor = fused_node1->GetOpDesc()->GetInputDesc("x");
+  ge::AttrUtils::GetInt(fuse_desc1, "num_split", num_split);
+  ge::GeTensorDesc SplitInputTensor = fuse_desc1->GetInputDesc("x");
   ge::GeShape input_shape = SplitInputTensor.GetShape();
   if (IsUnknownShape(input_shape.GetDims()) && num_split > 63) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "ZSplitFusionPass cannot be applied for unknown shape.");

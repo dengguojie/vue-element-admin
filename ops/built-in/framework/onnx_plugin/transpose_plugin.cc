@@ -23,8 +23,7 @@
 namespace domi {
 // Replace ge ParseParams function to process graph TransposeD node attrs
 Status ParseParamsTransposeD(const Message *op_src, ge::Operator &op_dest) {
-  const ge::onnx::NodeProto *node =
-      reinterpret_cast<const ge::onnx::NodeProto *>(op_src);
+  const ge::onnx::NodeProto *node = dynamic_cast<const ge::onnx::NodeProto *>(op_src);
   if (node == nullptr) {
     OP_LOGE("TransposeD", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;

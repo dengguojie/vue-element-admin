@@ -167,6 +167,8 @@ Status LayerNormBetaGammaBackpropFusionPass::MatchLayerNormBetaGammaBackpropNode
 Status LayerNormBetaGammaBackpropFusionPass::FusionGraphWithPass(ge::ComputeGraph& graph,
                                                                  LayerNormMatchResult& matchResult) {
   NodePtr lnNodePtr = matchResult.layerNormBetaGammaBackpropPtr;
+  FUSION_PASS_CHECK(lnNodePtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "lnNodePtr is null, fusion failed."),
+                    return PARAM_INVALID);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Begin to fusion pass, the name of LayerNormBetaGammaBackprop is [%s].",
           lnNodePtr->GetName().c_str());
 

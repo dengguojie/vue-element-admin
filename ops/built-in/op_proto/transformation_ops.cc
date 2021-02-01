@@ -261,6 +261,25 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
     }
   }
 
+  // if block_shape and paddings are const node, verfify const sizes
+  if (!IsUnknownRankShape(input_dims) && padding_done && block_done) {
+    if (block_shape.size() < 0 || paddings.size() < 0 || paddings.size() != 2 * block_shape.size()) {
+      OP_LOGE(op.GetName().c_str(),
+              "block_shape and paddings size must be greater than 0 and paddings size must be twice as "
+              "block_shape size, but got bloack_shape size [%d] and paddings size [%d]",
+              block_shape.size(), paddings.size());
+      return GRAPH_FAILED;
+    }
+    if (input_dims.size() <= block_shape.size()) {
+      OP_LOGE(
+          op.GetName().c_str(),
+          "input_shape size must be greater than block_shape size, "
+          "but got input_shape size [%d], block_shape size [%d]",
+          input_dims.size(), block_shape.size());
+      return GRAPH_FAILED;
+    }
+  }
+
   // not dynamic case, only set shape
   if (!IsUnknown(input_dims) && padding_done && block_done) {
     std::vector<int64_t> output_dims;
@@ -500,6 +519,25 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
       crops_done = true;
     } else {
       OP_LOGW(op.GetName().c_str(), "Get Const crops value failed.");
+    }
+  }
+
+  // if block_shape and crops are const node, verfify const sizes
+  if (!IsUnknownRankShape(input_dims) && crops_done && block_done) {
+    if (block_shape.size() < 0 || crops.size() < 0 || crops.size() != 2 * block_shape.size()) {
+      OP_LOGE(op.GetName().c_str(),
+              "block_shape and crops size must be greater than 0 and crops size must be twice as "
+              "block_shape size, but got bloack_shape size [%d] and crops size [%d]",
+              block_shape.size(), crops.size());
+      return GRAPH_FAILED;
+    }
+    if (input_dims.size() <= block_shape.size()) {
+      OP_LOGE(
+          op.GetName().c_str(),
+          "input_shape size must be greater than block_shape size, "
+          "but got input_shape size [%d], block_shape size [%d]",
+          input_dims.size(), block_shape.size());
+      return GRAPH_FAILED;
     }
   }
 
@@ -789,6 +827,18 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
     input_shape.clear();
     for (size_t i = 0; i < perm_list.size(); ++i) {
       input_shape.push_back(-1);
+    }
+  }
+
+  // verify perm_list
+  int64_t perm_value = 0;
+  for (size_t i = 0; i < perm_list.size(); ++i) {
+    perm_value = perm_list[i] < 0 ? perm_list[i] + input_shape.size() : perm_list[i];
+    if (perm_value >= input_shape.size()) {
+      OP_LOGE(op.GetName().c_str(),
+              "The perm value must be less than input shape size, but got perm value %d, input shape size %d",
+              perm_value, input_shape.size());
+      return GRAPH_FAILED;
     }
   }
 
@@ -1169,57 +1219,138 @@ COMMON_INFER_FUNC_REG(Permute, PermuteInferShape);
 
 // ------------------DepthToSpace------------------
 IMPLEMT_VERIFIER(DepthToSpace, DepthToSpaceVerify) {
-  auto x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  int64_t block_size;
-  if (GRAPH_SUCCESS != op.GetAttr("block_size", block_size)) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE("ERROR] GetOpAttr block_size failed!");
+  // verify input shape size
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_dims = input_desc->MutableShape().GetDims();
+  if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
+    OpsAttrValueErrReport(op.GetName(), "input shape size", "greater than or equal to 4",
+                          ConcatString(input_dims.size()));
+    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %d.", input_dims.size());
     return GRAPH_FAILED;
   }
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
-    if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
-      string expected_format_list = ConcatString("NHWC, NCHW, NC1HWC0");
-      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-      OP_LOGE(op.GetName().c_str(), "data_format only support 'NHWC', 'NCHW', 'NC1HWC0'.");
-      return GRAPH_FAILED;
-    }
+  // verify block size
+  int64_t block_size;
+  if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "block_size");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    return GRAPH_FAILED;
   }
-  auto y_depth = x_shape[3] / block_size / block_size;
-  if ((y_depth != (int)y_depth) || (block_size < 2)) {
-    OP_LOGE("[ERROR]the depth_to_space op do not supported the block_size!");
+  if (block_size < 2) {
+    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equal to 2", ConcatString(block_size));
+    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %d.", block_size);
+    return GRAPH_FAILED;
+  }
+  // verify data_format
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "data_format");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
+    string expected_format_list = ConcatString("NHWC, NCHW, NC1HWC0");
+    OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
+    OP_LOGE(op.GetName().c_str(), "The data_format only support 'NHWC', 'NCHW' or 'NC1HWC0'.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(DepthToSpaceInfer) {
-  auto x_shape = op.GetInputDesc(0).GetShape().GetDims();
-  DataType x_dtype = op.GetInputDesc(0).GetDataType();
-  TensorDesc y = op.GetOutputDesc(0);
-  Format format = op.GetInputDesc(0).GetFormat();
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_dims = input_desc->MutableShape().GetDims();
+  auto input_dtype = input_desc->GetDataType();
+  auto input_format = input_desc->GetFormat();
+
+  auto output_desc = op_info->MutableOutputDesc("y");
+  output_desc->SetDataType(input_dtype);
+
+  // get attr block_size
   int64_t block_size;
   if (GRAPH_SUCCESS != op.GetAttr("block_size", block_size)) {
     OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE("ERROR] GetOpAttr block_size failed!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
     return GRAPH_FAILED;
   }
-  std::vector<int64_t> y_shape;
-  if (format == FORMAT_NHWC) {
-    y_shape.push_back(x_shape[0]);
-    y_shape.push_back(x_shape[1] * block_size);
-    y_shape.push_back(x_shape[2] * block_size);
-    y_shape.push_back(x_shape[3] / block_size / block_size);
-  } else if (format == FORMAT_NCHW) {
-    y_shape.push_back(x_shape[0]);
-    y_shape.push_back(x_shape[1] / block_size / block_size);
-    y_shape.push_back(x_shape[2] * block_size);
-    y_shape.push_back(x_shape[3] * block_size);
-  }
-  y.SetShape(Shape(y_shape));
-  y.SetDataType(x_dtype);
-  (void)op.UpdateOutputDesc("y", y);
 
+  // not dynamic case, only set shape
+  if (!IsUnknown(input_dims)) {
+    std::vector<int64_t> output_dims;
+    output_dims.push_back(input_dims[0]);
+    if (input_format == FORMAT_NCHW) {
+      output_dims.push_back(input_dims[1] / block_size / block_size);
+      output_dims.push_back(input_dims[2] * block_size);
+      output_dims.push_back(input_dims[3] * block_size);
+    } else { // without NCHW all other format set as NHWC
+      output_dims.push_back(input_dims[1] * block_size);
+      output_dims.push_back(input_dims[2] * block_size);
+      output_dims.push_back(input_dims[3] / block_size / block_size);
+    }
+    output_desc->SetShape(GeShape(output_dims));
+    return GRAPH_SUCCESS;
+  }
+
+  // dynamic case, input shape is -2, output is -2
+  if (IsUnknownRankShape(input_dims)) {
+    output_desc->SetShape(GeShape(input_dims));
+    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank.");
+    return GRAPH_SUCCESS;
+  }
+
+  // dynamic case, input shape is -1, output is -1
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_dims, input_range);
+
+  // infer output shape and range
+  std::vector<int64_t> output_dims;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  output_dims.push_back(input_dims[0]);
+  output_range.push_back(input_range[0]);
+  int64_t dim;
+  int64_t range_min;
+  int64_t range_max;
+  if (input_format == FORMAT_NCHW) {
+    dim = input_dims[1] == -1 ? -1 : input_dims[1] / block_size / block_size;
+    range_min = input_range[1].first / block_size / block_size;
+    range_min = std::max(int64_t(range_min), int64_t(1));
+    range_max = input_range[1].second == -1 ? -1 : input_range[1].second / block_size / block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[2] == -1 ? -1 : input_dims[2] * block_size;
+    range_min = input_range[2].first * block_size;
+    range_max = input_range[2].second == -1 ? -1 : input_range[2].second * block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[3] == -1 ? -1 : input_dims[3] * block_size;
+    range_min = input_range[3].first * block_size;
+    range_max = input_range[3].second == -1 ? -1 : input_range[3].second * block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+  } else {
+    dim = input_dims[1] == -1 ? -1 : input_dims[1] * block_size;
+    range_min = input_range[1].first * block_size;
+    range_max = input_range[1].second == -1 ? -1 : input_range[1].second * block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[2] == -1 ? -1 : input_dims[2] * block_size;
+    range_min = input_range[2].first * block_size;
+    range_max = input_range[2].second == -1 ? -1 : input_range[2].second * block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[3] == -1 ? -1 : input_dims[3] / block_size / block_size;
+    range_min = input_range[3].first / block_size / block_size;
+    range_min = std::max(int64_t(range_min), int64_t(1));
+    range_max = input_range[3].second == -1 ? -1 : input_range[3].second / block_size / block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+  }
+
+  output_desc->SetShape(GeShape(output_dims));
+  output_desc->SetShapeRange(output_range);
   return GRAPH_SUCCESS;
 }
 
@@ -1229,66 +1360,140 @@ VERIFY_FUNC_REG(DepthToSpace, DepthToSpaceVerify);
 
 // ----------------SpaceToDepth Op Start-------------------
 IMPLEMT_VERIFIER(SpaceToDepth, SpaceToDepthVerify) {
-  int64_t block_size;
-  if (GRAPH_SUCCESS != op.GetAttr("block_size", block_size)) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE("[ERROR] GetOpAttr block_size failed!");
+  // verify input shape size
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_dims = input_desc->MutableShape().GetDims();
+  if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
+    OpsAttrValueErrReport(op.GetName(), "input shape size", "greater than or equal to 4",
+                          ConcatString(input_dims.size()));
+    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %d.", input_dims.size());
     return GRAPH_FAILED;
   }
-  if (block_size <= 1) {
-    OpsAttrValueErrReport(op.GetName(), "block_size", ">1", ConcatString(block_size));
-    OP_LOGE("[ERROR]the space_to_depth op block_size need >1!");
+  // verify block size
+  int64_t block_size;
+  if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "block_size");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    return GRAPH_FAILED;
+  }
+  if (block_size < 2) {
+    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equal to 2", ConcatString(block_size));
+    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %d.", block_size);
+    return GRAPH_FAILED;
+  }
+  // verify data_format
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "data_format");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
+    string expected_format_list = ConcatString("NHWC, NCHW, NC1HWC0");
+    OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
+    OP_LOGE(op.GetName().c_str(), "The data_format only support 'NHWC', 'NCHW' or 'NC1HWC0'.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(SpaceToDepthInferShape) {
-  std::string data_format;
-  if (op.GetAttr("data_format", data_format) == GRAPH_SUCCESS) {
-    if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
-      string expected_format_list = ConcatString("NHWC, NCHW, NC1HWC0");
-      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-      OP_LOGE(op.GetName().c_str(), "data_format only support 'NHWC', 'NCHW', 'NC1HWC0'.");
-      return GRAPH_FAILED;
-    }
-  }
-  std::vector<int64_t> x_shape = op.GetInputDesc("x").GetShape().GetDims();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  Format format = op.GetInputDesc("x").GetFormat();
+  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_dims = input_desc->MutableShape().GetDims();
+  auto input_dtype = input_desc->GetDataType();
+  auto input_format = input_desc->GetFormat();
+
+  auto output_desc = op_info->MutableOutputDesc("y");
+  output_desc->SetDataType(input_dtype);
+
+  // get attr block_size
   int64_t block_size;
   if (GRAPH_SUCCESS != op.GetAttr("block_size", block_size)) {
     OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE("ERROR] GetOpAttr block_size failed!");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
     return GRAPH_FAILED;
   }
-  if (block_size < 2) {
-    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equals to 2", ConcatString(block_size));
-    OP_LOGE(op.GetName().c_str(), "block_size need greater than or equals to 2");
-    return GRAPH_FAILED;
+
+  // not dynamic case, only set shape
+  if (!IsUnknown(input_dims)) {
+    std::vector<int64_t> output_dims;
+    output_dims.push_back(input_dims[0]);
+    if (input_format == FORMAT_NCHW) {
+      output_dims.push_back(input_dims[1] * block_size * block_size);
+      output_dims.push_back(input_dims[2] / block_size);
+      output_dims.push_back(input_dims[3] / block_size);
+    } else { // without NCHW all other format set as NHWC
+      output_dims.push_back(input_dims[1] / block_size);
+      output_dims.push_back(input_dims[2] / block_size);
+      output_dims.push_back(input_dims[3] * block_size * block_size);
+    }
+    output_desc->SetShape(GeShape(output_dims));
+    return GRAPH_SUCCESS;
   }
-  std::vector<int64_t> y_shape;
-  if (x_shape.size() < 4) {
-    OpsAttrValueErrReport(op.GetName(), "x'shape size", "greater than or equals to 4", ConcatString(x_shape.size()));
-    OP_LOGE(op.GetName().c_str(), "Input shape size must >= 4, but got %d", x_shape.size());
-    return GRAPH_FAILED;
+
+  // dynamic case, input shape is -2, output is -2
+  if (IsUnknownRankShape(input_dims)) {
+    output_desc->SetShape(GeShape(input_dims));
+    OP_LOGW(op.GetName().c_str(), "input shape is UnknownRank, set output is UnknownRank.");
+    return GRAPH_SUCCESS;
   }
-  if (format == FORMAT_NCHW) {
-    y_shape.push_back(x_shape[0]);
-    y_shape.push_back(x_shape[1] * block_size * block_size);
-    y_shape.push_back(x_shape[2] / block_size);
-    y_shape.push_back(x_shape[3] / block_size);
-  } else {  // without NCHW all other formats set as NHWC
-    y_shape.push_back(x_shape[0]);
-    y_shape.push_back(x_shape[1] / block_size);
-    y_shape.push_back(x_shape[2] / block_size);
-    y_shape.push_back(x_shape[3] * block_size * block_size);
+
+  // dynamic case, input shape is -1, output is -1
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  input_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(input_dims, input_range);
+
+  // infer output shape and range
+  std::vector<int64_t> output_dims;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  output_dims.push_back(input_dims[0]);
+  output_range.push_back(input_range[0]);
+  int64_t dim;
+  int64_t range_min;
+  int64_t range_max;
+  if (input_format == FORMAT_NCHW) {
+    dim = input_dims[1] == -1 ? -1 : input_dims[1] * block_size * block_size;
+    range_min = input_range[1].first * block_size * block_size;
+    range_max = input_range[1].second == -1 ? -1 : input_range[1].second * block_size * block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[2] == -1 ? -1 : input_dims[2] / block_size;
+    range_min = input_range[2].first / block_size;
+    range_min = std::max(int64_t(range_min), int64_t(1));
+    range_max = input_range[2].second == -1 ? -1 : input_range[2].second / block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[3] == -1 ? -1 : input_dims[3] / block_size;
+    range_min = input_range[3].first / block_size;
+    range_min = std::max(int64_t(range_min), int64_t(1));
+    range_max = input_range[3].second == -1 ? -1 : input_range[3].second / block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+  } else {
+    dim = input_dims[1] == -1 ? -1 : input_dims[1] / block_size;
+    range_min = input_range[1].first / block_size;
+    range_min = std::max(int64_t(range_min), int64_t(1));
+    range_max = input_range[1].second == -1 ? -1 : input_range[1].second / block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[2] == -1 ? -1 : input_dims[2] / block_size;
+    range_min = input_range[2].first / block_size;
+    range_min = std::max(int64_t(range_min), int64_t(1));
+    range_max = input_range[2].second == -1 ? -1 : input_range[2].second / block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
+    dim = input_dims[3] == -1 ? -1 : input_dims[3] * block_size * block_size;
+    range_min = input_range[3].first * block_size * block_size;
+    range_max = input_range[3].second == -1 ? -1 : input_range[3].second * block_size * block_size;
+    output_dims.push_back(dim);
+    output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
   }
-  TensorDesc output = op.GetOutputDesc("y");
-  Shape output_shape(y_shape);
-  output.SetShape(output_shape);
-  output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", output);
+
+  output_desc->SetShape(GeShape(output_dims));
+  output_desc->SetShapeRange(output_range);
   return GRAPH_SUCCESS;
 }
 
@@ -1330,6 +1535,12 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
     } else {
       OP_LOGW(op.GetName().c_str(), "Get Const paddings value failed.");
     }
+  }
+
+  // if paddings are const node, verfify const sizes
+  if (padding_done && paddings.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "The paddings size must be equal to 4, but got %d.", paddings.size());
+    return GRAPH_FAILED;
   }
 
   // not dynamic case, only set shape
@@ -1385,6 +1596,7 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
     dim = (input_dims[2] == -1 || !padding_done) ? -1 : (input_dims[2] + paddings[0] + paddings[1]) / block_size;
     range_min = !padding_done ? input_range[2].first / block_size
                               : (input_range[2].first + paddings[0] + paddings[1]) / block_size;
+    range_min = std::max(int64_t(range_min), int64_t(1));
     range_max = (input_range[2].second == -1 || !padding_done)
                     ? -1
                     : (input_range[2].second + paddings[0] + paddings[1]) / block_size;
@@ -1428,18 +1640,27 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
 }
 
 IMPLEMT_VERIFIER(SpaceToBatch, SpaceToBatchVerify) {
-  auto node = NodeUtils::GetNodeFromOperator(op);
+  // check input shape size
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
-  auto input_format = input_desc->GetFormat();
-
-  if (!IsUnknownRankShape(input_dims)) {
-    // check input shape
-    if (input_dims.size() < 4) {
-      OP_LOGE(op.GetName().c_str(), "input_shape size must be greater and equal to four!");
-      return GRAPH_FAILED;
-    }
+  if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
+    OpsAttrValueErrReport(op.GetName(), "input shape size", "greater than or equal to 4",
+                          ConcatString(input_dims.size()));
+    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %d.", input_dims.size());
+    return GRAPH_FAILED;
+  }
+  // check block size
+  int64_t block_size;
+  if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "block_size");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    return GRAPH_FAILED;
+  }
+  if (block_size < 2) {
+    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equal to 2", ConcatString(block_size));
+    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %d.", block_size);
+    return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
@@ -1589,6 +1810,12 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
     }
   }
 
+  // if crops are const node, verfify const sizes
+  if (crops_done && crops.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "The crops size must be equal to 4, but got %d.", crops.size());
+    return GRAPH_FAILED;
+  }
+
   // not dynamic case, only set shape
   if (!IsUnknown(input_dims) && crops_done) {
     std::vector<int64_t> output_dims;
@@ -1658,7 +1885,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
     range_min = !crops_done ? 1 : input_range[1].first * block_size - crops[0] - crops[1];
     range_min = std::max(int64_t(range_min), int64_t(1));
     range_max =
-        (input_range[2].second == -1 || !crops_done) ? -1 : input_range[1].second * block_size - crops[0] - crops[1];
+        (input_range[1].second == -1 || !crops_done) ? -1 : input_range[1].second * block_size - crops[0] - crops[1];
     output_dims.push_back(dim);
     output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
     dim = (input_dims[2] == -1 || !crops_done) ? -1 : input_dims[2] * block_size - crops[2] - crops[3];
@@ -1678,18 +1905,27 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
 }
 
 IMPLEMT_VERIFIER(BatchToSpace, BatchToSpaceVerify) {
-  auto node = NodeUtils::GetNodeFromOperator(op);
+  // check input shape size
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
-  auto input_format = input_desc->GetFormat();
-
-  if (!IsUnknownRankShape(input_dims)) {
-    // check input shape
-    if (input_dims.size() < 4) {
-      OP_LOGE(op.GetName().c_str(), "input_shape size must be greater and equal to four!");
-      return GRAPH_FAILED;
-    }
+  if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
+    OpsAttrValueErrReport(op.GetName(), "input shape size", "greater than or equal to 4",
+                          ConcatString(input_dims.size()));
+    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %d.", input_dims.size());
+    return GRAPH_FAILED;
+  }
+  // check block size
+  int64_t block_size;
+  if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "block_size");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    return GRAPH_FAILED;
+  }
+  if (block_size < 2) {
+    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equal to 2", ConcatString(block_size));
+    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %d.", block_size);
+    return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
@@ -1782,7 +2018,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceDInferShape) {
     dim = input_dims[1] == -1 ? -1 : input_dims[1] * block_size - crops[0] - crops[1];
     range_min = input_range[1].first * block_size - crops[0] - crops[1];
     range_min = std::max(int64_t(range_min), int64_t(1));
-    range_max = input_range[2].second == -1 ? -1 : input_range[1].second * block_size - crops[0] - crops[1];
+    range_max = input_range[1].second == -1 ? -1 : input_range[1].second * block_size - crops[0] - crops[1];
     output_dims.push_back(dim);
     output_range.push_back(std::pair<int64_t, int64_t>(range_min, range_max));
     dim = input_dims[2] == -1 ? -1 : input_dims[2] * block_size - crops[2] - crops[3];

@@ -37,6 +37,8 @@ bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     std::vector<int64_t> compile_shape = op_info["_compile_shape"].get<std::vector<int64_t>>();
     std::vector<int64_t> multiples_value;
 
+    CHECK(op_paras.inputs.size() >= 2 , "op [%s] : op_paras.inputs's size should be >= 2", op_type.c_str());
+    CHECK(!op_paras.inputs[1].tensor.empty(), "op [%s] : op_paras.inputs[1].tensor cannot be empty", op_type.c_str());
     std::string multiples_dtype = op_paras.inputs[1].tensor[0].dtype;
     auto pointer = std::get<0>(op_paras.const_inputs.at("multiples"));
     auto size = std::get<1>(op_paras.const_inputs.at("multiples"));

@@ -11,19 +11,20 @@
 using namespace ge;
 using namespace op;
 
-class argmaxv2_fusion_pass_test : public testing::Test {
+class argmin_fusion_pass_test : public testing::Test {
 protected:
   static void SetUpTestCase() {
-    std::cout << "tile_fusion_pass SetUp" << std::endl;
+    std::cout << "argmin_fusion_pass_test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "tile_fusion_pass TearDown" << std::endl;
+    std::cout << "argmin_fusion_pass_test TearDown" << std::endl;
   }
 };
 
-TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_1) {
-  ge::Graph graph("argmaxv2_fusion_pass_test_1");
+// input dimension is const
+TEST_F(argmin_fusion_pass_test, argmin_fusion_pass_test_1) {
+  ge::Graph graph("argmin_fusion_pass_test_1");
   auto shape_data = vector<int64_t>({-1, -1, -1, 5});
   TensorDesc desc_data(ge::Shape(shape_data), FORMAT_NCHW, DT_FLOAT16);
   std::vector<std::pair<int64_t,int64_t>> range_x1 = {{1, -1}, {2, 3}, {2, 3}, {5, 5}};
@@ -39,14 +40,14 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_1) {
   uint32_t *multiples_tensor_value = new uint32_t[4]{2};
   multiples_tensor.SetData((uint8_t *) multiples_tensor_value, sizeof(uint32_t));
   
-  auto tile_multiples = op::Const("multiples")
+  auto argmin_multiples = op::Const("multiples")
           .set_attr_value(multiples_tensor);
-  // tiled op
-  auto tile = op::ArgMaxV2("ArgMaxV2");
-  tile.set_input_x(data);
-  tile.set_input_dimension(tile_multiples);
-  std::vector<Operator> inputs{data, tile_multiples};
-  std::vector<Operator> outputs{tile};
+  // argmin op
+  auto argmin = op::ArgMin("ArgMin");
+  argmin.set_input_x(data);
+  argmin.set_input_dimension(argmin_multiples);
+  std::vector<Operator> inputs{data, argmin_multiples};
+  std::vector<Operator> outputs{argmin};
   graph.SetInputs(inputs).SetOutputs(outputs);
   
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -57,7 +58,7 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_1) {
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ArgMaxV2") {
+    if (node->GetType() == "ArgMin") {
       findD = true;
       auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
       std::vector<int64_t> dims = output_desc.GetShape().GetDims();
@@ -72,8 +73,8 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_1) {
 
 }
 
-TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_2) {
-  ge::Graph graph("argmaxv2_fusion_pass_test_1");
+TEST_F(argmin_fusion_pass_test, argmin_fusion_pass_test_2) {
+  ge::Graph graph("argmin_fusion_pass_test_2");
   auto shape_data = vector<int64_t>({2, 2, 2, 2});
   TensorDesc desc_data(ge::Shape(shape_data), FORMAT_NCHW, DT_FLOAT16);
 
@@ -88,14 +89,14 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_2) {
   uint32_t *multiples_tensor_value = new uint32_t[4]{2};
   multiples_tensor.SetData((uint8_t *) multiples_tensor_value, sizeof(uint32_t));
 
-  auto tile_multiples = op::Const("multiples")
+  auto argmin_multiples = op::Const("multiples")
           .set_attr_value(multiples_tensor);
-  // tiled op
-  auto tile = op::ArgMaxV2("ArgMaxV2");
-  tile.set_input_x(data);
-  tile.set_input_dimension(tile_multiples);
-  std::vector<Operator> inputs{data, tile_multiples};
-  std::vector<Operator> outputs{tile};
+  // argmin op
+  auto argmin = op::ArgMin("ArgMin");
+  argmin.set_input_x(data);
+  argmin.set_input_dimension(argmin_multiples);
+  std::vector<Operator> inputs{data, argmin_multiples};
+  std::vector<Operator> outputs{argmin};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -106,7 +107,7 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_2) {
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ArgMaxV2") {
+    if (node->GetType() == "ArgMin") {
       findD = true;
       auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
       std::vector<int64_t> dims = output_desc.GetShape().GetDims();
@@ -121,8 +122,8 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_2) {
 
 }
 
-TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_3) {
-  ge::Graph graph("argmaxv2_fusion_pass_test_1");
+TEST_F(argmin_fusion_pass_test, argmin_fusion_pass_test_3) {
+  ge::Graph graph("argmin_fusion_pass_test_3");
   auto shape_data = vector<int64_t>({-2});
   TensorDesc desc_data(ge::Shape(shape_data), FORMAT_NCHW, DT_FLOAT16);
   auto data = op::Data("data");
@@ -136,14 +137,14 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_3) {
   uint32_t *multiples_tensor_value = new uint32_t[4]{2};
   multiples_tensor.SetData((uint8_t *) multiples_tensor_value, sizeof(uint32_t));
 
-  auto tile_multiples = op::Const("multiples")
+  auto argmin_multiples = op::Const("multiples")
           .set_attr_value(multiples_tensor);
-  // tiled op
-  auto tile = op::ArgMaxV2("ArgMaxV2");
-  tile.set_input_x(data);
-  tile.set_input_dimension(tile_multiples);
-  std::vector<Operator> inputs{data, tile_multiples};
-  std::vector<Operator> outputs{tile};
+  // argmin op
+  auto argmin = op::ArgMin("ArgMin");
+  argmin.set_input_x(data);
+  argmin.set_input_dimension(argmin_multiples);
+  std::vector<Operator> inputs{data, argmin_multiples};
+  std::vector<Operator> outputs{argmin};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -153,7 +154,7 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_3) {
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ArgMaxV2") {
+    if (node->GetType() == "ArgMin") {
       findD = true;
       auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
       std::vector<int64_t> dims = output_desc.GetShape().GetDims();
@@ -164,8 +165,8 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_3) {
   delete[] multiples_tensor_value;
 }
 
-TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_4) {
-  ge::Graph graph("argmaxv2_fusion_pass_test_1");
+TEST_F(argmin_fusion_pass_test, argmin_fusion_pass_test_4) {
+  ge::Graph graph("argmin_fusion_pass_test_4");
   auto shape_data = vector<int64_t>({-1});
   TensorDesc desc_data(ge::Shape(shape_data), FORMAT_NCHW, DT_FLOAT16);
   std::vector<std::pair<int64_t,int64_t>> range_x1 = {{1, 9000}};
@@ -181,14 +182,14 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_4) {
   uint32_t *multiples_tensor_value = new uint32_t[4]{0};
   multiples_tensor.SetData((uint8_t *) multiples_tensor_value, sizeof(uint32_t));
 
-  auto tile_multiples = op::Const("multiples")
+  auto argmin_multiples = op::Const("multiples")
           .set_attr_value(multiples_tensor);
-  // tiled op
-  auto tile = op::ArgMaxV2("ArgMaxV2");
-  tile.set_input_x(data);
-  tile.set_input_dimension(tile_multiples);
-  std::vector<Operator> inputs{data, tile_multiples};
-  std::vector<Operator> outputs{tile};
+  // argmin op
+  auto argmin = op::ArgMin("ArgMin");
+  argmin.set_input_x(data);
+  argmin.set_input_dimension(argmin_multiples);
+  std::vector<Operator> inputs{data, argmin_multiples};
+  std::vector<Operator> outputs{argmin};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -198,7 +199,7 @@ TEST_F(argmaxv2_fusion_pass_test, argmaxv2_fusion_pass_test_4) {
 
   bool findD = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ArgMaxV2") {
+    if (node->GetType() == "ArgMin") {
       findD = true;
       auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
       std::vector<int64_t> dims = output_desc.GetShape().GetDims();

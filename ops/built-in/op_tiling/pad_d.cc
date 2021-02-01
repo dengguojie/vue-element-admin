@@ -19,7 +19,7 @@
  * \brief
  */
 #include "pad_common.h"
-
+#include "../op_proto/util/error_util.h"
 namespace optiling {
 
 bool GetPadDCompileParams(const nlohmann::json& opCompileInfo, std::vector<std::vector<int64_t>>& padding, int& coreNum,
@@ -55,6 +55,20 @@ bool PadDTiling(const std::string& opType, const TeOpParas& opParas, const nlohm
 
   // Get inShape, outShape
   padCommon pad;
+  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
+    ge::OpsOneInputShapeErrReport(opType.c_str(), "x",
+                                  "The input may be empty");
+    OP_LOGE(opType.c_str(), "op [PadDTiling] : input shape error");
+    return false;
+  }
+
+  if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
+    ge::OpsOneOutputShapeErrReport(opType.c_str(), "y",
+                                   "The output may be empty");
+    OP_LOGE(opType.c_str(), "op [PadDTiling] : output shape error");
+    return false;
+  }
+
   const std::vector<int64_t>& inShape = opParas.inputs[0].tensor[0].shape;
   const std::vector<int64_t>& outShape = opParas.outputs[0].tensor[0].shape;
   const std::string dtype = opParas.inputs[0].tensor[0].dtype;

@@ -278,6 +278,13 @@ bool CheckScatterNdTensorShape(const std::string& opType, std::vector<int64_t> i
     return false;
   }
 
+  if (indicesDims - 1 + outputDims - indicesLastDim != updatesDims) {
+    ge::OpsOneInputShapeErrReport("ScatterNd", "updates",
+                                  "output's shape and updates'shape are not equal in some dimensions");
+    OP_LOGE(opType.c_str(), "op ScatterNdTiling : update's shape and output's shape must be same in some dimension");
+    return false;
+  }
+
   for (int64_t i = 0; i < indicesDims - 1; i++) {
     if (indicesShape[i] != updatesShape[i]) {
       ge::OpsOneInputShapeErrReport("ScatterNd", "indices",
@@ -286,13 +293,6 @@ bool CheckScatterNdTensorShape(const std::string& opType, std::vector<int64_t> i
               "op ScatterNdTiling : indices's shape and update's shape must be same in some dimensions");
       return false;
     }
-  }
-
-  if (indicesDims - 1 + outputDims - indicesLastDim != updatesDims) {
-    ge::OpsOneInputShapeErrReport("ScatterNd", "updates",
-                                  "output's shape and updates'shape are not equal in some dimensions");
-    OP_LOGE(opType.c_str(), "op ScatterNdTiling : update's shape and output's shape must be same in some dimension");
-    return false;
   }
 
   for (int64_t i = 0; i < updatesDims - indicesDims + 1; i++) {

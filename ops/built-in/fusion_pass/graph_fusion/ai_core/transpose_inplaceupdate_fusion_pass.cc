@@ -94,6 +94,11 @@ Status TransposeInplaceUpdateFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
   std::vector<int64_t> inplace_dims1 = inplace0_desc->GetInputDesc(1).GetShape().GetDims();
   std::vector<int64_t> inplace_dims2 = inplace0_desc->GetInputDesc(2).GetShape().GetDims();
 
+  if (inplace_dims0.size() < 4) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the first inplace shape size should not be less than 4, not changed.");
+    return NOT_CHANGED;
+  }
+
   for (size_t i = 1; i <= 3; i++) {
     auto dim = inplace_dims0[i];
     if (PatternFusionUtil::IsUnknownShape(dim)) {

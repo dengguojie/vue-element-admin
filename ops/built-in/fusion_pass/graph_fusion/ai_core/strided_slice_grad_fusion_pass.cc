@@ -71,11 +71,15 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
 
   // PatternFusionUtil patternFusionUtil;
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "GetNodeFromMapping failed, fusion failed."),
+                    return PARAM_INVALID);
   // Check StridedSliceGrad support dynamic
   bool unknownShape = false;
   if (ge::NodeUtils::GetNodeUnknownShapeStatus(*(fusedNode.get()), unknownShape) == ge::GRAPH_SUCCESS && unknownShape) {
     OP_LOGI("StridedSliceGrad", "unknownShape is True.");
     ge::OpDescPtr org_desc = fusedNode->GetOpDesc();
+    FUSION_PASS_CHECK(org_desc == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
+                      return NOT_CHANGED);
     FUSION_PASS_CHECK(CheckOpSupported(org_desc), OP_LOGI("StridedSliceGrad", "Op StridedSliceGrad Supported Dynamic."),
                       return NOT_CHANGED);
   }

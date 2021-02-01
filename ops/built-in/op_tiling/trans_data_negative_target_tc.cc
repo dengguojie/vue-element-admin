@@ -36,7 +36,7 @@ void GenNewShape(const std::vector<int64_t>& tempInShape, const std::vector<int6
     for (auto i : tempInShape) {
         inShapeNew.push_back(i);
     }
-      
+
     for (auto j : tempOutShape) {
         outShapeNew.push_back(j);
     }
@@ -44,7 +44,8 @@ void GenNewShape(const std::vector<int64_t>& tempInShape, const std::vector<int6
 
 bool RenewInputOutputShapeFormat(const std::vector<int64_t>& inShape, const std::vector<int64_t>& outShape,
                                  std::string& inFormat, std::string& outFormat, std::vector<int64_t>& inShapeNew,
-								 std::vector<int64_t>& outShapeNew, std::string& inFormatNew, std::string& outFormatNew) {
+                                 std::vector<int64_t>& outShapeNew, std::string& inFormatNew,
+                                 std::string& outFormatNew) {
     int64_t axisN = 1;
     int64_t axisC1 = 1;
     int64_t axisH = 1;
@@ -58,8 +59,12 @@ bool RenewInputOutputShapeFormat(const std::vector<int64_t>& inShape, const std:
 
     transform(inFormat.begin(), inFormat.end(), inFormat.begin(), ::toupper);
     transform(outFormat.begin(), outFormat.end(), outFormat.begin(), ::toupper);
-    
+
     if (inFormat == "NC1HWC0" && outFormat == "NHWC") {
+        if (inShape.size() != 5 || outShape.size() != 4) {
+            OP_LOGE("trans_data", "The input shape dimension size should be 5 and output shape dimension should be 4!");
+            return false;
+        }
         inFormatNew = "NCHT";
         outFormatNew = "NHC";
         axisN = inShape[0];
@@ -69,20 +74,24 @@ bool RenewInputOutputShapeFormat(const std::vector<int64_t>& inShape, const std:
         axisC0 = inShape[4];
         axisC = outShape[outShape.size() - 1];
         axisHW = axisH * axisW;
-        
+
         int64_t tempInArray[4] = {axisN, axisC1, axisHW, axisC0};
         int64_t tempOutArray[3] = {axisN, axisHW, axisC};
         std::vector<int64_t> tempInShape(tempInArray, tempInArray+4);
         std::vector<int64_t> tempOutShape(tempOutArray, tempOutArray+3);
         GenNewShape(tempInShape, tempOutShape, inShapeNew, outShapeNew);
-        
+
         return true;
     }
-    
+
     if (inFormat == "FRACTAL_NZ" && outFormat == "ND") {
+        if (outShape.size() == 0) {
+            OP_LOGE("trans_data", "The input shape dimension size cannot be 0!");
+            return false;
+        }
         inFormatNew = "HCNT";
         outFormatNew = "HNC";
-        
+
         if (outShape.size() == 1) {
           axisH = 1;
           axisN = 1;
@@ -102,20 +111,24 @@ bool RenewInputOutputShapeFormat(const std::vector<int64_t>& inShape, const std:
         axisC0 = inShape[inShape.size() - 1];
         axisC1 = GetCeilDiv(axisC, axisC0);
         axisNo = GetCeilDiv(axisN, NI_16);
-        
+
         int64_t tempInArray[4] = {axisH, axisC1, axisNo * NI_16, axisC0};
         int64_t tempOutArray[3] = {axisH, axisN, axisC};
         std::vector<int64_t> tempInShape(tempInArray, tempInArray+4);
         std::vector<int64_t> tempOutShape(tempOutArray, tempOutArray+3);
         GenNewShape(tempInShape, tempOutShape, inShapeNew, outShapeNew);
-        
+
         return true;
     }
-    
+
     if (inFormat == "FRACTAL_Z_3D" && outFormat == "NDHWC") {
         inFormatNew = "DCHNT";
         outFormatNew = "NDHC";
-        
+
+        if (inShape.size() != 4 || outShape.size() != 5) {
+            OP_LOGE("trans_data", "The input or output shape dimension size is not correct!");
+            return false;
+        }
         axisDC1HW = inShape[0];
         axisNo = inShape[1];
         axisC0 = inShape[3];
@@ -126,13 +139,13 @@ bool RenewInputOutputShapeFormat(const std::vector<int64_t>& inShape, const std:
         axisC = outShape[4];
         axisHW = axisH * axisW;
         axisC1 = axisDC1HW / (axisD * axisHW);
-        
+
         int64_t tempInArray[5] = {axisD, axisC1, axisHW, axisNo * NI_16, axisC0};
         int64_t tempOutArray[4] = {axisN, axisD, axisHW, axisC};
         std::vector<int64_t> tempInShape(tempInArray, tempInArray+5);
         std::vector<int64_t> tempOutShape(tempOutArray, tempOutArray+4);
         GenNewShape(tempInShape, tempOutShape, inShapeNew, outShapeNew);
-        
+
         return true;
     }
 }
@@ -149,22 +162,22 @@ bool GetMcInfoNegative201(const std::vector<int64_t>& r2ndArgs, const std::vecto
     int64_t c1LpStepOut = c1Args[2];
     int64_t c1Size = c1Args[3];
     int64_t c1LpUnit = c1Args[4];
-    
+
     int64_t tmpFullLpCntR2nd = (r2ndLpCnt / coreNum > 0) ? coreNum : 0;
     int64_t reminderLpCntR2nd = r2ndLpCnt % coreNum;
     tmpFullLpCntR2nd = (reminderLpCntR2nd == 0) ? tmpFullLpCntR2nd + coreNum : tmpFullLpCntR2nd;
     int64_t fullLpCntR2nd = tmpFullLpCntR2nd + reminderLpCntR2nd;
-    
+
     int64_t tmpFullLpCntC1 = (c1LpCnt / coreNum > 0) ? coreNum : 0;
     int64_t reminderLpCntC1 = c1LpCnt % coreNum;
     tmpFullLpCntC1 = (reminderLpCntC1 == 0) ? tmpFullLpCntC1 + coreNum : tmpFullLpCntC1;
     int64_t fullLpCntC1 = tmpFullLpCntC1 + reminderLpCntC1;
-    
+
     int64_t tmpFullLpCntLeft = (leftLpCnt / coreNum > 0) ? coreNum : 0;
     int64_t reminderLpCntLeft = leftLpCnt % coreNum;
     tmpFullLpCntLeft = (reminderLpCntLeft == 0) ? tmpFullLpCntLeft + coreNum : tmpFullLpCntLeft;
     int64_t fullLpCntLeft = tmpFullLpCntLeft + reminderLpCntLeft;
-    
+
     if (fullLpCntLeft >= fullLpCntC1 && fullLpCntLeft >= fullLpCntR2nd) {
         int64_t usedCoreCnt = GetCeilDiv(leftLpCnt, GetCeilDiv(leftLpCnt, coreNum));
         int64_t nlcLeftLpCnt = GetCeilDiv(leftLpCnt, usedCoreCnt);
@@ -183,10 +196,10 @@ bool GetMcInfoNegative201(const std::vector<int64_t>& r2ndArgs, const std::vecto
         mcParams.push_back(lcLeftLpCnt);  // lcLeftLpCnt
         mcParams.push_back(r2ndSize % r2ndLpUnit);  // lcR2ndLeft
         mcParams.push_back(c1Size % c1LpUnit);  // lcC1Left
-        
+
         return true;
   }
-  
+
     if (fullLpCntC1 >= fullLpCntLeft && fullLpCntC1 >= fullLpCntR2nd) {
         int64_t usedCoreCnt = GetCeilDiv(c1LpCnt, GetCeilDiv(c1LpCnt, coreNum));
         int64_t nlcC1LpCnt = GetCeilDiv(c1LpCnt, usedCoreCnt);
@@ -205,10 +218,10 @@ bool GetMcInfoNegative201(const std::vector<int64_t>& r2ndArgs, const std::vecto
         mcParams.push_back(leftLpCnt);  // lcLeftLpCnt
         mcParams.push_back(r2ndSize % r2ndLpUnit);  // lcR2ndLeft
         mcParams.push_back(c1Size % c1LpUnit);  // lcC1Left
-        
+ 
         return true;
     }
-    
+
     if (fullLpCntR2nd >= fullLpCntLeft && fullLpCntR2nd >= fullLpCntC1) {
         int64_t usedCoreCnt = GetCeilDiv(r2ndLpCnt, GetCeilDiv(r2ndLpCnt, coreNum));
         int64_t nlcR2ndLpCnt = GetCeilDiv(r2ndLpCnt, usedCoreCnt);
@@ -227,7 +240,7 @@ bool GetMcInfoNegative201(const std::vector<int64_t>& r2ndArgs, const std::vecto
         mcParams.push_back(leftLpCnt);  // lcLeftLpCnt
         mcParams.push_back(r2ndSize % r2ndLpUnit);  // lcR2ndLeft
         mcParams.push_back(c1Size % c1LpUnit);  // lcC1Left
-        
+ 
         return true;
     }
 }
@@ -265,7 +278,7 @@ bool TillingNegativeMode201(std::vector<int64_t>& inShape, std::vector<int64_t>&
     int64_t halfUbSize = ubSize / 2;
     params.tilingMode = 201;
     params.ubOffset = halfUbSize / blockElemCnt * blockElemCnt;
-    
+
     // axis -2 tiling parameters
     int32_t srcR2ndInDstPos = dstFormatNew.find(*(srcFormatNew.end() - 2));
     int64_t axisSrcR2ndSize = outShapeNew[srcR2ndInDstPos];
@@ -273,7 +286,7 @@ bool TillingNegativeMode201(std::vector<int64_t>& inShape, std::vector<int64_t>&
     int64_t srcR2ndLpCnt = GetCeilDiv(axisSrcR2ndSize, params.srcR2ndLpUnit);
     params.srcR2ndLpStepIn = params.srcR2ndLpUnit * c0Len;
     params.srcR2ndLpStepOut = GetShapeSize(outShapeNew, srcR2ndInDstPos + 1);
-    
+
     // axis c1 tiling parameters
     int32_t srcC1Pos = srcFormatNew.find('C');
     int64_t axisSrcC1Size = inShapeNew[srcC1Pos];
@@ -285,7 +298,7 @@ bool TillingNegativeMode201(std::vector<int64_t>& inShape, std::vector<int64_t>&
     params.srcC1StepIn = GetShapeSize(inShapeNew, srcC1Pos + 1);
     params.perLineDstCCount = (axisSrcC1Size < params.srcC1LpUnit) ? params.srcC1LpUnit / srcC1Left : 1;
     params.cModC0 = outShapeNew[dstFormatNew.find('C')] % c0Len;
-    
+
     // axis left tiling parameters
     std::string tmpSrcFormat = srcFormatNew;
     std::string tmpDstFormat = dstFormatNew;
@@ -380,3 +393,4 @@ void PrintTilingMode201Params(const std::string& opType, const TransDataMode201P
 }
 
 }  // namespace optiling
+

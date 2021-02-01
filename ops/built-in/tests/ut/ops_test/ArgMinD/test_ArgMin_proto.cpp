@@ -10,20 +10,19 @@
 using namespace ge;
 using namespace op;
 
-class arg_max_infer_test : public testing::Test {
+class arg_min_infer_test : public testing::Test {
 protected:
   static void SetUpTestCase() {
-    std::cout << "arg_max_infer_test SetUp" << std::endl;
+    std::cout << "arg_min_infer_test SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "arg_max_infer_test TearDown" << std::endl;
+    std::cout << "arg_min_infer_test TearDown" << std::endl;
   }
 };
 
-
 // input dimension is not const
-TEST_F(arg_max_infer_test, arg_max_infer_test_1) {
+TEST_F(arg_min_infer_test, arg_min_infer_test_1) {
   // set input info
   auto shape_x1 = vector<int64_t>({-1, -1, -1, 5});
   std::vector<std::pair<int64_t,int64_t>> range_x1 = {{1, -1}, {2, 3}, {2, 3}, {5, 5}};
@@ -41,7 +40,7 @@ TEST_F(arg_max_infer_test, arg_max_infer_test_1) {
   auto tensor_desc_x2 = create_desc_shape_range(shape_x2, ge::DT_INT32, test_format,
                                                 shape_x2, test_format, range_x2);
   // new op and do infershape
-  ge::op::ArgMaxV2 op;
+  ge::op::ArgMin op;
   op.UpdateInputDesc("x", tensor_desc_x1);
   op.UpdateInputDesc("dimension", tensor_desc_x2);
   auto ret = op.InferShapeAndType();

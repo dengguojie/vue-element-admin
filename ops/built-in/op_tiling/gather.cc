@@ -22,10 +22,10 @@
 
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
-#include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -260,7 +260,7 @@ bool GetGatherCompileParams(const std::string& opType, const nlohmann::json& opC
 }
 
 // compute tiling params for tiling_mode 1&4&13
-void GatherBlockLessForIndicesTiling(GatherTilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
+bool GatherBlockLessForIndicesTiling(GatherTilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
                                      int64_t& paramsDSize, int64_t& blockNum) {
   runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
   runParams.indices_row_num_once = indicesNumPerLoop;
@@ -272,6 +272,7 @@ void GatherBlockLessForIndicesTiling(GatherTilingParams& runParams, int64_t& ind
   if (int(runParams.row_num_once_ub % blockNum) != 0) {
     runParams.row_num_once_ub = int(runParams.row_num_once_ub / blockNum) * blockNum;
   }
+  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
@@ -286,6 +287,7 @@ void GatherBlockLessForIndicesTiling(GatherTilingParams& runParams, int64_t& ind
   if (int(runParams.row_num_last_ub % blockNum) != 0) {
     runParams.row_num_last_ub = int(runParams.row_num_last_ub / blockNum) * blockNum;
   }
+  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
@@ -295,10 +297,12 @@ void GatherBlockLessForIndicesTiling(GatherTilingParams& runParams, int64_t& ind
     runParams.inner_loop_num_last = runParams.inner_loop_num_last - 1;
     runParams.row_num_last_tail_ub = runParams.row_num_last_tail_ub + runParams.row_num_once_ub;
   }
+
+  return true;
 }
 
 // compute tiling params for tiling_mode 3&6&7
-void GatherBlockAlignForIndicesTiling(GatherTilingParams& runParams, int64_t& indicesNumPerLoop,
+bool GatherBlockAlignForIndicesTiling(GatherTilingParams& runParams, int64_t& indicesNumPerLoop,
                                       int64_t& resUbSize, int64_t& paramsDSize) {
   runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
   runParams.indices_row_num_once = indicesNumPerLoop;
@@ -307,16 +311,20 @@ void GatherBlockAlignForIndicesTiling(GatherTilingParams& runParams, int64_t& in
   }
 
   runParams.row_num_once_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
   }
 
   runParams.row_num_last_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
   }
+
+  return true;
 }
 
 void GatherCalNeedCore(int64_t& needCore, int64_t& indicesEachCore, int64_t& indicesRemain,
@@ -478,7 +486,9 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
       resUbSize = halfRemainUbSize;
     }
 
-    GatherBlockLessForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize, blockNum);
+    if (!GatherBlockLessForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize, blockNum)) {
+      return false;
+    }
   } else {                                            // one params row size is greater than or equal to 32B
     if (paramsRowCeil <= halfUbParamsElem) {
       if (runParams.paramsRow * paramsDSize % BLOCK_SIZE != 0) {  // not 32B aligned
@@ -503,7 +513,9 @@ bool GatherTiling(const std::string& opType, const TeOpParas& opParas, const nlo
           resUbSize = halfRemainUbSize;
         }
 
-        GatherBlockAlignForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize);
+        if (!GatherBlockAlignForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize)) {
+          return false;
+        }
       }
     } else {
       runParams.tilingMode = TILING_MODE_5;  // one params row need tiling

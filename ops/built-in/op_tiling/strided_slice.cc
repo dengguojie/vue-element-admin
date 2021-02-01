@@ -197,6 +197,9 @@ static void MakeSameDims(SliceParameters &parameters, const vector<int64_t> &sha
       tmp_stride_list.push_back(parameters.stride_list[i]);
       auto interval = parameters.end_list[i] - parameters.begin_list[i];
       auto stride_i = parameters.stride_list[i];
+      if (stride_i == 0) {
+        stride_i = 1;
+      }
       int64_t output_size = interval / stride_i + (interval % stride_i != 0 ? 1 : 0);
       tmp_output_shape.push_back(output_size);
       j++;

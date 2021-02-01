@@ -26,6 +26,7 @@
 
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
 
@@ -259,7 +260,7 @@ bool GetV2CompileParams(const std::string& opType, const nlohmann::json& opCompi
 }
 
 // compute tiling params for tiling_mode 8&9
-void BlockLessForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
+bool BlockLessForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
                               int64_t& paramsDSize, int64_t& blockNum) {
   runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
   runParams.indices_row_num_once = indicesNumPerLoop;
@@ -271,6 +272,7 @@ void BlockLessForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesN
   if (int(runParams.row_num_once_ub % blockNum) != 0) {
     runParams.row_num_once_ub = int(runParams.row_num_once_ub / blockNum) * blockNum;
   }
+  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
@@ -285,6 +287,7 @@ void BlockLessForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesN
   if (int(runParams.row_num_last_ub % blockNum) != 0) {
     runParams.row_num_last_ub = int(runParams.row_num_last_ub / blockNum) * blockNum;
   }
+  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
@@ -294,10 +297,12 @@ void BlockLessForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesN
     runParams.inner_loop_num_last = runParams.inner_loop_num_last - 1;
     runParams.row_num_last_tail_ub = runParams.row_num_last_tail_ub + runParams.row_num_once_ub;
   }
+
+  return true;
 }
 
 // compute tiling params for tiling_mode 10&11&12
-void BlockAlignForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop,
+bool BlockAlignForParamsTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop,
                                int64_t& resUbSize, int64_t& paramsDSize) {
   runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
   runParams.indices_row_num_once = indicesNumPerLoop;
@@ -306,21 +311,25 @@ void BlockAlignForParamsTiling(GatherV2TilingParams& runParams, int64_t& indices
   }
 
   runParams.row_num_once_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
   }
 
   runParams.row_num_last_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
   }
+
+  return true;
 }
 
 // compute tiling params for tiling_mode 1&4&13
-void BlockLessForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
-                              int64_t& paramsDSize, int64_t& blockNum) {
+bool BlockLessForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop, int64_t& resUbSize,
+                               int64_t& paramsDSize, int64_t& blockNum) {
   runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
   runParams.indices_row_num_once = indicesNumPerLoop;
   if (runParams.indices_num_each_core % runParams.indices_row_num_once != 0) {
@@ -331,6 +340,7 @@ void BlockLessForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indices
   if (int(runParams.row_num_once_ub % blockNum) != 0) {
     runParams.row_num_once_ub = int(runParams.row_num_once_ub / blockNum) * blockNum;
   }
+  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
@@ -345,6 +355,7 @@ void BlockLessForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indices
   if (int(runParams.row_num_last_ub % blockNum) != 0) {
     runParams.row_num_last_ub = int(runParams.row_num_last_ub / blockNum) * blockNum;
   }
+  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
@@ -354,11 +365,13 @@ void BlockLessForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indices
     runParams.inner_loop_num_last = runParams.inner_loop_num_last - 1;
     runParams.row_num_last_tail_ub = runParams.row_num_last_tail_ub + runParams.row_num_once_ub;
   }
+
+  return true;
 }
 
 // compute tiling params for tiling_mode 3&6&7
-void BlockAlignForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop,
-                               int64_t& resUbSize, int64_t& paramsDSize) {
+bool BlockAlignForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indicesNumPerLoop,
+                                int64_t& resUbSize, int64_t& paramsDSize) {
   runParams.indices_loop_num = runParams.indices_num_each_core / indicesNumPerLoop;
   runParams.indices_row_num_once = indicesNumPerLoop;
   if (runParams.indices_num_each_core % runParams.indices_row_num_once != 0) {
@@ -366,16 +379,20 @@ void BlockAlignForIndicesTiling(GatherV2TilingParams& runParams, int64_t& indice
   }
 
   runParams.row_num_once_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  CHECK((runParams.row_num_once_ub != 0), "Devide by row_num_once_ub[%d] exception.", runParams.row_num_once_ub);
   runParams.inner_loop_num = runParams.indices_row_num_once / runParams.row_num_once_ub;
   if (runParams.indices_row_num_once % runParams.row_num_once_ub != 0) {
     runParams.row_num_once_tail_ub = runParams.indices_row_num_once % runParams.row_num_once_ub;
   }
 
   runParams.row_num_last_ub = resUbSize / (runParams.paramsRow * paramsDSize);
+  CHECK((runParams.row_num_last_ub != 0), "Devide by row_num_last_ub[%d] exception.", runParams.row_num_last_ub);
   runParams.inner_loop_num_last = runParams.indices_row_num_last / runParams.row_num_last_ub;
   if (runParams.indices_row_num_last % runParams.row_num_last_ub != 0) {
     runParams.row_num_last_tail_ub = runParams.indices_row_num_last % runParams.row_num_last_ub;
   }
+
+  return true;
 }
 
 void CalNeedCore(int64_t& needCore, int64_t& indicesEachCore, int64_t& indicesRemain,
@@ -550,7 +567,9 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
         resUbSize = halfRemainUbSize;
       }
 
-      BlockLessForParamsTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize, blockNum);
+      if (!BlockLessForParamsTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize, blockNum)) {
+        return false;
+      }
     } else {
       if (paramsTotalCeil <= PARAMS_CACHED_UB / paramsDSize && paramsRowCeil <= halfRemainParamsElem) {
         runParams.tilingMode = TILING_MODE_10;
@@ -565,7 +584,9 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
         resUbSize = halfRemainUbSize;
       }
 
-      BlockAlignForParamsTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize);
+      if (!BlockAlignForParamsTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize)) {
+        return false;
+      }
     }
   } else {
     // block tiling: indices tiling
@@ -602,7 +623,9 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
         resUbSize = halfRemainUbSize;
       }
 
-      BlockLessForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize, blockNum);
+      if (!BlockLessForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize, blockNum)) {
+        return false;
+      }
     } else {                                            // one params row size is greater than or equal to 32B
       if (paramsRowCeil <= halfUbParamsElem) {
         if (runParams.paramsRow * paramsDSize % BLOCK_SIZE != 0) {  // not 32B aligned
@@ -627,7 +650,9 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
             resUbSize = halfRemainUbSize;
           }
 
-          BlockAlignForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize);
+          if (!BlockAlignForIndicesTiling(runParams, indicesNumPerLoop, resUbSize, paramsDSize)) {
+            return false;
+          }
         }
       } else {
         runParams.tilingMode = TILING_MODE_5;  // one params row need tiling

@@ -2379,7 +2379,7 @@ IMPLEMT_VERIFIER(MaxPool, MaxPoolVerify) {
   }
   if (ksize.size() != 4) {
     OpsAttrValueErrReport(op.GetName(), "length of ksize", ConcatString(4), ConcatString((size_t)ksize.size()));
-    OP_LOGE(op.GetName().c_str(), "length of ksize must be equal to the length of shape!");
+    OP_LOGE(op.GetName().c_str(), "The length of ksize must be equal to the length of shape!");
     return GRAPH_FAILED;
   }
   // check strides
@@ -2391,7 +2391,7 @@ IMPLEMT_VERIFIER(MaxPool, MaxPoolVerify) {
   }
   if (strides.size() != 4) {
     OpsAttrValueErrReport(op.GetName(), "length of strides", ConcatString(4), ConcatString(strides.size()));
-    OP_LOGE(op.GetName().c_str(), "length of strides must be equal to the length of shape!");
+    OP_LOGE(op.GetName().c_str(), "The length of strides must be equal to the length of shape!");
     return GRAPH_FAILED;
   }
   // check data_format

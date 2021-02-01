@@ -42,7 +42,7 @@ ShapeTransferAccordingToFormat::ShapeTransferAccordingToFormat(void) {
 bool ShapeTransferAccordingToFormat::GetNCHWShapeByAxisValue(ge::GeShape& newShape, const int64_t& implType,
                                                              const vector<int64_t>& axisValue,
                                                              const vector<int64_t>& ndValue) {
-  CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
+  CHECK(axisValue.size() <= AXIS_W, LOG_INFO("AxisValue is not correct!"), return true);
   /* axisValue is initialized as a size 6 vector. */
   std::vector<int64_t> newDimVec;
   newDimVec.push_back(axisValue[AXIS_N]);
@@ -56,7 +56,7 @@ bool ShapeTransferAccordingToFormat::GetNCHWShapeByAxisValue(ge::GeShape& newSha
 bool ShapeTransferAccordingToFormat::GetNHWCShapeByAxisValue(ge::GeShape& newShape, const int64_t& implType,
                                                              const vector<int64_t>& axisValue,
                                                              const vector<int64_t>& ndValue) {
-  CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
+  CHECK(axisValue.size() <= AXIS_W, LOG_INFO("AxisValue is not correct!"), return true);
   /* axisValue is initialized as a size 6 vector. */
   std::vector<int64_t> newDimVec;
   newDimVec.push_back(axisValue[AXIS_N]);
@@ -74,6 +74,7 @@ bool ShapeTransferAccordingToFormat::GetNC1HWC0ShapeByAxisValue(ge::GeShape& new
   /* axisValue is initialized as a size 6 vector. */
   std::vector<int64_t> newDimVec;
   if (implType == EN_IMPL_HW_TBE || implType == EN_IMPL_CUSTOM_TBE || implType == EN_IMPL_NON_PERSISTENT_CUSTOM_TBE) {
+    CHECK(axisValue.size() <= AXIS_C0, LOG_INFO("AxisValue is not correct!"), return true);
     newDimVec.push_back(axisValue[AXIS_N]);
     newDimVec.push_back(axisValue[AXIS_C1]);
     newDimVec.push_back(axisValue[AXIS_H]);
@@ -81,6 +82,7 @@ bool ShapeTransferAccordingToFormat::GetNC1HWC0ShapeByAxisValue(ge::GeShape& new
     newDimVec.push_back(axisValue[AXIS_C0]);
     newShape = ge::GeShape(newDimVec);
   } else {
+    CHECK(axisValue.size() <= AXIS_W, LOG_INFO("AxisValue is not correct!"), return true);
     newDimVec.push_back(axisValue[AXIS_N]);
     newDimVec.push_back(axisValue[AXIS_C]);
     newDimVec.push_back(axisValue[AXIS_H]);
@@ -98,6 +100,7 @@ bool ShapeTransferAccordingToFormat::GetFzShapeByAxisValue(ge::GeShape& newShape
   std::vector<int64_t> newDimVec;
 
   if (ndValue.size() == SIZE_OF_CN) {
+    CHECK(axisValue.size() <= AXIS_C0, LOG_INFO("AxisValue is not correct!"), return true);
     auto sizeOfOriginalVec = ndValue.size();
     std::vector<int64_t> newDimVec = ndValue;
     /* sizeOfOriginalVec - 1 mean the last value of original vec
@@ -111,6 +114,7 @@ bool ShapeTransferAccordingToFormat::GetFzShapeByAxisValue(ge::GeShape& newShape
     newShape = ge::GeShape(newDimVec);
   } else {
     if (implType == EN_IMPL_HW_TBE || implType == EN_IMPL_CUSTOM_TBE || implType == EN_IMPL_NON_PERSISTENT_CUSTOM_TBE) {
+      CHECK(axisValue.size() <= AXIS_C1, LOG_INFO("AxisValue is not correct!"), return true);
       int64_t hwc1 = axisValue[AXIS_C1] * axisValue[AXIS_H] * axisValue[AXIS_W];
       newDimVec.push_back(hwc1);
       newDimVec.push_back(DivisionCeiling(axisValue[AXIS_N], NI));
@@ -118,6 +122,7 @@ bool ShapeTransferAccordingToFormat::GetFzShapeByAxisValue(ge::GeShape& newShape
       newDimVec.push_back(axisValue[AXIS_C0]);
       newShape = ge::GeShape(newDimVec);
     } else {
+      CHECK(axisValue.size() <= AXIS_W, LOG_INFO("AxisValue is not correct!"), return true);
       newDimVec.push_back(axisValue[AXIS_N]);
       newDimVec.push_back(axisValue[AXIS_C]);
       newDimVec.push_back(axisValue[AXIS_H]);
@@ -132,7 +137,7 @@ bool ShapeTransferAccordingToFormat::GetFzShapeByAxisValue(ge::GeShape& newShape
 bool ShapeTransferAccordingToFormat::GetHWCNShapeByAxisValue(ge::GeShape& newShape, const int64_t& implType,
                                                              const vector<int64_t>& axisValue,
                                                              const vector<int64_t>& ndValue) {
-  CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
+  CHECK(axisValue.size() <= AXIS_W, LOG_INFO("AxisValue is not correct!"), return true);
   /* axisValue is initialized as a size 6 vector. */
   std::vector<int64_t> newDimVec;
   newDimVec.push_back(axisValue[AXIS_H]);
@@ -146,7 +151,7 @@ bool ShapeTransferAccordingToFormat::GetHWCNShapeByAxisValue(ge::GeShape& newSha
 bool ShapeTransferAccordingToFormat::GetC1HWNCoC0ShapeByAxisValue(ge::GeShape& newShape, const int64_t& implType,
                                                                   const vector<int64_t>& axisValue,
                                                                   const vector<int64_t>& ndValue) {
-  CHECK(axisValue.empty(), LOG_INFO("AxisValue is empty!"), return true);
+  CHECK(axisValue.size() <= AXIS_Co, LOG_INFO("AxisValue is not correct!"), return true);
   /* axisValue is initialized as a size 6 vector. */
   std::vector<int64_t> newDimVec;
   newDimVec.push_back(axisValue[AXIS_C1]);

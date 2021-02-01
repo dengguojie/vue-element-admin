@@ -31,7 +31,7 @@ Status AutoMappingFnCast(const google::protobuf::Message* op_src, ge::Operator& 
   }
   ge::DataType dataType;
   if (op.GetAttr("DstT", dataType) != ge::GRAPH_SUCCESS) {
-    OP_LOGI("Cast", "GetAttr DstT failed");
+    OP_LOGE("Cast", "GetAttr DstT failed");
     return FAILED;
   }
   op.SetAttr("dst_type", static_cast<int>(dataType));
