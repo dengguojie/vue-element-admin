@@ -42,6 +42,11 @@ IMPLEMT_COMMON_INFERFUNC(TargetCropAndResizeInferShape) {
   int64_t channel = 3; 
 
   auto boxes_shape = op.GetInputDesc("boxes").GetShape().GetDims();
+  if (boxes_shape.empty()) {
+    OP_LOGE(op.GetName().c_str(), "get boxes shape failed.");
+    OpsOneInputShapeErrReport(op.GetName(), "boxes", "boxes shape is empty!");
+    return GRAPH_FAILED;
+  }
   int64_t batch = boxes_shape[0];
   if (x_desc.GetFormat() == FORMAT_NCHW) {
     channel = boxes_shape[1];
