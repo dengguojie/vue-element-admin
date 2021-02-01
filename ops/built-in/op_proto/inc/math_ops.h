@@ -223,6 +223,24 @@ REG_OP(Bucketize)
     .OP_END_FACTORY_REG(Bucketize)
 
 /**
+*@brief Returns a new tensor with the truncated integer values of the elements of input. \n
+
+*@par Inputs:
+*One inputs, including:
+*   @li input_x: A tensor. Must be one of the following types: float16, float32, int8, uint8, int32. \n
+
+*@par Outputs:
+*y: A tensor with the same type and shape of input_x \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator Trunc. \n
+*/
+REG_OP(Trunc)
+    .INPUT(input_x, TensorType({DT_FLOAT16,DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8}))
+    .OUTPUT(output_y, TensorType({DT_FLOAT16,DT_FLOAT, DT_INT8, DT_INT32, DT_UINT8}))
+    .OP_END_FACTORY_REG(Trunc)
+	
+/**
 *@brief Computes the sum along sparse segments of a tensor . \n
 
 *@par Inputs:

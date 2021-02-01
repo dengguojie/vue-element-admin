@@ -804,6 +804,29 @@ COMMON_INFER_FUNC_REG(LpNorm, LpNormInfer);
 VERIFY_FUNC_REG(LpNorm, LpNormVerify);
 // ----------------LpNorm END---------------------
 
+// ----------------Trunc---------------------
+IMPLEMT_COMMON_INFERFUNC(TruncInferShape) {
+    TensorDesc output_desc = op.GetOutputDesc("output_y");
+    DataType predict_dtype = op.GetInputDesc("input_x").GetDataType();
+    Format predict_format = op.GetInputDesc("input_x").GetFormat();
+    ge::Shape output_shape = op.GetInputDesc("input_x").GetShape();
+
+    output_desc.SetDataType(predict_dtype);
+    output_desc.SetFormat(predict_format);
+    output_desc.SetShape(output_shape);
+    (void)op.UpdateOutputDesc("output_y", output_desc);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Trunc,TruncVerify)
+{
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Trunc, TruncInferShape);
+VERIFY_FUNC_REG(Trunc, TruncVerify);
+// ----------------Trunc END---------------------
+
 IMPLEMT_INFERFUNC(Complex, ComplexInfer)
 {
   TensorDesc out_desc = op.GetOutputDesc("out");
