@@ -21,162 +21,86 @@
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 struct AvgPoolAttr {
-  std::vector<int> ksizes = {};
-  std::vector<int> strides = {};
-  std::vector<int> pads = {};
-  std::string auto_pad = "SAME";
+  std::string auto_pad = "NOTSET";
   int64_t ceil_mode = 0;
+  int64_t count_include_pad = 0;
+  std::vector<int> kernel_shape = {1, 1, 1, 1};
+  std::vector<int> pads = {0, 0, 0, 0};
+  std::vector<int> strides = {1, 1, 1, 1};
 };
 
-struct AvgPoolAttrFlag {
-  bool set_ksizes_flag = false;
-  bool set_strides_flag = false;
-  bool set_pads_flag = false;
-};
-
-static const char DATA_FORMAT[] = "NCHW";
-// kernel_shape数组的合理大小
-static const int KERNEL_SHAPE_SIZE = 2;
-// strides数组的合理大小
-static const int STRIDES_SIZE = 2;
-// pads数组的合理大小
-static const int PADS_SIZE = 4;
-
-Status SetKernelAttr(int size, std::vector<int> data, AvgPoolAttr &node_attr,
-                     AvgPoolAttrFlag &is_node_attrset) {
-  if (size == KERNEL_SHAPE_SIZE) {
-    for (int i = 0; i < size; i++) {
-      node_attr.ksizes.push_back(data[i]);
-    }
-  } else if (size == 1) {
-    node_attr.ksizes.push_back(data[0]);
-    node_attr.ksizes.push_back(data[0]);
-  }
-  is_node_attrset.set_ksizes_flag = true;
-  return SUCCESS;
-}
-
-Status SetStridesAttr(int size, std::vector<int> data, AvgPoolAttr &node_attr,
-                      AvgPoolAttrFlag &is_node_attrset) {
-  if (size == STRIDES_SIZE) {
-    for (int i = 0; i < size; i++) {
-      node_attr.strides.push_back(data[i]);
-    }
-  } else if (size == 1) {
-    node_attr.strides.push_back(data[0]);
-    node_attr.strides.push_back(data[0]);
-  }
-  is_node_attrset.set_strides_flag = true;
-  return SUCCESS;
-}
-
-Status SetPadsAttr(int size, std::vector<int> data, AvgPoolAttr &node_attr,
-                   AvgPoolAttrFlag &is_node_attrset) {
-  if (size == PADS_SIZE) {
-    for (int i = 0; i < size; i++) {
-      node_attr.pads.push_back(data[i]);
-    }
-  } else if (size == 1) {
-    node_attr.pads.push_back(data[0]);
-    node_attr.pads.push_back(data[0]);
-    node_attr.pads.push_back(data[0]);
-    node_attr.pads.push_back(data[0]);
-  }
-  is_node_attrset.set_pads_flag = true;
-  return SUCCESS;
-}
-
-Status CheckAttribute(const NodeProto *node, AvgPoolAttr &node_attr,
-                      AvgPoolAttrFlag &is_node_attrset) {
-  for (const auto &attr : node->attribute()) {
-    if (attr.name() == "auto_pad" &&
-        attr.type() == ge::onnx::AttributeProto::STRING) {
-      if (attr.s() == "VALID") {
-        node_attr.auto_pad = "VALID";
-      } else {
-        node_attr.auto_pad = "SAME";
-      }
-      continue;
+Status UpdateAttrFromOnnx(const NodeProto* node, AvgPoolAttr& node_attr) {
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
+      node_attr.auto_pad = attr.s();
     }
 
-    if (attr.name() == "ceil_mode" &&
-        attr.type() == ge::onnx::AttributeProto::INT) {
+    if (attr.name() == "ceil_mode" && attr.type() == ge::onnx::AttributeProto::INT) {
       node_attr.ceil_mode = attr.i();
-      continue;
     }
 
-    int size = attr.ints_size();
-    std::vector<int> data;
-    for (int i = 0; i < size; i++) {
-      data.push_back(attr.ints(i));
+    if (attr.name() == "count_include_pad" && attr.type() == ge::onnx::AttributeProto::INT) {
+      node_attr.count_include_pad = attr.i();
     }
 
-    if (attr.name() == "kernel_shape" &&
-        attr.type() == ge::onnx::AttributeProto::INTS) {
-      SetKernelAttr(size, data, node_attr, is_node_attrset);
+    if (attr.name() == "kernel_shape" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      if (attr.ints().size() != 2) {
+        OP_LOGE("AveragePool", "Only support kernel_shape.size() = 2");
+        return FAILED;
+      }
+      node_attr.kernel_shape[2] = attr.ints(0);
+      node_attr.kernel_shape[3] = attr.ints(1);
     }
-    if (attr.name() == "strides" &&
-        attr.type() == ge::onnx::AttributeProto::INTS) {
-      SetStridesAttr(size, data, node_attr, is_node_attrset);
+    if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      if (attr.ints().size() != 2) {
+        OP_LOGE("AveragePool", "Only support strides.size() = 2");
+        return FAILED;
+      }
+      node_attr.kernel_shape[2] = attr.ints(0);
+      node_attr.kernel_shape[3] = attr.ints(1);
     }
-    if (attr.name() == "pads" &&
-        attr.type() == ge::onnx::AttributeProto::INTS) {
-      SetPadsAttr(size, data, node_attr, is_node_attrset);
+    if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      if (attr.ints().size() != 4) {
+        OP_LOGE("AveragePool", "Only support pads.size() = 4");
+        return FAILED;
+      }
+      node_attr.pads.resize(attr.ints().size());
+      node_attr.kernel_shape[0] = attr.ints(0);
+      node_attr.kernel_shape[1] = attr.ints(2);
+      node_attr.kernel_shape[2] = attr.ints(1);
+      node_attr.kernel_shape[3] = attr.ints(3);
     }
   }
   return SUCCESS;
 }
 
-Status ParseParamsAveragePool(const Message *op_src, ge::Operator &op_dest) {
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+Status ParseParamsAveragePool(const Message* op_src, ge::Operator& op_dest) {
+  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("AveragePool", "reinterpret_cast op_src to NodeProto failed.");
     return FAILED;
   }
 
-  std::vector<int> default_stride = {1, 1};
-  std::vector<int> default_pads = {0, 0, 0, 0};
-
   AvgPoolAttr node_attr;
-  AvgPoolAttrFlag is_node_attrset;
-
-  CheckAttribute(node, node_attr, is_node_attrset);
-
-  op_dest.SetAttr("mode", 1);  // 0:max pooling or 1:avg pooling
-
-  // 和pooling的ceil mode属性是反的
-  if (node_attr.ceil_mode == 0) {
-    op_dest.SetAttr("ceil_mode", 1);
-  } else {
-    op_dest.SetAttr("ceil_mode", 0);
+  if (UpdateAttrFromOnnx(node, node_attr) != SUCCESS) {
+    return FAILED;
   }
 
-  if (is_node_attrset.set_ksizes_flag) {
-    op_dest.SetAttr("window", node_attr.ksizes);
-  } else {
-    OP_LOGI("AveragePool", "onnx AveragePool op has no ksize attr");
-    op_dest.SetAttr("window", default_stride);
-  }
-
-  if (is_node_attrset.set_strides_flag) {
-    op_dest.SetAttr("stride", node_attr.strides);
-  } else {
-    OP_LOGI("AveragePool", "onnx AveragePool use default.");
-    op_dest.SetAttr("strides", default_stride);
-  }
-
-  if (is_node_attrset.set_pads_flag) {
-    op_dest.SetAttr("pad", node_attr.pads);
-  } else {
-    OP_LOGI("AveragePool", "onnx AveragePool use default.");
-    op_dest.SetAttr("pad", default_pads);
-  }
+  std::map<string, string> padding_mode = {
+      {"NOTSET", "CALCULATED"}, {"SAME_UPPER", "SAME"}, {"SAME_LOWER ", "SAME"}, {"VALID", "VALID"}};
+  // set attr for AvgPoolV2
+  op_dest.SetAttr("ksize", node_attr.kernel_shape);
+  op_dest.SetAttr("strides", node_attr.strides);
+  op_dest.SetAttr("padding_mode", padding_mode[node_attr.auto_pad]);
+  op_dest.SetAttr("pads", node_attr.pads);
+  op_dest.SetAttr("ceil_mode", (bool)node_attr.ceil_mode);
+  op_dest.SetAttr("exclusive", !(bool)node_attr.count_include_pad);
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("Pooling")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::AveragePool")
-  .ParseParamsFn(ParseParamsAveragePool)
-  .ImplyType(ImplyType::TVM);
+REGISTER_CUSTOM_OP("AvgPoolV2")
+    .FrameworkType(ONNX)
+    .OriginOpType("ai.onnx::11::AveragePool")
+    .ParseParamsFn(ParseParamsAveragePool)
+    .ImplyType(ImplyType::TVM);
 }  //  namespace domi
