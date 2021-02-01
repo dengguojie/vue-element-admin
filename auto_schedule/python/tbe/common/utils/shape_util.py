@@ -474,6 +474,7 @@ def _reduce_variable_shape(inputs: list):
     current_compute = operation.get_context().get_current_compute()
     if current_compute:
         current_compute.add("mode", mode)
+        current_compute.add("shape", inputs_before_reduce[0]["shape"])
         ori_axis = input_axis[0].get("ori_axis")
         if ori_axis is not None:
             current_compute.add("ori_axis", ori_axis)

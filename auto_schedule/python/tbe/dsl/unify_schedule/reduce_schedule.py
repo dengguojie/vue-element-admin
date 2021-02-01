@@ -18,27 +18,28 @@ Reduce Schedule Remake stage 1
 
 # Standard Package
 from typing import List
-from typing import Union
-from typing import Optional
 from typing import NoReturn
+from typing import Optional
+from typing import Union
 
-# Third-party Packages
-from te.tvm.tensor import Tensor
-from tbe.dsl.unify_schedule import Pattern
-from tbe.dsl.base.operation import var
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import register_schedule
-from .util import get_dsl_insn
-from .util import is_reduce_tensor
-from .util import get_reduce_axis_indices
-from .util import is_keepdims
-from .constants import INSN_MAPPING
+from tbe.dsl.base.operation import var
+from tbe.dsl.unify_schedule import Pattern
+# Third-party Packages
+from te.tvm.tensor import Tensor
+
 from .constants import DTYPE_BYTE_MAPPING
-from .vector_info import ComputeGraphInfo
-from .vector_schedule import VectorSchedule
+from .constants import INSN_MAPPING
+from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo
-from .reduce_atomic_schedule import ReduceAtomicSchedule
+from .util import get_dsl_insn
+from .util import get_reduce_axis_indices
+from .util import is_keepdims
+from .util import is_reduce_tensor
+from .vector_info import ComputeGraphInfo
+from .vector_schedule import VectorSchedule
 
 CONST = "const"
 
@@ -192,6 +193,10 @@ class ReduceSchedule(VectorSchedule):
                 self.multi_core_bind_axis = fuse_axis_list[0]
 
     def _calc_reorder(self):
+        compute = get_context().get_current_compute()
+        if compute.get("mode") == "zero":
+            return
+
         is_nlast_reduce = self.reduce_info.is_reduce_not_last_axis()
         # Reduce axes must be placed together, then move last axis of non-reduce axes after reduce axes
         # For Reduce Tensor and Tensors before reduce
@@ -241,7 +246,7 @@ class ReduceSchedule(VectorSchedule):
         ub_tensor, blk_tensor = ub_info.tiling_tensor, blk_info.tiling_tensor
         ub_factor, blk_factor = ub_info.factor, blk_info.factor
         ub_idx, blk_idx = ub_info.tiling_axis_index, blk_info.tiling_axis_index
-        params = (ub_tensor, )
+        params = (ub_tensor,)
 
         def func(_ub_tiling_tensor: Tensor, ) -> list:
             # shape after reorder must follow:
@@ -259,7 +264,7 @@ class ReduceSchedule(VectorSchedule):
                 else:
                     pos_r = i_length - r_length - 1  # last dim is A
                 for idx, value in enumerate(in_shape):
-                    if idx == i_length-1 and idx not in reduce_indices:
+                    if idx == i_length - 1 and idx not in reduce_indices:
                         _r_shape[-1], _r_indices[-1] = value, idx
                         _r_ou_shape[-1] = _r_shape[-1]
                     elif idx in reduce_indices:
@@ -281,7 +286,7 @@ class ReduceSchedule(VectorSchedule):
             r_blk_idx = r_indices.index(blk_idx)
             max_ub_count = self.graph_info.tensor_ub_size_after_reduce
             output_size = blk_factor
-            for _dim in r_ou_shape[r_blk_idx+1:]:
+            for _dim in r_ou_shape[r_blk_idx + 1:]:
                 output_size *= _dim
                 if not isinstance(_dim <= max_ub_count, bool):
                     results.append(_dim <= max_ub_count)
@@ -304,7 +309,7 @@ class ReduceSchedule(VectorSchedule):
                 #                      |-->UB(s2)
                 # [A,R,A,R,A] --> [A,A,R,R,A]
                 #                    |-->BLK
-                for _dim in r_in_shape[r_ub_idx+1:]:
+                for _dim in r_in_shape[r_ub_idx + 1:]:
                     input_size *= _dim
                     if not isinstance(_dim <= max_ub_count, bool):
                         results.append(_dim <= max_ub_count)
@@ -445,27 +450,36 @@ class ReduceSchedule(VectorSchedule):
             if ub_split_axis_index < a1_start_index and ub_split_axis_index not in self.reduce_info.reduce_axis_indices:
                 emit_insn_axis = self.reduce_info.reduce_axis_indices[0]
         elif ub_split_axis_index not in self.reduce_info.reduce_axis_indices:
-            first_reduce_axis = self.reduce_info.reduce_tensor.op.reduce_axis[0]
-            axis_dom = first_reduce_axis.dom
-            if hasattr(axis_dom.min, "value") and hasattr(axis_dom.extent, "value"):
-                if first_reduce_axis.dom.min.value == 0 and first_reduce_axis.dom.extent.value == 1:
-                    emit_insn_axis = self.reduce_info.reduce_axis_indices[0]
+            compute = get_context().get_current_compute()
+            if compute.get("mode") == "zero":
+                pass
+            else:
+                first_reduce_axis = self.reduce_info.reduce_tensor.op.reduce_axis[0]
+                axis_dom = first_reduce_axis.dom
+                if hasattr(axis_dom.min, "value") and hasattr(axis_dom.extent, "value"):
+                    if first_reduce_axis.dom.min.value == 0 and first_reduce_axis.dom.extent.value == 1:
+                        emit_insn_axis = self.reduce_info.reduce_axis_indices[0]
         # Op of reduce need extra_space
         extra_space = self.graph_info.tensor_ub_size_before_reduce
-        self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor, emit_insn_axis,
-                                                               INSN_MAPPING[get_dsl_insn(reduce_ub_tensor)],
-                                                               {"extra_space": extra_space}))
+        if self._contains_zero_axis():
+            self._emit_zero_reduce_insn(reduce_ub_tensor, emit_insn_axis)
+        else:
+            self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor,
+                                                                   emit_insn_axis,
+                                                                   INSN_MAPPING[get_dsl_insn(reduce_ub_tensor)],
+                                                                   {"extra_space": extra_space}))
         # Before-And-After-reduce
         before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
         after_reduce_tensors = self.get_all_consumer_stages(reduce_ub_tensor)
-        # other tensors: which not in consumers or producers for reduce_ub_tensor
-        _other_tensors = set()
-        for _tensor in self.graph_info.tensor_list:
-            if is_reduce_tensor(_tensor):
-                continue
-            _other_tensors.add(self.get_buffers_of(_tensor)[0])
         remaining_tensors = before_reduce_tensors | after_reduce_tensors
-        remaining_tensors = remaining_tensors | _other_tensors
+        if get_context().get_current_compute().get("mode") != "zero":
+            # other tensors: which not in consumers or producers for reduce_ub_tensor
+            _other_tensors = set()
+            for _tensor in self.graph_info.tensor_list:
+                if is_reduce_tensor(_tensor):
+                    continue
+                _other_tensors.add(self.get_buffers_of(_tensor)[0])
+            remaining_tensors = remaining_tensors | _other_tensors
         for tensor in remaining_tensors:
             if tensor in self.graph_info.input_tensor_set:
                 continue
@@ -476,4 +490,22 @@ class ReduceSchedule(VectorSchedule):
                 emit_insn_axis_index = self.block_tiling_result_pair[1]
             if insn == "":
                 insn = "dma_copy"
-            self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, emit_insn_axis_index, INSN_MAPPING[insn]))
+
+            if 0 in tensor.shape:
+                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, emit_insn_axis_index, "phony_insn"))
+            else:
+                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, emit_insn_axis_index,
+                                                                       INSN_MAPPING[insn]))
+
+    @staticmethod
+    def _contains_zero_axis():
+        compute = get_context().get_current_compute()
+        return compute.get("mode") == "zero"
+
+    def _emit_zero_reduce_insn(self, reduce_ub_tensor, emit_insn_axis):
+        compute = get_context().get_current_compute()
+        insn = "phony_insn"
+        if compute.get("shape") == (1, -1, 0):
+            insn = "vector_dup"
+
+        self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor, emit_insn_axis, insn))

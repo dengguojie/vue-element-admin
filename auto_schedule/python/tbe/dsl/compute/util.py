@@ -940,11 +940,11 @@ def check_input_tensor_shape(tensor_shape):
     in_dynamic = operation.in_dynamic()
     for val in shape:
         if in_dynamic:
-            if isinstance(val, int) and val <= 0:
+            if isinstance(val, int) and val < 0:
                 dict_args = dict()
                 dict_args["errCode"] = "E90001"
                 dict_args["detailed_cause"] = "The dynamic input shape value " \
-                                              "must be positive when is a " \
+                                              "can not be negative when is a " \
                                               "integer while val is [%s]" % val
                 raise RuntimeError(dict_args, get_error_message(dict_args))
         else:

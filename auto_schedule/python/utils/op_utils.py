@@ -634,7 +634,7 @@ def check_range(shape, shape_range, min_dim=0,  # pylint: disable=too-many-argum
     for range_i in shape_range:
         if len(range_i) == 2 and (range_i[1] is None) \
                 and isinstance(range_i[0], int) \
-                and 0 < range_i[0] <= max_shape_num:
+                and 0 <= range_i[0] <= max_shape_num:
             continue
         if not isinstance(range_i[0], int):
             error_info = {}
@@ -671,7 +671,7 @@ def check_range(shape, shape_range, min_dim=0,  # pylint: disable=too-many-argum
                                "In op[%s],the length of each element"
                                "in the range must be two" %
                                (error_info['op_name']))
-        valid_range = len(range_i) == 2 and 0 < range_i[0] <= range_i[1] <= max_shape_num
+        valid_range = len(range_i) == 2 and 0 <= range_i[0] <= range_i[1] <= max_shape_num
         if valid_type and valid_range:
             continue
         else:
@@ -707,7 +707,7 @@ def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_nam
                            "the range of [%s, %s], but actually is [%s]."
                            % (error_info['param_name'], MIN_UNKOWN_SHAPE_RANK, max_rank, len(shape)))
     for _, dim in enumerate(shape):
-        valid_dim = -1 <= dim <= max_dim and dim != 0
+        valid_dim = -1 <= dim <= max_dim
         if not valid_dim:
             error_info = {}
             error_info['errCode'] = OP_ERROR_CODE_002
@@ -717,7 +717,7 @@ def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_nam
             error_info['max_value'] = max_dim
             error_info['real_value'] = dim
             raise RuntimeError(error_info,
-                               "In op, the parameter[%s] should be in the range of [%s, %s] and cannot be zero,"
+                               "In op, the parameter[%s] should be in the range of [%s, %s],"
                                "but actually is [%s]."
                                % (error_info['param_name'], -1, max_dim, dim))
 

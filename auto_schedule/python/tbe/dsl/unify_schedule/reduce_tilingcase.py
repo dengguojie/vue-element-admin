@@ -18,36 +18,41 @@ Reduce Schedule Remake stage 1 - Tilingcase
 
 # Standard Package
 from typing import Dict
-from typing import List
-from typing import Tuple
-from typing import Union
 from typing import Iterable
+from typing import List
 from typing import NoReturn
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
-# Third-party Packages
-from te.tvm.tensor import Tensor
-from te.tvm.expr import Var
-from te.tvm.expr import IntImm
-from te.platform.cce_conf import get_soc_spec
-from te.platform.cce_conf import CceProductParams as Version
-from tbe.dsl.base.operation import get_context
-from tbe.dsl.base.operation import register_tiling_case
-from tbe.dsl.base.operation import register_build_pointcut
+from tbe.dsl.base import operation
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
-from ..base import op_tiling
+from tbe.dsl.base.operation import get_context
+from tbe.dsl.base.operation import register_build_pointcut
+from tbe.dsl.base.operation import register_tiling_case
+from te import tvm
+from te.platform.cce_conf import CceProductParams as Version
+from te.platform.cce_conf import get_soc_spec
+from te.tvm.expr import IntImm
+from te.tvm.expr import Var
+# Third-party Packages
+from te.tvm.tensor import Tensor
+
+from .constants import CompileInfo
+from .constants import Pattern
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import get_reduce_axis_indices
-from .util import shape_to_list
 from .util import is_reduce_tensor
-from .constants import Pattern
-from .constants import CompileInfo
+from .util import shape_to_list
 from .vector_info import ComputeGraphInfo
 from .vector_tilingcase import TilingCaseBase
+from ..base import op_tiling
+from ...common.utils.errormgr import get_error_message
 
 CONST = "const"
+ZERO = "zero"
 
 
 def _get_block_size(dtype):
@@ -118,6 +123,9 @@ def _calc_tiling_key(reduce_info, tiling):
     if get_context().get("mode") == CONST:
         ori_axis = get_context().get_current_compute().get("ori_axis")
         tiling_key = _gen_const_tiling_key(ori_axis)
+    elif get_context().get("mode") == ZERO:
+        # TODO
+        pass
     else:
         tiling_key = _get_tiling_key(atomic, db, shape_type,
                                      block_split_axis, ub_split_axis,
@@ -187,13 +195,19 @@ def calc_tiling_case(outs, options=None):
     [options].clear()
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
 
+    current_compute = get_context().get_current_compute()
+
     # construct information of graph
     compute_graph_info = ComputeGraphInfo(outs)
     single_reduce_info = SingleReduceInfo(compute_graph_info)
-    get_context().get_current_compute().add("compute_graph_info", compute_graph_info)
-    get_context().get_current_compute().add("single_reduce_info", single_reduce_info)
+    current_compute.add("compute_graph_info", compute_graph_info)
+    current_compute.add("single_reduce_info", single_reduce_info)
     if not compute_graph_info.reduce_tensor_set:
         raise RuntimeError("Couldn't find reduce node for ReduceSchedule")
+
+    if current_compute.get("mode") == ZERO:
+        return [_gen_zero_tiling_case()]
+
     tiling_case_list = []
     # Normal reduce tiling cases
     tiling_case_list += _calculate_tiling_cases(single_reduce_info)
@@ -207,6 +221,20 @@ def calc_tiling_case(outs, options=None):
         return _gen_const_tiling_case(single_reduce_info, compute_graph_info)
 
     return tiling_case_list
+
+
+def _gen_zero_tiling_case():
+    zero_tiling_case = ReduceTilingCase()
+
+    zero_tiling_case.is_atomic = False
+    zero_tiling_case.block_split_axis_index = 0
+    zero_tiling_case.block_factor = 1
+    zero_tiling_case.ub_split_axis_index = 1
+    zero_tiling_case.ub_factor = operation.var("ub_factor")
+    zero_tiling_case.multi_core = True
+    zero_tiling_case.tiling_key = _gen_zero_tiling_key()
+
+    return zero_tiling_case
 
 
 @register_build_pointcut(pattern=Pattern.REDUCE)
@@ -230,13 +258,22 @@ class SingleReduceInfo:
         self.reduce_tensor: Tensor = tuple(compute_graph_info.reduce_tensor_set)[0]
         self.all_axes: List[Var] = get_reduce_all_axes(self.reduce_tensor)
         self.reduce_axes: List[Var] = get_reduce_axes(self.reduce_tensor)
-        self.shape_before_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.op.input_tensors[0].shape)
+
+        compute = operation.get_context().get_current_compute()
+        if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+            self.shape_before_reduce = list(self.reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
+        else:
+            self.shape_before_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.op.input_tensors[0].shape)
         self.shape_after_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.shape)
         self.reduce_axis_indices: List[int] = get_reduce_axis_indices(self.reduce_tensor)
         self.keepdims: bool = len(self.shape_before_reduce) == len(self.shape_after_reduce)
         self.graph_info: ComputeGraphInfo = compute_graph_info
 
     def is_reduce_not_last_axis(self) -> bool:
+        compute = operation.get_context().get_current_compute()
+        if compute.get("mode") == "zero":
+            return False
+
         is_not_last_axis = self.all_axes[-1] not in self.reduce_axes
         return is_not_last_axis
 
@@ -397,7 +434,7 @@ def check_atomic_add_support(reduce_info: SingleReduceInfo):
     return True
 
 
-def _gen_tiling_case_not_last_axis(info:SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]) -> NoReturn:
+def _gen_tiling_case_not_last_axis(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]) -> NoReturn:
     shape_before_reduce = info.shape_before_reduce
     reduce_axis_index = info.reduce_axis_indices
 
@@ -422,7 +459,6 @@ def _gen_tiling_case_not_last_axis(info:SingleReduceInfo, tiling_case_list: List
 
 
 def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[ReduceTilingCase]):
-
     shape_before_reduce = info.shape_before_reduce
     reduce_axis_index = info.reduce_axis_indices
 
@@ -488,7 +524,7 @@ def _gen_atomic_tiling_case_last_axis(shape_before_reduce, reduce_axis_index) ->
     :return:
     """
     reordered_shape, reorder_to_orignal_axis_map, _ = _reorder_reduce_last_shape(shape_before_reduce,
-                                                                                  reduce_axis_index)
+                                                                                 reduce_axis_index)
     tiling_case_list = []
     for i in range(0, len(reordered_shape)):
         orignal_axis = reorder_to_orignal_axis_map[i]
@@ -618,7 +654,7 @@ def _get_tiling_key(atomic, db, shape_type, block_split_axis,
             dict_args = dict()
             dict_args["errCode"] = "E90003"
             dict_args["detailed_cause"] = "%s should in %s, but is %d" % (
-                                          name[idx], str(rule[idx]), value)
+                name[idx], str(rule[idx]), value)
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     pattern = _get_pattern_key(shape, reduce_idx_list)
@@ -661,3 +697,21 @@ def _gen_const_tiling_key(reduce_axis):
         dict_key = 10 * dict_key + i + 1
 
     return dict_key
+
+
+def _gen_zero_tiling_key():
+    compute = get_context().get_current_compute()
+    shape = compute.get("shape")
+    if shape == (1, -1, 0):
+        return 10
+    elif shape == (1, 0, -1):
+        return 110
+    else:
+        _raise_error("Generate zero tiling key not support shape: {0}.".format(shape))
+
+
+def _raise_error(message):
+    dict_args = dict()
+    dict_args["errCode"] = "E90003"
+    dict_args["detailed_cause"] = message
+    raise RuntimeError(dict_args, get_error_message(dict_args))

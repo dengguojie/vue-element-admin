@@ -15,25 +15,57 @@
 """
 reduction compute
 """
+import warnings
+
 # pylint: disable=import-error
 from decorator import decorator
-import warnings
-from te import tvm
-from te.platform import intrinsic_check_support
-from te.platform import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
+from te import tvm
+from te.platform import get_soc_spec
+from te.platform import intrinsic_check_support
 from te.tvm.dsl_source_info import source_info_decorator
+
 from .cast import _cast
 from .math import vmuls
-from .util import shape_to_list
-from .util import refine_axis
-from .util import is_cast_support
-from .util import check_input_tensor_shape
-from .util import reduce_axis_check
 from .util import auto_cast_tensor
+from .util import check_input_tensor_shape
 from .util import dsl_support_dtype
 from .util import in_dynamic_and_static_unify
+from .util import is_cast_support
+from .util import reduce_axis_check
+from .util import refine_axis
+from .util import shape_to_list
+from ..base.expr_compare import expr_equal
 
+_VALUE_MAP_IN_REDUCE_ZERO = {
+    "reduce_min": {
+        "float16": 6.55e04,
+        "float32": 3.4e38,
+        "int32": 2147483647,
+        "int16": 32767,
+    },
+
+    "reduce_max": {
+        "float16": -6.55e04,
+        "float32": -3.4e38,
+        "int32": -2147483648,
+        "int16": -32768,
+    },
+
+    "reduce_sum": {
+        "float16": 0,
+        "float32": 0,
+        "int32": 0,
+        "int16": 0,
+    },
+
+    "reduce_prod": {
+        "float16": 1,
+        "float32": 1,
+        "int32": 1,
+        "int16": 1,
+    },
+}
 
 # pylint: disable=too-many-branches
 @decorator
@@ -223,10 +255,29 @@ def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
         dict_args["detailed_cause"] = "The axis is None!"
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
+    def raise_error(message):
+        _dict_args = dict()
+        _dict_args["errCode"] = "E90001"
+        _dict_args["detailed_cause"] = message
+        raise RuntimeError(_dict_args, get_error_message(dict_args))
+
     check_input_tensor_shape(input_tensor)
 
     def __reduce_compute(data_shape, axis, tensor, func):
         def compute_func(*indice):
+            if contains_zero_axis() and not contains_non_reduce_zero_axis():
+                operator = in_op.lower()
+                dtype_map = _VALUE_MAP_IN_REDUCE_ZERO.get(operator)
+                if dtype_map is None:
+                    raise_error("Reduce zero axis does not support operator: {0}.".format(operator))
+
+                dtype = input_tensor.dtype
+                value = dtype_map.get(dtype)
+                if value is None:
+                    raise_error("Reduce zero axis does not support dtype: {0}.".format(dtype))
+
+                return value
+
             count_indice = 0
             count_reduce = 0
             res_indice = []
@@ -264,6 +315,18 @@ def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
 
         reduce_res = tvm.compute(res_reshape, compute_func, name=name)
         return reduce_res
+
+    def contains_zero_axis():
+        for _i, dim in enumerate(input_tensor.shape):
+            if expr_equal(dim, 0):
+                return True
+        return False
+
+    def contains_non_reduce_zero_axis():
+        for _i, dim in enumerate(input_tensor.shape):
+            if expr_equal(dim, 0) and _i not in axis:
+                return True
+        return False
 
     def __get_reduce_fun(in_op):
         if in_op.lower() == "reduce_min":
@@ -340,7 +403,7 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
             dict_args = dict()
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Tuple reduce input tensors must be 2. " \
-                                    "while is [%s]" % len(tensor_list)
+                                          "while is [%s]" % len(tensor_list)
             raise RuntimeError(dict_args, get_error_message(dict_args))
         shape1 = shape_to_list(tensor_list[0].shape)
         shape2 = shape_to_list(tensor_list[1].shape)

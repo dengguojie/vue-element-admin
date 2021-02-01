@@ -28,9 +28,12 @@ from typing import Callable
 from typing import Iterable
 
 # Third-party packages
+from te import tvm
 from te.tvm.tensor import Tensor
 from te.tvm.tensor import PlaceholderOp
 from te.platform.cce_conf import get_soc_spec
+
+from te.lang.base import operation_impl as operation
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .constants import *
@@ -190,7 +193,12 @@ class ComputeGraphInfo:
         """
         reduce_tensor = list(self.reduce_tensor_set)[0]
         shape_after_reduce = list(reduce_tensor.shape)
-        shape_before_reduce = list(reduce_tensor.op.input_tensors[0].shape)
+        compute = operation.get_context().get_current_compute()
+        if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+            shape_before_reduce = list(reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
+        else:
+            shape_before_reduce = list(reduce_tensor.op.input_tensors[0].shape)
+
         self.max_type = self.tensor_list[0].dtype
         self.min_type = self.tensor_list[0].dtype
 
@@ -402,6 +410,7 @@ class ComputeGraphInfo:
         small_ub_size = self.soc_ub_size // total_num // 128 * 128
         self.tensor_ub_size_before_reduce = self.coef * small_ub_size
         self.tensor_ub_size_after_reduce = small_ub_size
+        operation.add_compile_info("zero_ub_factor", self.tensor_ub_size_after_reduce)
 
     @staticmethod
     def set_map_deepcopy(_map: Dict[Tensor, Set[Tensor]]) -> Dict[Tensor, Set[Tensor]]:

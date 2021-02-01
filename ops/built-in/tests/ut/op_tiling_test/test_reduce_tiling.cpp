@@ -68,3 +68,79 @@ TEST_F(ReduceTiling, ReduceTiling1) {
   EXPECT_EQ(runInfo.block_dim, 1);
   EXPECT_EQ(to_string(runInfo.tiling_data), "-1000500 1 1 1 ");
 }
+
+TEST_F(ReduceTiling, ReduceTiling2) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+
+  std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "CommReduce", "zero_ub_factor": 25600, "_vars": {"10": ["dim_1", "ub_factor"]}})";
+
+  std::vector<int64_t> input{2, 39, 0};
+  std::vector<int64_t> output{2, 39, 1};
+  std::string in_dtype = "float32";
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = in_dtype;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_input);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg_out;
+  tensor_arg_out.tensor.push_back(tensor_output);
+  tensor_arg_out.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_arg);
+  opParas.outputs.push_back(tensor_arg_out);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "REDUCE__COUNTER__2";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 1);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "10 78 25600 ");
+}
+
+TEST_F(ReduceTiling, ReduceTiling3) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+
+  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "zero_ub_factor": 32128, "_vars": {"110": ["dim_2", "ub_factor"]}})";
+
+  std::vector<int64_t> input{2, 39, 0};
+  std::vector<int64_t> output{};
+  std::string in_dtype = "float32";
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = in_dtype;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_input);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg_out;
+  tensor_arg_out.tensor.push_back(tensor_output);
+  tensor_arg_out.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_arg);
+  opParas.outputs.push_back(tensor_arg_out);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "REDUCE__COUNTER__3";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.block_dim, 1);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "110 2 128 ");
+}

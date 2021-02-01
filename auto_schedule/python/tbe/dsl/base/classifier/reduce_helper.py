@@ -15,8 +15,9 @@
 """
 helper for reduce classifier
 """
-from enum import Enum, auto
 from copy import deepcopy
+from enum import Enum
+from enum import auto
 
 from . import util
 
@@ -26,6 +27,7 @@ SPECIAL = "special"
 BEFORE = "before"
 AFTER = "after"
 AXIS = "axis"
+ZERO = "zero"
 
 
 def is_const(shape):
@@ -169,16 +171,17 @@ def generate_reduce_input(inputs_before_reduce, inputs_after_reduce=None, reduce
                 # should be set to -1
                 if not keep_dims:
                     ori_shape.insert(axis, -1)
-                    ori_range.insert(axis, (1, None))
+                    ori_range.insert(axis, (0, None))
                 else:
                     ori_shape[axis] = -1
-                    ori_range[axis] = (1, None)
+                    ori_range[axis] = (0, None)
             single_input["shape"] = ori_shape
             single_input["range"] = ori_range
         inputs_before_reduce.extend(inputs_after_reduce)
 
     shape_local = [x["shape"] for x in inputs_before_reduce]
-    range_local = [x.get("range") if x.get("range") else [(1, None)]*len(shape_local[0]) for x in inputs_before_reduce]
+    range_local = [x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0]) for x in
+                   inputs_before_reduce]
 
     def _get_dim(i):
         return max([s[i] for s in shape_local])
@@ -346,3 +349,47 @@ class ShapeSimplifier:
             return cls.Operator.FUSED
 
         return cls.Operator.ALONE
+
+
+def generate_zero_ins():
+    """
+
+    :return:
+    """
+    ins_x_0 = {
+        "shape": (1, -1, 0),
+        "range": [(1, 1), (1, None), (0, 0)],
+        "mode": ZERO,
+        "rel_pos_to_reduce": BEFORE
+    }
+    ins_axis_0 = {
+        "shape": [1],
+        "value": [2],
+        "rel_pos_to_reduce": AXIS,
+        "ori_axis": [2]
+    }
+
+    ins_x_1 = {
+        "shape": (1, 0, -1),
+        "range": [(1, 1), (0, 0), (1, None)],
+        "mode": ZERO,
+        "rel_pos_to_reduce": BEFORE
+    }
+    ins_axis_1 = {
+        "shape": [1],
+        "value": [2],
+        "rel_pos_to_reduce": AXIS,
+        "ori_axis": [2]
+    }
+
+    return [[ins_x_0, ins_axis_0], [ins_x_1, ins_axis_1]]
+
+
+class ZeroAxisStatus(Enum):
+    """
+    shape have zero axis status
+    """
+
+    EXIST = auto()
+    MAYBE = auto()
+    NON_EXIST = auto()

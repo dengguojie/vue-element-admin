@@ -15,15 +15,18 @@
 """
 classifier of shape in unknown reduce axis
 """
-from te import platform as cce
 from itertools import combinations
+
+from te import platform as cce
 
 from . import reduce_helper as helper
 from . import util
+from .reduce_helper import ZeroAxisStatus
 
 CONST = "const"
 BEFORE = "before"
 AXIS = "axis"
+ZERO = "zero"
 
 
 class UnknownReduceClassifier:
@@ -33,6 +36,9 @@ class UnknownReduceClassifier:
         inputs_before_reduce, inputs_after_reduce, inputs_axis, self.inputs_classification = \
             helper.inputs_classify(ins)
         self.input_x = helper.generate_reduce_input(inputs_before_reduce)
+
+        self.zero_axis_status = self._handle_zero_axis()
+
         self.keep_dims = helper.judge_keep_dims(inputs_before_reduce, inputs_after_reduce)
         self.n_shape, self.n_ranges = self._normalize()
         self.dim_len = len(self.n_shape)
@@ -47,7 +53,32 @@ class UnknownReduceClassifier:
         if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
             return [helper.ins_of_prebuild(self.ins, list(range(0, self.reduce_axis_size)))]
 
+        if self.zero_axis_status == ZeroAxisStatus.EXIST:
+            return helper.generate_zero_ins()
+
         return self._classify_const() if self._is_const() else self._classify_var()
+
+    def _handle_zero_axis(self):
+        shape_x = self.input_x["shape"]
+        range_x = self.input_x["range"]
+
+        exist, maybe = False, False
+        for i, dim_i in enumerate(shape_x):
+            if dim_i == 0:
+                exist = True
+                break
+            elif range_x[i][0] == 0:
+                maybe = True
+
+        if exist:
+            return ZeroAxisStatus.EXIST
+        elif maybe:
+            for i, r in enumerate(range_x):
+                if range_x[i][0] == 0:
+                    range_x[i] = (1, range_x[i][1])
+            return ZeroAxisStatus.MAYBE
+        else:
+            return ZeroAxisStatus.NON_EXIST
 
     def _normalize(self):
         shape0, ranges0 = list(self.input_x["shape"]), self.input_x.get("range")
@@ -123,5 +154,8 @@ class UnknownReduceClassifier:
             helper.refine_ins(ins[0], ins[1])
             ins_after_reduce = helper.generate_ins_of_after_reduce(ins[0], ins[1], self.keep_dims)
             out_ins.append(helper.generate_ins_of_all(ins[0], ins_after_reduce, ins[1], self.inputs_classification))
+
+        if self.zero_axis_status == ZeroAxisStatus.MAYBE:
+            out_ins.extend(helper.generate_zero_ins())
 
         return out_ins

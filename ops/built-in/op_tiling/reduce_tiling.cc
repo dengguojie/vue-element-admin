@@ -812,6 +812,15 @@ bool Reduce::Init() {
 }
 
 bool Reduce::WriteTilingData() {
+  if (exit_zero_axis) {
+    ByteBufferPut(run_info.tiling_data, (int32_t)zero_tiling_key);
+    ByteBufferPut(run_info.tiling_data, (int32_t)fusion_dim_value);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+    run_info.block_dim = (int32_t)1;
+
+    return true;
+  }
+
   if (compileInfo.is_const_post) {
     // runtime
     ConstInputProcPost();
@@ -875,6 +884,34 @@ bool Reduce::DoTiling() {
   GELOGD("op [%s]: tiling running", op_type.c_str());
   bool ret = true;
   ret = ret && Init();
+
+  for (uint32_t i = 0; i < input_shape_ori.size(); ++i) {
+    int64_t dim = input_shape_ori[i];
+    bool non_reduce_axis = std::find(reduce_axis_ori.begin(), reduce_axis_ori.end(), i) == reduce_axis_ori.end();
+
+    if (dim == 0) {
+      exit_zero_axis = true;
+      if (non_reduce_axis) {
+        exit_non_reduce_zero_axis = true;
+      }
+    } else {
+      if (non_reduce_axis) {
+        fusion_dim_value *= dim;
+      }
+    }
+  }
+
+  if (exit_zero_axis) {
+    if (exit_non_reduce_zero_axis) {
+      zero_tiling_key = 110;
+      tilingInfo.ub_tiling_factor = 128;
+    } else {
+      zero_tiling_key = 10;
+      tilingInfo.ub_tiling_factor = op_info["zero_ub_factor"];
+    }
+
+    return true;
+  }
 
   if (compileInfo.is_const) {
     // input(known)

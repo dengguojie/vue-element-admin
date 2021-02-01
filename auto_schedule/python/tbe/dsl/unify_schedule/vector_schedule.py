@@ -52,6 +52,7 @@ from .vector_schedule_base import VectorScheduleBase
 
 CONST = "const"
 
+
 class VectorSchedule(VectorScheduleBase, ABC):
     class TilingInfo:
         class TilingMode(Enum):
@@ -345,6 +346,10 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def _do_constraint(self):
         if operation.get_context().get("mode") == CONST:
             return
+
+        if operation.get_context().get_current_compute().get("mode") == "zero":
+            return
+
         for constraint_func_pair in self.constraint_func_pair_list:
             params = [self.solve_placeholder(param) for param in constraint_func_pair[0]]
             func = constraint_func_pair[1]
@@ -439,6 +444,16 @@ class VectorSchedule(VectorScheduleBase, ABC):
 
     def do_auto_data_flow_control(self, ignore_tensors: Tuple[Tensor] = ()) -> NoReturn:
         self._data_flow_control.clear()
+
+        compute = operation.get_context().get_current_compute()
+        if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+            out_tensor = list(self.graph_info.output_tensor_set)[0]
+            self.cache_write(out_tensor, self.compute_scope)
+            for tensor in self.graph_info.tensor_list:
+                if tensor != out_tensor:
+                    self._tensor_to_scope_map.setdefault(tensor, self.compute_scope)
+            return
+
         for tensor in self.forward_compute_graph_map:
             if tensor in ignore_tensors:
                 continue
@@ -611,9 +626,18 @@ class VectorSchedule(VectorScheduleBase, ABC):
     def get_itervar_by_original_index(self,
                                       tensor: Union[Placeholder, Tensor], axis_index: int) -> IterVar:
         real_tensor: Tensor = self.solve_placeholder(tensor)
-        if tensor not in self.tensor_reduced_axis_indices:
+        compute = operation.get_context().get_current_compute()
+        if compute.get("mode") != "zero" and tensor not in self.tensor_reduced_axis_indices:
             raise NotImplementedError("Please maintain reduce_axis_indices info for tensor %s" % (str(real_tensor)))
-        reduced_indices = self.tensor_reduced_axis_indices[tensor]
+        if compute.get("mode") == "zero":
+            reduce_tensors = list(self.graph_info.reduce_tensor_set)
+            if real_tensor in reduce_tensors or is_keepdims(reduce_tensors[0]):
+                reduced_indices = []
+            else:
+                reduced_indices = [2]
+        else:
+            reduced_indices = self.tensor_reduced_axis_indices[tensor]
+
         real_stage: Stage = self.schedule[real_tensor]
         body = real_tensor.op.body[0]
         calibrated_index = axis_index

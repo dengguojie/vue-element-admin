@@ -563,7 +563,7 @@ def _check_range(shape, shape_range, min_dim=0, max_dim=RANK_LIMIT,
     for range_i in shape_range:
         if len(range_i) == 2 and (range_i[1] is None) \
                 and isinstance(range_i[0], int) \
-                and 0 < range_i[0] <= max_shape_num:
+                and 0 <= range_i[0] <= max_shape_num:
             continue
         if not isinstance(range_i[0], int):
             error_info = {

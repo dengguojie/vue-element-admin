@@ -115,6 +115,11 @@ class Reduce {
   TilingInfo tilingInfo;
   ReorderInfo reorderInfo;
 
+  bool exit_zero_axis = false;
+  bool exit_non_reduce_zero_axis = false;
+  int64_t fusion_dim_value = 1;
+  int64_t zero_tiling_key = 0;
+
   std::vector<int64_t> input_shape_ori;
   std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(10, 0)};
   std::vector<int64_t> input_shape{std::vector<int64_t>(10, 0)};

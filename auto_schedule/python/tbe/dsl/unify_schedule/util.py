@@ -18,6 +18,7 @@ schedule util
 from typing import List
 from functools import reduce
 from operator import mul
+from typing import Union
 
 from te.platform.cce_conf import CceProductParams as product_params
 from te import platform as cce
@@ -324,8 +325,14 @@ def is_reduce_tensor(tensor: Tensor) -> bool:
     return False
 
 
-def get_reduce_axes(reduce_tensor: Tensor) -> List[Var]:
+def get_reduce_axes(reduce_tensor: Tensor) -> List[Union[Var, tvm.expr.IntImm]]:
     """Get reduce axes var of reduce tensor"""
+    compute = operation.get_context().get_current_compute()
+    if compute.get("mode") == "zero":
+        shape = compute.get("shape")
+        if shape == (1, -1, 0):
+            return [tvm.expr.IntImm("int32", 0)]
+
     if not is_reduce_tensor(reduce_tensor):
         raise RuntimeError("Cannot get reduce axes of non-reduce tensor!")
     reduce_tensor_body = reduce_tensor.op.body
@@ -335,14 +342,22 @@ def get_reduce_axes(reduce_tensor: Tensor) -> List[Var]:
     return reduce_tensor_axes
 
 
-def get_reduce_all_axes(reduce_tensor: Tensor) -> List[Var]:
+def get_reduce_all_axes(reduce_tensor: Tensor) -> List[Union[Var, tvm.expr.IntImm]]:
     """Get all axes var for reduce tensor"""
+    compute = operation.get_context().get_current_compute()
+    if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+        return list(reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
+
     reduce_tensor_body = reduce_tensor.op.body
     return list(reduce_tensor_body[0].source[0].args)
 
 
 def get_reduce_axis_indices(reduce_tensor: Tensor) -> List[int]:
     """Get all reduce axis index"""
+    compute = operation.get_context().get_current_compute()
+    if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+        return [2]
+
     return [get_reduce_all_axes(reduce_tensor).index(axis) for axis in get_reduce_axes(reduce_tensor)]
 
 
