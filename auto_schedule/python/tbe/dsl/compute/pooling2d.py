@@ -159,7 +159,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
 
     if data_mode == 1:
         pooling_mode = _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
-                                                           window_h, window_w)
+                                                           window_h, window_w, stride)
     # avg or max pooling
     if pooling_mode in ["AVG", "MAX"]:
         # only in AVG pooling related, img2col instrin nRepeat in [1,255]
@@ -228,16 +228,25 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
 
     # global avg or max pooling
     elif pooling_mode in ["GAP", "GMP"]:
-        if data_mode == 1:
-            not_global_flag = window_h < in_size_h or window_w < in_size_w
-            if not_global_flag:
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "invalid window params in GAP " \
-                                              "or GMP mode, window size [%s, %s] " \
-                                              "should be equal to input size [%s, %s]" \
-                                              % (window_h, window_w, in_size_h, in_size_w)
-                raise RuntimeError(dict_args, get_error_message(dict_args))
+        def _check_para_in_global_mode():
+            if data_mode == 1:
+                not_global_flag = window_h < in_size_h or window_w < in_size_w
+                # see the _get_pooling_mode_with_same_padding_mode function for details.
+                if padding_mode == "SAME":
+                    output_h = (in_size_h + stride[0] - 1) // stride[0]
+                    output_w = (in_size_w + stride[1] - 1) // stride[1]
+                    if output_w == 1 and output_h == 1:
+                        not_global_flag = False
+                    if not_global_flag:
+                        dict_args = dict()
+                        dict_args["errCode"] = "E90001"
+                        dict_args["detailed_cause"] = "invalid window params in GAP " \
+                                                      "or GMP mode, window size [%s, %s] " \
+                                                      "should be equal to input size [%s, %s]" \
+                                                      % (window_h, window_w, in_size_h, in_size_w)
+                        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        _check_para_in_global_mode()
 
         stride_h = 1
         stride_w = 1
@@ -566,7 +575,7 @@ def _check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
     if data_mode == 1:
         pooling_mode = _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode,
                                                            in_size_h, in_size_w,
-                                                           window_h, window_w)
+                                                           window_h, window_w, stride)
     # global
     if pooling_mode not in ["GAP", "GMP", "AVG"]:
         if stride[0] > 63 or stride[0] < 1:
@@ -587,7 +596,7 @@ def _check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
-                                        window_h, window_w):
+                                        window_h, window_w, stride):
     """
     :param padding_mode: can be SAME, VALID
     :param pooling_mode: can be MAX, AVG, GAP, GMP
@@ -605,28 +614,50 @@ def _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, i
     # others are all handled as normal AVG or MAX pooling.
     # pylint: disable=no-else-raise
     if padding_mode == "VALID":
-        if window_h > in_size_h or window_w > in_size_w:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "invalid window params, in VALID " \
-                                          "mode window must be <= feature map. " \
-                                          "while window is [%s, %s], hw is [%s, %s]" \
-                                          % (window_h, window_w, in_size_h, in_size_w)
-            raise RuntimeError(dict_args, get_error_message(dict_args))
-        if window_h == in_size_h and window_w == in_size_w:
-            if pooling_mode == "MAX":
-                pooling_mode = "GMP"
-            elif pooling_mode == "AVG":
-                pooling_mode = "GAP"
+        pooling_mode = _get_pooling_mode_with_valid_padding_mode(in_size_h, in_size_w, pooling_mode, window_h,
+                                                                 window_w)
 
     # redefine pooling_mode from global to normal max or avg
     elif padding_mode == "SAME":
-        if window_h >= in_size_h or window_w >= in_size_w:
-            if pooling_mode == "GMP":
-                pooling_mode = "MAX"
-            elif pooling_mode == "GAP":
-                pooling_mode = "AVG"
+        pooling_mode = _get_pooling_mode_with_same_padding_mode(in_size_h, in_size_w, pooling_mode, stride, window_h,
+                                                                window_w)
 
+    return pooling_mode
+
+
+def _get_pooling_mode_with_same_padding_mode(in_size_h, in_size_w, pooling_mode, stride, window_h, window_w):
+    if window_h >= in_size_h or window_w >= in_size_w:
+        if pooling_mode == "GMP":
+            pooling_mode = "MAX"
+        elif pooling_mode == "GAP":
+            pooling_mode = "AVG"
+
+    # Note: If output_w and output_h are equal one in this situation, then Need modify pooling mode to GAP.
+    # Because use neither conv nor deconv is right.
+    # At the same time, we have also note that maybe precision problem in some case.
+    # If that happen, please use high precision mode.
+    if pooling_mode == "AVG":
+        output_h = (in_size_h + stride[0] - 1) // stride[0]
+        output_w = (in_size_w + stride[1] - 1) // stride[1]
+        if output_w == 1 and output_h == 1:
+            pooling_mode = "GAP"
+    return pooling_mode
+
+
+def _get_pooling_mode_with_valid_padding_mode(in_size_h, in_size_w, pooling_mode, window_h, window_w):
+    if window_h > in_size_h or window_w > in_size_w:
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "invalid window params, in VALID " \
+                                      "mode window must be <= feature map. " \
+                                      "while window is [%s, %s], hw is [%s, %s]" \
+                                      % (window_h, window_w, in_size_h, in_size_w)
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+    if window_h == in_size_h and window_w == in_size_w:
+        if pooling_mode == "MAX":
+            pooling_mode = "GMP"
+        elif pooling_mode == "AVG":
+            pooling_mode = "GAP"
     return pooling_mode
 
 
