@@ -114,6 +114,17 @@ from .cosine_embedding_loss_schedule import \
 from .dilation_schedule import dilation_schedule
 
 
+def set_op_pattern(all_tags, op_info):
+    """
+    set op pattern to gemm when batchmatmul fused with fusedmuladd or reduce_sum
+    """
+    op_pattern = op_info["pattern"]
+    if (("elewise_binary_mul" in all_tags and "elewise_binary_add" in all_tags) or
+        "reduce_sum" in all_tags):
+        op_pattern = OpPatterns.GEMM_PATTERN
+    return op_pattern
+
+
 def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915
     """
     dfs the compute garph to get the op info, the fomrt as follows:
@@ -176,16 +187,6 @@ def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915
     op_info['tensor_map'] = tensor_map
 
     return op_info
-
-
-def set_op_pattern(all_tags, op_info):
-    """
-    change pattern to GEMM when comes batchmamul+reduceSum.
-    """
-    op_pattern = op_info['pattern']
-    if "reduce_sum" in all_tags:
-        op_pattern = OpPatterns.GEMM_PATTERN
-    op_info['pattern'] = op_pattern
 
 
 def remove_redundant_cast_op(res, outs):
@@ -306,7 +307,6 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
             out_tmp = [outs[0]]  # suppose input and output are the same
     else:
         out_tmp = [outs]
-
     outs = out_tmp
     origin_outs = copy.copy(outs)
 
@@ -324,7 +324,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     op_pattern = op_info['pattern']
     if op_pattern == OpPatterns.MATMUL_PATTERN:
         all_tags = get_all_tags(outs[0])
-        set_op_pattern(all_tags, op_info)
+        op_info['pattern'] = set_op_pattern(all_tags, op_info)
     op_pattern = op_info['pattern']
 
     fusion_manager.set_current_op_pattern(op_pattern.value)
@@ -1534,7 +1534,7 @@ class ScheduleDispatch:
     @handle_case.register('pooling3d')
     def _(self, case, tensor, sch_list):
         return pooling3d_schedule(tensor, sch_list)
-        
+
     @handle_case.register('dilation')
     def _(self, case, tensor, sch_list):
         return dilation_schedule(tensor, sch_list)

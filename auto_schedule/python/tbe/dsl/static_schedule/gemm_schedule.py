@@ -176,6 +176,7 @@ def _get_all_tensors(res):
     """
 
     all_tensor = dict()
+    leaf_tensor = dict()
     all_tensor["res"] = res
 
     def get(tensor):
@@ -187,12 +188,14 @@ def _get_all_tensors(res):
         tensor_list = tensor.op.input_tensors
         for one_tensor in tensor_list:
             # check which tensor has not been checked
+            if not one_tensor.op.input_tensors:
+                leaf_tensor[one_tensor.op.name] = tensor
             if one_tensor.op.name not in all_tensor:
                 all_tensor[one_tensor.op.name] = one_tensor
                 get(one_tensor)
 
     get(res)
-    return all_tensor
+    return all_tensor, leaf_tensor
 
 
 def _check_align(b_n, stridew, divide_factor):
@@ -412,7 +415,7 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
     ----------------------------------------------------------
     """
 
-    all_tensor = _get_all_tensors(res)
+    all_tensor, leaf_tensor = _get_all_tensors(res)
 
     def _init_common_tensor():
         if "reduce_sum" in res.op.tag:
@@ -457,15 +460,15 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
         sch[Params.TENSOR_MAP["c_l0c"]].set_scope(cce_params.scope_cc)
         Params.TENSOR_MAP["bias_ub"] = all_tensor.get("tensor_bias_ub")
 
-        if Params.fusion_type == FusionType.bachmatmul_reducesum:
+        if Params.fusion_type == FusionType.DEFAULT_MODE:
+            Params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a")
+            Params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b")
+            Params.TENSOR_MAP["bias"] = all_tensor.get("tensor_bias")
+        else:
             Params.TENSOR_MAP["a_placehold"] = Params.TENSOR_MAP["a_l1"].op.input_tensors[0]
             Params.TENSOR_MAP["b_placehold"] = Params.TENSOR_MAP["b_l1"].op.input_tensors[0]
             if Params.TENSOR_MAP["bias_ub"]:
                 Params.TENSOR_MAP["bias"] = Params.TENSOR_MAP["bias_ub"].op.input_tensors[0]
-        else:
-            Params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a")
-            Params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b")
-            Params.TENSOR_MAP["bias"] = all_tensor.get("tensor_bias")
         if Params.MAT_MUL:
             if Params.TENSOR_MAP["bias_ub"] is not None:
                 sch[Params.TENSOR_MAP["bias_ub"]].set_scope(cce_params.scope_ubuf)
@@ -578,8 +581,30 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
 
     def _init_fusion_case():
         Params.fusion_type = FusionType.DEFAULT_MODE
-        if "reduce_sum" in res.op.tag:
-            Params.fusion_type = FusionType.bachmatmul_reducesum
+        if "elewise" in res.op.tag:
+            Params.fusion_type = FusionType.ELEWISE_FUSION
+            ub_list = list()
+            input_list = list()
+            output_ub = sch.cache_write(res, cce_params.scope_ubuf)
+            ub_list.append(output_ub)
+            for key, value in all_tensor.items():
+                if (not value.op.input_tensors and leaf_tensor[key].op.name not in
+                        ("tensor_a_l1", "tensor_b_l1", "tensor_bias_ub")):
+                    if res != leaf_tensor[key]:
+                        input_ub = sch.cache_read(value, cce_params.scope_ubuf, leaf_tensor[key])
+                    else:
+                        input_ub = sch.cache_read(value, cce_params.scope_ubuf, output_ub)
+                    input_list.append(input_ub)
+                elif "elewise" in value.op.tag and res != value:
+                    sch[value].set_scope(cce_params.scope_ubuf)
+                    ub_list.append(value)
+                elif "broadcast" in value.op.tag or key == "tensor_c_gm":
+                    sch[value].compute_inline()
+            Params.TENSOR_MAP["fusion_ub"] = ub_list
+            Params.TENSOR_MAP["fusion_input"] = input_list
+        elif "reduce_sum" in res.op.tag:
+            Params.fusion_type = FusionType.REDUCE_FUSION
+
     _init_fusion_case()
     _init_common_tensor()
     _get_ops_mode()
@@ -811,7 +836,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
                 * Params.TILING.get("CUB_matrix")[3]
                 * Params.OUTPUT_SIZE.get(Params.ops_mode)
                 * is_double
-                * (Params.CUB_FUSED_NUM.get(Params.ops_mode) + 1)
+                * (fusion_sums + 1)
             )
             return data_amount_cub
 
@@ -966,7 +991,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
             "group": 1,
             "bias_flag": bias_flag,
             "fused_double_operand_num": fused_num,
-            "kernel_name": kernel_name.value
+            "kernel_name": _get_value(kernel_name)
         }
         tiling = get_tiling(info_dict)
 
@@ -983,7 +1008,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
         Params().print_debug("-----------auto tiling result-----------------")
         Params().print_debug(tiling)
         Params().print_debug("----------------------------------------------")
-        return tiling
+        return tiling, fused_num
 
     def _check_tiling_al1():
         manual_pingpong_buffer = Params.TILING.get("manual_pingpong_buffer")
@@ -1169,7 +1194,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
 
-    Params.TILING = get_tiling_result(kernel_name)
+    Params.TILING, fusion_sums = get_tiling_result(kernel_name)
     data_amount_al1 = _check_tiling_al1()
     data_amount_bl1 = _check_tiling_bl1()
     Params().print_debug("data_amount_al1:", data_amount_al1 / 1024)
@@ -1413,7 +1438,7 @@ def _bind_multi_core(  # pylint: disable=too-many-arguments
         block_dim = [1, 1, 1, 1]
     blockidx = []
     # split batch axis
-    if Params.fusion_type == FusionType.bachmatmul_reducesum:
+    if Params.fusion_type == FusionType.REDUCE_FUSION:
         batch_nparts = Params.DIM_MAP["A_matrix_dim"][0]
     else:
         batch_nparts = block_dim[0]
@@ -1634,7 +1659,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
         return reorder_flag
 
     # split c_gm according to factor of loc and out_shape
-    if Params.fusion_type == FusionType.bachmatmul_reducesum:
+    if Params.fusion_type == FusionType.REDUCE_FUSION:
         l0c_n_outer, l0c_n_inner = sch[c_gm].split(sch[c_gm].op.axis[-4], l0c_factor[0])
         l0c_m_outer, l0c_m_inner = sch[c_gm].split(sch[c_gm].op.axis[-3], l0c_factor[1])
     else:
@@ -1648,7 +1673,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=too-many-locals, too-many-arguments
     l1_n_outer_outer, cl1_out_inner = sch[c_gm].split(l0c_n_outer, nparts=bl1_parts[1])
 
     # get batch axis, if batch is None, make one
-    if Params.fusion_type == FusionType.bachmatmul_reducesum:
+    if Params.fusion_type == FusionType.REDUCE_FUSION:
         batch = sch[c_gm].op.reduce_axis[0]
     elif len(c_gm.shape) > 4:
         batch = c_gm.op.axis[0]
@@ -1721,7 +1746,7 @@ def _get_l0c_and_l1_axis_dynamic(   # pylint: disable=too-many-locals, too-many-
             block_dim = Params.TILING["block_dim"]
         else:
             block_dim = [1, 1, 1, 1]
-        
+
         # split batch axis
         batch_out = sch[c_gm].split(batch, nparts=block_dim[0])
         n_out = sch[c_gm].split(l1_n_outer_outer, nparts=block_dim[1])
@@ -1967,7 +1992,7 @@ def _set_data_layout_cv_split(res, sch):
         TENSOR_MAP: tenosr info
         DIM_MAP: shape info
     """
-    all_tensor = _get_all_tensors(res)
+    all_tensor, _ = _get_all_tensors(res)
 
     def _init_map():
         """set DIM_MAP
@@ -2070,7 +2095,12 @@ def get_tiling_param_nz():
         pad_l = Params.AUB_FUSED_NUM.get(Params.ops_mode)
         pad_r = Params.BUB_FUSED_NUM.get(Params.ops_mode)
         fused_num = Params.CUB_FUSED_NUM.get(Params.ops_mode)
-    if Params.fusion_type == FusionType.bachmatmul_reducesum:
+    if Params.fusion_type == FusionType.ELEWISE_FUSION:
+        if Params.TENSOR_MAP["fusion_ub"]:
+            fused_num += 1
+        if Params.TENSOR_MAP["fusion_input"]:
+            fused_num += 1
+    if Params.fusion_type == FusionType.REDUCE_FUSION:
         fused_num = 1
     return a_shape, b_shape, pad_l, pad_r, fused_num
 
@@ -2181,7 +2211,10 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
     _set_data_layout_enter(res, sch)
 
     Params().print_ir_matmul("orgin", sch)
-    kernel_name = Params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
+    if Params.fusion_type == FusionType.DEFAULT_MODE:
+        kernel_name = Params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
+    else:
+        kernel_name = Params.TENSOR_MAP["c_ub"].op.attrs["kernel_name"]
     _get_trans_flag_cv_split()
     if Params.is_dynamic:
         Params.TILING = dynamic_para["tiling_strategy"]
@@ -2198,7 +2231,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
         Params.TENSOR_MAP["c_gm"]
     )
 
-    if not Params.is_dynamic and Params.fusion_type == FusionType.bachmatmul_reducesum:
+    if not Params.is_dynamic and Params.fusion_type == FusionType.REDUCE_FUSION:
         c_gm, ub_after_reduce = _atomic_add(sch, res)
 
     c_ub = Params.TENSOR_MAP.get("c_ub")
@@ -3631,11 +3664,15 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 tensor_cub_list = [c_ub]
             for tensor in tensor_cub_list:
                 sch[tensor].compute_at(sch[c_gm], at_axis)
+            for input_tensor in Params.TENSOR_MAP.get("fusion_input", []):
+                sch[input_tensor].compute_at(sch[c_gm], at_axis)
+            for ub_tensor in Params.TENSOR_MAP.get("fusion_ub", []):
+                sch[ub_tensor].compute_at(sch[c_gm], at_axis)
 
         if not Params.cube_vector_split:
             _attach_ub(sch, c_gm, c_gm_at_axis)
 
-        if Params.fusion_type == FusionType.bachmatmul_reducesum:
+        if Params.fusion_type == FusionType.REDUCE_FUSION:
             sch[ub_after_reduce].compute_at(sch[c_gm], c_gm_at_axis)
 
         # -----------attach tensor of l0c----------------
@@ -3968,12 +4005,17 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                         c_before_mul_ub
                     ]
                 else:
+                    for input_tensor in Params.TENSOR_MAP.get("fusion_input", []):
+                        temp_tensor_list.append(input_tensor)
+                        sch[input_tensor].preload()
+                    for ub_tensor in Params.TENSOR_MAP.get("fusion_ub", []):
+                        temp_tensor_list.append(ub_tensor)
                     if bias_ub is not None:
                         temp_tensor_list += [c_ub, bias_ub]
                         sch[bias_ub].preload()
                     else:
                         temp_tensor_list += [c_ub]
-                if Params.fusion_type == FusionType.bachmatmul_reducesum:
+                if Params.fusion_type == FusionType.REDUCE_FUSION:
                     temp_tensor_list += [ub_after_reduce]
                 if not Params.MAT_MUL:
                     if Params.ops_mode == "fp16fp16":
@@ -4058,6 +4100,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 ]
             else:
                 temp_tensor_list = [c_ub]
+            temp_tensor_list += Params.TENSOR_MAP.get("fusion_input", [])
             if not Params.MAT_MUL:
                 if Params.ops_mode == "fp16fp16":
                     temp_tensor_list += [alpha_temp_ub, beta_temp_ub, float32_bias_ub]
@@ -4078,7 +4121,9 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                     sch[c_ub_temp].emit_insn(c_ub_temp.op.axis[0], "vector_muls")
 
                 sch[beta_bias_ub].emit_insn(beta_bias_ub.op.axis[0], "vector_muls")
-            if Params.fusion_type == FusionType.bachmatmul_reducesum:
+            for tensor_ub in Params.TENSOR_MAP.get("fusion_ub", []):
+                sch[tensor_ub].emit_insn(tensor_ub.op.axis[0], "vector_auto")
+            if Params.fusion_type == FusionType.REDUCE_FUSION:
                 sch[ub_after_reduce].emit_insn(ub_after_reduce.op.axis[0], "dma_copy")
 
 
@@ -4118,7 +4163,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                     m_bound = m_factors * Params.TILING["CL0_matrix"][1] * Params.block_in
                 al1_bound = m_bound * k_bound
             return al1_bound
-        
+
         def _get_bl1_bound():
             if Params.TILING["BL1_shape"]:
                 n_bound = Params.TILING["BL1_shape"][1] * Params.TILING["CL0_matrix"][0] * Params.block_out
@@ -4134,7 +4179,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                     n_bound = n_factors * Params.TILING["CL0_matrix"][0] * Params.block_out
                 bl1_bound = n_bound * k_bound
             return bl1_bound
-        
+
         if Params.is_dynamic:
             sch.disable_allocate(cce_params.scope_cbuf)
             sch.disable_allocate(cce_params.scope_ca)
@@ -4170,4 +4215,5 @@ class FusionType(Enum):
     fusion type
     """
     DEFAULT_MODE = 0
-    bachmatmul_reducesum = 1
+    ELEWISE_FUSION = 1
+    REDUCE_FUSION = 2

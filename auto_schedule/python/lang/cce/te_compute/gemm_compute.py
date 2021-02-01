@@ -793,10 +793,13 @@ class GEMMCompute:
         attrs = dict()
         offset_x = para_dict.get("offset_a")
         offset_w = para_dict.get("offset_b")
+        batch_shape = para_dict.get("batch_shape")
         if offset_x:
             attrs["offset_x"] = offset_x
         if offset_w:
             attrs["offset_w"] = offset_w
+        if batch_shape:
+            attrs["batch_shape"] = batch_shape
         return attrs
 
     def _get_tensor_alpha_beta(self):

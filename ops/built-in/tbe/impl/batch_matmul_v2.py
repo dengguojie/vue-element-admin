@@ -413,6 +413,8 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()
 
+    ori_shape_x = input_x.op.attrs["ori_shape"]
+    batch_shape = ori_shape_x[:-2] if len(ori_shape_x) > 2 else None
 
     para_dict = {
         "trans_a": trans_a_local,
@@ -421,7 +423,8 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
         "format_b": format_b,
         "dst_dtype": dst_dtype,
         "tensor_c": bias,
-        "kernel_name": kernel_name
+        "kernel_name": kernel_name,
+        "batch_shape": batch_shape
         }
     result = tbe.gemm(tensor_a=input_x, tensor_b=input_y, para_dict=para_dict)
 
