@@ -269,7 +269,7 @@ bool Broadcast::GenerateOutputShape() {
         fusion_index.push_back({i});
       }
     } catch (const std::exception &e) {
-      GELOGD("op [%s] : get compile_info[_broadcast_axis] error. Error message: %s", op_type.c_str(), e.what());
+      GE_LOGE("op [%s] : get compile_info[_broadcast_axis] error. Error message: %s", op_type.c_str(), e.what());
       return false;
     }
   } else {
@@ -296,7 +296,7 @@ bool Broadcast::RefineShapesForBroadcast() {
     try {
       fusion_index = op_info.at("_fusion_index").get<std::vector<std::vector<size_t>>>();
     } catch (const std::exception &e) {
-      GELOGD("op [%s] : get compile_info[_fusion_index] error. Error message: %s", op_type.c_str(), e.what());
+      GE_LOGE("op [%s] : get compile_info[_fusion_index] error. Error message: %s", op_type.c_str(), e.what());
       return false;
     }
   }
@@ -347,7 +347,7 @@ bool Broadcast::CalcTiling() {
     compileInfo.coexisting_quantity = base_info[2];
     compileInfo.core_num = base_info[3];
   } catch (const std::exception &e) {
-    GELOGD("op [%s] : get compile_info[_base_info] error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s] : get compile_info[_base_info] error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
   CHECK_GT(compileInfo.coexisting_quantity, 0, "op [%s] : compileInfo coexisting_quantity error, it is [%d]",
@@ -630,7 +630,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
       }
     }
   } catch (const std::exception &e) {
-    GELOGD("op [%s] : get compile_info[_elewise_vars] error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s] : get compile_info[_elewise_vars] error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
   return true;
@@ -648,7 +648,7 @@ bool Broadcast::DoTiling() {
   if (need_multi_core) {
     // cut block
     ret = ret && DoBlockTiling();
-    if (IsNeedDoubleBuffer()) {
+    if (ret && IsNeedDoubleBuffer()) {
       need_double_buffer = true;
       max_available_ub =
               (((compileInfo.ub_size / DOUBLE_BUFFER_SIZE / compileInfo.coexisting_quantity) / BLOCK_SIZE)

@@ -236,7 +236,7 @@ class ElewiseSchedule:
             self._out_tensors)
 
         pure_out_tensors = list(self._out_tensors - self._middle_out_tensors)
-        if len(self._out_tensors) > 1:
+        if len(pure_out_tensors) > 1:
             self._out = _fake_node(pure_out_tensors)
             self.__dfs_sub_graph(self._out, visited_tensors)
         else:
@@ -583,7 +583,8 @@ class ElewiseSchedule:
         if len(self._out_tensors) > 1:
             for tensor_i in self._out_tensors:
                 self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], "dma_copy"]
-            self._emit_insn_map[self._out] = [self._emit_insn_axis, "phony_insn"]
+            if len(self._out_tensors) - len(self._middle_out_tensors) > 1:
+                self._emit_insn_map[self._out] = [self._emit_insn_axis, "phony_insn"]
         else:
             for tensor_i in self._out_tensors:
                 self._emit_insn_map[tensor_i] = [self._emit_insn_axis, "dma_copy"]

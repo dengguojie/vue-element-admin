@@ -109,7 +109,7 @@ bool Eletwise::CalcTiling() {
     baseInfo.coexisting_quantity = base_info[2];
     baseInfo.core_num = base_info[3];
   } catch (const std::exception &e) {
-    GELOGD("op [%s] : get compile_info[_base_info] error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s] : get compile_info[_base_info] error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
   CHECK_GT(baseInfo.coexisting_quantity, 0, "op [%s] : baseInfo coexisting_quantity error, it is [%d]",
@@ -216,7 +216,7 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
       }
     }
   } catch (const std::exception &e) {
-    GELOGD("op [%s] : get compile_info[_elewise_vars] error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s] : get compile_info[_elewise_vars] error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
   return true;
@@ -232,7 +232,7 @@ bool Eletwise::DoTiling() {
     ret = ret && DoBlockTiling();
     CHECK((SPLIT_FACTORS.find(baseInfo.max_dtype) != SPLIT_FACTORS.end()),
         "op [%s] : baseInfo max_dtype not in SPLIT_FACTORS", op_type.c_str());
-    if (block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype))) {
+    if (ret && block_factor > std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype))) {
       need_double_buffer = true;
       max_available_ub =
               (((baseInfo.ub_size / DOUBLE_BUFFER_SIZE / baseInfo.coexisting_quantity) / BLOCK_SIZE)
@@ -309,7 +309,7 @@ bool MatchConstShape(const std::string& op_type,
       }
     }
   } catch (const std::exception &e) {
-    GELOGD("op [%s] : get compile_info[_const_shapes] error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s] : get compile_info[_const_shapes] error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
   return true;
@@ -349,7 +349,7 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
       block_dims = const_block_dims[key_index].get<int64_t>();
       key = 100000000 + key_index;
     } catch (const std::exception &e) {
-      GELOGD("op [%s] : get compile_info[_const_block_dims] error. Error message: %s", op_type.c_str(), e.what());
+      GE_LOGE("op [%s] : get compile_info[_const_block_dims] error. Error message: %s", op_type.c_str(), e.what());
       return false;
     }
   }
@@ -370,7 +370,7 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
   try {
     flag_info = op_info.at("_flag_info").get<std::vector<bool>>();
   } catch (const std::exception &e) {
-    GELOGD("op [%s] : get compile_info[_flag_info] error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s] : get compile_info[_flag_info] error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
   bool is_const = false;
