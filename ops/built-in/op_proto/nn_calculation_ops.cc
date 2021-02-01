@@ -61,7 +61,7 @@ namespace {
   const int32_t kConv3dDataSlice = 6;
   const int32_t kDeformDimSizeLimit = 4;
   const int32_t kDeformKsizeLimit = 2;
-  const int64_t kDynamicRangeLowerBound = 1; 
+  const int64_t kDynamicRangeLowerBound = 1;
   const int64_t kDynamicRangeUpperBound = 4096;
   const char* const kPreOpInputShapeRange = "_pre_op_in_range";
 }
@@ -1534,6 +1534,70 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
   return true;
 }
 
+template <typename T1, typename T2>
+static bool SetGroupsConv2dbp(ge::Operator& op, std::vector<T1>& input_sizes, Format input_format,
+                              std::vector<T2>& filter_sizes, Format filter_format) {
+  OP_LOGI(op.GetName().c_str(), "Setgroups begin.");
+  if (filter_sizes.size() < 4 || input_sizes.size() < 4) {
+    OP_LOGE(op.GetName().c_str(), "filter_sizes or input_sizes is illegal");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["param_name"] = "filter_sizes and input_sizes";
+    err_map["expected_length"] = "4";
+    err_map["length"] = std::to_string(filter_sizes.size()) + " and " + std::to_string(input_sizes.size());
+    std::string report_error_code = "E50035";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+  CHECK_FORMAT(input_format);
+  CHECK_FORMAT(filter_format);
+
+  std::string input_format_str = format2str[input_format];
+  std::string filter_format_str = format2str[filter_format];
+
+  int32_t x_position = input_format_str.find("C");
+  int32_t w_position = filter_format_str.find("C");
+  int32_t x_c = input_sizes[x_position];
+  int32_t w_c = filter_sizes[w_position];
+  int32_t groups = 1;
+  if (w_c == 0) {
+    OP_LOGE(op.GetName().c_str(), "channel of filter can not be 0.");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["description"] = "channel of filter can not be 0.";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  } else if (x_c % w_c != 0) {
+    OP_LOGE(op.GetName().c_str(), "fmap_channel % filter_channel != 0");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["description"] = "fmap_channel % filter_channel != 0";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  } else {
+    groups = x_c / w_c;
+  }
+  int32_t groups_ori = 1;
+  op.GetAttr("groups", groups_ori);
+  if (groups_ori == 1) {
+    op.SetAttr("groups", groups);
+    OP_LOGI(op.GetName().c_str(), "op set groups succ.");
+    return true;
+  } else if (groups_ori != groups) {
+    OP_LOGE(op.GetName().c_str(), "fmap_channel / filter_channel != groups");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["description"] = "fmap_channel / filter_channel != groups";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  } else {
+    return true;
+  }
+}
+
 static graphStatus VerifyConvPadding(ge::Operator& op) {
   std::string pad;
   if (GRAPH_SUCCESS == op.GetAttr("padding", pad)) {
@@ -2075,9 +2139,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   int32_t stride_w = 0;
   int32_t dilation_h = 0;
   int32_t dilation_w = 0;
-  if (GRAPH_SUCCESS != op.GetAttr("groups", groups)) {
-    OP_LOGI(op.GetName().c_str(), "no groups setting, use groups as 1");
-  }
+
   if(!get_attrs_conv2d_backprop_input(op, dy_format, stride_h, stride_w, dilation_h, dilation_w)) {
     return GRAPH_FAILED;
   }
@@ -2167,6 +2229,15 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     OP_LOGD(op.GetName().c_str(), "dx_shape [%u] is %d", i, (int32_t)dx_shape[i]);
   }
 
+  if (false == SetGroupsConv2dbp(op, input_sizes, input_format, filter_sizes, filter_format)) {
+    OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropInput failed.");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["description"] = "Set groups for Conv2DBackpropInput failed.";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
   // update pads list by padding[SAME,VALID]
   if (!is_dynamic) {
     if (false == SetPadListByPaddingConv2dbp(op, dx_shape, input_format, filter_sizes, filter_format)) {
@@ -2400,7 +2471,15 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInputD, Conv2DBackpropInputDInfer) {
   Format input_format = y_desc.GetFormat();
   CHECK_FORMAT(filter_format);
   CHECK_FORMAT(input_format);
-
+  if (false == SetGroupsConv2dbp(op, input_sizes, input_format, filter_sizes, filter_format)) {
+    OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropInputD failed.");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["description"] = "Set groups for Conv2DBackpropInputD failed.";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
   // update pads list by padding[SAME,VALID]
   if (false == SetPadListByPaddingConv2dbp(op, input_sizes, input_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "Conv2DBackpropInputD update pads list by padding failed.");
@@ -2619,7 +2698,15 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   if (std::find(x_sizes.begin(), x_sizes.end(), -1) != x_sizes.end()) {
     is_dynamic = true;
   }
-
+  if (false == SetGroupsConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
+    OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropFilter failed.");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["description"] = "Set groups for Conv2DBackpropFilter failed";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
   if (!is_dynamic) {
     // update pads list by padding[SAME,VALID]
     if (false == SetPadListByPaddingConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
@@ -2732,7 +2819,15 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
   Format filter_format = y_desc.GetFormat();
   CHECK_FORMAT(x_format);
   CHECK_FORMAT(filter_format);
-
+  if (false == SetGroupsConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
+    OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropFilterD failed.");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["description"] = "Set groups for Conv2DBackpropFilterD failed";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
+  }
   // update pads list by padding[SAME,VALID]
   if (false == SetPadListByPaddingConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "update pads list by padding failed.");
