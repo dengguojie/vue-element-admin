@@ -645,6 +645,7 @@ REG_OP(NLLLoss)
     .OUTPUT(y, TensorType({DT_FLOAT}))
     .OUTPUT(total_weight, TensorType({DT_FLOAT}))
     .ATTR(reduction, String, "mean")
+    .ATTR(ignore_index, Int, -100)
     .OP_END_FACTORY_REG(NLLLoss)
 
 /**
@@ -674,6 +675,7 @@ REG_OP(NLLLossGrad)
     .INPUT(total_weight, TensorType({DT_FLOAT}))
     .OUTPUT(x_grad, TensorType({DT_FLOAT}))
     .ATTR(reduction, String, "mean")
+    .ATTR(ignore_index, Int, -100)
     .OP_END_FACTORY_REG(NLLLossGrad)
 
 /**

@@ -859,9 +859,9 @@ class NllLossGradCompute:
         return self.tik_instance
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, dict, str, str)
+@util.check_input_type(dict, dict, dict, dict, dict, dict, str, int, str)
 def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
-                  reduction="mean", kernel_name="nll_loss_grad"):
+                  reduction="mean", ignore_index=-100, kernel_name="nll_loss_grad"):
     """
     calculating data
 
@@ -878,10 +878,12 @@ def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
     weight : dict or None
         the length of shape only support one when weight is dict.
     x_grad: dict
-        It’s a tensor with shape(minibatch, ) when reduction == ‘none’ and
+        It's a tensor with shape(minibatch, ) when reduction == 'none' and
         the input is 2D. Otherwise, the output is a scalar.
     reduction: str
         default value is "mean"
+    ignore_index: int
+        default value is -100
     kernel_name : str
         kernel name, default value is "nll_loss_grad"
 

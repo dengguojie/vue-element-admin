@@ -1169,9 +1169,9 @@ class NllLossCompute:
         return self.tik_instance
 
 
-@util.check_input_type(dict, dict, dict, dict, dict, str, str)
+@util.check_input_type(dict, dict, dict, dict, dict, str, int, str)
 def nll_loss(x, target, weight, y, total_weight, reduction="mean",
-             kernel_name="nll_loss"):
+             ignore_index=-100, kernel_name="nll_loss"):
     """
     calculating data
 
@@ -1190,6 +1190,8 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean",
         shape and dtype of output, should be same type as weight
     reduction: str
         default value is "mean"
+    ignore_index: int
+        default value is -100
     kernel_name : str
         kernel name, default value is "nll_loss"
 
