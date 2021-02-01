@@ -119,8 +119,7 @@ def set_op_pattern(all_tags, op_info):
     set op pattern to gemm when batchmatmul fused with fusedmuladd or reduce_sum
     """
     op_pattern = op_info["pattern"]
-    if (("elewise_binary_mul" in all_tags and "elewise_binary_add" in all_tags) or
-        "reduce_sum" in all_tags):
+    if ("reduce_sum" in all_tags):
         op_pattern = OpPatterns.GEMM_PATTERN
     return op_pattern
 
@@ -322,7 +321,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
 
     # set pattern
     op_pattern = op_info['pattern']
-    if op_pattern == OpPatterns.MATMUL_PATTERN:
+    if op_pattern == OpPatterns.MATMUL_PATTERN and len(outs) == 1:
         all_tags = get_all_tags(outs[0])
         op_info['pattern'] = set_op_pattern(all_tags, op_info)
     op_pattern = op_info['pattern']
