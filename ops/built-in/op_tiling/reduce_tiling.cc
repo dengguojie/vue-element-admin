@@ -19,6 +19,7 @@
  * \brief tiling function of op
  */
 
+#include <algorithm>
 #include "reduce_tiling.h"
 
 namespace optiling {
@@ -384,12 +385,25 @@ bool Reduce::ChooseAtomic() {
   block_size = compileInfo.min_block_size;
   ubSizeB = compileInfo.max_ub_count;
   ubSizeA = ubSizeB / compileInfo.coef;
-
-  // better choose
-  compileInfo.atomic = compileInfo.atomic && total_output_count <= ubSizeB &&
+  bool is_outermost_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
+                                       (int32_t)1) != reduce_axis.end() && input_shape[0] == (int32_t)1;
+  
+  // 1: Check if atomic is enabled
+  // 2: Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
+  // 3: Check normal atomic rules
+  // 4: (Priority) Check if it is outermost_reduce and is larger than or equal to core_num
+  // Layer 0 (Required)
+  bool atomic_available = compileInfo.atomic;
+  // Layer 1
+  compileInfo.atomic = total_output_count <= ubSizeB &&
                        total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
                        total_output_count < (int64_t)compileInfo.core_num * block_size / 2 &&
-                       total_reduce_count > (int64_t)compileInfo.core_num / 2;
+                        total_reduce_count > (int64_t)compileInfo.core_num / 2;
+  // Layer 2
+  compileInfo.atomic = compileInfo.atomic ||
+                       (is_outermost_reduce && input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * 4);
+  // Final
+  compileInfo.atomic = atomic_available && compileInfo.atomic;
   return true;
 }
 
