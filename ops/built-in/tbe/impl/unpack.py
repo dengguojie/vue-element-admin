@@ -113,7 +113,7 @@ def check_supported(x, y, num=None, axis=0, kernel_name="unpack"):
     """
     The maximum number of outputs supported by the unpack must be less than 63*63
     """
-    input_shape = x.get("shape")
+    input_shape = x.get("ori_shape")
     real_num = _process_num_param(input_shape, num, axis, False, kernel_name)
     max_output_num = 63 * 63
     if real_num > max_output_num:
@@ -149,8 +149,15 @@ def _process_num_param(input_shape, num, axis, is_known_shape, kernel_name):
                                                           input_shape[axis])
     if num < 1:
         error_manager_vector.raise_err_check_params_rules(kernel_name, 'num can not smaller than 1', 'num', num)
+
     # [-1, -2] means we don't known the shape currently.
-    if num != input_shape[axis] and (is_known_shape or input_shape[axis] not in [-1, -2]):
+    is_axis_dim_known = True
+    if len(input_shape) == 1 and input_shape[0] == -2:
+        is_axis_dim_known = False
+    if len(input_shape) > axis and input_shape[axis] == -1:
+        is_axis_dim_known = False
+
+    if num != input_shape[axis] and (is_known_shape or is_axis_dim_known):
         error_manager_vector.raise_err_input_value_invalid(kernel_name, 'num', input_shape[axis], num)
     return num
 

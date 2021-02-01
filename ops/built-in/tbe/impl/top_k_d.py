@@ -1493,7 +1493,7 @@ def check_supported(input_tensor,
     sorted should == True
     input size > 32768 and k > 0 and k < 16 three conditions cannot be met at the same time
     """
-    shape = input_tensor.get("shape")
+    shape = input_tensor.get("ori_shape")
     sorted_axis = dim
     if (sorted_axis < 0):
         sorted_axis = sorted_axis + len(shape)

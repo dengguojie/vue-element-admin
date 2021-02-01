@@ -38,9 +38,9 @@ def check_supported(x, segment_ids, y, num_segments, kernel_name="unsorted_segme
         (BLOCK_LENGTH / 2 - x's first dim % (BLOCK_LENGTH / 4)) + x's first dim) * (BLOCK_LENGTH / 8)
     should <= UB_SIZE_MAX / 2
     """
-    shape = x.get("shape")
+    shape = x.get("ori_shape")
     dtype = x.get("dtype").lower()
-    segment_ids_shape = segment_ids.get("shape")
+    segment_ids_shape = segment_ids.get("ori_shape")
     segment_ids_dtype = segment_ids.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "int16")
     para_check.check_dtype(dtype, check_list, param_name="x")
