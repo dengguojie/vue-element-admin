@@ -10,7 +10,7 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  *
- * @file test_spectral_irfft_to_dense_proto.cpp
+ * @file test_spectral_rfft_to_dense_proto.cpp
  *
  * @brief
  *
@@ -23,27 +23,27 @@
 #include "op_proto_test_util.h"
 #include "spectral_ops.h"
 
-class SPECTRAL_IRFFT_TO_DENSE_UT : public testing::Test {
+class SPECTRAL_RFFT_TO_DENSE_UT : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "SPECTRAL_IRFFT_TO_DENSE_UT SetUp" << std::endl;
+    std::cout << "SPECTRAL_RFFT_TO_DENSE_UT SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "SPECTRAL_IRFFT_TO_DENSE_UT TearDown" << std::endl;
+    std::cout << "SPECTRAL_RFFT_TO_DENSE_UT TearDown" << std::endl;
   }
 };
 
-TEST_F(SPECTRAL_IRFFT_TO_DENSE_UT, InferShape) {
-  ge::op::IRFFT op;
-  op.UpdateInputDesc("x", create_desc({1,2,3}, ge::DT_COMPLEX64));
+TEST_F(SPECTRAL_RFFT_TO_DENSE_UT, InferShape) {
+  ge::op::RFFT op;
+  op.UpdateInputDesc("input", create_desc({1,2,3}, ge::DT_FLOAT));
   op.UpdateInputDesc("fft_length", create_desc({1}, ge::DT_INT32));
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
   auto y_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(y_desc.GetDataType(), ge::DT_FLOAT);
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_COMPLEX64);
   std::vector<int64_t> expected_y_shape = {1,2,-1};
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }

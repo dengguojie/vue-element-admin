@@ -47,27 +47,33 @@ INFER_FUNC_REG(IFFT, IFFTInfer);
 IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
   Shape out;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input out rank must be at least 1.");
+    OP_LOGE(op.GetName().c_str(), "Input out rank must be at least 1.");
     return GRAPH_FAILED;
   }
 
   Shape fft_length_input;
   if (WithRank(op.GetInputDesc(1), 1, fft_length_input, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input fft_length_input rank must be 1.");
+    OP_LOGE(op.GetName().c_str(), "Input fft_length_input rank must be 1.");
     return GRAPH_FAILED;
   }
 
   if (fft_length_input.GetDim(0) != 1) {
     if (fft_length_input.GetDim(0) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "fft_length_input dim-0 must be 1, real value is %ld.", fft_length_input.GetDim(0));
+      OP_LOGE(op.GetName().c_str(), "The fft_length_input dim-0 must be 1, real value is [%ld].",
+        fft_length_input.GetDim(0));
       return GRAPH_FAILED;
     }
   }
 
-  int64_t existing_out = out.GetDimNum();
-  int64_t dim_out = out.GetDim(existing_out - 1);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  // unknown shape support
+  const char* kFftLengthField = "fft_length";
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends({kFftLengthField});
+
+  int64_t dim_out = out.GetDimNum()-1;
   Tensor fft_length_tensor;
-  int status = op.GetInputConstData("fft_length", fft_length_tensor);
+  int status = op.GetInputConstData(kFftLengthField, fft_length_tensor);
   if (status != GRAPH_SUCCESS) {
     out.SetDim(dim_out, UNKNOWN_DIM);
   } else {
@@ -77,11 +83,10 @@ IMPLEMT_INFERFUNC(RFFT, RFFTInfer) {
     out.SetDim(dim_out, dim_replace);
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(Shape(out));
   y_desc.SetDataType(DT_COMPLEX64);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output y.");
+    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -91,6 +96,7 @@ INFER_FUNC_REG(RFFT, RFFTInfer);
 
 IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
   Shape out;
+
   if (WithRankAtLeast(op.GetInputDesc(0), 1, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input out rank must be at least 1.");
     return GRAPH_FAILED;
@@ -104,15 +110,21 @@ IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
 
   if (fft_length_input.GetDim(0) != 1) {
     if (fft_length_input.GetDim(0) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The fft_length_input dim-0 must be 1, real value is [%ld].", fft_length_input.GetDim(0));
+      OP_LOGE(op.GetName().c_str(), "The fft_length_input dim-0 must be 1, real value is [%ld].",
+        fft_length_input.GetDim(0));
       return GRAPH_FAILED;
     }
   }
 
-  int64_t existing_out = out.GetDimNum();
-  int64_t dim_out = out.GetDim(existing_out - 1);
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  // unknown shape support
+  const char* kFftLengthField = "fft_length";
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends({kFftLengthField});
+
+  int64_t dim_out = out.GetDimNum()-1;
   Tensor fft_length_tensor;
-  int status = op.GetInputConstData("fft_length", fft_length_tensor);
+  int status = op.GetInputConstData(kFftLengthField, fft_length_tensor);
   if (status != GRAPH_SUCCESS) {
     out.SetDim(dim_out, UNKNOWN_DIM); 
   } else {
@@ -122,7 +134,6 @@ IMPLEMT_INFERFUNC(IRFFT, IRFFTInfer) {
     out.SetDim(dim_out, dim_replace);
   }
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(Shape(out));
   y_desc.SetDataType(DT_FLOAT);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
