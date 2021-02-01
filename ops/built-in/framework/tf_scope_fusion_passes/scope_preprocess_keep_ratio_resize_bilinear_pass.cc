@@ -139,14 +139,16 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     auto nodesMap = scope->AllNodesMap();
     for (auto& it : nodesMap) {
       auto nodeDef = it.second;
+      if (nodeDef == nullptr) {
+        continue;
+      }
       std::string nodeName = nodeDef->GetName().c_str();
       if ((minConstNode == "") && (nodeName.find(minDivNodeName) != std::string::npos) &&
           (nodeName.find(maxDivNodeName) == std::string::npos)) {
         minConstNode = nodeName;
         Tensor data;
         nodeDef->GetAttr("value", data);
-        const uint8_t* constData = data.GetData();
-        float minDimsFloat = *((float*)constData);
+	float minDimsFloat = *reinterpret_cast<float*>(data.GetData());
         minDims = round(minDimsFloat);
         OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass get min_dimension = %d", minDims);
       }
@@ -154,8 +156,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
         maxConstNode = nodeName;
         Tensor data;
         nodeDef->GetAttr("value", data);
-        const uint8_t* constData = data.GetData();
-        float maxDimsFloat = *((float*)constData);
+	float maxDimsFloat = *reinterpret_cast<float*>(data.GetData());
         maxDims = round(maxDimsFloat);
         OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass get max_dimension = %d", maxDims);
       }
@@ -178,12 +179,14 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
                    .InsertOutput("shape_node", 0)
                    .BuildInnerNode();
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+    CHECK_INNER_NODE_CONDITION(resizeNode->MutableOperator() != nullptr , fusion_rlt);
     resizeNode->SetInputFormat("images", "NHWC");
     resizeNode->SetOutputFormat("y", "NHWC");
     resizeNode->MutableOperator()->SetAttr("align_corners", alignCorners);
     resizeNode->MutableOperator()->SetAttr("half_pixel_centers", halfPixelCenters);
     resizeNode->MutableOperator()->SetAttr("min_dimension", minDims);
     resizeNode->MutableOperator()->SetAttr("max_dimension", maxDims);
+
     OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass add KeepRatioResizeBilinear end");
 
     OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass add sencond edge begin");
@@ -212,24 +215,34 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
               .BuildInnerNode();
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
     int32_t* beginData = nullptr;
-    beginData = new int32_t[1];
+    beginData = new(std::nothrow) int32_t[1];
+    if (beginData == nullptr) {
+      OP_LOGE(kOpType.c_str(), "Scope apply beginData is nullptr.");
+      return;
+    }
     *(beginData) = 1;
     TensorDesc beginDesc(ge::Shape({1}), FORMAT_ND, DT_INT32);
     Tensor beginTensor(beginDesc, (uint8_t*)beginData, sizeof(int32_t));
     constBeginNode->MutableOperator()->SetAttr("value", beginTensor);
     delete[] beginData;
+    beginData = nullptr;
 
     auto constSizeNode = fusion_rlt->AddInnerNode("const_size_node", "Const");
     CHECK_INNER_NODE_CONDITION(constSizeNode != nullptr, fusion_rlt);
     ret = constSizeNode->InsertOutput("slice_node", 2).BuildInnerNode();
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
     int32_t* sizeData = nullptr;
-    sizeData = new int32_t[1];
+    sizeData = new(std::nothrow) int32_t[1];
+    if (sizeData == nullptr) {
+      OP_LOGE(kOpType.c_str(), "Scope apply sizeData is nullptr.");
+      return;
+    }
     *(sizeData) = 3;
     TensorDesc sizeDesc(ge::Shape({1}), FORMAT_ND, DT_INT32);
     Tensor sizeTensor(sizeDesc, (uint8_t*)sizeData, sizeof(int32_t));
     constSizeNode->MutableOperator()->SetAttr("value", sizeTensor);
     delete[] sizeData;
+    sizeData = nullptr;
 
     auto sliceBatchNode = fusion_rlt->AddInnerNode("batch_slice_node", "Slice");
     CHECK_INNER_NODE_CONDITION(sliceBatchNode != nullptr, fusion_rlt);
@@ -249,7 +262,11 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
     TensorDesc batchDesc(ge::Shape({1}), FORMAT_ND, DT_INT32);
     int32_t* beginBatchData = nullptr;
-    beginBatchData = new int32_t[1];
+    beginBatchData = new(std::nothrow) int32_t[1];
+    if (beginBatchData == nullptr) {
+      OP_LOGE(kOpType.c_str(), "Scope apply beginBatchData is nullptr.");
+      return;
+    }
     *(beginBatchData) = 0;
     Tensor batchTensor(batchDesc, (uint8_t*)beginBatchData, sizeof(int32_t));
     auto constBatchNodeOp = constBatchNode->MutableOperator();
@@ -257,6 +274,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
         constBatchNodeOp->SetAttr("value", batchTensor);
     }
     delete[] beginBatchData;
+    beginBatchData = nullptr;
 
     // expand_dims (3) to (1,3)
     auto expandDimsNode1 = fusion_rlt->AddInnerNode("expand_dims_1", "ExpandDims");
@@ -332,7 +350,7 @@ string ScopeKeepRatioResizeBilinearPass::to_string(const std::vector<Scope*>& sc
 }
 
 bool ScopeKeepRatioResizeBilinearPass::MatchedSubScopes(const Scope* root_scope,
-                                                        const std::vector<string> scopes2check) const {
+                                                        const std::vector<string>& scopes2check) const {
   string full_name;
   auto root = root_scope;
   for (auto& scope_name : scopes2check) {

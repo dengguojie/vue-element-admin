@@ -36,7 +36,7 @@ class ScopeKeepRatioResizeBilinearPass : public ScopeBasePass {
 
  private:
   ScopeFusionPatterns GenWhileScopePatterns();
-  bool MatchedSubScopes(const Scope* root_scope, const std::vector<string> scopes2check) const;
+  bool MatchedSubScopes(const Scope* root_scope, const std::vector<string>& scopes2check) const;
   std::string to_string(const std::vector<Scope*>& scopes) const;
 
  private:

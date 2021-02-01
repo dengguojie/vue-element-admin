@@ -89,6 +89,9 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   FUSION_PASS_CHECK(oriinputShape.empty(),
                     OP_LOGE(fuseNodeType.c_str(), "Node[%s] input shape is NULL.", fusedNode->GetName().c_str()),
                     return FAILED);
+  FUSION_PASS_CHECK(oriinputShape.size() != 4,
+                    OP_LOGE(fuseNodeType.c_str(), "Node[%s] input shape is not equal 4.", fusedNode->GetName().c_str()),
+                    return FAILED);
   if (inputDesc.GetFormat() == ge::FORMAT_NHWC) {
     heightDIms = oriinputShape[1];
     widthDims = oriinputShape[2];
@@ -109,7 +112,10 @@ Status KeepRatioResizeBilinearFusionPass::Fusion(ge::ComputeGraph& graph, Mappin
   int64_t maxShapeDims = std::max(heightDIms, widthDims);
   float minShapeDimsFloat = static_cast<float>(minShapeDims);
   float maxShapeDimsFloat = static_cast<float>(maxShapeDims);
-
+  if (minDims == 0 || maxDims == 0) {
+    OP_LOGE(fuseNodeType.c_str(), "KeepRatioResizeBilinearFusion minDims or maxDims can not be zero.");
+    return NOT_CHANGED;
+  }
   // get min scale
   float resizeScale = minShapeDimsFloat / minDimsFloat;
   float minNewShapeH = floor((heightDIms / resizeScale) + 0.5);
