@@ -125,10 +125,9 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
                                                    "dilation only support 1 in N axis and C axis.")
     if dilations[dim_h] != 1 or dilations[dim_w] != 1:
         dict_args = {
-            'errCode': 'E60023',
+            'errCode': 'E67007',
             'op_name': 'depthwise_conv2d_backprop_filter',
-            'dilation_n': str(dilations[dim_n]),
-            'dilation_c': str(dilations[dim_c])
+            'param_name': 'dilation_h and dilation_w',
         }
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
