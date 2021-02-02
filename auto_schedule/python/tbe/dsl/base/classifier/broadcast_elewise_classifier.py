@@ -19,7 +19,7 @@ import copy
 from functools import reduce
 from enum import Enum, auto
 from tbe.common.utils.errormgr import get_error_message
-from te.lang.base import operation_impl as operation
+from tbe.dsl.base import operation
 
 from . import util
 

@@ -103,11 +103,11 @@ class OperatorContext:
     """
 
     def __init__(self):
-        self.pattern = None
+        self._pattern = None
 
-        self.vars = []
-        self.computes = []
-        self.current_compute = None
+        self._vars = []
+        self._computes = []
+        self._current_compute = None
 
         self._addition = {"compile_info": {}, "build_args": {}}
         self._exclude_bound_vars = []
@@ -117,14 +117,14 @@ class OperatorContext:
         :param pattern:
         :return:
         """
-        self.pattern = pattern
+        self._pattern = pattern
 
     def get_pattern(self):
         """
         :return:
         """
         # TODO how to support custom pattern
-        return self.pattern
+        return self._pattern
 
     @staticmethod
     def get_mode():
@@ -141,7 +141,7 @@ class OperatorContext:
         op_infos = get_op_context().get_all_op_info()
         if len(op_infos) == 1:
             return op_infos[0].op_type
-        
+
         return None
 
     def add_var(self, var_):
@@ -149,54 +149,54 @@ class OperatorContext:
         :param var_:
         :return:
         """
-        if self.computes:
-            self.computes[-1].add_var(var_)
+        if self._computes:
+            self._computes[-1].add_var(var_)
         else:
-            self.vars.append(var_)
+            self._vars.append(var_)
 
     def get_vars(self):
         """
         :return:
         """
-        return self.vars
+        return self._vars
 
     def begin_compute(self, _compute):
         """
         :param _compute:
         :return:
         """
-        if self.current_compute is not None:
+        if self._current_compute is not None:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Exist not finished compute context."
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
-        self.computes.append(_compute)
-        self.current_compute = _compute
+        self._computes.append(_compute)
+        self._current_compute = _compute
 
     def end_compute(self, _compute):
         """
         :param _compute:
         :return:
         """
-        if self.current_compute != _compute:
+        if self._current_compute != _compute:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Compute context not match."
             raise RuntimeError(dict_args, get_error_message(dict_args))
-        self.current_compute = None
+        self._current_compute = None
 
     def get_computes(self):
         """
         :return:
         """
-        return self.computes
+        return self._computes
 
     def get_current_compute(self) -> Optional['ComputeContext']:
         """
         :return:
         """
-        return self.computes[-1] if self.computes else None
+        return self._computes[-1] if self._computes else None
 
     def add(self, key, value):
         """
@@ -243,7 +243,7 @@ class OperatorContext:
             var0 = c_cmp.get_var(name)
             if var0 is not None:
                 return var0
-        for var_i in self.vars:
+        for var_i in self._vars:
             if var_i.get_name() == name:
                 return var_i
         return None
@@ -253,8 +253,8 @@ class OperatorContext:
         :param var_:
         :return:
         """
-        if self.computes:
-            self.computes[-1].add_exclude_bound_var(var_)
+        if self._computes:
+            self._computes[-1].add_exclude_bound_var(var_)
         else:
             self._exclude_bound_vars.append(var_)
 
@@ -271,80 +271,80 @@ class ComputeContext:
     """
 
     def __init__(self, _operator=None):
-        self.operator = get_context() if _operator is None else _operator
-        self.vars = []
-        self.schedules = []
-        self.current_schedule = None
+        self._operator = get_context() if _operator is None else _operator
+        self._vars = []
+        self._schedules = []
+        self._current_schedule = None
 
         self._addition = {}
         self._exclude_bound_vars = []
 
     def __enter__(self):
-        self.operator.begin_compute(self)
+        self._operator.begin_compute(self)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.operator.end_compute(self)
+        self._operator.end_compute(self)
 
     def begin_schedule(self, _schedule):
         """
         :param _schedule:
         :return:
         """
-        if self.current_schedule is not None:
+        if self._current_schedule is not None:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Exist not finished compute context."
             raise RuntimeError(dict_args, get_error_message(dict_args))
-        self.schedules.append(_schedule)
-        self.current_schedule = _schedule
+        self._schedules.append(_schedule)
+        self._current_schedule = _schedule
 
     def end_schedule(self, _schedule):
         """
         :param _schedule:
         :return:
         """
-        if self.current_schedule != _schedule:
+        if self._current_schedule != _schedule:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "Schedule context not match."
             raise RuntimeError(dict_args, get_error_message(dict_args))
-        self.current_schedule = None
+        self._current_schedule = None
 
     def get_schedules(self):
         """
         :return:
         """
-        return self.schedules
+        return self._schedules
 
     def get_current_schedule(self):
         """
         :return:
         """
-        return self.current_schedule
+        return self._current_schedule
 
     def get_operator_context(self):
         """
 
         :return:
         """
-        return self.operator
+        return self._operator
 
     def add_var(self, var_):
         """
         :param var_:
         :return:
         """
-        if self.schedules:
-            self.schedules[-1].add_var(var_)
+        if self._schedules:
+            self._schedules[-1].add_var(var_)
         else:
-            self.vars.append(var_)
+            self._vars.append(var_)
 
     def get_vars(self):
         """
         :return:
         """
-        return self.vars
+        return self._vars
 
     def get_var(self, name):
         """
@@ -356,7 +356,7 @@ class ComputeContext:
             var0 = c_sch.get_var(name)
             if var0 is not None:
                 return var0
-        for var_i in self.vars:
+        for var_i in self._vars:
             if var_i.get_name() == name:
                 return var_i
         return None
@@ -401,8 +401,8 @@ class ComputeContext:
         :param var_:
         :return:
         """
-        if self.schedules:
-            self.schedules[-1].add_exclude_bound_var(var_)
+        if self._schedules:
+            self._schedules[-1].add_exclude_bound_var(var_)
         else:
             self._exclude_bound_vars.append(var_)
 
@@ -419,46 +419,46 @@ class ScheduleContext:
     """
 
     def __init__(self, _compute=None):
-        self.compute = get_context().get_current_compute() \
+        self._compute = get_context().get_current_compute() \
             if _compute is None else _compute
-        self.vars = []
+        self._vars = []
 
         self._addition = {}
         self._exclude_bound_vars = []
 
     def __enter__(self):
-        self.compute.begin_schedule(self)
+        self._compute.begin_schedule(self)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.compute.end_schedule(self)
+        self._compute.end_schedule(self)
 
     def get_compute_context(self):
         """
 
         :return:
         """
-        return self.compute
+        return self._compute
 
     def add_var(self, var_):
         """
         :param var_:
         :return:
         """
-        self.vars.append(var_)
+        self._vars.append(var_)
 
     def get_vars(self):
         """
         :return:
         """
-        return self.vars
+        return self._vars
 
     def get_var(self, name):
         """
         :param name:
         :return:
         """
-        for var_i in self.vars:
+        for var_i in self._vars:
             if var_i.get_name() == name:
                 return var_i
         return None
@@ -518,34 +518,34 @@ class Var:
     """
 
     def __init__(self, name, bound, dtype, addition=None):
-        self.tvm_var = tvm.var(name, dtype=dtype)
-        self.name = name
-        self.bound = bound
-        self.addition = addition
+        self._tvm_var = tvm.var(name, dtype=dtype)
+        self._name = name
+        self._bound = bound
+        self._addition = addition
 
     def get_tvm_var(self):
         """
         :return:
         """
-        return self.tvm_var
+        return self._tvm_var
 
     def get_name(self):
         """
         :return:
         """
-        return self.name
+        return self._name
 
     def get_bound(self):
         """
         :return:
         """
-        return self.bound
+        return self._bound
 
     def get_addition(self):
         """
         :return:
         """
-        return self.addition
+        return self._addition
 
 
 def register_operator(op_type, pattern=None):

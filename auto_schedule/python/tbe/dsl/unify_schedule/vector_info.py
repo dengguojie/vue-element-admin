@@ -28,12 +28,12 @@ from typing import Callable
 from typing import Iterable
 
 # Third-party packages
+from tbe.dsl.base import operation
 from te import tvm
 from te.tvm.tensor import Tensor
 from te.tvm.tensor import PlaceholderOp
 from te.platform.cce_conf import get_soc_spec
 
-from te.lang.base import operation_impl as operation
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .constants import *

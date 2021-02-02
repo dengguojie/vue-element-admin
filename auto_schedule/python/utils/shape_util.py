@@ -17,16 +17,7 @@ common function for check ops parameter
 """
 import warnings
 
-from te.lang.base import operation_impl as operation
-from te.lang.base.expr_compare import expr_equal
-from te.platform.fusion_manager import fusion_manager
-from te.tvm import expr as _expr
-from te.tvm import make as _make
-from te.tvm import api as tvm
-from te.tvm import tensor as _tensor
 from te.utils import para_check
-from functools import reduce
-from te.utils.error_manager.error_manager_util import get_error_message
 
 
 def squeeze_shape(shape):
@@ -111,75 +102,6 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
                   DeprecationWarning)
     from tbe.common.utils import variable_shape
     return variable_shape(inputs, op_mode, support_broadcast)
-
-
-def _reduce_variable_shape(inputs: list):
-    """
-    variable shape for reduce ops
-    """
-    inputs_before_reduce, inputs_after_reduce, input_axis = [], [], []
-    for single_input in inputs:
-        input_type = single_input.get("rel_pos_to_reduce")
-        if input_type == "axis":
-            input_axis.append(single_input)
-        elif input_type == "after":
-            inputs_after_reduce.append(single_input)
-        else:
-            inputs_before_reduce.append(single_input)
-
-    axis = input_axis[0].get("value")
-
-    if len(inputs) < 1:
-        return []
-    mode = inputs_before_reduce[0].get("mode")
-    if mode is None:
-        mode = para_check.ORIGINAL
-    operation.get_context().add("mode", mode)
-    current_compute = operation.get_context().get_current_compute()
-    if current_compute:
-        current_compute.add("mode", mode)
-        ori_axis = input_axis[0].get("ori_axis")
-        if ori_axis is not None:
-            current_compute.add("ori_axis", ori_axis)
-        axis_dtype = input_axis[0].get("axis_dtype")
-        if axis_dtype is not None:
-            current_compute.add("axis_dtype", axis_dtype)
-
-    shape_local = [x["shape"] for x in inputs_before_reduce]
-    range_local = [x.get("range") if x.get("range") else [(1, None)]*len(shape_local[0]) for x in inputs_before_reduce]
-    shape_before_reduce, shape_after_reduce = [], []
-    for index in range(len(shape_local[0])):
-        _var = None
-        if shape_local[0][index] == -1:
-            _var = operation.var("dim_" + str(index), range_local[0][index])
-            shape_before_reduce.append(_var)
-        else:
-            shape_before_reduce.append(shape_local[0][index])
-
-    def _gen_shape_after_reduce():
-        for idx in range(len(shape_before_reduce)):
-            if idx in axis:
-                if not len(inputs_after_reduce[0]["shape"]) == len(inputs_before_reduce[0]["shape"]):
-                    continue
-                else:
-                    shape_after_reduce.append(1)
-            else:
-                shape_after_reduce.append(shape_before_reduce[idx])
-
-    if inputs_after_reduce:
-        _gen_shape_after_reduce()
-
-    shape_out = []
-    for single_input in inputs:
-        input_type = single_input.get("rel_pos_to_reduce")
-        if input_type == "before":
-            shape_out.append(shape_before_reduce[:])
-        elif input_type == "after":
-            shape_out.append(shape_after_reduce[:])
-        else:
-            shape_out.append(input_axis[0].get("shape")[:])
-
-    return shape_out
 
 
 def simplify_axis_shape(shape, axis):
