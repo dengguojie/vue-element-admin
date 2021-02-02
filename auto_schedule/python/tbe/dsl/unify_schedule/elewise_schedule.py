@@ -611,7 +611,7 @@ class ElewiseSchedule:
                     attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
                 sch[tensor_i].emit_insn(param[0], param[1], attrs)
             else:
-                if self._is_db and tensor_i in self._out_tensors and self._is_pure_eletwise:
+                if tensor_i in self._out_tensors and self._is_pure_eletwise:
                     sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
                 else:
                     sch[tensor_i].emit_insn(param[0], param[1])
