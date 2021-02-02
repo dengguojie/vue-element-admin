@@ -87,7 +87,7 @@ Status ConstToAttrSlicePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
   std::vector<int64_t> ends;
   if (!TbeFusionPassUtil::GetConstIntData(op, "size", ends)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Slice get size value failed.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Slice get size value failed.");
     return NOT_CHANGED;
   }
   std::vector<int64_t> begins;

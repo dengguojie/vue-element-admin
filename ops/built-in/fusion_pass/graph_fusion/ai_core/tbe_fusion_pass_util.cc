@@ -178,13 +178,13 @@ bool TbeFusionPassUtil::GetConstIntData(const ge::Tensor& data, ge::DataType dat
 bool TbeFusionPassUtil::GetConstIntData(const ge::Operator& op, const std::string& name, std::vector<int64_t>& values) {
   ge::Tensor tensor;
   if (GRAPH_SUCCESS != op.GetInputConstData(name, tensor)) {
-    OP_LOGE("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", op.GetName().c_str(),
+    OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", op.GetName().c_str(),
             name.c_str());
     return false;
   }
 
   if (!GetConstIntData(tensor, op.GetInputDesc(name).GetDataType(), values)) {
-    OP_LOGE("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", op.GetName().c_str(),
+    OP_LOGI("GetConstIntData", "GetInputConstData failed, op name is %s and input name is %s", op.GetName().c_str(),
             name.c_str());
     return false;
   }

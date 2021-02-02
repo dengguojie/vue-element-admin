@@ -49,49 +49,33 @@ def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     c0 = 16
     if len(ori_shape_x) <= 4:
         if shape_bias[0] % c0 == 0 and len(ori_shape_x) == 4:
-            # NC1HWC0+ND NCHW+NCHW NHWC+NHWC
+            # NC1HWC0+ND ND+ND
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16, float, int32, float16, float,"
-                                                            "int32, float16, float",
-                                                   unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                                       "NHWC, NHWC",
-                                                   format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                          "NHWC, NHWC")
+                                                   datatype="float16, float, int32, float16, float",
+                                                   unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
+                                                   format="NC1HWC0, NC1HWC0, ND, ND, ND")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="float16, float, int32, float16, float,"
-                                                            "int32, float16, float",
-                                                   unknownshape_format="ND, ND, NCHW, NCHW, NCHW, NHWC, NHWC, NHWC",
-                                                   format="ND, ND, NCHW, NCHW, NCHW, NHWC, NHWC, NHWC")
+                                                   datatype="float16, float, int32, float16, float",
+                                                   unknownshape_format="ND, ND, ND, ND, ND",
+                                                   format="ND, ND, ND, ND, ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16, float, int32, float16, float,"
-                                                             "int32, float16, float",
-                                                    unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                                        "NHWC, NHWC",
-                                                    format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                           "NHWC, NHWC")
+                                                    datatype="float16, float, int32, float16, float",
+                                                    unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
+                                                    format="NC1HWC0, NC1HWC0, ND, ND, ND")
         elif shape_bias[0] % c0 != 0 and len(ori_shape_x) == 4:
-            # NC1HWC0+NC1HWC0 NCHW+NCHW NHWC+NHWC
+            # NC1HWC0+NC1HWC0 ND+ND
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                   datatype="float16, float, int32, float16, float,"
-                                                            "int32, float16, float",
-                                                   unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                                       "NHWC, NHWC",
-                                                   format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                          "NHWC, NHWC")
+                                                   datatype="float16, float, int32, float16, float",
+                                                   unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
+                                                   format="NC1HWC0, NC1HWC0, ND, ND, ND")
             input1 = util_select_op_base.gen_param(classify="input1", name="bias",
-                                                   datatype="float16, float, int32, float16, float,"
-                                                            "int32, float16, float",
-                                                   unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                                       "NHWC, NHWC",
-                                                   format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                          "NHWC, NHWC")
+                                                   datatype="float16, float, int32, float16, float",
+                                                   unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
+                                                   format="NC1HWC0, NC1HWC0, ND, ND, ND")
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16, float, int32, float16, float,"
-                                                             "int32, float16, float",
-                                                    unknownshape_format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                                        "NHWC, NHWC",
-                                                    format="NC1HWC0, NC1HWC0, NCHW, NCHW, NCHW, NHWC,"
-                                                           "NHWC, NHWC")
+                                                    datatype="float16, float, int32, float16, float",
+                                                    unknownshape_format="NC1HWC0, NC1HWC0, ND, ND, ND",
+                                                    format="NC1HWC0, NC1HWC0, ND, ND, ND")
         else:
             # ND+ND
             input0 = util_select_op_base.gen_param(classify="input0", name="x",
@@ -291,6 +275,7 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
         shape_bias = (1, 1, shape_x[2], 1, 1, shape_x[5])
 
     else:
+        shape_bias = shape_util.shape_refine(shape_bias)
         if data_format == "NCHW":
             if len(shape_x) < 2 or len(shape_x) > 4:
                 error_detail = "shape'rank of x should be in range 2D to 4D when input format is NCHW"
