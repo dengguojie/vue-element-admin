@@ -53,7 +53,7 @@ struct TilingParam {
   int32_t last_core_loop_left = 0;
 };
 
-void PrintTilingParam(const TilingParam& param) {
+static void PrintTilingParam(const TilingParam& param) {
   OP_LOGD("MaxPoolTiling", "tiling_mode=%d.", param.tiling_mode);
   OP_LOGD("MaxPoolTiling", "act_core_num=%d.", param.act_core_num);
   OP_LOGD("MaxPoolTiling", "one_core_ele=%d.", param.one_core_ele);
@@ -77,7 +77,7 @@ void PrintTilingParam(const TilingParam& param) {
   OP_LOGD("MaxPoolTiling", "last_core_loop_left=%d.", param.last_core_loop_left);
 }
 
-void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
+static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, param.tiling_mode);
   ByteBufferPut(run_info.tiling_data, param.act_core_num);
   ByteBufferPut(run_info.tiling_data, param.one_core_ele);
@@ -101,7 +101,7 @@ void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, param.last_core_loop_left);
 }
 
-void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
+static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
   param.one_core_ele = (total_ele + core_num - 1) / core_num;
   param.act_core_num = total_ele / param.one_core_ele;
   if (total_ele % param.one_core_ele != 0) {
@@ -110,12 +110,8 @@ void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
   param.last_core_ele = total_ele - (param.act_core_num - 1) * param.one_core_ele;
 }
 
-void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shape, int32_t ub_ele, int32_t core_num,
-                    int32_t ksize_h, int32_t ksize_w, int32_t strides_h, int32_t strides_w, int32_t padding) {
-  // get input dim
-  param.input_h = input_shape[2];
-  param.input_w = input_shape[3];
-
+static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shape, int32_t ub_ele, int32_t core_num,
+                           int32_t ksize_h, int32_t ksize_w, int32_t strides_h, int32_t strides_w, int32_t padding) {
   // calc output height and width, pad infos
   if (padding == 0) {
     param.output_h = (param.input_h + strides_h - 1) / strides_h;
@@ -203,18 +199,24 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
 
   // get and check input shape
   vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
+  string input_format = op_paras.inputs[0].tensor[0].format;
+  if (input_format != "NC1HWC0") {
+    OP_LOGE(op_type.c_str(), "Get input format failed, only support NC1HWC0, but got %s.", input_format.c_str());
+    return false;
+  }
   if (input_shape.size() != 5) {
-    OP_LOGE(op_type.c_str(), "Get input shape failed, the length of input shape must be five.");
+    OP_LOGE(op_type.c_str(), "Get input shape failed, the length of input shape must be 5, but got %d.",
+            input_shape.size());
     return false;
   }
 
   // get compile info
   int32_t ub_ele = 0;
-  int32_t core_num = 0;
-  int32_t ksize_h = 0;
-  int32_t ksize_w = 0;
-  int32_t strides_h = 0;
-  int32_t strides_w = 0;
+  int32_t core_num = 1;
+  int32_t ksize_h = 1;
+  int32_t ksize_w = 1;
+  int32_t strides_h = 1;
+  int32_t strides_w = 1;
   int32_t padding = 0;
   const map<string, int32_t&> compile_params = {
       {"ub_ele", ub_ele},       {"core_num", core_num},   {"ksize_h", ksize_h}, {"ksize_w", ksize_w},
@@ -230,23 +232,28 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
     OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
   }
 
-  // check ksize and input shape
-  int32_t input_h = input_shape[2];
-  int32_t input_w = input_shape[3];
-  int32_t one_fourth_ub_ele = ub_ele / 4;
-  if ((padding == 1) && ((ksize_h > input_h) || (ksize_w > input_w))) {
+  // check ksize, strides and input shape
+  TilingParam param;
+  param.input_h = input_shape[2];
+  param.input_w = input_shape[3];
+  if (ksize_h < 0 || ksize_w < 0 || strides_h < 0 || strides_w < 0) {
+    OP_LOGE(op_type.c_str(), "The ksize and strides must be greater to 1, but got ksize:[%d,%d] and strides:[%d,%d].",
+            ksize_h, ksize_w, strides_h, strides_w);
+    return false;
+  }
+  if ((padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w))) {
     OP_LOGE(op_type.c_str(),
             "Input height or width must greater than or equal to ksize when "
             "padding mode is valid.");
     return false;
   }
+  int32_t one_fourth_ub_ele = ub_ele / 4;
   if (one_fourth_ub_ele / input_shape[4] / ksize_h < ksize_w) {
     OP_LOGE(op_type.c_str(), "Get tiling failed, minimum processing unit must be ksize_h * ksize_w.");
     return false;
   }
 
   // calc tiling params, set tiling params, print tiling params
-  TilingParam param;
   CalTilingParam(param, input_shape, ub_ele, core_num, ksize_h, ksize_w, strides_h, strides_w, padding);
   SetTilingParam(param, run_info);
   PrintTilingParam(param);

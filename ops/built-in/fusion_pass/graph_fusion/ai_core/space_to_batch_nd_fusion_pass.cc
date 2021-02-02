@@ -88,7 +88,7 @@ Status ConstToAttrSpaceToBatchNdPass::Fusion(ComputeGraph& graph, Mapping& mappi
   FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusion op desc is nullptr."),
                     return PARAM_INVALID);
   // check op support
-  FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "SpaceToBatchND npt supported."),
+  FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "SpaceToBatchND not supported."),
                     return NOT_CHANGED);
 
   // get op

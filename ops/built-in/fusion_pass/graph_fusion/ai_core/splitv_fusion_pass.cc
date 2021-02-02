@@ -66,17 +66,29 @@ vector<FusionPattern*> SplitVFusionPass::DefinePatterns() {
 }
 
 Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
+  // build attr infos
   std::string fusionOpType = "SplitVD";
   std::vector<PassAttrInfo> splitvAttrInfo;
-  ge::NodePtr fused_node = nullptr;
-  ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   PassAttrInfo size_splits = {1, "size_splits", "SetListInt"};
   splitvAttrInfo.push_back(size_splits);
   PassAttrInfo split_dim = {2, "split_dim", "SetInt"};
   splitvAttrInfo.push_back(split_dim);
+
+  // get node
+  ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
 
+  // build a fusion node op desc
+  OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(fused_node1, fusionOpType, splitvAttrInfo);
+  FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusion op desc is nullptr."),
+                    return PARAM_INVALID);
+
+  // check op support
+  FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Split not supported."),
+                    return NOT_CHANGED);
+
+  ge::NodePtr fused_node = nullptr;
   Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fused_node1, fusionOpType, splitvAttrInfo, fused_node);
   if (ret != SUCCESS) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "SplitV has input which is not a constant, graph not changed.");

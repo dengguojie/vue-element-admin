@@ -67,27 +67,43 @@ vector<FusionPattern*> SplitFusionPass::DefinePatterns() {
 }
 
 Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  // build attr infos
   std::string fusionOpType = "SplitD";
   std::vector<PassAttrInfo> splitAttrInfo;
-  ge::NodePtr fused_node = nullptr;
-  ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   PassAttrInfo split_dim = {0, "split_dim", "SetInt"};
   splitAttrInfo.push_back(split_dim);
+
+  // get node
+  ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
+
+  // get desc
   ge::OpDescPtr fuse_desc1 = fused_node1->GetOpDesc();
   FUSION_PASS_CHECK(fuse_desc1 == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
+
+  // build a fusion node op desc
+  OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(fused_node1, fusionOpType, splitAttrInfo);
+  FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusion op desc is nullptr."),
+                    return PARAM_INVALID);
+
+  // check op support
+  FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Split not supported."),
+                    return NOT_CHANGED);
+
   int64_t num_split;
   ge::AttrUtils::GetInt(fuse_desc1, "num_split", num_split);
   ge::GeTensorDesc SplitInputTensor = fuse_desc1->GetInputDesc("x");
   ge::GeShape input_shape = SplitInputTensor.GetShape();
+
   if (IsUnknownShape(input_shape.GetDims()) && num_split > 63) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "ZSplitFusionPass cannot be applied for unknown shape.");
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "ZSplitFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
 
+  ge::NodePtr fused_node = nullptr;
   Status ret = PatternFusionUtil::ConstToAttrWithNode(graph, fused_node1, fusionOpType, splitAttrInfo, fused_node);
   if (ret != SUCCESS) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Split has input which is not a constant, graph not changed.");

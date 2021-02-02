@@ -44,9 +44,13 @@ TEST_F(MaxPoolTiling, maxpool_tiling_0) {
   TeOpTensor tensor_input;
   tensor_input.shape = input;
   tensor_input.dtype = "float16";
+  tensor_input.format = "NC1HWC0";
+  tensor_input.ori_format = "NHwC";
   TeOpTensor tensor_output;
   tensor_output.shape = output;
   tensor_output.dtype = "float16";
+  tensor_output.format = "NC1HWC0";
+  tensor_output.ori_format = "NHwC";
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
@@ -81,9 +85,13 @@ TEST_F(MaxPoolTiling, maxpool_tiling_1) {
   TeOpTensor tensor_input;
   tensor_input.shape = input;
   tensor_input.dtype = "float16";
+  tensor_input.format = "NC1HWC0";
+  tensor_input.ori_format = "NHwC";
   TeOpTensor tensor_output;
   tensor_output.shape = output;
   tensor_output.dtype = "float16";
+  tensor_output.format = "NC1HWC0";
+  tensor_output.ori_format = "NHwC";
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
@@ -118,9 +126,13 @@ TEST_F(MaxPoolTiling, maxpool_tiling_2) {
   TeOpTensor tensor_input;
   tensor_input.shape = input;
   tensor_input.dtype = "float16";
+  tensor_input.format = "NC1HWC0";
+  tensor_input.ori_format = "NHwC";
   TeOpTensor tensor_output;
   tensor_output.shape = output;
   tensor_output.dtype = "float16";
+  tensor_output.format = "NC1HWC0";
+  tensor_output.ori_format = "NHwC";
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
@@ -155,9 +167,13 @@ TEST_F(MaxPoolTiling, maxpool_tiling_3) {
   TeOpTensor tensor_input;
   tensor_input.shape = input;
   tensor_input.dtype = "float16";
+  tensor_input.format = "NC1HWC0";
+  tensor_input.ori_format = "NHwC";
   TeOpTensor tensor_output;
   tensor_output.shape = output;
   tensor_output.dtype = "float16";
+  tensor_output.format = "NC1HWC0";
+  tensor_output.ori_format = "NHwC";
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);
@@ -192,9 +208,13 @@ TEST_F(MaxPoolTiling, maxpool_tiling_4) {
   TeOpTensor tensor_input;
   tensor_input.shape = input;
   tensor_input.dtype = "float16";
+  tensor_input.format = "NC1HWC0";
+  tensor_input.ori_format = "NHwC";
   TeOpTensor tensor_output;
   tensor_output.shape = output;
   tensor_output.dtype = "float16";
+  tensor_output.format = "NC1HWC0";
+  tensor_output.ori_format = "NHwC";
 
   TeOpTensorArg tensor_input_arg;
   tensor_input_arg.tensor.push_back(tensor_input);

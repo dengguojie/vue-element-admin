@@ -200,7 +200,10 @@ def get_bit_len(dtype):
     if dtype == 'bool':
         return 16
 
-    if dtype != 'bool':
+    if dtype == 'double':
+        return 64
+
+    if dtype not in ('bool', 'double'):
         index = 0
         for i in dtype:
             if i.isdigit():
