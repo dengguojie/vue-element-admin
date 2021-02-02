@@ -19,15 +19,12 @@ import warnings
 
 # pylint: disable=import-error
 from decorator import decorator
-from tbe.common.utils.errormgr import get_error_message
 from te import tvm
 from te.platform import get_soc_spec
-from te.platform import intrinsic_check_support
 from te.tvm.dsl_source_info import source_info_decorator
 
 from .cast import _cast
 from .math import vmuls
-from .util import auto_cast_tensor
 from .util import check_input_tensor_shape
 from .util import dsl_support_dtype
 from .util import in_dynamic_and_static_unify
@@ -69,7 +66,7 @@ _VALUE_MAP_IN_REDUCE_ZERO = {
 
 # pylint: disable=too-many-branches
 @decorator
-def _auto_cast_of_reduce(func, *args, **kwargs):
+def _para_check_of_reduce(func, *args, **kwargs):
     '''
     auto cast dectorator.
     Before calling elewise api, check the input tensor is supported by the intr.
@@ -145,23 +142,7 @@ def _auto_cast_of_reduce(func, *args, **kwargs):
             _check_dynamic_dtype(raw_tensor, intr, supported_dtypes, is_last_axis)
             return func(raw_tensor, axis, keepdims)
 
-        # 1. reduce_max/min last v100 with priority_flag
-        #    or v200, support float32
-        vcmax_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
-                                                     "float32")
-        support_fp32 = (vcmax_support_fp32 or priority_flag)
-        if intr in ("reduce_max", "reduce_min") and \
-                is_last_axis and (not support_fp32):
-            supported_dtypes = list(set(supported_dtypes) - set(("float32",)))
-
-        # 2. reduce_max/min/sum nlst support int32
-        if intr in ("reduce_max", "reduce_min", "reduce_sum") and \
-                (not is_last_axis):
-            supported_dtypes.append("int32")
-
-        temp_tensor = auto_cast_tensor(raw_tensor, intr, supported_dtypes)
-
-        return func(temp_tensor, axis, keepdims)
+        return func(raw_tensor, axis, keepdims)
 
     return func(*args, **kwargs)
 
@@ -171,7 +152,7 @@ NAME_INDEX = [0]
 
 # pylint: disable=redefined-builtin
 @source_info_decorator()
-@_auto_cast_of_reduce
+@_para_check_of_reduce
 def reduce_sum(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_sum of raw_tensor, only support float16
@@ -189,7 +170,7 @@ def reduce_sum(raw_tensor, axis, keepdims=False):
 
 
 @source_info_decorator()
-@_auto_cast_of_reduce
+@_para_check_of_reduce
 def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
     calculate reduce_min of raw_tensor, only support float16
@@ -208,7 +189,7 @@ def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
 
 # pylint: disable=unused-argument
 @source_info_decorator()
-@_auto_cast_of_reduce
+@_para_check_of_reduce
 def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
     calculate reduce_max of raw_tensor, only support float16
@@ -227,7 +208,7 @@ def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
 
 
 @source_info_decorator()
-@_auto_cast_of_reduce
+@_para_check_of_reduce
 def reduce_prod(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_prod of raw_tensor, only support float16

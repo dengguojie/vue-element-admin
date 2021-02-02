@@ -15,6 +15,7 @@
 """
 elewise compute
 """
+import warnings
 from ..api import vmuls
 from ..api import vadds
 from ..api import vlog

@@ -40,7 +40,7 @@ NAME_INDEX = [0]
 
 
 @decorator
-def _auto_cast_of_cast(func, *args, **kwargs):
+def _para_check_of_cast(func, *args, **kwargs):
     '''
     auto cast dectorator.
     Before calling elewise api, check the input tensor is supported by the intr.
@@ -61,17 +61,12 @@ def _auto_cast_of_cast(func, *args, **kwargs):
                                           " while type is [%s]" % ('tvm.tensor', type(args[0]))
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
-        raw_tensor = args[0]
-
         supported_dtypes = dsl_support_dtype(intr)
         if not supported_dtypes:
             dict_args = dict()
             dict_args["errCode"] = "E90002"
             dict_args["detailed_cause"] = "[%s] is not supported!" % intr
             raise RuntimeError(dict_args, get_error_message(dict_args))
-        temp_tensor = auto_cast_tensor(raw_tensor, intr, supported_dtypes)
-
-        return func(temp_tensor)
 
     return func(*args, **kwargs)
 
@@ -131,7 +126,7 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
 
 
 @source_info_decorator()
-@_auto_cast_of_cast
+@_para_check_of_cast
 def ceil(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with ceiling method
@@ -149,7 +144,7 @@ def ceil(raw_tensor):
 
 
 @source_info_decorator()
-@_auto_cast_of_cast
+@_para_check_of_cast
 def floor(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with flooring method
@@ -168,7 +163,7 @@ def floor(raw_tensor):
 
 # pylint: disable=redefined-builtin
 @source_info_decorator()
-@_auto_cast_of_cast
+@_para_check_of_cast
 def round(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with rounding method
@@ -186,7 +181,7 @@ def round(raw_tensor):
 
 
 @source_info_decorator()
-@_auto_cast_of_cast
+@_para_check_of_cast
 def trunc(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with trunc method

@@ -18,8 +18,12 @@ In order to simplify the procedure of writing schedule, TBE provides a set of Te
 Using those API to develop operators, you can use the "Auto_schedule" create schedule.
 """
 import warnings
+from .auto_cast import auto_cast_of_elewise
+from .auto_cast import auto_cast_of_reduce
+from .auto_cast import auto_cast_of_cast
 
 
+@auto_cast_of_cast
 def ceil(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with ceiling method
@@ -37,6 +41,7 @@ def ceil(raw_tensor):
     return tbe.dsl.ceil(raw_tensor)
 
 
+@auto_cast_of_cast
 def floor(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with flooring method
@@ -54,6 +59,7 @@ def floor(raw_tensor):
     return tbe.dsl.floor(raw_tensor)
 
 
+@auto_cast_of_cast
 def round(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with rounding method
@@ -71,6 +77,7 @@ def round(raw_tensor):
     return tbe.dsl.round(raw_tensor)
 
 
+@auto_cast_of_cast
 def trunc(raw_tensor):
     """
     cast tensor from src_type to dst_dtype with trunc method
@@ -130,6 +137,7 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
     return tbe.dsl.cast_to(data, dtype, f1628IntegerFlag)
 
 
+@auto_cast_of_elewise
 def vadd(lhs, rhs):
     """
     calculate elewise add
@@ -151,6 +159,7 @@ def vadd(lhs, rhs):
     return tbe.dsl.vadd(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vsub(lhs, rhs):
     """
     calculate elewise sub
@@ -172,6 +181,7 @@ def vsub(lhs, rhs):
     return tbe.dsl.vsub(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vmul(lhs, rhs):
     """
     calculate elewise multiply
@@ -193,6 +203,7 @@ def vmul(lhs, rhs):
     return tbe.dsl.vmul(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vdiv(lhs, rhs):
     """
     calculate elewise div
@@ -213,6 +224,7 @@ def vdiv(lhs, rhs):
     return tbe.dsl.vdiv(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vrec(raw_tensor, priority_flag=1):
     """
     calculate vrec(raw_tensor)
@@ -252,6 +264,7 @@ def vmod(lhs, rhs):
     return tbe.dsl.vmod(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vmax(lhs, rhs):
     """
     calculate elewise compare, return the min one
@@ -270,6 +283,7 @@ def vmax(lhs, rhs):
     return tbe.dsl.vmax(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vmin(lhs, rhs):
     """
     calculate elewise compare, return the min one
@@ -288,6 +302,7 @@ def vmin(lhs, rhs):
     return tbe.dsl.vmin(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vlog(raw_tensor, priority_flag=0):
     """
     calculate ln(raw_tensor)
@@ -306,6 +321,7 @@ def vlog(raw_tensor, priority_flag=0):
     return tbe.dsl.vlog(raw_tensor, priority_flag)
 
 
+@auto_cast_of_elewise
 def vexp(raw_tensor):
     """
     calculate exp(raw_tensor)
@@ -323,6 +339,7 @@ def vexp(raw_tensor):
     return tbe.dsl.vexp(raw_tensor)
 
 
+@auto_cast_of_elewise
 def vabs(raw_tensor):
     """
     calculate abs(raw_tensor)
@@ -340,6 +357,7 @@ def vabs(raw_tensor):
     return tbe.dsl.vabs(raw_tensor)
 
 
+@auto_cast_of_elewise
 def vsqrt(raw_tensor, priority_flag=0):
     """
     calculate vsqrt(raw_tensor)
@@ -359,6 +377,7 @@ def vsqrt(raw_tensor, priority_flag=0):
     return tbe.dsl.vsqrt(raw_tensor, priority_flag)
 
 
+@auto_cast_of_elewise
 def vrsqrt(raw_tensor, priority_flag=0):
     """
     calculate vrsqrt(raw_tensor)
@@ -376,6 +395,7 @@ def vrsqrt(raw_tensor, priority_flag=0):
     return tbe.dsl.vrsqrt(raw_tensor, priority_flag)
 
 
+@auto_cast_of_elewise
 def vnot(raw_tensor):
     """
     calculate vnot(raw_tensor)
@@ -393,6 +413,7 @@ def vnot(raw_tensor):
     return tbe.dsl.vnot(raw_tensor)
 
 
+@auto_cast_of_elewise
 def vor(lhs, rhs):
     """
     calculate bitwise or op, return the or value
@@ -411,6 +432,7 @@ def vor(lhs, rhs):
     return tbe.dsl.vor(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vand(lhs, rhs):
     """
     calculate bitwise and op, return the and value
@@ -452,6 +474,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
     return tbe.dsl.vlogic(lhs, rhs, operation)
 
 
+@auto_cast_of_elewise
 def vadds(raw_tensor, scalar):
     """
     add a tensor by a scalar, dtype of raw_tensor and scalar must be the same
@@ -471,6 +494,7 @@ def vadds(raw_tensor, scalar):
     return tbe.dsl.vadds(raw_tensor, scalar)
 
 
+@auto_cast_of_elewise
 def vmuls(raw_tensor, scalar):
     """
     multiply a tensor by a scalar, dtype of raw_tensor
@@ -491,6 +515,7 @@ def vmuls(raw_tensor, scalar):
     return tbe.dsl.vmuls(raw_tensor, scalar)
 
 
+@auto_cast_of_elewise
 def vmaxs(raw_tensor, scalar):
     """
     Calculate elewise compare, return the max one of scalar or tensor's element,
@@ -511,6 +536,7 @@ def vmaxs(raw_tensor, scalar):
     return tbe.dsl.vmaxs(raw_tensor, scalar)
 
 
+@auto_cast_of_elewise
 def vmins(raw_tensor, scalar):
     """
     Calculate elewise compare, return the min one of scalar or tensor's element,
@@ -531,6 +557,7 @@ def vmins(raw_tensor, scalar):
     return tbe.dsl.vmins(raw_tensor, scalar)
 
 
+@auto_cast_of_elewise
 def vaxpy(lhs, rhs, scalar):
     """
     calculate elewise scalar*lhs + rhs, return the min one
@@ -549,6 +576,7 @@ def vaxpy(lhs, rhs, scalar):
     return tbe.dsl.vaxpy(lhs, rhs, scalar)
 
 
+@auto_cast_of_elewise
 def vmla(tensor_0, tensor_1, tensor_2):
     """
     calculate x*tensor_1 + tensor_2,  only support float16, float32
@@ -566,6 +594,7 @@ def vmla(tensor_0, tensor_1, tensor_2):
     return tbe.dsl.vmla(tensor_0, tensor_1, tensor_2)
 
 
+@auto_cast_of_elewise
 def vmadd(tensor_0, tensor_1, tensor_2):
     """
     calculate tensor_0*tensor_2 + tensor_1,  only support  float16, float32
@@ -656,6 +685,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     return tbe.dsl.vcmpsel(lhs, rhs, operation, slhs, srhs)
 
 
+@auto_cast_of_elewise
 def vmaddrelu(tensor_0, tensor_1, tensor_2):
     """
     calculate relu(tensor_0*tensor_2 + tensor_1), only support  float16, float32
@@ -715,6 +745,7 @@ def vsubrelu(lhs, rhs):
     return tbe.dsl.vsubrelu(lhs, rhs)
 
 
+@auto_cast_of_elewise
 def vrelu(raw_tensor):
     """
     calculate vrelu(raw_tensor)
@@ -791,6 +822,7 @@ def broadcast(var, shape, output_dtype=None):
     return tbe.dsl.broadcast(var, shape, output_dtype)
 
 
+@auto_cast_of_reduce
 def sum(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_sum of raw_tensor, only support float16
@@ -809,6 +841,7 @@ def sum(raw_tensor, axis, keepdims=False):
     return tbe.dsl.reduce_sum(raw_tensor, axis, keepdims)
 
 
+@auto_cast_of_reduce
 def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
     calculate reduce_min of raw_tensor, only support float16
@@ -827,6 +860,7 @@ def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     return tbe.dsl.reduce_min(raw_tensor, axis, keepdims, priority_flag)
 
 
+@auto_cast_of_reduce
 def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     """
     calculate reduce_max of raw_tensor, only support float16
@@ -846,6 +880,7 @@ def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     return tbe.dsl.reduce_max(raw_tensor, axis, keepdims, priority_flag)
 
 
+@auto_cast_of_reduce
 def reduce_prod(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_prod of raw_tensor, only support float16

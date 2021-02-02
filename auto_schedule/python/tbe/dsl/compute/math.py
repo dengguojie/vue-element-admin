@@ -325,7 +325,6 @@ def _intrinsic_check(intr):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmuls(raw_tensor, scalar):
     """
@@ -356,7 +355,6 @@ def vmuls(raw_tensor, scalar):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vadds(raw_tensor, scalar):
     """
@@ -387,7 +385,6 @@ def vadds(raw_tensor, scalar):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmaxs(raw_tensor, scalar):
     """
@@ -420,7 +417,6 @@ def vmaxs(raw_tensor, scalar):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmins(raw_tensor, scalar):
     """
@@ -643,7 +639,6 @@ def __vlog_calculate_by_taylor(data_x):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vlog(raw_tensor, priority_flag=0):
     """
@@ -668,7 +663,6 @@ def vlog(raw_tensor, priority_flag=0):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vexp(raw_tensor):
     """
@@ -688,7 +682,6 @@ def vexp(raw_tensor):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vabs(raw_tensor):
     """
@@ -708,7 +701,6 @@ def vabs(raw_tensor):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vrec(raw_tensor, priority_flag=1):
     """
@@ -770,7 +762,6 @@ def _check_multi_compute_pattern(pattern, *tensors):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vnot(raw_tensor):
     """
@@ -823,7 +814,6 @@ def __vsqrt_calculate_by_newton(raw_tensor):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vsqrt(raw_tensor, priority_flag=0):
     """
@@ -882,7 +872,6 @@ def __vrsqrt_calculate_by_newton(raw_tensor):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vrsqrt(raw_tensor, priority_flag=0):
     """
@@ -1029,7 +1018,6 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmul(lhs, rhs):
     """
@@ -1059,7 +1047,6 @@ def vmul(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vdiv(lhs, rhs):
     """
@@ -1240,7 +1227,6 @@ def vmod(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vadd(lhs, rhs):
     """
@@ -1284,7 +1270,6 @@ def vadd(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vsub(lhs, rhs):
     """
@@ -1315,7 +1300,6 @@ def vsub(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmin(lhs, rhs):
     """
@@ -1342,7 +1326,6 @@ def vmin(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmax(lhs, rhs):
     """
@@ -1369,7 +1352,6 @@ def vmax(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vor(lhs, rhs):
     """
@@ -1396,7 +1378,6 @@ def vor(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vand(lhs, rhs):
     """
@@ -1423,7 +1404,6 @@ def vand(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vaxpy(lhs, rhs, scalar):
     """
@@ -1963,7 +1943,6 @@ def _check_is_equal(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmla(tensor_0, tensor_1, tensor_2):
     """
@@ -1989,7 +1968,6 @@ def vmla(tensor_0, tensor_1, tensor_2):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmadd(tensor_0, tensor_1, tensor_2):
     """
