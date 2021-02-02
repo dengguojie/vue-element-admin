@@ -7,14 +7,14 @@
 
 using namespace std;
 
-class Conv2DBackpropInputTiling : public testing::Test {
+class Conv2DBackpropFilterTiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "Conv2DBackpropInputTiling SetUp" << std::endl;
+    std::cout << "Conv2DBackpropFilterTiling SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "Conv2DBackpropInputTiling TearDown" << std::endl;
+    std::cout << "Conv2DBackpropFilterTiling TearDown" << std::endl;
   }
 };
 
@@ -31,21 +31,21 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
-TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_tiling_dynamic_nhw) {
+TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_hw) {
   using namespace optiling;
-  std::string op_name = "Conv2DBackpropInput";
+  std::string op_name = "Conv2DBackpropFilter";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}})";
+  std::string compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 0, "dynamic_mode": "dynamic_hw", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [4, 4, 4, 4]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["fmap_h", "fmap_w", "dedy_h", "dedy_w"]}})";
 
   std::vector<std::vector<int64_t>> inputs {
-    {1, 32, 16, 16},
-    {64, 32, 3, 3},
-    {1, 64, 16, 16},
+    {2, 128, 4, 4},
+    {256, 128, 3, 3},
+    {2, 256, 4, 4},
   };
-  std::vector<int64_t> output {1, 32, 16, 16};
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
+  std::vector<int64_t> output {256, 128, 3, 3};
+  std::vector<std::string> input_types{"float16", "int32", "float16"};
   std::string output_dtype = "float16";
   std::vector<std::string> input_formats{"NCHW", "NCHW", "NCHW"};
   std::string output_format = "NCHW";
@@ -72,28 +72,27 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_tiling_dynamic_nhw) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "Conv2d_bp_tiling_dynamic_nhw";
+  op_compile_info.key = "Conv2d_bp_filter_tiling_dynamic_hw";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 1 16 16 16 16 ");
 }
 
-TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_dynamic_None) {
+TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_n) {
   using namespace optiling;
-  std::string op_name = "Conv2DBackpropInput";
+  std::string op_name = "Conv2DBackpropFilter";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "default_tiling", "default_range": {"10000": [1, null, 16, 16, 16, 16]}, "block_dim": {"10000": 1}, "_vars": {"10000": ["batch_n"]}})";
+  std::string compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 0, "dynamic_mode": "dynamic_batch", "repo_seeds": {}, "repo_range": {}, "tiling_range": {"10000": [2, 2]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["fmap_n"]}})";
 
   std::vector<std::vector<int64_t>> inputs {
-    {1, 32, 16, 16},
-    {64, 32, 3, 3},
-    {1, 64, 16, 16},
+    {2, 128, 4, 4},
+    {256, 128, 3, 3},
+    {2, 256, 4, 4},
   };
-  std::vector<int64_t> output {1, 32, 16, 16};
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
+  std::vector<int64_t> output {256, 128, 3, 3};
+  std::vector<std::string> input_types{"float16", "int32", "float16"};
   std::string output_dtype = "float16";
   std::vector<std::string> input_formats{"NCHW", "NCHW", "NCHW"};
   std::string output_format = "NCHW";
@@ -120,9 +119,8 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_dynamic_None) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "Conv2d_bp_input_dynamic_None";
+  op_compile_info.key = "Conv2d_bp_filter_tiling_dynamic_n";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 1 ");
+  EXPECT_EQ(runInfo.block_dim, 2);
 }

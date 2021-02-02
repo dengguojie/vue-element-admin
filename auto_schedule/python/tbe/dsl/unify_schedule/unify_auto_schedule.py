@@ -37,6 +37,17 @@ def schedule_cce(outs, option=None):
     :param option:
     :return:
     """
+    # set "push_status", if "0": main, else: new
+    if not operation.get_context().get("push_status"):
+        operation.get_context().add("push_status", 0)
+    # convert compile_info for tiling.cc, if 0: tiling_data has key, if 1: doesn't has key
+    pre_compile_info = operation.get_compile_info()
+    if not pre_compile_info:
+        operation.add_compile_info("push_status", 0)
+    else:
+        if "push_status" not in pre_compile_info.keys():
+            operation.add_compile_info("push_status", 0)
+
     original_outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     pattern = pattern_parser.get_pattern(outs)
     operation.add_compile_info("_pattern", pattern)

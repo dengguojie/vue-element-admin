@@ -41,7 +41,7 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_dhw)
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"dynamic_mode\": \"dynamic_dhw\", \"repo_seeds\": {\"10000\": [128, 128, 128], \"10001\": [48, 184, 256], \"10002\": [16, 120, 176], \"10003\": [208, 208, 208], \"10004\": [32, 256, 384]}, \"repo_range\": {\"10000\": [48, 78, 184, 214, 256, 286], \"10001\": [48, 78, 184, 214, 256, 286], \"10002\": [48, 78, 184, 214, 256, 286], \"10003\": [48, 78, 184, 214, 256, 286], \"10004\": [48, 78, 184, 214, 256, 286]}, \"cost_range\": {}, \"block_dim\": {\"10000\": 32, \"10001\": 32, \"10002\": 32, \"10003\": 32, \"10004\": 32}}";
+  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"dynamic_mode\": \"dynamic_dhw\", \"repo_seeds\": {\"10000\": [128, 128, 128], \"10001\": [48, 184, 256], \"10002\": [16, 120, 176], \"10003\": [208, 208, 208], \"10004\": [32, 256, 384]}, \"repo_range\": {\"10000\": [48, 78, 184, 214, 256, 286], \"10001\": [48, 78, 184, 214, 256, 286], \"10002\": [48, 78, 184, 214, 256, 286], \"10003\": [48, 78, 184, 214, 256, 286], \"10004\": [48, 78, 184, 214, 256, 286]}, \"cost_range\": {}, \"block_dim\": {\"10000\": 32, \"10001\": 32, \"10002\": 32, \"10003\": 32, \"10004\": 32}}";
 
   std::vector<std::vector<int64_t>> inputs {
     {1, 48, 1, 184, 256, 16},
@@ -97,7 +97,7 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"dynamic_mode\": \"dynamic_batch\", \"tiling_range\": {\"10000\": [1, 31]}, \"repo_seeds\": {\"10000\": 1}, \"block_dim\": {\"10000\": 32}}";
+  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"dynamic_mode\": \"dynamic_batch\", \"tiling_range\": {\"10000\": [1, 31]}, \"repo_seeds\": {\"10000\": 1}, \"block_dim\": {\"10000\": 32}}";
 
   std::vector<std::vector<int64_t>> inputs {
     {1, 24, 2, 92, 128, 16},

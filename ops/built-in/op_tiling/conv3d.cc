@@ -109,7 +109,16 @@ bool Conv3DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     int32_t outH = opParas.outputs[0].tensor[0].shape[3];
     int32_t outW = opParas.outputs[0].tensor[0].shape[4];
     tilingId = GetDynamicDHWTiling({d, h, w}, mode, opCompileInfo, runInfo);
-    ByteBufferPut(runInfo.tiling_data, tilingId);
+    try {
+      runInfo.tiling_key = tilingId;
+      int status = opCompileInfo["push_status"];
+      if (status == 0) {
+        ByteBufferPut(runInfo.tiling_data, tilingId);
+      }
+    } catch (const std::exception &e) {
+      GE_LOGE("op [%s]: get push_status error. Error message: %s", opType.c_str(), e.what());
+      return false;
+    }
     ByteBufferPut(runInfo.tiling_data, d);
     ByteBufferPut(runInfo.tiling_data, h);
     ByteBufferPut(runInfo.tiling_data, w);
@@ -121,7 +130,16 @@ bool Conv3DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   } else if (mode == "dynamic_batch") {
     int32_t batch = opParas.inputs[0].tensor[0].shape[0];
     tilingId = ConvTiling({batch}, mode, opCompileInfo, runInfo);
-    ByteBufferPut(runInfo.tiling_data, tilingId);
+    try {
+      runInfo.tiling_key = tilingId;
+      int status = opCompileInfo["push_status"];
+      if (status == 0) {
+        ByteBufferPut(runInfo.tiling_data, tilingId);
+      }
+    } catch (const std::exception &e) {
+      GE_LOGE("op [%s]: get push_status error. Error message: %s", opType.c_str(), e.what());
+      return false;
+    }
     ByteBufferPut(runInfo.tiling_data, batch);
 
     GELOGD("Input info is %d, %d", tilingId, batch);
