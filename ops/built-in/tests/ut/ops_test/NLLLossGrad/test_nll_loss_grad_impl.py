@@ -37,7 +37,7 @@ case1 = {"params": [{"shape": (1, 5), "dtype": "float32", "format": "ND", "ori_s
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (5, ), "dtype": "float32", "format": "ND", "ori_shape": (5, ),"ori_format": "ND"},
-                    {"shape": (1, 5), "dtype": "float32", "format": "ND", "ori_shape": (1, 5),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                     {"shape": (1, 5), "dtype": "float32", "format": "ND", "ori_shape": (1, 5),"ori_format": "ND"}],
          "case_name": "nll_loss_grad_1",
          "expect": "success",
@@ -48,7 +48,7 @@ case2 = {"params": [{"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (16, ), "dtype": "float32", "format": "ND", "ori_shape": (16, ),"ori_format": "ND"},
-                    {"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_shape": (1, 16),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                     {"shape": (1, 16), "dtype": "float32", "format": "ND", "ori_shape": (1, 16),"ori_format": "ND"}],
          "case_name": "nll_loss_grad_2",
          "expect": "success",
@@ -59,16 +59,43 @@ case3 = {"params": [{"shape": (1, 128), "dtype": "float32", "format": "ND", "ori
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
                     {"shape": (128, ), "dtype": "float32", "format": "ND", "ori_shape": (128, ),"ori_format": "ND"},
-                    {"shape": (1, 128), "dtype": "float32", "format": "ND", "ori_shape": (1, 128),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                     {"shape": (1, 128), "dtype": "float32", "format": "ND", "ori_shape": (1, 128),"ori_format": "ND"}],
          "case_name": "nll_loss_grad_3",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend710", "Ascend910"], case3)
+case4 = {"params": [{"shape": (3072, 30528), "dtype": "float32", "format": "ND", "ori_shape": (3072, 30528),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (3072,), "dtype": "int32", "format": "ND", "ori_shape": (3072,),"ori_format": "ND"},
+                    {"shape": (30528, ), "dtype": "float32", "format": "ND", "ori_shape": (30528, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    {"shape": (3072, 30528), "dtype": "float32", "format": "ND", "ori_shape": (3072, 30528),"ori_format": "ND"},
+                    "mean"],
+         "case_name": "nll_loss_grad_4",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case5 = {"params": [{"shape": (3072, 30528), "dtype": "float32", "format": "ND", "ori_shape": (3072, 30528),"ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                    {"shape": (3072,), "dtype": "int32", "format": "ND", "ori_shape": (3072,),"ori_format": "ND"},
+                    {"shape": (30528, ), "dtype": "float32", "format": "ND", "ori_shape": (30528, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    {"shape": (3072, 30528), "dtype": "float32", "format": "ND", "ori_shape": (3072, 30528),"ori_format": "ND"},
+                    "mean",
+                    -1],
+         "case_name": "nll_loss_grad_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+ut_case.add_case(["Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend710", "Ascend910A"], case5)
 
 ut_case.add_precision_case(["Ascend910A"], {
     "params": [

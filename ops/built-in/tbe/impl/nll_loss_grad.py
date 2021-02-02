@@ -470,16 +470,34 @@ class NllLossGradCompute:
             self.x_dtype, [NUM_EIGHT],
             name="temp_out_ub", scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(8, temp_out_ub, 0, 1, 1, 0)
-        with self.tik_instance.if_scope(index > self.c_dim - 8):
-            temp_out_ub[index - self.c_dim + 8].set_as(valid_value[0])
-            self.tik_instance.data_move(dst[start + self.c_dim - 8],
-                                        temp_out_ub, 0, 1, 1, 0, 0)
-        with self.tik_instance.else_scope():
-            self.tik_instance.data_move(dst[start + self.c_dim - 8],
-                                        temp_out_ub, 0, 1, 1, 0, 0)
-            temp_out_ub[0].set_as(valid_value[0])
-            self.tik_instance.data_move(dst[start + index],
-                                        temp_out_ub, 0, 1, 1, 0, 0)
+
+        if self.invalid_target:
+            with self.tik_instance.if_scope(tik.any(index < 0,
+                                                    index >= self.c_dim)):
+                self.tik_instance.data_move(dst[start + self.c_dim - 8],
+                                            temp_out_ub, 0, 1, 1, 0, 0)
+            with self.tik_instance.else_scope():
+                with self.tik_instance.if_scope(index > self.c_dim - 8):
+                    temp_out_ub[index - self.c_dim + 8].set_as(valid_value[0])
+                    self.tik_instance.data_move(dst[start + self.c_dim - 8],
+                                                temp_out_ub, 0, 1, 1, 0, 0)
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(dst[start + self.c_dim - 8],
+                                                temp_out_ub, 0, 1, 1, 0, 0)
+                    temp_out_ub[0].set_as(valid_value[0])
+                    self.tik_instance.data_move(dst[start + index],
+                                                temp_out_ub, 0, 1, 1, 0, 0)
+        else:
+            with self.tik_instance.if_scope(index > self.c_dim - 8):
+                temp_out_ub[index - self.c_dim + 8].set_as(valid_value[0])
+                self.tik_instance.data_move(dst[start + self.c_dim - 8],
+                                            temp_out_ub, 0, 1, 1, 0, 0)
+            with self.tik_instance.else_scope():
+                self.tik_instance.data_move(dst[start + self.c_dim - 8],
+                                            temp_out_ub, 0, 1, 1, 0, 0)
+                temp_out_ub[0].set_as(valid_value[0])
+                self.tik_instance.data_move(dst[start + index],
+                                            temp_out_ub, 0, 1, 1, 0, 0)
 
     def two_dim_with_big_weight_compute(self):
         """
@@ -519,9 +537,20 @@ class NllLossGradCompute:
                                                 self.data_target[line_num],
                                                 0, 1, 1, 0, 0)
                     self.index_x.set_as(self.target_ub[0])
-                    self.tik_instance.data_move(self.weight_ub,
-                                                self.data_weight[self.index_x],
-                                                0, 1, 1, 0, 0)
+
+                    if self.invalid_target:
+                        with self.tik_instance.if_scope(tik.any(self.index_x < 0,
+                                                                self.index_x >= self.c_dim)):
+                            self.tik_instance.vector_dup(8, self.weight_ub, 0, 1, 1, 8)
+                        with self.tik_instance.else_scope():
+                            self.tik_instance.data_move(self.weight_ub,
+                                                        self.data_weight[self.index_x],
+                                                        0, 1, 1, 0, 0)
+                    else:
+                        self.tik_instance.data_move(self.weight_ub,
+                                                    self.data_weight[self.index_x],
+                                                    0, 1, 1, 0, 0)
+
                     self.tik_instance.data_move(self.total_weight_ub,
                                                 self.data_total_weight,
                                                 0, 1, 1, 0, 0)

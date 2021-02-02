@@ -984,13 +984,29 @@ class NllLossCompute:
             0, 1, burst_len, 0, 0)
         with self.tik_instance.for_range(0, sort_index) as index:
             self.index_x.set_as(self.target_ub[index])
-            self.tik_instance.data_move(
-                self.x_ub[8*index],
-                self.data_x[self.c_dim*(index+offset)+self.index_x],
-                0, 1, 1, 0, 0)
-            self.tik_instance.data_move(self.weight_ub[8*index],
-                                        self.data_weight[self.index_x],
-                                        0, 1, 1, 0, 0)
+
+            if self.invalid_target:
+                with self.tik_instance.if_scope(tik.any(self.index_x < 0,
+                                                        self.index_x >= self.c_dim)):
+                    self.tik_instance.vector_dup(8, self.x_ub[8*index], 0, 1, 1, 8)
+                    self.tik_instance.vector_dup(8, self.weight_ub[8*index], 0, 1, 1, 8)
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(
+                        self.x_ub[8*index],
+                        self.data_x[self.c_dim*(index+offset)+self.index_x],
+                        0, 1, 1, 0, 0)
+                    self.tik_instance.data_move(self.weight_ub[8*index],
+                                                self.data_weight[self.index_x],
+                                                0, 1, 1, 0, 0)
+            else:
+                self.tik_instance.data_move(
+                    self.x_ub[8*index],
+                    self.data_x[self.c_dim*(index+offset)+self.index_x],
+                    0, 1, 1, 0, 0)
+                self.tik_instance.data_move(self.weight_ub[8*index],
+                                            self.data_weight[self.index_x],
+                                            0, 1, 1, 0, 0)
+
         if repeat > MAXREPEAT:
             loop_repeat = math.ceil(repeat/MAXREPEAT)
             max_repeat = MAXREPEAT

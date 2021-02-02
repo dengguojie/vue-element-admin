@@ -33,35 +33,58 @@ def calc_expect_func(x, target, weight, y, total_weight, reduction):
         
     return loss, total_weight
 
-case1 = {"params": [{"shape": (2, 5), "dtype": "float32", "format": "ND", "ori_shape": (1, 5),"ori_format": "ND"},
-                    {"shape": (2,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+case1 = {"params": [{"shape": (2, 5), "dtype": "float32", "format": "ND", "ori_shape": (2, 5),"ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
                     {"shape": (5, ), "dtype": "float32", "format": "ND", "ori_shape": (5, ),"ori_format": "ND"},
-                    {"shape": (2, ), "dtype": "float32", "format": "ND", "ori_shape": (1, 5),"ori_format": "ND"},
-                    {"shape": (2, ), "dtype": "float32", "format": "ND", "ori_shape": (1, 5),"ori_format": "ND"},
+                    {"shape": (2, ), "dtype": "float32", "format": "ND", "ori_shape": (2, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                     "none"],
          "case_name": "nll_loss_1",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
 
-case2 = {"params": [{"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (1, 16),"ori_format": "ND"},
-                    {"shape": (2,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+case2 = {"params": [{"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (2, 16),"ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND", "ori_shape": (2,),"ori_format": "ND"},
                     {"shape": (16, ), "dtype": "float32", "format": "ND", "ori_shape": (16, ),"ori_format": "ND"},
-                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, 16),"ori_format": "ND"},
-                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, 16),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                     "sum"],
          "case_name": "nll_loss_2",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
 
-case3 = {"params": [{"shape": (3, 128), "dtype": "float32", "format": "ND", "ori_shape": (1, 128),"ori_format": "ND"},
-                    {"shape": (3,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+case3 = {"params": [{"shape": (3, 128), "dtype": "float32", "format": "ND", "ori_shape": (3, 128),"ori_format": "ND"},
+                    {"shape": (3,), "dtype": "int32", "format": "ND", "ori_shape": (3,),"ori_format": "ND"},
                     {"shape": (128, ), "dtype": "float32", "format": "ND", "ori_shape": (128, ),"ori_format": "ND"},
-                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, 128),"ori_format": "ND"},
-                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, 128),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
                     "mean"],
          "case_name": "nll_loss_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case4 = {"params": [{"shape": (3072, 30528), "dtype": "float32", "format": "ND", "ori_shape": (3072, 30528),"ori_format": "ND"},
+                    {"shape": (3072,), "dtype": "int32", "format": "ND", "ori_shape": (3072,),"ori_format": "ND"},
+                    {"shape": (30528, ), "dtype": "float32", "format": "ND", "ori_shape": (30528, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    "mean"],
+         "case_name": "nll_loss_4",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case5 = {"params": [{"shape": (3072, 30528), "dtype": "float32", "format": "ND", "ori_shape": (3072, 30528),"ori_format": "ND"},
+                    {"shape": (3072,), "dtype": "int32", "format": "ND", "ori_shape": (3072,),"ori_format": "ND"},
+                    {"shape": (30528, ), "dtype": "float32", "format": "ND", "ori_shape": (30528, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    {"shape": (1, ), "dtype": "float32", "format": "ND", "ori_shape": (1, ),"ori_format": "ND"},
+                    "mean",
+                    -1],
+         "case_name": "nll_loss_5",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
@@ -69,6 +92,8 @@ case3 = {"params": [{"shape": (3, 128), "dtype": "float32", "format": "ND", "ori
 ut_case.add_case(["Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend710", "Ascend910A"], case5)
 
 ut_case.add_precision_case(["Ascend910A"], {
     "params": [
