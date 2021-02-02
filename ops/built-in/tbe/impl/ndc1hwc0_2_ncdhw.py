@@ -20,7 +20,8 @@ ndc1hwc0_2_ncdhw
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl import trans_data_negative_target_ntc
 
 # available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
@@ -1182,13 +1183,13 @@ def _check_parameters(src, dst, src_format, dst_format):
     if dst_format.lower() != "ncdhw":
         raise RuntimeError("dst_format must be NCDHW!")
 
-    check_list = ("float16",)
-    check_dtype(dtype, check_list)
+    check_list = ("float16", "float32")
+    para_check.check_dtype_rule(dtype, check_list)
     if dtype != dtype_dst:
         raise RuntimeError("dtype of src and dst are different !")
 
-    check_shape(src_shape, min_rank=6, max_rank=6)
-    check_shape(dst_shape, min_rank=5, max_rank=5)
+    para_check.check_shape_rule(src_shape, 6, 6)
+    para_check.check_shape_rule(dst_shape, 5, 5)
 
     if src_shape[5] != 16:
         raise RuntimeError(
@@ -1209,7 +1210,6 @@ def _check_parameters(src, dst, src_format, dst_format):
                            "and greater than ((c1 - 1)*c0 )!")
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, REQUIRED_ATTR_STR, KERNEL_NAME)
 def ndc1hwc0_2_ncdhw(src, dst, src_format, dst_format,
                      kernel_name='ndc1hwc0_2_ncdhw'):
     """
@@ -1238,6 +1238,10 @@ def ndc1hwc0_2_ncdhw(src, dst, src_format, dst_format,
     src_shape = src.get("shape")
     dst_shape = dst.get("shape")
     dtype = src.get("dtype").lower()
+
+    if dtype == "float32":
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc.py(src, dst, src_format, dst_format, kernel_name)
+        return
 
     template_fp16 = Ndc1hwc02NcdhwCompute(src_shape, dst_shape,
                                           dtype, kernel_name)

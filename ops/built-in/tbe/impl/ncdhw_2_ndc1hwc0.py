@@ -19,7 +19,8 @@ ncdhw_2_ndc1hwc0
 # pylint: disable=wildcard-import,undefined-variable
 from te import tik
 from te import platform as tbe_platform
-from te.utils.op_utils import *
+from te.utils import para_check
+from impl import trans_data_positive_source_ntc
 
 
 # UB size in byte
@@ -35,7 +36,7 @@ MTE_THRESHOLD = 3968
 # mask value
 MASK_128 = 128
 # float16/32 type list
-TYPE_FLOAT_LIST = ("float16",)
+TYPE_FLOAT_LIST = ("float16", "float32")
 # used for vnchwconv
 VNC_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 
@@ -126,9 +127,9 @@ def _check_input_params(input_params):
         raise RuntimeError("The src_format must be NCDHW and"
                            " dst_format must be NDC1HWC0!")
 
-    check_dtype(in_dtype, check_list)
-    check_shape(in_shape, min_rank=5, max_rank=5)
-    check_shape(dst_shape)
+    para_check.check_dtype_rule(in_dtype, check_list)
+    para_check.check_shape_rule(in_shape, 5, 5)
+    para_check.check_shape_size(dst_shape)
 
 
 # pylint: disable=too-many-locals,too-many-statements
@@ -421,8 +422,6 @@ def ncdhw_2_ndc1hwc0_compute(tik_inst, data_in, data_out):
         _multi_core_on_d(tik_inst, data_in, data_out, shape_in)
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR,
-                 REQUIRED_ATTR_STR, KERNEL_NAME)
 def ncdhw_2_ndc1hwc0(src, dst, src_format, dst_format,
                      kernel_name="ncdhw_2_ndc1hwc0"):
     """
@@ -455,6 +454,10 @@ def ncdhw_2_ndc1hwc0(src, dst, src_format, dst_format,
     # check input parameters valid or not
     input_params = (in_shape, dst_shape, in_dtype, dst_dtype, src_format, dst_format)
     _check_input_params(input_params)
+
+    if in_dtype == "float32":
+        trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
+        return
 
     # initial Tik
     tik_inst = tik.Tik()

@@ -78,11 +78,11 @@ err5 = {"params": [{"shape": (1, 1, 16, 1, 1, 16), "dtype": "float16",
         "format_expect": ["NCDHW"],
         "support_expect": False}
 
-case1 = {"params": [{"shape": (1, 2, 8, 126, 126, 16), "dtype": "float16",
+case1 = {"params": [{"shape": (1, 2, 8, 126, 126, 16), "dtype": "float32",
                      "ori_shape": (1, 2, 8, 126, 126, 16), "format": "NDC1HWC0",
                      "ori_format": "NDC1HWC0",
                      "param_type": "input", "value_range": [-10.0, 10.0]},
-                    {"shape": (1, 128, 2, 126, 126), "dtype": "float16",
+                    {"shape": (1, 128, 2, 126, 126), "dtype": "float32",
                      "ori_shape": (1, 128, 2, 126, 126), "format": "NCDHW", "ori_format": "NCDHW",
                      "param_type": "output"},
                     "NDC1HWC0", "NCDHW"],

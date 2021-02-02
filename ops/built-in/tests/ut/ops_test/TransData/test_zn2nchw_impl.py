@@ -124,6 +124,16 @@ case21 = {"params": [{"shape": (9, 8, 16, 16), "dtype": "float32",
          "format_expect": ["NCHW"],
          "support_expect": False}
 
+case22 = {"params": [{"shape": (48, 3, 16, 16), "dtype": "float32",
+                     "ori_shape": (9, 8, 16, 16), "format": "FRACTAL_Z",
+                     "ori_format": "FRACTAL_Z"},
+                    {"shape": (126, 8, 2, 2), "dtype": "float32",
+                     "ori_shape": (126, 8, 2, 2), "format": "NCHW", "ori_format": "NCHW"},
+                    "FRACTAL_Z", "NCHW", 21],
+         "expect": "success",
+         "format_expect": ["NCHW"],
+         "support_expect": False}
+
 case3 = {"params": [{"shape": (36, 2, 16, 16), "dtype": "float16",
                      "ori_shape": (36, 2, 16, 16), "format": "FRACTAL_Z",
                      "ori_format": "FRACTAL_Z"},
@@ -243,3 +253,4 @@ case12 = {"params": [{"shape": (351, 8, 16, 16), "dtype": "float16",
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend310","Ascend910A"], case21)
+ut_case.add_case(["Ascend310","Ascend910A"], case22)

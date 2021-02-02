@@ -35,8 +35,14 @@ NI_16 = 16
 BLOCK_BYTE_SIZE = 32
 # repeat up limit for vector command
 REPEAT_LIMIT_VECT = 255
+# repeat up limit for mte
+REPEAT_LIMIT_MTE = 4095
+# strides up limit for mte
+STRIDE_LIMIT_MTE = 65535
 # mask value for float32
 MASK_64 = 64
+# mask value for float16
+MASK_128 = 128
 # max int64 value
 MAX_INT64_VALUE = 2 ** 63 - 1
 # used for vnchwconv
@@ -60,6 +66,7 @@ def ceil_div(value_x, value_y):
     -------
     the ceiling of value_x as an Integral
     """
+
     if value_y == 0:
         return value_x
     result = (value_x + value_y - 1) // value_y
@@ -82,11 +89,78 @@ def ceil_fill(value_x, value_y):
     -------
     the ceiling product of value_x and value_y as an Integral
     """
+
     if value_y == 0:
         return value_x
     result = (value_x + value_y - 1) // value_y * value_y
 
     return result
+
+
+def floor_div(value_x, value_y):
+    """
+    do floor division
+
+    Parameters
+    ----------
+    value_x : int
+        dividend
+    value_y : int
+        divider
+
+    Returns
+    -------
+    the floor of value_x as an Integral
+    """
+
+    if value_y == 0:
+        return value_x
+    result = value_x // value_y
+
+    return result
+
+
+def lcm(value_x, value_y):
+    """
+    get lcm of value_x and value_y
+
+    Parameters
+    ----------
+    value_x : int
+        one integral input
+    value_y : int
+        another integral input
+
+    Returns
+    -------
+    the lcm of value_x and value_y as an Integral
+    """
+
+    if value_x == 0 or value_y == 0:
+        return 0
+    result = value_x * value_y // func_gcd(value_x, value_y)
+
+    return result
+
+
+def get_c0_len(dtype):
+    """
+    get c0 length according to dtype
+
+    Parameters
+    ----------
+    dtype : str
+        data type name
+
+    Returns
+    -------
+    the c0 length of dtype as an Integral
+    """
+
+    c0_len = C0_32 if dtype.lower() in ("int8", "uint8", "bool") else C0_16
+
+    return c0_len
+
 
 def clean_ubuf(tik_inst, src, src_offset, dup_len):
     """
@@ -141,6 +215,26 @@ def clean_ubuf(tik_inst, src, src_offset, dup_len):
                 tik_inst.vector_dup(left_elem, src[src_offset + repeat * batch_size * dtype_factor],
                                     dup_value, 1, 1, 8)
 
+
+def get_shape_size(sub_shape):
+    """
+    return shape size
+
+    Parameters
+    ----------
+    sub_shape : tuple/list
+        input tuple or list
+
+    Returns
+    -------
+    the product of all values in sub_shape as an Integral
+    """
+
+    shape_size = func_reduce(lambda x, y: x * y, sub_shape)
+
+    return shape_size
+
+
 def get_dtype_len(in_dtype):
     """
     get the byte count of certain dtype
@@ -185,11 +279,15 @@ def get_max_element_in_ub(in_dtype, ub_part):
     the up limit elements in one part of UB as an Integral
     """
 
+    if ub_part == 0:
+        return CORE_UB_SIZE
+
     byte_len = get_dtype_len(in_dtype)
     ub_upper_limit = 248 * 1024 // ub_part if CORE_UB_SIZE > 248 * 1024 else CORE_UB_SIZE // ub_part  # the unit is Byte
     element_size = ub_upper_limit // byte_len
 
     return element_size
+
 
 def get_dtype_factor(dtype):
     """

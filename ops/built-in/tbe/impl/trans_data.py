@@ -156,6 +156,8 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
           or src_format.upper() == "FRACTAL_Z") \
             and dst_format.upper() == "NCHW" and groups > 1:
         zng_2_nchw_hwcn.zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups, kernel_name)
+    elif src_format.upper() == "FRACTAL_Z_3D" and dst_format.upper() == "DHWCN" and groups > 1:
+        zng_2_nchw_hwcn.zng_2_nchw_hwcn(src, dst, src_format, dst_format, groups, kernel_name)
     elif src_format.upper() == "HWCN" \
             and ((dst_format.upper() == "FRACTAL_ZN"
                  or dst_format.upper() == "FRACTAL_Z"
@@ -236,7 +238,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
         dhwcn_2_fractal_z_3d.dhwcn_2_fractal_z_3d(src, dst, src_format,
                                                   dst_format, kernel_name)
     elif src_format.upper() == "FRACTAL_Z_3D"\
-            and dst_format.upper() == "DHWCN":
+            and dst_format.upper() == "DHWCN" and groups == 1:
         fractal_z_3d_2_dhwcn.fractal_z_3d_2_dhwcn(src, dst, src_format,
                                                   dst_format, kernel_name)
     elif src_format.upper() == "NC1HWC0" and \

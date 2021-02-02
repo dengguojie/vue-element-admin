@@ -166,17 +166,17 @@ case6 = {"params": [{"shape": (27, 1, 16, 16), "dtype": "float32",
          "calc_expect_func": calc_expect_func,
          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
-case7 = {"params": [{"shape": (27, 1, 16, 16), "dtype": "float32",
-                     "ori_shape": (27, 1, 16, 16), "format": "FRACTAL_Z_3D",
+case7 = {"params": [{"shape": (48, 3, 16, 16), "dtype": "float32",
+                     "ori_shape": (48, 3, 16, 16), "format": "FRACTAL_Z_3D",
                      "ori_format": "FRACTAL_Z_3D",
                      "param_type": "input", "value_range": [-10.0, 10.0]},
-                    {"shape": (16, 16, 3, 3, 3), "dtype": "float32",
-                     "ori_shape": (16, 16, 3, 3, 3), "format": "NCDHW", "ori_format": "NCDHW",
+                    {"shape": (1, 2, 2, 8, 126), "dtype": "float32",
+                     "ori_shape": (1, 2, 2, 8, 126), "format": "FRACTAL_Z_3D", "ori_format": "DHWCN",
                      "param_type": "output"},
-                    "FRACTAL_Z_3D", "NCDHW"],
+                    "FRACTAL_Z_3D", "DHWCN", 21],
          "expect": "success",
-         "calc_expect_func": calc_expect_func,
-         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+         "format_expect": ["DHWCN"],
+         "support_expect": False}
 
 case8 = {"params": [{"shape": (27, 2, 16, 16), "dtype": "float32",
                      "ori_shape": (27, 2, 16, 16), "format": "FRACTAL_Z_3D",
@@ -253,7 +253,7 @@ ut_case.add_case(["Ascend910"], err5)
 ut_case.add_precision_case(["Ascend910"], case2)
 ut_case.add_precision_case(["Ascend910"], case3)
 ut_case.add_precision_case(["Ascend910"], case4)
-# ut_case.add_precision_case(["Ascend910"], case7)
+ut_case.add_case(["Ascend310","Ascend910A"], case7)
 # ut_case.add_precision_case(["Ascend910"], case8)
 # ut_case.add_precision_case(["Ascend910"], case9)
 # ut_case.add_precision_case(["Ascend910"], case12)
