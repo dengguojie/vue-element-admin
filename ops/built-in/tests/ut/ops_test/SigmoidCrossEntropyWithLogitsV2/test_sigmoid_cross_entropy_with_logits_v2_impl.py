@@ -127,6 +127,13 @@ def test_op_select_format(test_arg):
                      {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "param_type":"output"}, #loss
                      "sum")
 
+    op_select_format({"shape": (128, 128, 128, 128, 128, 128), "dtype": "float16", "format": "NDHWC", "ori_shape": (128, 128, 128, 128, 128, 128), "ori_format": "NDHWC","param_type": "input"},  # predict
+                     {"shape": (128, 128, 128, 128, 128, 128), "dtype": "float16", "format": "NDHWC", "ori_shape": (128, 128, 128, 128, 128, 128), "ori_format": "NDHWC","param_type": "input"},  # target
+                     {"shape": (128, 128, 128, 128, 128, 128), "dtype": "float16", "format": "NDHWC", "ori_shape": (128, 128, 128, 128, 128, 128), "ori_format": "NDHWC","param_type": "input"},  # weight
+                     {"shape": (128, 128, 128, 128, 128, 128), "dtype": "float16", "format": "NDHWC", "ori_shape": (128, 128, 128, 128, 128, 128), "ori_format": "NDHWC","param_type": "input"},  # pos_weight
+                     {"shape": (128, 128, 128, 128, 128, 128), "dtype": "float16", "format": "NDHWC", "ori_shape": (1,), "ori_format": "NDHWC","param_type": "output"},  # loss
+                     "none")
+
 ut_case.add_precision_case(["Ascend910A"], case1)
 #ut_case.add_precision_case(["Ascend910A"], case2)
 #ut_case.add_precision_case(["Ascend910A"], case3)

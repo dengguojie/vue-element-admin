@@ -66,7 +66,7 @@ def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean"
         dtype = ["float16", "float"]
 
     dtype_length = len(dtype)
-    format_list = ["ND", "NC1HWC0"]
+    format_list = ["ND", "NC1HWC0", "NDC1HWC0"]
     dtype = dtype * len(format_list)
 
     format = []
@@ -171,7 +171,8 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     exp_reversed_max_predict_zero = te.lang.cce.vexp(reversed_max_predict_zero)
     sub_reversed_max_predict_zero = te.lang.cce.vsub(reversed_max_predict_zero, predict)
     exp_sub_reversed_max_predict_zero = te.lang.cce.vexp(sub_reversed_max_predict_zero)
-    add_reversed_predict = te.lang.cce.vadd(exp_reversed_max_predict_zero, exp_sub_reversed_max_predict_zero)
+    add_reversed_predict = te.lang.cce.vadd(exp_reversed_max_predict_zero,
+                                            exp_sub_reversed_max_predict_zero)
     log_reversed_predict = te.lang.cce.vlog(add_reversed_predict, priority_flag=1)
     add_max_predict = te.lang.cce.vadd(log_reversed_predict, max_predict_zero)
 
@@ -180,8 +181,6 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     mul_predict_target = te.lang.cce.vmul(sub_target, predict)
 
     if pos_weight is not None:
-        # info: log_weight=(pos_weight - 1)*target+1
-        # info: loss=(1-target)*predict+(log_weight*(max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))))
         pos_weight = te.lang.cce.broadcast(pos_weight, shape_predict)
         sub_pos_weight = te.lang.cce.vsub(pos_weight, const_one_broadcast)
         mul_pos_weight = te.lang.cce.vmul(sub_pos_weight, target)
@@ -202,8 +201,9 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     return loss
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
-                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits_v2(
         predict, target, weight, pos_weight, loss, reduction="mean",

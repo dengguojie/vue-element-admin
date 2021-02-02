@@ -20,8 +20,10 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from impl.util import util_select_op_base
 from te.utils.error_manager import error_manager_vector
+from impl.util import util_select_op_base
+from impl.util import util_common
+
 
 
 # eps value
@@ -43,28 +45,36 @@ def op_select_format(x, y, weight, output,
     > x : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     > y : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
     > weight : Tensor of (shape=(16, 1, 16, 16, 16), "NC1HWC0")
+    2. when input x's ori_shape is 5D and the ori_format in ["NDCHW", "NDHWC"],
+    and the dim C of x's ori_shape can be divisible by 16. The Op
+    BinaryCrossEntropy can support ND and NDC1HWC0.
+    > for example:
+    > x : Tensor of (shape=(16,1, 1, 16, 16, 16), "NDC1HWC0")
+    > y : Tensor of (shape=(16,1, 1, 16, 16, 16), "NDC1HWC0")
+    > weight : Tensor of (shape=(16,1, 1, 16, 16, 16), "NDC1HWC0")
     """
-    is_support_5hd = True
-    support_ori_format = ["NCHW", "NHWC"]
+    is_support_hd = False
+    is_support_fz = False
+    support_ori_format = \
+        util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
+        + util_common.get_fused_format_str(["N", "H", "W", "C"])
     input_ori_shape = x.get("ori_shape")
     input_ori_format = x.get("ori_format")
-    shape_5hd_c0 = 16
+    shape_hd_c0 = 16
+    shape_fz_c0 = 16
+    shape_fz_n = 16
 
-    if input_ori_format not in support_ori_format \
-            or len(input_ori_shape) != 4:
-        is_support_5hd = False
-
-    if len(input_ori_shape) == 4:
-        if input_ori_format == "NCHW":
-            shape_c = input_ori_shape[1]
-        else:
-            shape_c = input_ori_shape[3]
-
-        if shape_c % shape_5hd_c0 != 0:
-            is_support_5hd = False
+    if input_ori_format in support_ori_format \
+            or len(input_ori_shape) == len(input_ori_format):
+        if input_ori_shape[input_ori_format.index("C")] % shape_fz_c0 == 0 \
+                and input_ori_shape[input_ori_format.index("N")] % shape_fz_n == 0:
+            is_support_fz = True
+        elif input_ori_shape[input_ori_format.index("C")] % shape_hd_c0 == 0:
+            is_support_hd = True
 
     if reduction in ("none",):
-        is_support_5hd = True
+        is_support_hd = True
+        is_support_fz = True
 
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
@@ -75,9 +85,14 @@ def op_select_format(x, y, weight, output,
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
 
-    if is_support_5hd:
+    if is_support_hd:
         dtype_base_out = dtype_base_out + dtype_base
-        format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_base)
+        other_format = "NDC1HWC0" if len(input_ori_shape) == 5 else "NC1HWC0"
+        format_base_out = format_base_out + [other_format] * len(dtype_base)
+    if is_support_fz:
+        dtype_base_out = dtype_base_out + dtype_base
+        other_format = "FRACTAL_Z_3D" if len(input_ori_shape) == 5 else "FRACTAL_Z"
+        format_base_out = format_base_out + [other_format] * len(dtype_base)
 
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
@@ -187,8 +202,9 @@ def binary_cross_entropy_compute(x, y, weight, output,
     return result
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def binary_cross_entropy(x, y, weight, output,
                          reduction="mean",
                          kernel_name="binary_cross_entropy"):
@@ -269,7 +285,8 @@ def binary_cross_entropy(x, y, weight, output,
 
     if reduction not in ("mean", "sum", "none"):
         rule_desc = "reduction type should in mean/sum/none"
-        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "reduction", reduction)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc,
+                                                          "reduction", reduction)
 
     res = binary_cross_entropy_compute(data_predict, data_target,
                                        data_weight, output,
@@ -280,12 +297,8 @@ def binary_cross_entropy(x, y, weight, output,
 
     if weight is None:
         config = {"name": kernel_name,
-                  "tensor_list": [data_predict, data_target,
-                                  res]}
+                  "tensor_list": [data_predict, data_target, res]}
     else:
         config = {"name": kernel_name,
-                  "tensor_list": [data_predict, data_target,
-                                  data_weight, res]}
-
+                  "tensor_list": [data_predict, data_target, data_weight, res]}
     tbe.cce_build_code(schedule, config)
-

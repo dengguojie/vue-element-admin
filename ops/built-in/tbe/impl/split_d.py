@@ -362,8 +362,8 @@ class SplitLastDimVnv:
                 src_offset_ub = num_idx * self.block_ele
                 dst_offset_ub = num_idx * TRANSPOSE_SIZE
 
-                self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub], 0, 2 * seg, 1, self.num_split, 8,
-                                        self.num_split * 8)
+                self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub], 0, 2 * seg, 1,
+                                        self.num_split, 8, self.num_split * 8)
                 for trans_idx in range(seg):
                     src_offset_trans = trans_idx * TRANSPOSE_SIZE
                     dst_offset_trans = dst_offset_ub + self.num_split * trans_idx * TRANSPOSE_SIZE
@@ -371,8 +371,8 @@ class SplitLastDimVnv:
 
             for num_idx in range(self.num_split):
                 src_offset_ub = num_idx * self.block_ele
-                self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub], 0, 2 * seg, 1, self.num_split, 8,
-                                        self.num_split * 8)
+                self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub], 0, 2 * seg,
+                                        1, self.num_split, 8, self.num_split * 8)
                 for trans_idx in range(seg):
                     src_offset_trans = trans_idx * TRANSPOSE_SIZE
                     dst_offset_trans = trans_idx * TRANSPOSE_SIZE
@@ -389,7 +389,8 @@ class SplitLastDimVnv:
         if last_seg != 0:
             with self.tik_instance.for_range(0, 1):
                 src_offset = src_offset_core + loop_num * max_seg * TRANSPOSE_SIZE * self.shape[1]
-                dst_offset = dst_offset_core + loop_num * max_seg * TRANSPOSE_SIZE * self.output_shapes[0][1]
+                dst_offset = dst_offset_core + loop_num * max_seg * TRANSPOSE_SIZE * \
+                             self.output_shapes[0][1]
                 _inner(src_offset, dst_offset, last_seg)
         if tail_ele != 0:
             with self.tik_instance.for_range(0, 1):
@@ -412,12 +413,15 @@ class SplitLastDimVnv:
             src_offset_core = core_idx * one_core_seg * TRANSPOSE_SIZE * self.shape[1]
             dst_offset_core = core_idx * one_core_seg * TRANSPOSE_SIZE * self.output_shapes[0][1]
             if tail_ele == 0 and last_core_seg == one_core_seg:
-                self.split_last_dim_vnc_compute_for_core(src_offset_core, dst_offset_core, one_core_seg, 0)
+                self.split_last_dim_vnc_compute_for_core(src_offset_core,
+                                                         dst_offset_core, one_core_seg, 0)
             else:
                 with self.tik_instance.if_scope(core_idx < act_core_num - 1):
-                    self.split_last_dim_vnc_compute_for_core(src_offset_core, dst_offset_core, one_core_seg, 0)
+                    self.split_last_dim_vnc_compute_for_core(src_offset_core,
+                                                             dst_offset_core, one_core_seg, 0)
                 with self.tik_instance.else_scope():
-                    self.split_last_dim_vnc_compute_for_core(src_offset_core, dst_offset_core, last_core_seg, tail_ele)
+                    self.split_last_dim_vnc_compute_for_core(src_offset_core, dst_offset_core,
+                                                             last_core_seg, tail_ele)
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.input_tensor],
@@ -483,9 +487,12 @@ def op_select_format(input_value, output_data, split_dim, num_split, kernel_name
         c0_len = 16
     output_org_shape_list = []
     output_org_format_list = []
-    is_support_5hd = True
-    support_ori_format = ["NCHW", "NHWC"]
+    is_support_hd = True
+    support_ori_format = \
+        util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
+        + util_common.get_fused_format_str(["N", "H", "W", "C"])
     input_ori_shape = input_value.get("ori_shape")
+    input_ori_format = input_value.get("ori_format")
     split_dim = split_dim % len(input_ori_shape)
 
     for _, output_dict in enumerate(output_data):
@@ -494,8 +501,9 @@ def op_select_format(input_value, output_data, split_dim, num_split, kernel_name
         output_org_shape_list.append(ori_shape)
         output_org_format_list.append(ori_format)
 
-        if ori_format not in support_ori_format or len(ori_shape) != 4:
-            is_support_5hd = False
+        if ori_format not in support_ori_format or len(input_ori_shape) != len(input_ori_format) \
+                or len(ori_format) != len(ori_shape):
+            is_support_hd = False
             break
 
         # when split_d by N,H,W, support NC1HWC0
@@ -503,12 +511,8 @@ def op_select_format(input_value, output_data, split_dim, num_split, kernel_name
             break
 
         # when split_d by C, but output size not C0 align donot support NC1HWC0
-        if ori_format == "NCHW" and ori_shape[1] % c0_len != 0:
-            is_support_5hd = False
-            break
-
-        if ori_format == "NHWC" and ori_shape[3] % c0_len != 0:
-            is_support_5hd = False
+        if ori_shape[split_dim] % c0_len != 0:
+            is_support_hd = False
             break
 
     is_support_nz = False
@@ -522,14 +526,16 @@ def op_select_format(input_value, output_data, split_dim, num_split, kernel_name
                                     split_dim, num_split, kernel_name)
     is_support_other_5hd = split_with_5hd_not_align.check_op_select()
 
-    dtype_base = ["float16", "float", "int32", "int8", "int16", "int64", "uint8", "uint16", "uint32", "uint64"]
+    dtype_base = ["float16", "float", "int32", "int8", "int16", "int64", "uint8",
+                  "uint16", "uint32", "uint64"]
     dtype_5hd = ["float16", "float", "int32", "int8", "int16", "uint16", "uint32"]
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
 
-    if is_support_5hd and not util_common.is_dynamic_input([input_value]):
+    if is_support_hd and not util_common.is_dynamic_input([input_value]):
+        other_format = "NC1HWC0" if len(input_ori_shape) == 4 else "NDC1HWC0"
         dtype_base_out = dtype_base_out + dtype_5hd
-        format_base_out = format_base_out + ["NC1HWC0"] * len(dtype_5hd)
+        format_base_out = format_base_out + [other_format] * len(dtype_5hd)
 
     if is_support_nz and not util_common.is_dynamic_input([input_value]):
         dtype_base_out = dtype_base_out + dtype_base
@@ -542,16 +548,18 @@ def op_select_format(input_value, output_data, split_dim, num_split, kernel_name
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
 
-    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=dtype_str, format=format_str)
-    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=dtype_str, format=format_str)
+    input0 = util_select_op_base.gen_param(classify="input0", name="x", datatype=dtype_str,
+                                           format=format_str)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=dtype_str,
+                                            format=format_str)
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.REQUIRED_ATTR_INT,
-                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """Split a tensor into `num_split` tensors along one dimension.
 
@@ -577,12 +585,14 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
     ori_format = input_value.get("ori_format")
     ori_shape = input_value.get("ori_shape")
     # update axis base on input format
-    split_dim = util_common.update_axis_for_other_format(ori_shape, split_dim, input_format, ori_format)
+    split_dim = util_common.update_axis_for_other_format(ori_shape, split_dim,
+                                                         input_format, ori_format)
 
     shape = input_value.get("shape")
     dtype = input_value.get("dtype")
     dtype_lower = dtype.lower()
-    check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float16", "float32")
+    check_list = ("int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
+                  "float16", "float32")
 
     para_check.check_shape(shape, param_name="input_value")
     para_check.check_dtype(dtype_lower, check_list, param_name="input_value")
@@ -593,9 +603,11 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
     if num_split < 1:
         expected_value = "must be greater or equal to 1"
         real_value = "less to 1"
-        error_manager_vector.raise_err_input_value_invalid("split", "The num_split", expected_value, real_value)
+        error_manager_vector.raise_err_input_value_invalid("split", "The num_split", expected_value,
+                                                           real_value)
 
-    split_with_5hd_not_align = split_last_dim.SplitWith5HD(input_value, output_data, split_dim, num_split, kernel_name)
+    split_with_5hd_not_align = split_last_dim.SplitWith5HD(input_value, output_data,
+                                                           split_dim, num_split, kernel_name)
     if split_with_5hd_not_align.check_5hd_vnchw():
         split_with_5hd_not_align.do_5hd_split_cut_by_batch()
         return
@@ -619,12 +631,15 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
     if dtype_lower == "float16" and new_split_dim == len(new_shape) - 1 and \
             new_size_splits[0] == 1 and num_split <= 16 \
             and input_size >= TRANSPOSE_SIZE * num_split:
-        split_vnc = SplitLastDimVnv(new_shape, dtype_lower, new_output_shapes, new_split_dim, num_split, kernel_name)
+        split_vnc = SplitLastDimVnv(new_shape, dtype_lower, new_output_shapes,
+                                    new_split_dim, num_split, kernel_name)
         split_vnc.split_last_dim_vnc_compute()
         return
 
-    if split_last_dim.check_use_last_dim_branch(new_shape, dtype_lower, new_split_dim, num_split, new_size_splits):
-        split_last_dim.split_last_dim(new_shape, dtype_lower, new_split_dim, num_split, new_size_splits, kernel_name)
+    if split_last_dim.check_use_last_dim_branch(new_shape, dtype_lower, new_split_dim, num_split,
+                                                new_size_splits):
+        split_last_dim.split_last_dim(new_shape, dtype_lower, new_split_dim, num_split,
+                                      new_size_splits, kernel_name)
         return
 
     if split_mov.check_whether_use_split_mov():
@@ -632,7 +647,8 @@ def split_d(input_value, output_data, split_dim, num_split, kernel_name="split_d
         return
 
     data = tvm.placeholder(shape, name="data", dtype=dtype_lower)
-    output_shape_list, output_tensor_list = split_d_compute(data, output_data, split_dim, num_split, kernel_name)
+    output_shape_list, output_tensor_list = split_d_compute(data, output_data,
+                                                            split_dim, num_split, kernel_name)
 
     sch, build_list = split_schedule_com(data, split_dim, output_shape_list, output_tensor_list)
 
