@@ -649,51 +649,50 @@ COMMON_INFER_FUNC_REG(FillD, FillDInferShape);
 
 // -------------------BroadcastTo-----------------------
 IMPLEMT_INFERFUNC(BroadcastTo, BroadcastToInferShape) {
-  Tensor data;
-  if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "Get constValue failed of [shape]");
-    Shape ashape = op.GetInputDesc("shape").GetShape();
-    std::vector<int64_t> shapedims = ashape.GetDims();
-    size_t dim_num = ashape.GetDimNum();
+    Tensor data;
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
+        OP_LOGI(op.GetName().c_str(), "Get constValue failed of [shape]");
+        auto shape_desc = op_info->MutableInputDesc("shape");
+        vector<int64_t> shapedims = shape_desc->MutableShape().GetDims();
+        size_t dim_num = shapedims.size();
 
+        DataType input_dtype = op.GetInputDesc("x").GetDataType();
+
+        if (dim_num > 1) {
+            OP_LOGE(op.GetName().c_str(), "The dim numbles of constnode are less than one.");
+            return GRAPH_FAILED;
+        }
+
+        std::vector<int64_t> shape_vector;
+        std::vector<std::pair<int64_t, int64_t>> range_vector;
+        for (int64_t item = 0; item < shapedims[0]; ++item) {
+            shape_vector.push_back(-1);
+            range_vector.push_back(std::make_pair(1, -1));
+        }
+        auto output_desc = op_info->MutableOutputDesc("y");
+        output_desc->SetShape(GeShape(shape_vector));
+        output_desc->SetShapeRange(range_vector);
+        output_desc->SetDataType(input_dtype);
+        return GRAPH_SUCCESS;
+    }
+
+    DataType data_type = data.GetTensorDesc().GetDataType();
+    std::vector<int64_t> vec_dim;
+    if (data_type == DT_INT32) {
+        CaclDims<int32_t>(data, vec_dim);
+    } else if (data_type == DT_INT64) {
+        CaclDims<int64_t>(data, vec_dim);
+    } else {
+        return GRAPH_PARAM_INVALID;
+    }
+    OP_LOGI(op.GetName().c_str(), "the op infer shape and dtype");
     DataType input_dtype = op.GetInputDesc("x").GetDataType();
 
-    if (dim_num > 1) {
-      OP_LOGE(op.GetName().c_str(), "The dim numbles of constnode are less than one.");
-      return GRAPH_FAILED;
-    }
-
-    std::vector<int64_t> shape_vector;
-    for (int64_t item = 0; item < shapedims[0]; ++item) {
-      shape_vector.push_back(-1);
-    }
-    Shape input_shape(shape_vector);
-
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    output_desc.SetShape(input_shape);
-    output_desc.SetDataType(input_dtype);
-    (void)op.UpdateOutputDesc("y", output_desc);
-
+    auto output_desc = op_info->MutableOutputDesc("y");
+    output_desc->SetShape(GeShape(vec_dim));
+    output_desc->SetDataType(input_dtype);
     return GRAPH_SUCCESS;
-  }
-
-  DataType data_type = data.GetTensorDesc().GetDataType();
-  std::vector<int64_t> vec_dim;
-  if (data_type == DT_INT32) {
-    CaclDims<int32_t>(data, vec_dim);
-  } else if (data_type == DT_INT64) {
-    CaclDims<int64_t>(data, vec_dim);
-  } else {
-    return GRAPH_PARAM_INVALID;
-  }
-  OP_LOGI(op.GetName().c_str(), "the op infer shape and dtype");
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(Shape(vec_dim));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", td);
-  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(BroadcastTo, BroadcastToInferShape);

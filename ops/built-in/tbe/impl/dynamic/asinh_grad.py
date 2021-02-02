@@ -215,7 +215,7 @@ def asinh_grad(y, dy, z, kernel_name="cce_asinh_grad"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = classify([y, dy], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([y, dy], Mode.ELEWISE)
     schedules, tensors = [], []
 
     for (input_y, input_dy) in ins:

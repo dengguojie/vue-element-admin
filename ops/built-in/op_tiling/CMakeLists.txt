@@ -17,6 +17,7 @@
 set(_optiling_files
   ../op_proto/util/error_util.cc
   ../fusion_pass/common/fp16_t.cc
+  broadcast_to.cc
   assign.cc
   avg_pool_1d.cc
   bias.cc

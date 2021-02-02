@@ -18,6 +18,7 @@ dynamic operator
 # pylint: disable=W0622
 from __future__ import absolute_import as _abs
 
+from .broadcast_to import broadcast_to
 from .softsign import softsign
 from .softplus_grad import softplus_grad
 from .softplus import softplus

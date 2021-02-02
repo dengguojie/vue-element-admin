@@ -25,7 +25,7 @@ namespace optiling {
 
 #define CHECK(cond, message, ...)   \
   if (!cond) {                      \
-    GE_LOGE(#message, __VA_ARGS__); \
+    OP_LOGE(#message, __VA_ARGS__); \
     return false;                   \
   };
 
