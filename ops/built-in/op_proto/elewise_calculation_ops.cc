@@ -4467,4 +4467,230 @@ COMMON_INFER_FUNC_REG(IsClose, IsCloseInferShape);
 VERIFY_FUNC_REG(IsClose, IsCloseVerify);
 // ---------------IsClose END-----------------
 
+// ----------------ArgMaxGrad--------------------
+IMPLEMT_COMMON_INFERFUNC(ArgMaxGradInferShape) {
+    Shape shape = op.GetInputDesc("var").GetShape();
+    DataType input_dtype = op.GetInputDesc("var").GetDataType();
+    Format input_format = op.GetInputDesc("var").GetFormat();
+    TensorDesc td = op.GetOutputDesc("y");
+
+    td.SetShape(shape);
+    td.SetDataType(input_dtype);
+    td.SetFormat(input_format);
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+}
+
+bool IsArgMaxGradCheckPass(Operator& op,
+                           const string& var_name,
+                           const string& indices_name,
+                           const string& updates_name,
+                           const string& dimmension_name) {
+    TensorDesc input_var_desc = op.GetInputDesc(var_name);
+    TensorDesc input_indices_desc = op.GetInputDesc(indices_name);
+    TensorDesc input_updates_desc = op.GetInputDesc(updates_name);
+
+    ge::Shape shape_indices = input_indices_desc.GetShape();
+    ge::Shape shape_updates = input_updates_desc.GetShape();
+    ge::Shape shape_var = input_var_desc.GetShape();
+
+    std::vector<int64_t> shape_indices_list = shape_indices.GetDims();
+    std::vector<int64_t> shape_updates_list = shape_updates.GetDims();
+    std::vector<int64_t> shape_var_list = shape_var.GetDims();
+
+    auto dim = 0;
+    if (op.GetAttr(dimmension_name, dim) == GRAPH_FAILED) {
+        OP_LOGE(op.GetName().c_str(), "get attr dimension failed");
+        return false;
+    }
+
+    int32_t max_shape_len = shape_var.GetDimNum();
+    int32_t dims = dim;
+    if (dims < 0) {
+        if (dims < (0 - max_shape_len)) {
+            OP_LOGE(op.GetName().c_str(), "attr dimension invalid.should bigger than -max_shape_len");
+            return false;
+        }
+        dims = dims + max_shape_len;
+    } else if (dims >= max_shape_len) {
+        OP_LOGE(op.GetName().c_str(), "attr dimension invalid. should less than max_shape_len");
+        return false;
+    }
+
+    if ((shape_var_list.size() > 1) && 
+        (shape_var_list.size() != shape_updates_list.size() + 1)) {
+        OP_LOGE("The dim size of var should biger than updates(indices) 1.");
+        return false;
+    }
+  
+    if ((1 == shape_var_list.size()) && (1 != shape_updates_list.size())) {
+        OP_LOGE("The dim size of var should equal updates(indices) when size=1.");
+        return false;
+    }
+  
+    if (shape_indices_list.size() != shape_updates_list.size()) {
+        OP_LOGE("The dim size of indices and updates not match.");
+        return false;
+    }
+
+    for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
+        if (shape_indices.GetDim(i) != shape_updates.GetDim(i)) {
+            OP_LOGE("The dim value of indices and updates not match.");
+            return false;
+        }
+    }
+
+    if (shape_var_list.size() > 1) {
+        for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
+            if (((i < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
+                ((i >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
+                OP_LOGE("The dim value of var and updates not match.");
+                return false;
+            }
+        }
+    }
+
+    DataType var_dtype = input_var_desc.GetDataType();
+    DataType updates_dtype = input_updates_desc.GetDataType();
+    if (var_dtype != updates_dtype) {
+        OP_LOGE("The dtype of var and updates not match.");
+        return false;
+    }
+
+    return true;
+}
+
+IMPLEMT_VERIFIER(ArgMaxGrad, ArgMaxGradVerify) {
+    if (true != IsArgMaxGradCheckPass(op, "var", "indices", "updates", "dimension")) {
+        OP_LOGE(op.GetName().c_str(),"the ArgMaxGrad op inputs check fail!\n");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(ArgMaxGrad, ArgMaxGradInferShape);
+VERIFY_FUNC_REG(ArgMaxGrad, ArgMaxGradVerify);
+// ------------------ArgMaxGrad END---------------------
+
+// ----------------ArgMaxGradD--------------------
+IMPLEMT_COMMON_INFERFUNC(ArgMaxGradDInferShape) {
+    Shape shape = op.GetInputDesc("var").GetShape();
+    DataType input_dtype = op.GetInputDesc("var").GetDataType();
+    Format input_format = op.GetInputDesc("var").GetFormat();
+    TensorDesc td = op.GetOutputDesc("y");
+
+    td.SetShape(shape);
+    td.SetDataType(input_dtype);
+    td.SetFormat(input_format);
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+}
+
+bool IsArgMaxGradDCheckPass(Operator& op,
+                            const string& var_name,
+                            const string& indices_name,
+                            const string& updates_name,
+                            const string& dimmension_name,
+                            const string& assist_name) {
+    TensorDesc input_var_desc = op.GetInputDesc(var_name);
+    TensorDesc input_indices_desc = op.GetInputDesc(indices_name);
+    TensorDesc input_updates_desc = op.GetInputDesc(updates_name);
+    TensorDesc input_assist_desc = op.GetInputDesc(assist_name);
+
+    ge::Shape shape_indices = input_indices_desc.GetShape();
+    ge::Shape shape_updates = input_updates_desc.GetShape();
+    ge::Shape shape_var = input_var_desc.GetShape();
+    ge::Shape shape_assist = input_assist_desc.GetShape();
+
+    std::vector<int64_t> shape_indices_list = shape_indices.GetDims();
+    std::vector<int64_t> shape_updates_list = shape_updates.GetDims();
+    std::vector<int64_t> shape_var_list = shape_var.GetDims();
+    std::vector<int64_t> shape_assist_list = shape_assist.GetDims();
+
+    if (shape_var_list.size() != shape_assist_list.size()) {
+        OP_LOGE(op.GetName().c_str(), "shape of var and assist mot match.");
+        return false;
+    }
+
+    auto dim = 0;
+    if (op.GetAttr(dimmension_name, dim) == GRAPH_FAILED) {
+        OP_LOGE(op.GetName().c_str(), "get attr dimension failed");
+        return false;
+    }
+
+    int32_t max_shape_len = shape_var.GetDimNum();
+    int32_t dims = dim;
+    if (dims < 0) {
+        if (dims < (0 - max_shape_len)) {
+            OP_LOGE(op.GetName().c_str(), "attr dimension invalid.should bigger than -max_shape_len");
+            return false;
+        }
+        dims = dims + max_shape_len;
+    } else if (dims >= max_shape_len) {
+        OP_LOGE(op.GetName().c_str(), "attr dimension invalid. should less than max_shape_len");
+        return false;
+    }
+
+    if ((shape_var_list.size() > 1) && 
+        (shape_var_list.size() != shape_updates_list.size() + 1)) {
+        OP_LOGE("The dim size of var should biger than updates(indices) 1.");
+        return false;
+    }
+
+    if ((1 == shape_var_list.size()) && (1 != shape_updates_list.size())) {
+        OP_LOGE("The dim size of var should equal updates(indices) when size=1.");
+        return false;
+    }
+  
+    if (shape_indices_list.size() != shape_updates_list.size()) {
+        OP_LOGE("The dim size of indices and updates not match.");
+        return false;
+    }
+
+    for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
+        if (shape_indices.GetDim(i) != shape_updates.GetDim(i)) {
+            OP_LOGE("The dim value of indices and updates not match.");
+            return false;
+        }
+    }
+
+    for (size_t i = 0; i < shape_var.GetDimNum(); i++) {
+        if (shape_var.GetDim(i) != shape_assist.GetDim(i)) {
+            OP_LOGE("The dim value of var and assist not match.");
+            return false;
+        }
+    }
+
+    if (shape_var_list.size() > 1) {
+        for (size_t i = 0; i < shape_indices.GetDimNum(); i++) {
+            if (((i < dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i))) ||
+                ((i >= dims) && (shape_indices.GetDim(i) != shape_var.GetDim(i + 1)))) {
+                OP_LOGE("The dim value of var and updates not match.");
+                return false;
+            }
+        }
+    }
+
+    DataType var_dtype = input_var_desc.GetDataType();
+    DataType updates_dtype = input_updates_desc.GetDataType();
+    if (var_dtype != updates_dtype) {
+        OP_LOGE("The dtype of var and updates not match.");
+        return false;
+    }
+
+    return true;
+}
+
+IMPLEMT_VERIFIER(ArgMaxGradD, ArgMaxGradDVerify) {
+    if (true != IsArgMaxGradDCheckPass(op, "var", "indices", "updates", "dimension", "assist")) {
+        OP_LOGE(op.GetName().c_str(),"the ArgMaxGradD op inputs check fail!\n");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(ArgMaxGradD, ArgMaxGradDInferShape);
+VERIFY_FUNC_REG(ArgMaxGradD, ArgMaxGradDVerify);
+// ------------------ArgMaxGradD END---------------------
+
 }  // namespace ge

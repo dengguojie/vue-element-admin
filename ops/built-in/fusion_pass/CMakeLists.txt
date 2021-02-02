@@ -89,6 +89,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/a_reduce_min_fusion_pass.cc
   graph_fusion/ai_core/a_reduce_prod_fusion_pass.cc
   graph_fusion/ai_core/a_reduce_sum_fusion_pass.cc
+  graph_fusion/ai_core/arg_max_grad_fusion_pass.cc
   graph_fusion/ai_core/arg_max_with_k_fusion_pass.cc
   graph_fusion/ai_core/avg_pool3d_fusion_pass.cc
   graph_fusion/ai_core/avg_pool3d_grad_fusion_pass.cc
