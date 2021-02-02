@@ -62,7 +62,7 @@ def get_op_support_info(x,
     """
     format_x = x.get("format").upper()
     shape_x_len = len(x.get("shape"))
-    if format_x == "ND":
+    if format_x in ("ND", "NCHW", "NHWC"):
         axis_split_matrix = []
         for i in range(0, shape_x_len):
             split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]

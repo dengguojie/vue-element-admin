@@ -36,9 +36,9 @@ def get_op_support_info(input_values, output_data, concat_dim, kernel_name="conc
     format_value = input_values[0].get("format").upper()
     if concat_dim < 0:
         concat_dim += shape_value_len
-    if format_value == "ND" or format_value == "NC1HWC0":
-        axis_split_matrix=[]
-        for i in range(0, shape_value_len-1):
+    if format_value in ("ND", "NC1HWC0", "NCHW", "NHWC"):
+        axis_split_matrix = []
+        for i in range(0, shape_value_len - 1):
             if i != concat_dim:
                 input_list = []
                 for j in range(0, value_len):
