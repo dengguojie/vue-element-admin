@@ -36,6 +36,7 @@ usage() {
   echo "    -s Build ST"
   echo "    -v Verbose"
   echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
+  echo "    -a|--aicpu only compile aicpu task"
   echo "to be continued ..."
 }
 
@@ -46,8 +47,9 @@ checkopts() {
   GCC_PREFIX=""
   UT_TEST=FALSE
   ST_TEST=FALSE
+  AICPU_ONLY=FALSE
   # Process the options
-  while getopts 'hj:usvg:' opt
+  while getopts 'hj:usvg:a-:' opt
   do
     case "${opt}" in
       h) usage
@@ -57,6 +59,14 @@ checkopts() {
       s) ST_TEST=TRUE ;;
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
+      a) AICPU_ONLY=TRUE ;;
+      -) case $OPTARG in
+           aicpu) AICPU_ONLY=TRUE ;;
+           *) logging "Undefined option: $OPTARG"
+              usage
+              exit 1 ;;
+         esac
+         ;;
       *) logging "Undefined option: ${opt}"
          usage
          exit 1 ;;
@@ -73,9 +83,18 @@ build_cann() {
   fi
   if [[ "$UT_TEST" == "TRUE" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST=TRUE"
+  else
+    CMAKE_ARGS="$CMAKE_ARGS -DUT_TEST=FALSE"
   fi
   if [[ "$ST_TEST" == "TRUE" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DST_TEST=TRUE"
+  else
+    CMAKE_ARGS="$CMAKE_ARGS -DST_TEST=FALSE"
+  fi
+  if [[ "$AICPU_ONLY" == "TRUE" ]]; then
+    CMAKE_ARGS="$CMAKE_ARGS -DAICPU_ONLY=TRUE"
+  else
+    CMAKE_ARGS="$CMAKE_ARGS -DAICPU_ONLY=FALSE"
   fi
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
 
@@ -84,7 +103,7 @@ build_cann() {
   make ${VERBOSE} -j${THREAD_NUM}
 
   CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device"
-  
+
   logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
   mk_dir "${CMAKE_DEVICE_PATH}"
   cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..

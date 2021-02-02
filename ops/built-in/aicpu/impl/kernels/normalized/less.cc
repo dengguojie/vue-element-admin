@@ -87,13 +87,10 @@ uint32_t LessCpuKernel::LessCheck(CpuKernelContext &ctx, BCalcInfo &calc_info) {
                      "The data type of input1 [%d] need be same with "
                      "input0 [%d].", input0_type, input1_type)
   KERNEL_LOG_INFO(
-      "LessCpuKernel[%s], input0: addr[%p], size[%llu];"
-      "input1: addr[%p], size[%llu];"
-      "output: addr[%p], size[%llu].",
-      ctx.GetOpType().c_str(), calc_info.input_0->GetData(),
-      calc_info.input_0->GetDataSize(), calc_info.input_1->GetData(),
-      calc_info.input_1->GetDataSize(), calc_info.output->GetData(),
-      calc_info.output->GetDataSize());
+      "LessCpuKernel[%s], input0: size[%llu];"
+      "input1: size[%llu], output: size[%llu].",
+      ctx.GetOpType().c_str(), calc_info.input_0->GetDataSize(),
+      calc_info.input_1->GetDataSize(), calc_info.output->GetDataSize());
 
   Bcast bcast;
   KERNEL_HANDLE_ERROR(bcast.GenerateBcastInfo(calc_info),

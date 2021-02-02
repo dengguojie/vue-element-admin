@@ -22,6 +22,7 @@
 namespace aicpu {
 class AssertCpuKernel : public CpuKernel {
  public:
+  AssertCpuKernel() = default;
   ~AssertCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 

@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+if(AICPU_ONLY)
+# testcases for aicpu
+if(BUILD_OPEN_PROJECT)
+    add_subdirectory(aicpu_test)
+endif()
 
+else()
 # testcases for op_proto
 add_subdirectory(ops_test)
 
@@ -28,3 +34,4 @@ if(BUILD_OPEN_PROJECT)
 endif()
 
 add_subdirectory(plugin_test)
+endif()

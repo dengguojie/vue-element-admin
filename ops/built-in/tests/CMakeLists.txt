@@ -34,14 +34,21 @@ if (ENABLE_TEST STREQUAL UT)
     set(_ops_cov_html ${_ops_cov_report}/cpp_utest)
     set(_ops_cov_data ${_ops_cov_report}/cpp_utest/ops.info)
     # generate coverage
-    add_custom_target(generate_ops_cpp_cov ALL
-            DEPENDS ops_cpp_proto_utest
-            ops_cpp_op_tiling_utest
-            ops_cpp_fusion_pass_aicore_utest
-            cpu_kernels_ut
-            ops_cpp_onnx_plugin_utest
-            COMMENT "Generate cpp coverage for ops utest"
+    if(AICPU_ONLY)
+        add_custom_target(generate_ops_cpp_cov ALL
+                DEPENDS cpu_kernels_ut
+                COMMENT "Generate cpp coverage for cpu_kernels utest"
             )
+    else()
+        add_custom_target(generate_ops_cpp_cov ALL
+                DEPENDS ops_cpp_proto_utest
+                ops_cpp_op_tiling_utest
+                ops_cpp_fusion_pass_aicore_utest
+                cpu_kernels_ut
+                ops_cpp_onnx_plugin_utest
+                COMMENT "Generate cpp coverage for ops utest"
+            )
+    endif()
     add_custom_command(
             TARGET generate_ops_cpp_cov
             COMMAND ${GENERATE_CPP_COV} ${_ops_builtin_bin_path} ${_ops_cov_data} ${_ops_cov_html}

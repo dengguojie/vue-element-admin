@@ -56,7 +56,23 @@ target_link_options(constant_folding_ops PRIVATE
     -s
 )
 
-target_link_libraries(constant_folding_ops PRIVATE
+if(BUILD_OPEN_PROJECT)
+  target_link_libraries(constant_folding_ops PRIVATE
+    $<BUILD_INTERFACE:intf_pub_aicpu>
+    -Wl,--whole-archive
+    cpu_kernels_static
+    cpu_kernels_context_static
+    -Wl,--no-whole-archive
+    ascend_protobuf_static
+    -Wl,--no-as-needed
+    alog
+    graph
+    register
+    -ldl
+    -Wl,--as-needed
+  )
+else()
+  target_link_libraries(constant_folding_ops PRIVATE
     $<BUILD_INTERFACE:intf_pub>
     -Wl,--whole-archive
     cpu_kernels_static
@@ -69,7 +85,8 @@ target_link_libraries(constant_folding_ops PRIVATE
     register
     -ldl
     -Wl,--as-needed
-)
+  )
+endif()
 
 target_include_directories(constant_folding_ops PRIVATE
      ${local_folding_inc_path}

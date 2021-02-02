@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+if(AICPU_ONLY)
+message(STATUS "only compile aicpu project")
+add_subdirectory(aicpu)
 
+else()
+message(STATUS "compile all project")
 add_subdirectory(aicpu)
 
 add_subdirectory(framework)
@@ -26,3 +31,5 @@ add_subdirectory(op_proto)
 add_subdirectory(op_tiling)
 
 add_subdirectory(tbe)
+
+endif()

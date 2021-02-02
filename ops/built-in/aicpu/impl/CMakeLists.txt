@@ -107,6 +107,7 @@ if(BUILD_OPEN_PROJECT)
     )
 
     target_link_libraries(cpu_kernels PRIVATE
+      $<BUILD_INTERFACE:intf_pub_aicpu>
       -Wl,--whole-archive
       cpu_kernels_context_static
       -Wl,--no-whole-archive
@@ -169,7 +170,7 @@ if(BUILD_OPEN_PROJECT)
     )
 
     target_link_libraries(cpu_kernels_static PRIVATE
-        $<BUILD_INTERFACE:intf_pub>
+        $<BUILD_INTERFACE:intf_pub_aicpu>
     )
 
     target_compile_options(cpu_kernels_static PRIVATE

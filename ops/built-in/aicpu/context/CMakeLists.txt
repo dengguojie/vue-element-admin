@@ -78,7 +78,7 @@ if(BUILD_OPEN_PROJECT)
   )
 
   target_link_libraries(cpu_kernels_context_static PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_pub_aicpu>
   )
 
   set(cpu_kernels_context_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels_context_static.a)
@@ -190,8 +190,8 @@ target_link_libraries(cpu_kernels_context_static PRIVATE
     -s
     -ldl
     -shared
-) 
- 
+)
+
 set(INSTALL_LIBRARY_DIR lib)
 
 install(TARGETS cpu_kernels_context OPTIONAL
@@ -211,6 +211,3 @@ set_target_properties(cpu_kernels_context_static
     OUTPUT_NAME cpu_kernels_context
 )
 endif()
-
-
-
