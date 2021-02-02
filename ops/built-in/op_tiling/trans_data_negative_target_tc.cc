@@ -101,7 +101,7 @@ bool RenewInputOutputShapeFormat(const std::vector<int64_t>& inShape, const std:
           axisN = outShape[0];
           axisC = outShape[1];
         } else {
-          for (int32_t i = 0; i < outShape.size() - 2; i++) {
+          for (uint32_t i = 0; i < outShape.size() - 2; i++) {
             axisH *= outShape[i];
           }
           axisN = outShape[outShape.size() - 2];
@@ -247,9 +247,12 @@ bool GetMcInfoNegative201(const std::vector<int64_t>& r2ndArgs, const std::vecto
 
 void GenIOIndex(std::string& tmpDstFormat, std::string& fullFormat, const std::vector<int64_t>& fullShape,
                 const std::vector<int64_t>& subShape, std::vector<int64_t>& ioOrderParams) {
-    int32_t chrPos = 0;
-    for (int j=1; j <= tmpDstFormat.length(); j++) {
+    uint32_t chrPos = 0;
+    for (uint32_t j = 1; j <= tmpDstFormat.length(); j++) {
         chrPos = fullFormat.find(*(tmpDstFormat.end() - j));
+        if (chrPos == std::string::npos) {
+            chrPos = 0;
+        }
         ioOrderParams.push_back(fullShape[chrPos]);
         ioOrderParams.push_back(GetShapeSize(subShape, -j));
         ioOrderParams.push_back(GetShapeSize(fullShape, chrPos + 1));
@@ -258,7 +261,7 @@ void GenIOIndex(std::string& tmpDstFormat, std::string& fullFormat, const std::v
 
 void PadIOIndex(const int32_t padAxisCnt, std::vector<int64_t>& ioOrderParams) {
     if (padAxisCnt > 0) {
-        for (int32_t k=0; k < padAxisCnt; k++) {
+        for (int32_t k = 0; k < padAxisCnt; k++) {
             ioOrderParams.push_back(int64_t(0));
             ioOrderParams.push_back(int64_t(0));
             ioOrderParams.push_back(int64_t(0));
@@ -309,12 +312,21 @@ bool TillingNegativeMode201(std::vector<int64_t>& inShape, std::vector<int64_t>&
     tmpSrcFormat.replace(tmpSrcFormat.find('C'), 1, "");
     tmpDstFormat.replace(srcR2ndInDstPos, 1, "");
     tmpDstFormat.replace(tmpDstFormat.find('C'), 1, "");
-    for (int i=0; i < tmpSrcFormat.length(); i++) {
-        srcLeftAxisSize *= inShapeNew[srcFormatNew.find(*(tmpSrcFormat.begin() + i))];
-        tmpLeftInShape.push_back(inShapeNew[srcFormatNew.find(*(tmpSrcFormat.begin() + i))]);
+    uint32_t tmpPos = 0;
+    for (uint32_t i = 0; i < tmpSrcFormat.length(); i++) {
+        tmpPos = srcFormatNew.find(*(tmpSrcFormat.begin() + i));
+        if (tmpPos == std::string::npos) {
+            tmpPos = 0;
+        }
+        srcLeftAxisSize *= inShapeNew[tmpPos];
+        tmpLeftInShape.push_back(inShapeNew[tmpPos]);
     }
-    for (int i=0; i < tmpDstFormat.length(); i++) {
-        tmpLeftOutShape.push_back(outShapeNew[dstFormatNew.find(*(tmpDstFormat.begin() + i))]);
+    for (uint32_t i = 0; i < tmpDstFormat.length(); i++) {
+        tmpPos = dstFormatNew.find(*(tmpDstFormat.begin() + i));
+        if (tmpPos == std::string::npos) {
+            tmpPos = 0;
+        }
+        tmpLeftOutShape.push_back(outShapeNew[tmpPos]);
     }
     tmpLeftOutShape.push_back(1);  // for convenient calculation
     int32_t padAxisCnt = FRAME_LEVEL - tmpDstFormat.length();
