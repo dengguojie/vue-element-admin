@@ -10,6 +10,7 @@
  * Apache License for more details at
  * http:// www.apache.org/licenses/LICENSE-2.0
  */
+#include <vector>
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "proto/onnx/ge_onnx.pb.h"
@@ -31,13 +32,32 @@ Status ParseParamsLogSoftmax(const Message* op_src, ge::Operator& op_dest) {
       axis = attr.i();
     }
   }
-  op_dest.SetAttr("axes", axis);
+  std::vector<int> axes(1, axis);
+  op_dest.SetAttr("axes", axes);
   return SUCCESS;
 }
 
 REGISTER_CUSTOM_OP("LogSoftmaxV2")
   .FrameworkType(ONNX)
   .OriginOpType("ai.onnx::11::LogSoftmax")
+  .ParseParamsFn(ParseParamsLogSoftmax)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("LogSoftmaxV2")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::9::LogSoftmax")
+  .ParseParamsFn(ParseParamsLogSoftmax)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("LogSoftmaxV2")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::12::LogSoftmax")
+  .ParseParamsFn(ParseParamsLogSoftmax)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("LogSoftmaxV2")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::13::LogSoftmax")
   .ParseParamsFn(ParseParamsLogSoftmax)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
