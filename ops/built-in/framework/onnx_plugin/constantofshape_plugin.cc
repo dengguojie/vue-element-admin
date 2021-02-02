@@ -65,9 +65,33 @@ DataType GetGeDataType(int32_t data_type)
   return onnxToGeDataType[data_type];
 }
 
+static uint8_t* ParseTensorValue(const ge::onnx::TensorProto &tp)
+{
+  const uint8_t *data = nullptr;
+  auto data_type = tp.data_type();
+  OP_LOGI("ConstantOfShape", "Datatype[%ld.]", data_type);
+  switch (data_type) {
+    case ge::onnx::TensorProto::DataType::TensorProto_DataType_INT64:
+      data = reinterpret_cast<const uint8_t *>(tp.int64_data().data());
+      break;
+    case ge::onnx::TensorProto::DataType::TensorProto_DataType_INT32:
+      data = reinterpret_cast<const uint8_t *>(tp.int32_data().data());
+      break;
+    case ge::onnx::TensorProto::DataType::TensorProto_DataType_FLOAT:
+      data = reinterpret_cast<const uint8_t *>(tp.float_data().data());
+      break;
+    case ge::onnx::TensorProto::DataType::TensorProto_DataType_DOUBLE:
+      data = reinterpret_cast<const uint8_t *>(tp.double_data().data());
+      break;
+    default:
+      OP_LOGE("ConstantOfShape", "Datatype[%ld] don't support.", data_type);
+  }
+  return const_cast<uint8_t *>(data);
+}
+
 Status ParseParamsConstantOfShape(const Message *op_src, ge::Operator &op_dest)
 {
-  const ge::onnx::NodeProto *node = reinterpret_cast<const ge::onnx::NodeProto *>(op_src);
+  const ge::onnx::NodeProto *node = dynamic_cast<const ge::onnx::NodeProto *>(op_src);
   if (node == nullptr) {
     OP_LOGE("ConstantOfShape", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
@@ -88,18 +112,21 @@ Status ParseParamsConstantOfShape(const Message *op_src, ge::Operator &op_dest)
   tensorDesc.SetOriginShape(shape);
   tensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
   size_t size = sizeof(float);
-  char *data = nullptr;
+  uint8_t *data = nullptr;
   for (const auto &attr : node->attribute()) {
     if (attr.name() == "value" && attr.type() == ge::onnx::AttributeProto::TENSOR) {
-      auto value = attr.t().raw_data().c_str();
-      OP_LOGI("ConstantOfShape", "value is %s", value);
-      data = const_cast<char *>(value);
+      if (attr.t().raw_data() != "") {
+        auto value = const_cast<char *>(attr.t().raw_data().data());
+        data = reinterpret_cast<uint8_t *>(value);
+      } else {
+        data = ParseTensorValue(attr.t());
+      }
       DataType datatype0 = GetGeDataType(attr.t().data_type());
       size = GetSizeByDataType(datatype0);
       tensorDesc.SetDataType(datatype0);
     }
   }
-  const ge::Tensor valueTensor(tensorDesc, reinterpret_cast<uint8_t *>(data), size);
+  const ge::Tensor valueTensor(tensorDesc, data, size);
   op_dest.SetAttr("value", valueTensor);
   return SUCCESS;
 }
