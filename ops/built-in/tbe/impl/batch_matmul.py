@@ -403,7 +403,6 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     else:
         trans_a_local = trans_a
 
-
     if format_b == 'FRACTAL_NZ':
         trans_b_local = False if trans_b else True
     else:

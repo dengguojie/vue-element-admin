@@ -82,7 +82,9 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 print("==========add case for batchmamtul fusion===============")
-ut_case.add_cust_test_func(["Ascend910","Ascend310","Ascend710"], test_func=test_batchmatmul_fusion)
+for fusion_case in batchmatmul_ut_fusion_case:
+    ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
+                               test_func=test_batchmatmul_fusion(fusion_case))
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

@@ -467,7 +467,7 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
         else:
             Params.TENSOR_MAP["a_placehold"] = Params.TENSOR_MAP["a_l1"].op.input_tensors[0]
             Params.TENSOR_MAP["b_placehold"] = Params.TENSOR_MAP["b_l1"].op.input_tensors[0]
-            if Params.TENSOR_MAP["bias_ub"]:
+            if Params.TENSOR_MAP["bias_ub"] is not None:
                 Params.TENSOR_MAP["bias"] = Params.TENSOR_MAP["bias_ub"].op.input_tensors[0]
         if Params.MAT_MUL:
             if Params.TENSOR_MAP["bias_ub"] is not None:

@@ -267,11 +267,11 @@ def test_batchmatmul_fusedmuladd_fusion_ub(fusion_case):
         cce_build_code(sch, config)
 
 
-def test_batchmatmul_fusion(test_args):
-    for fusion_case in batchmatmul_ut_fusion_case:
+def test_batchmatmul_fusion(fusion_case):
+    def test_fusion_case(test_args):
+        print(fusion_case.get("case_name"))
         if "reduce_sum" in fusion_case.get("case_name"):
-            print("reduce_sum_fusion_test")
             test_batchmatmul_reduce_sum_fusion_ub(fusion_case.get("params"))
         elif "fused_mul_add" in fusion_case.get("case_name"):
-            print("fused_mul_add_fusion_test")
             test_batchmatmul_fusedmuladd_fusion_ub(fusion_case.get("params"))
+    return test_fusion_case

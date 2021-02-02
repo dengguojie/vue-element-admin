@@ -27,5 +27,20 @@ batchmatmul_ut_fusion_case = [
         "case_name": "fused_mul_add_case_1",
         "expect": "success",
         "support_expect": True
-    }
+    },
+
+    {
+        "params": [
+            {"shape": (16, 32, 32, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 512, 512), "ori_format": "ND"},
+            {"shape": (16, 32, 32, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 512, 512), "ori_format": "ND"},
+            None,
+            {"shape": (16, 32, 32, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 512, 512), "ori_format": "ND"},
+            True, False,
+            {"shape": (1, 1, 1, 1, 1), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (), "ori_format": "ND"},
+            {"shape": (16, 32, 32, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 512, 512), "ori_format": "ND"},
+        ],
+        "case_name": "fused_mul_add_case_2",
+        "expect": "success",
+        "support_expect": True
+    },
 ]

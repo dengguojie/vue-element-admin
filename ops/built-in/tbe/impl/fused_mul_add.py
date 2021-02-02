@@ -26,6 +26,7 @@ from impl.util import util_select_op_base
 SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
 SIZE_SIXTEEN = 16
 BATCH_MATMUL_LENGTH = 5
+BATCH_LENGTH_1 = 1
 BATCH_LENGTH_2 = 2
 BATCH_LENGTH_3 = 3
 
@@ -467,14 +468,21 @@ def fusion_mul_add_compute(data_input0, data_input1, data_input2,
     batch_matmul_flag = ("matmul" in data_input0.op.tag) and \
                          data_input0.op.attrs["format"] == "FRACTAL_NZ" and \
                          len(shape_0) == BATCH_MATMUL_LENGTH
-    if batch_matmul_flag and len(shape_1) > BATCH_MATMUL_LENGTH and len(shape_2) > BATCH_MATMUL_LENGTH:
+    if batch_matmul_flag:
         batch_shape = shape_util.shape_to_list(data_input0.op.attrs["batch_shape"])
         shape_max = batch_shape + shape_0[-4:]
         data_input1 = tbe.broadcast(data_input1, shape_max)
         data_input2 = tbe.broadcast(data_input2, shape_max)
 
         # trans the batch_shape to 1 dim
-        if len(batch_shape) == BATCH_LENGTH_2:
+        if len(batch_shape) == BATCH_LENGTH_1:
+            data_input1 = tvm.compute(shape_0, lambda *indice: data_input1(indice[0], *indice[-4:]),
+                                      name="broadcast_mul",
+                                      tag="broadcast_mul")
+            data_input2 = tvm.compute(shape_0, lambda *indice: data_input2(indice[0], *indice[-4:]),
+                                      name="broadcast_add",
+                                      tag="broadcast_add")
+        elif len(batch_shape) == BATCH_LENGTH_2:
             data_input1 = tvm.compute(shape_0, lambda *indice: data_input1(indice[0] // batch_shape[-1],
                                                                            indice[0] % batch_shape[-1],
                                                                            *indice[-4:]),
