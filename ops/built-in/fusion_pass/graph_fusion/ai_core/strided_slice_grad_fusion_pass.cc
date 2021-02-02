@@ -24,6 +24,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -34,6 +35,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 #include "tbe_fusion_pass_util.h"
+#include "../../../op_proto/util/op_common_util.h"
 
 using namespace ge;
 namespace fe {
@@ -105,10 +107,11 @@ Status ConstToAttrStridedSliceGradPass::Fusion(ge::ComputeGraph& graph, Mapping&
     return NOT_CHANGED;
   }
 
-  if (0 != new_axis_mask || (0 != shrink_axis_mask && 2 != shrink_axis_mask)) {
+  const std::set<int64_t> supported_shrink_axis_masks = {0, 2, 4};
+  if (0 != new_axis_mask || supported_shrink_axis_masks.count(shrink_axis_mask) == 0) {
     OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "if new_axis_mask or shrink_axis_mask"
-            "not equal 0, graph not changed.");
+            "if new_axis_mask is not equal 0, or shrink_axis_mask is not in %s, graph not changed.",
+            ops::to_string(supported_shrink_axis_masks).c_str());
     return NOT_CHANGED;
   }
 

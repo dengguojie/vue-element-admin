@@ -69,9 +69,9 @@ case6 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND"
          "expect": RuntimeError,
                                "support_expect": True}
 
-case7 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"}, #x
+case7 = {"params": [{"shape": (1, 1, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"}, #x
                     {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},
-                    (1, 1, 1024), (0, -100, 0), (1, -200, 1024), (1, 1, 1),
+                    (1, 512, 1024), (0, -101, 0), (1, -100, 1024), (1, 1, 1),
                     0, 0, 0, 0, 0,
                     ],
          "case_name": "StridedSliceGradD_7",

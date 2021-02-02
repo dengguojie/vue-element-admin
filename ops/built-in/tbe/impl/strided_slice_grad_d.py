@@ -15,6 +15,7 @@
 """
 strided_slice_grad_d
 """
+import math
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
@@ -471,11 +472,11 @@ def _check_mask(input_mask, is_shrink=False):
     None.
     """
     if is_shrink:
-        if input_mask != 0 and input_mask != 2:
-            raise RuntimeError("shrink_axis_mask only support 0/2 currently")
+        supported_shrink_masks = {0, 2, 4}
+        if input_mask != 0 and input_mask not in supported_shrink_masks:
+            raise RuntimeError("shrink_axis_mask only support {} currently".format(str(supported_shrink_masks)))
     elif input_mask != 0:
-        raise RuntimeError("new_axis_mask"
-                           " only support 0 currently")
+        raise RuntimeError("new_axis_mask only support 0 currently")
 
 
 def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):
@@ -584,7 +585,8 @@ def strided_slice_grad_d(dy, output, shape, begin, end, strides, begin_mask=0,
                                                                               strides, begin_mask, end_mask,
                                                                               ellipsis_mask, new_axis_mask,
                                                                               shrink_axis_mask)
-
+    shape_dy = list(map(lambda x, y, z: math.ceil((x - y) / (1 if z == 0 else z)),
+                        end_shape, begin_shape, stride_shape))
     _check_shape_parameter(shape, shape_dy, begin_shape, end_shape, stride_shape)
 
     last_dim_compute = StridedSliceGradLastDimCompute(shape,

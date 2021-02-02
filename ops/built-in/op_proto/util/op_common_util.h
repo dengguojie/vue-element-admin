@@ -22,6 +22,7 @@
 #ifndef OPS_BUILT_IN_OP_PROTO_UTIL_OP_COMMON_UTIL_H_
 #define OPS_BUILT_IN_OP_PROTO_UTIL_OP_COMMON_UTIL_H_
 
+#include <set>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -54,6 +55,18 @@ std::string to_string(const std::vector<T> &items) {
   oss << "]";
   return oss.str();
 }
+
+template<typename T>
+std::string to_string(const std::set<T> &items) {
+  std::ostringstream oss;
+  oss << "[";
+  for (const auto &item: items) {
+    oss << item << ", ";
+  }
+  oss << "]";
+  return oss.str();
+}
+
 } // namespace ops
 
 
