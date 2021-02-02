@@ -599,7 +599,17 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
     return true;
   }
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
+  try {
+    run_info.tiling_key = static_cast<int32_t>(key);
+    int status = op_info.at("push_status");
+    if (status == 0) {
+      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
+    }
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
+
   CHECK_GE(key, 0, "op [%s] : Tiling key error, it is [%d], please check it", op_type.c_str(), key);
   int64_t cur_key = key;
   int64_t key_len = cur_key == 0 ? 7 : 8;

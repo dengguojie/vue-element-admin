@@ -186,7 +186,16 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
     return true;
   }
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
+  try {
+    run_info.tiling_key = static_cast<int32_t>(key);
+    int status = op_info.at("push_status");
+    if (status == 0) {
+      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
+    }
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
   std::string str_key = "210000000";
   if (!use_special_pattern) {
     str_key = "0";
@@ -360,7 +369,6 @@ void WriteConstTiling(const std::string& op_type, OpRunInfo& run_info, const int
   GELOGD("op [%s] tiling key:%lld", op_type.c_str(), key);
   GELOGD("op [%s] tiling block_dims:%lld", op_type.c_str(), block_dims);
   run_info.block_dim = static_cast<uint32_t>(block_dims);
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
 }
 
 bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
@@ -389,6 +397,16 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
     ret = ret && CalcConstKey(op_type, op_paras, op_info, is_support_broadcast, key, block_dims);
     if (ret) {
       WriteConstTiling(op_type, run_info, key, block_dims);
+      try {
+        run_info.tiling_key = static_cast<int32_t>(key);
+        int status = op_info.at("push_status");
+        if (status == 0) {
+          ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
+        }
+      } catch (const std::exception &e) {
+        GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
+        return false;
+      }
     }
   } else if (is_pure_elementwise || !is_support_broadcast) {
     Eletwise eletwise(op_type, op_paras, op_info, flag_info);

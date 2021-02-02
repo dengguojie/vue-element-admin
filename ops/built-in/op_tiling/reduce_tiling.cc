@@ -201,13 +201,18 @@ bool Reduce::ConstInputProcPost() {
   // runtime
   std::string pattern_str = std::to_string(pattern);
   try {
-    run_info.block_dim = op_info["_block_dims"][pattern_str].get<std::int32_t>();
-    run_info.clear_atomic = op_info["_atomic_flags"][pattern_str].get<bool>();
+    run_info.block_dim = op_info.at("_block_dims").at(pattern_str).get<std::int32_t>();
+    run_info.clear_atomic = op_info.at("_atomic_flags").at(pattern_str).get<bool>();
+    run_info.tiling_key = pattern;
+    int status = op_info.at("push_status");
+    if (status == 0) {
+      ByteBufferPut(run_info.tiling_data, pattern);
+    }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get block_dim or clear_atomic error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s]: Func: ConstInputProcPost get error message. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
-  ByteBufferPut(run_info.tiling_data, pattern);
+
   return true;
 }
 
@@ -295,9 +300,9 @@ bool Reduce::GetCompileInfo() {
           op_type.c_str());
     CHECK((op_info.find("ub_info") != op_info.end()), "op [%s] : compile info not contain [ub_info]",
           op_type.c_str());
-    common_info = op_info["common_info"].get<std::vector<int32_t>>();
-    pattern_info = op_info["pattern_info"].get<std::vector<int32_t>>();
-    ub_info = op_info["ub_info"].get<std::vector<int32_t>>();
+    common_info = op_info.at("common_info").get<std::vector<int32_t>>();
+    pattern_info = op_info.at("pattern_info").get<std::vector<int32_t>>();
+    ub_info = op_info.at("ub_info").get<std::vector<int32_t>>();
   } catch (const std::exception &e) {
     GE_LOGE("op [%s]: get common_info, pattern_info, ub_info error. Error message: %s", op_type.c_str(), e.what());
     return false;
@@ -338,7 +343,7 @@ bool Reduce::GetCompileInfo() {
   }
   reduce_mean_cof = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
-    const std::string& reduce_mean_cof_dtype = op_info["reduce_mean_cof_dtype"].get<std::string>();
+    const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
     if (reduce_mean_cof_dtype == "float32") {
       set_reduce_mean_cof_flag = REDUCE_MEAN_COF_FP32;
       for (uint32_t i = 0; i < input_shape.size(); i++) {
@@ -757,13 +762,18 @@ bool Reduce::SpecialUBTiling() {
 
 bool Reduce::Init() {
   // get ori input_shape
-  if (op_info.count("idx_before_reduce") > 0) {
-    uint idx = op_info["idx_before_reduce"];
-    input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
-  } else if (op_paras.inputs.size() > 0 && op_paras.inputs[0].tensor.size() > 0) {
-    input_shape_ori = op_paras.inputs[0].tensor[0].shape;
-  } else {
-    GE_LOGE("op [%s] : input shape error.", op_type.c_str());
+  try {
+    if (op_info.count("idx_before_reduce") > 0) {
+      uint idx = op_info.at("idx_before_reduce");
+      input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
+    } else if (op_paras.inputs.size() > 0 && op_paras.inputs[0].tensor.size() > 0) {
+      input_shape_ori = op_paras.inputs[0].tensor[0].shape;
+    } else {
+      GE_LOGE("op [%s] : input shape error.", op_type.c_str());
+      return false;
+    }
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get input_data error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
 
@@ -798,7 +808,7 @@ bool Reduce::Init() {
     CHECK((op_info.find("_ori_axis") != op_info.end()), "op [%s] : compile info not contain [_ori_axis]",
           op_type.c_str());
     try {
-      const auto& reduce_axis_tmp = op_info["_ori_axis"];
+      const auto& reduce_axis_tmp = op_info.at("_ori_axis");
       reduce_axis_ori.resize(reduce_axis_tmp.size());
       size_t i = 0;
       for (const auto& axis : reduce_axis_tmp) {
@@ -820,7 +830,13 @@ bool Reduce::Init() {
 
   // discard "1" and default sorted
   EliminateOne();
-  compileInfo.is_const = op_info.count("reduce_shape_known") > 0 && op_info["reduce_shape_known"].get<bool>();
+  try {
+    compileInfo.is_const = op_info.count("reduce_shape_known") > 0 &&
+            op_info.at("reduce_shape_known").get<bool>();
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get reduce_shape_known error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
 
   return true;
 }
@@ -854,7 +870,16 @@ bool Reduce::WriteTilingData() {
   // tiling_key
   run_info.block_dim = tilingInfo.block_dim;
   int32_t tiling_key = CalcTilingKey();
-  ByteBufferPut(run_info.tiling_data, tiling_key);
+  try {
+    run_info.tiling_key = tiling_key;
+    int status = op_info.at("push_status");
+    if (status == 0) {
+      ByteBufferPut(run_info.tiling_data, tiling_key);
+    }
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
 
   // pure dma_copy, must skip "1".
   uint32_t offset = 0;
@@ -920,8 +945,13 @@ bool Reduce::DoTiling() {
       zero_tiling_key = 110;
       tilingInfo.ub_tiling_factor = 128;
     } else {
-      zero_tiling_key = 10;
-      tilingInfo.ub_tiling_factor = op_info["zero_ub_factor"];
+      try {
+        zero_tiling_key = 10;
+        tilingInfo.ub_tiling_factor = op_info.at("zero_ub_factor").get<std::int64_t>();
+      } catch (const std::exception &e) {
+        GE_LOGE("op [%s]: get zero_ub_factor error. Error message: %s", op_type.c_str(), e.what());
+        return false;
+      }
     }
 
     return true;
@@ -931,21 +961,20 @@ bool Reduce::DoTiling() {
     // input(known)
     // invoking the tiling interface during runtime
     // is_const_post: "true"->runtime, "false"->compile
-    compileInfo.is_const_post = op_info.count("const_shape_post") > 0 && op_info["const_shape_post"].get<bool>();
-    if (compileInfo.is_const_post) {
-      pattern = CalcConstPattern(reduce_axis_ori);
-      return ret;
-    } else {
-      try {
-        CHECK((op_info.find("compile_pattern") != op_info.end()), "op [%s] : compile info not contain [compile_pattern]",
-              op_type.c_str());
-        pattern = op_info["compile_pattern"].get<std::int32_t>();
-      } catch (const std::exception &e) {
-        GE_LOGE("op [%s]: get compile_pattern error. Error message: %s", op_type.c_str(), e.what());
-        return false;
+    try {
+      compileInfo.is_const_post = op_info.count("const_shape_post") > 0 &&
+              op_info.at("const_shape_post").get<bool>();
+      if (compileInfo.is_const_post) {
+        pattern = CalcConstPattern(reduce_axis_ori);
+        return ret;
+      } else {
+        pattern = op_info.at("compile_pattern").get<std::int32_t>();
+        reduce_axis = reduce_axis_ori;
+        input_shape = input_shape_ori;
       }
-      reduce_axis = reduce_axis_ori;
-      input_shape = input_shape_ori;
+    } catch (const std::exception &e) {
+      GE_LOGE("op [%s]: get compile_info error. Error message: %s", op_type.c_str(), e.what());
+      return false;
     }
   } else {
     // input(unknown)
