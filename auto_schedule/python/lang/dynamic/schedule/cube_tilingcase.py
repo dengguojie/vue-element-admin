@@ -195,7 +195,6 @@ class TilingSelection:
             tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case
                                             else int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
         add_compile_info("block_dim", tiling_blockdim)
-
         return tiling_cases
 
     def _modify_core_num(self, seed):
@@ -255,6 +254,7 @@ class TilingSelection:
             seed_hw = tuple(seed[self.op.key][2:4])
             seed["tiling"] = self._modify_core_num(seed)
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
+            seed_range = seed_range[0] if isinstance(seed_range[0], list) else seed_range
 
             if seed_hw in seed_points_dup or _cal_overlap(seed_range, tgt_area)[0] == 0:
                 seed_points_dup.add(seed_hw)
@@ -633,19 +633,33 @@ class TilingSelection:
                 seed_range = self.op.get_tiling_range(cost_seed['tiling'], cost_seed[self.op.key])
                 if self.op.dynamic_mode == "dynamic_dhw" and seed_range[1] == -1:
                     seed_range[1] = cut_range[1]
-                is_overlap, covered_area = _cal_overlap(cut_range, seed_range)
-
-                if is_overlap:
-                    gen_rects = _cut_rectangle(cut_range, seed_range)
+                if isinstance(seed_range[0], list):
+                    is_overlap_other, covered_area_other = _cal_overlap(cut_range, seed_range[0])
+                    _, covered_area_self = _cal_overlap(cut_range, seed_range[1])
+                    gen_rects = _cut_rectangle(cut_range, seed_range[0], seed_range[1])
                     cost_cases.extend(gen_rects)
+                    if is_overlap_other:
+                        cur_seed_cnt = next(self.seed_cnt)
+                        cost_tilings.append(
+                            self.op.assembly_case(cost_seed['tiling'], covered_area_other, cur_seed_cnt))
+                    tiling_range[cur_seed_cnt] = covered_area_other
+                    cur_seed_cnt = next(self.seed_cnt)
+                    cost_tilings.append(
+                        self.op.assembly_case(cost_seed['tiling'], covered_area_self, cur_seed_cnt))
+                    tiling_range[cur_seed_cnt] = covered_area_self
                 else:
-                    raise RuntimeError("totally uncovered!!!")
+                    is_overlap, covered_area = _cal_overlap(cut_range, seed_range)
+                    if is_overlap:
+                        gen_rects = _cut_rectangle(cut_range, seed_range)
+                        cost_cases.extend(gen_rects)
+                    else:
+                        raise RuntimeError("totally uncovered!!!")
 
-                cur_seed_cnt = next(self.seed_cnt)
-                cost_tilings.append(
-                    self.op.assembly_case(cost_seed['tiling'], covered_area,
-                                          cur_seed_cnt))
-                tiling_range[cur_seed_cnt] = covered_area
+                    cur_seed_cnt = next(self.seed_cnt)
+                    cost_tilings.append(
+                        self.op.assembly_case(cost_seed['tiling'], covered_area,
+                                            cur_seed_cnt))
+                    tiling_range[cur_seed_cnt] = covered_area
 
         return cost_tilings, tiling_range
 
@@ -734,7 +748,7 @@ def _cal_overlap_line(line1, line2):
     return (max(line1[0], line2[0]), min(line1[1], line2[1]))
 
 
-def _cut_rectangle(base, cut):
+def _cut_rectangle(base, cut, cut_self=()):
     """
     base, cut: rectangle in (top, bottom, left, right) format
     """
@@ -764,6 +778,11 @@ def _cut_rectangle(base, cut):
 
         i = i + 2
 
+    if cut_self:
+        for index, rec in enumerate(gen_rects):
+            if rec[-1] == cut_self[-1]:
+                gen_rects[index] = tuple(list(rec[:-1]) + [rec[-1] - 1])
+                break
     return gen_rects
 
 def _cut_cuboid(base, cut):

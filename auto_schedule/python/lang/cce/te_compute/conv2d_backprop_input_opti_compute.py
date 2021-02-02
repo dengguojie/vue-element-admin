@@ -287,6 +287,24 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                                       l1_hw_index,
                                       l0_co0_index))
 
+            def __im2col_fractal_indices_dynamic(indices,  # pylint: disable=R0914
+                                                 dedy_tensor_l1):
+                """
+                calculate im2col_fractal tvm lambda function
+                :param indices:
+                :param tensor_a_row_major:
+                :return:
+                """
+                l0_g_index, l0_n_index, l0_m1_index, l0_co1_index, l0_m0_index, l0_co0_index = indices
+                l1_hw_index = l0_m1_index * self._m0 + l0_m0_index
+                l1_c1_index = l0_g_index * self._dy_c1_extend + l0_co1_index
+                return tvm.select(tvm.any(l1_c1_index <= co1_dim - 1),
+                                  dedy_tensor_l1(
+                                      l0_n_index,
+                                      l1_c1_index,
+                                      l1_hw_index,
+                                      l0_co0_index))
+
             # from L1(zN:n,c1_ori*grousps,ho*wo,c0) to L0(zZ :G,n,hw//m0,c1,m0,c0)
             shape_dy_l0 = (self._g_extend,
                            batch_dim,
@@ -294,10 +312,16 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                            self._dy_c1_extend,
                            self._m0,
                            co0_dim)
-            dedy_col = tvm.compute(
-                shape_dy_l0,
-                lambda *indices: __im2col_fractal_indices(indices, dedy_col),
-                name=dedy.name + "_col_fractal")
+            if self._var_map:
+                dedy_col = tvm.compute(
+                    shape_dy_l0,
+                    lambda *indices: __im2col_fractal_indices_dynamic(indices, dedy_col),
+                    name=dedy.name + "_col_fractal")
+            else:
+                dedy_col = tvm.compute(
+                    shape_dy_l0,
+                    lambda *indices: __im2col_fractal_indices(indices, dedy_col),
+                    name=dedy.name + "_col_fractal")
 
         return dedy_col
 

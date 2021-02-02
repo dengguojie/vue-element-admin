@@ -1354,6 +1354,10 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range):  # pylin
     def _get_undilate_loc_m_dynamic(l0c_tiling_factor, sch, var_range):
         n_is_hfactor = tvm.var("n_is_hfactor")
         dedy_h, dedy_w = DIM_MAP["img_shape"][2], DIM_MAP["img_shape"][3]
+        nc_factor, mc_factor, m0, n0 = TILING.get("CUB_matrix")[:4]
+        cub_db_flag = TILING.get("manual_pingpong_buffer").get("CUB_pbuffer")
+        cub_dtype_bit = DTYPE_BYTE_MAP.get("float16")
+
         if "dedy_h" not in var_map:
             dedy_h = tvm.var("dedy_h")
             sch.set_var_value(dedy_h, DIM_MAP["img_shape"][2])
@@ -1362,15 +1366,21 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range):  # pylin
             sch.set_var_value(dedy_w, DIM_MAP["img_shape"][3])
         check_ifmc_flag = (mc_from_tiling // dedy_w * dedy_w * DIM_MAP["dilate_dim"][0] * DIM_MAP["dilate_dim"][1]
             <= CUB_BUFFER_LIMIT)
+        max_n_is_hfactor = tvm.floordiv(
+            (cce_conf.get_soc_spec("UB_SIZE") - nc_factor * mc_factor * m0 * n0 * cub_db_flag * cub_dtype_bit)
+            // (nc_factor * n0 * cub_db_flag * cub_dtype_bit * DIM_MAP["dilate_dim"][0]),
+            DIM_MAP.get("out_hwdim")[1])
+
         if ("dedy_w" in var_map and mc_from_tiling >= var_range["dedy_w"][0]
             or "dedy_w" not in var_map and mc_from_tiling >= DIM_MAP["img_shape"][3]):
             sch.set_var_value(n_is_hfactor,
-                              tvm.select(
+                              tvm.min(tvm.select(
                                   tvm.all(mc_from_tiling // dedy_w * dedy_w == mc_from_tiling,
                                           check_ifmc_flag,
                                           dedy_h % (mc_from_tiling // dedy_w) == 0),
-                                  mc_from_tiling // DIM_MAP["img_shape"][3],
-                                  (mc_from_tiling - block_m) // DIM_MAP["img_shape"][3]))
+                                          mc_from_tiling // DIM_MAP["img_shape"][3],
+                                          (mc_from_tiling - block_m) // DIM_MAP["img_shape"][3]),
+                                  max_n_is_hfactor))
         else:
             sch.set_var_value(n_is_hfactor, (mc_from_tiling - block_m) // DIM_MAP["img_shape"][3])
         sch.set_var_range(n_is_hfactor, 1, mc_from_tiling)

@@ -179,41 +179,26 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             if stride_h == 1 and stride_w == 1:
                 dy_filling = dy_ddr
             else:
-                dy_zero = tvm.compute(
-                    (stride_h, stride_w, kernel_cout0),
-                    lambda *indice: tvm.convert(0.0).astype(dy_ddr.dtype),
-                    name="dy_zero",
-                    tag="init_zero"
-                )
-
-                dy_one = tvm.compute(
-                    (1, 1, kernel_cout0),
-                    lambda *indice: tvm.convert(1.0).astype(dy_ddr.dtype),
-                    name="dy_one",
-                    tag="init_one"
-                )
-
-                vn_tensor = tvm.compute(
-                    (stride_h, stride_w, kernel_cout0),
-                    lambda *indice: dy_zero(*indice) + dy_one(*indice),
-                    name="vn_tensor",
-                    tag="vn_tensor"
+                dy_zero = _fill_zero(shape_dy_filling)
+                dy_vn = tvm.compute(
+                    shape_to_list(dy_ddr.shape),
+                    lambda *indice: dy_zero(*indice) + dy_ddr(*indice),
+                    name="dy_vn",
+                    tag="dy_vn"
                 )
 
                 dy_filling = tvm.compute(
                     shape_dy_filling,
-                    lambda batch_filling, kernel_co1_filling, ho_filling, wo_filling, kernel_co0_filling: dy_ddr[
-                        batch_filling,
-                        kernel_co1_filling,
-                        ho_filling // stride_h,
-                        wo_filling // stride_w,
-                        kernel_co0_filling
-                    ]
-                    * vn_tensor[
-                        ho_filling % stride_h,
-                        wo_filling % stride_w,
-                        kernel_co0_filling
-                    ],
+                    lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: tvm.select(
+                        tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0),
+                        dy_vn[
+                            batch_idx,
+                            kernel_cout1_idx,
+                            ho_idx // stride_h,
+                            wo_idx // stride_w,
+                            kernel_cout0_idx
+                        ]
+                    ),
                     name="dy_filling",
                     tag="stride_filling",
                     attrs={"stride_expand": (self._stride_h, self._stride_w)}
@@ -488,7 +473,6 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         output_type = "float16"
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
             output_type = "int32"
-
 
         if self._cube_vector_split_flag:
             dx_ddr = tvm.compute(

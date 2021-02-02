@@ -302,26 +302,20 @@ def general_schedule(
                 ):
                     a_l1 = a_col_before.op.input_tensors[0]
                     a_filling = a_l1.op.input_tensors[0]
-                    vn_tensor = a_filling.op.input_tensors[1]
-                    a_zero = vn_tensor.op.input_tensors[0]
-                    a_one = vn_tensor.op.input_tensors[1]
-                    stride_h, stride_w = list(
-                        i.value for i in a_filling.op.attrs["stride_expand"]
-                    )
-                    a_ddr = a_filling.op.input_tensors[0]  # dEdY in ddr
+                    dy_vn = a_filling.op.input_tensors[0]
+                    a_zero = dy_vn.op.input_tensors[0]
+                    a_ddr = dy_vn.op.input_tensors[1]
+                    stride_h, stride_w = shape_to_list(a_filling.op.attrs["stride_expand"])
 
-                    tensor_map["a_l1"] = a_l1
-                    tensor_map["a_filling"] = a_filling
-                    tensor_map["vn_tensor"] = vn_tensor
-                    tensor_map["a_one"] = a_one
-                    tensor_map["a_zero"] = a_zero
-
-                    a_ub = sch.cache_read(a_ddr, cce_params.scope_ubuf, [a_filling])
+                    a_ub = sch.cache_read(a_ddr, cce_params.scope_ubuf, [dy_vn])
                     sch[a_zero].set_scope(cce_params.scope_ubuf)
-                    sch[a_one].set_scope(cce_params.scope_ubuf)
-                    sch[vn_tensor].set_scope(cce_params.scope_ubuf)
+                    sch[dy_vn].set_scope(cce_params.scope_ubuf)
                     sch[a_filling].set_scope(cce_params.scope_ubuf)
                     sch[a_l1].set_scope(cce_params.scope_cbuf)
+                    tensor_map["a_l1"] = a_l1
+                    tensor_map["a_filling"] = a_filling
+                    tensor_map["dy_vn"] = dy_vn
+                    tensor_map["a_zero"] = a_zero
                     tensor_map["a_ub"] = a_ub
                 else:
                     a_ddr = a_col_before.op.input_tensors[0]  # dEdY in ddr
@@ -807,8 +801,7 @@ def general_schedule(
     a_col_before = tensor_map.get("a_col_before")
     a_l1 = tensor_map.get("a_l1")
     a_filling = tensor_map.get("a_filling")
-    vn_tensor = tensor_map.get("vn_tensor")
-    a_one = tensor_map.get("a_one")
+    dy_vn = tensor_map.get("dy_vn")
     a_zero = tensor_map.get("a_zero")
     a_ddr = tensor_map.get("a_ddr")
     b_l1 = tensor_map.get("b_l1")
@@ -1591,8 +1584,12 @@ def general_schedule(
                     al1_co0
                 ]
                 sch_agent.attach_at(a_filling, a_l1, ub_shape)
-            if not var_map:
-                sch_agent.same_attach(a_zero, a_filling)
+                if var_map:
+                    sch[a_zero].buffer_tile(
+                        (None, None), (None, None), (None, ub_shape[2]), (None, ub_shape[3]), (None, None))
+            if var_map:
+                sch_agent.same_attach(dy_vn, a_filling)
+            sch_agent.same_attach(a_zero, a_filling)
             sch_agent.same_attach(a_ub, a_filling)
 
     def _attach_bias():
@@ -1640,8 +1637,7 @@ def general_schedule(
                 sch[a_filling].double_buffer()
                 sch[a_zero].double_buffer()
                 if var_map:
-                    sch[a_one].double_buffer()
-                    sch[vn_tensor].double_buffer()
+                    sch[dy_vn].double_buffer()
 
         if var_map and not tiling.get("AL1_shape"):
             a_l1_db_flag = 1
@@ -1869,8 +1865,8 @@ def general_schedule(
             )
 
             sch_agent[a_filling].reorder(
-                afill_w_inner,
                 afill_h_inner,
+                afill_w_inner,
                 afill_n,
                 afill_c,
                 afill_h_outer,
@@ -1879,12 +1875,11 @@ def general_schedule(
             sch_agent[a_filling].unroll(afill_h_inner)
             sch_agent[a_filling].unroll(afill_w_inner)
 
-            sch_agent[a_zero].reused_by(a_one)
-            sch_agent[a_one].reused_by(vn_tensor)
+            sch_agent[a_zero].reused_by(a_filling)
+            sch_agent[a_ub].reused_by(dy_vn)
 
             sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
-            sch_agent[a_one].emit_insn(sch_agent[a_one].op.axis[0], "vector_dup")
-            sch[vn_tensor].emit_insn(vn_tensor.op.axis[0], "phony_insn")
+            sch[dy_vn].emit_insn(dy_vn.op.axis[0], "phony_insn")
             sch_agent[a_filling].emit_insn(afill_n, "vector_mul")
             sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
@@ -2012,15 +2007,22 @@ def general_schedule(
                     al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 # for aub_tiling_m is 1, then aub_h must be 1
                 if aub_tiling_m != 1:
+                    hw_mod_var = tvm.var("hw_mod_var")
+                    sch.set_var_value(hw_mod_var, tvm.floormod(dx_h * dx_w, al1_m))
                     aub_h = tvm.select(
                             tvm.all((tvm.floormod(al1_h, stride_h) == 0).asnode(),
-                                    (tvm.floormod(al1_m, dx_w) == 0).asnode()),
+                                    (tvm.floormod(al1_m, dx_w) == 0).asnode(),
+                                    (hw_mod_var == 0).asnode()),
                             aub_h,
                             aub_h + 1)
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0
                 aub_bound = aub_co1 * aub_h * dy_w * aub_co0
                 sch[a_filling].set_storage_bound(a_filling_bound)
+                sch[dy_vn].set_storage_bound(aub_bound)
+                sch[a_zero].set_storage_bound(a_filling_bound)
                 sch[a_ub].set_storage_bound(aub_bound)
+                sch[dy_vn].buffer_tile((None, None), (None, None), (None, aub_h), (None, None), (None, None))
+                sch[a_ub].buffer_tile((None, None), (None, None), (None, aub_h), (None, None), (None, None))
 
         al1_bound, al1_h = _get_al1_bound()
         sch[a_l1].set_storage_bound(al1_bound)
@@ -2047,9 +2049,6 @@ def general_schedule(
         sch[b_col].mem_unique()
         sch[c_col].mem_unique()
         sch[c_ub].mem_unique()
-        if stride_h > 1 or stride_w > 1:
-            sch[a_filling].mem_unique()
-            sch[a_ub].mem_unique()
 
     def _handle_workspace():
         l1_tensor_map = {}

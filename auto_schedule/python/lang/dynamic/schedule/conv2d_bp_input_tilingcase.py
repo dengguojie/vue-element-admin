@@ -37,6 +37,7 @@ from te.lang.dynamic.schedule.constants import Pattern
 W_DELTA = 1
 H_LEN = 400
 W_LEN = 400
+MIN_STEP = 16
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 
@@ -199,28 +200,23 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         list, range covered for tiling_in
         """
-        tiling = self._preprocess_tiling(tiling_in)
-        _, _, fmap_h, fmap_w, _ = c_shape
+        def _modify_w_range():
+            """
+            modify w_range ensure that m_tiling - nw > 16
+            """
+            split_range_flag = False
+            fmap_w_tiling = w_range_max
 
-        paras = {
-            "var_map": self.var_map,
-            "k_h": self.k_h,
-            "k_w": self.k_w,
-            "pad_mode": self.pad_mode,
-            "pads": self.cur_pads
-        }
-        n_range_min, n_range_max = self.get_batch_range(c_shape[0], paras)
-        tiling_range = [n_range_min, n_range_max]
-        # check tiling covering itself situation
-        if not self.check_tiling_match(tiling, fmap_w, fmap_h) or fmap_h > utils.NHW_MAX or fmap_w > utils.NHW_MAX:
-            return tiling_range + [0, 0, 0, 0]
-        h_range_min, h_range_max = self.get_h_range(fmap_h, tiling, paras)
-        tiling_range += [h_range_min, h_range_max]
-        w_range_min, w_range_max = self.get_w_range(fmap_h, fmap_w, tiling, paras)
-        tiling_range += [w_range_min, w_range_max]
-
-        if not tiling.get("AL1_shape"):
-            return tiling_range
+            if self.k_h == 1 and self.k_w == 1 and (self.pad_mode == "VAR" or sum(self.cur_pads) == 0):
+                dy_w_tiling = tiling_in.get("CL0_matrix")[1] * tiling_in.get("CL0_matrix")[2]
+                dy_w = self.get_output_w(fmap_w)
+                if dy_w % 16 == 0 and dy_w > dy_w_tiling - MIN_STEP and dy_w_tiling > (MIN_STEP + self.k_w):
+                    if self.pad_mode == "VAR":
+                        fmap_w_tiling = (dy_w_tiling - MIN_STEP - 1) * self.stride_w
+                    else:
+                        fmap_w_tiling = (dy_w_tiling - MIN_STEP - 1 - self.k_w) * self.stride_w + self.k_w
+                    split_range_flag = True
+            return split_range_flag, fmap_w_tiling
 
         def _modify_max_range():
             """
@@ -257,9 +253,40 @@ class Conv2dBpInputTiling(CubeTilingOp):
                     return range_max // fmap_w, fmap_w
             return h_range_max, w_range_max
 
+        tiling = self._preprocess_tiling(tiling_in)
+        _, _, fmap_h, fmap_w, _ = c_shape
+
+        paras = {
+            "var_map": self.var_map,
+            "k_h": self.k_h,
+            "k_w": self.k_w,
+            "pad_mode": self.pad_mode,
+            "pads": self.cur_pads
+        }
+        n_range_min, n_range_max = self.get_batch_range(c_shape[0], paras)
+        tiling_range = [n_range_min, n_range_max]
+        # check tiling covering itself situation
+        if not self.check_tiling_match(tiling, fmap_w, fmap_h) or fmap_h > utils.NHW_MAX or fmap_w > utils.NHW_MAX:
+            return tiling_range + [0, 0, 0, 0]
+        h_range_min, h_range_max = self.get_h_range(fmap_h, tiling, paras)
+        tiling_range += [h_range_min, h_range_max]
+        w_range_min, w_range_max = self.get_w_range(fmap_h, fmap_w, tiling, paras)
+        split_range_flag, w_range_max = _modify_w_range()
+        tiling_range += [w_range_min, w_range_max]
+        if split_range_flag:
+            tiling_range_self = tiling_range[:4] + [fmap_w, fmap_w]
+            tiling_ranges = [tiling_range, tiling_range_self]
+
+        if not tiling.get("AL1_shape"):
+            if split_range_flag:
+                return tiling_ranges
+            return tiling_range
+
         tiling_range[-1] = _modify_max_range()
         tiling_range[3], tiling_range[5] = _get_perf_range(tiling_range[3], tiling_range[5])
 
+        if split_range_flag:
+            return tiling_ranges
         return tiling_range
 
     def assembly_case(self, tiling, coverage, cnt):
@@ -430,7 +457,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         # shape info
         out_w = curent_size
-        w_i = self.get_output_w(out_w, stride=1)
+        w_i = self.get_output_w(out_w) * self.stride_w
 
         if len(tiling['AL1_shape']) == 1:
             tiling['AL1_shape'].append(1)
