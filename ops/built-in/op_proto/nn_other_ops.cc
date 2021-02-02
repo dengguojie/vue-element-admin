@@ -174,6 +174,10 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
   auto output_dType = input_dType;
 
   auto xShape = featureDesc.GetShape().GetDims();
+  if (xShape.size() < 4) {
+    OP_LOGE(op.GetName().c_str(), "input x dim is illegal, expected: > 3, actual: %zu.", xShape.size());
+    return GRAPH_FAILED;
+  }
   int64_t inputH, inputW;
   inputH = xShape[2];
   inputW = xShape[3];
@@ -195,6 +199,11 @@ IMPLEMT_INFERFUNC(PriorBox, PriorBoxInfer) {
     if (!already_exist) {
       aspectratios_new.push_back(ar);
       if (flip) {
+        if (ar <= 0) {
+          OpsAttrValueErrReport(op.GetName(), "aspect_ratio", "greater than 0", ConcatString(ar));
+          OP_LOGE(op.GetName().c_str(), "aspect_ratio need greater than 0");
+          return GRAPH_FAILED;
+        }
         aspectratios_new.push_back(1.0 / ar);
       }
     }
@@ -233,10 +242,18 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
   auto output_dType = input_dType;
 
   auto xShape = featureDesc.GetShape().GetDims();
+  if (xShape.size() < 4) {
+    OP_LOGE(op.GetName().c_str(), "input x dim is illegal, expected: > 3, actual: %zu.", xShape.size());
+    return GRAPH_FAILED;
+  }
   int64_t inputH, inputW;
   inputH = xShape[2];
   inputW = xShape[3];
   auto boxLen = boxDesc.GetShape().GetDims();
+  if (boxLen.size() == 0) {
+    OP_LOGE(op.GetName().c_str(), "input box dim is illegal, expected: > 0, actual: %zu.", boxLen.size());
+    return GRAPH_FAILED;
+  }
   int64_t priorNum;
   priorNum = boxLen[0];
   vector<int64_t> yShape({1, 2, inputH * inputW * priorNum, 4});
@@ -259,15 +276,23 @@ VERIFY_FUNC_REG(PriorBoxD, PriorBoxDVerify);
 // ---------------PriorBoxDV2 Op Start------------------
 IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
   auto featureDesc = op.GetInputDesc("x");
-  auto boxDesc = op.GetInputDesc("box_height");
+  auto boxDesc = op.GetInputDesc("boxes");
   auto input_dType = featureDesc.GetDataType();
   auto output_dType = input_dType;
 
   auto xShape = featureDesc.GetShape().GetDims();
+  if (xShape.size() < 4) {
+    OP_LOGE(op.GetName().c_str(), "input x dim is illegal, expected: > 3, actual: %zu.", xShape.size());
+    return GRAPH_FAILED;
+  }
   int64_t inputH, inputW;
   inputH = xShape[2];
   inputW = xShape[3];
   auto boxLen = boxDesc.GetShape().GetDims();
+  if (boxLen.size() == 0) {
+    OP_LOGE(op.GetName().c_str(), "input box dim is illegal, expected: > 0, actual: %zu.", boxLen.size());
+    return GRAPH_FAILED;
+  }
   int64_t priorNum;
   priorNum = boxLen[0];
   vector<int64_t> yShape({1, 2, inputH * inputW * priorNum, 4});

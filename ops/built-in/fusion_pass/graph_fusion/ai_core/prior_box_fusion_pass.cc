@@ -49,7 +49,10 @@ Status BoxValueGenFP16(vector<int64_t> dimInfo, vector<float> data, uint16_t* ou
     return FAILED;
   }
   GE_CHECK_POSITIVE_SIZE_RANGE(dimInfo.size());
-
+  if (dimInfo.size() < 4) {
+    OP_LOGE("PriorBoxDV2", "PriorBoxPass output dim size must greater than 3!");
+    return FAILED;
+  }
   int64_t nInput = dimInfo[0];
   int64_t cInput = dimInfo[1];
   int64_t hInput = dimInfo[2];
@@ -185,6 +188,10 @@ Status PriorBoxPass::ComputeBoxes(int64_t layer_w, int64_t layer_h, int64_t img_
     for (int i = 0; i < dim; ++i)
       output.push_back(variance[0]);
   } else {
+    if (variance.size() != 4) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass variance dim size must be 1 or 4!");
+      return FAILED;
+    }
     int count = 0;
     for (int h = 0; h < layer_h; ++h) {
       for (int w = 0; w < layer_w; ++w) {
@@ -359,9 +366,10 @@ Status PriorBoxPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge
   boxOutTensorDesc.SetShape(outputDesc.GetShape());
   // output dims
   vector<int64_t> outputDims = boxOutTensorDesc.GetShape().GetDims();
-  if (outputDims.size() == 4) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "PriorBoxPass output dimInfo:%d,%d,%d,%d", outputDims[0], outputDims[1],
-            outputDims[2], outputDims[3]);
+
+  if (outputDims.size() < 4) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "PriorBoxPass output dim size must greater than 3!");
+    return FAILED;
   }
   for (size_t i = 0; i <= 3; i++) {
     auto dim = outputDims[i];

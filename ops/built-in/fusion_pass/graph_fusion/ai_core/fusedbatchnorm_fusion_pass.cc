@@ -117,6 +117,7 @@ Status FusedBatchnormFusionPass::GetAllBatchNormNodes(ge::ComputeGraph& graph, v
 Status FusedBatchnormFusionPass::MatchBatchNormNode(NodePtr bnNodePtr, PassMatchResult& matchResult) {
   // BN node has epsilon attr
   OpDescPtr bnOpDescPtr = bnNodePtr->GetOpDesc();
+  FUSION_PASS_CHECK(bnOpDescPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "bnOpDescPtr is null."), return PARAM_INVALID);
   if (!ge::AttrUtils::HasAttr(bnOpDescPtr, "epsilon")) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The fused batch norm node does not have epsilon attr.");
     return FAILED;
