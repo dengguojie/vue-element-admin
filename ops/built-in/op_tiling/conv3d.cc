@@ -26,8 +26,10 @@
 #include "op_log.h"
 
 namespace {
+  const unsigned int SHAPE_SIZE_6HD = 6;
+
   inline bool IsShapeInRange(int32_t d, int32_t h, int32_t w, const std::vector<int32_t> &range) {
-    if (range.empty()) {
+    if (range.empty() || range.size() < SHAPE_SIZE_6HD) {
       return false;
     }
 
@@ -89,8 +91,8 @@ namespace optiling {
 bool Conv3DTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                   OpRunInfo& runInfo) {
   if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.outputs[0].tensor.empty() || (opParas.inputs[0].tensor[0].shape.size() < 3) ||
-      (opParas.outputs[0].tensor[0].shape.size() < 3)) {
+      opParas.outputs[0].tensor.empty() || (opParas.inputs[0].tensor[0].shape.size() < SHAPE_SIZE_6HD) ||
+      (opParas.outputs[0].tensor[0].shape.size() < SHAPE_SIZE_6HD)) {
     return false;
   }
   std::string mode = opCompileInfo["dynamic_mode"].get<std::string>();

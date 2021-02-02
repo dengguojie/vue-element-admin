@@ -39,7 +39,11 @@ namespace {
 // Replace ge ParseParams fuction to process graph avgpool3dgrad node attrs
 Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
   OP_LOGI(op.GetName().c_str(), "Enter Parse Params AvgPool3dGrad.");
-  AutoMappingFn(op_src, op);
+  auto res = AutoMappingFn(op_src, op);
+  if (res != SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "plugin parser failed. auto mapping failed.");
+    return FAILED;
+  }
 
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::Format data_format = ge::FORMAT_NDHWC;
@@ -115,7 +119,6 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
   }
   if (padding != "SAME" && padding != "VALID") {
     OP_LOGE(op.GetName().c_str(), "TF padding pattern is incorrected.");
-    map<std::string, std::string> err_map;
     return FAILED;
   }
 
