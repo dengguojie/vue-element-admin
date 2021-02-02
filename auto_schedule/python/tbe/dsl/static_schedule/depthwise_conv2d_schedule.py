@@ -1133,9 +1133,9 @@ def _elewise_single_relu(out, tensor_dict):
     return tensor_dict
 
 
-def _elewise_deq_sigmiod_mul2(tensor_dict):
+def _elewise_deq_sigmoid_mul2(tensor_dict):
     """
-    elewise_deq_sigmiod_mul sub part
+    elewise_deq_sigmoid_mul sub part
     """
     if tensor_dict["muls"].op.input_tensors[0].op.tag == "dequant_remove_pad":
         tensor_dict["dequant_remove_pad"] = tensor_dict["muls"].op.input_tensors[0]
@@ -1175,9 +1175,9 @@ def _elewise_deq_sigmiod_mul2(tensor_dict):
     return tensor_dict
 
 
-def _elewise_deq_sigmiod_mul(out, tensor_dict):
+def _elewise_deq_sigmoid_mul(out, tensor_dict):
     """
-    elewise_deq_sigmiod_mul
+    elewise_deq_sigmoid_mul
     """
     tensor_dict["fused_c_dtype"] = "float16"
     tensor_dict["rec_7"] = out.op.input_tensors[1]
@@ -1192,9 +1192,9 @@ def _elewise_deq_sigmiod_mul(out, tensor_dict):
         tensor_dict["rec_1"] = tensor_dict["rec_2"].op.input_tensors[0]
         tensor_dict["rec_0"] = tensor_dict["rec_1"].op.input_tensors[0]
         tensor_dict["rec_n"] = tensor_dict["rec_0"].op.input_tensors[1]
-        tensor_dict["exp"] = tensor_dict["add_2"].op.input_tensors[0]
+    tensor_dict["exp"] = tensor_dict["add_2"].op.input_tensors[0]
     tensor_dict["muls"] = tensor_dict["exp"].op.input_tensors[0]
-    tensor_dict = _elewise_deq_sigmiod_mul2(tensor_dict)
+    tensor_dict = _elewise_deq_sigmoid_mul2(tensor_dict)
     tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
     tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
     tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[0]
@@ -1203,7 +1203,7 @@ def _elewise_deq_sigmiod_mul(out, tensor_dict):
     return tensor_dict
 
 
-def _elewise_deq_sigmiod_mul_online(out, tensor_dict):
+def _elewise_deq_sigmoid_mul_online(out, tensor_dict):
     """
     elewise_deq_sigmoid_mul
     """
@@ -1222,7 +1222,7 @@ def _elewise_deq_sigmiod_mul_online(out, tensor_dict):
         tensor_dict["rec_n"] = tensor_dict["rec_0"].op.input_tensors[1]
     tensor_dict["exp"] = tensor_dict["add_2"].op.input_tensors[0]
     tensor_dict["muls"] = tensor_dict["exp"].op.input_tensors[0]
-    tensor_dict = _elewise_deq_sigmiod_mul2(tensor_dict)
+    tensor_dict = _elewise_deq_sigmoid_mul2(tensor_dict)
     tensor_dict["im2col_fractal"] = tensor_dict["mad"].op.input_tensors[0]
     tensor_dict["filter_reshape"] = tensor_dict["mad"].op.input_tensors[1]
     tensor_dict["filter_buf"] = tensor_dict["filter_reshape"].op.input_tensors[0]
@@ -1277,13 +1277,13 @@ def _elewise_binary_mul(out, tensor_dict):
     elewise_binary_mul
     """
     if out.op.input_tensors[1].op.name[:3] == "rec":
-        tensor_dict = _elewise_deq_sigmiod_mul(out, tensor_dict)
+        tensor_dict = _elewise_deq_sigmoid_mul(out, tensor_dict)
     elif out.op.input_tensors[0].op.tag == 'dequant_remove_pad':
         tensor_dict = _elewise_deq_mul(out, tensor_dict)
     elif out.op.input_tensors[0].op.tag == 'dequant2_remove_pad':
         tensor_dict = _elewise_deq2_mul(out, tensor_dict)
     elif out.op.input_tensors[0].op.name[:3] == "rec":
-        tensor_dict = _elewise_deq_sigmiod_mul_online(out, tensor_dict)
+        tensor_dict = _elewise_deq_sigmoid_mul_online(out, tensor_dict)
     else:
         tensor_dict["fusion_type_new"] = 2
         tensor_dict["depthwise_res"] = out.op.input_tensors[0]
