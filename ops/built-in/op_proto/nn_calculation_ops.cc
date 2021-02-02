@@ -1797,6 +1797,27 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   int32_t strw = 0;
   int32_t dilh = 0;
   int32_t dilw = 0;
+  if (dedy_shape.empty() || (dedy_shape.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "dedy_shape is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "dedy_shape is invalid"});
+    return GRAPH_FAILED;
+  }
+  if (stride_list.empty() || (stride_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "stride is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "stride is invalid"});
+    return GRAPH_FAILED;
+  }
+  if (dilation_list.empty() || (dilation_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "dilation is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "dilation is invalid"});
+    return GRAPH_FAILED;
+  }
   if (dedy_format == FORMAT_NCHW) {
     ih = dedy_shape[2];
     iw = dedy_shape[3];
@@ -1811,6 +1832,14 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
     strw = stride_list[2];
     dilh = dilation_list[1];
     dilw = dilation_list[2];
+  }
+  if ((strh <= 0) || (strw <= 0)) {
+    OP_LOGE(op.GetName().c_str(), "stride can not less than zero");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50029",
+                                                    {"op_name", "param_name", "expected_value", "input_value"},
+                                                    {op.GetName().c_str(), "strides", "positive",
+                                                    std::to_string(strh) + ", " + std::to_string(strw)});
+    return GRAPH_FAILED;
   }
 
   // get filter shape
@@ -1833,7 +1862,13 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   // get pads
   std::vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
-
+  if (pad_list.empty() || (pad_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "pad is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "pad is invalid"});
+    return GRAPH_FAILED;
+  }
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   GeTensorDescPtr tensor_desc_dedy = op_desc->MutableInputDesc("out_backprop");
@@ -2303,6 +2338,27 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
   int32_t strw = 0;
   int32_t dilh = 0;
   int32_t dilw = 0;
+  if (dedy_shape.empty() || (dedy_shape.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "dedy_shape is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "dedy_shape is invalid"});
+    return GRAPH_FAILED;
+  }
+  if (stride_list.empty() || (stride_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "stride is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "stride is invalid"});
+    return GRAPH_FAILED;
+  }
+  if (dilation_list.empty() || (dilation_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "dilation is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "dilation is invalid"});
+    return GRAPH_FAILED;
+  }
   if (dedy_format == FORMAT_NCHW) {
     ih = dedy_shape[2];
     iw = dedy_shape[3];
@@ -2318,7 +2374,14 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
     dilh = dilation_list[1];
     dilw = dilation_list[2];
   }
-
+  if ((strh <= 0) || (strw <= 0)) {
+    OP_LOGE(op.GetName().c_str(), "stride can not less than zero");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50029",
+                                                    {"op_name", "param_name", "expected_value", "input_value"},
+                                                    {op.GetName().c_str(), "strides", "positive",
+                                                    std::to_string(strh) + ", " + std::to_string(strw)});
+    return GRAPH_FAILED;
+  }
   // get filter shape
   auto filter_desc = op.GetInputDesc("filter");
   auto filter_shape = filter_desc.GetShape().GetDims();
@@ -2339,7 +2402,13 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
   // get pads
   std::vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
-
+  if (pad_list.empty() || (pad_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "pad is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "pad is invalid"});
+    return GRAPH_FAILED;
+  }
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   GeTensorDescPtr tensor_desc_dedy = op_desc->MutableInputDesc("out_backprop");
@@ -2645,7 +2714,13 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   DataType dtype = filter_sizes_desc->GetDataType();
   std::vector<int64_t> filter_sizes;
   GetConstValue(filter_sizes_tensor, dtype, filter_sizes);
-
+  if (filter_sizes.empty() || (filter_sizes.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "filter_sizes is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "filter_sizes is invalid"});
+    return GRAPH_FAILED;
+  }
   // set dtype of output desc
   auto y_desc = op_desc->MutableOutputDesc("y");
   auto out_backprop_dtype = op_desc->MutableInputDesc("out_backprop")->GetDataType();
@@ -4562,8 +4637,23 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
+  if ((strh <= 0) || (strw <= 0)) {
+    OP_LOGE(op.GetName().c_str(), "stride can not less than zero");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50029",
+                                                    {"op_name", "param_name", "expected_value", "input_value"},
+                                                    {op.GetName().c_str(), "strides", "positive",
+                                                    std::to_string(strh) + ", " + std::to_string(strw)});
+    return GRAPH_FAILED;
+  }
   vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
+  if (pad_list.empty() || (pad_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "pad is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "pad is invalid"});
+    return GRAPH_FAILED;
+  }
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
   GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");

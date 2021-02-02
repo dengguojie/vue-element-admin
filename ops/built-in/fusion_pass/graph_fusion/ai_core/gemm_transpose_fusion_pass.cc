@@ -120,6 +120,9 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                    vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter GemmTransFusionPass.");
   ge::NodePtr gemm_node = GetNodeFromMapping(PATTERN_GEMM, mapping);
+  FUSION_PASS_CHECK(gemm_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "gemm_node is null, fusion failed."),
+                    return PARAM_INVALID);
 
   int a_anchor = 0;
   int b_anchor = 1;
@@ -175,7 +178,9 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   // get n_direction_length
   int n_direction_length = 0;
   std::vector<int64_t> b_shape_vector = b_shape.GetDims();
-
+  FUSION_PASS_CHECK(b_shape_vector.empty() || (b_shape_vector.size() < 2),
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "b_shape is illegal"),
+                    return FAILED);
   if (transpose_b) {
     n_direction_length = b_shape_vector[0];
   } else {

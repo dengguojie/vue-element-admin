@@ -19,7 +19,7 @@
  * \brief
  */
 #include "register/register.h"
-
+#include "common/util/error_manager/error_manager.h"
 #include "op_log.h"
 
 namespace domi {
@@ -27,16 +27,25 @@ Status AutoMappingFnBatchMatMul(const google::protobuf::Message* op_src, ge::Ope
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
     OP_LOGE("BatchMatMul", "tensorflow plugin parser failed. auto mapping failed.");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {"BatchMatMul", "tensorflow plugin parser failed"});
     return FAILED;
   }
   bool transposeA = false;
   if (op.GetAttr("adj_x", transposeA) != ge::GRAPH_SUCCESS) {
     OP_LOGE("MatMul", "GetAttr adj_x failed");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {"BatchMatMul", "GetAttr adj_x failed"});
     return FAILED;
   }
   bool transposeB = false;
   if (op.GetAttr("adj_y", transposeB) != ge::GRAPH_SUCCESS) {
     OP_LOGE("MatMul", "GetAttr adj_y failed");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {"BatchMatMul", "GetAttr adj_y failed"});
     return FAILED;
   }
 

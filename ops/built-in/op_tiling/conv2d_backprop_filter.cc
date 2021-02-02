@@ -37,8 +37,9 @@ namespace optiling {
 bool Conv2DBpFilterTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                           OpRunInfo& runInfo) {
   if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[0].tensor.empty() ||
-      opParas.inputs[2].tensor.empty() || opParas.inputs[0].tensor[0].shape.empty() ||
-      opParas.inputs[2].tensor[0].shape.empty()) {
+      opParas.inputs.size() < 3 || opParas.inputs[2].tensor.empty() || opParas.inputs[0].tensor[0].shape.empty() ||
+      opParas.inputs[2].tensor[0].shape.empty() || opParas.inputs[0].tensor[0].shape.size() < 4 ||
+      opParas.inputs[2].tensor[0].shape.size() < 4) {
     return false;
   }
   std::string mode = opCompileInfo["dynamic_mode"].get<std::string>();

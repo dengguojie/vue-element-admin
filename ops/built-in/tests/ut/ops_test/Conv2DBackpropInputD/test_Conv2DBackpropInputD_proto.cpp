@@ -342,3 +342,122 @@ TEST_F(Conv2DBackpropInputDProtoTest, Conv2DBackpropInputDSplicDataTest1) {
     std::vector<std::vector<int64_t>> expect_x_data_slice = {};
     EXPECT_EQ(expect_x_data_slice, expect_x_data_slice);
 }
+
+//cut stride
+TEST_F(Conv2DBackpropInputDProtoTest, Conv2DBackpropInputDSplicDataTest2) {
+    ge::op::Conv2DBackpropInputD op;
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({4, 64, 10, 10},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {4, 64, 10, 10}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {64, 64, 12, 12});
+    op.SetAttr("strides", {-1, -1, -1, -1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("offset_x", 0);
+    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+//cut pad
+TEST_F(Conv2DBackpropInputDProtoTest, Conv2DBackpropInputDSplicDataTest3) {
+    ge::op::Conv2DBackpropInputD op;
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({4, 64, 10, 10},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {4, 64, 10, 10}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {64, 64, 12, 12});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("offset_x", 0);
+    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+//cut outback
+TEST_F(Conv2DBackpropInputDProtoTest, Conv2DBackpropInputDSplicDataTest4) {
+    ge::op::Conv2DBackpropInputD op;
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({4, 64, 10},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {4, 64, 10}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {64, 64, 12, 12});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("offset_x", 0);
+    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+//cut stride length
+TEST_F(Conv2DBackpropInputDProtoTest, Conv2DBackpropInputDSplicDataTest5) {
+    ge::op::Conv2DBackpropInputD op;
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({4, 64, 10, 10},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {4, 64, 10, 10}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {64, 64, 12, 12});
+    op.SetAttr("strides", {1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("offset_x", 0);
+    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+//cut dilation
+TEST_F(Conv2DBackpropInputDProtoTest, Conv2DBackpropInputDSplicDataTest6) {
+    ge::op::Conv2DBackpropInputD op;
+    op.UpdateInputDesc("out_backprop", create_desc_with_ori({4, 64, 10, 10},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {4, 64, 10, 10}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 3, 3},
+        ge::DT_FLOAT16, ge::FORMAT_NCHW, {64, 64, 3, 3}, ge::FORMAT_NCHW));
+    op.SetAttr("input_size", {64, 64, 12, 12});
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1});
+    op.SetAttr("groups", true);
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("offset_x", 0);
+    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    auto status = op_desc->InferDataSlice();
+    EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

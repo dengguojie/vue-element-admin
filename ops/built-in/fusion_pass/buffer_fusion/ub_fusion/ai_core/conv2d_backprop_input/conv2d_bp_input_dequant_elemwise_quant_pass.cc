@@ -170,6 +170,9 @@ Status TbeDxDeqElemQuantPass::GetFusionNodes(const BufferFusionMapping& mapping,
   }
 
   vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
+  FUSION_PASS_CHECK(elemNode.empty(),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "get elemNode failed."),
+                    return FAILED);
   bool checkElemwise = (elemNode[0]->GetType() == "LeakyRelu" || elemNode[0]->GetType() == "PRelu");
   if (!checkElemwise) {
     fusion_nodes.clear();

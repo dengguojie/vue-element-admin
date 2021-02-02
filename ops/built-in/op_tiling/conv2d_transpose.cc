@@ -41,9 +41,10 @@ bool Conv2DTransposeTiling(const std::string& opType, const TeOpParas& opParas, 
   int32_t hDim = 2;
   int32_t wDim = 3;
 
-  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs[1].tensor.empty() ||
-      opParas.outputs[0].tensor.empty() || opParas.inputs[1].tensor[0].shape.empty() ||
-      opParas.outputs[0].tensor[0].shape.empty()) {
+  if (opParas.inputs.empty() || opParas.outputs.empty() || opParas.inputs.size() < 2 ||
+      opParas.inputs[1].tensor.empty() ||  opParas.outputs[0].tensor.empty() ||
+      opParas.inputs[1].tensor[0].shape.empty() || opParas.inputs[1].tensor[0].shape.size() < 4 ||
+      opParas.outputs[0].tensor[0].shape.empty() || opParas.outputs[0].tensor[0].shape.size() < 4) {
     return false;
   }
 

@@ -380,6 +380,9 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                                            vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter DeconvWeightTransFusionPass.");
   ge::NodePtr deconv_node = GetNodeFromMapping(PATTERN_DECONV, mapping);
+  FUSION_PASS_CHECK(deconv_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "deconv_node is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // pattern
   // originFormat: NCHW,HWCN,NHWC

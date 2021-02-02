@@ -41,13 +41,10 @@ Status ParseParamsConv2DBackpropInput(const Message* op_src, ge::Operator& op) {
   auto ret = op_dsc->UpdateInputDesc(CV_NUM_1, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Update filter format failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv2DBackpropInput";
-    err_map["param_name"] = "updating output_desc's format";
-    err_map["rule_desc"] = "updata output_desc format ";
-    err_map["param_value"] = "failed";
-    std::string report_error_code = "E50012";
-    (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    ErrorManager::GetInstance().ATCReportErrMessage("E50012",
+                                                    {"op_name", "param_name", "rule_desc", "param_value"},
+                                                    {"Conv2DBackpropInput", "updating output_desc's format",
+                                                    "update output_desc format", "failed"});
     return FAILED;
   } else {
     OP_LOGI(op.GetName().c_str(), "Update filter format success, now is %d", op.GetInputDesc(CV_NUM_1).GetFormat());

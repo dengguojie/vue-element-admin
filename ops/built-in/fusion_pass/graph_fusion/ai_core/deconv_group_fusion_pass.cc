@@ -60,6 +60,9 @@ Status DeconvGroupFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                      vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter DeconvGroupPass::Fusion.");
   NodePtr deconv_node = GetNodeFromMapping(PATTERN_DECONV, mapping);
+  FUSION_PASS_CHECK(deconv_node == nullptr,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "deconv_node is null, fusion failed."),
+                    return PARAM_INVALID);
   OpDescPtr deconv_desc = deconv_node->GetOpDesc();
 
   // 1.if the deconv node doesn't have the attribute groups or the value is 1,

@@ -77,11 +77,17 @@ static Status generate_dilation_node(
   if (pre_dilation){
     dilation_desc->AddInputDesc("x", *prev_out_desc);
     auto next_in_shape = prev_out_desc->GetShape().GetDims();
+    FUSION_PASS_CHECK(next_in_shape.empty() || next_in_shape.size() < 4,
+                      ge::CommonRuntimeErrLog("Conv2dBackpropInputD", "shape size can not be less than 4"),
+                      return FAILED);
     next_in_shape[2] = (next_in_shape[2] - 1) * strides[2] + 1;
     next_in_shape[3] = (next_in_shape[3] - 1) * strides[3] + 1;
     next_in_desc->SetShape(ge::GeShape(next_in_shape));
 
     auto next_in_ori_shape = prev_out_desc->GetOriginShape().GetDims();
+    FUSION_PASS_CHECK(next_in_ori_shape.empty() || next_in_ori_shape.size() < 4,
+                      ge::CommonRuntimeErrLog("Conv2dBackpropInputD", "shape size can not be less than 4"),
+                      return FAILED);
     next_in_ori_shape[2] = (next_in_ori_shape[2] - 1) * strides[2] + 1;
     next_in_ori_shape[3] = (next_in_ori_shape[3] - 1) * strides[3] + 1;
     next_in_desc->SetOriginShape(ge::GeShape(next_in_ori_shape));
@@ -90,11 +96,17 @@ static Status generate_dilation_node(
   } else {
     dilation_desc->AddOutputDesc("y", *next_in_desc);
     auto prev_out_shape = next_in_desc->GetShape().GetDims();
+    FUSION_PASS_CHECK(prev_out_shape.empty() || prev_out_shape.size() < 4,
+                      ge::CommonRuntimeErrLog("Conv2dBackpropInputD", "shape size can not be less than 4"),
+                      return FAILED);
     prev_out_shape[2] = (prev_out_shape[2] - 1) / strides[2] + 1;
     prev_out_shape[3] = (prev_out_shape[3] - 1) / strides[3] + 1;
     prev_out_desc->SetShape(ge::GeShape(prev_out_shape));
 
     auto prev_out_ori_shape = next_in_desc->GetOriginShape().GetDims();
+    FUSION_PASS_CHECK(prev_out_ori_shape.empty() || prev_out_ori_shape.size() < 4,
+                      ge::CommonRuntimeErrLog("Conv2dBackpropInputD", "shape size can not be less than 4"),
+                      return FAILED);
     prev_out_ori_shape[2] = (prev_out_ori_shape[2] - 1) / strides[2] + 1;
     prev_out_ori_shape[3] = (prev_out_ori_shape[3] - 1) / strides[3] + 1;
     prev_out_desc->SetOriginShape(ge::GeShape(prev_out_ori_shape));
@@ -245,7 +257,9 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
 
   // get shape
   auto filter_ori_shape = filter_out_desc.GetOriginShape().GetDims();
-
+  FUSION_PASS_CHECK(filter_ori_shape.empty() || filter_ori_shape.size() < 4,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "filter size can not be less than 4"),
+                    return FAILED);
   bool pre_dilation = false;
   bool need_dilation_flag = false;
 
@@ -253,7 +267,9 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   // else conv2dbp_input -> Dilation
   if (filter_ori_shape[2] > 1 || filter_ori_shape[3] > 1)
     pre_dilation = true;
-
+  FUSION_PASS_CHECK(strides.empty() || strides.size() < 4 || strides[2] <= 0 || strides[3] <= 0,
+                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "filter size can not be less than 4"),
+                    return FAILED);
   for (unsigned int i = 0; i < strides.size(); ++i){
     if (strides[i] > 1){
       need_dilation_flag = true;
