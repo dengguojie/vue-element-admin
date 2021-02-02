@@ -58,34 +58,35 @@ Status UnpackFusionPass::AddUnpackOps(OpDescPtr fused_desc, ComputeGraph& graph,
                                       const NodePtr splitvd_base_node, const int64_t num, const int64_t axis,
                                       const int64_t i, const int64_t j, const int64_t mini_out) {
   OpDescPtr unpack_desc = AttrUtils::CopyOpDesc(fused_desc);
+  FUSION_PASS_CHECK(unpack_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "CopyOpDesc got nullptr."), return FAILED);
   unpack_desc->SetName(unpack_desc->GetName() + "/Unpack" + to_string(j));
   unpack_desc->SetType("Unpack");
   for (int64_t c = num - 1; c >= mini_out; c--) {
-    OpDescUtils::ClearOutputDesc(unpack_desc, c);
+    FUSION_PASS_CHECK(!OpDescUtils::ClearOutputDesc(unpack_desc, c),
+                      OP_LOGE(kFusedOpType.c_str(), "ClearOutputDesc failed."), return FAILED);
   }
   NodePtr unpack_node = graph.AddNode(unpack_desc);
+  FUSION_PASS_CHECK(unpack_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "The unpack_node is null, fusion failed."),
+                    return PARAM_INVALID);
   new_nodes.push_back(unpack_node);
-
-  AttrUtils::SetInt(unpack_node->GetOpDesc(), "axis", axis);
-  AttrUtils::SetInt(unpack_node->GetOpDesc(), "num", mini_out);
-
-  if (static_cast<int64_t>(output_desc.size()) <= j) {
-    return FAILED;
-  }
-  unpack_desc->UpdateInputDesc(0, output_desc[j]);
+  FUSION_PASS_CHECK(!AttrUtils::SetInt(unpack_node->GetOpDesc(), "axis", axis),
+                    OP_LOGE(kFusedOpType.c_str(), "Set attr axis failed."), return FAILED);
+  FUSION_PASS_CHECK(!AttrUtils::SetInt(unpack_node->GetOpDesc(), "num", mini_out),
+                    OP_LOGE(kFusedOpType.c_str(), "Set attr num failed."), return FAILED);
+  FUSION_PASS_CHECK(static_cast<int64_t>(output_desc.size()) <= j,
+                    OP_LOGE(kFusedOpType.c_str(), "The size of output is too small."), return FAILED);
+  FUSION_PASS_CHECK(unpack_desc->UpdateInputDesc(0, output_desc[j]) != GRAPH_SUCCESS,
+                    OP_LOGE(kFusedOpType.c_str(), "UpdateInputDesc failed."), return FAILED);
   for (int64_t h = 0; h < mini_out; h++) {
     GeTensorDesc unpack_output_tensor = unpack_desc->GetOutputDesc(h);
     GeShape unpack_output_shape = unpack_output_tensor.GetShape();
     unpack_output_tensor.SetShape(unpack_output_shape);
-    unpack_desc->UpdateOutputDesc(h, unpack_output_tensor);
+    FUSION_PASS_CHECK(unpack_desc->UpdateOutputDesc(h, unpack_output_tensor) != GRAPH_SUCCESS,
+                      OP_LOGE(kFusedOpType.c_str(), "UpdateOutputDesc failed."), return FAILED);
   }
 
   FUSION_PASS_CHECK(
-      unpack_node == nullptr,
-      OP_LOGE(kFusedOpType.c_str(), "The unpack_node:%s is null, fusion failed.", unpack_node->GetName().c_str()),
-      return PARAM_INVALID);
-  FUSION_PASS_CHECK(
-      GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), unpack_node->GetInDataAnchor(0)) != SUCCESS,
+      GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), unpack_node->GetInDataAnchor(0)) != GRAPH_SUCCESS,
       OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index[%lld] to fusion node:%s's index[%lld] failed.",
               splitvd_base_node->GetName().c_str(), i, unpack_node->GetName().c_str(), i),
       return FAILED);
@@ -97,9 +98,9 @@ Status UnpackFusionPass::AddUnpackOps(OpDescPtr fused_desc, ComputeGraph& graph,
         return PARAM_INVALID);
     for (InDataAnchorPtr in_anchor_ptr : fused_node->GetOutDataAnchor(kMiniOut * i + m)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(
-          GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(kMiniOut * i + m), in_anchor_ptr) != SUCCESS,
+          GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(kMiniOut * i + m), in_anchor_ptr) != GRAPH_SUCCESS,
           OP_LOGE(kFusedOpType.c_str(), "Remove out data edge failed."), return FAILED);
-      FUSION_PASS_CHECK(GraphUtils::AddEdge(unpack_node->GetOutDataAnchor(m), in_anchor_ptr) != SUCCESS,
+      FUSION_PASS_CHECK(GraphUtils::AddEdge(unpack_node->GetOutDataAnchor(m), in_anchor_ptr) != GRAPH_SUCCESS,
                         OP_LOGE(kFusedOpType.c_str(), "Add out data edge failed."), return FAILED);
     }
   }
@@ -118,33 +119,34 @@ vector<FusionPattern*> UnpackFusionPass::DefinePatterns() {
 
 Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<NodePtr>& new_nodes) {
   NodePtr fused_node = GetNodeFromMapping(kPatternFusedNode, mapping);
+  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "The fused_node is nullptr, fusion failed."),
+                    return PARAM_INVALID);
   OpDescPtr fused_desc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(fused_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "The fused_node's OpDesc is null, fusion failed."),
+                    OP_LOGE(kFusedOpType.c_str(), "The fused_node's OpDesc is nullptr, fusion failed."),
                     return PARAM_INVALID);
 
   GeTensorDesc input_desc = fused_desc->GetInputDesc(0);
   vector<int64_t> input_shape = input_desc.GetShape().GetDims();
   for (int idx = 0; idx < input_shape.size(); idx++) {
-    if (PatternFusionUtil::IsUnknownShape(input_shape[idx])) {
-      OP_LOGE("UnpackFusionPass cannot be applied for unknown shape.");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(input_shape[idx]),
+                      OP_LOGW(kFusedOpType.c_str(), "UnpackFusionPass cannot be applied for unknown shape."),
+                      return NOT_CHANGED);
   }
   // A maximum of 63 tensors are supported in mini mode.
   int64_t num;
-  AttrUtils::GetInt(fused_desc, "num", num);
-  if (PatternFusionUtil::IsUnknownShape(num)) {
-    OP_LOGE("UnpackFusionPass cannot be applied for num unknown shape.");
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(!AttrUtils::GetInt(fused_desc, "num", num), OP_LOGE(kFusedOpType.c_str(), "Get attr num failed."),
+                    return FAILED);
+  FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(num),
+                    OP_LOGW(kFusedOpType.c_str(), "UnpackFusionPass cannot be applied for num unknown shape."),
+                    return NOT_CHANGED);
   FUSION_PASS_CHECK(num <= kMiniOut,
                     OP_LOGD(kFusedOpType.c_str(), "The amount of num of Unapck node is less than %lld.", kMiniOut),
                     return SUCCESS);
-  FUSION_PASS_CHECK(num > kMiniOut * kMiniOut,
-                    OP_LOGD(kFusedOpType.c_str(), "The amount of num of Unapck node is greater than %lld.",
-                            kMiniOut * kMiniOut),
-                    return SUCCESS);
+  FUSION_PASS_CHECK(
+      num > kMiniOut * kMiniOut,
+      OP_LOGD(kFusedOpType.c_str(), "The amount of num of Unapck node is greater than %lld.", kMiniOut * kMiniOut),
+      return SUCCESS);
   if (num > kMiniOut) {
     int64_t nodes_num = (num + kMiniOut - 1) / kMiniOut;
     int64_t last_node_num_unpack = num - (kMiniOut * (nodes_num - 1));
@@ -152,20 +154,29 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
     size_splits_new.push_back(last_node_num_unpack);
 
     int64_t axis;
+    // attr axis is optional
     AttrUtils::GetInt(fused_desc, "axis", axis);
 
     OpDescPtr splitvd_base_desc = AttrUtils::CopyOpDesc(fused_desc);
+    FUSION_PASS_CHECK(splitvd_base_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "CopyOpDesc got nullptr."),
+                      return FAILED);
     splitvd_base_desc->SetName(splitvd_base_desc->GetName() + "/SplitVD" + "Base_node");
     splitvd_base_desc->SetType("SplitVD");
     std::vector<GeTensorDesc> output_desc;
     for (int64_t c = num - 1; c >= nodes_num; c--) {
-      OpDescUtils::ClearOutputDesc(splitvd_base_desc, c);
+      FUSION_PASS_CHECK(!OpDescUtils::ClearOutputDesc(splitvd_base_desc, c),
+                        OP_LOGE(kFusedOpType.c_str(), "ClearOutputDesc failed."), return FAILED);
     }
     NodePtr splitvd_base_node = graph.AddNode(splitvd_base_desc);
+    FUSION_PASS_CHECK(splitvd_base_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "AddNode got nullptr."),
+                      return PARAM_INVALID);
     new_nodes.push_back(splitvd_base_node);
-    AttrUtils::SetListInt(splitvd_base_node->GetOpDesc(), "size_splits", size_splits_new);
-    AttrUtils::SetInt(splitvd_base_node->GetOpDesc(), "split_dim", axis);
-    AttrUtils::SetInt(splitvd_base_node->GetOpDesc(), "num_split", nodes_num);
+    FUSION_PASS_CHECK(!AttrUtils::SetListInt(splitvd_base_node->GetOpDesc(), "size_splits", size_splits_new),
+                      OP_LOGE(kFusedOpType.c_str(), "set attr size_splits failed."), return FAILED);
+    FUSION_PASS_CHECK(!AttrUtils::SetInt(splitvd_base_node->GetOpDesc(), "split_dim", axis),
+                      OP_LOGE(kFusedOpType.c_str(), "set attr split_dim failed."), return FAILED);
+    FUSION_PASS_CHECK(!AttrUtils::SetInt(splitvd_base_node->GetOpDesc(), "num_split", nodes_num),
+                      OP_LOGE(kFusedOpType.c_str(), "set attr num_split failed."), return FAILED);
 
     GeTensorDesc splitvd_input_tensor = splitvd_base_desc->GetInputDesc(0);
     GeShape splitvd_input_shape = splitvd_input_tensor.GetShape();
@@ -174,42 +185,43 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
     for (int64_t h = 0; h < nodes_num; h++) {
       GeTensorDesc splitvd_out_tensor = splitvd_base_desc->GetOutputDesc(h);
       GeShape splitvd_out_shape = splitvd_input_shape;
-      splitvd_out_shape.SetDim(split_dim, size_splits_new[h]);
+      FUSION_PASS_CHECK(splitvd_out_shape.SetDim(split_dim, size_splits_new[h]) != GRAPH_SUCCESS,
+                        OP_LOGE(kFusedOpType.c_str(), "SetDim failed."), return FAILED);
       splitvd_out_tensor.SetShape(splitvd_out_shape);
-      splitvd_base_desc->UpdateOutputDesc(h, splitvd_out_tensor);
+      FUSION_PASS_CHECK(splitvd_base_desc->UpdateOutputDesc(h, splitvd_out_tensor) != GRAPH_SUCCESS,
+                        OP_LOGE(kFusedOpType.c_str(), "UpdateOutputDesc failed."), return FAILED);
       output_desc.push_back(splitvd_out_tensor);
     }
-    FUSION_PASS_CHECK(splitvd_base_node == nullptr,
-                      OP_LOGE(kFusedOpType.c_str(), "The splitvd_base_node:%s is null, fusion failed.",
-                              splitvd_base_node->GetName().c_str()),
-                      return PARAM_INVALID);
-    FUSION_PASS_CHECK(fused_node->GetInDataAnchor(0) == nullptr,
+    auto in_data_anchor_0 = fused_node->GetInDataAnchor(0);
+    FUSION_PASS_CHECK(in_data_anchor_0 == nullptr,
                       OP_LOGE(kFusedOpType.c_str(), "The InDataAnchor(0) of fused_node is null, fusion failed."),
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(
-        GraphUtils::AddEdge(fused_node->GetInDataAnchor(0)->GetPeerOutAnchor(),
-                            splitvd_base_node->GetInDataAnchor(0)) != SUCCESS,
+        GraphUtils::AddEdge(in_data_anchor_0->GetPeerOutAnchor(), splitvd_base_node->GetInDataAnchor(0)) !=
+            GRAPH_SUCCESS,
         OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
                 fused_node->GetName().c_str(), 0, splitvd_base_node->GetName().c_str(), 0),
         return FAILED);
 
     for (int64_t i = 0; i < nodes_num; i++) {
       if (i < nodes_num - 1) {
-        AddUnpackOps(fused_desc, graph, new_nodes, output_desc, fused_node, splitvd_base_node, num, axis, i, i,
-                     kMiniOut);
+        FUSION_PASS_CHECK(AddUnpackOps(fused_desc, graph, new_nodes, output_desc, fused_node, splitvd_base_node, num,
+                                       axis, i, i, kMiniOut) != SUCCESS,
+                          OP_LOGE(kFusedOpType.c_str(), "AddUnpackOps failed."), return FAILED);
       } else if (i == nodes_num - 1 && last_node_num_unpack != 1) {
-        AddUnpackOps(fused_desc, graph, new_nodes, output_desc, fused_node, splitvd_base_node, num, axis, i,
-                     nodes_num - 1, last_node_num_unpack);
+        FUSION_PASS_CHECK(AddUnpackOps(fused_desc, graph, new_nodes, output_desc, fused_node, splitvd_base_node, num,
+                                       axis, i, nodes_num - 1, last_node_num_unpack) != SUCCESS,
+                          OP_LOGE(kFusedOpType.c_str(), "AddUnpackOps failed."), return FAILED);
       } else {
+        auto out_data_anchor_iter = fused_node->GetOutDataAnchor(kMiniOut * i);
         FUSION_PASS_CHECK(
-            fused_node->GetOutDataAnchor(kMiniOut * i) == nullptr,
+            out_data_anchor_iter == nullptr,
             OP_LOGE(kFusedOpType.c_str(), "The OutDataAnchor(kMiniOut * i) of fused_node is null, fusion failed."),
             return PARAM_INVALID);
-        for (InDataAnchorPtr in_anchor_ptr : fused_node->GetOutDataAnchor(kMiniOut * i)->GetPeerInDataAnchors()) {
-          FUSION_PASS_CHECK(
-              GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(kMiniOut * i), in_anchor_ptr) != SUCCESS,
-              OP_LOGE(kFusedOpType.c_str(), "Remove out data edge failed."), return FAILED);
-          FUSION_PASS_CHECK(GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), in_anchor_ptr) != SUCCESS,
+        for (InDataAnchorPtr in_anchor_ptr : out_data_anchor_iter->GetPeerInDataAnchors()) {
+          FUSION_PASS_CHECK(GraphUtils::RemoveEdge(out_data_anchor_iter, in_anchor_ptr) != GRAPH_SUCCESS,
+                            OP_LOGE(kFusedOpType.c_str(), "Remove out data edge failed."), return FAILED);
+          FUSION_PASS_CHECK(GraphUtils::AddEdge(splitvd_base_node->GetOutDataAnchor(i), in_anchor_ptr) != GRAPH_SUCCESS,
                             OP_LOGE(kFusedOpType.c_str(), "Add out data edge failed."), return FAILED);
         }
       }
@@ -227,7 +239,7 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
     }
   }
 
-  FUSION_PASS_CHECK(GRAPH_SUCCESS != graph.RemoveNode(fused_node),
+  FUSION_PASS_CHECK(graph.RemoveNode(fused_node) != GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "Remove Node [%s] failed", fused_node->GetName().c_str()),
                     return FAILED);
 

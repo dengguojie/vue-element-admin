@@ -76,7 +76,7 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                     return PARAM_INVALID);
   NodePtr variable_node = peer_out_anchor0->GetOwnerNode();
   FUSION_PASS_CHECK(variable_node->GetType() != "Variable" && variable_node->GetType() != "TransData",
-                    OP_LOGI(kFusedOpType.c_str(), "Mul node[%s]'s 1st input must be a variable, actuall is [%s].",
+                    OP_LOGW(kFusedOpType.c_str(), "Mul node[%s]'s 1st input must be a variable, actuall is [%s].",
                             mul_node->GetName().c_str(), variable_node->GetType().c_str()),
                     return NOT_CHANGED);
   if (variable_node->GetType() == "TransData") {
@@ -85,7 +85,7 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                       return PARAM_INVALID);
     FUSION_PASS_CHECK(
         variable_node->GetInDataNodes().at(0)->GetType() != "Variable",
-        OP_LOGI(kFusedOpType.c_str(), "TransData node[%s]'s 1st input must be a variable, actuall is [%s].",
+        OP_LOGW(kFusedOpType.c_str(), "TransData node[%s]'s 1st input must be a variable, actuall is [%s].",
                 variable_node->GetName().c_str(), variable_node->GetInDataNodes().at(0)->GetType().c_str()),
         return NOT_CHANGED);
   }
@@ -101,12 +101,12 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
 
   FUSION_PASS_CHECK(
       l2loss_node == nullptr,
-      OP_LOGI(kFusedOpType.c_str(), "Variable node[%s] don't have l2loss out node.", variable_node->GetName().c_str()),
+      OP_LOGW(kFusedOpType.c_str(), "Variable node[%s] don't have l2loss out node.", variable_node->GetName().c_str()),
       return NOT_CHANGED);
   OP_LOGI(kFusedOpType.c_str(), "Get l2loss node[%s] success.", l2loss_node->GetName().c_str());
   FUSION_PASS_CHECK(
       l2loss_node->GetOutAllNodes().size() != 1,
-      OP_LOGI(kFusedOpType.c_str(), "L2Loss node[%s] should only have one output node, but actually is [%u].",
+      OP_LOGW(kFusedOpType.c_str(), "L2Loss node[%s] should only have one output node, but actually is [%u].",
               l2loss_node->GetName().c_str(), l2loss_node->GetOutAllNodes().size()),
       return NOT_CHANGED);
   auto out_data_anchor0 = l2loss_node->GetOutDataAnchor(0);
@@ -120,43 +120,42 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   NodePtr l2loss_out_node = first_peer_anchor->GetOwnerNode();
   FUSION_PASS_CHECK(
       l2loss_out_node->GetType() != "AddN",
-      OP_LOGI(kFusedOpType.c_str(), "L2Loss node[%s]'s output node must be AddN.", l2loss_out_node->GetName().c_str()),
+      OP_LOGW(kFusedOpType.c_str(), "L2Loss node[%s]'s output node must be AddN.", l2loss_out_node->GetName().c_str()),
       return NOT_CHANGED);
 
   string addn_stream_label;
   string mul_stream_label;
   string l2loss_stream_label;
-  AttrUtils::GetStr(addn_node->GetOpDesc(), kStreamLabel, addn_stream_label);
-  AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label);
-  AttrUtils::GetStr(l2loss_node->GetOpDesc(), kStreamLabel, l2loss_stream_label);
+  FUSION_PASS_CHECK(!AttrUtils::GetStr(addn_node->GetOpDesc(), kStreamLabel, addn_stream_label),
+                    OP_LOGW(kFusedOpType.c_str(), "Get str addn_stream_label failed"), return NOT_CHANGED);
+  FUSION_PASS_CHECK(!AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label),
+                    OP_LOGW(kFusedOpType.c_str(), "Get str mul_stream_label failed"), return NOT_CHANGED);
+  FUSION_PASS_CHECK(!AttrUtils::GetStr(l2loss_node->GetOpDesc(), kStreamLabel, l2loss_stream_label),
+                    OP_LOGW(kFusedOpType.c_str(), "Get str l2loss_stream_label failed"), return NOT_CHANGED);
   OP_LOGI(kFusedOpType.c_str(), "AddN node's stream label is %s", addn_stream_label.c_str());
   OP_LOGI(kFusedOpType.c_str(), "Mul node's stream label is %s", mul_stream_label.c_str());
   OP_LOGI(kFusedOpType.c_str(), "L2Loss node's stream label is %s", l2loss_stream_label.c_str());
-  if (addn_stream_label != mul_stream_label || l2loss_stream_label != mul_stream_label) {
-    OP_LOGI(kFusedOpType.c_str(), "Node [%s], node [%s] and node [%s] don't hava same stream label.",
-            addn_node->GetName().c_str(), mul_node->GetName().c_str(), l2loss_node->GetName().c_str());
-    return NOT_CHANGED;
-  } else {
-    OP_LOGI(kFusedOpType.c_str(), "AddN and Mul have same _stream_label attr.");
-  }
-
+  FUSION_PASS_CHECK(addn_stream_label != mul_stream_label || l2loss_stream_label != mul_stream_label,
+                    OP_LOGW(kFusedOpType.c_str(), "Node [%s], node [%s] and node [%s] don't hava same stream label.",
+                            addn_node->GetName().c_str(), mul_node->GetName().c_str(), l2loss_node->GetName().c_str()),
+                    return NOT_CHANGED);
+  OP_LOGI(kFusedOpType.c_str(), "AddN and Mul have same _stream_label attr.");
   FUSION_PASS_CHECK(
       addn_node->GetType() != "AddN",
-      OP_LOGI(kFusedOpType.c_str(), "Get the addn_node type is [%s], which is not AddN.", addn_node->GetType().c_str()),
+      OP_LOGW(kFusedOpType.c_str(), "Get the addn_node type is [%s], which is not AddN.", addn_node->GetType().c_str()),
       return NOT_CHANGED);
-
   FUSION_PASS_CHECK(mul_node->GetOutDataNodes().size() != 1,
-                    OP_LOGI(kFusedOpType.c_str(), "Output node of Mul node size is [%u], which not equal to 1.",
+                    OP_LOGW(kFusedOpType.c_str(), "Output node of Mul node size is [%u], which not equal to 1.",
                             mul_node->GetOutDataNodes().size()),
                     return NOT_CHANGED);
 
   FUSION_PASS_CHECK(mul_node->GetInDataNodes().size() != 2,
-                    OP_LOGI(kFusedOpType.c_str(), "Input node of Mul node size is [%u], which not equal to 2.",
+                    OP_LOGW(kFusedOpType.c_str(), "Input node of Mul node size is [%u], which not equal to 2.",
                             mul_node->GetInDataNodes().size()),
                     return NOT_CHANGED);
 
   FUSION_PASS_CHECK(addn_node->GetInDataNodes().size() != 2,
-                    OP_LOGI(kFusedOpType.c_str(), "Input node of AddN size is [%u], which not equal to 2.",
+                    OP_LOGW(kFusedOpType.c_str(), "Input node of AddN size is [%u], which not equal to 2.",
                             addn_node->GetInDataNodes().size()),
                     return NOT_CHANGED);
 
@@ -172,17 +171,21 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
     check_mul_in_control_nodes =
         mul_in_node->GetInControlAnchor()->GetPeerOutControlAnchors().size() == 1 &&
         mul_in_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(0)->GetOwnerNode()->GetType() == "NoOp";
-    if (!check_mul_in_control_nodes) {
-      OP_LOGI(kFusedOpType.c_str(), "Mul's input node[%s] has control anchor from node[%s], no need to do fusion.",
-              mul_in_node->GetName().c_str(),
-              mul_in_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(0)->GetOwnerNode()->GetName().c_str());
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK(
+        !check_mul_in_control_nodes,
+        OP_LOGW(kFusedOpType.c_str(), "Mul's input node[%s] has control anchor from node[%s], no need to do fusion.",
+                mul_in_node->GetName().c_str(),
+                mul_in_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(0)->GetOwnerNode()->GetName().c_str()),
+        return NOT_CHANGED);
   }
 
   uint32_t lossscale_input_index{0};
   for (uint32_t index = 0; index < mul_node->GetAllInDataAnchors().size(); index++) {
-    NodePtr input_node_mul = mul_node->GetInDataAnchor(index)->GetPeerOutAnchor()->GetOwnerNode();
+    auto input_node_mul_out = mul_node->GetInDataAnchor(index)->GetPeerOutAnchor();
+    FUSION_PASS_CHECK(input_node_mul_out == nullptr,
+                      OP_LOGE(kFusedOpType.c_str(), "The input_node_mul_out is null, fusion failed."),
+                      return PARAM_INVALID);
+    NodePtr input_node_mul = input_node_mul_out->GetOwnerNode();
     if (NodeUtils::GetInConstNodeTypeCrossSubgraph(input_node_mul) == "Constant") {
       lossscale_input_index = index;
       break;
@@ -190,28 +193,25 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   }
 
   // get mul Constant input
+  // mul_node->GetOpDesc() wound not nullptr there
   GeTensorDesc const_input = mul_node->GetOpDesc()->GetInputDesc(lossscale_input_index);
   vector<int64_t> dim_info = const_input.GetShape().GetDims();
   size_t dims_size = dim_info.size();
   FUSION_PASS_CHECK(
       !(dims_size == 0 || (dims_size == 1 && dim_info[0] == 1)),
-      OP_LOGI(kFusedOpType.c_str(),
-              "The const input of Mul node must be scalar or dims=(1,), but dims size is [%u] and dims[0] is [%lld]",
-              dims_size, dim_info[0]),
+      OP_LOGW(kFusedOpType.c_str(),
+              "The const input of Mul node must be scalar or dims=(1,), but dims size is [%u] and dims[0] not 1",
+              dims_size),
       return NOT_CHANGED);
-
-  if (domi::OpRegistry::Instance()->GetImplyType(mul_node->GetType()) == domi::ImplyType::CCE) {
-    OP_LOGI(kFusedOpType.c_str(), "Op %s is CCE, no need to fusion.", mul_node->GetName().c_str());
-    return NOT_CHANGED;
-  }
-  if (domi::OpRegistry::Instance()->GetImplyType(addn_node->GetType()) == domi::ImplyType::CCE) {
-    OP_LOGI(kFusedOpType.c_str(), "Op %s is CCE, no need to fusion.", addn_node->GetName().c_str());
-    return NOT_CHANGED;
-  }
-  if (domi::OpRegistry::Instance()->GetImplyType(l2loss_node->GetType()) == domi::ImplyType::CCE) {
-    OP_LOGI(kFusedOpType.c_str(), "Op %s is CCE, no need to fusion.", l2loss_node->GetName().c_str());
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(domi::OpRegistry::Instance()->GetImplyType(mul_node->GetType()) == domi::ImplyType::CCE,
+                    OP_LOGW(kFusedOpType.c_str(), "Op %s is CCE, no need to fusion.", mul_node->GetName().c_str()),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(domi::OpRegistry::Instance()->GetImplyType(addn_node->GetType()) == domi::ImplyType::CCE,
+                    OP_LOGW(kFusedOpType.c_str(), "Op %s is CCE, no need to fusion.", addn_node->GetName().c_str()),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(domi::OpRegistry::Instance()->GetImplyType(l2loss_node->GetType()) == domi::ImplyType::CCE,
+                    OP_LOGW(kFusedOpType.c_str(), "Op %s is CCE, no need to fusion.", l2loss_node->GetName().c_str()),
+                    return NOT_CHANGED);
   int mul_index{0};
   bool find_addn{false};
   auto out_dataanchor_list = mul_node->GetAllOutDataAnchors();
@@ -223,85 +223,96 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
           OP_LOGI(kFusedOpType.c_str(), "The 0th input of AddN is not Mul node, do not need fusion.");
           continue;
         }
-        FUSION_PASS_CHECK(GraphUtils::RemoveEdge(out_data_anchor, peer_indata_anchor),
+        FUSION_PASS_CHECK(GraphUtils::RemoveEdge(out_data_anchor, peer_indata_anchor) != GRAPH_SUCCESS,
                           OP_LOGE(kFusedOpType.c_str(), "Remove edge failed."), return FAILED);
         find_addn = true;
       }
     }
   }
-  FUSION_PASS_CHECK(!find_addn, OP_LOGI(kFusedOpType.c_str(), "The output node of Mul node is not AddN."),
+  FUSION_PASS_CHECK(!find_addn, OP_LOGW(kFusedOpType.c_str(), "The output node of Mul node is not AddN."),
                     return NOT_CHANGED);
 
   // add control anchor between input node of Mul and out node of Mul.
   for (auto input_node_mul : mul_node->GetInAllNodes()) {
     for (auto mul_out_control_node : mul_node->GetOutControlNodes()) {
-      FUSION_PASS_CHECK(
-          GraphUtils::AddEdge(input_node_mul->GetOutControlAnchor(), mul_out_control_node->GetInControlAnchor()),
-          OP_LOGE(kFusedOpType.c_str(), "Add edge between node %s. and node %s failed.",
-                  input_node_mul->GetName().c_str(), mul_out_control_node->GetName().c_str()),
-          return FAILED);
+      FUSION_PASS_CHECK(GraphUtils::AddEdge(input_node_mul->GetOutControlAnchor(),
+                                            mul_out_control_node->GetInControlAnchor()) != GRAPH_SUCCESS,
+                        OP_LOGE(kFusedOpType.c_str(), "Add edge between node %s. and node %s failed.",
+                                input_node_mul->GetName().c_str(), mul_out_control_node->GetName().c_str()),
+                        return FAILED);
     }
   }
-
+  // addn_node->GetOpDesc() wound not nullptr there
   std::map<string, uint32_t> addn_input_names = addn_node->GetOpDesc()->GetAllInputName();
   for (auto index_name : addn_input_names) {
     OP_LOGI(kFusedOpType.c_str(), "The addn_node's input name is :%s, input index is %u", index_name.first.c_str(),
             index_name.second);
   }
-
-  if (mul_node->GetInDataAnchor(lossscale_input_index)->GetPeerOutAnchor() != nullptr) {
-    NodePtr input_node_mul = mul_node->GetInDataAnchor(lossscale_input_index)->GetPeerOutAnchor()->GetOwnerNode();
+  auto mul_node_in_data_anchor = mul_node->GetInDataAnchor(lossscale_input_index);
+  FUSION_PASS_CHECK(mul_node_in_data_anchor == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The mul_node_in_data_anchor is null, fusion failed."),
+                    return PARAM_INVALID);
+  if (mul_node_in_data_anchor->GetPeerOutAnchor() != nullptr) {
+    NodePtr input_node_mul = mul_node_in_data_anchor->GetPeerOutAnchor()->GetOwnerNode();
     // In order to prevent the lossscale nodes from being deleted when the mul
     // node is deleted, you need to unassociate them first.
-    FUSION_PASS_CHECK(GraphUtils::RemoveEdge(mul_node->GetInDataAnchor(lossscale_input_index)->GetPeerOutAnchor(),
-                                             mul_node->GetInDataAnchor(lossscale_input_index)),
-                      OP_LOGE(kFusedOpType.c_str(), "Remove edge failed."), return FAILED);
-    FUSION_PASS_CHECK(addn_node->AddLinkFrom(input_node_mul),
+    FUSION_PASS_CHECK(
+        GraphUtils::RemoveEdge(mul_node_in_data_anchor->GetPeerOutAnchor(), mul_node_in_data_anchor) != GRAPH_SUCCESS,
+        OP_LOGE(kFusedOpType.c_str(), "Remove edge failed."), return FAILED);
+    FUSION_PASS_CHECK(addn_node->AddLinkFrom(input_node_mul) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Add link between node %s. and node %s failed.",
                               input_node_mul->GetName().c_str(), addn_node->GetName().c_str()),
                       return FAILED);
   }
 
   std::map<string, uint32_t> addn_new_input_names{{"x1", 0}, {"x2", 1}, {"x3", 2}};
-
+  // UpdateInputName do not need check result
   addn_node->GetOpDesc()->UpdateInputName(addn_new_input_names);
-  if (mul_node->GetInDataAnchor(1 - lossscale_input_index)->GetPeerOutAnchor() != nullptr) {
-    NodePtr input_node_mul = mul_node->GetInDataAnchor(1 - lossscale_input_index)->GetPeerOutAnchor()->GetOwnerNode();
-    FUSION_PASS_CHECK(GraphUtils::AddEdge(mul_node->GetInDataAnchor(1 - lossscale_input_index)->GetPeerOutAnchor(),
-                                          addn_node->GetInDataAnchor(mul_index)),
+  mul_node_in_data_anchor = mul_node->GetInDataAnchor(1 - lossscale_input_index);
+  FUSION_PASS_CHECK(mul_node_in_data_anchor == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The mul_node_in_data_anchor is null, fusion failed."),
+                    return PARAM_INVALID);
+  if (mul_node_in_data_anchor->GetPeerOutAnchor() != nullptr) {
+    NodePtr input_node_mul = mul_node_in_data_anchor->GetPeerOutAnchor()->GetOwnerNode();
+    FUSION_PASS_CHECK(GraphUtils::AddEdge(mul_node_in_data_anchor->GetPeerOutAnchor(),
+                                          addn_node->GetInDataAnchor(mul_index)) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Add edge between node %s and node %s failed.",
                               input_node_mul->GetName().c_str(), addn_node->GetName().c_str()),
                       return FAILED);
   }
 
-  FUSION_PASS_CHECK(graph.RemoveNode(mul_node),
+  FUSION_PASS_CHECK(graph.RemoveNode(mul_node) != GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "Remove node %s failed.", mul_node->GetName().c_str()),
                     return FAILED);
 
   addn_node->GetOpDesc()->SetType("FusedMulAddNL2loss");
-  std::vector<NodePtr> original_nodes;
-  original_nodes.push_back(mul_node);
-  original_nodes.push_back(addn_node);
+  std::vector<NodePtr> original_nodes{mul_node, addn_node};
   GraphPassUtil::RecordOriginalNames(original_nodes, addn_node);
   for (auto index_name : addn_node->GetOpDesc()->GetAllInputName()) {
     OP_LOGI(kFusedOpType.c_str(), "The addn_node's input name is :%s, input index is %u", index_name.first.c_str(),
             index_name.second);
   }
-
   OP_LOGI(kFusedOpType.c_str(), "MulAddNFusionPass graph fusion success!");
 
   OpDescPtr fusion_desc = AttrUtils::CopyOpDesc(addn_node->GetOpDesc());
-  fusion_desc->AddOutputDesc("y2", l2loss_node->GetOpDesc()->GetOutputDesc(0));
+  FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "The fusion_desc is null."),
+                    return PARAM_INVALID);
+  // l2loss_node->GetOpDesc() wound not nullptr there
+  FUSION_PASS_CHECK(fusion_desc->AddOutputDesc("y2", l2loss_node->GetOpDesc()->GetOutputDesc(0)) != GRAPH_SUCCESS,
+                    OP_LOGE(kFusedOpType.c_str(), "AddOutputDesc failed."), return FAILED);
   fusion_desc->SetName(addn_node->GetOpDesc()->GetName() + "/FusedMulAddNL2loss");
   NodePtr fusion_node = graph.AddNode(fusion_desc);
+  FUSION_PASS_CHECK(fusion_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "AddNode failed."), return PARAM_INVALID);
   OP_LOGI(kFusedOpType.c_str(), "Node[%s] has [%u] output desc.", fusion_node->GetName().c_str(),
           fusion_node->GetOpDesc()->GetAllOutputsDesc().size());
   // l2loss output link to fusion_node output
   if (out_data_anchor0->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr in_anchor_ptr : out_data_anchor0->GetPeerInDataAnchors()) {
+      FUSION_PASS_CHECK(in_anchor_ptr == nullptr, OP_LOGE(kFusedOpType.c_str(), "The in_anchor_ptr is nullptr."),
+                        return PARAM_INVALID);
       in_anchor_ptr->UnlinkAll();
       FUSION_PASS_CHECK(
-          GraphUtils::AddEdge(fusion_node->GetOutDataAnchor(1), in_anchor_ptr) != SUCCESS,
+          GraphUtils::AddEdge(fusion_node->GetOutDataAnchor(1), in_anchor_ptr) != GRAPH_SUCCESS,
           OP_LOGE(kFusedOpType.c_str(), "Add edge from node:%s's 2nd index to node:%s's 1st index failed.",
                   fusion_node->GetName().c_str(), l2loss_node->GetName().c_str()),
           return FAILED);
@@ -311,9 +322,8 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   }
   for (unsigned int i = 0; i < addn_node->GetAllInDataAnchors().size(); i++) {
     FUSION_PASS_CHECK(
-
         GraphUtils::AddEdge(addn_node->GetInDataAnchor(i)->GetPeerOutAnchor(), fusion_node->GetInDataAnchor(i)) !=
-            SUCCESS,
+            GRAPH_SUCCESS,
         OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index[%u] to fusion node:%s's index[%u] failed.",
                 addn_node->GetName().c_str(), i, fusion_node->GetName().c_str(), i),
         return FAILED);
@@ -326,7 +336,7 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   for (unsigned int i = 0; i < addn_node->GetInControlAnchor()->GetPeerOutControlAnchors().size(); i++) {
     FUSION_PASS_CHECK(
         GraphUtils::AddEdge(addn_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
-                            fusion_node->GetInControlAnchor()) != SUCCESS,
+                            fusion_node->GetInControlAnchor()) != GRAPH_SUCCESS,
         OP_LOGE(kFusedOpType.c_str(),
                 "Add edge from fused node:%s's control index[%u] to fusion node:%s's control index failed.",
                 addn_node->GetName().c_str(), i, fusion_node->GetName().c_str()),
@@ -334,13 +344,16 @@ Status MulAddNL2LossFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
     OP_LOGI(kFusedOpType.c_str(), "Add edge from fused node:%s's control index[%u] to fusion node:%s's control index.",
             addn_node->GetName().c_str(), i, fusion_node->GetName().c_str());
   }
-  if (addn_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
+  auto addn_node_out_data_anchor_0 = addn_node->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(addn_node_out_data_anchor_0 == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The addn_node_out_data_anchor_0 is null."), return PARAM_INVALID);
+  if (addn_node_out_data_anchor_0->GetPeerInDataAnchors().size() > 0) {
     OP_LOGI(kFusedOpType.c_str(), "The size of addn_node is [%u].",
-            addn_node->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
-    for (InDataAnchorPtr in_anchor_ptr : addn_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+            addn_node_out_data_anchor_0->GetPeerInDataAnchors().size());
+    for (InDataAnchorPtr in_anchor_ptr : addn_node_out_data_anchor_0->GetPeerInDataAnchors()) {
       in_anchor_ptr->UnlinkAll();
       FUSION_PASS_CHECK(
-          GraphUtils::AddEdge(fusion_node->GetOutDataAnchor(0), in_anchor_ptr) != SUCCESS,
+          GraphUtils::AddEdge(fusion_node->GetOutDataAnchor(0), in_anchor_ptr) != GRAPH_SUCCESS,
           OP_LOGE(kFusedOpType.c_str(), "Add edge from fused node:%s's index to fusion node:%s's 1st index failed.",
                   addn_node->GetName().c_str(), fusion_node->GetName().c_str()),
           return FAILED);

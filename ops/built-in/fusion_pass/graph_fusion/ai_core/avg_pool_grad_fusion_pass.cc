@@ -47,10 +47,7 @@ Status AvgPoolGradFusionPass::WindowedOutputSize(const int32_t input, const int3
   int32_t tmp_padneed = 0;
   int32_t tmp_pad_befor = 0;
   int32_t tmp_pad_after = 0;
-  if (stride <= 0) {
-    OP_LOGE(kFusedOpType.c_str(), "Stride less or equal than zero");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(stride <= 0, OP_LOGE(kFusedOpType.c_str(), "Stride less or equal than zero"), return FAILED);
 
   if (padding == "VALID") {
     tmp_output = (input - k_size + stride) / stride;
@@ -75,15 +72,11 @@ Status AvgPoolGradFusionPass::TransposeNCHW2NHWC(const int32_t n_output, const i
                                                  const int32_t c_output, uint16_t* avgpoolout) {
   uint64_t len = static_cast<uint64_t>(n_output) * static_cast<uint64_t>(h_output) * static_cast<uint64_t>(w_output) *
                  static_cast<uint64_t>(c_output);
-  if ((len > INT_MAX) || (len <= 0)) {
-    OP_LOGE(kFusedOpType.c_str(), "Cannot malloc too large memory!");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK((len > INT_MAX) || (len <= 0), OP_LOGE(kFusedOpType.c_str(), "Cannot malloc too large memory!"),
+                    return FAILED);
+
   uint16_t* tmp = new (std::nothrow) uint16_t[len];
-  if (tmp == nullptr) {
-    OP_LOGE(kFusedOpType.c_str(), "Run malloc memory failed!");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(tmp == nullptr, OP_LOGE(kFusedOpType.c_str(), "Run malloc memory failed!"), return FAILED);
   for (int32_t n = 0; n < n_output; n++) {
     for (int32_t h = 0; h < h_output; h++) {
       for (int32_t w = 0; w < w_output; w++) {
@@ -138,13 +131,15 @@ Status AvgPoolGradFusionPass::AvgValueTableGen(const vector<int64_t> dim_info, c
   int32_t h_output = 0;
   int32_t pad_top = 0;
   int32_t pad_bottom = 0;
-  WindowedOutputSize(h_input, h_ksize, h_stride, padding, h_output, pad_top, pad_bottom);
+  FUSION_PASS_CHECK(WindowedOutputSize(h_input, h_ksize, h_stride, padding, h_output, pad_top, pad_bottom) != SUCCESS,
+                    OP_LOGE(kFusedOpType.c_str(), "WindowedOutputSize failed"), return FAILED);
   int32_t w_output = 0;
   int32_t pad_left = 0;
   int32_t pad_right = 0;
   int32_t add_flag_h = 0;
   int32_t add_flag_w = 0;
-  WindowedOutputSize(w_input, w_ksize, w_stride, padding, w_output, pad_left, pad_right);
+  FUSION_PASS_CHECK(WindowedOutputSize(w_input, w_ksize, w_stride, padding, w_output, pad_left, pad_right) != SUCCESS,
+                    OP_LOGE(kFusedOpType.c_str(), "WindowedOutputSize failed"), return FAILED);
   int64_t out_offset_point = 0;
   for (int n = 0; n < n_output; n++) {
     for (int c = 0; c < c_output; c++) {
@@ -177,26 +172,24 @@ Status AvgPoolGradFusionPass::AvgValueTableGen(const vector<int64_t> dim_info, c
     }
   }
   if (data_format == "NHWC") {
-    TransposeNCHW2NHWC(n_output, h_output, w_output, c_output, output);
+    FUSION_PASS_CHECK(TransposeNCHW2NHWC(n_output, h_output, w_output, c_output, output) != SUCCESS,
+                      OP_LOGE(kFusedOpType.c_str(), "TransposeNCHW2NHWC failed"), return FAILED);
   }
   if (data_format == "NHWC") {
-    assit_dim_info.push_back(n_output);
-    assit_dim_info.push_back(h_output);
-    assit_dim_info.push_back(w_output);
-    assit_dim_info.push_back(c_output);
+    assit_dim_info = {n_output, h_output, w_output, c_output};
   } else if (data_format == "NCHW") {
-    assit_dim_info.push_back(n_output);
-    assit_dim_info.push_back(c_output);
-    assit_dim_info.push_back(h_output);
-    assit_dim_info.push_back(w_output);
+    assit_dim_info = {n_output, c_output, h_output, w_output};
   }
   return SUCCESS;
 }
 
-Status KernelGen(const int32_t h_ksize, const int32_t w_ksize, const int32_t c_input, uint16_t* kernel_table) {
+Status KernelGen(const int32_t h_ksize, const int32_t w_ksize, const int32_t c_input, uint16_t* kernel_table,
+                 int64_t kernel_table_size) {
   // this 6D is not safe ,because gragh donot know this info
   // from depthwise, filter is HWNC, but ge get shape by NHWC, so, plugin set format HWNC.
   int64_t len = static_cast<int64_t>(h_ksize) * static_cast<int64_t>(w_ksize) * static_cast<int64_t>(c_input);
+  FUSION_PASS_CHECK(len > kernel_table_size, OP_LOGE(kPatternAvgPoolGrad.c_str(), "Access kernel_table_size overflow."),
+                    return FAILED);
   fp16_t tmp;
   tmp.val = 0;
   for (int64_t i = 0; i < len; i++) {
@@ -241,10 +234,14 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   string padding;
 
   // get ksize padding strides value data_format
+  // data_format is optional
   AttrUtils::GetStr(avg_pool_grad_desc, "data_format", data_format);
-  AttrUtils::GetListInt(avg_pool_grad_desc, "ksize", k_size);
-  AttrUtils::GetListInt(avg_pool_grad_desc, "strides", strides);
-  AttrUtils::GetStr(avg_pool_grad_desc, "padding", padding);
+  FUSION_PASS_CHECK(!AttrUtils::GetListInt(avg_pool_grad_desc, "ksize", k_size),
+                    OP_LOGE(kFusedOpType.c_str(), "Get attr ksize failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(!AttrUtils::GetListInt(avg_pool_grad_desc, "strides", strides),
+                    OP_LOGE(kFusedOpType.c_str(), "Get attr strides failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(!AttrUtils::GetStr(avg_pool_grad_desc, "padding", padding),
+                    OP_LOGE(kFusedOpType.c_str(), "Get attr padding failed."), return PARAM_INVALID);
 
   // get const org_input_shape desc, dtype, format, dims
   InDataAnchorPtr avg_pool_grad_const_anchor_ptr0 = avg_pool_grad_fused_node->GetInDataAnchor(0);
@@ -256,62 +253,60 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                     OP_LOGE(kFusedOpType.c_str(), "Pointer const_anchor_ptr is null, fusion failed."),
                     return PARAM_INVALID);
   NodePtr const_node = const_anchor_ptr->GetOwnerNode();
-  GeTensorDesc org_input_shape_tensor = const_node->GetOpDesc()->GetOutputDesc(0);
+  auto const_node_desc = const_node->GetOpDesc();
+  FUSION_PASS_CHECK(const_node_desc == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "Pointer const_node_desc is null, fusion failed."),
+                    return PARAM_INVALID);
+  GeTensorDesc org_input_shape_tensor = const_node_desc->GetOutputDesc(0);
   DataType data_type = org_input_shape_tensor.GetDataType();
   GeShape org_input_shape = org_input_shape_tensor.GetShape();
   int64_t dim_nums = org_input_shape.GetShapeSize();
-  if (dim_nums != 4) {
-    OP_LOGW(kFusedOpType.c_str(), "The org_input_shape dim_nums must be 4.");
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(dim_nums != 4, OP_LOGW(kFusedOpType.c_str(), "The org_input_shape dim_nums must be 4."),
+                    return NOT_CHANGED);
   vector<int64_t> dim_info = org_input_shape.GetDims();
   // get orig_input_shape value
   Operator op = OpDescUtils::CreateOperatorFromNode(avg_pool_grad_fused_node);
   Tensor orig_input_shape_const_tensor;
   op.GetInputConstData(avg_pool_grad_attr_info[0], orig_input_shape_const_tensor);
-  if (data_type != DT_INT32) {
-    OP_LOGW(kFusedOpType.c_str(), "The orig_input_shape dtype only surpport INT32.");
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(data_type != DT_INT32,
+                    OP_LOGW(kFusedOpType.c_str(), "The orig_input_shape dtype only surpport INT32."),
+                    return NOT_CHANGED);
   int32_t* orig_input_shape_const_tensor_ptr = (int32_t*)orig_input_shape_const_tensor.GetData();
-  if (PatternFusionUtil::IsUnknownShape(dim_info[0])) {
-    OP_LOGE(kFusedOpType.c_str(), "AvgPoolGradFusionPass cannot be applied for unknown shape.");
-    return GRAPH_FAILED;
-  }
-  if (dim_info[0] != 4) {
-    OP_LOGW(kFusedOpType.c_str(), "The orig_input_shape must be list of 4.");
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(dim_info[0]),
+                    OP_LOGE(kFusedOpType.c_str(), "AvgPoolGradFusionPass cannot be applied for unknown shape."),
+                    return GRAPH_FAILED);
+  FUSION_PASS_CHECK(dim_info[0] != 4, OP_LOGW(kFusedOpType.c_str(), "The orig_input_shape must be list of 4."),
+                    return NOT_CHANGED);
 
   // gen avgtable matrix
-  GeTensorDesc avg_pool_input_shape_tensor = avg_pool_grad_fused_node->GetOpDesc()->GetInputDesc(1);
+  auto avg_pool_grad_fused_node_desc = avg_pool_grad_fused_node->GetOpDesc();
+  FUSION_PASS_CHECK(avg_pool_grad_fused_node_desc == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "Pointer const_node_desc is null, fusion failed."),
+                    return PARAM_INVALID);
+  GeTensorDesc avg_pool_input_shape_tensor = avg_pool_grad_fused_node_desc->GetInputDesc(1);
   GeShape avg_pool_shape = avg_pool_input_shape_tensor.GetShape();
   vector<int64_t> avg_pool_dim_info = avg_pool_shape.GetDims();
+  FUSION_PASS_CHECK(avg_pool_dim_info.size() < 4, OP_LOGW(kFusedOpType.c_str(), "Dims must great than 3"),
+                    return NOT_CHANGED);
   for (size_t i = 0; i <= 3; i++) {
     auto dim = avg_pool_dim_info[i];
-    if (PatternFusionUtil::IsUnknownShape(dim)) {
-      OP_LOGE(kFusedOpType.c_str(), "AvgPoolGradFusionPass cannot be applied for unknown shape.");
-      return GRAPH_FAILED;
-    }
+    FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(dim),
+                      OP_LOGE(kFusedOpType.c_str(), "AvgPoolGradFusionPass cannot be applied for unknown shape."),
+                      return GRAPH_FAILED);
   }
-  if (k_size.size() != 4) {
-    OP_LOGW(kFusedOpType.c_str(), "The k_size must list of 4 element.");
-    return NOT_CHANGED;
-  }
-  if (strides.size() != 4) {
-    OP_LOGW(kFusedOpType.c_str(), "The strides must list of 4 element.");
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(k_size.size() != 4, OP_LOGW(kFusedOpType.c_str(), "The k_size must list of 4 element."),
+                    return NOT_CHANGED);
+  FUSION_PASS_CHECK(strides.size() != 4, OP_LOGW(kFusedOpType.c_str(), "The strides must list of 4 element."),
+                    return NOT_CHANGED);
+
   if (data_format == "NHWC") {
     OP_LOGI(kFusedOpType.c_str(), "AvgPoolGrad data_format NHWC.");
-    if ((k_size[0] != 1) || (k_size[3] != 1)) {
-      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NHWC,ksize only surpport ksize[0]==ksize[3]==1.");
-      return NOT_CHANGED;
-    }
-    if ((strides[0] != 1) || (strides[3] != 1)) {
-      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NHWC stride only surpport strides[0]==strides[3]==1.");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK((k_size[0] != 1) || (k_size[3] != 1),
+                      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NHWC,ksize only surpport ksize[0]==ksize[3]==1."),
+                      return NOT_CHANGED);
+    FUSION_PASS_CHECK((strides[0] != 1) || (strides[3] != 1),
+                      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NHWC stride only surpport strides[0]==strides[3]==1."),
+                      return NOT_CHANGED);
   } else if (data_format == "NCHW") {
     OP_LOGI(kFusedOpType.c_str(), "AvgPoolGrad data_format NCHW.");
     int64_t k_size_h = 0;
@@ -321,21 +316,19 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     int64_t orig_input_shape_h = 0;
     int64_t orig_input_shape_w = 0;
     int64_t orig_input_shape_c = 0;
-
-    if ((k_size[0] != 1) || (k_size[1] != 1)) {
-      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NCHW, stride only surpport ksize[0]==ksize[3]==1.");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK((k_size[0] != 1) || (k_size[1] != 1),
+                      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NCHW, stride only surpport ksize[0]==ksize[3]==1."),
+                      return NOT_CHANGED);
     k_size_h = k_size[2];
     k_size_w = k_size[3];
     k_size[0] = 1;
     k_size[1] = k_size_h;
     k_size[2] = k_size_w;
     k_size[3] = 1;
-    if ((strides[0] != 1) || (strides[1] != 1)) {
-      OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NCHW, stride only surpport strides[0]==strides[1]==1.");
-      return NOT_CHANGED;
-    }
+    FUSION_PASS_CHECK(
+        (strides[0] != 1) || (strides[1] != 1),
+        OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad NCHW, stride only surpport strides[0]==strides[1]==1."),
+        return NOT_CHANGED);
     stride_h = strides[2];
     stride_w = strides[3];
     strides[0] = 1;
@@ -349,12 +342,8 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     orig_input_shape_const_tensor_ptr[2] = orig_input_shape_w;
     orig_input_shape_const_tensor_ptr[3] = orig_input_shape_c;
   }
-  vector<int64_t> orig_input_shape_v;
-  orig_input_shape_v.push_back(static_cast<int64_t>(orig_input_shape_const_tensor_ptr[0]));
-  orig_input_shape_v.push_back(static_cast<int64_t>(orig_input_shape_const_tensor_ptr[1]));
-  orig_input_shape_v.push_back(static_cast<int64_t>(orig_input_shape_const_tensor_ptr[2]));
-  orig_input_shape_v.push_back(static_cast<int64_t>(orig_input_shape_const_tensor_ptr[3]));
-
+  vector<int64_t> orig_input_shape_v{orig_input_shape_const_tensor_ptr[0], orig_input_shape_const_tensor_ptr[1],
+                                     orig_input_shape_const_tensor_ptr[2], orig_input_shape_const_tensor_ptr[3]};
   GeTensorPtr avg_table_assit_ptr = nullptr;
   int64_t value_table_size = avg_pool_dim_info[0] * avg_pool_dim_info[1] * avg_pool_dim_info[2] * avg_pool_dim_info[3];
 
@@ -391,10 +380,13 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
       return PARAM_INVALID);
   vector<GeTensorPtr> avg_pool_grad_weights = {avg_table_assit_ptr};
   ret = OpDescUtils::SetWeights(avg_pool_grad_fused_node, avg_pool_grad_weights);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "add mean matrix failed."), return ret);
+  FUSION_PASS_CHECK(ret != GRAPH_SUCCESS, OP_LOGE(kFusedOpType.c_str(), "add mean matrix failed."), return ret);
   auto avg_pool_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
   NodePtr avg_pool_const_input = avg_pool_const_input_nodes[0];
-  avg_pool_const_input->GetOpDesc()->SetType(kConstantOp);
+  auto avg_pool_const_input_desc = avg_pool_const_input->GetOpDesc();
+  FUSION_PASS_CHECK(avg_pool_const_input_desc == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The avg_pool_const_input_desc is NULL"), return PARAM_INVALID);
+  avg_pool_const_input_desc->SetType(kConstantOp);
 
   // gen kernel matrix
   // orig_input_shape_v[1] must be channel
@@ -407,7 +399,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   unique_ptr<uint16_t> kernel_table_input_assit(new (std::nothrow) uint16_t[kernel_table_size]());
   FUSION_PASS_CHECK(kernel_table_input_assit.get() == nullptr,
                     OP_LOGE(kFusedOpType.c_str(), "The kernel_table_input_assit is NULL"), return PARAM_INVALID);
-  ret = KernelGen(k_size[1], k_size[2], orig_input_shape_v[3], kernel_table_input_assit.get());
+  ret = KernelGen(k_size[1], k_size[2], orig_input_shape_v[3], kernel_table_input_assit.get(), kernel_table_size);
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "The kernel_table matrix AssitHelp failed."),
                     return ret);
   vector<int64_t> kernel_table_assit_dim_info{k_size[1], k_size[2], orig_input_shape_v[3], 1LL};
@@ -425,10 +417,13 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                           return PARAM_INVALID);
   vector<GeTensorPtr> kernel_weights = {kernel_table_assit_ptr};
   ret = OpDescUtils::SetWeights(avg_pool_grad_fused_node, kernel_weights);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "Add kernel matrix failed."), return ret);
+  FUSION_PASS_CHECK(ret != GRAPH_SUCCESS, OP_LOGE(kFusedOpType.c_str(), "Add kernel matrix failed."), return ret);
   auto kernel_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
   NodePtr kernel_const_input = kernel_const_input_nodes[0];
-  kernel_const_input->GetOpDesc()->SetType(kConstantOp);
+  auto kernel_const_input_desc = kernel_const_input->GetOpDesc();
+  FUSION_PASS_CHECK(kernel_const_input_desc == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The kernel_const_input_desc is NULL"), return PARAM_INVALID);
+  kernel_const_input_desc->SetType(kConstantOp);
 
   NodePtr fusion_node = nullptr;
   PassAttrInfo orig_input_shape{0, "orig_input_shape", "SetListInt"};
@@ -436,10 +431,9 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   // const org input shape change to attr
   ret = pattern_fusion_util.ConstToAttrWithNode(graph, avg_pool_grad_fused_node, fusion_op_type,
                                                 avg_pool_grad_pass_info, fusion_node);
-  if (ret != SUCCESS) {
-    OP_LOGI(kFusedOpType.c_str(), "AvgPoolGrad has input which is not a CONST, graph not changed.");
-    return NOT_CHANGED;
-  }
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    OP_LOGW(kFusedOpType.c_str(), "AvgPoolGrad has input which is not a CONST, graph not changed."),
+                    return NOT_CHANGED);
   fusion_nodes.push_back(fusion_node);
   return SUCCESS;
 }

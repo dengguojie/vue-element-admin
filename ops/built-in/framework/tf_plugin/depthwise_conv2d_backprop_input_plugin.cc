@@ -26,8 +26,15 @@
 
 namespace domi {
 Status DepthwiseConv2DBackpropInputMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    return FAILED;
+  }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  if (op_dsc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
+    return FAILED;
+  }
   ge::GeTensorDesc tensorDescW = op_dsc->GetInputDesc(1);
   tensorDescW.SetOriginFormat(ge::FORMAT_HWCN);
   tensorDescW.SetFormat(ge::FORMAT_HWCN);

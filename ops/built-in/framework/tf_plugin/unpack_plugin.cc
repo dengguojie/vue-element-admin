@@ -19,12 +19,15 @@
  * \brief
  */
 #include "register/register.h"
-
+#include "op_log.h"
 namespace domi {
 Status AutoMappingFnUnpack(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["out"] = pair<string, string>("y", "num");
-  AutoMappingFnDynamic(op_src, op, value);
+  if (AutoMappingFnDynamic(op_src, op, value) != SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    return FAILED;
+  }
   return SUCCESS;
 }
 

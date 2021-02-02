@@ -19,11 +19,15 @@
  * \brief
  */
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
 
 Status ParserParamLog(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    return FAILED;
+  }
   const std::string log_attr_base = "base";
   const float default_base_value = -1.0;
   op.SetAttr(log_attr_base, static_cast<float>(default_base_value));

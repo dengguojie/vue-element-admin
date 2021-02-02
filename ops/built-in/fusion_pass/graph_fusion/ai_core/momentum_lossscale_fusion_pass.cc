@@ -87,36 +87,44 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   string momentum_stream_label;
   string mul_stream_label;
-  ge::AttrUtils::GetStr(momentum_node->GetOpDesc(), kStreamLabel, momentum_stream_label);
-  ge::AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label);
+  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(momentum_node->GetOpDesc(), kStreamLabel, momentum_stream_label),
+                    OP_LOGW(kFusedOpType.c_str(), "Get str momentum_stream_label failed."), return NOT_CHANGED);
+  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label),
+                    OP_LOGW(kFusedOpType.c_str(), "Get str mul_stream_label failed."), return NOT_CHANGED);
   OP_LOGI(kFusedOpType.c_str(), "Momentum node's stream label is %s", momentum_stream_label.c_str());
   OP_LOGI(kFusedOpType.c_str(), "Mul node's stream label is %s", mul_stream_label.c_str());
-  if (momentum_stream_label != mul_stream_label) {
-    OP_LOGI(kFusedOpType.c_str(), "Node [%s] and node [%s] don't hava same stream label.",
-            momentum_node->GetName().c_str(), mul_node->GetName().c_str());
-    return NOT_CHANGED;
-  } else {
-    OP_LOGI(kFusedOpType.c_str(), "Momentum and Mul have same _stream_label attr.");
-  }
+  FUSION_PASS_CHECK(momentum_stream_label != mul_stream_label,
+                    OP_LOGW(kFusedOpType.c_str(), "Node [%s] and node [%s] don't hava same stream label.",
+                            momentum_node->GetName().c_str(), mul_node->GetName().c_str()),
+                    return NOT_CHANGED);
+  OP_LOGI(kFusedOpType.c_str(), "Momentum and Mul have same _stream_label attr.");
 
   FUSION_PASS_CHECK(momentum_node->GetType() != "ApplyMomentum",
-                    OP_LOGI(kFusedOpType.c_str(), "Get the momentum_node type is [%s], which is not apply momentum.",
+                    OP_LOGW(kFusedOpType.c_str(), "Get the momentum_node type is [%s], which is not apply momentum.",
                             momentum_node->GetType().c_str()),
                     return NOT_CHANGED);
 
   FUSION_PASS_CHECK(mul_node->GetOutDataNodes().size() != 1,
-                    OP_LOGI(kFusedOpType.c_str(), "Output node of Mul node size is [%d], which not equal to 1.",
+                    OP_LOGW(kFusedOpType.c_str(), "Output node of Mul node size is [%d], which not equal to 1.",
                             mul_node->GetOutDataNodes().size()),
                     return NOT_CHANGED);
 
   FUSION_PASS_CHECK(mul_node->GetInDataNodes().size() != 2,
-                    OP_LOGI(kFusedOpType.c_str(), "Input node of Mul node size is [%d], which not equal to 2.",
+                    OP_LOGW(kFusedOpType.c_str(), "Input node of Mul node size is [%d], which not equal to 2.",
                             mul_node->GetInDataNodes().size()),
                     return NOT_CHANGED);
 
   uint32_t lossscale_input_index{0};
   for (uint32_t index = 0; index < mul_node->GetAllInDataAnchors().size(); index++) {
-    ge::NodePtr input_node_mul = mul_node->GetInDataAnchor(index)->GetPeerOutAnchor()->GetOwnerNode();
+    auto in_data_anchor_iter = mul_node->GetInDataAnchor(index);
+    FUSION_PASS_CHECK(in_data_anchor_iter == nullptr,
+                      OP_LOGE(kFusedOpType.c_str(), "The in_data_anchor_iter is null, fusion failed."),
+                      return PARAM_INVALID);
+    auto peer_out_anchor_iter = in_data_anchor_iter->GetPeerOutAnchor();
+    FUSION_PASS_CHECK(peer_out_anchor_iter == nullptr,
+                      OP_LOGE(kFusedOpType.c_str(), "The peer_out_anchor_iter is null, fusion failed."),
+                      return PARAM_INVALID);
+    ge::NodePtr input_node_mul = peer_out_anchor_iter->GetOwnerNode();
     if (ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(input_node_mul) == "Constant") {
       lossscale_input_index = index;
       break;
@@ -124,14 +132,15 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
 
   // get mul Constant input
+  // mul_node->GetOpDesc() would not be nullptr there
   ge::GeTensorDesc const_input = mul_node->GetOpDesc()->GetInputDesc(lossscale_input_index);
   vector<int64_t> dim_info = const_input.GetShape().GetDims();
   int dims_size = dim_info.size();
   FUSION_PASS_CHECK(
       !(dims_size == 0 || (dims_size == 1 && dim_info[0] == 1)),
-      OP_LOGI(kFusedOpType.c_str(),
-              "The const input of Mul node must be scalar or dims=(1,), but dims size is [%u] and dims[0] is [%lld]",
-              dims_size, dim_info[0]),
+      OP_LOGW(kFusedOpType.c_str(),
+              "The const input of Mul node must be scalar or dims=(1,), but dims size is [%u] and dims[0] not 1",
+              dims_size),
       return NOT_CHANGED);
 
   int grad_index{0};
@@ -147,7 +156,7 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
                   mul_node->GetName().c_str());
           continue;
         }
-        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_data_anchor, peer_indata_anchor),
+        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_data_anchor, peer_indata_anchor) != GRAPH_SUCCESS,
                           OP_LOGE(kFusedOpType.c_str(), "Remove edge failed."), return FAILED);
         find_apply_momentum = true;
       }
@@ -155,19 +164,20 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
 
   FUSION_PASS_CHECK(!find_apply_momentum,
-                    OP_LOGI(kFusedOpType.c_str(), "The output node of Mul node is not ResourceApplyMomentum."),
+                    OP_LOGW(kFusedOpType.c_str(), "The output node of Mul node is not ResourceApplyMomentum."),
                     return NOT_CHANGED);
 
   // add control anchor between input node of Mul and out node of Mul.
   for (auto input_node_mul : mul_node->GetInAllNodes()) {
     for (auto mul_out_control_node : mul_node->GetOutControlNodes()) {
-      FUSION_PASS_CHECK(
-          ge::GraphUtils::AddEdge(input_node_mul->GetOutControlAnchor(), mul_out_control_node->GetInControlAnchor()),
-          OP_LOGE(kFusedOpType.c_str(), "Add edge between node %s. and node %s failed.",
-                  input_node_mul->GetName().c_str(), mul_out_control_node->GetName().c_str()),
-          return FAILED);
+      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(input_node_mul->GetOutControlAnchor(),
+                                                mul_out_control_node->GetInControlAnchor()) != GRAPH_SUCCESS,
+                        OP_LOGE(kFusedOpType.c_str(), "Add edge between node %s. and node %s failed.",
+                                input_node_mul->GetName().c_str(), mul_out_control_node->GetName().c_str()),
+                        return FAILED);
     }
   }
+  // momentum_node->GetOpDesc() would not be nullptr there
   std::map<string, uint32_t> momentum_input_names = momentum_node->GetOpDesc()->GetAllInputName();
   for (auto index_name : momentum_input_names) {
     OP_LOGI(kFusedOpType.c_str(), "The momentum_node's input name is :%s, input index is %u", index_name.first.c_str(),
@@ -175,14 +185,18 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
   // grad is the first input of mul, the index is 0, the second input of the
   // lossscale is mul, and the corresponding index is 1.
-  if (mul_node->GetInDataAnchor(lossscale_input_index)->GetPeerOutAnchor() != nullptr) {
-    ge::NodePtr input_node_mul = mul_node->GetInDataAnchor(lossscale_input_index)->GetPeerOutAnchor()->GetOwnerNode();
+  auto mul_node_in_data_auchor = mul_node->GetInDataAnchor(lossscale_input_index);
+  FUSION_PASS_CHECK(mul_node_in_data_auchor == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The mul_node_in_data_auchor is null, fusion failed."),
+                    return PARAM_INVALID);
+  if (mul_node_in_data_auchor->GetPeerOutAnchor() != nullptr) {
+    ge::NodePtr input_node_mul = mul_node_in_data_auchor->GetPeerOutAnchor()->GetOwnerNode();
     // In order to prevent the lossscale nodes from being deleted when the mul
     // node is deleted, you need to unassociate them first.
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(mul_node->GetInDataAnchor(lossscale_input_index)->GetPeerOutAnchor(),
-                                                 mul_node->GetInDataAnchor(lossscale_input_index)),
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(mul_node_in_data_auchor->GetPeerOutAnchor(),
+                                                 mul_node_in_data_auchor) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Remove edge failed."), return FAILED);
-    FUSION_PASS_CHECK(momentum_node->AddLinkFrom(input_node_mul),
+    FUSION_PASS_CHECK(momentum_node->AddLinkFrom(input_node_mul) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Add link between node %s. and node %s failed.",
                               input_node_mul->GetName().c_str(), momentum_node->GetName().c_str()),
                       return FAILED);
@@ -193,18 +207,22 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
   momentum_input_names["x1"] = 3;
   momentum_input_names["x2"] = 5;
+  // UpdateInputName do not need check result
   momentum_node->GetOpDesc()->UpdateInputName(momentum_input_names);
-  if (mul_node->GetInDataAnchor(1 - lossscale_input_index)->GetPeerOutAnchor() != nullptr) {
-    ge::NodePtr input_node_mul =
-        mul_node->GetInDataAnchor(1 - lossscale_input_index)->GetPeerOutAnchor()->GetOwnerNode();
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node->GetInDataAnchor(1 - lossscale_input_index)->GetPeerOutAnchor(),
-                                              momentum_node->GetInDataAnchor(grad_index)),
+  mul_node_in_data_auchor = mul_node->GetInDataAnchor(1 - lossscale_input_index);
+  FUSION_PASS_CHECK(mul_node_in_data_auchor == nullptr,
+                    OP_LOGE(kFusedOpType.c_str(), "The mul_node_in_data_auchor is null, fusion failed."),
+                    return PARAM_INVALID);
+  if (mul_node_in_data_auchor->GetPeerOutAnchor() != nullptr) {
+    ge::NodePtr input_node_mul = mul_node_in_data_auchor->GetPeerOutAnchor()->GetOwnerNode();
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mul_node_in_data_auchor->GetPeerOutAnchor(),
+                                              momentum_node->GetInDataAnchor(grad_index)) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Add edge between node %s and node %s failed.",
                               input_node_mul->GetName().c_str(), momentum_node->GetName().c_str()),
                       return FAILED);
   }
 
-  FUSION_PASS_CHECK(graph.RemoveNode(mul_node),
+  FUSION_PASS_CHECK(graph.RemoveNode(mul_node) != GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "Remove node %s failed.", mul_node->GetName().c_str()),
                     return FAILED);
 
@@ -222,7 +240,15 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     OP_LOGI(kFusedOpType.c_str(), "MomentumLossscaleFusionPass 5 inputs to 6 inputs begin!");
 
     // get 0th input node of momentum
-    auto var_node = momentum_node->GetInDataAnchor(0)->GetFirstPeerAnchor()->GetOwnerNode();
+    auto momentum_node_in_data_auchor = momentum_node->GetInDataAnchor(0);
+    FUSION_PASS_CHECK(momentum_node_in_data_auchor == nullptr,
+                      OP_LOGE(kFusedOpType.c_str(), "The momentum_node_in_data_auchor is null, fusion failed."),
+                      return PARAM_INVALID);
+    auto momentum_node_first_peer_anchor = momentum_node_in_data_auchor->GetFirstPeerAnchor();
+    FUSION_PASS_CHECK(momentum_node_first_peer_anchor == nullptr,
+                      OP_LOGE(kFusedOpType.c_str(), "The momentum_node_first_peer_anchor is null, fusion failed."),
+                      return PARAM_INVALID);
+    auto var_node = momentum_node_first_peer_anchor->GetOwnerNode();
     auto var_desc = var_node->GetOpDesc();
 
     // create copy_var_node, update dtype from fp32 to fp16, set attr
@@ -234,18 +260,21 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     tmp_desc.SetOriginDataType(ge::DT_FLOAT16);
     tmp_desc.SetDataType(ge::DT_FLOAT16);
     FUSION_PASS_CHECK(
-        copy_desc_ptr->UpdateOutputDesc(0, tmp_desc) != ge::GRAPH_SUCCESS,
+        copy_desc_ptr->UpdateOutputDesc(0, tmp_desc) != GRAPH_SUCCESS,
         OP_LOGE(kFusedOpType.c_str(), "Fail to update output desc[0] of op[%s].", copy_desc_ptr->GetName().c_str()),
         return FAILED);
     copy_desc_ptr->SetName(var_desc->GetName() + "_copy");
-    ge::AttrUtils::SetStr(copy_desc_ptr, "_copy_from_var_node", var_desc->GetName());
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(copy_desc_ptr, "_copy_from_var_node", var_desc->GetName()),
+                      OP_LOGE(kFusedOpType.c_str(), "SetStr _copy_from_var_node failed"), return FAILED);
 
-    ge::AttrUtils::SetStr(copy_desc_ptr, "_src_var_name", var_desc->GetName());
-    ge::AttrUtils::SetBool(copy_desc_ptr, "_copy_value", false);
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(copy_desc_ptr, "_src_var_name", var_desc->GetName()),
+                      OP_LOGE(kFusedOpType.c_str(), "SetStr _src_var_name failed"), return FAILED);
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(copy_desc_ptr, "_copy_value", false),
+                      OP_LOGE(kFusedOpType.c_str(), "SetBool _copy_value failed"), return FAILED);
     ge::NodePtr copy_var_node = graph.AddNode(copy_desc_ptr);
     FUSION_PASS_CHECK(copy_var_node == nullptr,
                       OP_LOGE(kFusedOpType.c_str(), "The copy_var_node is null, add node failed."), return FAILED);
-    FUSION_PASS_CHECK(momentum_node->AddLinkFrom(copy_var_node),
+    FUSION_PASS_CHECK(momentum_node->AddLinkFrom(copy_var_node) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Fail to add link between op[%s] and op[%s] failed.",
                               momentum_node->GetName().c_str(), copy_var_node->GetName().c_str()),
                       return FAILED);
@@ -256,15 +285,22 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
                       OP_LOGE(kFusedOpType.c_str(), "The ref_copy_desc_ptr's opDesc is null, fusion failed."),
                       return FAILED);
     auto ref_desc_tmp = copy_var_node->GetOpDesc()->GetOutputDesc(0);
-    ref_copy_desc_ptr->UpdateInputDesc(0, ref_desc_tmp);
+    FUSION_PASS_CHECK(ref_copy_desc_ptr->UpdateInputDesc(0, ref_desc_tmp) != GRAPH_SUCCESS,
+                      OP_LOGE(kFusedOpType.c_str(), "UpdateInputDesc failed."), return FAILED);
     ref_copy_desc_ptr->SetName("Ref_" + copy_var_node->GetOpDesc()->GetName());
-    ge::AttrUtils::SetStr(ref_copy_desc_ptr, "ref_var_src_var_name", copy_var_node->GetOpDesc()->GetName());
+    // copy_var_node->GetOpDesc() would not be nullptr there
+    FUSION_PASS_CHECK(
+        !ge::AttrUtils::SetStr(ref_copy_desc_ptr, "ref_var_src_var_name", copy_var_node->GetOpDesc()->GetName()),
+        OP_LOGE(kFusedOpType.c_str(), "SetStr ref_var_src_var_name failed."), return FAILED);
     ge::NodePtr copy_ref_node = graph.AddNode(ref_copy_desc_ptr);
     FUSION_PASS_CHECK(copy_ref_node == nullptr,
                       OP_LOGE(kFusedOpType.c_str(), "The copy_ref_node is null, add node failed."), return FAILED);
 
     // create new momentum node, add 1th output for newmomentum node;
-    auto redy_desc = copy_ref_node->GetOpDesc()->GetInputDesc(0);
+    auto redy_op_desc = copy_ref_node->GetOpDesc();
+    FUSION_PASS_CHECK(redy_op_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "The redy_op_desc is null"),
+                      return FAILED);
+    auto redy_desc = redy_op_desc->GetInputDesc(0);
     auto old_desc = momentum_node->GetOpDesc();
     FUSION_PASS_CHECK(old_desc == nullptr,
                       OP_LOGE(kFusedOpType.c_str(), "The momentum_node's opDesc is null, fusion failed."),
@@ -273,37 +309,50 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     FUSION_PASS_CHECK(new_desc == nullptr,
                       OP_LOGE(kFusedOpType.c_str(), "New moment node's opDesc is null, fusion failed."), return FAILED);
     new_desc->SetType("FusedMulApplyMomentumExtern");
-    new_desc->AddOutputDesc("var_copy", redy_desc);
+    FUSION_PASS_CHECK(new_desc->AddOutputDesc("var_copy", redy_desc) != GRAPH_SUCCESS,
+                      OP_LOGE(kFusedOpType.c_str(), "AddOutputDesc failed."), return FAILED);
     ge::NodePtr new_node = graph.AddNode(new_desc);
     FUSION_PASS_CHECK(new_node == nullptr, OP_LOGE(kFusedOpType.c_str(), "The new_node is null, add node failed."),
                       return FAILED);
 
     // add in edges
     for (uint32_t i = 0; i < momentum_node->GetAllInDataAnchors().size(); i++) {
-      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(momentum_node->GetInDataAnchor(i)->GetPeerOutAnchor(),
-                                                new_node->GetInDataAnchor(i)) != SUCCESS,
+      auto momentum_node_in_data_anchor = momentum_node->GetInDataAnchor(i);
+      FUSION_PASS_CHECK(momentum_node_in_data_anchor == nullptr,
+                        OP_LOGE(kFusedOpType.c_str(), "The momentum_node_in_data_anchor is null"), return FAILED);
+      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(momentum_node_in_data_anchor->GetPeerOutAnchor(),
+                                                new_node->GetInDataAnchor(i)) != GRAPH_SUCCESS,
                         OP_LOGE(kFusedOpType.c_str(), "Fail to add input edge for new momentum_node."), return FAILED);
     }
 
     // add out edges
-    for (auto in_anchor : momentum_node->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
+    auto momentum_node_out_data_anchor = momentum_node->GetOutDataAnchor(0);
+    FUSION_PASS_CHECK(momentum_node_out_data_anchor == nullptr,
+                      OP_LOGE(kFusedOpType.c_str(), "The momentum_node_out_data_anchor is null"), return FAILED);
+    for (auto in_anchor : momentum_node_out_data_anchor->GetPeerInDataAnchors()) {
+      FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(kFusedOpType.c_str(), "The in_anchor is null, add node failed."),
+                        return FAILED);
       in_anchor->UnlinkAll();
-      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), in_anchor) != SUCCESS,
+      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(0), in_anchor) != GRAPH_SUCCESS,
                         OP_LOGE(kFusedOpType.c_str(), "Fail to add output[0] edge for new momentum_node."),
                         return FAILED);
     }
 
     // update 1th output of new momentum
-    new_node->GetOpDesc()->UpdateOutputDesc(1, redy_desc);
+    auto new_node_desc = new_node->GetOpDesc();
+    FUSION_PASS_CHECK(new_node_desc == nullptr, OP_LOGE(kFusedOpType.c_str(), "The new_node_desc is null."),
+                      return FAILED);
+    FUSION_PASS_CHECK(new_node_desc->UpdateOutputDesc(1, redy_desc) != GRAPH_SUCCESS,
+                      OP_LOGE(kFusedOpType.c_str(), "UpdateOutputDesc failed"), return FAILED);
     FUSION_PASS_CHECK(
-        ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(1), copy_ref_node->GetInDataAnchor(0)) != SUCCESS,
+        ge::GraphUtils::AddEdge(new_node->GetOutDataAnchor(1), copy_ref_node->GetInDataAnchor(0)) != GRAPH_SUCCESS,
         OP_LOGE(kFusedOpType.c_str(), "Fail to add output[1] edge for new momentum_node."), return FAILED);
 
     // deal in_control edge
     for (unsigned int i = 0; i < momentum_node->GetInControlAnchor()->GetPeerOutControlAnchors().size(); i++) {
       FUSION_PASS_CHECK(
-          SUCCESS != ge::GraphUtils::AddEdge(momentum_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
-                                             new_node->GetInControlAnchor()),
+          ge::GraphUtils::AddEdge(momentum_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
+                                  new_node->GetInControlAnchor()) != GRAPH_SUCCESS,
           OP_LOGE(kFusedOpType.c_str(),
                   "Add in_edge from fused node:%s's control index[%u] to fusion node:%s's control index failed.",
                   momentum_node->GetName().c_str(), i, new_node->GetName().c_str()),
@@ -314,7 +363,8 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
     for (unsigned int i = 0; i < momentum_node->GetOutControlAnchor()->GetPeerInControlAnchors().size(); i++) {
       FUSION_PASS_CHECK(
           ge::GraphUtils::AddEdge(new_node->GetOutControlAnchor(),
-                                  momentum_node->GetOutControlAnchor()->GetPeerInControlAnchors().at(i)) != SUCCESS,
+                                  momentum_node->GetOutControlAnchor()->GetPeerInControlAnchors().at(i)) !=
+              GRAPH_SUCCESS,
           OP_LOGE(kFusedOpType.c_str(),
                   "Add out_edge from fused node:%s's control index[%u] to fusion node:%s's control index failed.",
                   momentum_node->GetName().c_str(), i, new_node->GetName().c_str()),
@@ -323,12 +373,15 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
     // add dst edges for copy_var_node
     auto var_outanchor = var_node->GetOutDataAnchor(0);
+    FUSION_PASS_CHECK(var_outanchor == nullptr, OP_LOGE(kFusedOpType.c_str(), "The var_outanchor is null."),
+                      return FAILED);
     for (auto in_anchor : var_outanchor->GetPeerInDataAnchors()) {
+      FUSION_PASS_CHECK(in_anchor == nullptr, OP_LOGE(kFusedOpType.c_str(), "The in_anchor is null."), return FAILED);
       if (in_anchor->GetOwnerNode()->GetOpDesc()->GetType() == "Conv2D" ||
           in_anchor->GetOwnerNode()->GetOpDesc()->GetType() == "Conv2DBackpropInputD" ||
           in_anchor->GetOwnerNode()->GetOpDesc()->GetType() == "MatMul") {
         in_anchor->UnlinkAll();
-        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(copy_var_node->GetOutDataAnchor(0), in_anchor) != SUCCESS,
+        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(copy_var_node->GetOutDataAnchor(0), in_anchor) != GRAPH_SUCCESS,
                           OP_LOGE(kFusedOpType.c_str(), "Fail to add output edge for copy_var_node."), return FAILED);
       }
     }
@@ -350,7 +403,7 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
       momentum_node->GetOutControlAnchor()->UnlinkAll();
     }
 
-    FUSION_PASS_CHECK(graph.RemoveNode(momentum_node),
+    FUSION_PASS_CHECK(graph.RemoveNode(momentum_node) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "Remove node %s failed.", momentum_node->GetName().c_str()),
                       return FAILED);
     OP_LOGI(kFusedOpType.c_str(), "Copy refVar success!");

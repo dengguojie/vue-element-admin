@@ -19,16 +19,18 @@
  * \brief
  */
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
-
 Status TopKMappingFn(const Message* op_src, ge::Operator& op) {
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    return FAILED;
+  }
   int32_t dim = -1;
   op.SetAttr("dim", dim);
   bool largest = true;
   op.SetAttr("largest", largest);
-
   return SUCCESS;
 }
 

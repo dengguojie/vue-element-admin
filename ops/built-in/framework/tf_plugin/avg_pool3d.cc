@@ -19,13 +19,17 @@
  * \brief
  */
 #include "register/register.h"
+#include "op_log.h"
 
 namespace domi {
 
 // Replace ge ParseParams fuction to process graph conv2d node attrs
 Status ParseParamsAvgPool3D(const Message* op_src, ge::Operator& op) {
   // Convert original tf graph avg_pool3d attrs to GE graph attrs
-  AutoMappingFn(op_src, op);
+  if (AutoMappingFn(op_src, op) != SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
+    return FAILED;
+  }
 
   // Escape GE require attr [pads] check here
   std::vector<int32_t> padList = {0, 0, 0, 0, 0, 0};
