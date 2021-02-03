@@ -102,6 +102,7 @@ from .top_k_d import top_k_d
 from .top_k_v2_d import top_k_v2_d
 from .pad_d import pad_d
 from .split_d import split_d
+from .split_v import split_v
 from .strided_slice_grad import strided_slice_grad
 from .fill import fill
 from .drop_out_do_mask import drop_out_do_mask

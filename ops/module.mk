@@ -394,6 +394,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/pad_common.cc \
         built-in/op_tiling/pad_d.cc \
         built-in/op_tiling/split_d.cc \
+        built-in/op_tiling/split_v.cc \
         built-in/op_tiling/select.cc \
         built-in/op_tiling/bias_add.cc \
         built-in/op_tiling/bias_add_grad.cc \

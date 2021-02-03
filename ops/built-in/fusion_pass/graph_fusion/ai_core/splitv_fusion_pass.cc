@@ -34,6 +34,7 @@
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace ge;
 namespace fe {
@@ -69,15 +70,25 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   // build attr infos
   std::string fusionOpType = "SplitVD";
   std::vector<PassAttrInfo> splitvAttrInfo;
-  PassAttrInfo size_splits = {1, "size_splits", "SetListInt"};
-  splitvAttrInfo.push_back(size_splits);
-  PassAttrInfo split_dim = {2, "split_dim", "SetInt"};
-  splitvAttrInfo.push_back(split_dim);
-
   // get node
   ge::NodePtr fused_node1 = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fused_node1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed"),
                     return PARAM_INVALID);
+
+  ge::OpDescPtr fuseDesc1 = fused_node1->GetOpDesc();
+  FUSION_PASS_CHECK(fuseDesc1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "OpDesc of node1 is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  if (HasUnKnowDimShape(fused_node1)) {
+    FUSION_PASS_CHECK(CheckOpSupported(fuseDesc1), OP_LOGI(FUSED_NODE, "split_v dynamic shape supported"),
+                      return NOT_CHANGED);
+    OP_LOGI(FUSED_NODE, "CheckOpSupported fail, split_v dynamic");
+  }
+
+  PassAttrInfo size_splits = {1, "size_splits", "SetListInt"};
+  splitvAttrInfo.push_back(size_splits);
+  PassAttrInfo split_dim = {2, "split_dim", "SetInt"};
+  splitvAttrInfo.push_back(split_dim);
 
   // build a fusion node op desc
   OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(fused_node1, fusionOpType, splitvAttrInfo);
@@ -94,6 +105,7 @@ Status SplitVFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
     OP_LOGI(FUSED_OP_TYPE.c_str(), "SplitV has input which is not a constant, graph not changed.");
     return NOT_CHANGED;
   }
+  ClearOpInferDepends(fused_node1);
 
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),

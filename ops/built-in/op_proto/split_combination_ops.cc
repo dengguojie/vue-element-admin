@@ -281,89 +281,136 @@ static void CalcSplitV(const Tensor& data, const DataType& dtype, std::vector<in
   }
 }
 
-IMPLEMT_INFERFUNC(SplitV, SplitVInferShape) {
-  auto tensordesc = op.GetInputDesc("x");
-  auto shape = tensordesc.GetShape();
-  DataType inputDtype = tensordesc.GetDataType();
+IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
+  OP_LOGD(op.GetName().c_str(), "SplitV InferShape start");
+  const vector<string> depend_names = {"size_splits", "split_dim"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
+
+  auto x_desc = op.GetInputDesc("x");
+  auto x_shape = x_desc.GetShape();
+  DataType x_dtype = x_desc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
 
-  Tensor data2;
-  if (op.GetInputConstData("split_dim", data2) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [input_split_dim]");
-    OpsMissInputErrReport(op.GetName(), "split_dim");
+  int64_t num_split;
+  if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+    OpsGetAttrErrReport(op.GetName(), "num_split");
     return GRAPH_FAILED;
   }
-  DataType dtype2 = op.GetInputDesc("split_dim").GetDataType();
-  std::vector<int64_t> const_vec2;
-  CalcSplitV(data2, dtype2, const_vec2);
+  if (num_split <= 0) {
+    OP_LOGE(op.GetName().c_str(), "num_split must be greater than 0");
+    OpsAttrValueErrReport(op.GetName(), "num_split", "greater than 0", ConcatString(num_split));
+    return GRAPH_FAILED;
+  }
 
-  Tensor data1;
-  if (op.GetInputConstData("size_splits", data1) != GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "Get constValue failed of [input_size_splits]");
-    DataType dtype1 = op.GetInputDesc("input_size_splits").GetDataType();
-    std::vector<int64_t> const_vec1;
-    CalcSplitV(data1, dtype1, const_vec1);
-
-    int64_t split_dim = const_vec2[0];
-    std::vector<int64_t> size_splits(const_vec1);
-
-    int64_t num_split;
-    if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
-      OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
-      OpsGetAttrErrReport(op.GetName(), "num_split");
-      return GRAPH_FAILED;
-    }
-    if (split_dim < 0) {
-      split_dim += shape.GetDimNum();
-    }
-
+  // input x shape is [-2], aicpu
+  if (x_shape.GetDims() == UNKNOWN_RANK) {
+    td.SetShape(ge::Shape(UNKNOWN_RANK));
+    td.SetDataType(x_dtype);
     for (auto i = 0; i < num_split; ++i) {
-      shape.SetDim(split_dim, -1);
-      td.SetShape(shape);
-      td.SetDataType(inputDtype);
-      op.UpdateDynamicOutputDesc("y", i, td);
-    }
-    return GRAPH_SUCCESS;
-  } else {
-    DataType dtype1 = op.GetInputDesc("size_splits").GetDataType();
-    std::vector<int64_t> const_vec1;
-    CalcSplitV(data1, dtype1, const_vec1);
-
-    int64_t split_dim = const_vec2[0];
-    std::vector<int64_t> size_splits(const_vec1);
-
-    int64_t num_split;
-    if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
-      OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
-      OpsGetAttrErrReport(op.GetName(), "num_split");
-      return GRAPH_FAILED;
-    }
-    if (split_dim < 0) {
-      split_dim += shape.GetDimNum();
-    }
-
-    int64_t dim = shape.GetDim(split_dim);
-    int64_t size_splits_sum = 0;
-    for (size_t i = 0; i < size_splits.size(); ++i) {
-      if (size_splits[i] != -1) {
-        size_splits_sum += size_splits[i];
-      }
-    }
-    if (dim != size_splits_sum) {
-      for (size_t i = 0; i < size_splits.size(); ++i) {
-        if (size_splits[i] == -1) {
-          size_splits[i] = dim - size_splits_sum;
-        }
-      }
-    }
-    for (auto i = 0; i < num_split; ++i) {
-      shape.SetDim(split_dim, size_splits[i]);
-      td.SetShape(shape);
-      td.SetDataType(inputDtype);
       op.UpdateDynamicOutputDesc("y", i, td);
     }
     return GRAPH_SUCCESS;
   }
+
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  x_desc.GetShapeRange(x_shape_range);
+
+  Tensor split_dim_data;
+  Tensor size_splits_data;
+  if (op.GetInputConstData("split_dim", split_dim_data) != GRAPH_SUCCESS ||
+      op.GetInputConstData("size_splits", size_splits_data) != GRAPH_SUCCESS) {
+    // input split_dim or size_splits is not const
+    OP_LOGD(op.GetName().c_str(), "SplitVInferShape first");
+    for (size_t i = 0; i < x_shape_range.size(); ++i) {
+      x_shape.SetDim(i, -1);
+      out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[i].second));
+    }
+
+    td.SetShape(x_shape);
+    td.SetDataType(x_dtype);
+    td.SetShapeRange(out_range);
+    for (auto i = 0; i < num_split; ++i) {
+      op.UpdateDynamicOutputDesc("y", i, td);
+    }
+    OP_LOGD(op.GetName().c_str(), "SplitVInferShape end 1");
+    return GRAPH_SUCCESS;
+  }
+
+  auto xDimNum = x_shape.GetDimNum();
+  if (xDimNum <= 0) {
+    OP_LOGE(op.GetName().c_str(), "size of split_vec must be larger than 0");
+    OpsInputShapeErrReport(op.GetName(), "x dim num must be larger than 0",
+                           "dim num of x shape", ConcatString(xDimNum));
+    return GRAPH_FAILED;
+  }
+  int64_t split_dim = -1 - xDimNum;
+  auto split_dim_dtype = op.GetInputDesc("split_dim").GetDataType();
+  std::vector<int64_t> split_dim_vec;
+  CalcSplitV(split_dim_data, split_dim_dtype, split_dim_vec);
+
+  if (split_dim_vec.size() == 0) {
+    OP_LOGE(op.GetName().c_str(), "size of split_vec must be larger than 0");
+    OpsInputShapeErrReport(op.GetName(), "size of split_dim must be larger than 0",
+                           "size of split_dim", ConcatString(split_dim_vec.size()));
+    return GRAPH_FAILED;
+  }
+  split_dim = split_dim_vec[0];
+
+  if (split_dim < -xDimNum || split_dim >= xDimNum) {
+    OP_LOGE(op.GetName().c_str(), "split_dim is invalid");
+    string minValue = ConcatString(-xDimNum);
+    string maxValue = ConcatString(xDimNum - 1);
+    string excepted_value = ConcatString("in the range of[", minValue, ",", maxValue, "]");
+    OpsInputShapeErrReport(op.GetName(), "split_dim", excepted_value, ConcatString(split_dim));
+    return GRAPH_FAILED;
+  }
+  if (split_dim < 0) {
+    split_dim += xDimNum;
+  }
+
+  auto size_splits_dtype = op.GetInputDesc("size_splits").GetDataType();
+  std::vector<int64_t> size_splits_vec;
+  CalcSplitV(size_splits_data, size_splits_dtype, size_splits_vec);
+
+  std::vector<int64_t> size_splits(size_splits_vec);
+  if (std::count(size_splits.begin(), size_splits.end(), -1) > 1) {
+    OP_LOGE(op.GetName().c_str(), "the value of size_splits is invalid!");
+    InferShapeOtherErrReport(op.GetName(), "the value of size_splits is invalid!");
+    return GRAPH_FAILED;
+  }
+
+  int64_t dim = x_shape.GetDim(split_dim);
+  if (dim == -1) {
+    OP_LOGD(op.GetName().c_str(), "x shape at split_dim is -1");
+  } else {
+    if (std::find(size_splits.begin(), size_splits.end(), -1) != size_splits.end()) {
+      OP_LOGD(op.GetName().c_str(), "-1 is in size_splits");
+      int64_t size_splits_sum = 0;
+      int64_t temp_index = -1;
+      for (size_t i = 0; i < size_splits.size(); ++i) {
+        if (size_splits[i] != -1) {
+          size_splits_sum += size_splits[i];
+        } else {
+          temp_index = i;
+        }
+      }
+      if (dim != size_splits_sum && temp_index != -1) {
+        size_splits[temp_index] = dim - size_splits_sum;
+      }
+    }
+  }
+
+  for (auto i = 0; i < num_split; ++i) {
+    x_shape.SetDim(split_dim, size_splits[i]);
+    td.SetShape(x_shape);
+    td.SetDataType(x_dtype);
+    td.SetShapeRange(x_shape_range);
+    op.UpdateDynamicOutputDesc("y", i, td);
+  }
+  OP_LOGD(op.GetName().c_str(), "SplitVInferShape end 2");
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(SplitV, SplitVInferShape);
