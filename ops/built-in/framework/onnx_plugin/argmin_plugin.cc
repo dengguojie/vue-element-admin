@@ -37,7 +37,7 @@ Status ParseParamsArgMin(const Message *op_src, ge::Operator &op_dest) {
   }
 
   if (!has_axis) {
-    op_dest.SetAttr("dimension", (int64_t)0);
+    op_dest.SetAttr("dimension", static_cast<int64_t>(0));
     OP_LOGI("ArgMin", "use default dimension = 0.");
   }
   return SUCCESS;

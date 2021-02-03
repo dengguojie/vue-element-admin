@@ -63,6 +63,14 @@ Status AReduceAllFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   ge::NodePtr allNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(allNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "allNode is null, fusion failed."),
                     return PARAM_INVALID);
+  if (allNode->GetOpDesc() == nullptr) {
+      OP_LOGE("allNode get opdesc failed");
+      return FAILED;
+  }
+  if (allNode->GetOpDesc()->GetInputsSize() < 2) {
+      OP_LOGE("allNode input size not equal 2");
+      return FAILED;
+  }
 
   ge::GeTensorDesc tensor_input = allNode->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc axis_input = allNode->GetOpDesc()->GetInputDesc(1);

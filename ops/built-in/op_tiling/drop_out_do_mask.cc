@@ -56,10 +56,16 @@ bool DropOutDoMaskTiling(const std::string& op_type,
                          const nlohmann::json& op_info,
                          OpRunInfo& run_info) {
   using namespace ge;
+  if (op_paras.inputs.size() != 3 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
+      op_paras.inputs[2].tensor.empty()) {
+      OP_LOGE(op_type.c_str(), "inputs size is not 3 or some input are empty");
+      return false;
+  }
   const std::vector<int64_t>& var_shape = op_paras.inputs[0].tensor[0].shape;
   std::string input_dtype = op_paras.inputs[0].tensor[0].dtype;
 
-  int64_t var_num = var_shape.size() == 0 ? 1 : std::accumulate(var_shape.begin(), var_shape.end(), 1, std::multiplies<int64_t>());
+  int64_t var_num = var_shape.size() == 0 ? 1 : std::accumulate(var_shape.begin(), var_shape.end(),
+                                                                1, std::multiplies<int64_t>());
 
   int64_t core_num = 0;
   if (!GetDropOutDoMaskCompileParams(op_info, core_num)) {

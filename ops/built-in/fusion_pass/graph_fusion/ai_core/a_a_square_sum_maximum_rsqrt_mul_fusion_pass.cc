@@ -352,6 +352,10 @@ Status AASquareSumMaximumRsqrtMulFusionPass::Fusion(ge::ComputeGraph& graph, Map
       break;
     }
   }
+  FUSION_PASS_CHECK(rsqrtNode->GetOutDataAnchor(0) == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+                    "rsqrtNode get output failed."),
+                    return PARAM_INVALID);
+
   if (rsqrtNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (ge::InDataAnchorPtr &inAnchorPtr : rsqrtNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
       FUSION_PASS_CHECK(

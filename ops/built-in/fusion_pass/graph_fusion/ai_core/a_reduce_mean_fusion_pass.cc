@@ -62,6 +62,12 @@ Status AReduceMeanFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   FUSION_PASS_CHECK(meanNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "meanNode is null, fusion failed."),
                     return PARAM_INVALID);
 
+  FUSION_PASS_CHECK(meanNode->GetOpDesc() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(),
+                    "meanNode get output failed."),
+                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(meanNode->GetOpDesc()->GetInputsSize() < 2, OP_LOGE(FUSED_OP_TYPE.c_str(),
+                    "meanNode input size small than 2"),
+                    return PARAM_INVALID);
   ge::GeTensorDesc tensor_input = meanNode->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc axis_input = meanNode->GetOpDesc()->GetInputDesc(1);
 
@@ -93,6 +99,15 @@ Status AReduceMeanFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   for (size_t i = 0; i < const_data_size; ++i) {
     if (const_data[i] < 0) {
       const_data[i] = tensor_size + const_data[i];
+      if (const_data[i] > tensor_size){
+          OP_LOGE("const_data is not right");
+          return FAILED;
+      }
+    }else {
+        if(const_data[i] > tensor_size){
+            OP_LOGE("const_data is not right");
+            return FAILED;
+        }
     }
   }
 

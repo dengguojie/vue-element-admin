@@ -12,6 +12,7 @@
  */
 #include <iostream>
 #include "error_log.h"
+#include "op_log.h"
 
 #include "vector_tiling.h"
 
@@ -24,10 +25,13 @@ bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const 
 
     std::vector<int64_t> boardcast_bias_shape = op_info["_boardcast_bias_shape"];
 
-    CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
-    CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
-
+    if (op_paras.inputs.size() != 2 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {
+        OP_LOGE(op_type.c_str(), "inputs size is not 2 or some input are empty");
+        return false;
+    }
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
+    CHECK((boardcast_bias_shape.size() <= input_shape_x.size()),
+          "op [%s] : shape of boardcast_bias is lager than shape of x.", op_type.c_str());
 
     for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
         boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_x[i] : boardcast_bias_shape[i];

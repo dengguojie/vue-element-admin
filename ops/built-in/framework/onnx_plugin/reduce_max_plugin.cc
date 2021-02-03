@@ -21,7 +21,7 @@
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsReduceMax(const Message *op_src, ge::Operator &op_dest) {
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+  const NodeProto *node = dynamic_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
     OP_LOGE("ReduceMax", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
@@ -43,7 +43,7 @@ Status ParseParamsReduceMax(const Message *op_src, ge::Operator &op_dest) {
     }
   }
   if (v_axis.size() == 0){
-	  v_axis =	{};
+      v_axis = {};
   }
   op_dest.SetAttr("axes", v_axis);
   op_dest.SetAttr("keep_dims", keep_dims);
