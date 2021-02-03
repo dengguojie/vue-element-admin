@@ -997,7 +997,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddMatmulNode(ge::NodePtr dynamicRNNGradNo
   inputTensorDescXh.SetOriginFormat(ge::FORMAT_ND);
   ge::GeTensorDesc inputTensorDescXhTotal = inputTensorDescXh;
   FUSION_PASS_CHECK(dynamicRNNGradNode->GetOpDesc() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Get DynamicRnnGrad desc Failed, fusion failed."),
-                    return FAILED);
+                    failStatus = true);
   if ((n_value % 16) == 0 && dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0) == 1) {
     vector<int64_t> concat_dim_new = {concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(1),
                                       concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(2)};
