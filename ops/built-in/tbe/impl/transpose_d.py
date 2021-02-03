@@ -28,7 +28,7 @@ from te.platform import insn_cmd
 from te import tvm
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
-from te.utils.op_utils import *
+from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_common import write_code
 from impl.util.util_select_op_base import SplitInput
@@ -478,12 +478,11 @@ def _check_params(shape, perm, dtype):
     -------
     None
     """
-    check_shape(shape, param_name="input_x")
+    para_check.check_shape_size(shape)
     len_shape = len(shape)
     if len(shape) != len(perm):
         error_detail = "length of perm must be equal to the length of shape"
-        error_manager_vector.raise_err_two_input_shape_invalid("transpose_d", "input_x", \
-                                                               "perm", error_detail)
+        error_manager_vector.raise_err_two_input_shape_invalid("transpose_d", "input_x", "perm", error_detail)
 
     list_range = list(range(len_shape))
     list_perm = list(perm[:])
@@ -495,7 +494,7 @@ def _check_params(shape, perm, dtype):
     check_list = ("int8", "int16", "int32", "int64",
                   "uint8", "uint16", "uint32", "uint64",
                   "float16", "float32")
-    check_dtype(dtype, check_list, param_name="input_x")
+    para_check.check_dtype(dtype, check_list, param_name="input_x")
 
 
 def _add_last_axis(shape, perm, dtype):
@@ -23614,6 +23613,16 @@ def _check_side_one(shape, perm, shape_res):
             shape_res_new = _get_perm_shape(shape_new, perm_new)
             return shape_new, perm_new, shape_res_new
 
+    if perm == [0, 1, 3, 4, 2]:
+        tmp_perm = [0, 2, 3, 1]
+        tmp_shape = [shape[0] * shape[1]] + shape[2:]
+        if tmp_shape[1] == 1 or tmp_shape[2] * tmp_shape[3] == 1:
+            return _update_shape_side_one(tmp_shape)
+        else:
+            shape_new, perm_new = _update_shape_perm(tmp_shape, tmp_perm)
+            shape_res_new = _get_perm_shape(shape_new, perm_new)
+            return shape_new, perm_new, shape_res_new
+
     return shape, perm, shape_res
 
 
@@ -23916,7 +23925,8 @@ def check_supported(input_x, output_y, perm, kernel_name="transpose_d"):
 
 
 # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def transpose_d(input_x, output_y, perm, kernel_name="transpose_d"):
     """
     algorithm: transpose
