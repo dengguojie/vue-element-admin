@@ -79,7 +79,8 @@ from .api import cce_build_code
 from .api import auto_schedule
 from .api import pooling3d_max_grad_grad
 
-from .te_compute.common import cast_to_round, calculate_one_or_zero
+from .te_compute.common import cast_to_round
+from .te_compute.common import calculate_one_or_zero
 from .te_compute.conv_compute import conv
 from .te_compute.conv_compute import ConvParam
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
@@ -91,7 +92,8 @@ from .te_compute.conv_compute import conv_compress
 from .te_compute.conv_compute import is_support_v200
 from .te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from .te_compute.max_pool2d_3_2_fusion_compute import max_pool_compute
-from .te_compute.dim_conv import compute_four2five, compute_five2four
+from .te_compute.dim_conv import compute_four2five
+from .te_compute.dim_conv import compute_five2four
 from .te_compute import util
 from .te_compute.mmad_compute import matmul
 from .te_compute.mmad_compute import get_matmul_performance_format

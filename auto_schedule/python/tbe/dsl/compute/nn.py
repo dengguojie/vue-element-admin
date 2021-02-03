@@ -45,7 +45,6 @@ NAME_INDEX = [0]
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vmaddrelu(tensor_0, tensor_1, tensor_2):
     """
@@ -59,6 +58,13 @@ def vmaddrelu(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : relu(tensor_0*tensor_2 + tensor_1)
     """
+    if not isinstance(tensor_1, tvm.tensor.Tensor):
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The second input type must be [%s], " \
+                                      "while type is [%s]" % (
+                                      'tvm.tensor', type(tensor_1))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     if not isinstance(tensor_2, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -194,7 +200,6 @@ def vsubrelu(lhs, rhs):
 
 
 @source_info_decorator()
-@_auto_cast_of_elewise
 @dtype_check_decorator
 def vrelu(raw_tensor):
     """

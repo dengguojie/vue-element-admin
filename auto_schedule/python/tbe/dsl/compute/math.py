@@ -1418,6 +1418,13 @@ def vaxpy(lhs, rhs, scalar):
     -------
     wrapped_tensor : max(lhs , rhs)
     """
+    if not isinstance(rhs, tvm.tensor.Tensor):
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The second input type must be [%s], " \
+                                      "while type is [%s]" \
+                                      % ('tvm.tensor', type(rhs))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     if isinstance(scalar, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -1956,6 +1963,12 @@ def vmla(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : X*tensor_1 + tensor_2
     """
+    if not isinstance(tensor_1, tvm.tensor.Tensor):
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The second input type must be [%s], " \
+                                      "while type is [%s]" % ('tvm.tensor', type(tensor_1))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     if not isinstance(tensor_2, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -1981,6 +1994,13 @@ def vmadd(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : tensor_0*tensor_2 + tensor_1
     """
+    if not isinstance(tensor_1, tvm.tensor.Tensor):
+        dict_args = dict()
+        dict_args["errCode"] = "E90001"
+        dict_args["detailed_cause"] = "The second input type must be [%s], " \
+                                      "while type is [%s]" % (
+                                      'tvm.tensor', type(tensor_1))
+        raise RuntimeError(dict_args, get_error_message(dict_args))
     if not isinstance(tensor_2, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
