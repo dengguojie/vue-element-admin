@@ -811,17 +811,26 @@ IMPLEMT_COMMON_INFERFUNC(ReduceProdDInferShape) {
 COMMON_INFER_FUNC_REG(ReduceProdD, ReduceProdDInferShape);
 // ----------------ReduceProdD END-------------------
 
-// ----------------ReduceMean Op-------------------
+// ----------------ReduceMean Op-----------
 IMPLEMT_COMMON_INFERFUNC(ReduceMeanInferShape) {
-  OP_LOGD(op.GetName().c_str(), "Enter ReduceMeanInferShape");
-  if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+    std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
+    if (prof_switch) {
+        before_infer = std::chrono::steady_clock::now();
+    }
+    OP_LOGD(op.GetName().c_str(), "Enter ReduceMeanInferShape");
+    if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
+        if (prof_switch) {
+            after_infer = std::chrono::steady_clock::now();
+            auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+        }
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(ReduceMean, ReduceMeanInferShape);
-// ----------------ReduceMean END-------------------
+// ----------------ReduceMean END-----------
 
 // ----------------ReduceMeanD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMeanDInferShape) {
@@ -1372,43 +1381,43 @@ IMPLEMT_COMMON_INFERFUNC(ReduceMaxDInferShape) {
 COMMON_INFER_FUNC_REG(ReduceMaxD, ReduceMaxDInferShape);
 // ----------------ReduceMaxD END-------------------
 
-// ----------------ReduceMin Op-------------------
+// ----------------ReduceMin Op-----------
 IMPLEMT_COMMON_INFERFUNC(ReduceMinInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceMin proto inferfunction!");
-  ge::TensorDesc result_desc;
-  if (!InferReduceShape(op, "x", "axes", "keep_dims", result_desc)) {
+    std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
+    if (prof_switch) {
+        before_infer = std::chrono::steady_clock::now();
+    }
+    OP_LOGD(op.GetName().c_str(), "Enter ReduceMinInferShape");
+    if (InferReduceShapeProcess(op, "x", "axes", "keep_dims")) {
+        if (prof_switch) {
+            after_infer = std::chrono::steady_clock::now();
+            auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+        }
+        return GRAPH_SUCCESS;
+    }
     return GRAPH_FAILED;
-  }
-  auto shape = result_desc.GetShape();
-  auto dtype = result_desc.GetDataType();
-
-  // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(shape);
-  output_desc.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("y", output_desc);
-  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ReduceMin, ReduceMinInferShape);
-// ----------------ReduceMin END-------------------
+// ----------------ReduceMin END-----------
 
 // ----------------ReduceMinD Op-------------------
 IMPLEMT_COMMON_INFERFUNC(ReduceMinDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ReduceMinD proto inferfunction!");
-  ge::TensorDesc result_desc;
-  if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
+    std::chrono::time_point<std::chrono::steady_clock> before_infer, after_infer;
+    if (prof_switch) {
+        before_infer = std::chrono::steady_clock::now();
+    }
+    OP_LOGD(op.GetName().c_str(), "Enter ReduceMinDInferShape");
+    if (InferReduceDShapeProcess(op, "x", "axes", "keep_dims")) {
+        if (prof_switch) {
+            after_infer = std::chrono::steady_clock::now();
+            auto t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_infer - before_infer).count();
+            GEEVENT("[REDUCE_INFER_PROF] op[%s]: total: %d(us)", op.GetName().c_str(), static_cast<int>(t0));
+        }
+        return GRAPH_SUCCESS;
+    }
     return GRAPH_FAILED;
-  }
-  auto shape = result_desc.GetShape();
-  auto dtype = result_desc.GetDataType();
-
-  // update output desc
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(shape);
-  output_desc.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("y", output_desc);
-  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ReduceMinD, ReduceMinDInferShape);

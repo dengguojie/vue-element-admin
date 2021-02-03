@@ -47,6 +47,8 @@ from .muls import muls
 from .reduce_sum import reduce_sum
 from .reduce_sum_d import reduce_sum_d
 from .reduce_max_d import reduce_max_d
+from .reduce_mean import reduce_mean
+from .reduce_min import reduce_min
 from .reduce_mean_d import reduce_mean_d
 from .conv2d import conv2d
 from .conv3d import conv3d
