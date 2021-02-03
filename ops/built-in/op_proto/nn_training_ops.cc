@@ -830,10 +830,16 @@ IMPLEMT_VERIFIER(DataFormatDimMap, DataFormatDimMapVerify) {
   OP_LOGI(op.GetName().c_str(), "the op verify success");
   return GRAPH_SUCCESS;
 }
-
 VERIFY_FUNC_REG(DataFormatDimMap, DataFormatDimMapVerify);
-COMMON_INFER_FUNC_REG(DataFormatDimMap, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 
+IMPLEMT_COMMON_INFERFUNC(DataFormatDimMapInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter DataFormatDimMapInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(DataFormatDimMap, DataFormatDimMapInferShape);
 // ----------------DataFormatDimMap End-------------------
 
 // ----------------ApplyProximalAdagrad Op-------------------

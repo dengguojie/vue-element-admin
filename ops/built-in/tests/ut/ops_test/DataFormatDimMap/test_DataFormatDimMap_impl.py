@@ -22,6 +22,7 @@ case2 = {"params": [{"shape": (1,2), "dtype": "int32", "format": "NCHW", "ori_sh
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 
+# pylint: disable=unused-argument
 def calc_expect_func(x, y, src, dst):
     input_Arr = x['value']
     shape = x['shape']

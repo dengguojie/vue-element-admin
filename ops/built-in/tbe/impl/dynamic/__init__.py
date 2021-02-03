@@ -167,3 +167,4 @@ from .reciprocal_grad import reciprocal_grad
 from .not_equal import not_equal
 from .erf import erf
 from .erfc import erfc
+from .data_format_dim_map import data_format_dim_map
