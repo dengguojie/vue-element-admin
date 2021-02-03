@@ -15,22 +15,19 @@
 """
 mod
 """
-import te.lang.cce
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te import platform as tbe_platform
-from topi import generic
-from topi.cce import util
-from te.utils.op_utils import *
+import te.platform as tbe_platform
 import te.lang.cce as tbe
 import te.lang.base as tbe_base
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
-
+from te.utils import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@fusion_manager.register("mod")
+@register_operator_compute("Mod", op_mode="dynamic", support_fusion=False)
 def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
     """
     Returns element-wise remainder of division.
@@ -55,50 +52,52 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
     res: TVM tensor
         output tensor. Has the same type as "input_x".
     """
-    shape_x = te.lang.cce.util.shape_to_list(input_x.shape)
-    shape_y = te.lang.cce.util.shape_to_list(input_y.shape)
+    shape_x = tbe.util.shape_to_list(input_x.shape)
+    shape_y = tbe.util.shape_to_list(input_y.shape)
     dtype = input_x.dtype.lower()
 
     has_improve_precision = False
     if dtype != "float32" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
-        input_x = te.lang.cce.cast_to(input_x, "float32")
-        input_y = te.lang.cce.cast_to(input_y, "float32")
+            tbe_platform.cce_conf.api_check_support("tbe.vdiv", "float32"):
+        input_x = tbe.cast_to(input_x, "float32")
+        input_y = tbe.cast_to(input_y, "float32")
         has_improve_precision = True
 
     if list(shape_x) != list(shape_y):
-        shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x, shape_y,
-                                                             param_name_input1="input_x",
-                                                             param_name_input2="input_y")
-        input_x = te.lang.cce.broadcast(input_x, shape_broadcast, "float32")
-        input_y = te.lang.cce.broadcast(input_y, shape_broadcast, "float32")
+        shape_x, shape_y, shape_broadcast = shape_util.broadcast_shapes(shape_x, shape_y,
+                                                                        param_name_input1="input_x",
+                                                                        param_name_input2="input_y")
+        input_x = tbe.broadcast(input_x, shape_broadcast, "float32")
+        input_y = tbe.broadcast(input_y, shape_broadcast, "float32")
     else:
         shape_broadcast = shape_x
 
-    data_div = te.lang.cce.vdiv(input_x, input_y)
-    data_zero = te.lang.cce.broadcast(tvm.const(0, "float32"), shape_broadcast,
-                                      "float32")
-    data_div_min = te.lang.cce.vmin(data_div, data_zero)
-    data_div_max = te.lang.cce.vmax(data_div, data_zero)
-    data_div_max_floor = te.lang.cce.floor(data_div_max)
-    data_div_min_ceil = te.lang.cce.ceil(data_div_min)
+    data_div = tbe.vdiv(input_x, input_y)
+    data_zero = tbe.broadcast(tvm.const(0, "float32"), shape_broadcast, "float32")
+    data_div_min = tbe.vmin(data_div, data_zero)
+    data_div_max = tbe.vmax(data_div, data_zero)
+    data_div_max_floor = tbe.floor(data_div_max)
+    data_div_min_ceil = tbe.ceil(data_div_min)
 
     if dtype != "int32" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
-        data_div_max_floor = te.lang.cce.cast_to(data_div_max_floor, "float32")
-        data_div_min_ceil = te.lang.cce.cast_to(data_div_min_ceil, "float32")
+            tbe_platform.cce_conf.api_check_support("tbe.vmul", "float32"):
+        data_div_max_floor = tbe.cast_to(data_div_max_floor, "float32")
+        data_div_min_ceil = tbe.cast_to(data_div_min_ceil, "float32")
 
-    data_div_res = te.lang.cce.vadd(data_div_max_floor, data_div_min_ceil)
-    data_mul = te.lang.cce.vmul(data_div_res, input_y)
-    res = te.lang.cce.vsub(input_x, data_mul)
+    data_div_res = tbe.vadd(data_div_max_floor, data_div_min_ceil)
+    data_div_res = tbe.cast_to(data_div_res, input_y.dtype.lower())
+    data_mul = tbe.vmul(data_div_res, input_y)
+    res = tbe.vsub(input_x, data_mul)
 
     if has_improve_precision:
-        res = te.lang.cce.cast_to(res, dtype)
+        res = tbe.cast_to(res, dtype)
 
     return res
 
 
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@register_operator("Mod")
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def mod(input_x, input_y, output_z, kernel_name="mod"):
     """
     Returns element-wise remainder of division.
@@ -120,11 +119,11 @@ def mod(input_x, input_y, output_z, kernel_name="mod"):
     Returns:
     None
     """
-    util.compare_tensor_dict_key(input_x, input_y, "dtype")
+    shape_util.compare_tensor_dict_key(input_x, input_y, "dtype")
 
     check_list = ("float16", "float32", "int8", "uint8", "int32")
     input_dtype = input_x.get("dtype").lower()
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
     schedule, tensors = [], []
@@ -132,10 +131,7 @@ def mod(input_x, input_y, output_z, kernel_name="mod"):
     for (input_x, input_y) in ins:
         with tbe_base.compute():
             shape_x, shape_y = shape_util.variable_shape([input_x, input_y], support_broadcast=True)
-            shape_x, shape_y, shape_broadcast = broadcast_shapes(shape_x,
-                                                                 shape_y,
-                                                                 param_name_input1="input_x",
-                                                                 param_name_input2="input_y")
+            reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
             data_x = tvm.placeholder(reshape_x, dtype=input_dtype, name="data_x")
             data_y = tvm.placeholder(reshape_y, dtype=input_dtype, name="data_y")
             res = mod_compute(data_x, data_y, output_z, kernel_name="mod")
