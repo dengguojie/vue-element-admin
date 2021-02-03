@@ -35,6 +35,7 @@ W_DELTA = 1
 H_LEN = 400
 W_LEN = 400
 NHW_RANGE_LEN = 6
+MAX_RANGE = 2**31 - 1
 
 class CubeTilingOp:
     def __init__(self, tiling_info, dynamic_mode, var_map=None):
@@ -356,6 +357,19 @@ class TilingSelection:
                                                          seed_area)]
         tgt_area = tuple(tgt_area[0] + tgt_area[1] + tgt_area[2])
         candidates = {}
+
+        # for default tiling
+        tiling_cases = []
+        if None in tgt_area and self.op.op_type == "convolution_3d":
+            tgt_area = [i if i else MAX_RANGE for i in tgt_area]
+            cur_seed = next(self.seed_cnt)
+            default_tiling = self.op.get_default_tiling()
+            tiling_cases.append(
+                self.op.assembly_case(default_tiling, tgt_area, cur_seed))
+            add_compile_info("repo_range", {cur_seed: tgt_area})
+            add_compile_info("repo_seeds", {cur_seed: [tgt_area[0], tgt_area[2], tgt_area[4]]})
+            return tiling_cases
+
         repo_seeds = self.op.get_repo_tiling()
         seed_points = set()
 
@@ -405,6 +419,18 @@ class TilingSelection:
         tiling_cases = []
         tiling_seeds = self.op.get_repo_tiling()
         repo_seeds = {}
+
+        # for default tiling
+        if None in batch_range and self.op.op_type == "convolution_3d":
+            batch_range = [batch_range[0], MAX_RANGE]
+            print("tgt area is ",tgt_area)
+            cur_seed = next(self.seed_cnt)
+            default_tiling = self.op.get_default_tiling()
+            tiling_cases.append(
+                self.op.assembly_case(default_tiling, batch_range, cur_seed))
+            add_compile_info("tiling_range", {cur_seed: batch_range})
+            add_compile_info("repo_seeds", repo_seeds)
+            return tiling_cases
 
         # call cost model
         if not tiling_seeds:

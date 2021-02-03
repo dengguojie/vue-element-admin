@@ -122,6 +122,65 @@ class Conv3dTiling(CubeTilingOp):
         tiling = get_tiling(self.tiling_info)[0]
         return tiling
 
+    def get_default_tiling(self):
+        """
+        get default tiling
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        default tiling
+        """
+
+        def _handle_block_dim():
+            """
+            avoid cyclomatic complexity, handle block_dim
+            """
+            tiling["block_dim"] = [1, 1, 1, 1]
+            device_core_num = tbe_platform.cce_conf.get_soc_spec("CORE_NUM")
+            if (self.a_info[0] > 1) and (device_core_num > 1):
+                if self.a_info[0] <= device_core_num:
+                    tiling["block_dim"][0] = self.a_info[0]
+                else:
+                    for i in range(device_core_num, 0, -1):
+                        if self.a_info[0] % i == 0:
+                            break
+                    tiling["block_dim"][0] = i
+            else:
+                tiling["block_dim"][0] = 1
+
+        _, _, _, filter_h, filter_w, _ = self.b_info
+        tiling = {}
+        tiling_m = 1
+        tiling_k = 1
+        tiling_n = 1
+        tiling["AL1_shape"] = [filter_h * filter_w * utils.FP16_K, 1, 1, 1]
+        tiling["BL1_shape"] = None
+        tiling["AL0_matrix"] = [tiling_m, tiling_k, utils.FP16_M, utils.FP16_K, 1, 1]
+        tiling["BL0_matrix"] = [tiling_k, tiling_n, utils.FP16_N, utils.FP16_K, 1, 1]
+        tiling["CL0_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
+        tiling["CUB_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
+        tiling["AUB_shape"] = tiling["AL1_shape"]
+        tiling["BUB_shape"] = None
+        tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1,
+                                            'BL1_pbuffer': 1,
+                                            'AL0_pbuffer': 1,
+                                            'BL0_pbuffer': 1,
+                                            'CL0_pbuffer': 1,
+                                            'CUB_pbuffer': 1,
+                                            'UBG_pbuffer': 1,
+                                            'AUB_pbuffer': 1}
+        tiling["A_overhead_opt_flag"] = False
+        tiling["B_overhead_opt_flag"] = False
+        tiling["CUB_channel_wise_flag"] = True
+        tiling["n_bef_batch_flag"] = False
+        _handle_block_dim()
+
+        return tiling
+
     def schedule_handle(self, block_dims, tiling):
         # calculate the actual block_dim_m in the dynamic batch
         out_img_shape = self._get_output_h(self.a_info[3])*self._get_output_w(self.a_info[4])
@@ -139,9 +198,9 @@ class Conv3dTiling(CubeTilingOp):
     def assembly_case(self, tiling, coverage, cnt):
         var_range = OrderedDict()
         if self.dynamic_mode == "dynamic_dhw":
-            var_range['fmap_d'] = (int(coverage[0]), int(coverage[1]))
-            var_range['fmap_h'] = (int(coverage[2]), int(coverage[3]))
-            var_range['fmap_w'] = (int(coverage[4]), int(coverage[5]))
+            var_range['fmap_d'] = (int(coverage[0]), coverage[1])
+            var_range['fmap_h'] = (int(coverage[2]), coverage[3])
+            var_range['fmap_w'] = (int(coverage[4]), coverage[5])
             var_range['d_out'] = (self._get_output_d(var_range['fmap_d'][0]),
                                self._get_output_d(var_range['fmap_d'][1]))
             var_range['h_out'] = (self._get_output_h(var_range['fmap_h'][0]),
@@ -150,7 +209,7 @@ class Conv3dTiling(CubeTilingOp):
                                self._get_output_w(var_range['fmap_w'][1]))
 
         elif self.dynamic_mode == "dynamic_batch":
-            var_range['batch_n'] = (int(coverage[0]), int(coverage[1]))
+            var_range['batch_n'] = (int(coverage[0]), coverage[1])
 
         block_dim_multi = tiling["BUB_shape"][0] if tiling["BUB_shape"] else 1
         block_dims = block_dim_multi *\
@@ -199,18 +258,24 @@ class Conv3dTiling(CubeTilingOp):
         self.k_w_dilation = (self.k_w - 1) * self.dilation_w + 1
 
     def _get_output_d(self, d_in):
+        if not d_in:
+            return None
         if self.pad_mode == "VAR":
             return utils.icd(d_in, self.stride_d)
         return (d_in + self.padf + self.padb - self.dilation_d *
                 (self.k_d - 1) - 1) // self.stride_d + 1
 
     def _get_output_h(self, h_in):
+        if not h_in:
+            return None
         if self.pad_mode == "VAR":
             return utils.icd(h_in, self.stride_h)
         return (h_in + self.padu + self.padd - self.dilation_h *
                 (self.k_h - 1) - 1) // self.stride_h + 1
 
     def _get_output_w(self, w_in):
+        if not w_in:
+            return None
         if self.pad_mode == "VAR":
             return utils.icd(w_in, self.stride_w)
         return (w_in + self.padl + self.padr - self.dilation_w *

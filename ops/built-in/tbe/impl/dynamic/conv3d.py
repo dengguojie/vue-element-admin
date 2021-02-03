@@ -438,20 +438,50 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
     if -1 in pads:
         # calculate output range for pad is SAME
         y_d_lower = _ceil(fmap_range_d[0], strides[0])
-        y_d_upper = _ceil(fmap_range_d[1], strides[0])
+        if fmap_range_d[1]:
+            y_d_upper = _ceil(fmap_range_d[1], strides[0])
+        else:
+            y_d_upper = None
         y_h_lower = _ceil(fmap_range_h[0], strides[1])
-        y_h_upper = _ceil(fmap_range_h[1], strides[1])
+        if fmap_range_h[1]:
+            y_h_upper = _ceil(fmap_range_h[1], strides[1])
+        else:
+            y_h_upper = HW_MAX
         y_w_lower = _ceil(fmap_range_w[0], strides[2])
-        y_w_upper = _ceil(fmap_range_w[1], strides[2])
+        if fmap_range_w[1]:
+            y_w_upper = _ceil(fmap_range_w[1], strides[2])
+        else:
+            y_w_upper = HW_MAX
         pad_check_load2d_flag = True
     else:
         # calcaulate output range for pad is list
         y_d_lower = _get_output(fmap_range_d[0], w_d, (pads[0], pads[1]), strides[0])
-        y_d_upper = _get_output(fmap_range_d[1], w_d, (pads[0], pads[1]), strides[0])
+        if y_d_lower < 1:
+            fmap_range_d_lower = min(w_d, fmap_range_d[1]) if fmap_range_d[1] else w_d
+            fmap_range_d = (fmap_range_d_lower, fmap_range_d[1])
+            y_d_lower = _get_output(fmap_range_d[0], w_d, (pads[0], pads[1]), strides[0])
+        if fmap_range_d[1]:
+            y_d_upper = _get_output(fmap_range_d[1], w_d, (pads[0], pads[1]), strides[0])
+        else:
+            y_d_upper = None
         y_h_lower = _get_output(fmap_range_h[0], w_h, (pads[2], pads[3]), strides[1])
-        y_h_upper = _get_output(fmap_range_h[1], w_h, (pads[2], pads[3]), strides[1])
+        if y_h_lower < 1:
+            fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
+            fmap_range_h = (fmap_range_h_lower, fmap_range_h[1])
+            y_h_lower = _get_output(fmap_range_h[0], w_h, (pads[2], pads[3]), strides[1])
+        if fmap_range_h[1]:
+            y_h_upper = _get_output(fmap_range_h[1], w_h, (pads[2], pads[3]), strides[1])
+        else:
+            y_h_upper = HW_MAX
         y_w_lower = _get_output(fmap_range_w[0], w_w, (pads[4], pads[5]), strides[2])
-        y_w_upper = _get_output(fmap_range_w[1], w_w, (pads[4], pads[5]), strides[2])
+        if y_w_lower < 1:
+            fmap_range_w_lower = min(w_w, fmap_range_w[1]) if fmap_range_w[1] else w_w
+            fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
+            y_w_lower = _get_output(fmap_range_w[0], w_w, (pads[4], pads[5]), strides[2])
+        if fmap_range_w[1]:
+            y_w_upper = _get_output(fmap_range_w[1], w_w, (pads[4], pads[5]), strides[2])
+        else:
+            y_w_upper = HW_MAX
         pad_check_load2d_flag = True if sum(pads) == 0 else False
 
     if y_d_lower < 1:
@@ -474,16 +504,17 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
     if load2d_pass_flag or only_fhkh_pass_flag or fhkh_fwkw_pass_flag:
         pass
     else:
-        if y_w_lower < 2:
-            # Chip Design demand w_out must >=2
-            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand w_out must >=2')
+        if y_w_lower < 1:
+            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand w_out must >=1')
 
-        if y_h_lower < 2:
-            # Chip Design demand h_out must >=2
-            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand h_out must >=2')
+        if y_h_lower < 1:
+            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand h_out must >=1')
+    out_range = [fmap_range[0], (y_d_lower, y_d_upper), (w_n, w_n),
+                 (y_h_lower, y_h_upper), (y_w_lower, y_w_upper)]
+    fmap_range = [fmap_range_n, fmap_range_d, fmap_range_c,
+                  fmap_range_h, fmap_range_w]
 
-    return [fmap_range[0], (y_d_lower, y_d_upper), (w_n,w_n),
-            (y_h_lower, y_h_upper), (y_w_lower, y_w_upper)]
+    return out_range, fmap_range
 
 
 def _check_const_dim(dim_value):
@@ -550,18 +581,29 @@ def _check_dynamic_mode(in_shape, w_shape):
     return dynamic_mode
 
 
-def _check_variable_range(variable, mini, maxi=MAX_SHAPE_NUM, name=None):
+def _check_variable_range(range_i, mini, maxi=MAX_SHAPE_NUM, name=None):
     """
     check variable range
 
     """
-    if (not isinstance(variable, int)) or variable < mini or variable > maxi:
+
+    if (not isinstance(range_i[0], int)) or range_i[0] < mini or range_i[0] > maxi:
         dict_args = dict()
         dict_args["errCode"] = "E65006"
         dict_args["op_name"] = 'dynamic conv3d'
         dict_args["range"] = "[{},{}]".format(mini, maxi)
         dict_args["attr_name"] = name
-        dict_args["value"] = str(variable)
+        dict_args["value"] = str(range_i[0])
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+
+    if range_i[1] and ((not isinstance(range_i[1], int)) or range_i[1] < mini or \
+                        range_i[1] > maxi):
+        dict_args = dict()
+        dict_args["errCode"] = "E65006"
+        dict_args["op_name"] = 'dynamic conv3d'
+        dict_args["range"] = "[{},{}]".format(mini, maxi)
+        dict_args["attr_name"] = name
+        dict_args["value"] = str(range_i[1])
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
@@ -681,7 +723,8 @@ def _check_and_config_para(fmap,
 
     _common_check(shape_filter, stride_dhw)
     # calculate out_range
-    out_range = _get_out_range(fmap_range, shape_filter, pads, stride_dhw, dilation_dhw)
+    out_range, fmap_range = _get_out_range(fmap_range, shape_filter, pads,
+                                           stride_dhw, dilation_dhw)
     # calculate group parameter
     group_dict = util_common.calculate_group(shape_fm[1], shape_filter[0],
                                              groups, cout0, cin0)
@@ -692,14 +735,11 @@ def _check_and_config_para(fmap,
                         out_range)
     batch_range, d_range, _, h_range, w_range = fmap_range
     _, do_range, _, ho_range, wo_range = out_range
-    _check_variable_range(h_range[0], HW_MIN, HW_MAX, "fmap_h")
-    _check_variable_range(h_range[1], HW_MIN, HW_MAX, "fmap_h")
-    _check_variable_range(w_range[0], HW_MIN, HW_MAX, "fmap_w")
-    _check_variable_range(w_range[1], HW_MIN, HW_MAX, "fmap_w")
+    _check_variable_range(h_range, HW_MIN, HW_MAX, "fmap_h")
+    _check_variable_range(w_range, HW_MIN, HW_MAX, "fmap_w")
     name_lis = ['fmap_batch', 'fmap_d', 'fmap_c']
     for index, dim_range in enumerate(fmap_range[:3]):
-        _check_variable_range(dim_range[0], 1, name=name_lis[index])
-        _check_variable_range(dim_range[1], 1, name=name_lis[index])
+        _check_variable_range(dim_range, 1, name=name_lis[index])
 
     config_dict = {
         "shape_fm": shape_fm,
