@@ -189,20 +189,19 @@ IMPLEMT_INFERFUNC(FFT, FFTInfer) {
 INFER_FUNC_REG(FFT, FFTInfer);
 
 IMPLEMT_INFERFUNC(IFFT2D, IFFT2DInfer) {
-  const char *op_name = op.GetName().c_str();
-  Shape out;
-  if (WithRankAtLeast(op.GetInputDesc(0), 2, out, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name, "Input out rank must be at least 2.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+
+  GeShape out;
+  if (WithRankAtLeast(x_desc, 2, out) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input rank must be at least 2.");
     return GRAPH_FAILED;
   }
-  DataType type = op.GetInputDesc(0).GetDataType();
-  TensorDesc y_desc = op.GetOutputDesc(0);
-  y_desc.SetShape(Shape(out));
-  y_desc.SetDataType(type);
-  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name, "Fail to update output.");
-    return GRAPH_FAILED;
-  }
+  DataType type = x_desc->GetDataType();
+
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(out);
+  y_desc->SetDataType(type);
 
   return GRAPH_SUCCESS;
 }
