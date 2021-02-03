@@ -97,8 +97,10 @@ void TbeConv2dWrtselStridewrtPass::DelSplitInfoByAxis(std::vector<AxisSplitMap> 
     bool del_axis = false;
     auto input_split_infos = (*it).GetInputSplitInfoVec();
     for (auto input_split_info : input_split_infos) {
-      if (input_split_info.GetAxis()[0] == axis) {
-        del_axis = true;
+      if (!input_split_info.GetAxis().empty()) {
+        if (input_split_info.GetAxis()[0] == axis) {
+          del_axis = true;
+        }
       }
     }
     if (!del_axis) {
@@ -143,6 +145,10 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
   OpCalcInfo op_calc_info;
   GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
   auto split_maps = op_calc_info.GetAxisSplitMapVec();
+  if (split_maps.empty()) {
+    OP_LOGW(fused_op_type_.c_str(), "axis split map vector is empty");
+    return;
+  }
   int h_axis = 2;
   int w_axis = 3;
   DelSplitInfoByAxis(split_maps, axis);
@@ -158,15 +164,17 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
     for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
       auto input_split_infos = it->GetInputSplitInfos();
       for (auto input_split_info : input_split_infos) {
-        if (input_split_info->GetAxis()[0] == 1) {
-          InputSplitInfo deq_scale_splitinfo;
-          vector<int64_t> minus_one_vec = {-1};
-          vector<int64_t> one_vec = {1};
-          deq_scale_splitinfo.SetIndex(inpos);
-          deq_scale_splitinfo.SetAxis(one_vec);
-          deq_scale_splitinfo.SetHeadOverLap(minus_one_vec);
-          deq_scale_splitinfo.SetTailOverLap(minus_one_vec);
-          it->AddInputSplitInfo(deq_scale_splitinfo);
+        if (!input_split_info->GetAxis().empty()) {
+          if (input_split_info->GetAxis()[0] == 1) {
+            InputSplitInfo deq_scale_splitinfo;
+            vector<int64_t> minus_one_vec = {-1};
+            vector<int64_t> one_vec = {1};
+            deq_scale_splitinfo.SetIndex(inpos);
+            deq_scale_splitinfo.SetAxis(one_vec);
+            deq_scale_splitinfo.SetHeadOverLap(minus_one_vec);
+            deq_scale_splitinfo.SetTailOverLap(minus_one_vec);
+            it->AddInputSplitInfo(deq_scale_splitinfo);
+          }
         }
       }
     }

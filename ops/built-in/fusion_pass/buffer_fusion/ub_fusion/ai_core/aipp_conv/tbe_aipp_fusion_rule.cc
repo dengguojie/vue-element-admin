@@ -297,6 +297,10 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
     return;
   }
   ge::NodePtr conv_node = conv_nodes[0];
+  if (conv_node == nullptr) {
+    OP_LOGW(conv_node->GetName().c_str(), "conv nodes is empty");
+    return;
+  }
   (void)ge::AttrUtils::GetStr(conv_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
 
   OP_LOGD(conv_node->GetName().c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());

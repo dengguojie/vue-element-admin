@@ -84,8 +84,10 @@ void TbeConv2DAddMulQuantPass::DelSplitInfoByAxis(std::vector<AxisSplitMap> &spl
     bool del_axis = false;
     auto input_split_infos = (*it).GetInputSplitInfoVec();
     for (auto input_split_info : input_split_infos) {
-      if (input_split_info.GetAxis()[0] == axis) {
-        del_axis = true;
+      if (!input_split_info.GetAxis().empty()) {
+        if (input_split_info.GetAxis()[0] == axis) {
+          del_axis = true;
+        }
       }
     }
     if (!del_axis) {
@@ -110,11 +112,19 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
   OpCalcInfo op_calc_info;
   GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
   auto split_maps = op_calc_info.GetAxisSplitMapVec();
+  if (split_maps.empty()) {
+    OP_LOGW(fused_op_type_.c_str(), "axis split map vector is empty");
+    return;
+  }
   int c_axis = 1;
   DelSplitInfoByAxis(split_maps, c_axis);
   for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
     auto input_split_infos = (*it).GetInputSplitInfoVec();
     vector<int64_t> minus_one_vec = {-1};
+    if (input_split_infos.empty()) {
+      OP_LOGW(fused_op_type_.c_str(), "input_split_infos is empty");
+      return;
+    }
     vector<int64_t> axis_vec = input_split_infos[0].GetAxis();
     InputSplitInfo input_split_info;
     input_split_info.SetIndex(inpre);
