@@ -902,7 +902,7 @@ ge::NodePtr DynamicRNNGradFusionPass::AddConcatNode(ge::NodePtr dynamicRNNGradNo
     outputDims.push_back(inputTensorDescX.GetShape().GetDim(2) + inputTensorDescH.GetShape().GetDim(2));
   } else {
     outputDims.push_back(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0) * dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(1));
-    outputDims.push_back(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(2) + inputTensorDescH.GetShape().GetDim(1));
+    outputDims.push_back(dynamicRNNGradNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(2) + inputTensorDescH.GetShape().GetDim(1));
   }
 
   ge::GeShape outputShape(outputDims);
@@ -995,11 +995,22 @@ ge::NodePtr DynamicRNNGradFusionPass::AddMatmulNode(ge::NodePtr dynamicRNNGradNo
   ge::GeTensorDesc inputTensorDescXh = ge::GeTensorDesc(concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape(), ge::FORMAT_ND, ge::DT_FLOAT16);
   inputTensorDescXh.SetOriginShape(concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape());
   inputTensorDescXh.SetOriginFormat(ge::FORMAT_ND);
+  ge::GeTensorDesc inputTensorDescXhTotal = inputTensorDescXh;
+  FUSION_PASS_CHECK(dynamicRNNGradNode->GetOpDesc() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Get DynamicRnnGrad desc Failed, fusion failed."),
+                    return FAILED);
+  if ((n_value % 16) == 0 && dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(0) == 1) {
+    vector<int64_t> concat_dim_new = {concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(1),
+                                      concatNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(2)};
+    ge::GeShape concat_shape_new(concat_dim_new);
+    inputTensorDescXhTotal = ge::GeTensorDesc(concat_shape_new, ge::FORMAT_ND, ge::DT_FLOAT16);
+    inputTensorDescXhTotal.SetOriginShape(concat_shape_new);
+    inputTensorDescXhTotal.SetOriginFormat(ge::FORMAT_ND);
+  }
 
   ge::GeTensorDesc inputTensorDescDgate = ge::GeTensorDesc(lstmInputGradNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape(), ge::FORMAT_ND, ge::DT_FLOAT16);
   inputTensorDescDgate.SetOriginShape(lstmInputGradNode->GetOpDesc()->GetOutputDesc(0).GetOriginShape());
   inputTensorDescDgate.SetOriginFormat(ge::FORMAT_ND);
-  matmulDesc->AddInputDesc("input_xh", inputTensorDescXh);
+  matmulDesc->AddInputDesc("input_xh", inputTensorDescXhTotal);
   matmulDesc->AddInputDesc("input_dgate", inputTensorDescDgate);
   vector<int64_t> outputDims;
   if ((n_value % 16) != 0) {
