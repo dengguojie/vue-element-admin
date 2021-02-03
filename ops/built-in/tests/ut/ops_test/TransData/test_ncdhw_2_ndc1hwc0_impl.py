@@ -72,7 +72,7 @@ def gen_trans_data_precision_case(src, dst, dtype, case_name_val, expect, dst_fo
 ut_case.add_case(["Ascend310","Ascend910A"],
                  gen_trans_data_case((2, 32, 21, 504, 504), (3, 2, 16, 16),
                                      "float32", "ncdhw_2_ndc1hwc0_001", "success"))
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend310","Ascend910A"],
                  gen_trans_data_case((2, 64, 11, 252, 252), (3, 2, 16, 16),
                                      "float16", "ncdhw_2_ndc1hwc0_002", "success"))
 ut_case.add_case(["Ascend910"],

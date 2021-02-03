@@ -390,7 +390,7 @@ def _copy_data_in_0(tik_args, in_offset_args):
     copy data from gm to ub for transform such as nc1hwc0 -> nchw
     """
 
-    (tik_inst, src_in_gm, src_ub, cr_pln_size, cr_idx_beg,
+    (tik_inst, src_in_gm, src_ub, tmp_ub_offset, cr_pln_size, cr_idx_beg,
      c_plp_size, c_step_in, cl_plp_size, cl_idx_beg, ele_per_block, cr_0_size) = tik_args
 
     with tik_inst.new_stmt_scope():

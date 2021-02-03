@@ -17,6 +17,7 @@ ndc1hwc0_2_ncdhw
 """
 # pylint: disable=W0613
 # pylint: disable=too-many-lines,wildcard-import,undefined-variable,chained-comparison
+import functools
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik
@@ -1132,9 +1133,9 @@ class Ndc1hwc02NcdhwCompute:
         """
         set input and output tensor
         """
-        src_element_number = functools_reduce(lambda x, y: x * y,
+        src_element_number = functools.reduce(lambda x, y: x * y,
                                               self.src_shape[:])
-        dst_element_number = functools_reduce(lambda x, y: x * y,
+        dst_element_number = functools.reduce(lambda x, y: x * y,
                                               self.dst_shape[:])
         self.src_gm = tik_instance.Tensor(self.dtype,
                                           (src_element_number,),
@@ -1210,6 +1211,7 @@ def _check_parameters(src, dst, src_format, dst_format):
                            "and greater than ((c1 - 1)*c0 )!")
 
 
+# pylint: disable=inconsistent-return-statements
 def ndc1hwc0_2_ncdhw(src, dst, src_format, dst_format,
                      kernel_name='ndc1hwc0_2_ncdhw'):
     """
@@ -1240,7 +1242,7 @@ def ndc1hwc0_2_ncdhw(src, dst, src_format, dst_format,
     dtype = src.get("dtype").lower()
 
     if dtype == "float32":
-        trans_data_negative_target_ntc.trans_data_negative_target_ntc.py(src, dst, src_format, dst_format, kernel_name)
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
         return
 
     template_fp16 = Ndc1hwc02NcdhwCompute(src_shape, dst_shape,
