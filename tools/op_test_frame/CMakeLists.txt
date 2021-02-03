@@ -30,6 +30,7 @@ set(op_test_frame_root ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_custom_target(OpTestFrameFiles ALL)
 
+set(OP_TEST_FRAME_WHEEL_PACKAGE_REAL_NAME op_test_frame-0.1-py3-none-any.whl)
 add_custom_command(TARGET OpTestFrameFiles
   PRE_BUILD
   COMMAND echo ${op_test_frame_root}
@@ -38,13 +39,9 @@ add_custom_command(TARGET OpTestFrameFiles
   COMMAND rm -rf ${op_test_frame_root}/python/build
   COMMAND rm -rf ${op_test_frame_root}/python/op_test_frame.egg-info
   COMMAND rm -rf ${op_test_frame_root}/python/dist
+  COMMAND mv op_test_frame-0.1-*.whl ${OP_TEST_FRAME_WHEEL_PACKAGE_REAL_NAME}
 )
 
-if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL x86_64)
-  set(OP_TEST_FRAME_WHEEL_PACKAGE_REAL_NAME op_test_frame-0.1-cp37-cp37m-linux_x86_64.whl)
-else()
-  set(OP_TEST_FRAME_WHEEL_PACKAGE_REAL_NAME op_test_frame-0.1-cp37-cp37m-linux_aarch64.whl)
-endif()
 if(BUILD_OPEN_PROJECT)
   set(OP_TEST_FRAME ${INSTALL_PATH}/toolkit/tools)
   cann_install(
@@ -55,7 +52,7 @@ if(BUILD_OPEN_PROJECT)
 else()
   install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/${OP_TEST_FRAME_WHEEL_PACKAGE_REAL_NAME}
-    DESTINATION lib RENAME op_test_frame-0.1-py3-none-any.whl
+    DESTINATION lib
     OPTIONAL
   )
 endif()
