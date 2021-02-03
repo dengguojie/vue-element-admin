@@ -460,9 +460,13 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     pads_status = -1 not in pads and sum(pads) != 0
     if dynamic_mode == "dynamic_hw" and pads_status:
-        dict_args = {"errCode": "E60108", "reason": "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1"}
+        dict_args = {
+            "errCode": "E60108",
+            "attr_name": "pads",
+            "reason": "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1"
+        }
         raise RuntimeError(
-            dict_args, errormgr_util.get_error_message(dict_args)
+            dict_args, errormgr.get_error_message(dict_args)
         )
 
     if -1 not in pads:
