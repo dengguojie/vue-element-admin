@@ -115,7 +115,7 @@ def _do_run_cmd(args, report):
         path = os.path.join(output_path,
                             case_list[0]['op'].replace('/', '_'))
         if case_list[0].get('st_mode') == 'ms_python_train':
-            op_name_fixed = case_list[0]['op'].lower()
+            op_name_fixed = utils.fix_name_lower_with_under(case_list[0]['op'])
             runner = MsOpRunner(path, op_name_fixed, args.soc_version, report)
             runner.process()
         else:

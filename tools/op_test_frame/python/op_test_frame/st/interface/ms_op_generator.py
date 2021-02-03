@@ -167,7 +167,7 @@ class MsOpGenerator:
     def _rewrite_files_for_output_dir(self):
         testcase_test_net_content = ''
         op_name = self.testcase_list[0]['op']
-        op_name_lower = op_name.lower()
+        op_name_lower = utils.fix_name_lower_with_under(op_name)
         testcase_test_net_content += code_snippet.TESTCASE_IMPORT_CONTENT \
             .format(
             import_op=op_name_lower,
@@ -260,7 +260,7 @@ class MsOpGenerator:
         testcase_test_net_content += testcase_test_net_func_content
         output_testcase_py_path = self.output_path + \
                                   utils.TESTCASE_PY_RELATIVE_PATH \
-                                      .format(op_name=op_name.lower())
+                                      .format(op_name=op_name_lower)
 
         _append_content_to_file(testcase_test_net_content,
                                 output_testcase_py_path)
