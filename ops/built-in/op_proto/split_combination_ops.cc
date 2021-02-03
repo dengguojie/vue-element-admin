@@ -338,14 +338,13 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
     return GRAPH_SUCCESS;
   }
 
-  auto xDimNum = x_shape.GetDimNum();
+  int64_t xDimNum = x_shape.GetDimNum();
   if (xDimNum <= 0) {
     OP_LOGE(op.GetName().c_str(), "size of split_vec must be larger than 0");
     OpsInputShapeErrReport(op.GetName(), "x dim num must be larger than 0",
                            "dim num of x shape", ConcatString(xDimNum));
     return GRAPH_FAILED;
   }
-  int64_t split_dim = -1 - xDimNum;
   auto split_dim_dtype = op.GetInputDesc("split_dim").GetDataType();
   std::vector<int64_t> split_dim_vec;
   CalcSplitV(split_dim_data, split_dim_dtype, split_dim_vec);
@@ -356,7 +355,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
                            "size of split_dim", ConcatString(split_dim_vec.size()));
     return GRAPH_FAILED;
   }
-  split_dim = split_dim_vec[0];
+  int64_t split_dim = split_dim_vec[0];
 
   if (split_dim < -xDimNum || split_dim >= xDimNum) {
     OP_LOGE(op.GetName().c_str(), "split_dim is invalid");

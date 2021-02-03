@@ -520,28 +520,6 @@ void PrintSplitVTilingParams(const SplitVTilingParams& params) {
   GELOGD("op [SplitVTiling] : lastSegLastCore=%d.", params.lastSegLastCore);
 }
 
-bool GetSplitVCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int64_t& ubElems,
-                            int64_t& numSplit) {
-  using namespace nlohmann;
-  auto allVars = opCompileInfo["vars"];
-  if (allVars.count("core_num") == 0) {
-    OP_LOGE("op [SplitVTiling] : GetCompileParams, get core_num error");
-    return false;
-  }
-  coreNum = allVars["core_num"].get<std::int64_t>();
-  if (allVars.count("ub_elems") == 0) {
-    OP_LOGE("op [SplitVTiling] : GetCompileParams, get ub_elems error");
-    return false;
-  }
-  ubElems = allVars["ub_elems"].get<std::int64_t>();
-  if (allVars.count("num_split") == 0) {
-    OP_LOGE("op [SplitVTiling] : GetCompileParams, get num_split error");
-    return false;
-  }
-  numSplit = allVars["num_split"].get<std::int64_t>();
-  return true;
-}
-
 static bool GetConstValue(const TeOpParas& paras, const std::string& name, const std::string& dtype,
                           std::vector<int64_t>& values) {
   values.clear();
@@ -572,6 +550,31 @@ static bool GetConstValue(const TeOpParas& paras, const std::string& name, const
     OP_LOGE("op[SplitVTiling]: GetConstValue, data type is invalid");
     return false;
   }
+
+  return true;
+}
+
+bool GetSplitVCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int64_t& ubElems,
+                            int64_t& numSplit) {
+  using namespace nlohmann;
+  auto allVars = opCompileInfo["vars"];
+  if (allVars.count("core_num") == 0) {
+    OP_LOGE("op [SplitVTiling] : GetCompileParams, get core_num error");
+    return false;
+  }
+  coreNum = allVars["core_num"].get<std::int64_t>();
+
+  if (allVars.count("ub_elems") == 0) {
+    OP_LOGE("op [SplitVTiling] : GetCompileParams, get ub_elems error");
+    return false;
+  }
+  ubElems = allVars["ub_elems"].get<std::int64_t>();
+
+  if (allVars.count("num_split") == 0) {
+    OP_LOGE("op [SplitVTiling] : GetCompileParams, get num_split error");
+    return false;
+  }
+  numSplit = allVars["num_split"].get<std::int64_t>();
 
   return true;
 }
