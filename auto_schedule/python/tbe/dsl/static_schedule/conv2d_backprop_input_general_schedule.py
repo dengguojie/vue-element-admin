@@ -160,13 +160,23 @@ def general_schedule(
 
     def _set_output_mem():
         if out_mem == "fuse_flag":
-            if "addr_type" in c_ddr.op.attrs:
-                res_addr_type = c_ddr.op.attrs["addr_type"].value
+            if c_ddr.op.tag == "conv_virtual_res":
+                for out_member in c_ddr.op.input_tensors:
+                    if "addr_type" in out_member.op.attrs:
+                        res_addr_type = out_member.op.attrs["addr_type"].value
+                    else:
+                        res_addr_type = 0
+                    output_memory_type = [res_addr_type]
+                    if res_addr_type == 1:
+                        sch[out_member].set_scope(cce_params.scope_cbuf_fusion)
             else:
-                res_addr_type = 0
-            output_memory_type = [res_addr_type]
-            if res_addr_type == 1:
-                sch[c_ddr].set_scope(cce_params.scope_cbuf_fusion)
+                if "addr_type" in c_ddr.op.attrs:
+                    res_addr_type = c_ddr.op.attrs["addr_type"].value
+                else:
+                    res_addr_type = 0
+                output_memory_type = [res_addr_type]
+                if res_addr_type == 1:
+                    sch[c_ddr].set_scope(cce_params.scope_cbuf_fusion)
         else:
             if out_mem == 1:
                 sch[c_ddr].set_scope(cce_params.scope_cbuf_fusion)
@@ -576,11 +586,18 @@ def general_schedule(
                 sch[tensor_map["c_ub_cut"]].compute_inline()
             return fusion_param
 
+        def _set_doubleout_selectflag():
+            if double_out_tensor:
+                tensor_attr["write_select1"] = bool(double_out_tensor[0].op.tag == "write_select")
+                tensor_attr["write_select2"] = bool(double_out_tensor[1].op.tag == "write_select")
+
         tensor_map = {}
         tensor_attr = {}
         all_tensor, leaf_tensor = _get_all_tensors(deconv_res)
         if c_ddr.op.tag == "write_select":
             tensor_attr["write_select"] = True
+        _set_doubleout_selectflag()
+
         if deconv_res.op.tag == "requant_remove_pad":
             tensor_attr["n0_32_flag"] = True
             tensor_attr["quant_fuse"] = True
@@ -697,14 +714,18 @@ def general_schedule(
         return fusion_type
 
     def _get_deconv_out():
-        if c_ddr.op.tag == "write_select":
+        if c_ddr.op.tag == "conv_virtual_res":
+            double_out_tensor.append(c_ddr.op.input_tensors[0])
+            double_out_tensor.append(c_ddr.op.input_tensors[1])
             deconv_res = c_ddr.op.input_tensors[0]
+            if deconv_res.op.tag == "write_select":
+                deconv_res = deconv_res.op.input_tensors[0]
         else:
-            deconv_res = c_ddr
-        if deconv_res.op.tag == "conv_virtual_res":
-            double_out_tensor.append(deconv_res.op.input_tensors[0])
-            double_out_tensor.append(deconv_res.op.input_tensors[1])
-            deconv_res = deconv_res.op.input_tensors[0]
+            if c_ddr.op.tag == "write_select":
+                deconv_res = c_ddr.op.input_tensors[0]
+            else:
+                deconv_res = c_ddr
+
         return deconv_res
 
     # check tiling and set default tiling
@@ -1953,16 +1974,26 @@ def general_schedule(
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
         sch_agent[c_col].emit_insn(scope_insn, "mad", mad_dict)
-        if tensor_attr.get("write_select"):
-            sch[c_ddr.op.input_tensors[0]].compute_inline()
-            align_length = int(c_ddr.op.attrs["HWC0"])
-            sch[c_ddr].bind_buffer(c_ddr.op.axis[1], align_length, 0)
+
         if not double_out_tensor:
+            if tensor_attr.get("write_select"):
+                sch[c_ddr.op.input_tensors[0]].compute_inline()
+                align_length = int(c_ddr.op.attrs["HWC0"])
+                sch[c_ddr].bind_buffer(c_ddr.op.axis[1], align_length, 0)
             sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
         else:
             sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "phony_insn")
-            for double_out_tensor_mem in double_out_tensor:
-                sch[double_out_tensor_mem].emit_insn(sch_agent[double_out_tensor_mem].nlast_scopes(2)[0], "dma_copy")
+            if tensor_attr.get("write_select1"):
+                sch[double_out_tensor[0].op.input_tensors[0]].compute_inline()
+                align_length = int(double_out_tensor[0].op.attrs["HWC0"])
+                sch[double_out_tensor[0]].bind_buffer(double_out_tensor[0].op.axis[1], align_length, 0)
+            sch[double_out_tensor[0]].emit_insn(sch_agent[double_out_tensor[0]].nlast_scopes(2)[0], "dma_copy")
+            if tensor_attr.get("write_select2"):
+                sch[double_out_tensor[1].op.input_tensors[0]].compute_inline()
+                align_length = int(double_out_tensor[1].op.attrs["HWC0"])
+                sch[double_out_tensor[1]].bind_buffer(double_out_tensor[1].op.axis[1], align_length, 0)
+            sch[double_out_tensor[1]].emit_insn(sch_agent[double_out_tensor[1]].nlast_scopes(2)[0], "dma_copy")
+
         overload_flag = _check_overload_dy()
         _set_overload_flag(
             sch[c_ddr], overload_flag, sch_agent[c_ddr].nlast_scopes(3)[0]

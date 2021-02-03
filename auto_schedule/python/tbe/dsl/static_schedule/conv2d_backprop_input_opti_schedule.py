@@ -1084,13 +1084,23 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
         DeconvParam.update_para_map("load3d_flag", load3d_flag)
         out_mem = fusion_para["output_memory_type"]
         if out_mem == "fuse_flag":
-            if "addr_type" in dex_res.op.attrs:
-                res_addr_type = dex_res.op.attrs["addr_type"].value
+            if dex_res.op.tag == "conv_virtual_res":
+                for out_member in DOUBLE_TENSOR_OUT:
+                    if "addr_type" in out_member.op.attrs:
+                        res_addr_type = out_member.op.attrs["addr_type"].value
+                    else:
+                        res_addr_type = 0
+                    output_memory_type = [res_addr_type]
+                    if res_addr_type == 1:
+                        sch[out_member].set_scope(cce_params.scope_cbuf_fusion)
             else:
-                res_addr_type = 0
-            output_memory_type = [res_addr_type]
-            if res_addr_type == 1:
-                sch[dex_res].set_scope(cce_params.scope_cbuf_fusion)
+                if "addr_type" in dex_res.op.attrs:
+                    res_addr_type = dex_res.op.attrs["addr_type"].value
+                else:
+                    res_addr_type = 0
+                output_memory_type = [res_addr_type]
+                if res_addr_type == 1:
+                    sch[dex_res].set_scope(cce_params.scope_cbuf_fusion)
         else:
             if out_mem == 1:
                 sch[dex_res].set_scope(cce_params.scope_cbuf_fusion)
@@ -2268,8 +2278,17 @@ def opti_schedule(
                 sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
 
         if DOUBLE_TENSOR_OUT:
-            for double_out_tensor_mem in DOUBLE_TENSOR_OUT:
-                sch[double_out_tensor_mem].emit_insn(double_out_tensor_mem.op.axis[0], "dma_copy")
+            if DeconvParam.get_para_map("write_select1"):
+                sch[DOUBLE_TENSOR_OUT[0].op.input_tensors[0]].compute_inline()
+                align_length = DOUBLE_TENSOR_OUT[0].op.attrs["HWC0"]
+                sch[DOUBLE_TENSOR_OUT[0]].bind_buffer(DOUBLE_TENSOR_OUT[0].op.axis[1], align_length, 0)
+            sch[DOUBLE_TENSOR_OUT[0]].emit_insn(DOUBLE_TENSOR_OUT[0].op.axis[0], "dma_copy")
+            if DeconvParam.get_para_map("write_select2"):
+                sch[DOUBLE_TENSOR_OUT[1].op.input_tensors[0]].compute_inline()
+                align_length = DOUBLE_TENSOR_OUT[1].op.attrs["HWC0"]
+                sch[DOUBLE_TENSOR_OUT[1]].bind_buffer(DOUBLE_TENSOR_OUT[1].op.axis[1], align_length, 0)
+            sch[DOUBLE_TENSOR_OUT[1]].emit_insn(DOUBLE_TENSOR_OUT[1].op.axis[0], "dma_copy")
+
             sch[c_gm].emit_insn(l0c_n_inner_inner, "phony_insn")
         else:
             sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
@@ -2392,16 +2411,24 @@ def opti_schedule(
 
     def _res_select_write(res):
         # selet write
-        write_select_flag = bool(res.op.tag == "write_select")
-        DeconvParam.update_para_map("write_select", write_select_flag)
-        if write_select_flag:
+        if res.op.tag == "conv_virtual_res":
+            DOUBLE_TENSOR_OUT.append(res.op.input_tensors[0])
+            DOUBLE_TENSOR_OUT.append(res.op.input_tensors[1])
+            write_select_flag1 = bool(res.op.input_tensors[0].op.tag == "write_select")
+            write_select_flag2 = bool(res.op.input_tensors[1].op.tag == "write_select")
+            DeconvParam.update_para_map("write_select1", write_select_flag1)
+            DeconvParam.update_para_map("write_select2", write_select_flag2)
             res_before_write_select = res.op.input_tensors[0]
+            if write_select_flag1:
+                res_before_write_select = res_before_write_select.op.input_tensors[0]
         else:
-            res_before_write_select = res
-        if res_before_write_select.op.tag == "conv_virtual_res":
-            DOUBLE_TENSOR_OUT.append(res_before_write_select.op.input_tensors[0])
-            DOUBLE_TENSOR_OUT.append(res_before_write_select.op.input_tensors[1])
-            res_before_write_select = res_before_write_select.op.input_tensors[0]
+            write_select_flag = bool(res.op.tag == "write_select")
+            DeconvParam.update_para_map("write_select", write_select_flag)
+            if write_select_flag:
+                res_before_write_select = res.op.input_tensors[0]
+            else:
+                res_before_write_select = res
+
         return res_before_write_select
 
     def _get_fusion_type(fusion_type):
