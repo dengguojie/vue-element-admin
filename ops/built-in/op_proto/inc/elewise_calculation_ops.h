@@ -3562,26 +3562,6 @@ REG_OP(MaxN)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64, DT_INT32, DT_INT64}))
     .OP_END_FACTORY_REG(MaxN)
 
-/**
- * @brief Element-wise min of each of the input tensors (with Numpy-style broadcasting support). 
- * All inputs and outputs must have the same data type. This operator supports multidirectional 
- * (i.e., Numpy-style) broadcasting
- * 
- * @par inputs
- * one input including:
- * @li x: dynamic input A Tensor. Must be one of the following types: float32, float16, double, int32, int64
- * 
- * @par output
- * one output including:
- * @li y:A Tensor of the same type as x
- * 
- */
-REG_OP(MinN)
-    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64,
-                                  DT_INT32, DT_INT64}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_FLOAT64,
-                           DT_INT32, DT_INT64}))
-    .OP_END_FACTORY_REG(MinN)
 
 /**
  * @brief Calculates x * maske * value.
