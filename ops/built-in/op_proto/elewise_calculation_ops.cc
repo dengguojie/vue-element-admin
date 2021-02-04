@@ -568,13 +568,10 @@ COMMON_INFER_FUNC_REG(Invert, InvertInferShape);
 
 // ---------------OnesLike-----------------
 IMPLEMT_COMMON_INFERFUNC(OnesLikeInferShape) {
-  Shape y_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(ge::Shape(y_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", td);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})){
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(OnesLike, OnesLikeInferShape);

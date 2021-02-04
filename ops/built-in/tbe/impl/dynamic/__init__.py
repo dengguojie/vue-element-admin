@@ -134,6 +134,7 @@ from .acosh import acosh
 from .adds import adds
 from .asin import asin
 from .asin_grad import asin_grad
+from .ones_like import ones_like
 from .ceil import ceil
 from .cos import cos
 from .cosh import cosh
