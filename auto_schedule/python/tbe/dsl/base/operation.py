@@ -17,7 +17,6 @@ operation
 """
 import functools
 import threading
-import warnings
 from dataclasses import dataclass
 from typing import Any
 from typing import Callable
@@ -35,6 +34,11 @@ _tiling_cases = {}
 _builds = {}
 
 _contexts = {}
+
+_operators = {}
+_patterns = {}
+_fusion_computes = {}
+_computes = {}  # type: Dict[Tuple[str, str], Compute]
 
 
 @dataclass
@@ -551,14 +555,20 @@ def register_operator(op_type, pattern=None):
     :return:
     """
 
-    context = get_context()
-    if _in_compatible_mode():
-        context.set_op_type(op_type)
-        context.set_pattern(pattern)
-    warnings.warn("register_operator is expired, replace it with the same func in register",
-                  DeprecationWarning)
-    import tbe.common.register
-    return tbe.common.register.register_operator(op_type, pattern)
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            context = get_context()
+            if _in_compatible_mode():
+                context.set_op_type(op_type)
+                context.set_pattern(pattern)
+            return func(*args, **kwargs)
+
+        _operators[op_type] = wrapper
+        _patterns[op_type] = pattern
+        return wrapper
+
+    return decorator
 
 
 def get_operator(op_type):
@@ -566,13 +576,7 @@ def get_operator(op_type):
     :param op_type:
     :return:
     """
-    warnings.warn("get_operator is expired, replace it with the same func in register",
-                  DeprecationWarning)
-    import tbe.common.register
-    operator = tbe.common.register.get_operator(op_type)
-    if operator:
-        return operator.get_func()
-    return None
+    return _operators.get(op_type)
 
 
 def get_pattern(op_type):
@@ -581,13 +585,7 @@ def get_pattern(op_type):
     :param op_type:
     :return:
     """
-    warnings.warn("get_pattern is expired, replace it with func get_operator in register",
-                  DeprecationWarning)
-    import tbe.common.register
-    operator = tbe.common.register.get_operator(op_type)
-    if operator:
-        return operator.get_pattern()
-    return None
+    return _patterns[op_type]
 
 
 def register_schedule(pattern):
@@ -685,10 +683,15 @@ def register_fusion_compute(op_type):
     :return:
     """
 
-    warnings.warn("register_fusion_compute is expired, replace it with func register_op_compute",
-                  DeprecationWarning)
-    import tbe.common.register
-    return tbe.common.register.register_op_compute(op_type, "dynamic", True)
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        _fusion_computes[op_type] = wrapper
+        return wrapper
+
+    return decorator
 
 
 def get_fusion_compute(op_type):
@@ -696,13 +699,7 @@ def get_fusion_compute(op_type):
     :param op_type:
     :return:
     """
-    warnings.warn("get_fusion_compute is expired, replace it with func get_op_compute",
-                  DeprecationWarning)
-    import tbe.common.register
-    compute_ = tbe.common.register.get_op_compute(op_type, "dynamic")
-    if compute_:
-        return compute_.get_func()
-    return None
+    return _fusion_computes.get(op_type)
 
 
 def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
@@ -714,10 +711,15 @@ def register_op_compute(op_type, op_mode="dynamic", support_fusion=True):
     :return:
     """
 
-    warnings.warn("register_op_compute is expired, replace it with the same func in register",
-                  DeprecationWarning)
-    import tbe.common.register
-    return tbe.common.register.register_op_compute(op_type, op_mode, support_fusion)
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        _computes[(op_type, op_mode)] = Compute(wrapper, op_mode, support_fusion)
+        return wrapper
+
+    return decorator
 
 
 def get_op_compute(op_type, op_mode="dynamic", verbose=False):
@@ -727,15 +729,11 @@ def get_op_compute(op_type, op_mode="dynamic", verbose=False):
     :param op_mode:
     :param verbose:
     :return:
-
     """
-    warnings.warn("get_op_compute is expired, replace it with the same func in register",
-                  DeprecationWarning)
-    import tbe.common.register
-    compute_ = tbe.common.register.get_op_compute(op_type, op_mode)
+    compute_ = _computes.get((op_type, op_mode))
     if compute_:
-        old_compute = Compute(compute_.get_func(), op_mode, compute_.if_support_fusion())
-        return old_compute if verbose else compute_.get_func()
+        return compute_ if verbose else compute_.func
+
     return None
 
 
