@@ -112,6 +112,9 @@ from .tanh import tanh
 from .inv_grad import inv_grad
 from .sigmoid_cross_entropy_with_logits import sigmoid_cross_entropy_with_logits
 from .abs import abs
+from .apply_centered_rms_prop_d import apply_centered_rms_prop_d
+from .apply_ftrl_d import apply_ftrl_d
+from .apply_ftrl_v2_d import apply_ftrl_v2_d
 from .apply_momentum_d import apply_momentum_d
 from .assign import assign
 from .assign_add import assign_add

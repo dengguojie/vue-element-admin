@@ -560,12 +560,20 @@ IMPLEMT_VERIFIER(ApplyCenteredRMSPropD, ApplyCenteredRMSPropDVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyCenteredRMSPropDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ApplyCenteredRMSPropD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "mg", "mg");
-  ApplyInferShapeAndDtype(op, "ms", "ms");
-  ApplyInferShapeAndDtype(op, "mom", "mom");
-  return GRAPH_SUCCESS;
+    OP_LOGI(op.GetName().c_str(), "Enter ApplyCenteredRMSPropD op_proto inferfunction!");
+    if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+        return GRAPH_FAILED;
+    }
+    if (!OneInOneOutDynamicInfer(op, "mg", {"mg"})) {
+        return GRAPH_FAILED;
+    }
+    if (!OneInOneOutDynamicInfer(op, "ms", {"ms"})) {
+        return GRAPH_FAILED;
+    }
+    if (!OneInOneOutDynamicInfer(op, "mom", {"mom"})) {
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ApplyCenteredRMSPropD, ApplyCenteredRMSPropDInferShape);
@@ -986,11 +994,17 @@ IMPLEMT_VERIFIER(ApplyFtrlD, ApplyFtrlDVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyFtrlDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ApplyFtrlD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
-  ApplyInferShapeAndDtype(op, "linear", "linear");
-  return GRAPH_SUCCESS;
+    OP_LOGI(op.GetName().c_str(), "Enter ApplyFtrlD op_proto inferfunction!");
+    if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+        return GRAPH_FAILED;
+    }
+    if (!OneInOneOutDynamicInfer(op, "accum", {"accum"})) {
+        return GRAPH_FAILED;
+    }
+    if (!OneInOneOutDynamicInfer(op, "linear", {"linear"})) {
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ApplyFtrlD, ApplyFtrlDInferShape);
@@ -1052,11 +1066,17 @@ IMPLEMT_VERIFIER(ApplyFtrlV2D, ApplyFtrlV2DVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyFtrlV2DInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ApplyFtrlV2D op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
-  ApplyInferShapeAndDtype(op, "linear", "linear");
-  return GRAPH_SUCCESS;
+    OP_LOGI(op.GetName().c_str(), "Enter ApplyFtrlV2D op_proto inferfunction!");
+    if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+        return GRAPH_FAILED;
+    }
+    if (!OneInOneOutDynamicInfer(op, "accum", {"accum"})) {
+        return GRAPH_FAILED;
+    }
+    if (!OneInOneOutDynamicInfer(op, "linear", {"linear"})) {
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(ApplyFtrlV2D, ApplyFtrlV2DInferShape);
