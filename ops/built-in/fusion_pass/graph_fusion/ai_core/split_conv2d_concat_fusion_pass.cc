@@ -112,6 +112,9 @@ bool SplitConv2dConcatPass::AnalyzeMidLayer(ge::Node::Vistor<NodePtr>& spt_outpu
   FUSION_PASS_CHECK(a_weight_format != FORMAT_HWCN && a_weight_format != FORMAT_NCHW,
                     OP_LOGW(fused_op_type_.c_str(), "weight format only support HWCN or NCHW"), return false);
   for (auto out_node : spt_output) {
+    if (out_node == nullptr) {
+      continue;
+    }
     std::string types = out_node->GetType();
     FUSION_PASS_CHECK(
         types != kConv2dType,

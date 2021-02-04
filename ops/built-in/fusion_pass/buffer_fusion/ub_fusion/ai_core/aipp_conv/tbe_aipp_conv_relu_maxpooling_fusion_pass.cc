@@ -86,7 +86,7 @@ vector<BufferFusionPattern*> TbeAippConvReluMaxpoolingFusionPass::DefinePatterns
  */
 bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::NodePtr& conv_node) {
   FUSION_PASS_CHECK(conv_node->GetOpDesc()->GetInputDesc(1).GetFormat() != ge::FORMAT_FRACTAL_Z_C04,
-                    OP_LOGI(fused_op_type_.c_str(), "The format of node[%s]'s second input is not FORMAT_FRACTAL_Z_C04",
+                    OP_LOGD(fused_op_type_.c_str(), "The format of node[%s]'s second input is not FORMAT_FRACTAL_Z_C04",
                             conv_node->GetName().c_str()),
                     return false);
   ge::Format first_format = conv_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat();
@@ -96,17 +96,17 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::Node
   FUSION_PASS_CHECK(first_format != ge::FORMAT_NCHW && first_format != ge::FORMAT_NHWC &&
                     second_format != ge::FORMAT_NCHW && second_format != ge::FORMAT_NHWC &&
                     second_format != ge::FORMAT_HWCN,
-                    OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s format is [%d] and [%d], can not fusion.",
+                    OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s format is [%d] and [%d], can not fusion.",
                             conv_node->GetName().c_str(), first_format, second_format),
                     return false);
   FUSION_PASS_CHECK(first_dims.size() != 4,
-                    OP_LOGI(fused_op_type_.c_str(),
+                    OP_LOGD(fused_op_type_.c_str(),
                             "node[%s]'s first input shape size is [%zu] not 4,"
                             "can not fusion.",
                             conv_node->GetName().c_str(), first_dims.size()),
                     return false);
   FUSION_PASS_CHECK(second_dims.size() != 4,
-                    OP_LOGI(fused_op_type_.c_str(),
+                    OP_LOGD(fused_op_type_.c_str(),
                             "node[%s]'s second input shape size is [%zu] not 4,"
                             "can not fusion.",
                             conv_node->GetName().c_str(), second_dims.size()),
@@ -114,34 +114,34 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::Node
   vector<int64_t> strides;
   FUSION_PASS_CHECK(
       !ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), kStrides, strides),
-      OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s strides attr not success.", conv_node->GetName().c_str()),
+      OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s strides attr not success.", conv_node->GetName().c_str()),
       return false);
   FUSION_PASS_CHECK(strides.size() != 4,
-                    OP_LOGI(fused_op_type_.c_str(), "node[%s]'s attr strides size [%zu] is not 4, can not fusion.",
+                    OP_LOGD(fused_op_type_.c_str(), "node[%s]'s attr strides size [%zu] is not 4, can not fusion.",
                             conv_node->GetName().c_str(), strides.size()),
                     return false);
   if (first_format == ge::FORMAT_NCHW) {
     FUSION_PASS_CHECK(first_dims[1] > 4 || first_dims[3] > width,
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s first input shape is more than [N, 4, N, " + std::to_string(width) +"],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
     FUSION_PASS_CHECK((strides[2] != 2 || strides[3] != 2) && (strides[2] != 1 || strides[3] != 1),
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s attr strides is not [N, N, 2, 2] or [N, N, 1, 1],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
   } else {
     FUSION_PASS_CHECK(first_dims[3] > 4 || first_dims[2] > width,
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s first input shape is more than [N, 4, N, " + std::to_string(width) +"],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
     FUSION_PASS_CHECK((strides[1] != 2 || strides[2] != 2) && (strides[1] != 1 || strides[2] != 1),
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s attr strides is not [N, 2, 2, N] or [N, 1, 1, N],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
@@ -149,42 +149,42 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckConvNodeValidation(const ge::Node
   }
   if (second_format == ge::FORMAT_NCHW) {
     FUSION_PASS_CHECK(second_dims[0] > 96,
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s second input shape is more than [96, N, N, N],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
     FUSION_PASS_CHECK((second_dims[2] != 3 || second_dims[3] != 3) && (second_dims[2] != 5 || second_dims[3] != 5) &&
                       (second_dims[2] != 7 || second_dims[3] != 7),
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s second input shape is not [N, N, 3, 3] or [N, N, 5, 5] or [N, N, 7, 7],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
   } else if (second_format == ge::FORMAT_NHWC) {
     FUSION_PASS_CHECK(second_dims[0] > 64,
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s second input shape is more than [64, N, N, N],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
     FUSION_PASS_CHECK((second_dims[1] != 3 || second_dims[2] != 3) && (second_dims[1] != 5 || second_dims[2] != 5) &&
                       (second_dims[1] != 7 || second_dims[2] != 7),
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s second input shape is not [N, 3, 3, N] or [N, 5, 5, N] or [N, 7, 7, N],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
   } else {
     FUSION_PASS_CHECK(second_dims[3] > 64,
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s second input shape is more than [N, N, N, 64],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
                       return false);
     FUSION_PASS_CHECK((second_dims[0] != 3 || second_dims[1] != 3) && (second_dims[0] != 5 || second_dims[1] != 5) &&
                       (second_dims[0] != 7 || second_dims[1] != 7),
-                      OP_LOGI(fused_op_type_.c_str(),
+                      OP_LOGD(fused_op_type_.c_str(),
                               "node[%s]'s second input shape is not [3, 3, N, N] or [5, 5, N, N] or [7, 7, N, N],"
                               "can not fusion.",
                               conv_node->GetName().c_str()),
@@ -204,10 +204,10 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::N
     vector<int64_t> standard_strides = {2, 2};
     FUSION_PASS_CHECK(
         !ge::AttrUtils::GetListInt(max_pool_node->GetOpDesc(), kStride, strides),
-        OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s strides attr not success.", max_pool_node->GetName().c_str()),
+        OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s strides attr not success.", max_pool_node->GetName().c_str()),
         return false);
     FUSION_PASS_CHECK(strides != standard_strides,
-                      OP_LOGI(fused_op_type_.c_str(), "node[%s]'s attr stride is not [2, 2], can not fusion.",
+                      OP_LOGD(fused_op_type_.c_str(), "node[%s]'s attr stride is not [2, 2], can not fusion.",
                               max_pool_node->GetName().c_str()),
                       return false);
 
@@ -216,20 +216,20 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::N
     vector<int64_t> standard_window_2_2 = {2, 2};
     FUSION_PASS_CHECK(
         !ge::AttrUtils::GetListInt(max_pool_node->GetOpDesc(), kWindow, window),
-        OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s window attr not success.", max_pool_node->GetName().c_str()),
+        OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s window attr not success.", max_pool_node->GetName().c_str()),
         return false);
     FUSION_PASS_CHECK((window != standard_window) && (window != standard_window_2_2),
-                      OP_LOGI(fused_op_type_.c_str(), "node[%s]'s attr window is not [3, 3] and not [2, 2], can not fusion.",
+                      OP_LOGD(fused_op_type_.c_str(), "node[%s]'s attr window is not [3, 3] and not [2, 2], can not fusion.",
                               max_pool_node->GetName().c_str()),
                       return false);
     windowSize = window[0];
     int64_t mode;
     FUSION_PASS_CHECK(
         !ge::AttrUtils::GetInt(max_pool_node->GetOpDesc(), kMode, mode),
-        OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s mode attr not success.", max_pool_node->GetName().c_str()),
+        OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s mode attr not success.", max_pool_node->GetName().c_str()),
         return false);
     FUSION_PASS_CHECK(mode != 0,
-                      OP_LOGI(fused_op_type_.c_str(), "node[%s]'s attr mode is [%ld] not 0, can not fusion.",
+                      OP_LOGD(fused_op_type_.c_str(), "node[%s]'s attr mode is [%ld] not 0, can not fusion.",
                               max_pool_node->GetName().c_str(), mode),
                       return false);
   }
@@ -237,49 +237,49 @@ bool TbeAippConvReluMaxpoolingFusionPass::CheckMaxpoolNodeValidation(const ge::N
     vector<int64_t> strides;
     FUSION_PASS_CHECK(
         !ge::AttrUtils::GetListInt(max_pool_node->GetOpDesc(), kStrides, strides),
-        OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s strides attr not success.", max_pool_node->GetName().c_str()),
+        OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s strides attr not success.", max_pool_node->GetName().c_str()),
         return false);
     FUSION_PASS_CHECK(strides.size() != 4,
-                      OP_LOGI(fused_op_type_.c_str(), "node[%s]'s attr strides is [%zu] not 4, can not fusion.",
+                      OP_LOGD(fused_op_type_.c_str(), "node[%s]'s attr strides is [%zu] not 4, can not fusion.",
                               max_pool_node->GetName().c_str(), strides.size()),
                       return false);
 
     vector<int64_t> ksizes;
     FUSION_PASS_CHECK(
         !ge::AttrUtils::GetListInt(max_pool_node->GetOpDesc(), kKsize, ksizes),
-        OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s ksize attr not success.", max_pool_node->GetName().c_str()),
+        OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s ksize attr not success.", max_pool_node->GetName().c_str()),
         return false);
     FUSION_PASS_CHECK(ksizes.size() != 4,
-                      OP_LOGI(fused_op_type_.c_str(), "node[%s]'s Attr strides is [%zu] not 4, can not fusion.",
+                      OP_LOGD(fused_op_type_.c_str(), "node[%s]'s Attr strides is [%zu] not 4, can not fusion.",
                               max_pool_node->GetName().c_str(), ksizes.size()),
                       return false);
     ge::Format format = max_pool_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat();
     if (format == ge::FORMAT_NCHW) {
       FUSION_PASS_CHECK(strides[2] != 2 || strides[3] != 2,
-                        OP_LOGI(fused_op_type_.c_str(),
+                        OP_LOGD(fused_op_type_.c_str(),
                                 "node[%s]'s attr strides is not [N, N, 2, 2],"
                                 "can not fusion.",
                                 max_pool_node->GetName().c_str()),
                         return false);
       FUSION_PASS_CHECK((ksizes[2] != 3 || ksizes[3] != 3) && (ksizes[2] != 2 || ksizes[3] != 2),
-                        OP_LOGI(fused_op_type_.c_str(), "node[%s]'s Attr ksize is not [N, N, 3, 3]"
+                        OP_LOGD(fused_op_type_.c_str(), "node[%s]'s Attr ksize is not [N, N, 3, 3]"
                                 " or not [N, N, 2, 2], can not fusion.", max_pool_node->GetName().c_str()),
                         return false);
       windowSize = ksizes[2];
     } else if (format == ge::FORMAT_NHWC) {
       FUSION_PASS_CHECK(strides[1] != 2 || strides[2] != 2,
-                        OP_LOGI(fused_op_type_.c_str(),
+                        OP_LOGD(fused_op_type_.c_str(),
                                 "node[%s]'s attr strides is not [N, 2, 2, N],"
                                 "can not fusion.",
                                 max_pool_node->GetName().c_str()),
                         return false);
       FUSION_PASS_CHECK((ksizes[1] != 3 || ksizes[2] != 3) && (ksizes[1] != 2 || ksizes[2] != 2),
-                        OP_LOGI(fused_op_type_.c_str(), "node[%s]'s Attr ksize is not [N, 3, 3, N] "
+                        OP_LOGD(fused_op_type_.c_str(), "node[%s]'s Attr ksize is not [N, 3, 3, N] "
                                 "or not [N, 2, 2, N], can not fusion.", max_pool_node->GetName().c_str()),
                         return false);
       windowSize = ksizes[2];
     } else {
-      OP_LOGI(fused_op_type_.c_str(), "node[%s]'s format is [%d], can not fusion.", max_pool_node->GetName().c_str(),
+      OP_LOGD(fused_op_type_.c_str(), "node[%s]'s format is [%d], can not fusion.", max_pool_node->GetName().c_str(),
               format);
       return false;
     }
@@ -322,17 +322,17 @@ void TbeAippConvReluMaxpoolingFusionPass::PoolingValidationAndFormatSet(const ge
     ge::ComputeGraphPtr graph_ptr = conv_node->GetOwnerComputeGraph();
     (void)ge::AttrUtils::SetBool(graph_ptr, NEED_RE_PRECOMPILE, true);
 
-    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s output format has been changed to [%d].",
+    OP_LOGD(fused_op_type_.c_str(), "Node[%s]'s output format has been changed to [%d].",
             aipp_node->GetName().c_str(), aipp_node->GetOpDesc()->GetOutputDesc(0).GetFormat());
-    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s input format of fmap has been changed to [%d].",
+    OP_LOGD(fused_op_type_.c_str(), "Node[%s]'s input format of fmap has been changed to [%d].",
             conv_node->GetName().c_str(), conv_node->GetOpDesc()->GetInputDesc(0).GetFormat());
 
     first_output_dims_aipp = aipp_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
     first_input_dims_conv = conv_node->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
 
-    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s output shape C0 has been changed to [%d].",
+    OP_LOGD(fused_op_type_.c_str(), "Node[%s]'s output shape C0 has been changed to [%d].",
             aipp_node->GetName().c_str(), first_output_dims_aipp[4]);
-    OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s input shape C0 of fmap has been changed to [%d].",
+    OP_LOGD(fused_op_type_.c_str(), "Node[%s]'s input shape C0 of fmap has been changed to [%d].",
             conv_node->GetName().c_str(), first_input_dims_conv[4]);
   }
 }
@@ -354,17 +354,17 @@ Status TbeAippConvReluMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMap
   if (!elemwise_nodes.empty()) {
     for (const auto& elemwise_node : elemwise_nodes) {
       FUSION_PASS_CHECK((elemwise_node->GetType() != kOpTypeLeakyRelu) && (elemwise_node->GetType() != kOpTypeRelu),
-                        OP_LOGI(fused_op_type_.c_str(), "Node[%s]'s opType is [%s], no need to do UB-fusion.",
+                        OP_LOGD(fused_op_type_.c_str(), "Node[%s]'s opType is [%s], no need to do UB-fusion.",
                                 elemwise_node->GetName().c_str(), elemwise_node->GetType().c_str()),
                         return SUCCESS);
       float nslope;
       if (elemwise_node->GetType() == kOpTypeLeakyRelu) {
         FUSION_PASS_CHECK(!ge::AttrUtils::GetFloat(elemwise_node->GetOpDesc(), kNSlope, nslope),
-                        OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s negative_slope attr not success.",
+                        OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s negative_slope attr not success.",
                                 elemwise_node->GetName().c_str()),
                         return SUCCESS);
         FUSION_PASS_CHECK(fabs(nslope - 0) > 1e-6,
-                        OP_LOGI(fused_op_type_.c_str(), "node[%s]'s attr negative_slope is [%ld] not 0."
+                        OP_LOGD(fused_op_type_.c_str(), "node[%s]'s attr negative_slope is [%ld] not 0."
                                 " not satisfied with fusion condition.",
                                 elemwise_node->GetName().c_str(), nslope),
                         return SUCCESS);
@@ -373,18 +373,18 @@ Status TbeAippConvReluMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMap
   }
   for (const auto& max_pool_node : max_pool_nodes) {
     if (!CheckMaxpoolNodeValidation(max_pool_node)) {
-      OP_LOGI(fused_op_type_.c_str(), "Node[%s] not satisfied with fusion condition.", max_pool_node->GetName().c_str());
+      OP_LOGD(fused_op_type_.c_str(), "Node[%s] not satisfied with fusion condition.", max_pool_node->GetName().c_str());
       return SUCCESS;
     }
   }
 
   for (const auto& conv_node : conv_nodes) {
     if (!CheckConvNodeValidation(conv_node)) {
-      OP_LOGI(fused_op_type_.c_str(), "Node[%s] not satisfied with fusion condition.", conv_node->GetName().c_str());
+      OP_LOGD(fused_op_type_.c_str(), "Node[%s] not satisfied with fusion condition.", conv_node->GetName().c_str());
       return SUCCESS;
     }
     if (!aipp_nodes.empty() && !TbeAippFusionRule::CheckAippConvStridehValidation(conv_node)) {
-      OP_LOGI(fused_op_type_.c_str(),
+      OP_LOGD(fused_op_type_.c_str(),
               "The case is the strideh optim. "
               "Node[%s] not satisfied with fusion condition.",
               conv_node->GetName().c_str());

@@ -41,21 +41,21 @@ bool TbeAippFusionRule::CheckAippConvStridehValidation(const ge::NodePtr conv_no
   vector<int64_t> first_dims(4);
   first_dims = conv_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
   FUSION_PASS_CHECK(first_dims.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s first input shape not success.",
                             conv_node->GetName().c_str()),
                     return false);
   vector<int64_t> pads(4);
   ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), "pads", pads);
   FUSION_PASS_CHECK(pads.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s pads attr not success.",
                             conv_node->GetName().c_str()),
                     return false);
   vector<int64_t> strides;
   ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), "strides", strides);
   FUSION_PASS_CHECK(strides.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s strides attr not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -74,7 +74,7 @@ bool TbeAippFusionRule::CheckAippConvStridehValidation(const ge::NodePtr conv_no
   std::vector<int64_t> second_dims(4);
   second_dims = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
   FUSION_PASS_CHECK(second_dims.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s second input shape not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -90,7 +90,7 @@ bool TbeAippFusionRule::CheckAippConvStridehValidation(const ge::NodePtr conv_no
   int64_t pad_sum = pad_up + pad_down + pad_left + pad_right;
   bool strideh_opti_flag =
       (height_ft == 1 && stride_h > 1 && pad_sum == 0 && filter_format != ge::FORMAT_FRACTAL_Z_C04);
-  FUSION_PASS_CHECK(strideh_opti_flag == true, OP_LOGI(conv_node->GetType().c_str(),
+  FUSION_PASS_CHECK(strideh_opti_flag == true, OP_LOGD(conv_node->GetType().c_str(),
                                                        "node[%s]'s is the strideh optim case"
                                                        "can not fusion.",
                                                        conv_node->GetName().c_str()),
@@ -105,7 +105,7 @@ bool TbeAippFusionRule::CheckConvload2dNodeValidation(const ge::NodePtr conv_nod
   vector<int64_t> strides;
   ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), "strides", strides);
   FUSION_PASS_CHECK(strides.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s strides attr not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -123,7 +123,7 @@ bool TbeAippFusionRule::CheckConvload2dNodeValidation(const ge::NodePtr conv_nod
   ge::Format second_format = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginFormat();
   std::vector<int64_t> second_dims = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
   FUSION_PASS_CHECK(second_dims.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s second input shape not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -146,7 +146,7 @@ bool TbeAippFusionRule::CheckConvload2dNodeValidation(const ge::NodePtr conv_nod
   vector<int64_t> pads;
   ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), "pads", pads);
   FUSION_PASS_CHECK(pads.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s pads attr not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -157,7 +157,7 @@ bool TbeAippFusionRule::CheckConvload2dNodeValidation(const ge::NodePtr conv_nod
   bool pad_flg = (pad_up == 0 && pad_down == 0 && pad_left == 0 && pad_right == 0);
   ge::DataType second_data_type = conv_node->GetOpDesc()->GetInputDesc(0).GetDataType();
   bool load2d_flg = filter_flg && stride_flg && pad_flg && second_data_type == ge::DT_FLOAT16;
-  FUSION_PASS_CHECK(load2d_flg == true, OP_LOGI(conv_node->GetType().c_str(),
+  FUSION_PASS_CHECK(load2d_flg == true, OP_LOGD(conv_node->GetType().c_str(),
                                                 "node[%s]'s is the load2d case"
                                                 "can not fusion.",
                                                 conv_node->GetName().c_str()),
@@ -173,21 +173,21 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
   vector<int64_t> first_dims;
   first_dims = conv_node->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
   FUSION_PASS_CHECK(first_dims.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s first input shape not success.",
                             conv_node->GetName().c_str()),
                     return false);
   vector<int64_t> dilations;
   ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), "dilations", dilations);
   FUSION_PASS_CHECK(dilations.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s dilations attr not success.",
                             conv_node->GetName().c_str()),
                     return false);
   vector<int64_t> strides;
   ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), "strides", strides);
   FUSION_PASS_CHECK(strides.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s strides attr not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -213,7 +213,7 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
   std::vector<int64_t> second_dims;
   second_dims = conv_node->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
   FUSION_PASS_CHECK(second_dims.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s second input shape not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -232,7 +232,7 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
   vector<int64_t> pads;
   ge::AttrUtils::GetListInt(conv_node->GetOpDesc(), "pads", pads);
   FUSION_PASS_CHECK(pads.size() != 4,
-                    OP_LOGI(conv_node->GetType().c_str(),
+                    OP_LOGD(conv_node->GetType().c_str(),
                             "Get node[%s]'s pads attr not success.",
                             conv_node->GetName().c_str()),
                     return false);
@@ -240,9 +240,9 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
   int64_t pad_right = pads[3];
   int64_t wk_dilation = (width_ft - 1) * dilate_w + 1;
   int64_t hk_dilation = (height_ft - 1) * dilate_h + 1;
-  FUSION_PASS_CHECK(stride_w == 0, OP_LOGI(conv_node->GetType().c_str(), "Stride width is zero."), return false);
+  FUSION_PASS_CHECK(stride_w == 0, OP_LOGD(conv_node->GetType().c_str(), "Stride width is zero."), return false);
   int64_t width_out = floor((width_fm - wk_dilation + pad_left + pad_right) / stride_w) + 1;
-  FUSION_PASS_CHECK(width_out == 0, OP_LOGI(conv_node->GetType().c_str(), "Out width is zero."), return false);
+  FUSION_PASS_CHECK(width_out == 0, OP_LOGD(conv_node->GetType().c_str(), "Out width is zero."), return false);
   int64_t width_in = floor(16 / width_out) + 2;
   int64_t tmp = ((width_in - 1) * stride_h + hk_dilation) * width_fm;
   if (input_format == "YUV420SP_U8") {
@@ -256,9 +256,9 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
   OptionalInfo opti_compilation_info;
   FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(
                         platform_info, opti_compilation_info) != fe::SUCCESS,
-                    OP_LOGI(conv_node->GetType().c_str(), "Get platform_info failed."), return false);
+                    OP_LOGD(conv_node->GetType().c_str(), "Get platform_info failed."), return false);
   max_l1 = platform_info.ai_core_spec.l1_size;
-  FUSION_PASS_CHECK(max_feature_map_l1 > max_l1, OP_LOGI(conv_node->GetType().c_str(),
+  FUSION_PASS_CHECK(max_feature_map_l1 > max_l1, OP_LOGD(conv_node->GetType().c_str(),
                                                      "node[%s]'s minimal l1 buffer is exceed the L1 Buffer Size"
                                                      "can not fusion.",
                                                      conv_node->GetName().c_str()),

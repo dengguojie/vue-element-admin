@@ -72,33 +72,33 @@ Status TbeAippCommonFusionPass::GetFusionNodes(const BufferFusionMapping& mappin
   for (auto aipp_node : aipp_nodes) {
     string aipp_config_str = "";
     FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(aipp_node->GetOpDesc(), "aipp_config_path", aipp_config_str),
-                      OP_LOGI(fused_op_type_.c_str(), "Get node[%s]'s aipp_config_path attr not success.",
+                      OP_LOGD(fused_op_type_.c_str(), "Get node[%s]'s aipp_config_path attr not success.",
                               aipp_node->GetName().c_str()),
                       return FAILED);
 
     nlohmann::json aipp_config_json = nlohmann::json::parse(aipp_config_str);
     FUSION_PASS_CHECK(!aipp_config_json.is_object(),
-                      OP_LOGE(fused_op_type_.c_str(), "The aipp_config_str is not an object, aipp_config_str is %s.",
+                      OP_LOGD(fused_op_type_.c_str(), "The aipp_config_str is not an object, aipp_config_str is %s.",
                               aipp_config_str.c_str()),
                       return FAILED);
     input_format = aipp_config_json["input_format"];
-    OP_LOGI(fused_op_type_.c_str(), "aipp input_format is %s!", input_format.c_str());
+    OP_LOGD(fused_op_type_.c_str(), "aipp input_format is %s!", input_format.c_str());
   }
 
   for (auto conv_node : conv_nodes) {
     if (!TbeAippFusionRule::CheckConvload2dNodeValidation(conv_node)) {
-      OP_LOGI(fused_op_type_.c_str(), "Node[%s] not satisfied with fusion condition.", conv_node->GetName().c_str());
+      OP_LOGD(fused_op_type_.c_str(), "Node[%s] not satisfied with fusion condition.", conv_node->GetName().c_str());
       return SUCCESS;
     }
     if (!TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(conv_node, input_format)) {
-      OP_LOGI(fused_op_type_.c_str(),
+      OP_LOGD(fused_op_type_.c_str(),
               "The AIPP YUV exceed the L1 buffer, "
               "Node[%s] not satisfied with fusion condition.",
               conv_node->GetName().c_str());
       return SUCCESS;
     }
     if (!TbeAippFusionRule::CheckAippConvStridehValidation(conv_node)) {
-      OP_LOGI(fused_op_type_.c_str(),
+      OP_LOGD(fused_op_type_.c_str(),
               "The case is the strideh optim. "
               "Node[%s] not satisfied with fusion condition.",
               conv_node->GetName().c_str());
