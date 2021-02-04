@@ -23,6 +23,7 @@
 
 #include "math_ops.h"
 #include "op_log.h"
+#include "axis_util.h"
 
 namespace ge {
 
@@ -48,19 +49,23 @@ IMPLEMT_COMMON_INFERFUNC(ActsULQInferShape) {
   TensorDesc y = op.GetOutputDesc("y");
   y.SetShape(x_shape);
   y.SetDataType(op.GetInputDesc("x").GetDataType());
-  (void)op.UpdateOutputDesc("y", y);
+  CHECK(op.UpdateOutputDesc("y", y) != GRAPH_SUCCESS,
+        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
 
   TensorDesc clamp_min_mask = op.GetOutputDesc("clamp_min_mask");
   clamp_min_mask.SetShape(x_shape);
-  (void)op.UpdateOutputDesc("clamp_min_mask", clamp_min_mask);
+  CHECK(op.UpdateOutputDesc("clamp_min_mask", clamp_min_mask) != GRAPH_SUCCESS,
+        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
 
   TensorDesc clamp_max_mask = op.GetOutputDesc("clamp_max_mask");
   clamp_max_mask.SetShape(x_shape);
-  (void)op.UpdateOutputDesc("clamp_max_mask", clamp_max_mask);
+  CHECK(op.UpdateOutputDesc("clamp_max_mask", clamp_max_mask) != GRAPH_SUCCESS,
+        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
 
   TensorDesc x_clamped_loss = op.GetOutputDesc("x_clamped_loss");
   x_clamped_loss.SetShape(x_shape);
-  (void)op.UpdateOutputDesc("x_clamped_loss", x_clamped_loss);
+  CHECK(op.UpdateOutputDesc("x_clamped_loss", x_clamped_loss) != GRAPH_SUCCESS,
+        GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActsULQInferShape] failed."), return GRAPH_FAILED);
 
   return GRAPH_SUCCESS;
 }

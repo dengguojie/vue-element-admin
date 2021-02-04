@@ -929,8 +929,13 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   bool isFailure = false;
   // get dynamicGRUGradNode
   ge::NodePtr gruV2GradNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-
+  FUSION_PASS_CHECK(gruV2GradNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2Grad:grad node is null, fusion failed."),
+                    return FAILED);
   ge::OpDescPtr dynamicGRUGradDesc = gruV2GradNode->GetOpDesc();
+  FUSION_PASS_CHECK(dynamicGRUGradDesc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2Grad:op desc is null, fusion failed."),
+                    return FAILED);
   ge::GeTensorDesc inputTensorDescH = dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["h"]);
   ge::GeTensorDesc inputTensorDescX = dynamicGRUGradDesc->GetInputDesc(INPUT_INDEX["x"]);
   batch = inputTensorDescH.GetShape().GetDim(1);

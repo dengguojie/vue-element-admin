@@ -21,11 +21,11 @@
 
 namespace aicpu {
 class GetDynamicDimsCpuKernel : public CpuKernel {
-public:
+ public:
   ~GetDynamicDimsCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
-private:
+ private:
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);
 

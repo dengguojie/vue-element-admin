@@ -39,11 +39,7 @@ Status ParseParamsGlobalAveragePool(const Message* op_src, ge::Operator& op_dest
     return FAILED;
   }
 
-  std::vector<int> strides;
-  strides.push_back(1);
-  strides.push_back(1);
-  strides.push_back(1);
-  strides.push_back(1);
+  std::vector<int> strides{1, 1, 1, 1};
   op_dest.SetAttr("strides", strides);
 
   string padding = "VALID";
@@ -52,11 +48,7 @@ Status ParseParamsGlobalAveragePool(const Message* op_src, ge::Operator& op_dest
   string data_format = "NCHW";
   op_dest.SetAttr("data_format", data_format);
 
-  std::vector<int> ksize;
-  ksize.push_back(1);
-  ksize.push_back(1);
-  ksize.push_back(-1);
-  ksize.push_back(-1);
+  std::vector<int> ksize{1, 1, -1, -1};
   op_dest.SetAttr("ksize", ksize);
 
   return SUCCESS;

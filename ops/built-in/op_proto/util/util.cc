@@ -27,6 +27,7 @@
 #include "./error_util.h"
 #include "op_common_util.h"
 #include "graph/utils/type_utils.h"
+#include "axis_util.h"
 
 namespace ge {
 
@@ -93,6 +94,10 @@ bool CheckInputDataType(const Operator& op, const std::string& input_name,
 
 bool CheckTwoInputDtypeSame(const Operator& op, const string& input_name1, const string& input_name2) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr || op_desc->MutableInputDesc(input_name1) == nullptr ||
+      op_desc->MutableInputDesc(input_name2) == nullptr,
+    OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
+
   DataType input_type_x1 = op_desc->MutableInputDesc(input_name1)->GetDataType();
   DataType input_type_x2 = op_desc->MutableInputDesc(input_name2)->GetDataType();
   if (input_type_x1 != input_type_x2) {
@@ -148,6 +153,10 @@ bool CheckInputsShapeDtypeSame(const Operator& op, const std::vector<std::string
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name, bool& is_dynamic) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr || op_desc->MutableOutputDesc(output_name) == nullptr||
+      op_desc->MutableInputDesc(input_name1) == nullptr || op_desc->MutableInputDesc(input_name2) == nullptr,
+    OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
+
   DataType input_dtype = op_desc->MutableInputDesc(input_name1)->GetDataType();
 
   // output Desc
@@ -168,12 +177,10 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   }
 
   std::vector<int64_t> dimVec;
-
   // unknown rank
   if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
-    dimVec.push_back(-2);
-    tensordesc_output->SetShape(ge::GeShape(dimVec));
-    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.", to_string(ge::Shape(dimVec)).c_str(),
+    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.", to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
             input_dtype);
     is_dynamic = false;
     return true;
@@ -201,13 +208,12 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 
   // dynamic case
   for (size_t i = 0; i < dimsX.size(); i++) {
-    if ((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1)) {
+    CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1),
       OpsInputShapeBroadcastErrReport(op.GetName(), input_name1, input_name2, ConcatString(dimsX[i]),
                                       ConcatString(dimsY[i]));
       OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
-              op.GetName().c_str(), dimsX[i], dimsY[i]);
-      return false;
-    }
+              op.GetName().c_str(), dimsX[i], dimsY[i]),
+      return false);
 
     if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
       if (dimsY[i] > 1) {
@@ -264,6 +270,10 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr || op_desc->MutableInputDesc(input_name1) == nullptr ||
+      op_desc->MutableOutputDesc(output_name) == nullptr || op_desc->MutableInputDesc(input_name2) == nullptr,
+    OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
+
   DataType input_dtype = op_desc->MutableInputDesc(input_name1)->GetDataType();
 
   GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
@@ -285,10 +295,9 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 
   // unknown rank
   if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY)) {
-    dimVec.push_back(-2);
-    tensordesc_output->SetShape(ge::GeShape(dimVec));
+    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
     tensordesc_output->SetDataType(input_dtype);
-    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.", to_string(ge::Shape(dimVec)).c_str(),
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.", to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
             input_dtype);
     return true;
   }
@@ -302,13 +311,12 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   }
 
   for (size_t i = 0; i < dimsX.size(); i++) {
-    if ((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1)) {
+    CHECK((dimsX[i] != dimsY[i]) && (dimsX[i] != 1) && (dimsY[i] != 1) && (dimsX[i] != -1) && (dimsY[i] != -1),
       OpsInputShapeBroadcastErrReport(op.GetName(), input_name1, input_name2, ConcatString(dimsX[i]),
                                       ConcatString(dimsY[i]));
       OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
-              op.GetName().c_str(), dimsX[i], dimsY[i]);
-      return false;
-    }
+              op.GetName().c_str(), dimsX[i], dimsY[i]),
+      return false);
 
     if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
       if (dimsY[i] > 1) {
@@ -360,6 +368,10 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
 bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1, const string& input_name2,
                                          const string& output_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr || op_desc->MutableInputDesc(input_name1) == nullptr ||
+      op_desc->MutableOutputDesc(output_name) == nullptr || op_desc->MutableInputDesc(input_name2) == nullptr,
+    OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
+
   ge::GeShape shape_x = op_desc->MutableInputDesc(input_name1)->GetShape();
   ge::GeShape shape_y = op_desc->MutableInputDesc(input_name2)->GetShape();
 
@@ -530,6 +542,8 @@ bool GetConstIntData(const Tensor& data, DataType data_type, std::vector<int64_t
 bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
                    std::vector<int64_t>& const_data) {
   size_t size = 0;
+  CHECK(dtype != ge::DT_INT32 && dtype != ge::DT_INT64,
+        OP_LOGE(op.GetName().c_str(), "not support this type"), return false);
   if (dtype == ge::DT_INT32) {
     int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
     size = const_tensor.GetSize() / sizeof(int32_t);
@@ -544,9 +558,6 @@ bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataTyp
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));
       OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
     }
-  } else {
-    OP_LOGE(op.GetName().c_str(), "not support this type");
-    return false;
   }
   return true;
 }
@@ -555,10 +566,10 @@ bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
                           const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = const_tensor->GetData().GetSize();
   void* data_ptr = (void*)const_tensor->GetData().GetData();
-  if (data_ptr == nullptr) {
-    return false;
-  }
+  CHECK(data_ptr == nullptr, OP_LOGE(op.GetName().c_str(), "data is null."), return false);
 
+  CHECK(dtype != ge::DT_INT32 && dtype != ge::DT_INT64,
+        OP_LOGE(op.GetName().c_str(), "const not support this type"), return false);
   if (dtype == ge::DT_INT32){
     int32_t* const_data_ptr = reinterpret_cast<int32_t*>(data_ptr);
     size = size / sizeof(int32_t);
@@ -571,9 +582,6 @@ bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
     for (size_t i=0; i < size; i++) {
       const_data.push_back((int64_t)((int64_t) ((*(const_data_ptr + i)))));
     }
-  } else {
-    OP_LOGW(op.GetName().c_str(), "const not support the type");
-    return false;
   }
   return true;
 }
@@ -692,6 +700,8 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
       continue;
     } else {
       ShapeTransferAccordingToFormat* global_object = new ShapeTransferAccordingToFormat();
+      CHECK(global_object == nullptr, OP_LOGE(op.GetName().c_str(), "new ShapeTransferAccordingToFormat failed."),
+            return false);
       global_object->GetShapeAccordingToFormat(shapeAndFormatInfoInput);
 
       // print some info
@@ -729,6 +739,8 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
       continue;
     } else {
       ShapeTransferAccordingToFormat* global_object = new ShapeTransferAccordingToFormat();
+      CHECK(global_object == nullptr, OP_LOGE(op.GetName().c_str(), "new ShapeTransferAccordingToFormat failed."),
+            return false);
       global_object->GetShapeAccordingToFormat(shapeAndFormatInfoOutput);
 
       // print some info
@@ -754,6 +766,7 @@ bool IsEmptyTensor(const std::vector<int64_t>& dims) {
 
 bool IsUnknownRank(const Operator& op, const std::string& tensor_name, const std::string& types) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr, OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
   GeTensorDescPtr tensor_desc;
   if (types == "input") {
     tensor_desc = op_desc->MutableInputDesc(tensor_name);
@@ -789,6 +802,7 @@ bool IsUnknown(const std::vector<int64_t>& shape_vec) {
 
 bool IsUnknownShape(const Operator& op, const std::string& tensor_name, const std::string& types) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr, OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
   GeTensorDescPtr tensor_desc;
   if (types == "input") {
     tensor_desc = op_desc->MutableInputDesc(tensor_name);
@@ -848,6 +862,7 @@ bool OneInOneOutDynamicInfer(const Operator& op,
                              const std::vector<std::string>& output_name_list) {
   // get input desc
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr, OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
   auto input_desc = op_info->MutableInputDesc(input_name);
   vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
   DataType input_dtype = input_desc->GetDataType();
@@ -936,6 +951,9 @@ bool TwoInOneOutDynamicInferNoBroadcast(Operator& op,
                                         const std::vector<string>& output_name_list) {
   // get input1 desc
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_info == nullptr || op_info->MutableInputDesc(input1_name) == nullptr ||
+            op_info->MutableInputDesc(input2_name) == nullptr, OP_LOGE(op.GetName().c_str(), "invalid OpDesc."),
+        return false);
   auto input1_desc = op_info->MutableInputDesc(input1_name);
   vector<int64_t> input1_shape = input1_desc->MutableShape().GetDims();
   DataType input_dtype = input1_desc->GetDataType();
@@ -1064,7 +1082,9 @@ void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, 
         y_range.emplace_back(std::pair<int64_t, int64_t>(1, left));
       } else {
         y_range.emplace_back(std::pair<int64_t, int64_t>(dim, dim));
-        left = static_cast<int64_t>((static_cast<double>(left) + 0.5) / dim);
+        if (dim != 0) {
+          left = static_cast<int64_t>((static_cast<double>(left) + 0.5) / dim);
+        }
       }
     }
   }

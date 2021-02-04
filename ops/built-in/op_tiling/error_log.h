@@ -29,6 +29,14 @@ namespace optiling {
     return false;                   \
   };
 
+#define OP_TILING_CHECK(cond, log_func, return_expr)   \
+  do {                                                 \
+    if (cond) {                                        \
+      log_func;                                        \
+      return_expr;                                     \
+    }                                                  \
+  } while (0)
+
 #define CHECK_EQ(x, y, message, ...) CHECK(((x) == (y)), message, __VA_ARGS__);
 #define CHECK_NE(x, y, message, ...) CHECK(((x) != (y)), message, __VA_ARGS__);
 #define CHECK_GT(x, y, message, ...) CHECK(((x) > (y)), message, __VA_ARGS__);

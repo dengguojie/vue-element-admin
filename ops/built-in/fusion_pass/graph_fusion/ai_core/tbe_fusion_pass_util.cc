@@ -56,7 +56,9 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
                     return FAILED);
   vector<int64_t> inputShape = inputDesc.GetShape().GetDims();
   size_t inputShapeDims = inputShape.size();
-
+  FUSION_PASS_CHECK(permList.size() < inputShapeDims,
+                    OP_LOGE(fuseNodeType.c_str(), "permList size less then %d .", inputShapeDims),
+                    return FAILED);
   vector<int64_t> outputShapeVec;
   for (size_t n = 0; n < inputShapeDims; n++) {
     outputShapeVec.push_back(inputShape[permList[n]]);
@@ -108,7 +110,9 @@ Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& output
                     return FAILED);
   vector<int64_t> inputShape = outputDesc.GetShape().GetDims();
   size_t inputShapeDims = inputShape.size();
-
+  FUSION_PASS_CHECK(permList.size() < inputShapeDims,
+                    OP_LOGE(fuseNodeType.c_str(), "permList size less then %d .", inputShapeDims),
+                    return FAILED);
   vector<int64_t> outputShapeVec;
   for (size_t n = 0; n < inputShapeDims; n++) {
     outputShapeVec.push_back(inputShape[permList[n]]);

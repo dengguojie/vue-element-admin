@@ -19,7 +19,7 @@
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsLeakyRelu(const Message *op_src, ge::Operator &op_dst) {
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+  const NodeProto *node = dynamic_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
     OP_LOGE("Floor", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;

@@ -81,7 +81,7 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_1) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr computeGraphPtr = ge::GraphUtils::GetComputeGraph(graph);
   // fe::FusionPassTestUtils::InferShapeAndType(computeGraphPtr);
-  // fe::FusionPassTestUtils::RunGraphFusionPass("GRUFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("GRUFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
 
   // bool findDynamicGRUV2 = false;
   // bool findSplitD = false;

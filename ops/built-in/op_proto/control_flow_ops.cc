@@ -122,7 +122,7 @@ graphStatus MergeInferImpl(Operator& op) {
           GE_OP_LOGW(op.GetName().c_str(), "Invalid dim found %d", dim);
           break;
         }
-        if (INT64_MAX / size < dim) {
+        if (size != 0 && INT64_MAX / size < dim) {
           GeInfershapeErrReport(op.GetName(), op.GetOpType(), "dim", "the dim size is overflow");
           GE_OP_LOGE(op.GetName().c_str(), "The dim size is overflow");
           return GRAPH_FAILED;
@@ -370,9 +370,9 @@ IMPLEMT_COMMON_INFERFUNC(MapIndexInferShape) {
   }
   int64_t data_seq_length = data_seq_shape[0];
 
-  if (x_length > 8) {
+  if (x_length > 8 || x_length == 0) {
     OP_LOGE(op.GetName().c_str(), "the length of x should be less than or equal to 8");
-    OpsOneInputShapeErrReport(op.GetName().c_str(), "x", "the length of x should be less than or equal to 8");
+    OpsOneInputShapeErrReport(op.GetName().c_str(), "x", "the length of x should be less than or equal to 8 and not 0");
     return GRAPH_FAILED;
   }
 

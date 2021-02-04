@@ -53,10 +53,9 @@ vector<FusionPattern*> BatchMultiClassNonMaxSuppressionFusionPass::DefinePattern
 
 bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(ge::NodePtr checkNode) {
   auto checkOpType = checkNode->GetType();
-  if ((checkOpType != "Slice") && (checkOpType != "SliceD")) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Op name is not Slice or SliceD, is %s", checkOpType.c_str());
-    return false;
-  }
+  FUSION_PASS_CHECK((checkOpType != "Slice") && (checkOpType != "SliceD"),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Op name is not Slice or SliceD, is %s", checkOpType.c_str()),
+                    return false);
   if (checkNode->GetAllOutDataAnchors().size() != 1) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "the Slice op have more than one output");
     return false;
@@ -67,10 +66,9 @@ bool BatchMultiClassNonMaxSuppressionFusionPass::CheckTransposeBeforeSlice(ge::N
 bool BatchMultiClassNonMaxSuppressionFusionPass::CheckfindSoftmax(ge::NodePtr checkNode) {
   auto ExpandDims_OpType = checkNode->GetType();
   OP_LOGI(FUSED_OP_TYPE.c_str(), "checkNode, is %s", ExpandDims_OpType.c_str());
-  if ((ExpandDims_OpType != "ExpandDims")) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Op name is not ExpandDims, is %s", ExpandDims_OpType.c_str());
-    return false;
-  }
+  FUSION_PASS_CHECK((ExpandDims_OpType != "ExpandDims"),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Op name is not ExpandDims, is %s", ExpandDims_OpType.c_str()),
+                    return false);
   return true;
 }
 
@@ -116,7 +114,7 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       DataType dtype = op.GetInputDesc("offsets").GetDataType();
 
       vector<ge::GeTensorPtr> sliceTensorPtr = ge::OpDescUtils::MutableWeights(peerNode);
-      FUSION_PASS_CHECK(sliceTensorPtr.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "slice const is nullptr!"),
+      FUSION_PASS_CHECK(sliceTensorPtr.size() < 2, OP_LOGW(FUSED_OP_TYPE.c_str(), "slice const num less then 2!"),
                         return NOT_CHANGED);
 
       if (dtype == ge::DT_INT32) {
@@ -164,11 +162,11 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
     } else {
       vector<int64_t> offsets;
       ge::AttrUtils::GetListInt(peerNode->GetOpDesc(), "offsets", offsets);
-      FUSION_PASS_CHECK(offsets.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "sliceD attr offsets is nullptr!"),
+      FUSION_PASS_CHECK(offsets.size() < 3, OP_LOGW(FUSED_OP_TYPE.c_str(), "sliceD attr offsets is less then 3!"),
                         return NOT_CHANGED);
       vector<int64_t> size;
       ge::AttrUtils::GetListInt(peerNode->GetOpDesc(), "size", size);
-      FUSION_PASS_CHECK(size.empty(), OP_LOGW(FUSED_OP_TYPE.c_str(), "sliceD attr size is nullptr!"),
+      FUSION_PASS_CHECK(size.size() < 3, OP_LOGW(FUSED_OP_TYPE.c_str(), "sliceD attr size is less then 3!"),
                         return NOT_CHANGED);
       vector<int64_t> offsetsNew = {offsets[0], offsets[2], offsets[1]};
       vector<int64_t> sizeNew = {size[0], size[2], size[1]};
@@ -202,13 +200,15 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       float score_threshold_new = 0.0;
 
       ge::AttrUtils::GetFloat(score_thresholdnode, "score_threshold", score_threshold_value);
+      FUSION_PASS_CHECK((65536/65535) - score_threshold_value < 1e-6,
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "score threshold should not be zero!"),
+                        return FAILED);
       score_threshold_new = (1 + score_threshold_value) / ((65536/65535) - score_threshold_value);
       ge::AttrUtils::SetFloat(score_thresholdnode, "score_threshold", score_threshold_new);
       vector<int64_t> oriNmsScorceShape = nmsScorceDesc.GetShape().GetDims();
-      if (oriNmsScorceShape.empty()) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get input nms scorce shape. shape is empty!");
-        return PARAM_INVALID;
-      }
+      FUSION_PASS_CHECK(oriNmsScorceShape.empty(),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get input nms scorce shape. shape is empty!"),
+                        return PARAM_INVALID);
 
       // Add the description (input, output, name, attribute) of the add1 node
       ge::OpDescPtr Adds;
@@ -252,10 +252,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
         auto Softmax_node = Reshape_4_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
         ge::GeTensorDesc softmaxDesc = Softmax_node->GetOpDesc()->GetInputDesc(0);
         vector<int64_t> softmax_shape = softmaxDesc.GetShape().GetDims();
-        if (softmax_shape.empty()) {
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get input nms scorce shape. shape is empty!");
-          return PARAM_INVALID;
-        }
+        FUSION_PASS_CHECK(softmax_shape.size() < 2,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get input nms scorce shape. shape is less then 2!"),
+                          return PARAM_INVALID);
         // Add the description (input, output, name, attribute) of the cast1 node
         ge::OpDescPtr Cast;
         std::string cast1DescName = fusedNode->GetOpDesc()->GetName();
@@ -465,10 +464,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   // do infer for fused node again, and update fused node output shape
   ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
   vector<int64_t> oriOutputShape = outputDesc.GetShape().GetDims();
-  if (oriOutputShape.empty()) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get output shape. shape is empty!");
-    return PARAM_INVALID;
-  }
+  FUSION_PASS_CHECK(oriOutputShape.size() < 3,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get output shape. shape size less then 3!"),
+                    return PARAM_INVALID);
   vector<int64_t> outputShapeVec;
   outputShapeVec.push_back(oriOutputShape[0]);
   outputShapeVec.push_back(oriOutputShape[2]);
@@ -488,10 +486,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
   // for performance change nms_valid_num shape from [batch] to [batch, 8] and insert a SliceD
   ge::GeTensorDesc nmsNumDesc = fusedNode->GetOpDesc()->GetOutputDesc(3);
   vector<int64_t> oriNmsNumShape = nmsNumDesc.GetShape().GetDims();
-  if (oriNmsNumShape.empty()) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get output nms valid num shape. shape is empty!");
-    return PARAM_INVALID;
-  }
+  FUSION_PASS_CHECK(oriNmsNumShape.empty(),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "can not get output nms valid num shape. shape is empty!"),
+                    return PARAM_INVALID);
   vector<int64_t> newShapeVec;
   newShapeVec.push_back(oriNmsNumShape[0]);
   newShapeVec.push_back(8);

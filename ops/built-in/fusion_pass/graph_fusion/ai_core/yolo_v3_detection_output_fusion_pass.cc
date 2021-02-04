@@ -122,7 +122,7 @@ Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   vector<int64_t> dimInfo1 = diagInputShape1.GetDims();
   vector<int64_t> dimInfo2 = diagInputShape2.GetDims();
   vector<int64_t> dimInfo3 = diagInputShape3.GetDims();
-  if (dimInfo1.empty() || dimInfo2.empty() || dimInfo3.empty()) {
+  if (dimInfo1.size() < 4 || dimInfo2.size() < 4 || dimInfo3.size() < 4) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "yolov3VNode's dimInfo is empty, fusion failed.");
     return PARAM_INVALID;
   }
@@ -269,7 +269,7 @@ Status YoloV3DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
   vector<ge::GeTensorPtr> weights = {assitPtrW1, assitPtrW2, assitPtrW3, assitPtrH1, assitPtrH2, assitPtrH3};
   ge::OpDescUtils::SetWeights(yolov3VNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(yolov3VNode);
-  if (constInputNodes.empty()) {
+  if (constInputNodes.size() < 6) {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "yolov3VNode's ConstInputNodes is empty, fusion failed.");
     return PARAM_INVALID;
   }

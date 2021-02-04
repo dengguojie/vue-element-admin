@@ -116,33 +116,11 @@ IMPLEMT_VERIFIER(HorovodAllreduce, HorovodAllreduceVerify) {
 COMMON_INFER_FUNC_REG(HorovodAllreduce, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 VERIFY_FUNC_REG(HorovodAllreduce, HorovodAllreduceVerify);
 
-// // HorovodBroadcast op
-// IMPLEMT_INFERFUNC(HorovodBroadcast, HorovodBroadcastInferShape) {
-//     const unsigned int UINT_MAX_VALUE = 0xFFFFFFFF;
-//     auto inputsSize = op.GetInputsSize();
-//     if (inputsSize >= UINT_MAX_VALUE) {
-//         OP_LOGE(op.GetName().c_str(), "GetInputsSize [%zu] is more than %u", inputsSize, UINT_MAX_VALUE);
-//         return GRAPH_FAILED;
-//     }
-//     for (size_t i = 0; i < inputsSize; i++) {
-//         auto outputDesc = op.get_dynamic_input_desc_x(i);
-//         op.update_dynamic_output_desc_y(i, outputDesc);
-//     }
-//     OP_LOGI(op.GetName().c_str(), "the op infershape end");
-//     return GRAPH_SUCCESS;
-// }
-
 IMPLEMT_VERIFIER(HorovodBroadcast, HorovodBroadcastVerify) {
-  // check supported data type in HCCL
-  // ge::DataType inputDtype = op.get_input_desc_x().GetDataType();
-  // if (!CheckSupportDateTpye(inputDtype)) {
-  //     OP_LOGE(op.GetName().c_str(), "dataType [%d] is not supported in HCCL.", inputDtype);
-  // }
   OP_LOGI(op.GetName().c_str(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
-// INFER_FUNC_REG(HorovodBroadcast, HorovodBroadcastInferShape);
 COMMON_INFER_FUNC_REG(HorovodBroadcast, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 VERIFY_FUNC_REG(HorovodBroadcast, HorovodBroadcastVerify);
 }  // namespace ge

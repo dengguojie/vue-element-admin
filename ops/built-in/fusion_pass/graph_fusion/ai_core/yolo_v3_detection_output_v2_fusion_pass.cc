@@ -117,7 +117,10 @@ Status YoloV3DetectionOutputV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
     // GESHAPE->vector
     vector<int64_t> dimInfo = diagInputShape.GetDims();
-
+    FUSION_PASS_CHECK(dimInfo.size() < 4,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "unexpected diagInputShape Dim. Dim(%d) less then 4",
+                              dimInfo.size()),
+                      return FAILED);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "YoloV3DetectionOutputV2Pass dimInfo%d:%d,%d,%d,%d", i, dimInfo[0], dimInfo[1],
             dimInfo[2], dimInfo[3]);
 
@@ -174,6 +177,10 @@ Status YoloV3DetectionOutputV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& map
   }
   ge::OpDescUtils::SetWeights(yolov3VNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(yolov3VNode);
+  FUSION_PASS_CHECK(constInputNodes.size() < yolo_num * 2,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "unexpected const inputs num. num(%d) less then %d",
+                            constInputNodes.size(), yolo_num * 2),
+                    return FAILED);
   for (uint32_t i = 0; i < yolo_num * 2; i++) {
     NodePtr constInput = constInputNodes[i];
     constInput->GetOpDesc()->SetType("Const");

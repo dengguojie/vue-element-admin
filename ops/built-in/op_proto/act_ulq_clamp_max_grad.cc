@@ -23,6 +23,7 @@
 
 #include "math_ops.h"
 #include "op_log.h"
+#include "axis_util.h"
 
 namespace ge {
 
@@ -44,8 +45,8 @@ IMPLEMT_COMMON_INFERFUNC(ActULQClampMaxGradInferShape) {
     TensorDesc clamp_max_grad = op.GetOutputDesc("clamp_max_grad");
     clamp_max_grad.SetShape({});
     clamp_max_grad.SetDataType(ge::DT_FLOAT);
-    (void)op.UpdateOutputDesc("clamp_max_grad", clamp_max_grad);
-
+    CHECK(op.UpdateOutputDesc("clamp_max_grad", clamp_max_grad) != GRAPH_SUCCESS,
+          GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[ActULQClampMaxGrad] failed."), return GRAPH_FAILED);
     return GRAPH_SUCCESS;
 }
 

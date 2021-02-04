@@ -23,19 +23,17 @@
 #include <vector>
 #include <string>
 #include "graph/utils/op_desc_utils.h"
+#include "pattern_fusion_util.h"
+#include "op_log.h"
 
 using namespace std;
 
 bool HasUnKnowDimShape(const ge::NodePtr &node_ptr) {
-  if (!node_ptr) {
-    return false;
-  }
+  FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return false);
 
   auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (!op_desc) {
-    return false;
-  }
+  FUSION_PASS_CHECK(op_desc == nullptr, FUSION_PASS_LOGE("op desc is null."), return false);
 
   for (const auto &ptr : op_desc->GetAllInputsDescPtr()) {
     auto ge_shape = ptr->GetShape();
@@ -91,15 +89,11 @@ bool HasUnKnowShape(const ge::NodePtr &node_ptr) {
 }
 
 void ClearOpInferDepends(const ge::NodePtr &node_ptr) {
-  if (!node_ptr) {
-    return;
-  }
+  FUSION_PASS_CHECK(node_ptr == nullptr, FUSION_PASS_LOGE("node is null."), return);
 
   auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (!op_desc) {
-    return;
-  }
+  FUSION_PASS_CHECK(op_desc == nullptr, FUSION_PASS_LOGE("op desc is null."), return);
 
   vector<string> dummyVec;
   op_desc->SetOpInferDepends(dummyVec);

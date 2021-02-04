@@ -21,7 +21,7 @@ namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsThresholdedRelu(const Message* op_src,
                                   ge::Operator& op_dest) {
-  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
+  const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("ParseParamsThresholdedRelu",
             "Dynamic cast op_src to NodeProto failed.");

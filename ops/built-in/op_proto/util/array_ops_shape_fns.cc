@@ -23,6 +23,7 @@
 #include "op_log.h"
 #include "error_util.h"
 #include "common_shape_fns.h"
+#include "axis_util.h"
 
 namespace ge {
 static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const int64_t input_dim_num) {
@@ -34,11 +35,15 @@ static graphStatus PadKnown(Operator& op, const Tensor& paddings_tensor, const i
   data.reserve(element_num);
   if (data_type == DT_INT32) {
     const int32_t* paddings_data = reinterpret_cast<const int32_t*>(paddings_tensor.GetData());
+    CHECK(paddings_tensor.GetSize() / sizeof(int32_t) < element_num,
+          OP_LOGE(op.GetName().c_str(), "invalid padding data."), return GRAPH_FAILED);
     for (int64_t i = 0; i < element_num; ++i) {
       data.push_back(static_cast<int64_t>(paddings_data[i]));
     }
   } else if (data_type == DT_INT64) {
     const int64_t* paddings_data = reinterpret_cast<const int64_t*>(paddings_tensor.GetData());
+    CHECK(paddings_tensor.GetSize() / sizeof(int64_t) < element_num,
+          OP_LOGE(op.GetName().c_str(), "invalid padding data."), return GRAPH_FAILED);
     for (int64_t i = 0; i < element_num; ++i) {
       data.push_back(paddings_data[i]);
     }
@@ -139,6 +144,8 @@ static graphStatus CalcPadGradOutDims(const Shape& input_shape, const Tensor& pa
   DataType padding_type = paddings_tensor.GetTensorDesc().GetDataType();
   if (padding_type == DT_INT32) {
     const int32_t* paddings_data = reinterpret_cast<const int32_t*>(paddings_tensor.GetData());
+    CHECK(paddings_tensor.GetSize() / sizeof(int32_t) < input_rank,
+          OP_LOGE(op_name, "invalid padding data."), return GRAPH_FAILED);
     for (size_t i = 0; i < input_rank; ++i) {
       const int64_t pad0 = static_cast<int64_t>(paddings_data[2 * i]);
       const int64_t pad1 = static_cast<int64_t>(paddings_data[(2 * i) + 1]);
@@ -153,6 +160,8 @@ static graphStatus CalcPadGradOutDims(const Shape& input_shape, const Tensor& pa
     }
   } else if (padding_type == DT_INT64) {
     const int64_t* paddings_data = reinterpret_cast<const int64_t*>(paddings_tensor.GetData());
+    CHECK(paddings_tensor.GetSize() / sizeof(int64_t) < input_rank,
+          OP_LOGE(op_name, "invalid padding data."), return GRAPH_FAILED);
     for (size_t i = 0; i < input_rank; ++i) {
       const int64_t pad0 = paddings_data[2 * i];
       const int64_t pad1 = paddings_data[(2 * i) + 1];

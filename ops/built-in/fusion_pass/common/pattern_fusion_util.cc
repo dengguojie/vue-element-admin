@@ -225,6 +225,9 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
       continue;
     }
     ge::InDataAnchorPtr fused_anchor_ptr = fusedNode->GetInDataAnchor(attr.attrIndex);
+    if (fused_anchor_ptr == nullptr) {
+      continue;
+    }
     ge::OutDataAnchorPtr const_anchor_ptr = fused_anchor_ptr->GetPeerOutAnchor();
     if (const_anchor_ptr == nullptr) {
       continue;
@@ -282,7 +285,7 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
     if (std::find(attrIndexVec.begin(), attrIndexVec.end(), i) != attrIndexVec.end()) {
       continue;
     }
-    if (fusedNode->GetInDataAnchor(i)->GetPeerOutAnchor() != nullptr) {
+    if (fusedNode->GetInDataAnchor(i) != nullptr && fusedNode->GetInDataAnchor(i)->GetPeerOutAnchor() != nullptr) {
       FUSION_PASS_CHECK(
         SUCCESS !=
         ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(i)->GetPeerOutAnchor(), fusionNode->GetInDataAnchor(j)),
@@ -382,6 +385,9 @@ Status PatternFusionUtil::ConstToAttrWithNode(ge::ComputeGraph& graph, ge::NodeP
 
 Status PatternFusionUtil::LinkControlAnchorForConst(ge::NodePtr oneConstNode, ge::NodePtr fusionNode) {
   //link control anchor
+  FUSION_PASS_CHECK(fusionNode == nullptr || fusionNode->GetOpDesc() == nullptr,
+                    OP_LOGE("LinkControlAnchorForConst", "fusionNode or OpDesc is null, fusion failed."),
+                    return FAILED);
   string fusionOpType = fusionNode->GetOpDesc()->GetType();
   auto constControlAnchors = oneConstNode->GetInControlAnchor()->GetPeerOutControlAnchors();
   for (const auto &outControlAnchor : constControlAnchors) {
@@ -442,6 +448,9 @@ Status PatternFusionUtil::RecordOriginalNamesForConstToAttr(ge::NodePtr& fusedNo
 }
 
 Status PatternFusionUtil::SetOutputDescAttrForDataDump(ge::NodePtr fusedNode, ge::NodePtr fusionNode) {
+  FUSION_PASS_CHECK(fusionNode == nullptr || fusionNode->GetOpDesc() == nullptr,
+                    OP_LOGE("SetOutputDescAttrForDataDump", "fusedNode or OpDesc is null, fusion failed."),
+                    return FAILED);
   for (unsigned int i = 0; i < fusedNode->GetAllOutDataAnchors().size(); i++) {
     ge::AttrUtils::SetStr(fusionNode->GetOpDesc()->MutableOutputDesc(i), ge::ATTR_NAME_DATA_DUMP_ORIGIN_NAME,
                           fusedNode->GetName());
@@ -572,6 +581,9 @@ Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode
   }
   // If const node don't have sliceD output, create a sliceD node
   if (newSlicedNodes.empty()) {
+    FUSION_PASS_CHECK((int64_t)(newConvNodes.size()) < group,
+                      OP_LOGE(curOpType.c_str(), "Node's size less then group, fusion failed."),
+                      return FAILED);
     for (unsigned int newSrcNodeIdx = 0; newSrcNodeIdx < group; newSrcNodeIdx++) {
       NodePtr slicedNode = nullptr;
       OpDescPtr sliceDesc = std::make_shared<ge::OpDesc>(
@@ -590,7 +602,7 @@ Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode
           inputShape.GetDimNum() < 1,
           OP_LOGE(curOpType.c_str(), "sliceNdoe's dim:[%ld] less than one, fusion failed.", inputShape.GetDimNum()),
           return FAILED);
-      FUSION_PASS_CHECK(inputShape.GetDim(sliceDimIdx) % group != 0,
+      FUSION_PASS_CHECK(group != 0 && inputShape.GetDim(sliceDimIdx) % group != 0,
                         OP_LOGE(curOpType.c_str(), "sliceNdoe's dim[%d]:[%ld] divide group(%ld) != 0, fusion failed.",
                                 sliceDimIdx, inputShape.GetDim(sliceDimIdx), group),
                         return FAILED);
@@ -606,11 +618,8 @@ Status PatternFusionUtil::InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode
       // set newConvNode's input info, it should be the same as sliceD's output desc
       newConvNodes[newSrcNodeIdx]->GetOpDesc()->UpdateInputDesc(weightIdx, sliceOutDesc);
       // set sliceD's attr: offsets & size
-      vector<int64_t> vectorOffsets;
+      vector<int64_t> vectorOffsets(inputShape.GetDims().size(), 0);
       vector<int64_t> vectorSize;
-      for (unsigned int l = 0; l < inputShape.GetDims().size(); l++) {
-        vectorOffsets.push_back(0);
-      }
       vectorOffsets[sliceDimIdx] = newSrcNodeIdx * inputShape.GetDim(sliceDimIdx) / group;
       vectorSize = inputShape.GetDims();
       vectorSize[sliceDimIdx] /= group;

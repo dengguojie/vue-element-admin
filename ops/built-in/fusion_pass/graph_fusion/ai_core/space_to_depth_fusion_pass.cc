@@ -121,6 +121,11 @@ Status SpaceToDepthFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   vector<int64_t> spaceToDepthInputDimInfo = spaceToDepthInputShape.GetDims();
   ge::Format spaceOriginFormat = spaceToDepthInput.GetOriginFormat();
   int64_t spaceCin = 0;
+  FUSION_PASS_CHECK(spaceToDepthInputDimInfo.size() < 4,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(),
+                            "Node[%s]: The input dim num(%d) less then 4, cannot do fusion.",
+                            spaceToDepthName.c_str(), spaceToDepthInputDimInfo.size()),
+                    return NOT_CHANGED);
   if (spaceOriginFormat == FORMAT_NHWC) {
     spaceCin = spaceToDepthInputDimInfo[3];
   } else if (spaceOriginFormat == FORMAT_NCHW) {

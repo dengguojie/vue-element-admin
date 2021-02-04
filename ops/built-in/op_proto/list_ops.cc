@@ -46,14 +46,14 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(
   if (dims.size() == 0) {
     if (data_type == DT_INT32) {
       const int32_t* shape_data = reinterpret_cast<const int32_t*>(tensor.GetData());
-      if (shape_data[0] != -1) {
+      if (tensor.GetSize() / sizeof(int32_t) > 0 && shape_data[0] != -1) {
         OP_LOGE(op_name, "If rank is 0, the value must be -1, but got [%d].",
                 shape_data[0]);
         return GRAPH_FAILED;
       }
     } else if (data_type == DT_INT64) {
       const int64_t* shape_data = reinterpret_cast<const int64_t*>(tensor.GetData());
-      if (shape_data[0] != -1) {
+      if (tensor.GetSize() / sizeof(int64_t) > 0 && shape_data[0] != -1) {
         OP_LOGE(op_name, "If rank is 0, the value must be -1, but got [%ld]",
                 shape_data[0]);
         return GRAPH_FAILED;

@@ -335,7 +335,7 @@ IMPLEMT_INFERFUNC(HcomRemoteRead, HcomRemoteReadInferShape) {
         outTensorDesc.SetShape(ge::Shape(outDims));
         outTensorDesc.SetOriginShape(ge::Shape(outDims));
     } else {
-        if (outDims[0] == -2) {
+        if (!outDims.empty() && outDims[0] == -2) {
             outTensorDesc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
             outTensorDesc.SetOriginShape(ge::Shape(ge::UNKNOWN_RANK));
         } else {

@@ -435,6 +435,10 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthInferShape) {
   std::vector<int64_t> nbins;
   GetConstValue(nbins_tensor, dtype, nbins);
   std::vector<int64_t> dim_vector;
+  if (nbins.empty()) {
+    OP_LOGE(op.GetName().c_str(), "nbins empty");
+    return GRAPH_FAILED;
+  }
   dim_vector.push_back(nbins[0]);
   Shape output_shape(dim_vector);
   TensorDesc td = op.GetOutputDesc("y");

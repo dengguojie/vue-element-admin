@@ -24,6 +24,7 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -200,15 +201,14 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
   // get and check input shape
   vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   string input_format = op_paras.inputs[0].tensor[0].format;
-  if (input_format != "NC1HWC0") {
-    OP_LOGE(op_type.c_str(), "Get input format failed, only support NC1HWC0, but got %s.", input_format.c_str());
-    return false;
-  }
-  if (input_shape.size() != 5) {
-    OP_LOGE(op_type.c_str(), "Get input shape failed, the length of input shape must be 5, but got %d.",
-            input_shape.size());
-    return false;
-  }
+  OP_TILING_CHECK(input_format != "NC1HWC0",
+        OP_LOGE(op_type.c_str(), "Get input format failed, only support NC1HWC0, but got %s.", input_format.c_str()),
+        return false);
+  OP_TILING_CHECK(input_shape.size() != 5,
+                  OP_LOGE(op_type.c_str(),
+                          "Get input shape failed, the length of input shape must be 5, but got %d.",
+                          input_shape.size()),
+                  return false);
 
   // get compile info
   int32_t ub_ele = 0;
@@ -225,10 +225,9 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
   for (auto& param : compile_params) {
     const auto& name = param.first;
     OP_LOGD(op_type.c_str(), "GetCompileInfo %s.", name.c_str());
-    if (!GetCompileInfo<int32_t>(op_info, name, param.second)) {
-      OP_LOGE(op_type.c_str(), "GetCompileInfo %s failed.", name.c_str());
-      return false;
-    }
+    OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, name, param.second),
+        OP_LOGE(op_type.c_str(), "GetCompileInfo %s failed.", name.c_str()),
+        return false);
     OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
   }
 
@@ -236,22 +235,21 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
   TilingParam param;
   param.input_h = input_shape[2];
   param.input_w = input_shape[3];
-  if (ksize_h < 0 || ksize_w < 0 || strides_h < 0 || strides_w < 0) {
-    OP_LOGE(op_type.c_str(), "The ksize and strides must be greater to 1, but got ksize:[%d,%d] and strides:[%d,%d].",
-            ksize_h, ksize_w, strides_h, strides_w);
-    return false;
-  }
-  if ((padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w))) {
-    OP_LOGE(op_type.c_str(),
-            "Input height or width must greater than or equal to ksize when "
-            "padding mode is valid.");
-    return false;
-  }
+  OP_TILING_CHECK(ksize_h < 0 || ksize_w < 0 || strides_h <= 0 || strides_w <= 0,
+                  OP_LOGE(op_type.c_str(),
+                          "The ksize and strides must be greater to 1, but got ksize:[%d,%d] and strides:[%d,%d].",
+                          ksize_h, ksize_w, strides_h, strides_w),
+                  return false);
+  OP_TILING_CHECK((padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w)),
+                  OP_LOGE(op_type.c_str(),
+                          "Input height or width must greater than or equal to ksize when "
+                          "padding mode is valid."),
+                  return false);
   int32_t one_fourth_ub_ele = ub_ele / 4;
-  if (one_fourth_ub_ele / input_shape[4] / ksize_h < ksize_w) {
-    OP_LOGE(op_type.c_str(), "Get tiling failed, minimum processing unit must be ksize_h * ksize_w.");
-    return false;
-  }
+  OP_TILING_CHECK(one_fourth_ub_ele / input_shape[4] / ksize_h < ksize_w,
+                  OP_LOGE(op_type.c_str(),
+                          "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
+                  return false);
 
   // calc tiling params, set tiling params, print tiling params
   CalTilingParam(param, input_shape, ub_ele, core_num, ksize_h, ksize_w, strides_h, strides_w, padding);

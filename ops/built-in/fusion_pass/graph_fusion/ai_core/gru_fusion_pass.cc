@@ -314,6 +314,7 @@ std::vector<int64_t> GRUFusionPass::RemoveNumDirectionsDim(const std::vector<int
 std::vector<int64_t> GRUFusionPass::ProcessOutputDim(const std::vector<int64_t> dims) {
   std::vector<int64_t> res;
   int n = dims.size();
+  FUSION_PASS_CHECK(n < 2, OP_LOGE(FUSED_OP_TYPE.c_str(), "dim size less then 2."), return res);
   int64_t numStep = dims[0];
   int64_t last = dims[n - 1];
   int64_t second = dims[n - 2];
@@ -325,6 +326,7 @@ std::vector<int64_t> GRUFusionPass::ProcessOutputDim(const std::vector<int64_t> 
 
 void GRUFusionPass::ProcessNZFormat(std::vector<int64_t> &dims) {
   int n = dims.size();
+  FUSION_PASS_CHECK(n < 2, OP_LOGE(FUSED_OP_TYPE.c_str(), "dim size less then 2."), return);
   int64_t first = dims[n - 1];
   int64_t second = dims[n - 2];
   dims[n - 1] = (second + 15) / 16;

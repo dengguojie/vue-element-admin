@@ -42,28 +42,18 @@ vector<FusionPattern*> MaxToMaximumPass::DefinePatterns() {
 Status MaxToMaximumPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                 vector<ge::NodePtr>& fusion_nodes) {
   ge::NodePtr fused_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr,
-                    OP_LOGE("MaxToMaximumPass", "Fusion GetNode Error"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE("MaxToMaximumPass", "Fusion GetNode Error"), return PARAM_INVALID);
   ge::OpDescPtr op_desc = fused_node->GetOpDesc();
-  FUSION_PASS_CHECK(op_desc == nullptr,
-                    OP_LOGE("MaxToMaximumPass", "Fusion GetOpdesc Error"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(op_desc == nullptr, OP_LOGE("MaxToMaximumPass", "Fusion GetOpdesc Error"), return PARAM_INVALID);
 
   int input_size = op_desc->GetInputsSize();
-  if (input_size < MIN_INPUT_SIZE) {
-    OP_LOGW("MaxToMaximumPass", "input_size less %d", MIN_INPUT_SIZE);
-    return PARAM_INVALID;
-  }
+  FUSION_PASS_CHECK(input_size < MIN_INPUT_SIZE, OP_LOGW("MaxToMaximumPass", "input_size less %d", MIN_INPUT_SIZE),
+                    return PARAM_INVALID);
   GetDataFormatAndType(fused_node);
   auto ret = FusionNode(graph, fused_node, fusion_nodes, input_size);
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "FusionNode FAIL"),
-                    return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "FusionNode FAIL"), return FAILED);
   ret = RemoveFusedNode(graph, fused_node);
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "AddEdgeForList FAIL"),
-                    return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "AddEdgeForList FAIL"), return FAILED);
   return SUCCESS;
 }
 
@@ -76,38 +66,26 @@ Status MaxToMaximumPass::FusionNode(ge::ComputeGraph& graph,
   ge::NodePtr new_node = nullptr;
   CreateNode(graph, root_node, 0);
   UpdateDescForRoot(fused_node, root_node);
-  FUSION_PASS_CHECK(
-      root_node == nullptr,
-      OP_LOGE("MaxToMaximumPass", "Fusion Create root node Error"),
-      return PARAM_INVALID);
+  FUSION_PASS_CHECK(root_node == nullptr, OP_LOGE("MaxToMaximumPass", "Fusion Create root node Error"),
+                    return PARAM_INVALID);
   fusion_nodes.push_back(root_node);
   auto ret = AddEdgeForRoot(fused_node, root_node);
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "AddEdgeForRoot FAIL"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "AddEdgeForRoot FAIL"), return PARAM_INVALID);
   curr_node = root_node;
   for (int i = 2; i < input_size; ++i) {
     CreateNode(graph, new_node, i);
-    FUSION_PASS_CHECK(
-        new_node == nullptr,
-        OP_LOGE("MaxToMaximumPass", "Fusion Create new node Error"),
-        return PARAM_INVALID);
+    FUSION_PASS_CHECK(new_node == nullptr, OP_LOGE("MaxToMaximumPass", "Fusion Create new node Error"),
+                      return PARAM_INVALID);
     fusion_nodes.push_back(new_node);
     ret = UpdateDescForList(fused_node, new_node, curr_node, i);
-    FUSION_PASS_CHECK(ret != SUCCESS,
-                      OP_LOGE("MaxToMaximumPass", "UpdateDescForList FAIL"),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "UpdateDescForList FAIL"), return PARAM_INVALID);
     ret = AddEdgeForList(fused_node, new_node, curr_node, i);
-    FUSION_PASS_CHECK(ret != SUCCESS,
-                      OP_LOGE("MaxToMaximumPass", "AddEdgeForList FAIL"),
-                      return PARAM_INVALID);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "AddEdgeForList FAIL"), return PARAM_INVALID);
     curr_node = new_node;
   }
 
   ret = AddEdgeForEnd(fused_node, curr_node);
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "AddEdgeForList FAIL"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "AddEdgeForList FAIL"), return PARAM_INVALID);
   return SUCCESS;
 }
 
@@ -116,24 +94,14 @@ Status MaxToMaximumPass::CreateNode(ge::ComputeGraph& graph,
                                     const int index) const {
   ge::OpDescPtr new_desc = nullptr;
   std::string name = "Maximum_Fuss_" + to_string(index);
-  FUSION_PASS_MAKE_SHARED(
-      (new_desc = std::make_shared<ge::OpDesc>(name, "Maximum")),
-      return INTERNAL_ERROR);
-  auto ret =
-      new_desc->AddInputDesc(GeTensorDesc(GeShape(), data_format, data_type));
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "AddInputDesc first FAIL"),
-                    return FAILED);
+  FUSION_PASS_MAKE_SHARED((new_desc = std::make_shared<ge::OpDesc>(name, "Maximum")), return INTERNAL_ERROR);
+  auto ret = new_desc->AddInputDesc(GeTensorDesc(GeShape(), data_format, data_type));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "AddInputDesc first FAIL"), return FAILED);
   ret = new_desc->AddInputDesc(GeTensorDesc(GeShape(), data_format, data_type));
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "AddInputDesc second FAIL"),
-                    return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "AddInputDesc second FAIL"), return FAILED);
 
-  ret =
-      new_desc->AddOutputDesc(GeTensorDesc(GeShape(), data_format, data_type));
-  FUSION_PASS_CHECK(ret != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "AddOutputDesc FAIL"),
-                    return FAILED);
+  ret = new_desc->AddOutputDesc(GeTensorDesc(GeShape(), data_format, data_type));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MaxToMaximumPass", "AddOutputDesc FAIL"), return FAILED);
   new_node = graph.AddNode(new_desc);
   return SUCCESS;
 }
@@ -143,16 +111,13 @@ Status MaxToMaximumPass::AddEdgeForRoot(ge::NodePtr& fused_node,
   auto in_data_anchor = fused_node->GetInDataAnchor(0);
   auto peer_out_anchor = in_data_anchor->GetPeerOutAnchor();
   auto in_data_anchor_n = new_node->GetInDataAnchor(0);
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(peer_out_anchor, in_data_anchor_n) != SUCCESS,
-      OP_LOGE("MaxToMaximumPass", "AddEdgeForRoot first error"), return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(peer_out_anchor, in_data_anchor_n) != SUCCESS,
+                    OP_LOGE("MaxToMaximumPass", "AddEdgeForRoot first error"), return FAILED);
   auto in_data_anchor1 = fused_node->GetInDataAnchor(1);
   auto peer_out_anchor1 = in_data_anchor1->GetPeerOutAnchor();
   auto in_data_anchor1n = new_node->GetInDataAnchor(1);
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(peer_out_anchor1, in_data_anchor1n) != SUCCESS,
-      OP_LOGE("MaxToMaximumPass", "AddEdgeForRoot second error"),
-      return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(peer_out_anchor1, in_data_anchor1n) != SUCCESS,
+                    OP_LOGE("MaxToMaximumPass", "AddEdgeForRoot second error"), return FAILED);
   return SUCCESS;
 }
 
@@ -160,22 +125,16 @@ Status MaxToMaximumPass::AddEdgeForList(ge::NodePtr& fused_node,
                                         ge::NodePtr& new_node,
                                         ge::NodePtr& curr_node,
                                         const int index) const {
-  if (index < 0) {
-    OP_LOGE("MaxToMaximumPass", "AddEdgeForList index less 0");
-    return FAILED;
-  }
+  FUSION_PASS_CHECK(index < 0, OP_LOGE("MaxToMaximumPass", "AddEdgeForList index less 0"), return FAILED);
   auto in_data_anchor = fused_node->GetInDataAnchor(index);
   auto peer_out_anchor = in_data_anchor->GetPeerOutAnchor();
   auto in_data_anchorn = new_node->GetInDataAnchor(0);
-  FUSION_PASS_CHECK(
-      ge::GraphUtils::AddEdge(peer_out_anchor, in_data_anchorn) != SUCCESS,
-      OP_LOGE("MaxToMaximumPass", "AddEdgeForList first error"), return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(peer_out_anchor, in_data_anchorn) != SUCCESS,
+                    OP_LOGE("MaxToMaximumPass", "AddEdgeForList first error"), return FAILED);
   auto curr_outdata_anchor = curr_node->GetOutDataAnchor(0);
   auto new_indata_anchor1 = new_node->GetInDataAnchor(1);
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(curr_outdata_anchor,
-                                            new_indata_anchor1) != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "AddEdgeForList second error"),
-                    return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(curr_outdata_anchor, new_indata_anchor1) != SUCCESS,
+                    OP_LOGE("MaxToMaximumPass", "AddEdgeForList second error"), return FAILED);
   return SUCCESS;
 }
 
@@ -185,15 +144,11 @@ Status MaxToMaximumPass::AddEdgeForEnd(ge::NodePtr& fused_node,
   auto out_data_anchor_end = endNode->GetOutDataAnchor(0);
   for (auto in_data_anchor : out_data_anchor->GetPeerInDataAnchors()) {
     if (in_data_anchor != nullptr) {
-      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_data_anchor,
-                                                   in_data_anchor) != SUCCESS,
-                        OP_LOGE("MaxToMaximumPass", "RemoveEdge fail"),
-                        return FAILED);
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(out_data_anchor, in_data_anchor) != SUCCESS,
+                        OP_LOGE("MaxToMaximumPass", "RemoveEdge fail"), return FAILED);
       FUSION_PASS_CHECK(
-          ge::GraphUtils::AddEdge(out_data_anchor_end, in_data_anchor) !=
-              SUCCESS,
-          OP_LOGE("MaxToMaximumPass", "AddEdgeForEnd second error"),
-          return FAILED);
+          ge::GraphUtils::AddEdge(out_data_anchor_end, in_data_anchor) != SUCCESS,
+          OP_LOGE("MaxToMaximumPass", "AddEdgeForEnd second error"), return FAILED);
     }
   }
   return SUCCESS;
@@ -213,8 +168,7 @@ Status MaxToMaximumPass::RemoveFusedNode(ge::ComputeGraph& graph,
     }
   }
 
-  FUSION_PASS_CHECK(graph.RemoveNode(fused_node) != SUCCESS,
-                    OP_LOGE("MaxToMaximumPass", "RemoveFusedNode error"),
+  FUSION_PASS_CHECK(graph.RemoveNode(fused_node) != SUCCESS, OP_LOGE("MaxToMaximumPass", "RemoveFusedNode error"),
                     return FAILED);
   return SUCCESS;
 }
@@ -234,10 +188,7 @@ Status MaxToMaximumPass::UpdateDescForRoot(ge::NodePtr& fused_node,
   ge::GeShape input_shape(input_desc.GetShape().GetDims());
   ge::GeShape input_shape1(input_desc1.GetShape().GetDims());
   ge::OpDescPtr op_desc = new_node->GetOpDesc();
-  FUSION_PASS_CHECK(
-      op_desc == nullptr,
-      OP_LOGE("MaxToMaximumPass", "UpdateDescForRoot GetOpDesc error"),
-      return FAILED);
+  FUSION_PASS_CHECK(op_desc == nullptr, OP_LOGE("MaxToMaximumPass", "UpdateDescForRoot GetOpDesc error"), return FAILED);
   ge::GeTensorDesc new_input_desc = op_desc->GetInputDesc(0);
   ge::GeTensorDesc new_input_desc1 = op_desc->GetInputDesc(1);
   ge::GeTensorDesc new_output_desc = op_desc->GetOutputDesc(0);
@@ -262,18 +213,13 @@ Status MaxToMaximumPass::UpdateDescForList(ge::NodePtr& fused_node,
   auto input_desc = op.GetDynamicInputDesc("x", index);
   ge::GeShape input_shape(input_desc.GetShape().GetDims());
   ge::OpDescPtr op_desc = new_node->GetOpDesc();
-  FUSION_PASS_CHECK(
-      op_desc == nullptr,
-      OP_LOGE("MaxToMaximumPass", "UpdateDescForList GetOpDesc error"),
-      return FAILED);
+  FUSION_PASS_CHECK(op_desc == nullptr, OP_LOGE("MaxToMaximumPass", "UpdateDescForList GetOpDesc error"), return FAILED);
   ge::GeTensorDesc new_input_desc = op_desc->GetInputDesc(0);
   ge::GeTensorDesc new_input_desc1 = op_desc->GetInputDesc(1);
   ge::GeTensorDesc new_output_desc = op_desc->GetOutputDesc(0);
   ge::OpDescPtr curr_op_desc = curr_node->GetOpDesc();
-  FUSION_PASS_CHECK(
-      curr_op_desc == nullptr,
-      OP_LOGE("MaxToMaximumPass", "UpdateDescForList GetOpDesc error"),
-      return FAILED);
+  FUSION_PASS_CHECK(curr_op_desc == nullptr, OP_LOGE("MaxToMaximumPass", "UpdateDescForList GetOpDesc error"),
+                    return FAILED);
   ge::GeShape input_shape1 = curr_op_desc->GetOutputDesc(0).GetShape();
   new_input_desc.SetShape(input_shape);
   new_input_desc1.SetShape(input_shape1);

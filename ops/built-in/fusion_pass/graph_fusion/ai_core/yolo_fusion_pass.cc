@@ -65,8 +65,8 @@ Status YoloPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::No
   ge::GeTensorDesc yoloInputDesc = yoloDesc->GetInputDesc(0);
 
   vector<int64_t> inputShape = yoloInputDesc.GetShape().GetDims();
-  FUSION_PASS_CHECK(inputShape.empty(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s] input shape is NULL.", yoloNode->GetName().c_str()),
+  FUSION_PASS_CHECK(inputShape.size() < 4,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node[%s] input shape less then 4.", yoloNode->GetName().c_str()),
                     return FAILED);
 
   for (size_t i = 2; i <= 3; i++) {

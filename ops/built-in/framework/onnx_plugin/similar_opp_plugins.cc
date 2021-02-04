@@ -20,7 +20,7 @@ namespace domi {
 #define REGISTER_PARSE_PARAMS_OP(ATC_OPP)                                    \
   Status ParseParams##ATC_OPP(const Message *op_src, ge::Operator &op_dst) { \
     const ge::onnx::NodeProto *node =                                        \
-        reinterpret_cast<const ge::onnx::NodeProto *>(op_src);               \
+        dynamic_cast<const ge::onnx::NodeProto *>(op_src);               \
     if (node == nullptr) {                                                   \
       OP_LOGE(#ATC_OPP, "Dynamic cast op_src to NodeProto failed.");         \
       return FAILED;                                                         \

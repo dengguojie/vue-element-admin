@@ -28,6 +28,7 @@
 #include "util/error_util.h"
 #include "op_log.h"
 #include "graph/utils/node_utils.h"
+#include "axis_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(AdjustHue, AdjustHueInfer) {
@@ -129,6 +130,8 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
   auto box_index_dims = box_index_shape.GetDims();
   auto crop_size_dims = crop_size_shape.GetDims();
 
+  CHECK(boxes_dims.empty() || box_index_dims.empty(),
+        OP_LOGE(op.GetName().c_str(), "boxes_dims and box_index_dims should not be empty."), return GRAPH_FAILED);
   if (boxes_dims[0] != UNKNOWN_DIM &&
       box_index_dims[0] != UNKNOWN_DIM &&
       boxes_dims[0] != box_index_dims[0]) {
@@ -138,7 +141,7 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
             boxes_dims[0], box_index_dims[0]);
     return GRAPH_FAILED;
   }
-
+  CHECK(crop_size_dims.empty(), OP_LOGE(op.GetName().c_str(), "empty crop_size dim."), return GRAPH_FAILED);
   if (crop_size_dims[0] != 2 && crop_size_dims[0] != UNKNOWN_DIM) {
     OP_LOGE(op.GetName().c_str(),
             "crop_size must be a 1-D tensor containing 2 elements, real dim is %lld",
@@ -157,12 +160,12 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
 
   vector<int64_t> y_dims;
   Format input_format = op.GetInputDesc(0).GetFormat();
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && x_dims.size() > 3) {
     y_dims.push_back(boxes_dims[0]);
     y_dims.push_back(crop_height);
     y_dims.push_back(crop_width);
     y_dims.push_back(x_dims[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && x_dims.size() > 1) {
     y_dims.push_back(boxes_dims[0]);
     y_dims.push_back(x_dims[1]);
     y_dims.push_back(crop_height);
@@ -270,7 +273,8 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   auto grads_dims = grads_shape.GetDims();
   auto boxes_dims = boxes_shape.GetDims();
   auto box_index_dims = box_index_shape.GetDims();
-
+  CHECK(grads_dims.empty() || boxes_dims.empty() || box_index_dims.empty(),
+        OP_LOGE(op.GetName().c_str(), "input dims should not be empty."), return GRAPH_FAILED);
   if (!DimsAllEqualOrUnknown({grads_dims[0], boxes_dims[0], box_index_dims[0]})) {
     OP_LOGE(op.GetName().c_str(),
             "the 0th dimension of grads, boxes and box_index must be equal"
@@ -280,6 +284,8 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   }
 
   auto image_size_dims = image_size_shape.GetDims();
+  CHECK(image_size_dims.empty(), OP_LOGE(op.GetName().c_str(), "image_size dims must not be empty."),
+        return GRAPH_FAILED);
   if (image_size_dims[0] != 4 && image_size_dims[0] != UNKNOWN_DIM) {
     OP_LOGE(op.GetName().c_str(), "image_size must be a 1-D tensor with 4 elements, real dim size is %lld",
             image_size_dims[0]);
@@ -299,6 +305,8 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   Tensor image_size_tensor;
   if (op.GetInputConstData("image_size", image_size_tensor) == GRAPH_SUCCESS) {
     const int32_t* size_data = reinterpret_cast<const int32_t*>(image_size_tensor.GetData());
+    CHECK(image_size_tensor.GetSize() / sizeof(int32_t) < 4,
+          OP_LOGE(op.GetName().c_str(), "image_size data num less then 4."), return GRAPH_FAILED);
     batch = static_cast<int64_t>(size_data[0]);
     image_height = static_cast<int64_t>(size_data[1]);
     image_width = static_cast<int64_t>(size_data[2]);
@@ -353,6 +361,8 @@ IMPLEMT_INFERFUNC(ExtractGlimpse, ExtractGlimpseInfer) {
   }
   auto x_dims = op.GetInputDesc(0).GetShape().GetDims();
   auto offsets_dims = op.GetInputDesc(2).GetShape().GetDims();
+  CHECK(x_dims.size() < 4 || offsets_dims.size() < 2, OP_LOGE(op.GetName().c_str(), "invalid x_dims or offsets_dims."),
+        return GRAPH_FAILED);
   int64_t batch_dim;
   if (Merge(x_dims[0], offsets_dims[0], batch_dim) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "x dim-0 or offsets dim-0 is invalid");
@@ -462,12 +472,12 @@ IMPLEMT_INFERFUNC(ResizeBicubicGrad, ResizeBicubicGradInfer) {
   vector<int64_t> grads_shape = op.GetInputDesc(0).GetShape().GetDims();
   vector<int64_t> org_images_shape = op.GetInputDesc(1).GetShape().GetDims();
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && grads_shape.size() > 3 && org_images_shape.size() > 2) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(org_images_shape[1]);
     y_shape.push_back(org_images_shape[2]);
     y_shape.push_back(grads_shape[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && grads_shape.size() > 1 && org_images_shape.size() > 3) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(grads_shape[1]);
     y_shape.push_back(org_images_shape[2]);
@@ -593,12 +603,12 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2GradD, ResizeNearestNeighborV2GradDInfe
   Format input_format = op.GetInputDesc("grads").GetFormat();
   TensorDesc td = op.GetOutputDesc("y");
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && grads_shape.size() > 3) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(size_out[0]);
     y_shape.push_back(size_out[1]);
     y_shape.push_back(grads_shape[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && grads_shape.size() > 1) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(grads_shape[1]);
     y_shape.push_back(size_out[0]);
@@ -1127,6 +1137,8 @@ bool ResizeConstInferShape(const Operator& op, const string& image_name,
                            const string& size_name, const string& output_name) {
   auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  CHECK(op_desc == nullptr, OP_LOGE(op.GetName().c_str(), "op desc is null."), return false);
+
   auto input_desc_x = op_desc->MutableInputDesc(image_name);
   auto input_desc_size = op_desc->MutableInputDesc(size_name);
   auto output_desc_y = op_desc->MutableOutputDesc(output_name);
@@ -1164,7 +1176,7 @@ bool ResizeConstInferShape(const Operator& op, const string& image_name,
   std::vector<std::pair<int64_t, int64_t>> result_range;
 
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && image_shape.size() > 3) {
     y_shape.push_back(image_shape[0]);
     y_shape.push_back(size_out[0]);
     y_shape.push_back(size_out[1]);
@@ -1173,7 +1185,7 @@ bool ResizeConstInferShape(const Operator& op, const string& image_name,
     result_range.push_back(output_range[0]);
     result_range.push_back(output_range[1]);
     result_range.push_back(x_range[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && image_shape.size() > 1) {
     y_shape.push_back(image_shape[0]);
     y_shape.push_back(image_shape[1]);
     y_shape.push_back(size_out[0]);
@@ -1212,12 +1224,12 @@ IMPLEMT_COMMON_INFERFUNC(ResizeInferShape) {
   Format input_format = op.GetInputDesc("x").GetFormat();
   TensorDesc td = op.GetOutputDesc("y");
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && images_shape.size() > 3) {
     y_shape.push_back(images_shape[0]);
     y_shape.push_back(size_out[0]);
     y_shape.push_back(size_out[1]);
     y_shape.push_back(images_shape[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && images_shape.size() > 1) {
     y_shape.push_back(images_shape[0]);
     y_shape.push_back(images_shape[1]);
     y_shape.push_back(size_out[0]);
@@ -1268,12 +1280,12 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2DInferShape) {
   Format input_format = op.GetInputDesc("x").GetFormat();
   TensorDesc td = op.GetOutputDesc("y");
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && images_shape.size() > 3) {
     y_shape.push_back(images_shape[0]);
     y_shape.push_back(size_out[0]);
     y_shape.push_back(size_out[1]);
     y_shape.push_back(images_shape[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && images_shape.size() > 1) {
     y_shape.push_back(images_shape[0]);
     y_shape.push_back(images_shape[1]);
     y_shape.push_back(size_out[0]);
@@ -1308,6 +1320,8 @@ IMPLEMT_COMMON_INFERFUNC(KeepRatioResizeBilinearInferShape) {
     OP_LOGE(op.GetName().c_str(), "get attr max_dimension failed");
     return GRAPH_FAILED;
   }
+  CHECK(minDims == 0 || maxDims == 0, OP_LOGE(op.GetName().c_str(), "min_dimension and max_dimension should not be 0."),
+        return GRAPH_FAILED);
   float minDimsFloat = static_cast<float>(minDims);
   float maxDimsFloat = static_cast<float>(maxDims);
   std::int64_t batchDIms = 0;
@@ -1440,7 +1454,7 @@ IMPLEMT_INFERFUNC(ResizeBilinearV2Grad, ResizeBilinearV2GradInfer) {
 
   std::vector<std::pair<int64_t, int64_t>> y_range;
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && grads_shape.size() > 3 && images_shape.size() > 2) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(images_shape[1]);
     y_shape.push_back(images_shape[2]);
@@ -1449,7 +1463,7 @@ IMPLEMT_INFERFUNC(ResizeBilinearV2Grad, ResizeBilinearV2GradInfer) {
     y_range.push_back(image_range[1]);
     y_range.push_back(image_range[2]);
     y_range.push_back(grads_range[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && grads_shape.size() > 1 && images_shape.size() > 3) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(grads_shape[1]);
     y_shape.push_back(images_shape[2]);
@@ -1669,17 +1683,19 @@ IMPLEMT_INFERFUNC(ScaleAndTranslateGrad, ScaleAndTranslateGradInfer) {
   vector<int64_t> grads_shape = op.GetInputDesc(0).GetShape().GetDims();
   vector<int64_t> org_images_shape = op.GetInputDesc(1).GetShape().GetDims();
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && grads_shape.size() > 3 && org_images_shape.size() > 2) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(org_images_shape[1]);
     y_shape.push_back(org_images_shape[2]);
     y_shape.push_back(grads_shape[3]);
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && grads_shape.size() > 1 && org_images_shape.size() > 3) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(grads_shape[1]);
     y_shape.push_back(org_images_shape[2]);
     y_shape.push_back(org_images_shape[3]);
   } else {
+    CHECK(grads_shape.size() < 4 || org_images_shape.size() < 2,
+          OP_LOGE(op.GetName().c_str(), "invalid inputs shape dims."), return GRAPH_FAILED);
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(org_images_shape[1]);
     y_shape.push_back(org_images_shape[2]);
@@ -1846,6 +1862,7 @@ IMPLEMT_INFERFUNC(SpatialTransformerD, SpatialTransformerDInferShape) {
   auto x_dtype = op.get_input_desc_x().GetDataType();
 
   std::vector<int64_t> output_size = op.get_attr_output_size();
+  CHECK(output_size.size() == 1,  OP_LOGE(op.GetName().c_str(), "invalid output size in attr."), return GRAPH_FAILED);
   if (output_size.empty()) {
     output_size.push_back(x_shape.GetDim(2));
     output_size.push_back(x_shape.GetDim(3));
@@ -1911,10 +1928,10 @@ static bool CalculateSizeOut(const Operator& op,
             "length of scale_out after erase must be equal to 2");
     return false;
   }
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && image_shape.size() > 2) {
     size_out_h = image_shape[1] * scale_out[0];  // 0 and 1 is index
     size_out_w = image_shape[2] * scale_out[1];  // 2 and 1 is index
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && image_shape.size() > 3) {
     size_out_h = image_shape[2] * scale_out[0];  // 0 and 2 is index
     size_out_w = image_shape[3] * scale_out[1];  // 3 and 1 is index
   } else {
@@ -1986,12 +2003,12 @@ IMPLEMT_INFERFUNC(Resize, ResizeNearestInferShape) {
   HadleSizeOut(op, input_format, size_out);
 
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC) {
+  if (input_format == FORMAT_NHWC && images_shape.size() > 3) {
     y_shape.push_back(images_shape[0]);  // 0 is index
     y_shape.push_back(size_out[0]);      // 0 is index
     y_shape.push_back(size_out[1]);      // 1 is index
     y_shape.push_back(images_shape[3]);  // 3 is index
-  } else if (input_format == FORMAT_NCHW) {
+  } else if (input_format == FORMAT_NCHW && images_shape.size() > 1) {
     y_shape.push_back(images_shape[0]);  // 0 is index
     y_shape.push_back(images_shape[1]);  // 1 is index
     y_shape.push_back(size_out[0]);      // 0 is index
