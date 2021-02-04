@@ -156,6 +156,7 @@ from .xdivy import xdivy
 from .xlogy import xlogy
 from .atan import atan
 from .atanh import atanh
+from .assign_sub import assign_sub
 from .atan_grad import atan_grad
 from .tanh_grad import tanh_grad
 from .abs_grad import abs_grad

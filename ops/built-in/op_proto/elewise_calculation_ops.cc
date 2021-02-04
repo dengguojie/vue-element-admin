@@ -928,16 +928,21 @@ VERIFY_FUNC_REG(AssignAdd, AssignAddVerify);
 
 // ----------------AssignSub-------------------
 IMPLEMT_VERIFIER(AssignSub, AssignSubVerify) {
-  OP_LOGI(op.GetName().c_str(), "the op begin verify");
-  if (!CheckTwoInputDtypeSame(op, "var", "value")) {
+    if (!CheckTwoInputDtypeSame(op, "var", "value")) {
     return GRAPH_FAILED;
-  }
-  OP_LOGI(op.GetName().c_str(), "the op verify success");
-  return GRAPH_SUCCESS;
+    }
+    return GRAPH_SUCCESS;
 }
 
+IMPLEMT_COMMON_INFERFUNC(AssignSubInferShape) {
+    if (TwoInOneOutDynamicInferNoBroadcast(op, "var", "value", {"var"})) {
+    return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(AssignSub, AssignSubInferShape);
 VERIFY_FUNC_REG(AssignSub, AssignSubVerify);
-COMMON_INFER_FUNC_REG(AssignSub, ELMTWISE_INFER_SHAPEANDTYPE("var", "var"));
 // ----------------AssignSub END-------------------
 
 // ----------------Atanh-------------------
