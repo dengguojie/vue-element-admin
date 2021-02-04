@@ -232,7 +232,7 @@ class JsonIROpInfo(OpInfo):
                                      "None or invalid, please check!")
 
                 return
-            if types is isinstance(types, str):
+            if isinstance(types, str):
                 types = [types]
             ir_type_list = self._init_ir_type(prefix, input_output_name, types)
             op_format = self._init_op_format(input_output_map, prefix,
