@@ -739,12 +739,31 @@ def get_op_compute(op_type, op_mode="dynamic", verbose=False):
 
 def var(name, bound=None, dtype="int32", addition=None):
     """
+    add var for external
+    :param name:
+    :param bound:
+    :param dtype: such as int32, float16...
+    :param addition:
+    :return:
+    """
+    # TODO add check, cannot start with '_'
+    return _var(name, bound, dtype, addition)
+
+
+def var_inner(name, bound=None, dtype="int32", addition=None):
+    """
+    add var for internal
     :param name:
     :param bound:
     :param dtype:
     :param addition:
     :return:
     """
+    # TODO add check, must start with '_'
+    return _var(name, bound, dtype, addition)
+
+
+def _var(name, bound, dtype, addition):
     var_ = Var(name, bound, dtype, addition)
     context = get_context()
     if context is not None:
@@ -803,10 +822,27 @@ def get_op_context() -> Optional[op_context.OpContext]:
 
 def add_compile_info(key, value):
     """
+    add compile info for external
+    :param key:
+    :param value:
+    :return: None
+    """
+    # TODO add check, cannot start with '_'
+    _add_compile_info(key, value)
+
+
+def add_compile_info_inner(key, value):
+    """
+    add compile info for internal
     :param key:
     :param value:
     :return:
     """
+    # TODO add check, must start with '_'
+    _add_compile_info(key, value)
+
+
+def _add_compile_info(key, value):
     if _in_compatible_mode():
         get_compile_info()[key] = value
     else:
