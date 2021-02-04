@@ -82,7 +82,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/split_v.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/random_uniform.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
-  ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense_kernels.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/device/where.cc

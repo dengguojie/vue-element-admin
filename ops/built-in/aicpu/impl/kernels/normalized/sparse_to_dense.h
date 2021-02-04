@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef _AICPU_SPARSETODENSE_KERNELS_H_
-#define _AICPU_SPARSETODENSE_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_SPARSETODENSE_H_
+#define AICPU_KERNELS_NORMALIZED_SPARSETODENSE_H_
 
 #include "cpu_kernel.h"
 #include "utils/sparse_tensor.h"

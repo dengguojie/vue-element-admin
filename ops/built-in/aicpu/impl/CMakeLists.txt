@@ -9,7 +9,7 @@ set(local_kernels_src_files
     kernels/normalized/ceil.cc
     kernels/normalized/reshape.cc
     kernels/normalized/realdiv.cc
-    kernels/normalized/sparse_to_dense_kernels.cc
+    kernels/normalized/sparse_to_dense.cc
     kernels/normalized/strided_slice.cc
     kernels/normalized/logging.cc
     kernels/normalized/concatv2.cc

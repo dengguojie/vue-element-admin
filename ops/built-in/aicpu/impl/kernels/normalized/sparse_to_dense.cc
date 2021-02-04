@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "sparse_to_dense_kernels.h"
+#include "sparse_to_dense.h"
 
 #include <securec.h>
 #include "cpu_types.h"
