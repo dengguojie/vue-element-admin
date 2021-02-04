@@ -89,7 +89,7 @@ Status Conv2DMulFusionPass::GetInputChannel(const ge::NodePtr input_node, int64_
   ge::GeShape node_fm_shape = node_fm.GetShape();
   ge::Format node_fm_format = node_fm.GetFormat();
   auto dims = node_fm_shape.GetDims();
-  FUSION_PASS_CHECK(dims.empty() || dims.size() != 4 ||
+  FUSION_PASS_CHECK(dims.size() != 4 ||
                     (node_fm_format != FORMAT_NCHW && node_fm_format != FORMAT_NHWC),
                      CommonRuntimeErrLog(fused_op_type_.c_str(), ConcatString("Conv2DMulFusionPass",
                           " Mul node's fm shape_dim is ", dims.size(), " format is ", node_fm_format,
@@ -311,7 +311,10 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                     return PARAM_INVALID);
 
   // update filter-mul non-const input Desc and output Desc
-  GeTensorDesc conv_filter_const_tensor = filter_node->GetOpDesc()->GetOutputDesc(0);
+  auto conv_filter_op_desc = filter_node->GetOpDesc();
+  FUSION_PASS_CHECK(conv_filter_op_desc == nullptr,
+                    OP_LOGE(fused_op_type_.c_str(), "filter's OpDesc is null"), return FAILED);
+  GeTensorDesc conv_filter_const_tensor = conv_filter_op_desc->GetOutputDesc(0);
   conv_filter_const_tensor.SetOriginShape(conv_filter_const_tensor.GetShape());
   conv_filter_const_tensor.SetOriginDataType(conv_filter_const_tensor.GetDataType());
   conv_filter_const_tensor.SetOriginFormat(conv_filter_const_tensor.GetOriginFormat());
@@ -391,7 +394,10 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                               mul_node->GetName().c_str()),
                       return PARAM_INVALID);
 
-    GeTensorDesc conv_bias_const_tensor = bias_node->GetOpDesc()->GetOutputDesc(0);
+    auto conv_bias_op_desc = bias_node->GetOpDesc();
+    FUSION_PASS_CHECK(conv_bias_op_desc == nullptr,
+                      OP_LOGE(fused_op_type_.c_str(), "bias's OpDesc is null"), return FAILED);
+    GeTensorDesc conv_bias_const_tensor = conv_bias_op_desc->GetOutputDesc(0);
     conv_bias_const_tensor.SetOriginShape(conv_bias_const_tensor.GetShape());
     conv_bias_const_tensor.SetOriginDataType(conv_bias_const_tensor.GetDataType());
     conv_bias_const_tensor.SetOriginFormat(conv_bias_const_tensor.GetOriginFormat());
