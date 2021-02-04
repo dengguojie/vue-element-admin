@@ -154,24 +154,24 @@ def calc_expect_func(x, y, begin, size):
         expect_data = sess.run(expect)
     return expect_data
 
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (5, 13, 4), "dtype": "int32", "format": "NCHW", "ori_shape": (5, 13, 4),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (2, 12, 3), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 12, 3),"ori_format": "NCHW", "param_type": "output"},
-                                              (0, 1, 1), (2, -1, -1)],
-                                   "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (13, 7, 5, 5), "dtype": "int8", "format": "NCHW", "ori_shape": (13, 7, 5, 5),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (1, 1, 1, 1), "dtype": "int8", "format": "NCHW", "ori_shape": (1, 1, 1, 1),"ori_format": "NCHW", "param_type": "output"},
-                                              (0, 0, 0, 0), (1, 1, 1, 1)],
-                                   "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (65, 75), "dtype": "float32", "format": "NCHW", "ori_shape": (65, 75),"ori_format": "NCHW", "param_type": "input"},
-                                              {"shape": (15, 33), "dtype": "float32", "format": "NCHW", "ori_shape": (15, 33),"ori_format": "NCHW", "param_type": "output"},
-                                              (13, 25), (15, 33)],
-                                   "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                   })
+# ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (5, 13, 4), "dtype": "int32", "format": "NCHW", "ori_shape": (5, 13, 4),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (2, 12, 3), "dtype": "int32", "format": "NCHW", "ori_shape": (2, 12, 3),"ori_format": "NCHW", "param_type": "output"},
+#                                               (0, 1, 1), (2, -1, -1)],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (13, 7, 5, 5), "dtype": "int8", "format": "NCHW", "ori_shape": (13, 7, 5, 5),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (1, 1, 1, 1), "dtype": "int8", "format": "NCHW", "ori_shape": (1, 1, 1, 1),"ori_format": "NCHW", "param_type": "output"},
+#                                               (0, 0, 0, 0), (1, 1, 1, 1)],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
+# ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (65, 75), "dtype": "float32", "format": "NCHW", "ori_shape": (65, 75),"ori_format": "NCHW", "param_type": "input"},
+#                                               {"shape": (15, 33), "dtype": "float32", "format": "NCHW", "ori_shape": (15, 33),"ori_format": "NCHW", "param_type": "output"},
+#                                               (13, 25), (15, 33)],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+#                                    })
 
 
 

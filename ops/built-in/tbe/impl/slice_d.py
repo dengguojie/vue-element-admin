@@ -653,12 +653,6 @@ def _update_params(shape, begin, size):
         begin_new.pop()
         flag -= 1
 
-    strides = [1] * len(begin_new)
-    end_new = list(map(lambda x, y: x + y, begin_new, out_shape_new))
-    out_shape_new, input_shape_new, begin_new = _make_perf_params(out_shape_new, input_shape_new,
-                                                                  begin_new,
-                                                                  end_new,
-                                                                  strides)
     return input_shape_new, begin_new, out_shape_new
 
 
@@ -7991,6 +7985,9 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
             with build_config:
                 tvm.build(sch, tensor_list, "cce", name=kernel_name)
         else:
+            strides = [1] * len(begin_new)
+            end_new = list(map(lambda x, y: x + y, begin_new, size_new))
+            size_new, shape_new, begin_new = _make_perf_params(size_new, shape_new, begin_new, end_new, strides)
             data = tvm.placeholder(shape_new, dtype=dtype, name='data')
             sch, res = slice_d_compute(data, y, begin_new, size_new,
                                        kernel_name)
