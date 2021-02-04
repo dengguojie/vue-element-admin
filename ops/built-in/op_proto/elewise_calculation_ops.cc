@@ -449,17 +449,18 @@ COMMON_INFER_FUNC_REG(Inv, InvInferShape);
 
 // ----------------------InvGrad----------------------
 IMPLEMT_VERIFIER(InvGrad, InvGradVerify) {
-  if (!CheckTwoInputDtypeSame(op, "x", "grad")) {
+    if (!CheckTwoInputDtypeSame(op, "x", "grad")) {
     return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
+    }
+    return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(InvGradInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "grad", "y")) {
+    bool is_dynamic_output = true;
+    if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "grad", "y", is_dynamic_output)) {
     return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+    }
+    return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(InvGrad, InvGradInferShape);

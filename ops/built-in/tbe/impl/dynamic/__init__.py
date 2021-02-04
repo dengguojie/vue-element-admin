@@ -109,6 +109,7 @@ from .strided_slice_grad import strided_slice_grad
 from .fill import fill
 from .drop_out_do_mask import drop_out_do_mask
 from .tanh import tanh
+from .inv_grad import inv_grad
 from .sigmoid_cross_entropy_with_logits import sigmoid_cross_entropy_with_logits
 from .abs import abs
 from .apply_momentum_d import apply_momentum_d
