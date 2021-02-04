@@ -249,11 +249,12 @@ uint32_t StridedSliceV2CpuKernel::DoStridedSliceV2(
     const std::vector<int64_t> &end_vec,
     const std::vector<int64_t> &strides_vec) {
   uint32_t ret = KERNEL_STATUS_OK;
-#define STRIDED_SLICE_V2_CASE(DT, T)                                   \
-  case (DT): {                                                         \
-    ret = StridedSliceCpuKernel::CalStridedSlice<T>(                   \
-        begin_vec, end_vec, strides_vec, ctx.Input(0), ctx.Output(0)); \
-    break;                                                             \
+#define STRIDED_SLICE_V2_CASE(DT, T)                                  \
+  case (DT): {                                                        \
+    ret = StridedSliceCpuKernel::CalStridedSlice<T>(                  \
+        ctx, begin_vec, end_vec, strides_vec,                         \
+        ctx.Input(0), ctx.Output(0));                                 \
+    break;                                                            \
   }
 
   auto data_type = ctx.Input(0)->GetDataType();

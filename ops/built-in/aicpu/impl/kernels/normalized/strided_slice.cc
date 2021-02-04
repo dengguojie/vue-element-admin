@@ -83,9 +83,6 @@ inline void ProcessBeginMask(const std::vector<int64_t> &strides,
   if ((begin_mask & bit_mask) && (!(shrink_axis_mask & bit_mask))) {
     begin_j = (strides[j] > 0) ? 0 : -1;
   }
-  if (begin_j < 0) {
-    begin_j = begin_j + x_shape[i];
-  }
 }
 
 inline void ProcessEndMask(const std::vector<int64_t> &strides,
@@ -95,9 +92,6 @@ inline void ProcessEndMask(const std::vector<int64_t> &strides,
                            int64_t &end_j) {
   if ((end_mask & bit_mask) && !(shrink_axis_mask & bit_mask)) {
     end_j = (strides[j] > 0) ? x_shape[i] : -(x_shape[i] + 1);
-  }
-  if (end_j < 0) {
-    end_j = std::max((end_j + x_shape[i]), int64_t(0));
   }
 }
 
@@ -156,9 +150,9 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
       return KERNEL_STATUS_INNER_ERROR;
     }
     ProcessBeginMask(strides, x_shape, begin_mask, shrink_axis_mask,
-                     i, j, begin_j, bit_mask);
+                     i, j, bit_mask, begin_j);
     ProcessEndMask(strides, x_shape, end_mask, shrink_axis_mask,
-                   i, j, end_j, bit_mask);
+                   i, j, bit_mask, end_j);
     if (ProcessNewAxisMask(new_axis_mask, j, bit_mask,
                            begin_res, end_res, strides_res)) {
       return KERNEL_STATUS_OK;
@@ -176,7 +170,6 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
   begin_res.push_back(begin_j);
   end_res.push_back(end_j);
   strides_res.push_back(strides_j);
-  bit_mask *= 2;
   return KERNEL_STATUS_OK;
 }
 
@@ -203,6 +196,7 @@ uint32_t StridedSliceCpuKernel::InitParamsWithMasks(
                         "[%s] process masks failed.", kStridedSlice);
     i++;
     j++;
+    bit_mask *= 2;
   }
 
   auto begin_iter = begin_res.begin();
@@ -258,7 +252,8 @@ uint32_t StridedSliceCpuKernel::Compute(CpuKernelContext &ctx) {
 
 #define STRIDED_SLICE_CASE(dtype, T)                                        \
   case dtype:                                                               \
-    return CalStridedSlice<T>(begin_, end_, strides_, x_tensor, y_tensor);
+    return CalStridedSlice<T>(ctx, begin_, end_, strides_,                  \
+                              x_tensor, y_tensor);
 
   switch (data_type) {
     STRIDED_SLICE_CASE(DT_INT8, int8_t)

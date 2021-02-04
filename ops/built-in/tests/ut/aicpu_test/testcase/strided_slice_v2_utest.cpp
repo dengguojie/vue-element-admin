@@ -230,7 +230,7 @@ STRIDED_SLICE_V2_CASE4(int64_t, DT_INT64)
     vector<DataType> data_types = {aicpu_type, DT_INT32, DT_INT32,      \
                                    DT_INT32,   DT_INT32, aicpu_type};   \
     vector<vector<int64_t>> shapes = {                                  \
-        {3, 2, 3}, {3}, {3}, {3}, {3}, {1, 2, 3}};                      \
+        {3, 2, 3}, {3}, {3}, {3}, {3}, {2, 1, 2}};                      \
     base_type x[3 * 2 * 3];                                             \
     for (int i = 0; i < 3 * 2 * 3; ++i) {                               \
       x[i] = (base_type)i;                                              \
