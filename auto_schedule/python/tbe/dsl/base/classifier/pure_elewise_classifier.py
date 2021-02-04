@@ -22,6 +22,8 @@ from . import util
 COMMON = "common"
 SPECIAL = "special"
 CONST = "const"
+EMPTY = "empty"
+ZERO = 0
 
 
 class PureElewiseClassifier:
@@ -60,14 +62,45 @@ class PureElewiseClassifier:
         return [[ConstMode.gen_in(shape) for _ in self.ins]]
 
     def _classify_var(self):
+        maybe_empty_tensor = False
+        must_empty_tensor = False
         ins = []
         for x in self.ins:
             in_x = SpecialMode.gen_in([-1])
-            if "range" in x:
-                in_x["range"] = [util.combine_range(x["range"])]
+            in_x["range"] = [util.combine_range(x["range"])]
+            maybe_empty_tensor = maybe_empty_tensor or ZERO in in_x["range"][0]
+            if ZERO in x["shape"] or (ZERO, ZERO) in x["range"] or [ZERO, ZERO] in x["range"]:
+                must_empty_tensor = True
+                break
             ins.append(in_x)
 
-        return [ins]
+        ret = []
+        if not must_empty_tensor:
+            ret.append(ins)
+        if maybe_empty_tensor:
+            input_length = len(self.ins)
+            ins = [EmptyMode.gen_in()] * input_length
+            ret.append(ins)
+
+        return ret
+
+
+class EmptyMode:
+    """
+    Empty Mode
+    """
+
+    @classmethod
+    def gen_in(cls):
+        """
+        generate input
+        :return:
+        """
+        return {"shape": (ZERO, ),
+                "range": [(ZERO, ZERO)],
+                "support_broadcast": True,
+                "mode": EMPTY,
+                }
 
 
 class ConstMode:

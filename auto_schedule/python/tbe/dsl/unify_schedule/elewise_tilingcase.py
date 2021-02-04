@@ -34,9 +34,11 @@ REDUCE = "reduce"
 SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
+EMPTY = "empty"
 STATIC = "static"
 ORIGINAL = "original"
 DB_KEY = 10000
+EMPTY_KEY = -2 ** 31
 
 
 class TilingStrategy(Enum):
@@ -48,6 +50,7 @@ class TilingStrategy(Enum):
     ONE_CUT = auto()
     STATIC = auto()
     CONST = auto()
+    EMPTY = auto()
 
 
 # noinspection PyUnusedLocal
@@ -94,12 +97,14 @@ def calc(outs, option=None):
                 if axis == BROADCAST:
                     _base_key += (base * 2)
                 base //= 10
+        elif mode == EMPTY:
+            _base_key = EMPTY_KEY
         else:
             _base_key = 0
         return _base_key
 
     base_key = calc_base_key()
-    if mode == CONST or operation.get_context().get_mode() == STATIC:
+    if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
         return _const_tiling(base_key)
 
     # db handle

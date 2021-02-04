@@ -67,6 +67,8 @@ bool Eletwise::Init() {
   out_type = op_paras.outputs[0].tensor[0].dtype;
   int64_t type_size = GetElementByType(out_type);
   for (size_t i = 1; i < op_paras.outputs.size(); i++) {
+    CHECK(!op_paras.outputs[i].tensor.empty(), "op [%s] : output shape cannot be empty",
+        op_type.c_str());
     int64_t cur_type_size = GetElementByType(op_paras.outputs[i].tensor[0].dtype);
     if (cur_type_size > type_size) {
       out_type = op_paras.outputs[i].tensor[0].dtype;
@@ -86,7 +88,8 @@ bool Eletwise::Init() {
 
 bool Eletwise::GenerateOutputShape() {
   const std::vector<int64_t>& shapes = op_paras.outputs[0].tensor[0].shape;
-  int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1ll, std::multiplies<int64_t>());
+  const int64_t long_long_one = 1ll;
+  int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), long_long_one, std::multiplies<int64_t>());
   CHECK_LE(fused_output, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
   CHECK_GT(fused_output, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str());
   output_shape = {fused_output};
@@ -264,9 +267,10 @@ bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_
                      const size_t input_num, size_t& dim_len, bool& is_pure_elementwise,
                      const std::string& op_type, const TeOpParas& op_paras) {
   CHECK_LE(input_num, B_MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str());
+  const int64_t long_long_one = 1ll;
   for (size_t i = 0; i < input_num; i++) {
     CHECK(!op_paras.inputs[i].tensor.empty(), "op [%s] : input tensor cannot be empty", op_type.c_str());
-    input_shapes[i].fill(1ll);
+    input_shapes[i].fill(long_long_one);
     if (op_paras.inputs[i].tensor[0].shape.size() > dim_len) {
       dim_len = op_paras.inputs[i].tensor[0].shape.size();
     }
@@ -365,10 +369,37 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
   return ret;
 }
 
-void WriteConstTiling(const std::string& op_type, OpRunInfo& run_info, const int64_t& key, const int64_t& block_dims) {
+bool IsEmptyTensor(const std::string& op_type, const TeOpParas& op_paras) {
+  bool has_zero = false;
+  const int64_t long_long_one = 1ll;
+  for (size_t i = 0; i < op_paras.outputs.size(); i++) {
+    int64_t output_size = std::accumulate(op_paras.outputs[i].tensor[0].shape.begin(),
+        op_paras.outputs[i].tensor[0].shape.end(), long_long_one, std::multiplies<int64_t>());
+    if (output_size == 0) {
+      has_zero = true;
+    } else {
+      CHECK(!has_zero, "op [%s] : multi-output only supports all 0 output", op_type.c_str());
+    }
+  }
+  return has_zero;
+}
+
+bool WriteConstTiling(const std::string& op_type, const nlohmann::json& op_info,
+                      OpRunInfo& run_info, const int64_t& key, const int64_t& block_dims) {
   GELOGD("op [%s] tiling key:%lld", op_type.c_str(), key);
   GELOGD("op [%s] tiling block_dims:%lld", op_type.c_str(), block_dims);
   run_info.block_dim = static_cast<uint32_t>(block_dims);
+  try {
+    run_info.tiling_key = static_cast<int32_t>(key);
+    int status = op_info.at("push_status");
+    if (status == 0) {
+      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
+    }
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
+    return false;
+  }
+  return true;
 }
 
 bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
@@ -395,19 +426,9 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
     int64_t key{0};
     int64_t block_dims{1};
     ret = ret && CalcConstKey(op_type, op_paras, op_info, is_support_broadcast, key, block_dims);
-    if (ret) {
-      WriteConstTiling(op_type, run_info, key, block_dims);
-      try {
-        run_info.tiling_key = static_cast<int32_t>(key);
-        int status = op_info.at("push_status");
-        if (status == 0) {
-          ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
-        }
-      } catch (const std::exception &e) {
-        GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
-        return false;
-      }
-    }
+    ret = ret && WriteConstTiling(op_type, op_info, run_info, key, block_dims);
+  } else if (IsEmptyTensor(op_type, op_paras)) {
+    ret = WriteConstTiling(op_type, op_info, run_info, INT32_MIN, 1);
   } else if (is_pure_elementwise || !is_support_broadcast) {
     Eletwise eletwise(op_type, op_paras, op_info, flag_info);
     ret = eletwise.DoTiling();

@@ -30,6 +30,7 @@ SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
 ORIGINAL = "original"
+EMPTY = "empty"
 VAR_BOUND_LIMIT = 2147483647
 MAX_BROADCAST_INPUT = 70
 
@@ -51,6 +52,7 @@ class BroadcastElewiseClassifier:
         self.completed_ins = self._complete()
         self.completed_shapes = [x["shape"] for x in self.completed_ins]
         self.completed_ranges = [x["range"] for x in self.completed_ins]
+        self.maybe_empty_tensor = False
         self._update_shape_range()
         self.f_shapes, self.f_ranges, fusion_index = _simplify_shape(self.completed_shapes, self.completed_ranges)
         operation.add_compile_info("_fusion_index", fusion_index)
@@ -115,6 +117,11 @@ class BroadcastElewiseClassifier:
                         _range[i] = (VAR_BOUND_LIMIT, r1)
                     if r1 is None:
                         _range[i] = (r0, VAR_BOUND_LIMIT)
+                    if r0 == 0:
+                        _range[i] = (1, r1)
+                        self.maybe_empty_tensor = True
+                    if r1 == 0:
+                        _range[i] = (0, 0)
             for _shape, _range in zip(self.completed_shapes, self.completed_ranges):
                 for i, (s, (r0, r1)) in enumerate(zip(_shape, _range)):
                     if s != -1:
@@ -415,6 +422,13 @@ class BroadcastElewiseClassifier:
 
             return [ins]
 
+        def add_empty():
+            if not self.maybe_empty_tensor:
+                return []
+            input_length = len(self.completed_shapes)
+            ins = [EmptyMode.gen_in()] * input_length
+            return [ins]
+
         def get_known_broadcast_and_const(n_shapes):
             def _all_const(shape):
                 return all([s == ShapeValueType.COMMON for s in shape])
@@ -461,6 +475,7 @@ class BroadcastElewiseClassifier:
             ret.extend(add_special())
             ret.extend(add_special_scalar())
         ret.extend(add_original())
+        ret.extend(add_empty())
         return ret
 
 
@@ -641,6 +656,24 @@ class OriginalMode:
                 "range": _range,
                 "support_broadcast": True,
                 "mode": ORIGINAL,
+                }
+
+
+class EmptyMode:
+    """
+    Empty Mode
+    """
+
+    @classmethod
+    def gen_in(cls):
+        """
+        generate input
+        :return:
+        """
+        return {"shape": (0, ),
+                "range": [(0, 0)],
+                "support_broadcast": True,
+                "mode": EMPTY,
                 }
 
 

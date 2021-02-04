@@ -334,6 +334,10 @@ class ElewiseSchedule:
     def _calc_tiling_const(self):
         res = self._out
         output_shape = util.shape_to_list(res.shape)
+        if len(output_shape) == 1 and output_shape[0] == 0:
+            self._block_dims = 1
+            self._need_do_block = False
+            return
         inputs = []
         input_shapes = []
         max_dim_length = len(output_shape)

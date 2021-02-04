@@ -71,6 +71,8 @@ bool Broadcast::Init() {
   int64_t type_size = BGetElementByType(out_type);
   max_output_shape_size = op_paras.outputs[0].tensor[0].shape.size();
   for (size_t i = 1; i < op_paras.outputs.size(); i++) {
+    CHECK(!op_paras.outputs[i].tensor.empty(), "op [%s] : output shape cannot be empty",
+        op_type.c_str());
     int64_t cur_type_size = BGetElementByType(op_paras.outputs[i].tensor[0].dtype);
     if (cur_type_size > type_size) {
       out_type = op_paras.outputs[i].tensor[0].dtype;
@@ -356,7 +358,8 @@ bool Broadcast::CalcTiling() {
            op_type.c_str(), compileInfo.max_dtype);
   max_available_ub =
           (((compileInfo.ub_size / compileInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / compileInfo.max_dtype;
-  output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1ll, std::multiplies<int64_t>());
+  const int64_t long_long_one = 1ll;
+  output_size = std::accumulate(output_shape.begin(), output_shape.end(), long_long_one, std::multiplies<int64_t>());
   CHECK_LE(output_size, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
   CHECK_GT(output_size, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str());
   const int64_t multi_core_threshold = BGetElementByType(out_type) * compileInfo.core_num * DOUBLE_BUFFER_SIZE;
@@ -396,6 +399,7 @@ bool Broadcast::DoBlockTiling() {
 
 void Broadcast::CheckUpdateBlockTiling() {
   bool need_single_core = false;
+  const int64_t long_long_one = 1ll;
   if (is_multi_output) {
     // multi output check
     for (const auto& output: op_paras.outputs) {
@@ -406,10 +410,12 @@ void Broadcast::CheckUpdateBlockTiling() {
       int64_t cut_output = 1;
       int64_t under_block = 1;
       if (start >= 0) {
-        cut_output = std::accumulate(out_shape.begin() + start, out_shape.begin() + end + 1, 1ll, std::multiplies<int64_t>());
-        under_block = std::accumulate(out_shape.begin() + end + 1, out_shape.end(), 1ll, std::multiplies<int64_t>());
+        cut_output = std::accumulate(out_shape.begin() + start, out_shape.begin() + end + 1,
+            long_long_one, std::multiplies<int64_t>());
+        under_block = std::accumulate(out_shape.begin() + end + 1, out_shape.end(),
+            long_long_one, std::multiplies<int64_t>());
       } else {
-        under_block = std::accumulate(out_shape.begin(), out_shape.end(), 1ll, std::multiplies<int64_t>());
+        under_block = std::accumulate(out_shape.begin(), out_shape.end(), long_long_one, std::multiplies<int64_t>());
       }
       int64_t cur_block_factor = block_factor;
       if (cut_output % block_factor != 0 && (cut_output % block_factor) * under_block < ele_in_block) {
@@ -425,7 +431,8 @@ void Broadcast::CheckUpdateBlockTiling() {
   } else {
     // single output check
     int64_t ele_in_block = BGetElementByType(out_type);
-    int64_t under_block = std::accumulate(output_shape.begin() + block_axis + 1, output_shape.end(), 1ll, std::multiplies<int64_t>());
+    int64_t under_block = std::accumulate(output_shape.begin() + block_axis + 1,
+        output_shape.end(), long_long_one, std::multiplies<int64_t>());
     if (multi_core_output % block_factor != 0 && (multi_core_output % block_factor) * under_block < ele_in_block) {
       block_factor = multi_core_output;
       output_shape[block_axis] = multi_core_output;
@@ -520,6 +527,7 @@ void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit
 
 void Broadcast::CheckUpdateUbTiling() {
   bool need_single_core = false;
+  const int64_t long_long_one = 1ll;
   if (is_multi_output) {
     // multi output check
     for (const auto& output: op_paras.outputs) {
@@ -530,10 +538,12 @@ void Broadcast::CheckUpdateUbTiling() {
       int64_t cut_output = 1;
       int64_t under_ub = 1;
       if (start >= 0) {
-        cut_output = std::accumulate(out_shape.begin() + start, out_shape.begin() + end + 1, 1ll, std::multiplies<int64_t>());
-        under_ub = std::accumulate(out_shape.begin() + end + 1, out_shape.end(), 1ll, std::multiplies<int64_t>());
+        cut_output = std::accumulate(out_shape.begin() + start, out_shape.begin() + end + 1,
+            long_long_one, std::multiplies<int64_t>());
+        under_ub = std::accumulate(out_shape.begin() + end + 1, out_shape.end(),
+            long_long_one, std::multiplies<int64_t>());
       } else {
-        under_ub = std::accumulate(out_shape.begin(), out_shape.end(), 1ll, std::multiplies<int64_t>());
+        under_ub = std::accumulate(out_shape.begin(), out_shape.end(), long_long_one, std::multiplies<int64_t>());
       }
       need_single_core = (cut_output % ub_factor != 0 &&
           (cut_output % ub_factor) * under_ub < ele_in_block) ||
@@ -550,7 +560,8 @@ void Broadcast::CheckUpdateUbTiling() {
     // single output check
     int64_t ele_in_block = BGetElementByType(out_type);
     int64_t cut_output = output_shape[ub_axis];
-    int64_t under_ub = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(), 1ll, std::multiplies<int64_t>());
+    int64_t under_ub = std::accumulate(output_shape.begin() + ub_axis + 1, output_shape.end(),
+        long_long_one, std::multiplies<int64_t>());
     need_single_core = (cut_output % ub_factor != 0 &&
         (cut_output % ub_factor) * under_ub < ele_in_block) ||
             (cut_output % ub_factor == 0 && ub_factor * under_ub < ele_in_block);
