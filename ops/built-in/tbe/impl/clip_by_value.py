@@ -112,8 +112,9 @@ def clip_by_value(input_t, clip_value_min, clip_value_max,
     dtype = input_t.get("dtype")
     shape_min = clip_value_min.get("shape")
     shape_max = clip_value_max.get("shape")
+    if set(shape_min) == {1} and set(shape_max) == {1}:
+        shape_x = shape_util.shape_refine(shape_x)
     input_dtype = dtype.lower()
-
     para_check.check_dtype(input_dtype, ("float16", "float32", "int32"), param_name="input_t")
     shape_x, shape_max, shape_broadcast = \
         shape_util.broadcast_shapes(shape_x, shape_max, param_name_input1="input_t",

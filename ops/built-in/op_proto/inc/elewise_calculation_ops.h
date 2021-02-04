@@ -32,6 +32,9 @@ namespace ge {
 *   float16, float32, double, int32, uint8, int16, int8, complex64, int64,
 *   qint8, quint8, qint32, uint16, complex128, uint32, uint64. It's a dynamic input. \n
 
+*@par Attributes:
+*N: An required attribute of type int32, means nums of inputs. \n
+
 *@par Outputs:
 *y: A Tensor. Has the same shape and type as the elements of "x". \n
 

@@ -4924,8 +4924,8 @@ IMPLEMT_VERIFIER(MaxPool3DGrad, MaxPool3DGradVerify) {
   }
   std::string data_format;
   if (ge::GRAPH_SUCCESS == op.GetAttr("data_format", data_format)) {
-    if (data_format != "NDHWC" && data_format != "NDCHW") {
-      OP_LOGE(op.GetName().c_str(), "attr data_format(%s) only support NDHWC and NDCHW", data_format.c_str());
+    if (data_format != "NDHWC" && data_format != "NCDHW") {
+      OP_LOGE(op.GetName().c_str(), "attr data_format(%s) only support NDHWC and NCDHW", data_format.c_str());
       return GRAPH_FAILED;
     }
   }

@@ -94,6 +94,8 @@ TEST_F(max_pool3d_grad, max_pool3d_grad_infershape_test_0) {
     op.SetAttr("strides", strides);
     op.SetAttr("pads", pads);
 
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     auto output_desc = op.GetOutputDesc("y");
@@ -120,6 +122,8 @@ TEST_F(max_pool3d_grad, max_pool3d_grad_infershape_test_1) {
     op.SetAttr("strides", strides);
     op.SetAttr("pads", pads);
 
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     auto output_desc = op.GetOutputDesc("y");

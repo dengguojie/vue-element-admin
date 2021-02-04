@@ -37,10 +37,10 @@ case4 = {"params": [{"shape": (32, 32), "dtype": "float16", "format": "NHWC", "o
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-case5 = {"params": [{"shape": (1321, 73), "dtype": "float16", "format": "NHWC", "ori_shape": (1321, 73),"ori_format": "NHWC"},
+case5 = {"params": [{"shape": (1, 1321, 1, 73), "dtype": "float16", "format": "NHWC", "ori_shape": (1321, 73),"ori_format": "NHWC"},
                     {"shape": (1, ), "dtype": "float16", "format": "NHWC", "ori_shape": (1, ),"ori_format": "NHWC"},
                     {"shape": (1, ), "dtype": "float16", "format": "NHWC", "ori_shape": (1, ),"ori_format": "NHWC"},
-                    {"shape": (1321, 73), "dtype": "float16", "format": "NHWC", "ori_shape": (1321, 73),"ori_format": "NHWC"}],
+                    {"shape": (1, 1321, 1, 73), "dtype": "float16", "format": "NHWC", "ori_shape": (1321, 73),"ori_format": "NHWC"}],
          "case_name": "broadcast_to_d_5",
          "expect": "success",
          "format_expect": [],
