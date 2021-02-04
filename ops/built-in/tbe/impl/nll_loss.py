@@ -360,12 +360,19 @@ class NllLossCompute:
         None
         """
         if self.reduction != "mean" or self.big_target:
+            if self.invalid_target:
+                self.weight_ub = self.tik_instance.Tensor(
+                    "float32", [self.weight_ub_size],
+                    name="weight_ub", scope=tik.scope_ubuf)
+                self.zero_weight_ub = self.weight_ub[0:8]
+                self.temp_weight_ub = self.weight_ub[8:]
+            else:
+                self.temp_weight_ub = self.tik_instance.Tensor(
+                    "float32", [self.weight_ub_size],
+                    name="temp_weight_ub", scope=tik.scope_ubuf)
             self.refactor_weight_ub = self.tik_instance.Tensor(
                 "float32", [self.refactor_weight_size],
                 name="refactor_weight_ub", scope=tik.scope_ubuf)
-            self.temp_weight_ub = self.tik_instance.Tensor(
-                "float32", [self.weight_ub_size],
-                name="temp_weight_ub", scope=tik.scope_ubuf)
             self.target_ub = self.tik_instance.Tensor(
                 "float32", [self.target_ub_size],
                 name="target_ub", scope=tik.scope_ubuf)
@@ -495,7 +502,7 @@ class NllLossCompute:
                                             self.weight_ub, 1, 1, 1, 0, 0)
         self.tik_instance.data_move(self.output, self.x_ub, 1, 1, 1, 0, 0)
 
-    def _set_valid_target(self, names, var, src, valid_target=None):
+    def _set_valid_target(self, names, var, src):
         """
         set valid target when target index is out c range, x set 0, weight set -1.
 
@@ -508,10 +515,6 @@ class NllLossCompute:
         """
         if not self.invalid_target:
             return None
-
-        if valid_target is not None:
-            names["index_x" + str(var)].set_as(valid_target)
-            return valid_target
 
         with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
                                                 names["index_x" + str(var)] >= self.c_dim)):
@@ -559,6 +562,7 @@ class NllLossCompute:
                 src1_offset = dst_offset*src1_line_size + names["index_x" + str(i)]
                 dst1[dst_offset].set_as(src1[src1_offset])
                 if self.reduction != "mean" or self.big_target:
+                    self._set_valid_target(names, i, src2)
                     src2_offset = dst_offset*src2_line_size + names["index_x" + str(i)]
                     dst2[dst_offset].set_as(src2[src2_offset])
 
@@ -571,6 +575,7 @@ class NllLossCompute:
             src1_offset = dst_offset*src1_line_size + names["index_x" + str(i)]
             dst1[dst_offset].set_as(src1[src1_offset])
             if self.reduction != "mean" or self.big_target:
+                self._set_valid_target(names, i, src2)
                 src2_offset = dst_offset*src2_line_size + names["index_x" + str(i)]
                 dst2[dst_offset].set_as(src2[src2_offset])
 
@@ -839,6 +844,10 @@ class NllLossCompute:
         """
         with self.tik_instance.for_range(0, self.move_times) as cycle:
             self.init_normal_ub()
+
+            if self.invalid_target:
+                self.tik_instance.vector_dup(8, self.zero_weight_ub, 0, 1, 1, 8)
+
             self.tik_instance.data_move(self.temp_weight_ub, self.data_weight,
                                         0, 1, math.ceil(self.c_dim/8), 0, 0)
             with self.tik_instance.if_scope(cycle < self.move_times - 1):
