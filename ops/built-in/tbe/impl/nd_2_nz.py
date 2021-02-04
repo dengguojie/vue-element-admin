@@ -234,7 +234,7 @@ class ND2NzCompute:
                                CUBE_SIZE, CUBE_SIZE]
         self.num_byte = SIZE_TWO_BYTES
         self.vadds_mask = MAX_MASK
-        if self.dtype == "float32":
+        if self.dtype in ("float32", "int32"):
             self.num_byte = SIZE_FOUR_BYTES
             self.vadds_mask = MAX_MASK // 2
 
@@ -4343,7 +4343,7 @@ def nd_2_nz(src, dst, src_format, dst_format, kernel_name="nd_2_nz"):
     src_dtype = src.get("dtype").lower()
     para_check.check_kernel_name(kernel_name)
     para_check.check_shape_rule(src_shape)
-    check_list = ("float16", "float32", "int8")
+    check_list = ("float16", "float32", "int8", "int32")
     para_check.check_dtype_rule(src_dtype, check_list)
 
     if src_format.upper() not in {"NHWC", "NCHW", "ND"}:
