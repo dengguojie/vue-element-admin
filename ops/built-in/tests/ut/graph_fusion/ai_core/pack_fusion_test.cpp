@@ -10,19 +10,19 @@
 using namespace ge;
 using namespace op;
 
-class concatv2_fusion_test : public testing::Test {
+class pack_fusion_test : public testing::Test {
 protected:
     static void SetUpTestCase() {
-        std::cout << "concatv2_fusion_test SetUp" << std::endl;
+        std::cout << "pack_fusion_test SetUp" << std::endl;
     }
 
     static void TearDownTestCase() {
-        std::cout << "concatv2_fusion_test TearDown" << std::endl;
+        std::cout << "pack_fusion_test TearDown" << std::endl;
     }
 };
 
-TEST_F(concatv2_fusion_test, concatv2_fusion_test_1) {
-    ge::Graph graph("concatv2_fusion_test_1");
+TEST_F(pack_fusion_test, pack_fusion_test_1) {
+    ge::Graph graph("pack_fusion_test_1");
 
     ge::Tensor inputx0DataTensor;
     std::vector<int64_t> crops_vec0{1};
@@ -66,12 +66,12 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_1) {
     delete[] crops_data;
     auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
-    auto concat_layer = op::ConcatV2("concatv2");
+    auto concat_layer = op::Pack("pack");
     concat_layer.create_dynamic_input_x(69);
     for (int64_t n = 0; n < 69; n++) {
         concat_layer.set_dynamic_input_x(n, inputx0Data);
     }
-    concat_layer.set_input_concat_dim(concat_dim);
+    concat_layer.set_attr_axis(0);
     concat_layer.set_attr_N(69);
 
     std::vector<Operator> inputs{inputx0Data, inputx1Data, concat_dim};
@@ -79,22 +79,22 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_1) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("ZConcatExt2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("PackFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-    bool findConcatV2 = false;
+    bool findConcat = false;
     int concat_v2_d_node_count = 0;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
-        if (node->GetType() == "ConcatV2D") {
-            findConcatV2 = true;
+        if (node->GetType() == "ConcatD") {
+            findConcat = true;
             concat_v2_d_node_count++;
         }
     }
-    EXPECT_EQ(findConcatV2, true);
-    EXPECT_GT(concat_v2_d_node_count, 1);
+    EXPECT_EQ(findConcat, true);
+    EXPECT_EQ(concat_v2_d_node_count, 1);
 }
 
-TEST_F(concatv2_fusion_test, concatv2_fusion_test_2) {
-  ge::Graph graph("concatv2_fusion_test_2");
+TEST_F(pack_fusion_test, pack_fusion_test_2) {
+  ge::Graph graph("pack_fusion_test_2");
 
   ge::Tensor inputx0DataTensor;
   std::vector<int64_t> crops_vec0{-1};
@@ -138,12 +138,12 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_2) {
   delete[] crops_data;
   auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
-  auto concat_layer = op::ConcatV2("concatv2");
+  auto concat_layer = op::Pack("pack");
   concat_layer.create_dynamic_input_x(69);
   for (int64_t n = 0; n < 69; n++) {
     concat_layer.set_dynamic_input_x(n, inputx0Data);
   }
-  concat_layer.set_input_concat_dim(concat_dim);
+  concat_layer.set_attr_axis(0);
   concat_layer.set_attr_N(69);
 
   std::vector<Operator> inputs{inputx0Data, inputx1Data, concat_dim};
@@ -151,19 +151,19 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_2) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("ZConcatExt2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("PackFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-  bool findConcatV2 = false;
+  bool findConcat = false;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ConcatV2D") {
-      findConcatV2 = true;
+    if (node->GetType() == "ConcatD") {
+      findConcat = true;
     }
   }
-  EXPECT_EQ(findConcatV2, true);
+  EXPECT_EQ(findConcat, true);
 }
 
-TEST_F(concatv2_fusion_test, concatv2_fusion_test_3) {
-  ge::Graph graph("concatv2_fusion_test_3");
+TEST_F(pack_fusion_test, pack_fusion_test_3) {
+  ge::Graph graph("pack_fusion_test_3");
 
   ge::Tensor inputx0DataTensor;
   std::vector<int64_t> crops_vec0{-1};
@@ -207,13 +207,13 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_3) {
   delete[] crops_data;
   auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
-  auto concat_layer = op::ConcatV2("concatv2");
+  auto concat_layer = op::Pack("pack");
   const int64_t input_count = 48;
   concat_layer.create_dynamic_input_x(input_count);
   for (int64_t n = 0; n < input_count; n++) {
     concat_layer.set_dynamic_input_x(n, inputx0Data);
   }
-  concat_layer.set_input_concat_dim(concat_dim);
+  concat_layer.set_attr_axis(0);
   concat_layer.set_attr_N(input_count);
 
   std::vector<Operator> inputs{inputx0Data, inputx1Data, concat_dim};
@@ -221,22 +221,22 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_3) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("ZConcatExt2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("PackFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-  bool findConcatV2 = false;
+  bool findConcat = false;
   int concat_v2_d_node_count = 0;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ConcatV2D") {
-      findConcatV2 = true;
+    if (node->GetType() == "ConcatD") {
+      findConcat = true;
       concat_v2_d_node_count++;
     }
   }
-  EXPECT_EQ(findConcatV2, true);
-  EXPECT_EQ(concat_v2_d_node_count, 1);
+  EXPECT_EQ(findConcat, false);
+  EXPECT_EQ(concat_v2_d_node_count, 0);
 }
 
-TEST_F(concatv2_fusion_test, concatv2_fusion_test_4) {
-  ge::Graph graph("concatv2_fusion_test_4");
+TEST_F(pack_fusion_test, pack_fusion_test_4) {
+  ge::Graph graph("pack_fusion_test_4");
 
   ge::Tensor inputx0DataTensor;
   std::vector<int64_t> crops_vec0{-1};
@@ -280,13 +280,13 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_4) {
   delete[] crops_data;
   auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
-  auto concat_layer = op::ConcatV2("concatv2");
+  auto concat_layer = op::Pack("pack");
   const int64_t input_count = 49;
   concat_layer.create_dynamic_input_x(input_count);
   for (int64_t n = 0; n < input_count; n++) {
     concat_layer.set_dynamic_input_x(n, inputx0Data);
   }
-  concat_layer.set_input_concat_dim(concat_dim);
+  concat_layer.set_attr_axis(0);
   concat_layer.set_attr_N(input_count);
 
   std::vector<Operator> inputs{inputx0Data, inputx1Data, concat_dim};
@@ -294,22 +294,22 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_4) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("ZConcatExt2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("PackFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-  bool findConcatV2 = false;
+  bool findConcat = false;
   int concat_v2_d_node_count = 0;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ConcatV2D") {
-      findConcatV2 = true;
+    if (node->GetType() == "ConcatD") {
+      findConcat = true;
       concat_v2_d_node_count++;
     }
   }
-  EXPECT_EQ(findConcatV2, true);
-  EXPECT_GT(concat_v2_d_node_count, 1);
+  EXPECT_EQ(findConcat, true);
+  EXPECT_EQ(concat_v2_d_node_count, 1);
 }
 
-TEST_F(concatv2_fusion_test, concatv2_fusion_test_5) {
-  ge::Graph graph("concatv2_fusion_test_1");
+TEST_F(pack_fusion_test, pack_fusion_test_5) {
+  ge::Graph graph("pack_fusion_test_1");
 
   ge::Tensor inputx0DataTensor;
   std::vector<int64_t> crops_vec0{1};
@@ -353,13 +353,13 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_5) {
   delete[] crops_data;
   auto concat_dim = op::Constant("concat_dim").set_attr_value(crops_tensor);
 
-  auto concat_layer = op::ConcatV2("concatv2");
+  auto concat_layer = op::Pack("pack");
   const int64_t input_count = 63;
   concat_layer.create_dynamic_input_x(input_count);
   for (int64_t n = 0; n < input_count; n++) {
     concat_layer.set_dynamic_input_x(n, inputx0Data);
   }
-  concat_layer.set_input_concat_dim(concat_dim);
+  concat_layer.set_attr_axis(0);
   concat_layer.set_attr_N(input_count);
 
   std::vector<Operator> inputs{inputx0Data, inputx1Data, concat_dim};
@@ -367,18 +367,18 @@ TEST_F(concatv2_fusion_test, concatv2_fusion_test_5) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-  fe::FusionPassTestUtils::RunGraphFusionPass("ZConcatExt2FusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("PackFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
-  bool findConcatV2 = false;
+  bool findConcat = false;
   int concat_v2_d_node_count = 0;
   for (auto node: compute_graph_ptr->GetAllNodes()) {
-    if (node->GetType() == "ConcatV2D") {
-      findConcatV2 = true;
+    if (node->GetType() == "ConcatD") {
+      findConcat = true;
       concat_v2_d_node_count++;
     }
   }
-  EXPECT_EQ(findConcatV2, true);
-  EXPECT_EQ(concat_v2_d_node_count, 1);
+  EXPECT_EQ(findConcat, false);
+  EXPECT_EQ(concat_v2_d_node_count, 0);
 }
 
 

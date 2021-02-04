@@ -268,6 +268,7 @@ class ConcatV2:
             self._tiling_ub = None
             self._dims = []
             self.all_align = inst.Scalar(dtype, name="all_align", init_value=0)
+            self.only_last_input_not_align = inst.Scalar(dtype, name="only_last_input_not_align", init_value=0)
             self.mask_cycle_lines = self.block_element
             self.mask_cycle_output_inner_burst = self.output_inner_length
             self._mask_cycle_inner_burst = []
@@ -298,6 +299,10 @@ class ConcatV2:
                     index = head_count + i * 2
                     self._dims[i * 2].set_as(self._tiling_ub[index])
                     self._dims[i * 2 + 1].set_as(self._tiling_ub[index + 1])
+                    if i == len(self.input_values) - 1:
+                        self.only_last_input_not_align.set_as(self.all_align)
+                        with inst.if_scope(self._dims[i * 2] % self.block_element == 0):
+                            self.only_last_input_not_align.set_as(0)
                     self.all_align.set_as(self.all_align + self._dims[i * 2] % self.block_element)
 
         def init_mask_cycle_info(self):
@@ -474,6 +479,44 @@ class ConcatV2:
         for index, _ in enumerate(self.input_tensors):
             self._concat_compute_tensor_inner_dim(out_dim_idx, inner_dim_split_idx, index)
 
+    def _copy_one_row(self, row_idx, tensor_index):
+        inst = self.tik_instance
+        factor = self.ub_buffer_length // 2
+        inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
+        input_gm = self.input_tensors[tensor_index]
+        output_gm = self.output_tensor
+        with inst.new_stmt_scope():
+            ub_length = factor
+            ub = inst.Tensor(input_gm.dtype, (ub_length,), scope=tik.scope_ubuf, name="out_ub")
+            loops = ceil_div(inner_dims, ub_length)
+            with inst.for_range(0, loops) as inner_dim_split_idx:
+                in_start_index = inner_dim_split_idx * factor + inner_dims * row_idx
+                output_dim = self.tiling_param.output_inner_length
+                out_start_index = output_idx + inner_dim_split_idx * factor + output_dim * row_idx
+                with inst.if_scope(in_start_index < inner_dims * (1 + row_idx)):
+                    count = inst.Scalar("int64", name="count")
+                    count.set_as(inner_dims * (1 + row_idx) - in_start_index)
+                    with inst.if_scope(count > ub_length):
+                        count.set_as(ub_length)
+
+                    gm2ub(inst, ub, input_gm[in_start_index:], count)
+                    ub2gm(inst, output_gm[out_start_index:], ub, count)
+
+    def _copy_one_block(self, row_idx, tensor_index):
+        inst = self.tik_instance
+        inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
+        input_gm = self.input_tensors[tensor_index]
+        output_gm = self.output_tensor
+        with inst.new_stmt_scope():
+            ub_length = self.ele_each_block
+            ub = inst.Tensor(input_gm.dtype, (ub_length,), scope=tik.scope_ubuf, name="out_ub")
+            in_start_index = inner_dims * row_idx
+            output_dim = self.tiling_param.output_inner_length
+            out_start_index = output_idx + output_dim * row_idx
+            with inst.if_scope(in_start_index < inner_dims * (1 + row_idx)):
+                gm2ub(inst, ub, input_gm[in_start_index:], self.ele_each_block)
+                ub2gm(inst, output_gm[out_start_index:], ub, self.ele_each_block)
+
     def _concat_compute_tensor_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
         with self.tik_instance.if_scope(inner_dims > 0):
@@ -570,6 +613,36 @@ class ConcatV2:
                 inner_dim_split_idx = loop_idx % inner_dims_loops
                 self._concat_inner_dim_each_split(out_dim_idx, inner_dim_split_idx)
 
+    def _concat_only_last_input_not_align(self, core_idx):
+        inst = self.tik_instance
+        aicore_num = self.aicore_num
+        out_dims = self.tiling_param.out_dim
+        row_each_core = ceil_div(out_dims, aicore_num)
+        do_lines = inst.Scalar(dtype="int64", name="do_lines", init_value=row_each_core)
+        with inst.if_scope(row_each_core * core_idx < out_dims):
+            with inst.if_scope(row_each_core * core_idx + do_lines > out_dims):
+                do_lines.set_as(out_dims - row_each_core * core_idx)
+            for index, _ in enumerate(self.input_tensors):
+                tensor_index = len(self.input_tensors) - 1 - index
+                inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
+                with inst.if_scope(inner_dims > 0):
+                    with inst.for_range(0, do_lines // 2) as idx:
+                        out_dim_idx = row_each_core * core_idx + idx * 2
+                        self._copy_one_row(out_dim_idx, tensor_index)
+                        out_dim_idx = row_each_core * core_idx + idx * 2 + 1
+                        self._copy_one_row(out_dim_idx, tensor_index)
+                    with inst.if_scope(do_lines % 2 != 0):
+                        out_dim_idx = row_each_core * core_idx + do_lines - 1
+                        self._copy_one_row(out_dim_idx, tensor_index)
+            with inst.if_scope(row_each_core * core_idx + row_each_core < out_dims):
+                corrected = inst.Scalar(dtype="int8", name="corrected")
+                corrected.set_as(0)
+                for index, _ in enumerate(self.input_tensors):
+                    inner_dims, output_idx = self.tiling_param.get_dims(index)
+                    with inst.if_scope(tik.all(inner_dims > 0, corrected == 0)):
+                        self._copy_one_block(row_each_core * core_idx + row_each_core, index)
+                        corrected.set_as(1)
+
     def _concat_all_align_with_multi_output_lines(self, core_idx):
         inst = self.tik_instance
         ub_len = self.ub_buffer_length // 6 // self.ele_each_block * self.ele_each_block
@@ -651,8 +724,11 @@ class ConcatV2:
                         ub_can_copy_lines.set_as(lines_each_core)
                     self._concat_small_inner_each_core_multi_line(core_idx, out_dims, ub_can_copy_lines)
                 with inst.else_scope():
-                    count_each_core = ceil_div(out_dims, aicore_num)
-                    self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
+                    with inst.if_scope(self.tiling_param.only_last_input_not_align == 1):
+                        self._concat_only_last_input_not_align(core_idx)
+                    with inst.else_scope():
+                        count_each_core = ceil_div(out_dims, aicore_num)
+                        self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
         else:
             with inst.if_scope(tik.all(output_inner_dim >= self.ele_each_block,
                                        ub_can_copy_lines >= self.ele_each_block)):
@@ -662,8 +738,11 @@ class ConcatV2:
                     ub_can_copy_lines.set_as(lines_each_core)
                 self._concat_small_inner_each_core_multi_line(core_idx, out_dims, ub_can_copy_lines)
             with inst.else_scope():
-                count_each_core = ceil_div(out_dims, aicore_num)
-                self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
+                with inst.if_scope(self.tiling_param.only_last_input_not_align == 1):
+                    self._concat_only_last_input_not_align(core_idx)
+                with inst.else_scope():
+                    count_each_core = ceil_div(out_dims, aicore_num)
+                    self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
 
     def _concat_small_inner_each_core_one_line(self, core_idx, out_dims, count_each_core):
         inst = self.tik_instance

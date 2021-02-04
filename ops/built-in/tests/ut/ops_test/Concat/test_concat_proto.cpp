@@ -981,3 +981,55 @@ TEST_F(ConcatD, concatv2_infer_shape_dynamic4_fp16) {
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(ConcatD, concatv2_infer_shape_dynamic5_fp16) {
+  ge::op::ConcatD op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, -1}, {4, -1}};
+  auto tensor_desc =
+      [&shape_range](std::initializer_list<int64_t> shape_dims) -> ge::TensorDesc {
+        return create_desc_shape_range(shape_dims,
+                                       ge::DT_FLOAT16, ge::FORMAT_ND,
+                                       {2, 100, 4},
+                                       ge::FORMAT_ND, shape_range);
+      };
+
+  op.create_dynamic_input_x(3);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc({-1, -1, -1}));
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc({-1, -1, -1}));
+  op.UpdateDynamicInputDesc("x", 2, tensor_desc({-1, -1, -1}));
+  op.SetAttr("N", 4);
+  op.SetAttr("concat_dim", -1);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(ConcatD, concatv2_infer_shape_dynamic6_fp16) {
+  ge::op::ConcatD op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {};
+  auto tensor_desc =
+      [&shape_range](std::initializer_list<int64_t> shape_dims) -> ge::TensorDesc {
+        return create_desc_shape_range(shape_dims,
+                                       ge::DT_FLOAT16, ge::FORMAT_ND,
+                                       {2},
+                                       ge::FORMAT_ND, shape_range);
+      };
+
+  op.create_dynamic_input_x(3);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc({-1}));
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc({-1}));
+  op.UpdateDynamicInputDesc("x", 2, tensor_desc({-1}));
+  op.SetAttr("N", 3);
+  op.SetAttr("concat_dim", -1);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+      {1, -1},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}

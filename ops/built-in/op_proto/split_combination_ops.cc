@@ -617,6 +617,13 @@ static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int6
   string input_name_i = "x63";
   for (int64_t input_idx = 0; input_idx < num_concat; input_idx++) {
     input_name_i = input_name + std::to_string(input_idx);
+    auto input_desc = op_info->MutableInputDesc(input_name_i);
+    if (!input_desc) {
+      OpsMissInputErrReport(op.GetName(), input_name_i);
+      OP_LOGE(op.GetName().c_str(), "Get input desc %s failed.", input_name_i.c_str());
+      return GRAPH_FAILED;
+    }
+
     input_x_desc.emplace_back(op_info->MutableInputDesc(input_name_i));
   }
 
@@ -736,7 +743,12 @@ static graphStatus ConcatInferShapeCommon(Operator& op, int64_t num_concat, int6
         JoinShapeRanges(output_shape_ranges, input_shape_ranges);
       }
     }
-    output_shape_ranges[non_negative_axis] = output_concat_dim_range;
+
+    if (output_concat_dim_range.first != 0 && output_concat_dim_range.second != 0 &&
+        static_cast<uint64_t>(non_negative_axis) < output_shape_ranges.size()) {
+      output_shape_ranges[non_negative_axis] = output_concat_dim_range;
+    }
+
     output_desc->SetShapeRange(output_shape_ranges);
     OP_LOGD(op.GetName().c_str(), "output shape range:%s", to_string(output_shape_ranges).c_str());
   }

@@ -58,6 +58,38 @@ bool HasUnKnowDimShape(const ge::NodePtr &node_ptr) {
   return false;
 }
 
+bool HasUnKnowShape(const ge::NodePtr &node_ptr) {
+    if (!node_ptr) {
+        return false;
+    }
+
+    auto op = ge::OpDescUtils::CreateOperatorFromNode(node_ptr);
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    if (!op_desc) {
+        return false;
+    }
+
+    for (const auto &ptr : op_desc->GetAllInputsDescPtr()) {
+        auto ge_shape = ptr->GetShape();
+        for (const auto &dim : ge_shape.GetDims()) {
+            if (dim == ge::UNKNOWN_DIM || dim == ge::UNKNOWN_DIM_NUM) {
+                return true;
+            }
+        }
+    }
+
+    for (const auto &ptr : op_desc->GetAllOutputsDescPtr()) {
+        auto ge_shape = ptr->GetShape();
+        for (const auto &dim : ge_shape.GetDims()) {
+            if (dim == ge::UNKNOWN_DIM || dim == ge::UNKNOWN_DIM_NUM) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void ClearOpInferDepends(const ge::NodePtr &node_ptr) {
   if (!node_ptr) {
     return;
