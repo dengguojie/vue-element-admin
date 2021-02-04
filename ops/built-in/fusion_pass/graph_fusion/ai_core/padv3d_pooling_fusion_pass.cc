@@ -154,6 +154,10 @@ Status Padv3dPoolingFusionPass::Fusion(ge::ComputeGraph& graph,
   }
 
   if (input_format == FORMAT_NHWC) {
+    if (paddings[0].size() != 2 || paddings[3].size() != 2) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of padding[0] and padding[3] is not match.");
+      return NOT_CHANGED;
+    }
     if ((paddings[0][0] != 0) || (paddings[0][1] != 0) || (paddings[3][0] != 0) || (paddings[3][1] != 0)) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "the values of paddings are not match.");
       return NOT_CHANGED;
@@ -167,6 +171,10 @@ Status Padv3dPoolingFusionPass::Fusion(ge::ComputeGraph& graph,
       return NOT_CHANGED;
     }
   } else {
+    if (paddings[0].size() != 2 || paddings[2].size() != 2) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "the len of padding[0] and padding[2] is not match.");
+      return NOT_CHANGED;
+    }
     if ((paddings[0][0] != 0) || (paddings[0][1] != 0) || (paddings[2][0] != 0) || (paddings[2][1] != 0)) {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "the values of paddings are not match.");
       return NOT_CHANGED;

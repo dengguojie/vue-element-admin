@@ -128,6 +128,10 @@ Status ProcessMatrixMul(vector<vector<float>> &arr, vector<int64_t> size_h,
   int64_t w_size = size_w.size();
   for (int64_t i = 0; i < h_size; i++) {
     for (int64_t j = 0; j < w_size; j++) {
+      if(size_h[i] == 0 || size_w[j] == 0) {
+        OP_LOGE("ProcessMatrixMul divied by zero error.");
+        return FAILED;
+      }
       arr[i][j] = 1.0 / (float)(size_h[i] * size_w[j]);
     }
   }
@@ -139,6 +143,10 @@ Status ArrToTensor(vector<float> &arr_tensor, vector<vector<float>> arr) {
   auto tensor_size = arr_tensor.size();
   auto size_n = arr.size();
   auto size_m = arr[0].size();
+  if(size_m == 0 || size_n == 0) {
+    OP_LOGE("ArrToTensor divied by zero error.");
+    return FAILED;
+  }
   auto arr_size = size_m * size_n;
   for (int64_t i = 0; i < tensor_size; i++) {
     int64_t temp_index = i % arr_size;
@@ -588,6 +596,8 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define AdaptiveAvgPool2dPass fusion begin.");
   // step1: get fused Node
   ge::NodePtr adaptive_node = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(adaptive_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "adaptive_node is null."),
+                    return PARAM_INVALID);
   // 定义输入输出的shape
   vector<int64_t> input_shape;
   vector<int64_t> output_shape;
@@ -601,15 +611,19 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   ge::NodePtr batmm_one_node;
   ret = CreatOneNode(batmm_one_node, adaptive_node, graph, new_nodes,
                      bat_one_outshape);
+  FUSION_PASS_CHECK(batmm_one_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batmm_one_node is null."),
+                    return PARAM_INVALID);
   // 定义一个新的节点 batmmTwo
   ge::NodePtr batmm_two_node;
   ret = CreatTwoNode(batmm_two_node, adaptive_node, graph, new_nodes,
                      bat_one_outshape);
-
+  FUSION_PASS_CHECK(batmm_two_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "batmm_two_node is null."),
+                    return PARAM_INVALID);
   // 定义一个新的节点 mul_node
   ge::NodePtr mul_node;
   ret = CreatMulNode(mul_node, adaptive_node, graph, new_nodes);
-
+  FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mul_node is null."),
+                    return PARAM_INVALID);
   // 设置shape
   vector<int64_t> left_tensor_shape;
   vector<int64_t> right_tensor_shape;
@@ -652,9 +666,17 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   vector<ge::GeTensorPtr> left_weights = {assit_left_ptr, assit_mid_ptr};
   ge::OpDescUtils::SetWeights(batmm_one_node, left_weights);
   auto const_left_input_node = OpDescUtils::GetConstInputs(batmm_one_node);
+
+  FUSION_PASS_CHECK(const_left_input_node.size() < 2,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), " left const nodes size less than 2."),
+                    return FAILED);
   NodePtr const_left_input = const_left_input_node[0];
+  FUSION_PASS_CHECK(const_left_input == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "const_left_input is null."),
+                    return PARAM_INVALID);
   const_left_input->GetOpDesc()->SetType("Const");
   NodePtr const_mid_input = const_left_input_node[1];
+  FUSION_PASS_CHECK(const_mid_input == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "const_mid_input is null."),
+                    return PARAM_INVALID);
   const_mid_input->GetOpDesc()->SetType("Const");
   // remove mid node
   ret = RemoveNodes(const_mid_input, graph);
@@ -662,14 +684,24 @@ Status AdaptiveAvgPool2dPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping,
   vector<ge::GeTensorPtr> right_weights = {assit_right_ptr};
   ge::OpDescUtils::SetWeights(batmm_two_node, right_weights);
   auto const_right_input_node = OpDescUtils::GetConstInputs(batmm_two_node);
+  FUSION_PASS_CHECK(const_right_input_node.empty(),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), " right const nodes size less than 1."),
+                    return FAILED);
   NodePtr const_right_input = const_right_input_node[0];
+  FUSION_PASS_CHECK(const_right_input == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "const_right_input is null."),
+                    return PARAM_INVALID);
   const_right_input->GetOpDesc()->SetType("Const");
   // add edge to batmmOne and two
   // 将赋值矩阵连接Mul Node
   vector<ge::GeTensorPtr> mul_weights = {assit_mul_ptr};
   ge::OpDescUtils::SetWeights(mul_node, mul_weights);
   auto const_mul_input_node = OpDescUtils::GetConstInputs(mul_node);
+  FUSION_PASS_CHECK(const_mul_input_node.size() < 1,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), " const mul node size less than 1."),
+                    return FAILED);
   NodePtr const_mul_input = const_mul_input_node[0];
+  FUSION_PASS_CHECK(const_mul_input == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "const_mul_input is null."),
+                    return PARAM_INVALID);
   const_mul_input->GetOpDesc()->SetType("Const");
   // add edge to batmmOne and two
   ret = Bridge(adaptive_node, batmm_one_node, batmm_two_node, mul_node);

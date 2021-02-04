@@ -171,13 +171,13 @@ NodePtr PoolingFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& PoolNode
   ge::GeShape mulShape = input_desc.GetShape();
   vector<int64_t> dimMul = mulShape.GetDims();
 
-  if (dimMul.size() != 0) {
+  if (dimMul.size() >= 4) {
       mulN = dimMul[0];
       mulC = dimMul[1];
       mulH = dimMul[2];
       mulW = dimMul[3];
     } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimMul is null, please check!");
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimMul size is not match, please check!");
     return nullptr;
   }
 
@@ -244,14 +244,14 @@ Status PoolingFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   ge::Format inputDesc0OriginFormat = inputDesc0.GetOriginFormat();
   ge::GeShape outputShape = inputDesc0.GetOriginShape();
   vector<int64_t> dimOut = outputShape.GetDims();
-  if (dimOut.size() != 0) {
+  if (dimOut.size() >= 4) {
       outputH = dimOut[2];
       outputW = dimOut[3];
       outputC = dimOut[1];
       dimH = dimInfo[2];
       dimW = dimInfo[3];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimOut is null, please check!");
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimOut size not, please check!");
     return PARAM_INVALID;
   }
   outputC1 = (outputC + outputC0 - 1) / outputC0;
@@ -708,6 +708,10 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   }
 
   bool isWPadZero = false;
+  if (pad.size() != 4) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "the len of pad is not match.");
+    return FAILED;
+  }
   if (pad[2] == 0 && pad[3] == 0) {
     isWPadZero = true;
   }
@@ -732,7 +736,7 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   //get next node of pooling
   auto poolingOutDataAnchor = poolingNode->GetOutDataAnchor(0);
-  for(auto nextInDataAnchor : poolingOutDataAnchor->GetPeerInDataAnchors()) {
+  for (auto nextInDataAnchor : poolingOutDataAnchor->GetPeerInDataAnchors()) {
     ge::NodePtr nextNode = nextInDataAnchor->GetOwnerNode();
     if(nextNode->GetOpDesc()->GetType() == "Eltwise") {
       OP_LOGI(FUSED_OP_TYPE.c_str(), "pooling node is eltwise's input , not support to call conv2d!");

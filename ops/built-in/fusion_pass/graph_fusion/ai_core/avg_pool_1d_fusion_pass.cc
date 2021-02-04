@@ -115,6 +115,10 @@ Status AvgPool1DFusionPass::AvgValueTableGen(const vector<int64_t>& dim_info, co
             end = min(end, w_in_input + padl + padr);
           }
           data_num = end - start;
+          if (data_num == 0) {
+            OP_LOGE("divied by zero error.");
+            return FAILED;
+          }
           if (typeid(output) == typeid(float*)) {
             float tmp;
             tmp = 1.0 / data_num;
