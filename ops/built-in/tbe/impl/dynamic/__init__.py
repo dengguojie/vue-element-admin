@@ -40,6 +40,8 @@ from .scatter_div import scatter_div
 from .equal import equal
 from .relu import relu
 from .add import add
+from .inv import inv
+from .gelu import gelu
 from .axpy import axpy
 from .floor_mod import floor_mod
 from .mul import mul

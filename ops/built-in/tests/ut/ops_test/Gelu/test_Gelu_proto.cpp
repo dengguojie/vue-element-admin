@@ -1,42 +1,57 @@
-#include <gtest/gtest.h>
+/**
+ * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the License.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Apache License for more details at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * @file test_gelu_proto.cpp
+ */
+
 #include <iostream>
+#include <gtest/gtest.h>
 #include "op_proto_test_util.h"
 #include "nonlinear_fuc_ops.h"
 
 class gelu : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "gelu Proto Test SetUp" << std::endl;
+    std::cout << "gelu SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "gelu Proto Test TearDown" << std::endl;
+    std::cout << "gelu TearDown" << std::endl;
   }
 };
 
-TEST_F(gelu, gelu_infershape_diff_test){
+TEST_F(gelu, gelu_infershape_test){
   ge::op::Gelu op;
-  op.UpdateInputDesc("x", create_desc({4, 3, 4}, ge::DT_FLOAT16));
   
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 16},{1, 16}};
+
+  auto tensor_desc = create_desc_shape_range({-1, -1},
+                                             ge::DT_FLOAT16, ge::FORMAT_ND,
+                                             {16, 16},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("x", tensor_desc);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  float negative_slope = 0.0;
+  op.SetAttr("negative_slope", negative_slope);
 
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-  std::vector<int64_t> expected_output_shape = {4, 3, 4};
+
+  std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{1,16},{1,16}};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
 }
-
-TEST_F(gelu, gelu_infershape_same_test){
-  ge::op::Gelu op;
-  op.UpdateInputDesc("x", create_desc({1, 3, 4}, ge::DT_FLOAT16));
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-  auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-  std::vector<int64_t> expected_output_shape = {1, 3, 4};
-  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-}
-

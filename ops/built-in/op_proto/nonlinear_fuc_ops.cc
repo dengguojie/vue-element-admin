@@ -81,15 +81,11 @@ VERIFY_FUNC_REG(EluGradV2, EluGradV2Verify);
 //-----------------------ELUGRADV2 END---------------------
 // ----------------------Gelu----------------------
 IMPLEMT_COMMON_INFERFUNC(GeluInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(Gelu, GeluInferShape);
 // ----------------------Gelu END----------------------
 
