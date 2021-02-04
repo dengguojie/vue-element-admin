@@ -100,3 +100,21 @@ case3 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
 
 ut_case.add_precision_case("Ascend910", case3)
 
+def test_op_select_format(test_arg):
+    from impl.adam_apply_one import op_select_format
+    op_select_format({"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "input"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "output"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "output"},
+                    {"shape": (3, 2, 32, 16, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (3, 2, 32, 16, 32, 16),"ori_format": "ND", "param_type": "output"},
+                    )
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)

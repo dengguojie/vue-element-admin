@@ -135,13 +135,27 @@ def prelu(input_x, input_A, output_y, kernel_name="prelu"):
                 weight_shape_new = [1] * 5
             else:
                 detail = "weight_dim only support two values: 1 or 5," \
-                    " when feature_dim is 5(NC1HWC0) and weight_dim is not equal to 5, both weight_shape[0] " \
-                    "and weight_dim must be 1, while weight_shape[0] is {0}, weight_dim is {1}".format(
+                         " when feature_dim is 5(NC1HWC0) and weight_dim is not equal to 5, both weight_shape[0] " \
+                         "and weight_dim must be 1, while weight_shape[0] is {0}, weight_dim is {1}".format(
                         weight_shape[0], weight_dim)
                 error_manager_vector.raise_err_input_shape_invalid('prelu', 'input_A', detail)
         else:
             weight_shape_new = [1] * feature_dim
             weight_shape_new[1] = weight_shape[1]
+            weight_shape_new[-1] = weight_shape[-1]
+    elif input_format == "NDC1HWC0":
+        if weight_dim != 6:
+            if weight_dim == 1 and weight_shape[0] == 1:
+                weight_shape_new = [1] * 6
+            else:
+                detail = "weight_dim only support two values: 1 or 6," \
+                         " when feature_dim is 6(NDC1HWC0) and weight_dim is not equal to 6, both weight_shape[0] " \
+                         "and weight_dim must be 1, while weight_shape[0] is {0}, weight_dim is {1}".format(
+                        weight_shape[0], weight_dim)
+                error_manager_vector.raise_err_input_shape_invalid('prelu', 'input_A', detail)
+        else:
+            weight_shape_new = [1] * feature_dim
+            weight_shape_new[2] = weight_shape[2]
             weight_shape_new[-1] = weight_shape[-1]
     elif input_format == "FRACTAL_NZ":
         if weight_dim == 1 and weight_shape[0] == 1:

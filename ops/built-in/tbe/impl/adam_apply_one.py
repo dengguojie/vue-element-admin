@@ -20,7 +20,8 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-
+from impl.util import util_common
+from impl.util import util_select_op_base
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=locally-disabled,too-many-locals,unused-variable
@@ -286,3 +287,81 @@ def adam_apply_one(input0, input1, input2, input3, input4,
               "tensor_list": list(inputlist) + list(res)}
 
     tbe.cce_build_code(sch, config)
+
+
+def op_select_format(input0, input1, input2, input3, input4,
+                     mul0_x, mul1_x, mul2_x, mul3_x, add2_y,
+                     output0, output1, output2, kernel_name="adam_apply_one"):
+    """
+    1. When all of the inputs' shapes are the same, the Op AdamApplyOne can support format NDC1HWC0 and FRACTAL_Z_3D.
+    2. In other scenes, the Op can support format ND.
+    """
+    shape_input0 = shape_util.scalar2tensor_one(input0.get("shape"))
+    shape_input1 = shape_util.scalar2tensor_one(input1.get("shape"))
+    shape_input2 = shape_util.scalar2tensor_one(input2.get("shape"))
+    shape_input3 = shape_util.scalar2tensor_one(input3.get("shape"))
+    shape_input4 = shape_util.scalar2tensor_one(input4.get("shape"))
+    shape_mul0_x = shape_util.scalar2tensor_one(mul0_x.get("shape"))
+    shape_mul1_x = shape_util.scalar2tensor_one(mul1_x.get("shape"))
+    shape_mul2_x = shape_util.scalar2tensor_one(mul2_x.get("shape"))
+    shape_mul3_x = shape_util.scalar2tensor_one(mul3_x.get("shape"))
+    shape_add2_y = shape_util.scalar2tensor_one(add2_y.get("shape"))
+
+    input_shape_list = [shape_input0, shape_input1, shape_input2, shape_input3,
+                        shape_input4, shape_mul0_x, shape_mul1_x, shape_mul2_x,
+                        shape_mul3_x, shape_add2_y]
+
+    input_list = [input0, input1, input2, input3, input4,
+                  mul0_x, mul1_x, mul2_x, mul3_x, add2_y]
+
+    dtype_list = ["float16", "float32"]
+    dtype_list_out = dtype_list.copy()
+    support_format = ["ND"] * len(dtype_list)
+    shape_equal_flag = True
+    for i in range(1, 10):
+        if input_shape_list[0] != input_shape_list[i]:
+            shape_equal_flag = False
+            break
+
+    if shape_equal_flag and not util_common.is_dynamic_input(input_list):
+        support_format = support_format + ["NDC1HWC0"] * len(dtype_list)
+        support_format = support_format + ["FRACTAL_Z_3D"] * len(dtype_list)
+        dtype_list_out = dtype_list_out + dtype_list + dtype_list
+    
+    dtype_str = ','.join(dtype_list)
+    format_str = ','.join(support_format)
+
+    input0_param = util_select_op_base.gen_param(classify="input0", name="input0",
+                                                 datatype=dtype_str, format=format_str)
+    input1_param = util_select_op_base.gen_param(classify="input1", name="input1",
+                                                 datatype=dtype_str, format=format_str)
+    input2_param = util_select_op_base.gen_param(classify="input2", name="input2",
+                                                 datatype=dtype_str, format=format_str)
+    input3_param = util_select_op_base.gen_param(classify="input3", name="input3",
+                                                 datatype=dtype_str, format=format_str)
+    input4_param = util_select_op_base.gen_param(classify="input4", name="input4",
+                                                 datatype=dtype_str, format=format_str)
+    input5_param = util_select_op_base.gen_param(classify="input5", name="mul0_x",
+                                                 datatype=dtype_str, format=format_str)
+    input6_param = util_select_op_base.gen_param(classify="input6", name="mul1_x",
+                                                 datatype=dtype_str, format=format_str)
+    input7_param = util_select_op_base.gen_param(classify="input7", name="mul2_x",
+                                                 datatype=dtype_str, format=format_str)
+    input8_param = util_select_op_base.gen_param(classify="input8", name="mul3_x",
+                                                 datatype=dtype_str, format=format_str)
+    input9_param = util_select_op_base.gen_param(classify="input9", name="add2_y",
+                                                 datatype=dtype_str, format=format_str)
+    output0_param = util_select_op_base.gen_param(classify="output0", name="output0",
+                                                 datatype=dtype_str, format=format_str)
+    output1_param = util_select_op_base.gen_param(classify="output1", name="output1",
+                                                 datatype=dtype_str, format=format_str)
+    output2_param = util_select_op_base.gen_param(classify="output2", name="output2",
+                                                 datatype=dtype_str, format=format_str)
+    
+    param_list = [input0_param, input1_param, input2_param, input3_param,
+                  input4_param, input5_param, input6_param, input7_param,
+                  input8_param, input9_param,
+                  output0_param, output1_param, output2_param]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json

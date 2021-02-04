@@ -17,6 +17,19 @@ def gen_prelu_case(shape, weight_shape, case_name, dtype="float32"):
             "format_expect": [],
             "support_expect": True}
 
+def gen_prelu_6HD_case(shape, weight_shape, case_name, dtype="float32"):
+    return {"params": [{"shape": shape, "dtype": dtype, "format": "NDC1HWC0",
+                        "ori_shape": shape, "ori_format": "NDC1HWC0"},
+                       {"shape": weight_shape, "dtype": dtype,
+                        "format": "NDC1HWC0", "ori_shape": weight_shape,
+                        "ori_format": "NDC1HWC0"},
+                       {"shape": shape, "dtype": dtype, "format": "NDC1HWC0",
+                        "ori_shape": shape, "ori_format": "NDC1HWC0"}],
+            "case_name": case_name,
+            "expect": "success",
+            "format_expect": [],
+            "support_expect": True}
+
 
 ut_case = OpUT("Prelu", "impl.prelu", None)
 platform = ["Ascend310", "Ascend710", "Ascend910"]
@@ -26,6 +39,8 @@ ut_case.add_case(platform, gen_prelu_case((32, 2, 4, 16), (1,), "prelu_3"))
 ut_case.add_case(platform, gen_prelu_case((32, 2, 4, 16), (1, ), "prelu_4"))
 ut_case.add_case(platform, gen_prelu_case((1, 2), (1, ), "prelu_5"))
 
+ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (10, 1, 512, 1, 512, 16), "prelu_6"))
+ut_case.add_case(platform, gen_prelu_6HD_case((10, 1, 512, 1, 512, 16), (1, ), "prelu_7"))
 
 def calc_expect_func(input_x, weight, output_y):
     data = input_x["value"]
