@@ -19,7 +19,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.lang.cce.te_compute import conv3d_compute
 from te.lang.cce.te_compute import util as te_util
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 

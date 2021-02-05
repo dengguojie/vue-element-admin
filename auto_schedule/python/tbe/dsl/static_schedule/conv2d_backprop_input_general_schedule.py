@@ -17,7 +17,7 @@ conv2d backprop input general schedule.
 """
 from functools import reduce
 from te import tvm
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvPattern

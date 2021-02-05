@@ -17,7 +17,7 @@ conv3d backprop input general schedule.
 """
 import te.platform as tbe_platform
 from te.lang.cce.te_compute import util as te_util
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from te import tvm
 

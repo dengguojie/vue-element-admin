@@ -20,7 +20,7 @@ import copy
 import math
 
 from functools import reduce
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from te.lang.base.operation_impl import add_compile_info
 from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var

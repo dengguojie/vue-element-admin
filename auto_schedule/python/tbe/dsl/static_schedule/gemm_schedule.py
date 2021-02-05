@@ -19,7 +19,7 @@ from enum import Enum
 from functools import reduce  # pylint: disable=C0302
 
 from te import tvm
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from tbe.dsl.base.operation import in_dynamic
 from tbe.dsl.base.operation import get_te_var
 from te.lang.cce.boost_schedule_kit import Compare

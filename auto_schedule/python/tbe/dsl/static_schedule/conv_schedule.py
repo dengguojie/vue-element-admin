@@ -23,8 +23,8 @@ from te.lang.cce.te_compute.conv_compute import is_support_v220
 from te.lang.cce.te_compute.elewise_compute import vmul
 from te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
-from te.domain.tiling.get_tiling import get_tiling
-from te.domain.tiling.tiling_helper import TILING_INSTANCE
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.tiling.tiling_helper import TILING_INSTANCE
 from te import tvm
 from te import platform as cce
 from te.platform import cce_conf

@@ -39,7 +39,8 @@ def test_conv_quant_cce_conf(test_arg):
 
         _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                                 padh, padw, strideh, stridew, bias=bias,
-                                kernel_name="test23_TBE_FP1622", need_build=True, need_print=False)
+                                kernel_name="test23_TBE_FP1622", need_build=True,
+                                need_print=False)
 
         shape_in = (8, 64, 8, 8)
         _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,

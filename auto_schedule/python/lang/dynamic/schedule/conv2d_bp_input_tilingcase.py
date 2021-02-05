@@ -21,7 +21,7 @@ from functools import reduce
 
 from te.tvm.expr import Expr
 from te.platform import cce_conf
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 
 from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var

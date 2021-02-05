@@ -17,7 +17,6 @@ conv3d compute
 """
 import copy
 import te.platform as tbe_platform
-from te.domain.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.common.utils import shape_util

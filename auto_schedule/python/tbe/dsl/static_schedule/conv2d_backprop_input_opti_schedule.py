@@ -19,7 +19,7 @@ from copy import deepcopy
 from functools import reduce  # pylint: disable=C0302
 
 from te import tvm
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from te.lang.cce.te_compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
 from te.lang.cce.te_compute.cube_util import calc_info_of_iter_vars
 from te.lang.cce.te_compute.cube_util import shape_to_list

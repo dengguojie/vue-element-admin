@@ -20,7 +20,7 @@ import copy
 from collections import OrderedDict
 from functools import reduce
 import te.platform as tbe_platform
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from te.tvm.expr import Expr
 from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var

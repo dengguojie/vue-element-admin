@@ -25,7 +25,7 @@ from te.platform.cce_params import scope_cb
 from te.platform.cce_params import scope_cc
 from te.platform.cce_params import scope_cbuf
 from te.platform.cce_conf import get_soc_spec
-from te.domain.tiling.get_tiling import get_tiling
+from tbe.common.tiling.get_tiling import get_tiling
 from te.lang.cce.te_compute.cube_util import shape_to_list
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 

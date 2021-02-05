@@ -18,8 +18,8 @@
 Schedule of depthwise conv2d.
 """
 from te.utils.error_manager import error_manager_util
-from te.domain.tiling.get_tiling import get_tiling
-from te.domain.tiling.tiling_query import tiling_query
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.tiling.tiling_query import tiling_query
 from te.tvm.schedule import create_schedule
 from te.tvm import api as tvm
 from te.platform import cce_params
