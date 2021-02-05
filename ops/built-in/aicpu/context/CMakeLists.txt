@@ -93,7 +93,7 @@ if(BUILD_OPEN_PROJECT)
 
     add_subdirectory(stub)
 
-    set(OPS_AICPU_PATH "${INSTALL_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib")
+    set(OPS_AICPU_PATH "${INSTALL_PATH}/aicpu")
     cann_install(
       TARGET      cpu_kernels_context_static
       FILES       $<TARGET_FILE:cpu_kernels_context_static>

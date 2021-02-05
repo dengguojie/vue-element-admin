@@ -141,7 +141,7 @@ if(BUILD_OPEN_PROJECT)
 
     add_dependencies(cpu_kernels eigen_headers)
 
-    set(OPS_AICPU_PATH "${INSTALL_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib")
+    set(OPS_AICPU_PATH "${INSTALL_PATH}/aicpu")
 
     cann_install(
       TARGET      cpu_kernels
