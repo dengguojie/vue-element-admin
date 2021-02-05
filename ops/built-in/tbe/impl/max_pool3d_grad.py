@@ -4059,7 +4059,7 @@ class MaxPool3DGradCompute:
 
 # pylint: disable = too-many-arguments
 def check_param(ori_input, ori_output, grad, ksize, strides,
-                kernel_name):
+                kernel_name, data_format):
     """
     check parameters, if one is invalid, then raise error
 
@@ -4107,16 +4107,27 @@ def check_param(ori_input, ori_output, grad, ksize, strides,
     if len(ksize) != 5 or len(strides) != 5:
         raise RuntimeError("Invalid ksize or strides params,"
                            " ksize dim must be 5.")
+    if data_format == "NDHWC":
+        if ksize[0] != 1 or ksize[4] != 1:
+            raise RuntimeError("MaxPoolGRAD only supports pooling "
+                               "across depth/width/heigh, and other ksize "
+                               "dimension should be one")
 
-    if ksize[0] != 1 or ksize[4] != 1:
-        raise RuntimeError("MaxPoolGRAD only supports pooling "
-                           "across width/height, and other ksize "
-                           "dimension should be one")
+        if strides[0] != 1 or strides[4] != 1:
+            raise RuntimeError("MaxPoolGRAD only supports pooling across "
+                               "depth/width/height, and other strides dimension "
+                               "should be one")
+    else:
+        # NCDHW
+        if ksize[0] != 1 or ksize[1] != 1:
+            raise RuntimeError("MaxPoolGRAD only supports pooling "
+                               "across depth/width/heigh and other ksize "
+                               "dimension should be one")
 
-    if strides[0] != 1 or strides[4] != 1:
-        raise RuntimeError("MaxPoolGRAD only supports pooling across "
-                           "width/height, and other strides dimension "
-                           "should be one")
+        if strides[0] != 1 or strides[1] != 1:
+            raise RuntimeError("MaxPoolGRAD only supports pooling across "
+                               "depth/width/heigh, and other strides dimension "
+                               "should be one")
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -4160,7 +4171,7 @@ def max_pool3d_grad(orig_x, orig_y, grads, y,
     dtype = orig_x.get("dtype")
     ksize = list(ksize)
     strides = list(strides)
-    check_param(orig_x, orig_y, grads, ksize, strides, kernel_name)
+    check_param(orig_x, orig_y, grads, ksize, strides, kernel_name, data_format)
     shape_list = [forward_in_shape, forward_ou_shape, grad_shape, ou_shape]
 
     if data_format == "NCDHW":

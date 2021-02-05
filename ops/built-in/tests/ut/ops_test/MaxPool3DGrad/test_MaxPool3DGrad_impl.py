@@ -73,7 +73,7 @@ def do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format):
     shape0 = _shape_5d_2_6d(ori_shape0, data_format)
     shape1 = _shape_5d_2_6d(ori_shape1, data_format)
     pads = _calc_pads(paddings, ori_shape0, ksize, strides, data_format)
-    ut_case.add_case(["Ascend910", "Ascend610"],
+    ut_case.add_case(["Ascend910A", "Ascend610"],
                      gen_max_pool3d_grad_add_case(
                          "success", "VALID_X", "float16", "float32",
                          shape0, ori_shape0, shape1, ori_shape1,
@@ -95,7 +95,18 @@ def gen_max_pool3d_grad_add_case_error(expect, case_name_val, in_dtype, ou_dtype
             "case_name": case_name_val,
             "expect": expect,
             "format_expect": [],
-            "support_expect": True}
+            "support_expect": False}
+
+
+def do_case_error_one(ori_shape0, ori_shape1, ksize, strides, paddings, data_format):
+    shape0 = _shape_5d_2_6d(ori_shape0, data_format)
+    shape1 = _shape_5d_2_6d(ori_shape1, data_format)
+    pads = _calc_pads(paddings, ori_shape0, ksize, strides, data_format)
+    ut_case.add_case(["Ascend910A", "Ascend610"],
+                     gen_max_pool3d_grad_add_case(
+                         RuntimeError, "VALID_X", "float16", "float32",
+                         shape0, ori_shape0, shape1, ori_shape1,
+                         ksize, strides, pads, data_format))
 
 
 def do_case_error(list_ori_shape, ksize, strides, paddings, data_format):
@@ -103,9 +114,9 @@ def do_case_error(list_ori_shape, ksize, strides, paddings, data_format):
     for i, _ in enumerate(list_ori_shape):
         list_shape.append(_shape_5d_2_6d(list_ori_shape[i], data_format))
     pads = _calc_pads(paddings, list_ori_shape[0], ksize, strides, data_format)
-    ut_case.add_case(["Ascend910", "Ascend610"],
+    ut_case.add_case(["Ascend910A", "Ascend610"],
                      gen_max_pool3d_grad_add_case_error(
-                         "success", "VALID_X", "float16", "float32",
+                         RuntimeError, "VALID_X", "float16", "float32",
                          list_shape, list_ori_shape,
                          ksize, strides, pads, data_format))
 
@@ -121,6 +132,46 @@ strides = [1, 3, 3, 3, 1]
 paddings = "VALID"
 data_format = "NDHWC"
 do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+
+ori_shape0 = [32, 12, 3, 3, 48]
+ori_shape1 = [32, 4, 1, 1, 48]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 3, 3, 3]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case_error_one(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+
+ori_shape0 = [32, 12, 3, 3, 48]
+ori_shape1 = [32, 4, 1, 1, 48]
+ksize = [1, 1, 2, 2, 2]
+strides = [1, 3, 3, 3, 1]
+paddings = "VALID"
+data_format = "NDHWC"
+do_case_error_one(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+
+ori_shape0 = [32, 48, 3, 3, 12]
+ori_shape1 = [32, 48, 1, 1, 4]
+ksize = [1, 1, 2, 2, 2]
+strides = [1, 1, 3, 3, 3]
+paddings = "VALID"
+data_format = "NCDHW"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+
+ori_shape0 = [32, 48, 3, 3, 12]
+ori_shape1 = [32, 48, 1, 1, 4]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 1, 3, 3, 3]
+paddings = "VALID"
+data_format = "NCDHW"
+do_case_error_one(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+
+ori_shape0 = [32, 48, 3, 3, 12]
+ori_shape1 = [32, 48, 1, 1, 4]
+ksize = [1, 1, 2, 2, 2]
+strides = [1, 3, 3, 3, 1]
+paddings = "VALID"
+data_format = "NCDHW"
+do_case_error_one(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 
 # ori_shape0 = [32, 12, 3, 3, 48]
 # ori_shape1 = [32, 6, 1, 1, 48]
@@ -481,4 +532,4 @@ do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
 # # do_case_error(list_ori_shape, ksize, strides, paddings, data_format)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")
