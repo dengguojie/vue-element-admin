@@ -172,11 +172,11 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
                       return PARAM_INVALID);
     new_nodes.push_back(splitvd_base_node);
     FUSION_PASS_CHECK(!AttrUtils::SetListInt(splitvd_base_node->GetOpDesc(), "size_splits", size_splits_new),
-                      OP_LOGE(kFusedOpType.c_str(), "set attr size_splits failed."), return FAILED);
+                      OP_LOGE(kFusedOpType.c_str(), "Set attr size_splits failed."), return FAILED);
     FUSION_PASS_CHECK(!AttrUtils::SetInt(splitvd_base_node->GetOpDesc(), "split_dim", axis),
-                      OP_LOGE(kFusedOpType.c_str(), "set attr split_dim failed."), return FAILED);
+                      OP_LOGE(kFusedOpType.c_str(), "Set attr split_dim failed."), return FAILED);
     FUSION_PASS_CHECK(!AttrUtils::SetInt(splitvd_base_node->GetOpDesc(), "num_split", nodes_num),
-                      OP_LOGE(kFusedOpType.c_str(), "set attr num_split failed."), return FAILED);
+                      OP_LOGE(kFusedOpType.c_str(), "Set attr num_split failed."), return FAILED);
 
     GeTensorDesc splitvd_input_tensor = splitvd_base_desc->GetInputDesc(0);
     GeShape splitvd_input_shape = splitvd_input_tensor.GetShape();

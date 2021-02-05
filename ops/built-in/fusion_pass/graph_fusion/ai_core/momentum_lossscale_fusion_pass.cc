@@ -87,10 +87,8 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
 
   string momentum_stream_label;
   string mul_stream_label;
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(momentum_node->GetOpDesc(), kStreamLabel, momentum_stream_label),
-                    OP_LOGW(kFusedOpType.c_str(), "Get str momentum_stream_label failed."), return NOT_CHANGED);
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label),
-                    OP_LOGW(kFusedOpType.c_str(), "Get str mul_stream_label failed."), return NOT_CHANGED);
+  ge::AttrUtils::GetStr(momentum_node->GetOpDesc(), kStreamLabel, momentum_stream_label);
+  ge::AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label);
   OP_LOGI(kFusedOpType.c_str(), "Momentum node's stream label is %s", momentum_stream_label.c_str());
   OP_LOGI(kFusedOpType.c_str(), "Mul node's stream label is %s", mul_stream_label.c_str());
   FUSION_PASS_CHECK(momentum_stream_label != mul_stream_label,

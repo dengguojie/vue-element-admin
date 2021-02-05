@@ -67,10 +67,8 @@ Status MulAddNPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge:
 
   string addn_stream_label;
   string mul_stream_label;
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(addn_node->GetOpDesc(), kStreamLabel, addn_stream_label),
-                    OP_LOGW(kFusedOpType.c_str(), "GetStr addn_stream_label failed."), return NOT_CHANGED);
-  FUSION_PASS_CHECK(!ge::AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label),
-                    OP_LOGW(kFusedOpType.c_str(), "GetStr mul_stream_label failed."), return NOT_CHANGED);
+  ge::AttrUtils::GetStr(addn_node->GetOpDesc(), kStreamLabel, addn_stream_label);
+  ge::AttrUtils::GetStr(mul_node->GetOpDesc(), kStreamLabel, mul_stream_label);
   OP_LOGI(kFusedOpType.c_str(), "AddN node's stream label is %s", addn_stream_label.c_str());
   OP_LOGI(kFusedOpType.c_str(), "Mul node's stream label is %s", mul_stream_label.c_str());
   FUSION_PASS_CHECK(addn_stream_label != mul_stream_label,
