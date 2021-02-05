@@ -589,6 +589,8 @@ class ElewiseSchedule:
                 self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], "dma_copy"]
             if len(self._out_tensors) - len(self._middle_out_tensors) > 1:
                 self._emit_insn_map[self._out] = [self._emit_insn_axis, "phony_insn"]
+            else:
+                self._emit_insn_map[self._out] = [self._emit_insn_axis, "dma_copy"]
         else:
             for tensor_i in self._out_tensors:
                 self._emit_insn_map[tensor_i] = [self._emit_insn_axis, "dma_copy"]
