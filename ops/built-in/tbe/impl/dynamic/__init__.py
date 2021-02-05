@@ -45,6 +45,7 @@ from .gelu import gelu
 from .axpy import axpy
 from .floor_mod import floor_mod
 from .mul import mul
+from .invert import invert
 from .muls import muls
 from .reduce_sum import reduce_sum
 from .reduce_sum_d import reduce_sum_d

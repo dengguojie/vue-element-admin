@@ -552,15 +552,11 @@ VERIFY_FUNC_REG(DivNoNan, DivNoNanVerify);
 
 // ----------------Invert-------------------
 IMPLEMT_COMMON_INFERFUNC(InvertInferShape) {
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(ge::Shape(x_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("y", td);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(Invert, InvertInferShape);
 // ----------------Invert END-------------------
 
