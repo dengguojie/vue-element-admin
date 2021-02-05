@@ -52,6 +52,7 @@ from .reduce_max_d import reduce_max_d
 from .reduce_mean import reduce_mean
 from .reduce_min import reduce_min
 from .reduce_mean_d import reduce_mean_d
+from .resize_nearest_neighbor_v2 import resize_nearest_neighbor_v2
 from .conv2d import conv2d
 from .conv3d import conv3d
 from .dynamic_atomic_addr_clean import dynamic_atomic_addr_clean

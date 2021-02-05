@@ -148,7 +148,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
         minConstNode = nodeName;
         Tensor data;
         nodeDef->GetAttr("value", data);
-	float minDimsFloat = *reinterpret_cast<float*>(data.GetData());
+        float minDimsFloat = *reinterpret_cast<float*>(data.GetData());
         minDims = round(minDimsFloat);
         OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass get min_dimension = %d", minDims);
       }
@@ -156,7 +156,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
         maxConstNode = nodeName;
         Tensor data;
         nodeDef->GetAttr("value", data);
-	float maxDimsFloat = *reinterpret_cast<float*>(data.GetData());
+        float maxDimsFloat = *reinterpret_cast<float*>(data.GetData());
         maxDims = round(maxDimsFloat);
         OP_LOGI(kOpType.c_str(), "ScopeKeepRatioResizeBilinearPass get max_dimension = %d", maxDims);
       }
