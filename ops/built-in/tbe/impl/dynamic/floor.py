@@ -23,14 +23,13 @@ from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
 from te.utils import para_check
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 import te.lang.base as tbe_base
-from te.utils.error_manager import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=locally-disabled,unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("floor")
+@register_operator_compute("Floor", op_mode="dynamic", support_fusion=False)
 def floor_compute(input_x, output_y, kernel_name="floor"):
     """
     floor compute

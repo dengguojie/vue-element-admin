@@ -22,9 +22,11 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from te import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+@register_operator_compute("BroadcastTo", op_mode="dynamic", support_fusion=False)
 def broadcast_to_compute(x, shape, y, kernel_name="broadcast_to"):
     """
     TVM calculation process, used for fusion operation.

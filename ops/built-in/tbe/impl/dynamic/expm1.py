@@ -20,7 +20,6 @@ from functools import reduce as reduceIns
 
 import te.lang.cce as tbe
 from te import tvm
-from te.platform.fusion_manager import fusion_manager
 from te import platform as tbe_platform
 import te.lang.base as tbe_base
 from te.lang.base.shape_classifier import classify
@@ -28,6 +27,7 @@ from te.lang.base.shape_classifier import Mode
 from te.utils import shape_util
 from te.utils import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # define a scalar , value = -1
@@ -149,7 +149,7 @@ def _expm1_mini_compute(mini_res, input_x, shape):
     return mini_res
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("expm1")
+@register_operator_compute("Expm1", op_mode="dynamic", support_fusion=False)
 def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
     algorithm: expm1

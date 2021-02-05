@@ -28,6 +28,7 @@ from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 def _compare_value_int32(data_x, data_y, shape_dz):
@@ -100,15 +101,18 @@ def _calculate_result_le(data_x, data_y, data_dz, dtype, shape_dz):
     else result_dx = 0,result_dx = data_dz.
     """
     minus_one = tvm.const(-1, dtype="float32")
+    value_one = tvm.const(1, dtype="float32")
     if dtype == "int32":
         minus_one = tvm.const(-1, dtype="int32")
+        value_one = tvm.const(1, dtype="int32")
     minus_one_tensor = tbe.broadcast(minus_one, shape_dz)
+    value_one_tensor = tbe.broadcast(value_one, shape_dz)
 
     # if data_y >= data_x ; datax_select_le = 1; else datax_select_le =0;
     datax_select_le = _compare_value(data_y, data_x, dtype, shape_dz)
     result_dx = tbe.vmul(data_dz, datax_select_le)
 
-    select_reverse = tbe.vadd(datax_select_le, minus_one_tensor)
+    select_reverse = tbe.vsub(datax_select_le, value_one_tensor)
     select_dy = tbe.vmul(select_reverse, minus_one_tensor)
     result_dy = tbe.vmul(data_dz, select_dy)
 
@@ -137,7 +141,7 @@ def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
     return result_dx, result_dy
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("minimum_grad")
+@register_operator_compute("MinimumGrad", op_mode="dynamic", support_fusion=False)
 def minimum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
                          kernel_name="minimum_grad"):
     """
