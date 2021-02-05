@@ -1163,10 +1163,14 @@ COMMON_INFER_FUNC_REG(BN3DTrainingUpdate, BN3DTrainingUpdateInferShape);
 IMPLEMT_VERIFIER(BNInfer, BNInferVerify) {
   return GRAPH_SUCCESS;
 }
-
-COMMON_INFER_FUNC_REG(BNInfer, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
-
 VERIFY_FUNC_REG(BNInfer, BNInferVerify);
+IMPLEMT_COMMON_INFERFUNC(BNInferInferShape){
+  if(OneInOneOutDynamicInfer(op, "x", {"y"})){
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(BNInfer, BNInferInferShape);
 // ----------------------BNInfer End--------------------------
 
 // ------------------BNTrainingUpdateGrad---------------------
@@ -1229,10 +1233,14 @@ VERIFY_FUNC_REG(BN3DTrainingUpdateGrad, BN3DTrainingUpdateGradVerify);
 IMPLEMT_VERIFIER(BNInferGrad, BNInferGradVerify) {
   return GRAPH_SUCCESS;
 }
-
-COMMON_INFER_FUNC_REG(BNInferGrad, ELMTWISE_INFER_SHAPEANDTYPE("grads", "x_backprop"));
-
 VERIFY_FUNC_REG(BNInferGrad, BNInferGradVerify);
+IMPLEMT_COMMON_INFERFUNC(BNInferGradInferShape){
+  if(OneInOneOutDynamicInfer(op, "grads", {"x_backprop"})){
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(BNInferGrad, BNInferGradInferShape);
 // ----------------BNInferGrad End----------------------
 
 // ----------------ReduceSum Op-------------------
