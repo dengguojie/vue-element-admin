@@ -858,8 +858,8 @@ class NllLossCompute:
                     self.target_ub, self.data_target[cycle*self.move_max_line],
                     0, 1, math.ceil(self.move_max_line/8), 0, 0)
                 self.select_valid_value(
-                    self.move_max_line, self.c_dim, 0, self.refactor_x_ub,
-                    self.x_ub, self.refactor_weight_ub, self.temp_weight_ub,
+                    self.move_max_line, 0, self.c_dim, self.refactor_weight_ub,
+                    self.temp_weight_ub, self.refactor_x_ub, self.x_ub,
                     self.target_ub)
 
                 self.tik_instance.vmul(
@@ -891,8 +891,8 @@ class NllLossCompute:
                     self.target_ub, self.data_target[cycle*self.move_max_line],
                     0, 1, math.ceil(self.move_last_line/8), 0, 0)
                 self.select_valid_value(
-                    self.move_last_line, self.c_dim, 0, self.refactor_x_ub,
-                    self.x_ub, self.refactor_weight_ub, self.temp_weight_ub,
+                    self.move_last_line, 0, self.c_dim, self.refactor_weight_ub,
+                    self.temp_weight_ub, self.refactor_x_ub, self.x_ub,
                     self.target_ub)
 
                 self.tik_instance.vmul(

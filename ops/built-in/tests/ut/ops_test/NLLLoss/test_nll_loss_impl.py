@@ -95,17 +95,17 @@ ut_case.add_case(["Ascend710", "Ascend910A"], case3)
 ut_case.add_case(["Ascend710", "Ascend910A"], case4)
 ut_case.add_case(["Ascend710", "Ascend910A"], case5)
 
-# ut_case.add_precision_case(["Ascend910A"], {
-#     "params": [
-#         {"shape": (3, 4), "dtype": "float32", "format": "ND", "ori_shape": (3, 4), "ori_format": "ND", "param_type": "input", "value_range": [0.0, 1.0]},
-#         {"shape": (3,), "dtype": "int32", "format": "ND", "ori_shape": (3,), "ori_format": "ND", "param_type": "input","value_range": [0, 3]},
-#         {"shape": (4,), "dtype": "float32", "format": "ND", "ori_shape": (4,), "ori_format": "ND", "param_type": "input","value_range": [0.0, 1.0]},
-#         {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND", "param_type": "output"},
-#         {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND", "param_type": "output"},
-#         "mean"],
-#     "calc_expect_func": calc_expect_func,
-#     "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)
-# })
+ut_case.add_precision_case(["Ascend910A"], {
+    "params": [
+        {"shape": (3, 4), "dtype": "float32", "format": "ND", "ori_shape": (3, 4), "ori_format": "ND", "param_type": "input", "value_range": [0.0, 1.0]},
+        {"shape": (3,), "dtype": "int32", "format": "ND", "ori_shape": (3,), "ori_format": "ND", "param_type": "input","value_range": [0, 3]},
+        {"shape": (4,), "dtype": "float32", "format": "ND", "ori_shape": (4,), "ori_format": "ND", "param_type": "input","value_range": [0.0, 1.0]},
+        {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND", "param_type": "output"},
+        {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND", "param_type": "output"},
+        "mean"],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)
+})
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"], simulator_mode="pv",
