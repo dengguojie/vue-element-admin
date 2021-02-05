@@ -32,58 +32,6 @@ MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000  # Limit of one dim
 
 
-def _new_alloc(ir_builder, dtype, shape, name, scope):
-    """
-    alloc memory for decl new buffer
-    """
-    buf_var = ir_builder.allocate(dtype, shape, name=name, scope=scope)
-    new_buffer = tvm.decl_buffer(shape,
-                                 buf_var.dtype,
-                                 name=name,
-                                 scope=scope,
-                                 data=buf_var)
-    return new_buffer
-
-
-def _kernel_ir(dst, src, dst_type, src_type):
-    """
-    convert a scale from src type to dst type
-    NOTICE: SCALE ONLY
-    """
-    ir_builder = tvm.ir_builder.create()
-    in_tensor = src[0]
-    a_ub = _new_alloc(ir_builder,
-                      src_type,
-                      in_tensor.shape,
-                      "a_ub",
-                      scope=tbe_platform.scope_ubuf)
-    out_tensor = dst[0]
-    b_ub = _new_alloc(ir_builder,
-                      dst_type,
-                      in_tensor.shape,
-                      "b_ub",
-                      scope=tbe_platform.scope_ubuf)
-
-    reg = ir_builder.allocate(dst_type, (1,), name='reg',
-                              scope=tbe_platform.scope_reg)
-    ir_builder.emit(
-        tvm.call_extern(src_type, "copy_gm_to_ubuf", a_ub.access_ptr("w"),
-                        in_tensor.access_ptr("r"), 0, 1, 1, 0, 0))
-    ir_builder.emit(
-        tvm.call_extern(src_type, "reg_mov",
-                        tvm.call_extern(dst_type, "reg", reg[0]),
-                        a_ub.access_ptr('r', offset=0)))
-    ir_builder.emit(
-        tvm.call_extern(dst_type, "reg_mov", b_ub.access_ptr('w', offset=0),
-                        tvm.call_extern(dst_type, "reg", reg[0])))
-    ir_builder.emit(
-        tvm.call_extern(dst_type,
-                        "copy_ubuf_to_gm", out_tensor.access_ptr('w'),
-                        b_ub.access_ptr("r"), 0, 1, 1, 0, 0))
-
-    return ir_builder.get()
-
-
 # pylint: disable=inconsistent-return-statements
 def _int8_uint8_process(data, dst_type):
     """
@@ -230,11 +178,6 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     elif src_type == "int32":
         check_list = ["bool", "uint8", "int8", "float32", "float16"]
 
-    src_shape = input_x.get("shape")
-    shape_size = reduce_ins(lambda x, y: x * y, src_shape)
-    if shape_size == 1 and src_type == "int64":
-        check_list = ["int32", "float32"]
-
     if dst_type in check_list:
         check_result = True
 
@@ -319,9 +262,6 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
                         number in [-1023,1023] get correct result
         int32->float16 // only guarantees
                         number in [-1023,1023] get correct result
-    scale convert support:(means only support shape [1,])
-        int64->int32
-        int64->float32
 
     Parameters
     ----------
@@ -352,24 +292,12 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
             fuseshape = [1]
             fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
             data = tvm.placeholder(fuseshape, name="data", dtype=src_type)
-            if src_type == "int64":
-                para_check.check_dtype(dst_type, ("float32", "int32"), param_name="dst_type")
-                res = tvm.extern(
-                    [fuseshape], [data],
-                    lambda ins, outs: _kernel_ir(outs, ins, dst_type, "int64"),
-                    name="res",
-                    dtype=dst_type)
-                tensor_list = [data, res]
-                schedule = tvm.create_schedule(res.op)
-                with build_config:
-                    tvm.build(schedule, tensor_list, "cce", name=kernel_name)
-            else:
-                res = cast_compute(data, output_y, dst_type, kernel_name)
-                tensors.append([data, res])
-        if src_type != "int64":
-            with tvm.target.cce():
-                sch = tbe.auto_schedule(res)
-            schedules.append(sch)
+            res = cast_compute(data, output_y, dst_type, kernel_name)
+            tensors.append([data, res])
+
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
 
     config = {
         "print_ir": False,
