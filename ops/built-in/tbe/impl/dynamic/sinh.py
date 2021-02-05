@@ -1,4 +1,4 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from te.utils import shape_util
 from impl.util.platform_adapter import register_operator
-
+from impl.util.platform_adapter import register_operator_compute
 # define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
 # define a scaler , value = 0.5
@@ -36,7 +36,7 @@ SCALAR_TWO = 2
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("sinh")
+@register_operator_compute("Sinh", op_mode="dynamic", support_fusion=False)
 def sinh_compute(input_data, output_data, kernel_name="sinh"):
     """
     algorithm: sinh

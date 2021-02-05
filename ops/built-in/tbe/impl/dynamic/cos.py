@@ -25,13 +25,14 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from impl.util.platform_adapter import register_operator
-
+from impl.util.platform_adapter import register_operator_compute
 
 # 2pi, the cycle of cosin
 TWO_PI = 2 * 3.14159265358979
 
 
 # pylint: disable=locally-disabled, unused-argument
+@register_operator_compute("Cos", op_mode="dynamic", support_fusion=False)
 def cos_compute(input_x, output_y, kernel_name="cos"):
     """
     algorithm: cos

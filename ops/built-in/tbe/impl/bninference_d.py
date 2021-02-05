@@ -510,11 +510,11 @@ def para_scale_bias_check(x, mean, variance, scale, offect, use_global_stats, ke
     _dtype_scale_offset_check(x, mean, variance, scale, offect)
     if not use_global_stats:
         dict_args = {'errCode': 'E80000', 'opname': 'batchnorm', 'param_name': 'use_global_stats',
-                     'excepted_value': 'True', 'real_value': str(use_global_stats)}
+                     'expected_value': 'True', 'real_value': str(use_global_stats)}
         raise RuntimeError(dict_args,
                            "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
                            % (dict_args['opname'], dict_args['param_name'],
-                              dict_args['excepted_value'],
+                              dict_args['expected_value'],
                               dict_args['real_value']))
     para_shape_scale_offset_check(x, mean, variance, scale, offect, format_x)
 
@@ -533,11 +533,11 @@ def _para_check(x, mean, variance, scale, use_global_stats, kernel_name):
     _dtype_check(x, mean, variance)
     if not use_global_stats:
         dict_args = {'errCode': 'E80000', 'opname': 'batchnorm', 'param_name': 'use_global_stats',
-                     'excepted_value': 'True', 'real_value': str(use_global_stats)}
+                     'expected_value': 'True', 'real_value': str(use_global_stats)}
         raise RuntimeError(dict_args,
                            "In op[%s], the parameter[%s] should be [%s], but actually is [%s]."
                            % (dict_args['opname'], dict_args['param_name'],
-                              dict_args['excepted_value'],
+                              dict_args['expected_value'],
                               dict_args['real_value']))
     para_shape_check(x, mean, variance, scale, format_x)
 

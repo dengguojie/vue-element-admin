@@ -584,11 +584,11 @@ class DecodeBboxV2():
                 error_info['errCode'] = 'E80000'
                 error_info['op_name'] = 'decode_bbox_v2'
                 error_info['param_name'] = "boxes_shape's last dim"
-                error_info['excepted_value'] = SHAPE_SIZE_FOUR
+                error_info['expected_value'] = SHAPE_SIZE_FOUR
                 error_info['real_value'] = self.boxes_shape[-1]
                 raise RuntimeError(error_info,
                                    "In op[{op_name}], the parameter[{param_name}] "
-                                   "should be [{excepted_value}], "
+                                   "should be [{expected_value}], "
                                    "but actually is [{real_value}].".format(**error_info))
         if self.reversed_box is True:
             if self.boxes_shape[0] != SHAPE_SIZE_FOUR:
@@ -596,11 +596,11 @@ class DecodeBboxV2():
                 error_info['errCode'] = 'E80000'
                 error_info['op_name'] = 'decode_bbox_v2'
                 error_info['param_name'] = "boxes_shape's first dim"
-                error_info['excepted_value'] = SHAPE_SIZE_FOUR
+                error_info['expected_value'] = SHAPE_SIZE_FOUR
                 error_info['real_value'] = self.boxes_shape[0]
                 raise RuntimeError(error_info,
                                    "In op[{op_name}], the parameter[{param_name}] "
-                                   "should be [{excepted_value}], "
+                                   "should be [{expected_value}], "
                                    "but actually is [{real_value}].".format(**error_info))
         check_list_boxes = ["float16", "float32"]
         check_list_anchors = ["float16", "float32"]
@@ -640,11 +640,11 @@ class DecodeBboxV2():
             error_info['errCode'] = 'E80000'
             error_info['op_name'] = 'decode_bbox_v2'
             error_info['param_name'] = "length of scale_list"
-            error_info['excepted_value'] = SHAPE_SIZE_FOUR
+            error_info['expected_value'] = SHAPE_SIZE_FOUR
             error_info['real_value'] = len(self.scale_list)
             raise RuntimeError(error_info,
                                "In op[{op_name}], the parameter[{param_name}] "
-                               "should be [{excepted_value}], but actually "
+                               "should be [{expected_value}], but actually "
                                "is [{real_value}].".format(**error_info))
 
     def isclose(self, valuex, valuey, rel_tol=1e-08, abs_tol=0.0):

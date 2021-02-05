@@ -1,4 +1,4 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,11 +41,11 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-
 from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 NUM_ONE = 1
 NUM_TWO = 2
 NUM_REPEAT = 0.125
@@ -118,7 +118,7 @@ def _sinh_repeat_with_sqrt(data):
 
 
 # pylint: disable=unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("acosh_grad")
+@register_operator_compute("AcoshGrad", op_mode="dynamic", support_fusion=False)
 def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
     do acosh_grad compute

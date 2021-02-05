@@ -32,20 +32,17 @@ dynamic acos_grad
     [1] All : 'y' and 'dy' must have the same type and shape.
     [2] All : shape size limit is 2147483648.
 """
-import operator
-
 import te.lang.cce as tbe
-import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-
+import te.platform as tbe_platform
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
 import te.lang.base as tbe_base
 from impl.util.platform_adapter import register_operator
-
+from impl.util.platform_adapter import register_operator_compute
 
 # newton eqation is x1 = x0(3-a*(x0^2))/2
 NUM_MINUS_ONE = -1
@@ -53,7 +50,7 @@ NUM_ONE = 1
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("acos_grad")
+@register_operator_compute("AcosGrad", op_mode="dynamic", support_fusion=False)
 def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
     do acos_grad compute with sqrt and div
@@ -108,8 +105,6 @@ def acos_grad(y, dy, z, kernel_name="acos_grad"):
     """
 
     # get the shape and dtype for input_1,input_2
-    shape_y = y.get("shape")
-    shape_dy = dy.get("shape")
     dtype = y.get("dtype")
     dtype1 = dy.get("dtype")
 
@@ -128,11 +123,11 @@ def acos_grad(y, dy, z, kernel_name="acos_grad"):
 
     ins = classify([y, dy], Mode.ELEWISE)
     schedules, tensors = [], []
-    
-    for (y, dy) in ins:
+
+    for (_y, _dy) in ins:
         with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([y, dy])
+            shape_x1, shape_x2 = shape_util.variable_shape([_y, _dy])
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=dtype, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=dtype1, name="data_x2")

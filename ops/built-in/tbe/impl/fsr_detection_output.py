@@ -2322,12 +2322,12 @@ def fsr_detection_output(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
 
     if im_info_dic.get("shape")[0] != batch_rois:
         error_info = {'errCode': 'E80000', 'op_name': 'fsr_dection_output', 'param_name': 'im_info_dic',
-                      'excepted_value': str(batch_rois), 'real_value': str(im_info_dic.get("shape")[0])}
+                      'expected_value': str(batch_rois), 'real_value': str(im_info_dic.get("shape")[0])}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be"
                            " [%s], but actually is [%s]." %
                            (error_info['op_name'], error_info['param_name'],
-                            error_info['excepted_value'], error_info['real_value']))
+                            error_info['expected_value'], error_info['real_value']))
     if num_classes > score_dic.get("shape")[1] * score_dic.get("shape")[4]:
         error_info = {'errCode': para_check.OP_ERROR_CODE_002, 'op_name': 'fsr_dection_output',
                       'param_name': 'num_classes', 'min_value': '0',

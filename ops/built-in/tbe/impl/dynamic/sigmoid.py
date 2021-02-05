@@ -1,4 +1,4 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,9 +26,11 @@ from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from te.utils import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
+@register_operator_compute("Sigmoid", op_mode="dynamic", support_fusion=False)
 def sigmoid_compute(x, y, kernel_name="sigmoid"):
     """
     calculating data

@@ -19,8 +19,6 @@ import functools
 
 from te import tvm
 import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
@@ -28,6 +26,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 # define a scaler, value = 1
 SCALER_ONE = 1
 # define a scaler, value = -1
@@ -47,7 +46,7 @@ SCALER_FP16_MIN = 2 ** (-15)
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("erf")
+@register_operator_compute("Erf", op_mode="dynamic", support_fusion=False)
 def erf_compute(input_x, output_y, kernel_name="erf"):
     """
     compute erf

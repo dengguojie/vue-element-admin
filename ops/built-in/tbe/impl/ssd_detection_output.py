@@ -150,12 +150,12 @@ def _check_input_attr_value(input_dict):
         error_info = {'errCode': 'E80000',
                       'op_name': 'ssd_detection_output',
                       'param_name': 'share_location',
-                      'excepted_value': 'True',
+                      'expected_value': 'True',
                       'real_value': str(input_dict.get("share_location"))}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " [%s], but actually is [%s]."
                            % (error_info['op_name'], error_info['param_name'],
-                              error_info['excepted_value'], error_info['real_value']))
+                              error_info['expected_value'], error_info['real_value']))
 
     if not (input_dict.get("background_label_id") >= -1 and input_dict.get(
             "background_label_id") <= (input_dict.get("num_classes") - 1)):
@@ -174,12 +174,12 @@ def _check_input_attr_value(input_dict):
         error_info = {'errCode': 'E80000',
                       'op_name': 'ssd_detection_output',
                       'param_name': 'eta',
-                      'excepted_value': '1',
+                      'expected_value': '1',
                       'real_value': str(input_dict.get("eta"))}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " [%s], but actually is [%s]."
                            % (error_info['op_name'], error_info['param_name'],
-                              error_info['excepted_value'], error_info['real_value']))
+                              error_info['expected_value'], error_info['real_value']))
 
     if not (input_dict.get("code_type") >= 1 and
             input_dict.get("code_type") <= 3):

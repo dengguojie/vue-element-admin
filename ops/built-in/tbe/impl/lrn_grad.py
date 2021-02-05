@@ -425,15 +425,15 @@ class LrnGrad:
             self._vmuls(dest, dest, y, count)
             self._vexp(dest, dest, count)
         elif self.alpha < 0 and self.bias < 0:
-            excepted_value = "greater than 0"
+            expected_value = "greater than 0"
             real_value = "alpha (%d),bias (%d)" % (self.alpha, self.bias)
             error_manager_vector.raise_err_input_value_invalid("lrn_grad", "alpha and bias", \
-                                                               excepted_value, real_value)
+                                                               expected_value, real_value)
         else:
-            excepted_value = "greater than 0"
+            expected_value = "greater than 0"
             real_value = "alpha (%d),bias (%d)" % (self.alpha, self.bias)
             error_manager_vector.raise_err_input_value_invalid("lrn_grad", "alpha and bias", \
-                                                               excepted_value, real_value)
+                                                               expected_value, real_value)
 
     def _sum4windows_cut_hw(self, dest, src, count_one_window):
         tik_instance = self.tik_instance

@@ -17,14 +17,15 @@ dynamic xdivy
 """
 from te import tvm
 import te.lang.cce as tbe
-import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
 import te.lang.base as tbe_base
+import te.platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # define a scalar , value = 1
@@ -43,7 +44,7 @@ MAX_CONST_HALF = 2 ** 12
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("xdivy")
+@register_operator_compute("Xdivy", op_mode="dynamic", support_fusion=False)
 def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
     """
     xdivy compute
@@ -162,10 +163,10 @@ def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):
                                                                error_detal)
     ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (input_x, input_y) in ins:
+    for (_input_x, _input_y) in ins:
         with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([input_x, input_y],
+            shape_x1, shape_x2 = shape_util.variable_shape([_input_x, _input_y],
                                                            support_broadcast=True)
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=input_dtype_x, name="data_x1")

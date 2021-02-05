@@ -258,7 +258,14 @@ COMMON_INFER_FUNC_REG(BNLL, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
 // --------------BNLL END-----------------
 
 // ----------------Elu-------------------
-COMMON_INFER_FUNC_REG(Elu, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(EluInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter EluInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Elu, EluInferShape);
 // --------------Elu END-----------------
 
 // ----------------EluGrad-------------------

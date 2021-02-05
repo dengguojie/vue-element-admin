@@ -13,18 +13,18 @@
 # limitations under the License.
 # ============================================================================
 """
-xlogy
+dynamic xlogy
 """
 import te.lang.cce as tbe
-import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 from te.lang.base.shape_classifier import Mode
 from te.lang.base.shape_classifier import classify
+import te.platform as tbe_platform
 import te.lang.base as tbe_base
 from impl.util.platform_adapter import register_operator
-
+from impl.util.platform_adapter import register_operator_compute
 
 # define a scalar, value = -1
 SCALAR_NEG_ONE = -1.0
@@ -49,7 +49,7 @@ TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("xlogy")
+@register_operator_compute("Xlogy", op_mode="dynamic", support_fusion=False)
 def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     """
     algorithm: xlogy
@@ -354,10 +354,10 @@ def xlogy(input_x, input_y, output_z, kernel_name="xlogy"):
 
     ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (input_x, input_y) in ins:
+    for (_input_x, _input_y) in ins:
         with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([input_x, input_y],
+            shape_x1, shape_x2 = shape_util.variable_shape([_input_x, _input_y],
                                                            support_broadcast=True)
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=dtype, name="data_x1")

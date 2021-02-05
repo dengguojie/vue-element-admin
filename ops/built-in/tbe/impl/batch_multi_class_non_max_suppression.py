@@ -199,17 +199,17 @@ class BatchMultiClassNonMaxSuppression:
                                    " the range of [{min_value}, {max_value}],"
                                    " but actually is [{real_value}].".format(**error_info))
 
-        def error_code_000_check(op_name, param_name, excepted_value, value):
-            if excepted_value != value:
+        def error_code_000_check(op_name, param_name, expected_value, value):
+            if expected_value != value:
                 error_info = {
                     'errCode': para_check.OP_ERROR_CODE_000,
                     'op_name': op_name,
                     'param_name': param_name,
-                    'excepted_value': excepted_value,
+                    'expected_value': expected_value,
                     'real_value': value
                 }
                 raise RuntimeError(error_info,
-                                   "In op[{op_name}], the parameter[{param_name}] should be [{excepted_value}],"
+                                   "In op[{op_name}], the parameter[{param_name}] should be [{expected_value}],"
                                    " but actually is [{real_value}].".format(**error_info))
 
         error_code_002_check("BatchMultiClassNonMaxSuppression", "max_size_per_class",
