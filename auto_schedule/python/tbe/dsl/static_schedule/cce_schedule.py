@@ -290,6 +290,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     """
     # for RL tune getting res
     ConvParam.conv_deq_req_double_out = False
+    ConvParam.conv_reluv2_flag = False
     fusion_manager.set_op_res(outs)
 
     outs = reget_tensor_list(outs)
@@ -510,6 +511,7 @@ def check_support_muti_output(outs):
             if "elewise" not in tag and "broadcast" not in tag and \
                     "reduce" not in tag and not ConvParam.convbn1_flag and \
                     not ConvParam.conv_deq_req_double_out and \
+                    not ConvParam.conv_reluv2_flag and \
                     "requant_s16" not in tag:
                 return False
 

@@ -83,6 +83,7 @@ PATTERN_CONVFP16_QUANT = 9
 PATTERN_CONVFP16_QUANT_BIAS = 10
 PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT = 11
 PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT_BIAS = 12
+PATTERN_CONVFP16_RELUV2_DOUBLEOUT = 13
 MAX_ELEMENT_OP_NUM = 20
 SINGLE_OP_NUMBER_BIT = 6
 BINARY_OP_NUMBER_BIT = 6
@@ -294,6 +295,20 @@ def check_doubleout_dequant_v100(outs):
 
     return True
 
+def check_doubleout_reluv2(outs):
+    """
+    check if conv_reluv2 fusion
+    """
+    if isinstance(outs, list) and len(outs) == 2:
+        reluv2, mask = outs
+        src_input_constraint = reluv2.op.input_tensors[0].op.name == "C"
+        dtype_constraint = reluv2.dtype == "float16" and mask.dtype == "uint8"
+        tag_constraint = reluv2.op.tag == "elewise_single_relu" \
+            and mask.op.tag == "emit_insn_elewise_binary_cmp|gt|bit"
+        if src_input_constraint and dtype_constraint and tag_constraint:
+            return True
+    return False
+
 
 def reget_tensor_list(outs):
     """
@@ -385,6 +400,31 @@ def reget_tensor_list(outs):
         ConvParam.tensor_map["virtual_res"] = virtual_res
         ConvParam.conv_deq_req_double_out = True
         outputs = [virtual_res, res_remove_pad_u8, res_remove_pad_s16]
+        return outputs
+
+    def _process_doubleout_reluv2(outs):
+        """
+        create a virtual output to deal with double output
+        """
+        reluv2, mask = outs
+        res_reluv2_fp16 = tvm.compute(reluv2.shape,
+                lambda i, j, k, l: reluv2(i, j, k, l),
+                name = "res_reluv2_fp16",
+                tag = "res_reluv2_fp16")
+        res_mask_u8 = tvm.compute(mask.shape,
+                lambda i, j, k, l: mask(i, j, k, l),
+                name = "res_mask_u8",
+                tag = "res_mask_u8")
+        virtual_res = tvm.compute(res_reluv2_fp16.shape,
+                lambda i, j, k, l: res_reluv2_fp16(i, j, k, l) + 
+                    res_mask_u8(i, j, k, l//8),
+                name = "conv_virtual_res",
+                tag = "conv_virtual_res")
+        ConvParam.tensor_map["res_reluv2_fp16"] = res_reluv2_fp16
+        ConvParam.tensor_map["res_mask_u8"] = res_mask_u8
+        ConvParam.tensor_map["reluv2_virtual_res"] = virtual_res
+        outputs = [virtual_res, res_reluv2_fp16, res_mask_u8]
+        ConvParam.conv_reluv2_flag = True
         return outputs
 
     ConvParam.convbn1_flag = False # used in cce_schedule
@@ -490,6 +530,8 @@ def reget_tensor_list(outs):
 
         outputs = [virtual_res, res_out_fp16, out_s8]
         ConvParam.conv_deq_req_double_out = True
+    elif check_doubleout_reluv2(outs):
+        outputs = _process_doubleout_reluv2(outs)
     else:
         outputs = outs
 
@@ -518,7 +560,9 @@ def check_quantfuse_doubleout(tensor_list, sch):
             tensor_list.append(sch.cce_special['real_out_tensor'][1])
             tensor_list.append(sch.cce_special['real_out_tensor'][2])
             ConvParam.conv_deq_req_double_out = False
-
+    if ConvParam.conv_reluv2_flag:
+        tensor_list = tensor_list[: -2]
+        tensor_list.extend(sch.cce_special["real_out_tensor"][1:])
     for tensor in tensor_list:
         if "conv_virtual_res" in tensor.op.name:
             tensor_list.remove(tensor)
@@ -698,7 +742,8 @@ class CceConvOp:
                                "elewise_binary_addrelu": "vector_addrelu",
                                "elewise_binary_subrelu": "vector_subrelu",
                                "elewise_multiple_sel": "vector_select_bool",
-                               "elewise_single_rec": "vector_rec"}
+                               "elewise_single_rec": "vector_rec",
+                               "emit_insn_elewise_binary_cmp": "elewise_binary_cmp"}
         self._l1_size = cce_conf.get_soc_spec("L1_SIZE")
         self._corenum = cce_conf.get_soc_spec("CORE_NUM")
         self._ub_size = cce_conf.get_soc_spec("UB_SIZE")
@@ -1083,7 +1128,8 @@ class CceConvOp:
                     special_mode_dict["use_c04_mode"] = ConvC04Mode.V100_MODE.value
                 elif c04_v200_flag:
                     special_mode_dict["use_c04_mode"] = ConvC04Mode.V200_MODE.value
-                if res.op.tag == "conv_virtual_res" and w_dtype == "float16":
+                if res.op.tag == "conv_virtual_res" and w_dtype == "float16" and \
+                        not ConvParam.conv_reluv2_flag:
                     special_mode_dict["convfp16_double_out"] = True
                 else:
                     special_mode_dict["convfp16_double_out"] = False
@@ -1097,7 +1143,7 @@ class CceConvOp:
                 elif self.conv_pool_2_2_fused_flag:
                     pooling_shape = [POOLING_2_2_WINDOW, POOLING_2_2_WINDOW]
                     pooling_stride = [POOLING_STRIDE, POOLING_STRIDE]
-                if res.op.tag == "conv_virtual_res":
+                if res.op.tag == "conv_virtual_res" and not ConvParam.conv_reluv2_flag:
                     c_dtype = "int8"
                 else:
                     c_dtype = res_dtype
@@ -4773,7 +4819,8 @@ class CceConvOp:
             noi_true = batch_inner_outer
             res_c = sum_x_ub_rf
         else:
-            if res_c.dtype == "int8" or "virtual_res" in res_c.op.name:
+            if (res_c.dtype == "int8" or "virtual_res" in res_c.op.name) and \
+                    not ConvParam.conv_reluv2_flag:
                 if tiling["CL0_matrix"][5] > 1:
                     cout1_group, cout1_ori = sch[res_c].split(
                         res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//2)
@@ -4784,7 +4831,8 @@ class CceConvOp:
                 cout1_group, cout1_ori = sch[res_c].split(
                     res_c.op.axis[1], factor=ConvParam.para_dict["cout1_opt"])
 
-            if res_c.dtype == "int8" or "virtual_res" in res_c.op.name:
+            if (res_c.dtype == "int8" or "virtual_res" in res_c.op.name) and \
+                    not ConvParam.conv_reluv2_flag:
                 if tiling["CL0_matrix"][5] > 1:
                     c_outer_outer, c_outer_inner = sch[res_c].split(
                         cout1_ori, factor=ConvParam.para_dict["cout1_opt"]*tiling["CL0_matrix"][5]//2)
@@ -5472,6 +5520,8 @@ class CceConvOp:
                 dma_move_list = ["conv2d_data_rm", "res_out_fp16"]
             if ConvParam.swrite_dequant_flag:
                 dma_move_list = ["strided_write", "res_out_fp16"]
+            if ConvParam.conv_reluv2_flag:
+                dma_move_list = ["res_reluv2_fp16", "res_mask_u8"]
             return dma_move_list
 
         def _lhisi_data_flow_type_emit_insn(tiling=None):
@@ -5522,7 +5572,8 @@ class CceConvOp:
                 if self._conv_quant_fused_flag and self._res_tensor.op.tag == "conv_virtual_res":
                     self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
                 if not self._conv_quant_fused_flag:
-                    if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16S8 or self._write_select or \
+                    if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16S8 or \
+                            self._write_select or ConvParam.conv_reluv2_flag or \
                             (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and \
                             self._res_tensor.op.tag == "conv_virtual_res"):
                         self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
@@ -5675,7 +5726,7 @@ class CceConvOp:
 
         if check_int8_data_flow_type():
             _lhisi_data_flow_type_emit_insn(tiling)
-        elif op_cmd[0].lower() == "elewise":
+        elif op_cmd[0].lower() == "elewise" or lop["op"] == "emit_insn_elewise_binary_cmp":
             ele_instr = self._get_elmwise_instr(lop["op"])
             self._schedule[cache_buffer].emit_insn(tensorize_axis, ele_instr)
         elif lop["op"] == "cast_0" and self._convbn1_flag:
@@ -6072,7 +6123,8 @@ class AutoScheduleOp:
                 "1_7": PATTERN_CONVFP16_QUANT,
                 "1_2_7": PATTERN_CONVFP16_QUANT_BIAS,
                 "1_7_8": PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT,
-                "1_2_7_8": PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT_BIAS
+                "1_2_7_8": PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT_BIAS,
+                "1_8": PATTERN_CONVFP16_RELUV2_DOUBLEOUT
             }
 
             # look up the fusion_type_dict for a given fusion_type_list
@@ -6253,6 +6305,8 @@ class AutoScheduleOp:
             "requant_s16_scale": OpFusionype.REQUANTS16_OP,
             "requant_s16_NZ": OpFusionype.REQUANTS16_OP,
             "requant_s16_data_transfer": OpFusionype.REQUANTS16_OP,
+            "res_reluv2_fp16": OpFusionype.DOUBLE_OUT,
+            "res_mask_u8": OpFusionype.DOUBLE_OUT,
             "res_remove_pad_u8": OpFusionype.DOUBLE_OUT,
             "res_remove_pad_s16": OpFusionype.DOUBLE_OUT,
             # relu + conv2d

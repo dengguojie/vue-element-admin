@@ -433,6 +433,7 @@ class ConvParam:
         cls.tiling_query_param.clear()
         cls.convbn1_flag = False
         cls.conv_deq_req_double_out = False
+        cls.conv_reluv2_flag = False
         cls.invalid_data_rm_flag = False
         cls.swrite_flag = False
         cls.swrite_dequant_flag = False
@@ -452,6 +453,7 @@ class ConvParam:
                    "fmap_l1_addr_flag": False,
                    "fmap_l1_valid_size": -1}
     aipp_fuse_flag = False
+    conv_reluv2_flag = False
     conv_deq_req_double_out = False
     swrite_flag = False
     strided_read_flag = False
