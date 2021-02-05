@@ -878,6 +878,8 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   auto tensordesc_x2 = op_desc->GetInputDesc("x2");
 
   auto dtype = tensordesc_x1.GetDataType();
+
+  OP_LOGD(op.GetName().c_str(), "start judge the dtype for matmul!");
   if (dtype == DT_FLOAT) {
     OP_LOGW(op.GetName().c_str(), "[Plugin][WARNING]MatMul fp32 op has poor performance!");
   }
