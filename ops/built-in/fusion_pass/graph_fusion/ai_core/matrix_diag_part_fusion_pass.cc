@@ -291,6 +291,7 @@ Status MatrixDiagPartFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
   vector<ge::GeTensorPtr> weights = {assitPtr};
   ge::OpDescUtils::SetWeights(matrixdiagpartVNode, weights);
   auto constInputNodes = OpDescUtils::GetConstInputs(matrixdiagpartVNode);
+  FUSION_PASS_CHECK(constInputNodes.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "const input empty."), return PARAM_INVALID);
   NodePtr constInput = constInputNodes[0];
   constInput->GetOpDesc()->SetType(CONSTANTOP);
   matrixdiagpartDesc->SetType("MatrixDiagPartD");

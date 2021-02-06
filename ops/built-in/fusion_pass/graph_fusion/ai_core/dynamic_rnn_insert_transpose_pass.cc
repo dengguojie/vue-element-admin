@@ -50,8 +50,8 @@ Status DynamicRNNInsertTransposePass::Fusion(ge::ComputeGraph& graph, Mapping& m
     ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(0);
     vector<int64_t> oriOutputShape = outputDesc.GetShape().GetDims();
 
-    if (oriOutputShape.empty()) {
-      OP_LOGW(FUSED_OP_TYPE.c_str(), "can not get output shape. shape is empty!");
+    if (oriOutputShape.size() < 3) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "can not get output shape. shape less then 3!");
       return NOT_CHANGED;
     }
 

@@ -39,7 +39,7 @@ bool BroadCastTwoShape(const Operator& op, const ge::Shape& shape_x, const ge::S
   }
 
   // expand smalll shape
-  if (dim_x.size() != dim_x.size()) {
+  if (dim_x.size() != dim_y.size()) {
     int dec = dim_x.size() - dim_y.size();
     for (int i = 0; i < dec; i++) {
       dim_y.insert(dim_y.begin(), (int64_t)1);
@@ -2138,7 +2138,9 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxWithValueInferShape) {
     y_shape.push_back(shape_x.GetDim(i));
   }
   int64_t max_size = y_shape.size();
-  dimension = dimension % max_size;
+  if (max_size != 0) {
+    dimension = dimension % max_size;
+  }
   OP_LOGI(op.GetName().c_str(), "the dimension is %d.", (int)dimension);
 
   bool keep_dims;

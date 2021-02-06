@@ -146,7 +146,7 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
   }
 
   int group = conv_param.group();
-  if (group < 1 || num_output % group != 0) {
+  if (group < 1 || (group != 0 && num_output % group != 0)) {
     ge::OpsConvShapeErrReport(op.GetName(), "group should be positive and divisible by num of output.");
     OP_LOGE(op.GetName().c_str(), "group should be positive and divisible by num of output.");
     return false;
@@ -234,6 +234,9 @@ static Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
 
   if (!(ProcSpecParams(conv_param, op) && SetPads(conv_param, op) && SetStrides(conv_param, op) &&
         SetDilations(conv_param, op))) {
+    OP_LOGE(op.GetName().c_str(), "Convolution layer set spec params/pads/strides/dilation failed.");
+    ge::OpsConvShapeErrReport(op.GetName(),
+                              "Convolution layer set spec params/pads/strides/dilation failed.");
     return FAILED;
   }
 

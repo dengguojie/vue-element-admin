@@ -20,7 +20,7 @@ namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamsLogSoftmax(const Message* op_src, ge::Operator& op_dest) {
-  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
+  const NodeProto* node = dynamic_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("ParseParamsLogSoftmax",
             "Dynamic cast op_src to NodeProto failed.");

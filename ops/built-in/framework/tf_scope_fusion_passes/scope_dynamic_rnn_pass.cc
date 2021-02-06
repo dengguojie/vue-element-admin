@@ -433,7 +433,6 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiLSTM(const Scope* scope, F
   fusion_rlt->SetName(scope_name.substr(0, scope_name.length() - 1));
   fusion_rlt->SetDescription("");
 
-  // 添加小算子
   // start to range
   auto start_0 = fusion_rlt->AddInnerNode("start_0", "Const");
   CHECK_INNER_NODE_CONDITION(start_0 != nullptr, fusion_rlt);

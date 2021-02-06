@@ -61,7 +61,10 @@ ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num
                                               ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
                                               bool& failStatus) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "ProcessStatic:W_xh_x_static->FullyConnection(InnerProduct).");
+  ge::GeTensorDesc outputTensorDesc;
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedDesc is null, fusion failed.");
+                    failStatus = true, return outputTensorDesc);
   // inputTensorDesc:x_static
   ge::GeTensorDesc inputTensorDesc = fusedDesc->GetInputDesc(2);
   DataType dataType = inputTensorDesc.GetDataType();
@@ -113,7 +116,7 @@ ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num
 
   innerProductStaticDesc->AddInputDesc("w", inputWTensorDesc);  // FRACTAL_Z
 
-  ge::GeTensorDesc outputTensorDesc = ge::GeTensorDesc(outputShape, ge::FORMAT_NCHW, dataType);
+  outputTensorDesc = ge::GeTensorDesc(outputShape, ge::FORMAT_NCHW, dataType);
 
   // set shape for FRACTAL_NZ(FE auto handle)
   std::vector<int64_t> dimsY;
@@ -682,7 +685,9 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   // edge for o
   if (fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-      inAnchorPtr->UnlinkAll();
+      if (inAnchorPtr != nullptr) {
+        inAnchorPtr->UnlinkAll();
+      }
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatNode->GetOutDataAnchor(0), inAnchorPtr),
                         OP_LOGE(FUSED_OP_TYPE.c_str(),
                                 "Add edge from fused node:%s's output[0] to fusion node:%s's output[0] failed.",
@@ -696,7 +701,9 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   // edge for h
   if (fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors().size() > 0) {
     for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(1)->GetPeerInDataAnchors()) {
-      inAnchorPtr->UnlinkAll();
+      if (inAnchorPtr != nullptr) {
+        inAnchorPtr->UnlinkAll();
+      }
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(rnnCellNode[numSplitX - 1]->GetOutDataAnchor(1), inAnchorPtr),
           OP_LOGE(FUSED_OP_TYPE.c_str(),

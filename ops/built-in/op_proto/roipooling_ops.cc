@@ -28,6 +28,7 @@
 #include "util/util.h"
 #include "util/error_util.h"
 #include "op_log.h"
+#include "axis_util.h"
 
 namespace ge {
 
@@ -38,9 +39,13 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
   auto xShape = op.get_input_desc_x().GetShape().GetDims();
   auto xDtype = op.get_input_desc_x().GetDataType();
   auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
+  CHECK(roisShape.size() < 3, OP_LOGE(op.GetName().c_str(), "rois shape is smaller than 3!"),
+      return GRAPH_FAILED);
   auto roi_max_num = roisShape[2];
 
   int64_t inputN, inputC1, poolH, poolW;
+  CHECK(xShape.size() < 2, OP_LOGE(op.GetName().c_str(), "x shape is smaller than 2!"),
+        return GRAPH_FAILED);
   inputN = xShape[0];
   inputC1 = xShape[1];
 

@@ -220,7 +220,9 @@ Status RpnProposalsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     OP_LOGI(FUSED_OP_TYPE.c_str(), "The size of layerNormXNode is [%d].",
             fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size());
     for (InDataAnchorPtr inAnchorPtr : fusedNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
-      inAnchorPtr->UnlinkAll();
+      if (inAnchorPtr != nullptr) {
+        inAnchorPtr->UnlinkAll();
+      }
       FUSION_PASS_CHECK(
           SUCCESS != ge::GraphUtils::AddEdge(rpnProposalPostProcessingNode->GetOutDataAnchor(0), inAnchorPtr),
           OP_LOGE(FUSED_OP_TYPE.c_str(),

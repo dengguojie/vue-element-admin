@@ -164,7 +164,8 @@ Status MatrixSetDiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     OP_LOGE(FUSED_OP_TYPE.c_str(), "MatrixSetDiagFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
-
+  FUSION_PASS_CHECK(dimNums1 == 0 || dimNums2 == 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "dims num should not be zero."),
+                    return NOT_CHANGED);
   // GESHAPE->vector
   vector<int64_t> dimInfo = matrixsetdiagInputShape.GetDims();
 

@@ -50,6 +50,8 @@
 #include "register/infer_data_slice_registry.h"
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
+#include "axis_util.h"
+
 namespace ge {
 
 namespace {
@@ -177,6 +179,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
       || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)){
     return GRAPH_FAILED;
   }
+  CHECK(pad_list.size() < 4, OP_LOGE(op.GetName().c_str(), "pads size less then 4."), return GRAPH_FAILED);
 
   int32_t ih = 0;
   int32_t iw = 0;
@@ -294,6 +297,7 @@ static bool GetPadDepthwiseConv2D(ge::Operator& op, int64_t inH, int64_t inW, in
     if (padStr.compare("SAME") == 0) {
       int64_t effective_filter_h = (filterH - 1) * dilationH + 1;
       int64_t effective_filter_w = (filterW - 1) * dilationW + 1;
+      CHECK(strideH == 0 || strideW == 0,  OP_LOGE(op.GetName().c_str(), "stride is 0."), return GRAPH_FAILED);
       int64_t out_h = (inH + strideH - 1) / strideH;
       int64_t out_w = (inW + strideW - 1) / strideW;
       int64_t pad_h = std::max((out_h - 1) * strideH + effective_filter_h - inH, (int64_t)0);
@@ -526,6 +530,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
 
   effectiveFilterH = (filterH - 1) * dilationH + 1;
   effectiveFilterW = (filterW - 1) * dilationW + 1;
+  CHECK(strideH == 0 || strideW == 0,  OP_LOGE(op.GetName().c_str(), "stride is 0."), return GRAPH_FAILED);
   outH = (inH + padtop + padbottom - effectiveFilterH) / strideH + 1;
   outW = (inW + padleft + padright - effectiveFilterW) / strideW + 1;
 
@@ -3246,7 +3251,8 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
 
   // update pads if padding is SAME
   std::string pad_str;
-  if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" && x_shape[idx_n] != -1) {
+  if (!x_shape.empty() && GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" &&
+      x_shape[idx_n] != -1) {
     op.SetAttr("pads", {-1, -1, -1, -1});
     OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
@@ -3686,6 +3692,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
       || GRAPH_SUCCESS != op.GetAttr("pads", pad_list)){
     return GRAPH_FAILED;
   }
+  CHECK(pad_list.size() < 4, OP_LOGE(op.GetName().c_str(), "pads size less then 4."), return GRAPH_FAILED);
 
   int32_t ih = 0;
   int32_t iw = 0;
@@ -7292,7 +7299,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   }
 
   // cut D
-  if (y_data_slice[1].size() != 0) {
+  if (y_data_slice[1].size() != 0 && !pad_list.empty()) {
     x_data_slice[1].clear();
     x_data_slice[1].resize(2);
     InferHWConv3dTransposeD(kd, dild, strd, id,
@@ -7302,7 +7309,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   }
 
   // cut H
-  if (y_data_slice[3].size() != 0) {
+  if (y_data_slice[3].size() != 0 && pad_list.size() > 2) {
     x_data_slice[3].clear();
     x_data_slice[3].resize(2);
     InferHWConv3dTransposeD(kh, dilh, strh, ih,
@@ -7312,7 +7319,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DTransposeD, Conv3DTransposeDInfereDataSlice) {
   }
 
   // cut W
-  if (y_data_slice[4].size() != 0) {
+  if (y_data_slice[4].size() != 0 && pad_list.size() > 4) {
     x_data_slice[4].clear();
     x_data_slice[4].resize(2);
     InferHWConv3dTransposeD(kw, dilw, strw, iw,
