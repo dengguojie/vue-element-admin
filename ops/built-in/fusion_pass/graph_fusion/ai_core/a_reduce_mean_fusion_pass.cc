@@ -99,15 +99,10 @@ Status AReduceMeanFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   for (size_t i = 0; i < const_data_size; ++i) {
     if (const_data[i] < 0) {
       const_data[i] = tensor_size + const_data[i];
-      if (const_data[i] > tensor_size){
-          OP_LOGE("const_data is not right");
-          return FAILED;
-      }
-    }else {
-        if(const_data[i] > tensor_size){
-            OP_LOGE("const_data is not right");
-            return FAILED;
-        }
+    }
+    if (const_data[i] > tensor_size && tensor_info[0] != -2) {
+        OP_LOGE("const_data is not right");
+        return FAILED;
     }
   }
 

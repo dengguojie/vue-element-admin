@@ -1116,6 +1116,7 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
     para_check.check_shape(input_shape, param_name="x")
     check_list = ("int8", "int16", "int32", "uint8", "uint16", "uint32", "uint64", "int64", "float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="x")
+    data_format_tuple = ("NCHW", "NHWC")
 
     if len(input_shape) != 4:
         error_detail = "length of x'shape should be 4 but got: %d" % len(input_shape)
@@ -1123,8 +1124,10 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
     if not (isinstance(block_size, int)) or block_size < 2:
         rule_desc = "block_size should be integer and be greater than or equal to 2"
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "block_size", block_size)
-    if data_format != "NHWC":
-        error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format", "NHWC", data_format)
+    if data_format not in data_format_tuple:
+        excepted_format_list = "NCHW, NHWC"
+        error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format", \
+                                                            excepted_format_list, data_format)
 
     depth_size = input_shape[3]
     if depth_size % (block_size * block_size) != 0:
