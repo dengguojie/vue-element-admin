@@ -31,6 +31,7 @@ from topi.cce import util
 from impl import slice_d
 from impl.five_2_four_v200_fp32fp16 import five_2_four_v200_fp32fp16
 from impl.c1hwc0_2_chw import c1hwc0_2_chw
+from impl import trans_data_negative_target_tc
 
 # available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
@@ -9913,6 +9914,10 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
                     "te.lang.cce.vaddrelu", "float32") and \
             dtype == "float32":
         five_2_four_v200_fp32fp16(src, dst, src_format, dst_format, kernel_name)
+    elif dst_format.lower() == "nhwc" and dtype == "float32" and \
+            src_shape in [[10000, 1, 63, 63, 16], [10000, 1, 127, 127, 16]] and \
+            dst_shape in [[10000, 63, 63, 1], [10000, 127, 127, 1]]:
+        trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     # Notes: vbi only supported by 1951
     elif dst_format.lower() == "nchw" and \
             not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32") and \
