@@ -245,7 +245,7 @@ static Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
 
 REGISTER_CUSTOM_OP("Conv2D")
     .FrameworkType(CAFFE)              // type: CAFFE, TENSORFLOW
-    .OriginOpType("Convolution")       // name in caffe module
+    .OriginOpType({"Convolution", "DepthwiseConvolution"})       // name in caffe module
     .ParseParamsFn(ParseParamsConv2D)  // AutoMappingFn for Tensorflow,
     // ParseParamsFn need to realize for caffe
     .ImplyType(ImplyType::TVM);
