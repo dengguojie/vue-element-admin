@@ -202,6 +202,7 @@ class Test_OpConfig(unittest.TestCase):
                 lines = c_f.readlines()
             op_key_info = None
             op_type = None
+            op_types = []
             check_valid = True
             line_num = 0
             for line in lines:
@@ -211,8 +212,12 @@ class Test_OpConfig(unittest.TestCase):
                 # print(line_num, line)
                 if line.startswith("["):
                     if op_type is not None:
-                        # if op_type == "MaxPoolGrad":
-                        #     print("MaxPoolGrad",line_num, line, op_key_info)
+                        if op_type not in op_types:
+                            op_types.append(op_type)
+                        else:
+                            error_msg = ["%s is not unique" % op_type, ]
+                            raise AssertionError("check op cfg failed! error file: %s msg: %s is not unique" % (
+                                c_f_file_path, op_type))
                         if not check_op_key_info(c_f_file_path, op_type, op_key_info):
                             check_valid = False
                     op_type = line[line.index("[") + 1: line.index("]")]
