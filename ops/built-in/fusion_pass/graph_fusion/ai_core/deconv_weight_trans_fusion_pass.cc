@@ -44,9 +44,12 @@ const string CONV2D_TRANSPOSE = "Conv2DTransposeD";
 const string PATTERN_DECONV = "DeconvolutionInt8";
 static const std::string CONSTANTOP = "Const";
 static const std::string CONSTANT = "Constant";
+static const int CONST_VECTOR_LEN = 5;
 static const int CONST_DIM4_NUM = 4;
 static const int CONST_DIM3_NUM = 3;
 static const int CONST_DIM2_NUM = 2;
+static const int CONST_DIM1_NUM = 1;
+static const int CONST_DIM0_NUM = 0;
 }  // namespace
 
 vector<FusionPattern*> DeconvWeightTransFusionPass::DefinePatterns() {
@@ -75,9 +78,9 @@ vector<FusionPattern*> DeconvWeightTransFusionPass::DefinePatterns() {
  * 3D -> CHW
  */
 static Status GetShapeByFormat(const ge::Format& format,
-                               const ge::GeShape& old_shape, int64_t& number,
-                               int64_t& channel, int64_t& height,
-                               int64_t& weight) {
+                               const ge::GeShape& old_shape,
+                               int64_t& number, int64_t& channel,
+                               int64_t& height, int64_t& weight) {
   if (old_shape.GetDimNum() == 1) {
     channel = old_shape.GetDim(0);
     number = 1;
@@ -125,72 +128,82 @@ static Status GetShapeByFormat(const ge::Format& format,
 //Dimensions complement
 void DeconvWeightTransFusionPass::
     GetShapeUsedByIntermediateProcessInDeconvWeightTrans(
-        const ge::Format& filter_format, const vector<int64_t>& shape_NCHW,
+        const ge::Format& filter_format, const vector<int64_t>& shape_GNCHW,
         vector<int64_t>& complement_dimension, vector<int64_t>& reshape_in,
         vector<int64_t>& permute_shape, vector<int64_t>& reverse_axis,
         vector<int64_t>& reshape_out) {
-  if (shape_NCHW.size() != CONST_DIM4_NUM) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "size of shape_NCHW not equal 4");
+  if (shape_GNCHW.size() != CONST_VECTOR_LEN) {
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "size of shape_GNCHW not equal 5");
     return;
   }
-  complement_dimension.resize(CONST_DIM4_NUM);
-  reshape_in.resize(CONST_DIM3_NUM);
-  permute_shape.resize(CONST_DIM4_NUM);
+  complement_dimension.resize(CONST_VECTOR_LEN);
+  reshape_in.resize(CONST_DIM4_NUM);
+  permute_shape.resize(CONST_VECTOR_LEN);
   reverse_axis.resize(1);
   reshape_out.resize(CONST_DIM4_NUM);
-  int64_t number = shape_NCHW[0];
-  int64_t channel = shape_NCHW[1];
-  int64_t height = shape_NCHW[CONST_DIM2_NUM];
-  int64_t weight = shape_NCHW[CONST_DIM3_NUM];
+  int64_t groups = shape_GNCHW[CONST_DIM0_NUM];
+  int64_t number = shape_GNCHW[CONST_DIM1_NUM];
+  int64_t channel = shape_GNCHW[CONST_DIM2_NUM];
+  int64_t height = shape_GNCHW[CONST_DIM3_NUM];
+  int64_t weight = shape_GNCHW[CONST_DIM4_NUM];
   if (filter_format == ge::FORMAT_HWCN) {
-    complement_dimension[0] = height;
-    complement_dimension[1] = weight;
+    complement_dimension[CONST_DIM0_NUM] = height;
+    complement_dimension[CONST_DIM1_NUM] = weight;
     complement_dimension[CONST_DIM2_NUM] = channel;
-    complement_dimension[CONST_DIM3_NUM] = number;
-    permute_shape[0] = 0;
-    permute_shape[1] = 1;
-    permute_shape[CONST_DIM2_NUM] = CONST_DIM3_NUM;
-    permute_shape[CONST_DIM3_NUM] = CONST_DIM2_NUM;
-    reshape_in[0] = height * weight;
-    reshape_in[1] = number;
-    reshape_in[CONST_DIM2_NUM] = channel;
-    reverse_axis[0] = 0;
-    reshape_out[0] = height;
-    reshape_out[1] = weight;
-    reshape_out[CONST_DIM2_NUM] = number;
-    reshape_out[CONST_DIM3_NUM] = channel;
-  } else if (filter_format == ge::FORMAT_NCHW) {
-    complement_dimension[0] = number;
-    complement_dimension[1] = channel;
-    complement_dimension[CONST_DIM2_NUM] = height;
-    complement_dimension[CONST_DIM3_NUM] = weight;
-    permute_shape[0] = 1;
-    permute_shape[1] = 0;
-    permute_shape[CONST_DIM2_NUM] = CONST_DIM2_NUM;
+    complement_dimension[CONST_DIM3_NUM] = groups;
+    complement_dimension[CONST_DIM4_NUM] = number;
+    permute_shape[CONST_DIM0_NUM] = CONST_DIM0_NUM;
+    permute_shape[CONST_DIM1_NUM] = CONST_DIM1_NUM;
+    permute_shape[CONST_DIM2_NUM] = CONST_DIM4_NUM;
     permute_shape[CONST_DIM3_NUM] = CONST_DIM3_NUM;
-    reshape_in[0] = channel;
-    reshape_in[1] = number;
-    reshape_in[CONST_DIM2_NUM] = height * weight;
-    reverse_axis[0] = CONST_DIM2_NUM;
-    reshape_out[0] = channel;
-    reshape_out[1] = number;
+    permute_shape[CONST_DIM4_NUM] = CONST_DIM2_NUM;
+    reshape_in[CONST_DIM0_NUM] = height * weight;
+    reshape_in[CONST_DIM1_NUM] = number;
+    reshape_in[CONST_DIM2_NUM] = groups;
+    reshape_in[CONST_DIM3_NUM] = channel;
+    reverse_axis[CONST_DIM0_NUM] = CONST_DIM0_NUM;
+    reshape_out[CONST_DIM0_NUM] = height;
+    reshape_out[CONST_DIM1_NUM] = weight;
+    reshape_out[CONST_DIM2_NUM] = number;
+    reshape_out[CONST_DIM3_NUM] = groups * channel;
+  } else if (filter_format == ge::FORMAT_NCHW) {
+    complement_dimension[CONST_DIM0_NUM] = groups;
+    complement_dimension[CONST_DIM1_NUM] = number;
+    complement_dimension[CONST_DIM2_NUM] = channel;
+    complement_dimension[CONST_DIM3_NUM] = height;
+    complement_dimension[CONST_DIM4_NUM] = weight;
+    permute_shape[CONST_DIM0_NUM] = CONST_DIM0_NUM;
+    permute_shape[CONST_DIM1_NUM] = CONST_DIM2_NUM;
+    permute_shape[CONST_DIM2_NUM] = CONST_DIM1_NUM;
+    permute_shape[CONST_DIM3_NUM] = CONST_DIM3_NUM;
+    permute_shape[CONST_DIM4_NUM] = CONST_DIM4_NUM;
+    reshape_in[CONST_DIM0_NUM] = groups;
+    reshape_in[CONST_DIM1_NUM] = channel;
+    reshape_in[CONST_DIM2_NUM] = number;
+    reshape_in[CONST_DIM3_NUM] = height * weight;
+    reverse_axis[CONST_DIM0_NUM] = CONST_DIM3_NUM;
+    reshape_out[CONST_DIM0_NUM] = groups * channel;
+    reshape_out[CONST_DIM1_NUM] = number;
     reshape_out[CONST_DIM2_NUM] = height;
     reshape_out[CONST_DIM3_NUM] = weight;
   } else if (filter_format == ge::FORMAT_NHWC) {
-    complement_dimension[0] = number;
-    complement_dimension[1] = height;
-    complement_dimension[CONST_DIM2_NUM] = weight;
-    complement_dimension[CONST_DIM3_NUM] = channel;
-    permute_shape[0] = 0;
-    permute_shape[1] = 1;
-    permute_shape[CONST_DIM2_NUM] = CONST_DIM3_NUM;
-    permute_shape[CONST_DIM3_NUM] = CONST_DIM2_NUM;
-    reshape_in[0] = channel;
-    reshape_in[1] = height * weight;
-    reshape_in[CONST_DIM2_NUM] = number;
-    reverse_axis[0] = 1;
-    reshape_out[0] = channel;
-    reshape_out[1] = height;
+    complement_dimension[CONST_DIM0_NUM] = groups;
+    complement_dimension[CONST_DIM1_NUM] = number;
+    complement_dimension[CONST_DIM2_NUM] = height;
+    complement_dimension[CONST_DIM3_NUM] = weight;
+    complement_dimension[CONST_DIM4_NUM] = channel;
+    permute_shape[CONST_DIM0_NUM] = CONST_DIM0_NUM;
+    permute_shape[CONST_DIM1_NUM] = CONST_DIM4_NUM;
+    permute_shape[CONST_DIM2_NUM] = CONST_DIM2_NUM;
+    permute_shape[CONST_DIM3_NUM] = CONST_DIM3_NUM;
+    permute_shape[CONST_DIM4_NUM] = CONST_DIM1_NUM;
+    reshape_in[CONST_DIM0_NUM] = groups;
+    reshape_in[CONST_DIM1_NUM] = channel;
+    reshape_in[CONST_DIM2_NUM] = height * weight;
+    reshape_in[CONST_DIM3_NUM] = number;
+    reverse_axis[CONST_DIM0_NUM] = CONST_DIM2_NUM;
+    reshape_out[CONST_DIM0_NUM] = groups * channel;
+    reshape_out[CONST_DIM1_NUM] = height;
     reshape_out[CONST_DIM2_NUM] = weight;
     reshape_out[CONST_DIM3_NUM] = number;
   }
@@ -202,7 +215,7 @@ static Status GenerateTransposeNode(ge::ComputeGraph& graph,
                                     const vector<int64_t>& perm,
                                     ge::NodePtr& transpose_node,
                                     const std::string& basename) {
-  vector<int64_t> next_in_shape(CONST_DIM4_NUM);
+  vector<int64_t> next_in_shape(CONST_VECTOR_LEN);
   for (size_t i = 0; i < perm.size(); ++i) {
     next_in_shape[i] = previous_out_desc.GetShape().GetDim(perm[i]);
   }
@@ -358,20 +371,41 @@ Status DeconvWeightTransFusionPass::Relink(
   } else {
     FUSION_PASS_CHECK(
         ge::GraphUtils::AddEdge(reformat_node->GetOutDataAnchor(0),
+                                reshape_out_node->GetInDataAnchor(0)) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                "fail to add edge between transpose_node and reshape_out_node"),
+        return FAILED);
+    FUSION_PASS_CHECK(
+        ge::GraphUtils::AddEdge(reshape_out_node->GetOutDataAnchor(0),
                                 deconv_node->GetInDataAnchor(filter_anchor)) !=
             SUCCESS,
         OP_LOGE(FUSED_OP_TYPE.c_str(),
-                "fail to add edge between transpose_node and deconv_node"),
+                "fail to add edge between reshape_out_node and deconv_node"),
         return FAILED);
   }
 
   FUSION_PASS_CHECK(
       deconv_node->GetOpDesc()->UpdateInputDesc(
-          filter_anchor, reformat_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
+          filter_anchor, reshape_out_node->GetOpDesc()->GetOutputDesc(0)) != SUCCESS,
       OP_LOGE(FUSED_OP_TYPE.c_str(),
               "fail to update input description of deconv"),
       return FAILED);
 
+  return SUCCESS;
+}
+
+int64_t DeconvWeightTransFusionPass::GetGroups(ge::OpDescPtr &deconv_desc) {
+  int64_t groups = 1;
+  bool hasGroup = ge::AttrUtils::GetInt(deconv_desc, "groups", groups);
+  return hasGroup ? groups : 1;
+}
+
+int64_t GetBatchCeilGroups(int64_t& groups, int64_t& number) {
+  if (number % groups != 0) {
+    return FAILED;
+  } else {
+    number = number / groups;
+  }
   return SUCCESS;
 }
 
@@ -380,9 +414,6 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                                            vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter DeconvWeightTransFusionPass.");
   ge::NodePtr deconv_node = GetNodeFromMapping(PATTERN_DECONV, mapping);
-  FUSION_PASS_CHECK(deconv_node == nullptr,
-                    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "deconv_node is null, fusion failed."),
-                    return PARAM_INVALID);
 
   // pattern
   // originFormat: NCHW,HWCN,NHWC
@@ -419,6 +450,12 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
   }
 
   int64_t number = 0, channel = 0, height = 0, weight = 0;
+  auto op_desc = deconv_node->GetOpDesc();
+  int64_t groups = GetGroups(op_desc);
+  FUSION_PASS_CHECK(groups == 0,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),
+                            "Groups can not be 0."),
+                    return NOT_CHANGED);
   ge::GeTensorDesc deconv_weight_in_desc =
       deconv_node->GetOpDesc()->GetInputDesc(filter_anchor);
   ge::GeTensorDesc filter_out_desc =
@@ -430,6 +467,11 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                     OP_LOGW(FUSED_OP_TYPE.c_str(),
                             "Not support this format %d.", filter_format),
                     return NOT_CHANGED);
+  FUSION_PASS_CHECK(GetBatchCeilGroups(groups, number) != SUCCESS,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(),
+                            "Batch of filter cannot divide groups"),
+                    return NOT_CHANGED);
+
   if (PatternFusionUtil::IsUnknownShape(number) ||
       PatternFusionUtil::IsUnknownShape(channel) ||
       PatternFusionUtil::IsUnknownShape(height) ||
@@ -437,10 +479,10 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
     OP_LOGW(FUSED_OP_TYPE.c_str(), "DeconvWeightTransFusionPass cannot be applied for unknown shape.");
     return NOT_CHANGED;
   }
-  vector<int64_t> complement_dimension(CONST_DIM4_NUM), reshape_in(CONST_DIM3_NUM),
-      permute_shape(CONST_DIM4_NUM), reverse_axis(1), reshape_out(CONST_DIM4_NUM);
+  vector<int64_t> complement_dimension(CONST_VECTOR_LEN), reshape_in(CONST_DIM4_NUM),
+      permute_shape(CONST_VECTOR_LEN), reverse_axis(1), reshape_out(CONST_DIM4_NUM);
   GetShapeUsedByIntermediateProcessInDeconvWeightTrans(
-      filter_format, {number, channel, height, weight}, complement_dimension, reshape_in,
+      filter_format, {groups, number, channel, height, weight}, complement_dimension, reshape_in,
       permute_shape, reverse_axis, reshape_out);
 
   ge::NodePtr dim_comp_node = nullptr, transpose_node = nullptr,
@@ -448,16 +490,15 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
               reverse_node = nullptr, reshape_out_node = nullptr;
 
   auto basename = filter_node->GetName();
+
   // 1. dimension completion
-  if (filter_shape.GetDimNum() != CONST_DIM4_NUM) {
-    FUSION_PASS_CHECK(
-        GenerateReshapeNode(graph, filter_out_desc, deconv_weight_in_desc, complement_dimension,
-                            dim_comp_node, "dimension_completion",
-                            basename) != SUCCESS,
-        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
-                "fail to generate dimension completion node"),
-        return FAILED);
-  }
+  FUSION_PASS_CHECK(
+      GenerateReshapeNode(graph, filter_out_desc, deconv_weight_in_desc, complement_dimension,
+                          dim_comp_node, "dimension_completion",
+                          basename) != SUCCESS,
+      CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(),
+              "fail to generate dimension completion node"),
+      return FAILED);
   ge::GeTensorDesc dim_comp_out_desc;
   if (dim_comp_node != nullptr) {
     dim_comp_out_desc = dim_comp_node->GetOpDesc()->GetOutputDesc(0);
@@ -506,8 +547,14 @@ Status DeconvWeightTransFusionPass::Fusion(ge::ComputeGraph& graph,
                             basename) != SUCCESS,
         CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
         return FAILED);
+  } else {
+    FUSION_PASS_CHECK(
+        GenerateReshapeNode(graph, reformat_desc, deconv_weight_in_desc,
+                            reshape_out, reshape_out_node, "reshape_out",
+                            basename) != SUCCESS,
+        CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "fail to generate reshape out node"),
+        return FAILED);
   }
-
   FUSION_PASS_CHECK(
       Relink(filter_node, dim_comp_node, transpose_node, reformat_node,
              reshape_in_node, reverse_node, reshape_out_node, deconv_node) != SUCCESS,

@@ -31,6 +31,7 @@ class DeconvWeightTransFusionPass : public PatternFusionBasePass {
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
+  int64_t GetGroups(ge::OpDescPtr &deconv_desc);
   void GetShapeUsedByIntermediateProcessInDeconvWeightTrans(const ge::Format& filter_format,
                                                             const vector<int64_t>& shape_NCHW, vector<int64_t>& complement_dimension,
                                                             vector<int64_t>& reshape_in, vector<int64_t>& permute_shape,
