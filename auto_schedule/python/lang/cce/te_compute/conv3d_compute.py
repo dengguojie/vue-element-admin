@@ -191,6 +191,8 @@ def _cube_3d_compute(fmap,
             stride_hw[0] = 1
         im2col_para = (fuse_fmap_tensor, filter_h, filter_w, pad_hw, stride_hw,
                        width_out, 1, cin_ori)
+        # Data rearrangement from l1 to l0a in the dynamic shape
+        # cycle buffer is enabled by instruction mapping stage
         fmap_im2col_fractal_res = cube_util.im2col_fractal_v2(
                     fmap_im2col_fractal_shape, im2col_para)
         _TENSOR_MAP["fmap_im2col_fractal_res"] = fmap_im2col_fractal_res
@@ -351,17 +353,21 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                   n_index % d_out * (kernel_d - stride_d) * cyclebuffer_flag) % \
                   kernel_d - pad_head
         c1_index = dc_index % fmap_c1
-
-        return tvm.select(tvm.all(d_index >= 0, d_index < fmap_d,
-                                  tvm.any(tvm.floordiv(cyclebuffer_flag, 1) == 0,
-                                          d_index + pad_head > (n_index % d_out - 1) * stride_d + kernel_d - 1,
-                                          tvm.floormod(n_index, tvm.floordiv(d_out, d_dim)) == 0)),
-                                  fmap(batch_index,
-                                       d_index,
-                                       c1_index,
-                                       h_index * opti_h_factor,
-                                       w_index,
-                                       c0_index))
+        if Conv3DParam.dynamic_mode:
+            # Only the conditions for pad are retained in the dynamic shape compute
+            fuse_tensor_condition = tvm.all(d_index >= 0, d_index < fmap_d)
+        else:
+            cycle_condition = tvm.any(tvm.floordiv(cyclebuffer_flag, 1) == 0,
+                                d_index + pad_head > (n_index % d_out - 1) * stride_d + kernel_d - 1,
+                                tvm.floormod(n_index, tvm.floordiv(d_out, d_dim)) == 0)
+            fuse_tensor_condition = tvm.all(d_index >= 0, d_index < fmap_d, cycle_condition)
+        return tvm.select(fuse_tensor_condition,
+                          fmap(batch_index,
+                               d_index,
+                               c1_index,
+                               h_index * opti_h_factor,
+                               w_index,
+                               c0_index))
 
     return tvm.compute(fmap_fuse_shape,
                        lambda *indices: __get_fuse_tensor_indices(indices),
@@ -1040,10 +1046,8 @@ def conv3d(x, filter, filter_size, para_dict):
 
     _TENSOR_MAP["kernel_name"] = para_dict["kernel_name"]
     l0a_load2d_flag = _get_load2d_flag(stride_dhw, pads, shape_filter_ncdhw)
-    if not Conv3DParam.dynamic_mode:
-        cyclebuffer_flag = tvm.var(name='cyclebuffer_flag', dtype='int')
-    else:
-        cyclebuffer_flag = 0
+    cyclebuffer_flag = tvm.var(name='cyclebuffer_flag', dtype='int')
+    if Conv3DParam.dynamic_mode:
         Conv3DParam.tiling_info_dict = {
             "op_type": "convolution_3d",
             "a_shape": fmap_shape_ndc1hwc0,

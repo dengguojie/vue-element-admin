@@ -604,7 +604,6 @@ class CceConv3dOp:
                             _TILING_FLOAT16_MKN]
         if self.dynamic_mode:
             tiling_new = self.tiling_case
-            cyclebuffer_flag = False
         else:
             info_dict = {
                 "op_type": "convolution_3d",
@@ -624,14 +623,14 @@ class CceConv3dOp:
             }
             tiling_new = get_tiling(info_dict)
 
-            l0a_load2d_flag = self._tensor_map["l0a_load2d_flag"]
-            self._schedule.set_var_range(self._tensor_map["d_dim"],
-                                        int(tiling_new["block_dim"][-1]),
-                                        int(tiling_new["block_dim"][-1]))
-            cyclebuffer_flag = self._get_cyclebuffer_flag(tiling_new, shape_w_ndc1hwc0,
-                                                          w_dtype, fmap_shape_ndc1hwc0,
-                                                          strided, padd, l0a_load2d_flag,
-                                                          dilationh, dilationw)
+        l0a_load2d_flag = self._tensor_map["l0a_load2d_flag"]
+        self._schedule.set_var_range(self._tensor_map["d_dim"],
+                                    int(tiling_new["block_dim"][-1]),
+                                    int(tiling_new["block_dim"][-1]))
+        cyclebuffer_flag = self._get_cyclebuffer_flag(tiling_new, shape_w_ndc1hwc0,
+                                                        w_dtype, fmap_shape_ndc1hwc0,
+                                                        strided, padd, l0a_load2d_flag,
+                                                        dilationh, dilationw)
 
         tiling_ok_flag = self._check_tiling(tiling_new, w_dtype)
 
@@ -779,7 +778,8 @@ class CceConv3dOp:
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         # al1
         if double_buffer_flag["AL1_pbuffer"] == 2:
-            if cyclebuffer_flag:
+            if cyclebuffer_flag and not self.dynamic_mode:
+                # cycle_double_buffer is not used in the dynamic shape
                 sch[buffer_dict["al1"]].cycle_double_buffer()
             else:
                 sch[buffer_dict["al1"]].double_buffer()
@@ -798,6 +798,40 @@ class CceConv3dOp:
         # CUB
         if double_buffer_flag["CUB_pbuffer"] == 2:
             sch[buffer_dict["c_ub"]].double_buffer()
+
+    def _condition_cycle_buffer_dynamic(self, cyclebuffer_flag, fmap,
+                                        al1, c_col, c_ub, tiling):
+        sch = self._schedule
+        d_out = self._tensor_map["d_out"]
+        pad_head = c_col.op.attrs['pad_head']
+        stride_d = c_col.op.attrs['stride_d']
+        kernel_d = c_ub.op.attrs['kernel_d']
+        _, _, fmap_c1_dim, _, _, _ = fmap.shape
+        if cyclebuffer_flag:
+            # set_store_predicate for cycle buffer
+            _, dc_index = sch[al1].split(al1.op.axis[1], nparts=1)
+            _, n_index = sch[al1].split(al1.op.axis[0], nparts=1)
+            d_index = n_index % d_out * stride_d + (dc_index // fmap_c1_dim +
+                        n_index % d_out * (kernel_d - stride_d)) % kernel_d - pad_head
+            # condition_update is a refers to the conditions that
+            # need to be updated during this load and the last load
+            condition_update = d_index + pad_head > (n_index % d_out - 1) * \
+                                stride_d + kernel_d - 1
+            cyclebuffer_factor = self._int_ceil_div_tvm(self._tensor_map.get("d_out"),
+                                                        self._tensor_map.get("d_dim"))
+            db_expr = tvm.select(tvm.convert(cyclebuffer_factor) == 1,
+                                    0,
+                                    tvm.floormod(n_index,
+                                                 cyclebuffer_factor))
+            # 1: Full load is required for the first load in a single core
+            # 2: In the case of db, both ping and pong must be full loaded for the first time
+            if tiling["manual_pingpong_buffer"]['AL1_pbuffer'] == 1:
+                condition_db = (db_expr == 0).asnode()
+            else:
+                condition_db = tvm.any((db_expr == 0).asnode(),
+                                        (db_expr == (cyclebuffer_factor + 1) // 2).asnode())
+            condition_cycle = tvm.any(condition_update, condition_db)
+            sch[al1].set_store_predicate(condition_cycle)
 
     def _intrin_mapping(self, fmap, mad_dict, buffer_dict, new_fmap_col_axis,
                         tiling, cn_axis, l0a_load2d_flag):
@@ -847,20 +881,18 @@ class CceConv3dOp:
 
         setfmatrix_dict["conv_fm_c"] = self._tensor_map["group_dict"][
                                             "cin1_g"] * fmap.op.shape[5]
-
         setfmatrix_dict["conv_fm_h"] = fmap.op.shape[3]
         setfmatrix_dict["conv_fm_w"] = fmap.op.shape[4]
-        d_out = self._tensor_map["d_out"]
         stride_d = c_col.op.attrs['stride_d']
-        pad_head = c_col.op.attrs['pad_head']
-        _, fmap_d_dim, fmap_c1_dim, _, _, fmap_c0 = fmap.shape
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
-        if cyclebuffer_flag:
+        kernel_d = c_ub.op.attrs['kernel_d']
+        if cyclebuffer_flag and not self.dynamic_mode:
             # Specifies AL1 memory
             sch[al1].mem_unique()
             sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
         elif self.dynamic_mode and not l0a_load2d_flag:
-            pass
+            self._condition_cycle_buffer_dynamic(cyclebuffer_flag, fmap, al1, c_col,
+                                                 c_ub, tiling)
         else:
             sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
 
@@ -883,7 +915,13 @@ class CceConv3dOp:
                 'conv_fm_h': fmap.shape[3],
                 'conv_fm_w': fmap.shape[4],
                 'conv_fm_c0': fmap.shape[5],
-                'group_flag': 1
+                'group_flag': 1,
+                'circular_buf': cyclebuffer_flag,
+                'conv_batch': fmap_col.op.axis[1],
+                'conv_intrin_batch': new_fmap_col_axis[-5],
+                'conv_kernel_d': kernel_d,
+                'conv_stride_d': stride_d,
+                'conv_d_out': self._tensor_map.get("d_out"),
             }
             if self._tensor_map["opti_h_flag"]:
                 im2col_attr["conv_stride_h"] = 1
@@ -1286,8 +1324,7 @@ class CceConv3dOp:
         self._tensor_map["cyclebuffer_flag"] = cyclebuffer_flag
         cyclebuffer = tensor_map["cycle_flag_info"]
         specified_bound = int(cyclebuffer_flag)
-        if not self.dynamic_mode:
-            sch.set_var_range(cyclebuffer, specified_bound, specified_bound)
+        sch.set_var_range(cyclebuffer, specified_bound, specified_bound)
 
         filter_matrix = list(dim_map["filter_matrix_dim"])
         filter_matrix[1] = filter_matrix[1] // tiling["block_dim"][1]
@@ -1407,17 +1444,39 @@ class CceConv3dOp:
         al1_at_c_axis = m_outer_outer_outer_inner
 
         if tensor_map["cyclebuffer_flag"]:
-            batch_inner_outer, batch_inner_inner = sch[res_c].split(
-                batch_inner, nparts=1)
-            al1_at_c_axis = batch_inner_inner
-            sch[res_c].reorder(batch_outer, c_outer_g_outer,
-                               c_outer_outer_outer_outer,
-                               m_outer_outer_outer_outer,
-                               c_outer_g_inner,
-                               batch_inner_outer,
-                               c_outer_outer_outer_inner,
-                               m_outer_outer_outer_inner, batch_inner_inner)
-            cycbuf_axis = batch_inner_outer
+            split_condition = self.dynamic_mode and \
+                              tiling["manual_pingpong_buffer"]['AL1_pbuffer'] == 2 and \
+                              tiling["manual_pingpong_buffer"]['AL0_pbuffer'] == 2
+            if split_condition:
+                # split + reorder to adjust ping pong data division,
+                # instead of cycle double buffer
+                batch_inner_outer, batch_inner_inner = sch[res_c].split(
+                    batch_inner, nparts=1)
+                batch_inner_inner_outer, batch_inner_inner_inner = sch[res_c].split(
+                    batch_inner_inner, nparts=2)
+                al1_at_c_axis = batch_inner_inner_outer
+                sch[res_c].reorder(batch_outer, c_outer_g_outer,
+                                   c_outer_outer_outer_outer,
+                                   m_outer_outer_outer_outer,
+                                   c_outer_g_inner,
+                                   batch_inner_outer,
+                                   c_outer_outer_outer_inner,
+                                   m_outer_outer_outer_inner,
+                                   batch_inner_inner_inner,
+                                   batch_inner_inner_outer)
+                cycbuf_axis = batch_inner_outer
+            else:
+                batch_inner_outer, batch_inner_inner = sch[res_c].split(
+                    batch_inner, nparts=1)
+                al1_at_c_axis = batch_inner_inner
+                sch[res_c].reorder(batch_outer, c_outer_g_outer,
+                                   c_outer_outer_outer_outer,
+                                   m_outer_outer_outer_outer,
+                                   c_outer_g_inner,
+                                   batch_inner_outer,
+                                   c_outer_outer_outer_inner,
+                                   m_outer_outer_outer_inner, batch_inner_inner)
+                cycbuf_axis = batch_inner_outer
         else:
             sch[res_c].reorder(batch_outer, c_outer_g_outer,
                                c_outer_outer_outer_outer,
@@ -1430,6 +1489,8 @@ class CceConv3dOp:
 
         mc_flag = False
         blocks = block_dim[0] * block_dim[1] * block_dim[2] * tiling["g_dim"]
+        noo_true = cycbuf_axis
+        block = 1
         if blocks != 1:
             batch_cout_fused = sch[res_c].fuse(batch_outer,
                                                c_outer_g_outer,
@@ -1440,9 +1501,6 @@ class CceConv3dOp:
             block = tvm.thread_axis("blockIdx.x")
             sch[res_c].bind(bido, block)
             mc_flag = True
-        else:
-            noo_true = cycbuf_axis
-            block = 1
 
         noi_tree = cycbuf_axis
 
