@@ -18,17 +18,28 @@ from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
 ut_case = OpUT("AvgPoolGradD", None, None)
 
-case1 = {"params": [{"shape": (1,2,32,1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,1,16),"ori_format": "NCHW"},
-                    {"shape": (1,1,1,1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,1,16),"ori_format": "NCHW"},
-                    {"shape": (1,1,1,1,16), "dtype": "float16", "format": "C1HWNCoC0", "ori_shape": (1,1,1,16),"ori_format": "NCHW"},
-                    {"shape": (1,2,32,1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,1,16),"ori_format": "NCHW"},
-                    [1,32,32,1], [1,1,1,1], [1,1,1,1], "VALID"],
+case1 = {"params": [{"shape": (1,1,1,1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,1,16),"ori_format": "NHWC"},
+                    {"shape": (1,1,1,1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,1,16),"ori_format": "NHWC"},
+                    {"shape": (1,4,4,1,16,16), "dtype": "float16", "format": "C1HWNCoC0", "ori_shape": (1,4,4,1),"ori_format": "NHWC"},
+                    {"shape": (1,1,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,4,4,16),"ori_format": "NHWC"},
+                    [1,4,4,16], [1,4,4,1], [1,1,1,1], "VALID"],
          "case_name": "AvgPoolGradD_1",
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
 
+case2 = {"params": [{"shape": (1,1,540,960,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,540,960,16),"ori_format": "NHWC"},
+                    {"shape": (1,1,540,960,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,540,960,16),"ori_format": "NHWC"},
+                    {"shape": (1,2,2,1,16,16), "dtype": "float16", "format": "C1HWNCoC0", "ori_shape": (1,2,2,1),"ori_format": "NHWC"},
+                    {"shape": (1,1,1080,1920,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1080,1920,16),"ori_format": "NHWC"},
+                    [1,1080,1920,16], [1,2,2,1], [1,2,2,1], "VALID"],
+         "case_name": "AvgPoolGradD_2",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case("Ascend910A", case1)
+ut_case.add_case("Ascend910A", case2)
 
 def _NCHW_to_NC1C0HW(tensor):
     c0 = 16

@@ -119,7 +119,7 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
     l1_load_kernel = True
     if max_dh_in_l1 < BLOCK_SIZE:
         l1_load_kernel = False
-        max_dh_in_l1 = (l1_size // 2) // (data_size * dilated_w * BLOCK_SIZE)
+        max_dh_in_l1 = l1_size // (data_size * dilated_w * BLOCK_SIZE)
         if max_dh_in_l1 < BLOCK_SIZE:
             error_manager_vector.raise_err_specific_reson(
                 "avg_pool_grad_d", "L1's memory space must be enough to support dilated_h tiling with 16!")
