@@ -37,9 +37,9 @@ _C0 = 16
 _FMAP_HW_MAX = 4096
 _FMAP_HW_MIN = 1
 
-# DeDy H,W must be in [2,4096]
+# DeDy H,W must be in [1,4096]
 _DEDY_HW_MAX = 4096
-_DEDY_HW_MIN = 2
+_DEDY_HW_MIN = 1
 
 # filterH, filterW must be in [1,255]
 _FILTER_HW_MAX = 255
@@ -220,7 +220,7 @@ def _process_input(x_dict,
                                error_manager_util.get_error_message(args_dict))
 
         if isinstance(pads, (tuple, list)) and len(pads) != 6:
-            cube_err.raise_err_one_para('E62501', 'conv3d', 'pads')
+            cube_err.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
 
     ori_shape_x = x_dict.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
@@ -269,32 +269,32 @@ def _process_input(x_dict,
 
 def _normalize_shape_ndchw(ori_shape, ori_format, format_list,
                            param_name='input_param'):
-        """
-        Normalizing the shape to NDCHW
-        """
-        if ori_format not in format_list:
-            args_dict = {
-                'errCode': 'E60008',
-                'param_name': param_name,
-                'expected_format_list': ','.join(format_list),
-                'format': ori_format
-            }
-            raise RuntimeError(args_dict,
-                               error_manager_util.get_error_message(args_dict))
+    """
+    Normalizing the shape to NDCHW
+    """
+    if ori_format not in format_list:
+        args_dict = {
+            'errCode': 'E60008',
+            'param_name': param_name,
+            'expected_format_list': ','.join(format_list),
+            'format': ori_format
+        }
+        raise RuntimeError(args_dict,
+                           error_manager_util.get_error_message(args_dict))
 
-        n_index = ori_format.find('N')
-        d_index = ori_format.find('D')
-        c_index = ori_format.find('C')
-        h_index = ori_format.find('H')
-        w_index = ori_format.find('W')
+    n_index = ori_format.find('N')
+    d_index = ori_format.find('D')
+    c_index = ori_format.find('C')
+    h_index = ori_format.find('H')
+    w_index = ori_format.find('W')
 
-        new_shape = [
-            ori_shape[n_index], ori_shape[d_index],
-            ori_shape[c_index], ori_shape[h_index],
-            ori_shape[w_index]
-        ]
+    new_shape = [
+        ori_shape[n_index], ori_shape[d_index],
+        ori_shape[c_index], ori_shape[h_index],
+        ori_shape[w_index]
+    ]
 
-        return new_shape
+    return new_shape
 
 
 @para_check.check_op_params(
@@ -449,7 +449,7 @@ def _check_conv3dbp_filter_params(
     def _check_attr_pads():
         # pads check
         if isinstance(pads, (tuple, list)) and len(pads) != _PADDING_SHAPE_DIM:
-            cube_err.raise_err_one_para('E62501', 'conv3d', 'pads')
+            cube_err.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
 
         if isinstance(pads, str) and pads not in _PADDING_SUPPORT:
             args_dict = {
@@ -560,18 +560,14 @@ def _check_conv3dbp_filter_params(
     fmap_h_padding = fmap_h + pad_up + pad_down
 
     # special cases
-    fmap_hw_min, dedy_hw_min = _FMAP_HW_MIN, _DEDY_HW_MIN
-    # limitation by chip:
-    # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
-    # load3d support h,w is 1
-    if (1 <= filter_w <= 11) and (1 <= filter_h <= 11) and (1 <= filter_d <= 11) and (
-            fmap_w_padding == filter_w or fmap_h_padding == filter_h):
-        fmap_hw_min = 1
-        dedy_hw_min = 1
+    if dedy_w < 2 and dedy_h != 1:
+        # Chip Design demand dedy_w must >=2 when dedy_h != 1
+        cube_err.raise_err_specific("conv3d_backprop_filter",
+            "Chip Design demand dedy_w must >=2 when dedy_h != 1.")
 
     # Dedy value limit
-    _check_attr_range_dw("Dedy's H", dedy_h, dedy_hw_min, _DEDY_HW_MAX)
-    _check_attr_range_dw("Dedy's W", dedy_w, dedy_hw_min, _DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's H", dedy_h, _DEDY_HW_MIN, _DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's W", dedy_w, _DEDY_HW_MIN, _DEDY_HW_MAX)
 
     # filter value limit
     _check_attr_range_dw("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)
@@ -579,9 +575,9 @@ def _check_conv3dbp_filter_params(
     _check_attr_range_dw("filter's D", filter_d, _FILTER_HW_MIN, _FILTER_HW_MAX)
 
     # Fmap value limit
-    _check_attr_range_dw("Fmap's H", fmap_h, fmap_hw_min, _FMAP_HW_MAX)
-    _check_attr_range_dw("Fmap's W", fmap_w, fmap_hw_min, _FMAP_HW_MAX)
-    _check_attr_range_dw("Fmap's D", fmap_d, fmap_hw_min, _FMAP_HW_MAX)
+    _check_attr_range_dw("Fmap's H", fmap_h, _FMAP_HW_MIN, _FMAP_HW_MAX)
+    _check_attr_range_dw("Fmap's W", fmap_w, _FMAP_HW_MIN, _FMAP_HW_MAX)
+    _check_attr_range_dw("Fmap's D", fmap_d, _FMAP_HW_MIN, _FMAP_HW_MAX)
 
     # stride value limit
     _check_attr_range_dw("stride's H", stride_h, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
@@ -590,11 +586,11 @@ def _check_conv3dbp_filter_params(
 
     def _check_axis_hw():
         if fmap_batch != dedy_batch:
-            cube_err.raise_err_two_paras('E62503', 'conv3d',
+            cube_err.raise_err_two_paras('E62503', 'conv3d_backprop_filter',
                     str(dedy_batch), str(fmap_batch))
 
         if dedy_channel != filter_batch:
-            cube_err.raise_err_two_paras('E62504', 'conv3d',
+            cube_err.raise_err_two_paras('E62504', 'conv3d_backprop_filter',
                     str(dedy_channel), str(filter_batch))
 
         if fmap_channel != filter_channel * groups:

@@ -47,7 +47,7 @@ def _check_shape_rule(shape, dim, name):
                            error_manager_util.get_error_message(args_dict))
     for dim_x in shape:
         if (not isinstance(dim_x, int)) or dim_x <= 0:
-            cube_err.raise_err_one_para('E62509', 'conv3d', name)
+            cube_err.raise_err_one_para('E62509', 'conv3d_backprop_filter', name)
 
 
 def _check_attr_rule(attr, dim, attr_limit, name):
@@ -68,7 +68,7 @@ def _check_attr_rule(attr, dim, attr_limit, name):
                            error_manager_util.get_error_message(args_dict))
     for attr_x in attr:
         if (not isinstance(attr_x, int)) or attr_x < attr_min or attr_x > attr_max:
-            cube_err.raise_err_attr_range_invalid("conv3d",
+            cube_err.raise_err_attr_range_invalid("conv3d_backprop_filter",
                 "[{},{}]".format(attr_min, attr_max),
                 name,
                 str(attr_x))
@@ -80,7 +80,7 @@ def _check_variable_range(variable, minimum, maximum, name):
 
     """
     if variable < minimum or variable > maximum:
-        cube_err.raise_err_attr_range_invalid("conv3d",
+        cube_err.raise_err_attr_range_invalid("conv3d_backprop_filter",
             "[{},{}]".format(minimum, maximum),
             name,
             str(variable))
@@ -94,7 +94,7 @@ def _check_addressing_rule(shape, byte_count, limit):
     # product of all dimension
     product = functools.reduce(lambda x, y: x * y, shape[:])
     if product * byte_count > limit:
-        cube_err.raise_err_attr_range_invalid("conv3d",
+        cube_err.raise_err_attr_range_invalid("conv3d_backprop_filter",
             "(,{}]".format(limit),
             "address_byte",
             str(product * byte_count))
@@ -208,24 +208,13 @@ class Conv3dBackpropFilter:
             and self.weight_shape[3:5] == [1, 1]):
             self.flag_all_one_case = True
 
-        self.flag_load3d_special_case = False
-        # special supporting for another unique case, there are 2 conditions:
-        # (1) weight_height, weight_width in range[1,11]
-        # (2) fmap_height/width + pad_top/left + pad_bottom/right is
-        # weight_height/width
-        _, fmap_depth, _, fmap_height, fmap_width, _ = self.shape_x_6hd
-        _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
-        pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right = self.pad
-        _, dilation_d, _, dilation_h, dilation_w = dilations
-
-        filter_dilated_d = (kernel_depth - 1) * dilation_d + 1
-        filter_dilated_h = (kernel_height - 1) * dilation_h + 1
-        filter_dilated_w = (kernel_width - 1) * dilation_w + 1
-        if ((1 <= kernel_height <= 11) and (1 <= kernel_width <= 11)
-            and (fmap_height + pad_top + pad_bottom == filter_dilated_h
-            or fmap_width + pad_left + pad_right == filter_dilated_w or
-            fmap_depth + pad_front + pad_back == filter_dilated_d)):
-            self.flag_load3d_special_case = True
+        # special cases
+        dedy_h = self.shape_grads_6hd[3]
+        dedy_w = self.shape_grads_6hd[4]
+        if dedy_w < 2 and dedy_h != 1:
+            # Chip Design demand dedy_w must >=2 when dedy_h != 1
+            cube_err.raise_err_specific("conv3d_backprop_filter",
+                "Chip Design demand dedy_w must >=2 when dedy_h != 1.")
 
     def _deconv_dw_input_check_1(self):
         """
@@ -254,26 +243,17 @@ class Conv3dBackpropFilter:
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
 
         if te_util.int_ceil_div(self.weight_shape[0], 16) != self.shape_grads_6hd[2]:
-            cube_err.raise_err_two_paras('E62504', 'conv3d',
+            cube_err.raise_err_two_paras('E62504', 'conv3d_backprop_filter',
                     str(self.shape_grads_6hd[2]),
                     str(te_util.int_ceil_div(self.weight_shape[0], 16)))
 
         # individual range check
-        if not self.flag_all_one_case:
-            if not self.flag_load3d_special_case:
-                _check_variable_range(grads_depth, 1, 4096,
-                                     "depth of out_backprop")
-                _check_variable_range(grads_height, 2, 4096,
-                                     "height of out_backprop")
-                _check_variable_range(grads_width, 2, 4096,
-                                     "width of out_backprop")
-            else:
-                _check_variable_range(grads_depth, 1, 4096,
-                                     "depth of out_backprop")
-                _check_variable_range(grads_height, 1, 4096,
-                                     "height of out_backprop")
-                _check_variable_range(grads_width, 1, 4096,
-                                     "width of out_backprop")
+        _check_variable_range(grads_depth, 1, 4096,
+                             "depth of out_backprop")
+        _check_variable_range(grads_height, 1, 4096,
+                             "height of out_backprop")
+        _check_variable_range(grads_width, 1, 4096,
+                             "width of out_backprop")
         _check_variable_range(fmap_depth, 1, 4096, "depth of x")
         _check_variable_range(fmap_height, 1, 4096, "height of x")
         _check_variable_range(fmap_width, 1, 4096, "width of x")
@@ -310,7 +290,7 @@ class Conv3dBackpropFilter:
             dilation_dhw = [dilationd, dilationh, dilationw]
             for item in dilation_dhw:
                 if item < dilation_min or item > dilation_max:
-                    cube_err.raise_err_attr_range_invalid("conv3d",
+                    cube_err.raise_err_attr_range_invalid("conv3d_backprop_filter",
                         "[{},{}]".format(dilation_min, dilation_max),
                         "dilation_dhw",
                         str(item))
@@ -318,14 +298,18 @@ class Conv3dBackpropFilter:
         _check_dilation()
 
         if self.shape_x_6hd[5] != _BLOCK_SIZE:
-            cube_err.raise_err_one_para('E62511', 'conv3d', str(self.shape_x_6hd[5]))
+            cube_err.raise_err_one_para('E62511',
+                                        'conv3d_backprop_filter',
+                                        str(self.shape_x_6hd[5]))
 
         if self.shape_grads_6hd[5] != _BLOCK_SIZE:
-            cube_err.raise_err_one_para('E62511', 'conv3d', str(self.shape_grads_6hd[5]))
+            cube_err.raise_err_one_para('E62511',
+                                        'conv3d_backprop_filter',
+                                        str(self.shape_grads_6hd[5]))
 
         # batch_size should be same
         if self.shape_x_6hd[0] != self.shape_grads_6hd[0]:
-            cube_err.raise_err_two_paras('E62503', 'conv3d',
+            cube_err.raise_err_two_paras('E62503', 'conv3d_backprop_filter',
                     str(self.shape_grads_6hd[0]), str(self.shape_x_6hd[0]))
 
         # coupling range check
@@ -333,21 +317,24 @@ class Conv3dBackpropFilter:
         computed_grads_depth = (fmap_depth - dilation_kernel_depth +
                                 pad_front + pad_back)//stride_depth + 1
         if computed_grads_depth != grads_depth:
-            cube_err.raise_err_input_params_not_expected("conv3d", "grads_depth",
+            cube_err.raise_err_input_params_not_expected(
+                "conv3d_backprop_filter", "grads_depth",
                 str(grads_depth), str(computed_grads_depth))
 
         dilation_kernel_height = (kernel_height - 1) * dilationh + 1
         computed_grads_height = (fmap_height - dilation_kernel_height +
                                  pad_top + pad_bottom)//stride_height + 1
         if computed_grads_height != grads_height:
-            cube_err.raise_err_input_params_not_expected("conv3d", "grads_height",
+            cube_err.raise_err_input_params_not_expected(
+                "conv3d_backprop_filter", "grads_height",
                 str(grads_height), str(computed_grads_height))
 
         dilation_kernel_width = (kernel_width - 1) * dilationw + 1
         computed_grads_width = (fmap_width - dilation_kernel_width +
                                 pad_left + pad_right)//stride_width + 1
         if computed_grads_width != grads_width:
-            cube_err.raise_err_input_params_not_expected("conv3d", "grads_width",
+            cube_err.raise_err_input_params_not_expected(
+                "conv3d_backprop_filter", "grads_width",
                 str(grads_width), str(computed_grads_width))
 
         fmap_depth_after_pad = fmap_depth + pad_front + pad_back
@@ -356,20 +343,20 @@ class Conv3dBackpropFilter:
         if (dilation_kernel_height > fmap_height_after_pad
             or dilation_kernel_width > fmap_width_after_pad
             or dilation_kernel_depth > fmap_depth_after_pad):
-            cube_err.raise_err_specific("conv3d",
+            cube_err.raise_err_specific("conv3d_backprop_filter",
                 "depth/height/width of filter cannot exceed that of x.")
 
         def _check_pad():
             if pad_front >= dilation_kernel_depth or pad_back >= dilation_kernel_depth:
-                cube_err.raise_err_specific("conv3d",
+                cube_err.raise_err_specific("conv3d_backprop_filter",
                     "pad in front/back should less than depth of filter.")
 
             if pad_top >= dilation_kernel_height or pad_bottom >= dilation_kernel_height:
-                cube_err.raise_err_specific("conv3d",
+                cube_err.raise_err_specific("conv3d_backprop_filter",
                     "pad in up/down should less than height of filter.")
 
             if pad_left >= dilation_kernel_width or pad_right >= dilation_kernel_width:
-                cube_err.raise_err_specific("conv3d",
+                cube_err.raise_err_specific("conv3d_backprop_filter",
                     "pad in left/right should less than width of filter.")
 
         _check_pad()
