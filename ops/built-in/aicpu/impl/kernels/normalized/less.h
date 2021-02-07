@@ -31,7 +31,7 @@ class LessCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  static uint32_t LessCheck(CpuKernelContext &ctx, BCalcInfo &calc_info);
+  static uint32_t LessCheckAndBroadCast(CpuKernelContext &ctx, BCalcInfo &calc_info);
 
   template <typename T>
   static uint32_t LessCompute(CpuKernelContext &ctx, BCalcInfo &calc_info);

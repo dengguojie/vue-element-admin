@@ -42,8 +42,8 @@ uint32_t LessCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "Less check input and output number failed.");
   BCalcInfo calc_info;
-  KERNEL_HANDLE_ERROR(LessCheck(ctx, calc_info),
-                      "Less check params failed.");
+  KERNEL_HANDLE_ERROR(LessCheckAndBroadCast(ctx, calc_info),
+                      "Less check params or bcast failed.");
   auto data_type = ctx.Input(0)->GetDataType();
   switch (data_type) {
     LESS_COMPUTE_CASE(DT_INT8, int8_t, ctx, calc_info)
@@ -65,7 +65,8 @@ uint32_t LessCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
-uint32_t LessCpuKernel::LessCheck(CpuKernelContext &ctx, BCalcInfo &calc_info) {
+uint32_t LessCpuKernel::LessCheckAndBroadCast(CpuKernelContext &ctx,
+                                              BCalcInfo &calc_info) {
   calc_info.input_0 = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(calc_info.input_0, KERNEL_STATUS_PARAM_INVALID,
                        "Get input 0 failed.")

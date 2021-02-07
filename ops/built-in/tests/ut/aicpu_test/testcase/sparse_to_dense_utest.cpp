@@ -85,7 +85,7 @@ TEST_F(TEST_SPARSETODENSE_UT, Host4) {
 TEST_F(TEST_SPARSETODENSE_UT, Host5) {
   vector<DataType> data_types = {DT_INT64, DT_INT64, DT_INT64, DT_INT64, DT_INT64};
   vector<vector<int64_t>> shapes = {{1, 3}, {3}, {1}, {}, {2,2,2}};
-  int64_t input1 ;
+  int64_t input1[1] = {0};
   int64_t input2[4] = {2,2,2};
   int64_t input3[2] = {1,1};
   int64_t input4[1] = {5};
