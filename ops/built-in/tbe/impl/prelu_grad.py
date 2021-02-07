@@ -21,6 +21,63 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from te import tvm
+from impl.util import util_select_op_base
+
+
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
+def op_select_format(grads, features, weights, dx, da, kernel_name="prelu_grad"):
+    """ calculating data
+
+    Parameters
+    ----------
+    grads : TVM tensor
+        input tensor of grad
+    features : TVM tensor
+        input tensor of prelu output
+    weights : TVM tensor
+        input tensor of prelu output
+    dx : dict
+        dx output dict of prelu_grad
+    da : dict
+        da output dict of prelu_grad
+    input_format : str
+        input format of grad
+    kernel_name : str
+        kernel name, default value is "prelu_grad"
+    Returns
+    -------
+    None.
+    """
+
+    weights_shape = weights.get("ori_shape")
+    dtype_base = ["float"]
+    format_grads = ["ND", "NCHW"]
+    format_weight = ["ND", "ND"]
+    dtype_base_out = ["float", "float"]
+
+    if len(weights_shape) == 1:
+        dtype_base_out = dtype_base_out + dtype_base
+        format_grads = format_grads + ["NC1HWC0"] * len(dtype_base)
+        format_weight = format_weight + ["NC1HWC0"] * len(dtype_base)
+
+    dtype_str = ','.join(dtype_base_out)
+    format_x_str = ','.join(format_grads)
+    format_weight_str = ','.join(format_weight)
+
+    input0 = util_select_op_base.gen_param(classify="input0", name="grads", datatype=dtype_str,
+                                           format=format_x_str, unknownshape_format=format_x_str)
+    input1 = util_select_op_base.gen_param(classify="input1", name="features", datatype=dtype_str,
+                                           format=format_x_str, unknownshape_format=format_x_str)
+    input2 = util_select_op_base.gen_param(classify="input2", name="weights", datatype=dtype_str,
+                                           format=format_weight_str, unknownshape_format=format_weight_str)
+    output0 = util_select_op_base.gen_param(classify="output0", name="dx", datatype=dtype_str,
+                                            format=format_x_str, unknownshape_format=format_x_str)
+    output1 = util_select_op_base.gen_param(classify="output1", name="da", datatype=dtype_str,
+                                            format=format_weight_str, unknownshape_format=format_weight_str)
+    param_list = [input0, input1, input2, output0, output1]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
 
 
 # pylint: disable=unused-variable
@@ -60,7 +117,7 @@ def check_inputs_shape(features_shape, weights_shape, input_format):
                                                 weights_shape[1], weights_shape[4])
         error_manager_vector.raise_err_two_input_shape_invalid('prelu_grad', 'feature', 'weight', detail)
     if input_format == "NC1HWC0" and features_dim == 5 and weights_dim == 1 \
-            and features_shape[1]*features_shape[4] != weights_shape[0] and weights_shape[0] != 1:
+            and features_shape[1] * features_shape[4] != weights_shape[0] and weights_shape[0] != 1:
         detail = "weight dim only support two values: 1, or the number of channels at input, " \
                  "when feature_dim is 5(NC1HWC0), and weight_dim is 1, " \
                  "weight value must be 1 or the number of channel(C1*C0)," \
@@ -76,19 +133,19 @@ def check_inputs_shape(features_shape, weights_shape, input_format):
                  "when feature_dim is 4, weight dim must be 1(weight shape is a vector), " \
                  " while feature shape is %s, weight shape is %s" % (features_shape, weights_shape)
         error_manager_vector.raise_err_two_input_shape_invalid('prelu_grad', 'feature', 'weight', detail)
-    if features_dim == 4 and weights_dim != 1:
+    if features_dim == 4 and weights_dim != 1 and weights_dim != 3:
         detail = "weight dim only support two values: 1, or the number of channels at input, " \
                  "when feature_dim is 4, weight dim must be 1(weight shape is a vector)," \
                  "while feature shape is %s, weight shape is %s" % (features_shape, weights_shape)
         error_manager_vector.raise_err_two_input_shape_invalid('prelu_grad', 'feature', 'weight', detail)
-    if input_format == "ND" and features_dim != 1 and weights_dim == 1\
+    if input_format == "ND" and features_dim != 1 and weights_dim == 1 \
             and features_shape[1] != weights_shape[0] and weights_shape[0] != 1:
         detail = "weight dim only support two values: 1, or the number of channels at input, " \
                  "When feature_dim is ND(except 1D), weight dim must be 1(weight shape is a vector)," \
                  "channel dim for features and weights' must be matched," \
                  "while feature shape is %s, weight shape is %s" % (features_shape, weights_shape)
         error_manager_vector.raise_err_two_input_shape_invalid('prelu_grad', 'feature', 'weight', detail)
-    if input_format == "ND" and features_dim != 1 and weights_dim != 1:
+    if input_format == "ND" and features_dim != 1 and weights_dim != 1 and weights_dim != features_dim - 1:
         detail = "weight dim only support two values: 1, or the number of channels at input, " \
                  "When feature_dim is ND(except 1D), weight dim must be 1(weight shape is a vector)," \
                  "channel dim for features and weights' must be matched, " \
@@ -122,9 +179,9 @@ def compare_zero_and_select(input_features, input_weights, shape, dtype):
     shape_input_features = tbe.util.shape_to_list(input_features.shape)
     shape_input_weights = tbe.util.shape_to_list(input_weights.shape)
     # auxiliary number
-    help_min = tvm.const(2**(-126), "float32")
-    help_rec_one = tvm.const(2**38, "float32")
-    help_rec_sec = tvm.const(2**44, "float32")
+    help_min = tvm.const(2 ** (-126), "float32")
+    help_rec_one = tvm.const(2 ** 38, "float32")
+    help_rec_sec = tvm.const(2 ** 44, "float32")
 
     if list(shape_input_features) != list(shape_input_weights):
         input_weights = tbe.broadcast(input_weights, shape, dtype)
@@ -156,6 +213,7 @@ def prelu_grad_compute(input_gradients,
                        output_backprops_dx,
                        output_backprops_da,
                        input_format,
+                       is_weight_generalization,
                        kernel_name="prelu_grad"):
     """
     calculating the backpropagation of prelu operation
@@ -181,6 +239,8 @@ def prelu_grad_compute(input_gradients,
         da output dict of prelu_grad
     input_format : str
         input format of grad
+    is_weight_generalization : bool
+        when weights_dim = grads_dim - 1,is_weight_generalization is Ture
     kernel_name : str
         kernel name, default value is "prelu_grad"
 
@@ -239,7 +299,9 @@ def prelu_grad_compute(input_gradients,
     shape_input_da = shape_util.shape_to_list(output_backprops_da.shape)
     axis = list(range(len(shape_input_da)))
 
-    if len(shape_input_features) == 4:
+    if is_weight_generalization:
+        pass
+    elif len(shape_input_features) == 4:
         if not weight_share:
             output_backprops_da = tbe.sum(
                 output_backprops_da, axis=[0, 2, 3], keepdims=False)
@@ -337,11 +399,16 @@ def prelu_grad(input_gradients,
     if list(shape_input_gradients) != list(shape_input_features):
         shape_input_gradients, shape_input_features, shape_max = \
             shape_util.broadcast_shapes(shape_input_gradients, shape_input_features,
-                             param_name_input1="input_gradients",
-                             param_name_input2="input_features")
+                                        param_name_input1="input_gradients",
+                                        param_name_input2="input_features")
     check_inputs_shape(shape_input_features, shape_input_weights, input_format)
 
-    if len(shape_input_features) == 4:
+    is_weight_generalization = False
+    if (len(shape_input_weights) == len(shape_input_features) - 1) and len(shape_input_weights) != 1:
+        shape_input_weights = list(shape_input_weights)
+        shape_input_weights.insert(0, 1)
+        is_weight_generalization = True
+    elif len(shape_input_features) == 4:
         shape_input_weights = [1, shape_input_weights[0], 1, 1]
     elif input_format == "NC1HWC0" and len(shape_input_weights) == 5:
         pass
@@ -353,6 +420,7 @@ def prelu_grad(input_gradients,
         weights_shape = [1 for _ in range(len(shape_input_features))]
         weights_shape[1] = shape_input_weights[0]
         shape_input_weights = weights_shape
+
     data_input_gradients = tvm.placeholder(
         shape_input_gradients,
         name="data_input_gradients",
@@ -367,7 +435,7 @@ def prelu_grad(input_gradients,
         dtype=input_weights_dtype)
     res_dx, res_da = prelu_grad_compute(
         data_input_gradients, data_input_features, data_input_weights,
-        output_backprops_dx, output_backprops_da, input_format, kernel_name)
+        output_backprops_dx, output_backprops_da, input_format, is_weight_generalization, kernel_name)
     res = [res_dx, res_da]
     tensor_list = [data_input_gradients, data_input_features, data_input_weights] + list(res)
 
