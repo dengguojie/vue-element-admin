@@ -57,4 +57,18 @@ TEST_F(AdamApplyOneAssign, adam_apply_one_case_0) {
   
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc0 = op.GetOutputDesc("output0");
+  auto output_desc1 = op.GetOutputDesc("output1");
+  auto output_desc2 = op.GetOutputDesc("output2");
+  EXPECT_EQ(output_desc0.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {-1};
+  EXPECT_EQ(output_desc1.GetShape().GetDims(), expected_output_shape);
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_desc2.GetDataType(), ge::DT_FLOAT16);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc1.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
+      {2, 100},
+  };
+  EXPECT_EQ(output_shape_range, expected_shape_range);
 }

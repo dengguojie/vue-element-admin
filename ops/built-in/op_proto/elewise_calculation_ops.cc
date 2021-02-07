@@ -2408,6 +2408,17 @@ VERIFY_FUNC_REG(AdamApplyOneWithDecayAssign, AdamApplyOneWithDecayAssignVerify);
 
 // ----------------AdamApplyOneAssign-------------------
 IMPLEMT_COMMON_INFERFUNC(AdamApplyOneAssignInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input1", "output0", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input2", "output1", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input2", "input3", "output2", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+
   return GRAPH_SUCCESS;
 }
 
