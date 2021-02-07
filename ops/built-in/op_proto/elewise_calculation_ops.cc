@@ -3217,12 +3217,11 @@ COMMON_INFER_FUNC_REG(CosineEmbeddingLoss, CosineEmbeddingLossInferShape);
 VERIFY_FUNC_REG(CosineEmbeddingLoss, CosineEmbeddingLossVerify);
 // ------------CosineEmbeddingLoss Op End----------------
 
-// ----------------------KLDiv Begin--------------------------
+// ----------------------KLDiv--------------------------
 IMPLEMT_VERIFIER(KLDiv, KLDivVerify) {
   if (!CheckInputsShapeDtypeSame(op, {"x", "target"})) {
     return GRAPH_FAILED;
   }
-
   std::vector<std::string> const_attr;
   if (!GetConstAttr(op, {"reduction"}, const_attr)) {
     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
@@ -3231,18 +3230,19 @@ IMPLEMT_VERIFIER(KLDiv, KLDivVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(KLDivInferShape) {
-  std::vector<int64_t> o_shape_vector;
-  Shape o_shape(o_shape_vector);
 
-  DataType dtype_x = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  // get input desc
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
 
-  tensordesc_output.SetShape(ge::Shape(o_shape));
-  tensordesc_output.SetDataType(dtype_x);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
-  }
+  auto x_desc = op_info->MutableInputDesc("x");
+  auto x_dtype = x_desc->GetDataType();
+  std::vector<int64_t> x_dims;
+
+  auto y_desc = op_info->MutableOutputDesc("y");
+
+  y_desc->SetShape(GeShape(x_dims));
+  y_desc->SetDataType(x_dtype);
+  
   return GRAPH_SUCCESS;
 }
 

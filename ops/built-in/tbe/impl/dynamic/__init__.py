@@ -27,6 +27,7 @@ from .div_no_nan import div_no_nan
 from .gather_nd import gather_nd
 from .gather import gather
 from .gather_v2 import gather_v2
+from .kl_div import kl_div
 from .bias import bias
 from .bninference_d import bninference_d
 from .scatter_nd import scatter_nd
