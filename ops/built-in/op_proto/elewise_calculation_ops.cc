@@ -2371,13 +2371,14 @@ VERIFY_FUNC_REG(AdamApplyOneWithDecay, AdamApplyOneWithDecayVerify);
 
 // ----------------AdamApplyOne-------------------
 IMPLEMT_COMMON_INFERFUNC(AdamApplyOneInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input1", "output0")) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input1", "output0", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input2", "output1")) {
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input2", "output1", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input2", "input3", "output2")) {
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input2", "input3", "output2", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
 
@@ -2388,7 +2389,7 @@ IMPLEMT_VERIFIER(AdamApplyOne, AdamApplyOneVerify) {
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(AdamApplyOne, AdamApplyOneInferShape);
+COMMON_INFER_FUNC_REG(AdamApplyOne, AdamApplyOneInferShape);
 VERIFY_FUNC_REG(AdamApplyOne, AdamApplyOneVerify);
 // ----------------AdamApplyOne-------------------
 

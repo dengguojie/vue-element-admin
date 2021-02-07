@@ -66,6 +66,7 @@ from .sparse_apply_proximal_adagrad_d import sparse_apply_proximal_adagrad_d
 from .maximum import maximum
 from .minimum import minimum
 from .accumulate_nv2 import accumulate_nv2
+from .adam_apply_one import adam_apply_one
 from .add_n import add_n
 from .greater_equal import greater_equal
 from .less import less
