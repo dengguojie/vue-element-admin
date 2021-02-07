@@ -42,13 +42,11 @@ IMPLEMT_VERIFIER(GeluGrad, GeluGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(GeluGradInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("z");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("dy").GetDataType());
-  (void)op.UpdateOutputDesc("z", tensordesc_output);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"z"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(GeluGrad, GeluGradInferShape);
 VERIFY_FUNC_REG(GeluGrad, GeluGradVerify);
 // ----------------------GeluGrad END----------------------

@@ -66,9 +66,9 @@ case5 = {"params": [{"shape": (10.1, -1), "dtype": "float32", "format": "ND", "o
 
 """
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
 #ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 #ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
@@ -115,8 +115,8 @@ precision_case4 = {"params": [{"shape": (512,256), "dtype": "float32", "format":
                    "calc_expect_func": calc_expect_func,
                    "precision_standard": precision_info.PrecisionStandard(0.01, 0.01)}
 
-ut_case.add_precision_case("Ascend910",precision_case1)
-ut_case.add_precision_case("Ascend910",precision_case2)
-ut_case.add_precision_case("Ascend910",precision_case3)
-ut_case.add_precision_case("Ascend910",precision_case4)
+ut_case.add_precision_case("Ascend910A",precision_case1)
+ut_case.add_precision_case("Ascend910A",precision_case2)
+ut_case.add_precision_case("Ascend910A",precision_case3)
+ut_case.add_precision_case("Ascend910A",precision_case4)
 
