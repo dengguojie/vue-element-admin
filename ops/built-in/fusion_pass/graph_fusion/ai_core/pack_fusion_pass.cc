@@ -65,20 +65,21 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     // Maximum of 48 tensors are supported in mini mode for dynamic shape of pack
     NeedTangent = 48;
   }
-  FUSION_PASS_CHECK(inputs_num <= NeedTangent,
+  const int64_t max_inputs = static_cast<int64_t>(NeedTangent);
+  FUSION_PASS_CHECK(inputs_num <= max_inputs,
                     OP_LOGD(FUSED_OP_TYPE.c_str(), "The amount of input of Pack node is less than %lld.",
-                            NeedTangent),
+                            max_inputs),
                     return NOT_CHANGED);
 
-  if (inputs_num > NeedTangent) {
+  if (inputs_num > max_inputs) {
     size_t nodes_num, nodes_num1;
-    nodes_num1 = inputs_num % NeedTangent;
+    nodes_num1 = inputs_num % max_inputs;
     if (nodes_num1 == 0) {
-      nodes_num = inputs_num / NeedTangent;
+      nodes_num = inputs_num / max_inputs;
     } else {
-      nodes_num = inputs_num / NeedTangent + 1;
+      nodes_num = inputs_num / max_inputs + 1;
     }
-    size_t final_clear_node_num = inputs_num - (NeedTangent * (nodes_num - 1));
+    size_t final_clear_node_num = inputs_num - (max_inputs * (nodes_num - 1));
 
     ge::OpDescPtr packBaseDesc = AttrUtils::CopyOpDesc(fusedDesc);
     packBaseDesc->SetName(packBaseDesc->GetName() + "/ConcatD" + "Base_node");
@@ -111,19 +112,19 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         packDesc->SetName(fusedDesc->GetName() + "/Pack" + to_string(i));
         packDesc->SetType("Pack");
 
-        for (size_t a = inputs_num - 1; a >= NeedTangent; a--) {
+        for (size_t a = inputs_num - 1; a >= max_inputs; a--) {
           OpDescUtils::ClearInputDesc(packDesc, a);
         }
         ge::NodePtr pack_node = graph.AddNode(packDesc);
         fusionNodes.push_back(pack_node);
-        ge::AttrUtils::SetInt(pack_node->GetOpDesc(), "N", NeedTangent);
+        ge::AttrUtils::SetInt(pack_node->GetOpDesc(), "N", max_inputs);
 
         ge::GeTensorDesc PackOutputTensor_1 = packDesc->GetOutputDesc(0);
         ge::GeShape PackOutputShape_1 = PackOutputTensor_1.GetShape();
         int64_t dimnum = PackOutputShape_1.GetDimNum();
 
         int64_t axis;
-        const int64_t pack_num = static_cast<int64_t>(NeedTangent);
+        const int64_t pack_num = static_cast<int64_t>(max_inputs);
         ge::AttrUtils::GetInt(pack_node->GetOpDesc(), "axis", axis);
         if (axis < 0) {
           axis += (dimnum);
@@ -161,13 +162,13 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
                     pack_base_node->GetName().c_str(), i, pack_node->GetName().c_str(), i),
             return FAILED);
 
-        for (size_t m = 0; m < pack_num; m++) {
+        for (size_t m = 0; m < max_inputs; m++) {
           FUSION_PASS_CHECK(
-              SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(m + i * pack_num)->GetPeerOutAnchor(),
+              SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(m + i * max_inputs)->GetPeerOutAnchor(),
                                                  pack_node->GetInDataAnchor(m)),
               OP_LOGE(FUSED_OP_TYPE.c_str(),
                       "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
-                      fusedNode->GetName().c_str(), (m + i * pack_num), pack_node->GetName().c_str(), m),
+                      fusedNode->GetName().c_str(), (m + i * max_inputs), pack_node->GetName().c_str(), m),
               return FAILED);
         }
       } else {
@@ -220,11 +221,11 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
 
         for (size_t n = 0; n < final_clear_node_num; n++) {
           FUSION_PASS_CHECK(
-              SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(n + i * pack_num)->GetPeerOutAnchor(),
+              SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(n + i * max_inputs)->GetPeerOutAnchor(),
                                                  last_pack_node->GetInDataAnchor(n)),
               OP_LOGE(FUSED_OP_TYPE.c_str(),
                       "Add edge from fused node:%s's index[%d] to fusion node:%s's index[%d] failed.",
-                      fusedNode->GetName().c_str(), (n + i * pack_num), last_pack_node->GetName().c_str(), n),
+                      fusedNode->GetName().c_str(), (n + i * max_inputs), last_pack_node->GetName().c_str(), n),
               return FAILED);
         }
       }
