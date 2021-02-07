@@ -312,7 +312,7 @@ REGISTER_CUSTOM_OP("Igammac")
 // register InitializeTable op to GE
 REGISTER_CUSTOM_OP("InitializeTable")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("InitializeTableV2")
+    .OriginOpType({"InitializeTable", "InitializeTableV2"})
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
@@ -347,14 +347,14 @@ REGISTER_CUSTOM_OP("LogUniformCandidateSampler")
 // register LookupTableExport op to GE
 REGISTER_CUSTOM_OP("LookupTableExport")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("LookupTableExportV2")
+    .OriginOpType({"LookupTableExport", "LookupTableExportV2"})
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
 // register LookupTableImport op to GE
 REGISTER_CUSTOM_OP("LookupTableImport")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("LookupTableImportV2")
+    .OriginOpType({"LookupTableImport", "LookupTableImportV2"})
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
@@ -368,7 +368,7 @@ REGISTER_CUSTOM_OP("LookupTableInsert")
 // register LookupTableSize op to GE
 REGISTER_CUSTOM_OP("LookupTableSize")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("LookupTableSizeV2")
+    .OriginOpType({"LookupTableSize", "LookupTableSizeV2"})
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 

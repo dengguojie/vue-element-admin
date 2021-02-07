@@ -24,7 +24,7 @@ namespace domi {
 // register HashTable op to GE
 REGISTER_CUSTOM_OP("HashTable")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("HashTableV2")
+    .OriginOpType({"HashTable", "HashTableV2"})
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
