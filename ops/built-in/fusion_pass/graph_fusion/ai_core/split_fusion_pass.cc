@@ -83,11 +83,16 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   FUSION_PASS_CHECK(fuse_desc1 == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
-
+  // split dynamic shape check supported
+  if (HasUnKnowDimShape(fused_node1)) {
+    FUSION_PASS_CHECK(CheckOpSupported(fuse_desc1), OP_LOGI(FUSED_NODE, "split dynamic shape supported"),
+                      return NOT_CHANGED);
+    OP_LOGI(FUSED_NODE, "CheckOpSupported fail, split dynamic");
+  }
   // build a fusion node op desc
   OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(fused_node1, fusionOpType, splitAttrInfo);
   FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusion op desc is nullptr."),
-                    return PARAM_INVALID);
+                    return NOT_CHANGED);
 
   // check op support
   FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Split not supported."),
