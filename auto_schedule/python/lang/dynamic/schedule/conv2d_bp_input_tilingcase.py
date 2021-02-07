@@ -442,7 +442,9 @@ class Conv2dBpInputTiling(CubeTilingOp):
                     return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                             "B_shape": self.b_info, "C_shape": self.c_info}
             elif mc_factor > 1:
-                tiling_in["tiling"]["CUB_matrix"][2] -= 1
+                tiling_in["tiling"]["CUB_matrix"][1] -= 1
+                tiling_in["tiling"]["CL0_matrix"][1] -= 1
+                tiling_in["tiling"]["AL0_matrix"][0] -= 1
             else:
                 return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                         "B_shape": self.b_info, "C_shape": self.c_info}
