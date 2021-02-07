@@ -45,6 +45,7 @@ if (ENABLE_TEST STREQUAL UT)
                 ops_cpp_op_tiling_utest
                 ops_cpp_fusion_pass_aicore_utest
                 cpu_kernels_ut
+                ops_cpp_plugin_utest
                 ops_cpp_onnx_plugin_utest
                 COMMENT "Generate cpp coverage for ops utest"
             )
