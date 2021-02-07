@@ -668,7 +668,7 @@ class TilingSelection:
                         cur_seed_cnt = next(self.seed_cnt)
                         cost_tilings.append(
                             self.op.assembly_case(cost_seed['tiling'], covered_area_other, cur_seed_cnt))
-                    tiling_range[cur_seed_cnt] = covered_area_other
+                        tiling_range[cur_seed_cnt] = covered_area_other
                     cur_seed_cnt = next(self.seed_cnt)
                     cost_tilings.append(
                         self.op.assembly_case(cost_seed['tiling'], covered_area_self, cur_seed_cnt))
@@ -791,13 +791,13 @@ def _cut_rectangle(base, cut, cut_self=()):
             rect_tmp = copy.deepcopy(rect)
             rect_tmp[i] = base[i]
             rect_tmp[i + 1] = cut[i] - 1
-            gen_rects.append(tuple(rect_tmp))
+            gen_rects.append(rect_tmp)
 
         if cut[i + 1] < base[i + 1]:
             rect_tmp = copy.deepcopy(rect)
             rect_tmp[i] = cut[i + 1] + 1
             rect_tmp[i + 1] = base[i + 1]
-            gen_rects.append(tuple(rect_tmp))
+            gen_rects.append(rect_tmp)
 
         rect[i] = max(base[i], cut[i])
         rect[i + 1] = min(base[i + 1], cut[i + 1])
@@ -805,10 +805,11 @@ def _cut_rectangle(base, cut, cut_self=()):
         i = i + 2
 
     if cut_self:
-        for index, rec in enumerate(gen_rects):
-            if rec[-1] == cut_self[-1]:
-                gen_rects[index] = tuple(list(rec[:-1]) + [rec[-1] - 1])
-                break
+       cut_self = _cal_overlap(base, cut_self)[1]
+       for index, rect in enumerate(gen_rects):
+           if rect[:4] == cut_self[:4] and rect[-1] == cut_self[-1]:
+               gen_rects[index][-1] -= 1
+    gen_rects = [tuple(rect) for rect in gen_rects]
     return gen_rects
 
 def _cut_cuboid(base, cut):

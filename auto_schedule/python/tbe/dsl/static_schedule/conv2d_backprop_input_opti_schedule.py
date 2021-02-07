@@ -2072,12 +2072,8 @@ def opti_schedule(
             if dilate_ub is not None:
                 filling_zero_ub = TENSOR_MAP["tensor_fillling_zero"]
                 sch[dilate_ub].double_buffer()
-                sch[filling_zero_ub].double_buffer()
-                if var_map:
-                    filling_one_ub = TENSOR_MAP["tensor_fillling_one"]
-                    sch[filling_one_ub].double_buffer()
-                    tensor_vn = TENSOR_MAP["tensor_vn"]
-                    sch[tensor_vn].double_buffer()
+                if not var_map:
+                    sch[filling_zero_ub].double_buffer()
             if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
                 sch[fusion_dx_gm].double_buffer()
                 sch[drelu_ub].double_buffer()

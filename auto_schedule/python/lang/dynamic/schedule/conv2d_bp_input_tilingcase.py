@@ -137,22 +137,44 @@ class Conv2dBpInputTiling(CubeTilingOp):
         -------
         tiling_valid_flag: If true means it's legal
         """
-
         tiling = tiling_mess.get('tiling')
-        if (self.stride_h > 1 or self.stride_w > 1) and tiling.get("AUB_shape"):
-            cub_size = (reduce(lambda x, y: x * y, tiling.get("CUB_matrix"))
-                        * tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
-                        * BIT_RATIO_DICT.get(self.c_type))
-            aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
-            aub_co1 = aub_tiling_k // (self.b_info[2] * self.b_info[3] * utils.FP16_K)
-            aub_w = tiling_mess["A_shape"][3] * self.stride_w
-            aub_h = (aub_tiling_m + self.stride_h - 1) // self.stride_h
-            aub_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
-            aub_bit = BIT_RATIO_DICT.get(self.a_type)
-            aub_size = aub_co1 * aub_h * tiling_mess["A_shape"][3] * utils.FP16_K * aub_db * aub_bit
-            aub_filling_size = aub_co1 * aub_tiling_m * aub_w * utils.FP16_K * aub_db * aub_bit
-            if (cub_size + aub_size + aub_filling_size) > cce_conf.get_soc_spec("UB_SIZE"):
-                return False
+        cub_db_flag = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
+        cub_dtype_bit = BIT_RATIO_DICT.get(self.c_type)
+        cub_size = (reduce(lambda x, y: x * y, tiling.get("CUB_matrix")) * cub_db_flag * cub_dtype_bit)
+        ub_size_limit = cce_conf.get_soc_spec("UB_SIZE")
+        if (self.stride_h > 1 or self.stride_w > 1):
+            if tiling.get("AUB_shape"):
+                aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
+                aub_co1 = aub_tiling_k // (self.b_info[2] * self.b_info[3] * utils.FP16_K)
+                aub_w = tiling_mess["A_shape"][3] * self.stride_w
+                aub_h = (aub_tiling_m + self.stride_h - 1) // self.stride_h
+                aub_db = tiling.get("manual_pingpong_buffer").get("AUB_pbuffer")
+                aub_bit = BIT_RATIO_DICT.get(self.a_type)
+                aub_size = aub_co1 * aub_h * tiling_mess["A_shape"][3] * utils.FP16_K * aub_db * aub_bit
+                aub_filling_size = aub_co1 * aub_tiling_m * aub_w * utils.FP16_K * aub_db * aub_bit
+                if (cub_size + aub_size + aub_filling_size) > ub_size_limit:
+                    return False
+            elif self.k_h == 1 and self.k_w == 1:
+                dedy_h, dedy_w = tiling_mess.get("A_shape")[2:4]
+                dx_w = tiling_mess.get("C_shape")[3]
+                nc_factor, mc_factor, m0, n0 = tiling.get("CUB_matrix")[:4]
+                mc_from_tiling = mc_factor * m0
+                max_n_is_hfactor = (ub_size_limit - cub_size) // (
+                    nc_factor * n0 * cub_db_flag * cub_dtype_bit * self.stride_h) // dx_w
+                if mc_from_tiling >= dedy_w:
+                    if mc_from_tiling % dedy_w == 0 and (mc_from_tiling * self.stride_h * self.stride_w
+                        <= utils.NHW_MAX) and dedy_h % (mc_from_tiling // dedy_w) == 0:
+                        n_is_hfactor_val = mc_from_tiling // dedy_w
+                    else:
+                        n_is_hfactor_val = (mc_from_tiling - utils.FP16_M) // dedy_w
+                else:
+                    n_is_hfactor_val = (mc_from_tiling - utils.FP16_M) // dedy_w
+                n_is_hfactor = min(n_is_hfactor_val, max_n_is_hfactor)
+                dilate_l0c_m = dx_w * n_is_hfactor * self.stride_h
+                cub_dilate_size = dilate_l0c_m * nc_factor * n0 * cub_db_flag * cub_dtype_bit
+                zero_and_one = self.stride_h * self.stride_w * utils.FP16_K * cub_dtype_bit
+                if (cub_size + cub_dilate_size + zero_and_one) > ub_size_limit:
+                    return False
         return True
 
     def get_costmodel_tiling(self, shape):
@@ -210,12 +232,15 @@ class Conv2dBpInputTiling(CubeTilingOp):
             if self.k_h == 1 and self.k_w == 1 and (self.pad_mode == "VAR" or sum(self.cur_pads) == 0):
                 dy_w_tiling = tiling_in.get("CL0_matrix")[1] * tiling_in.get("CL0_matrix")[2]
                 dy_w = self.get_output_w(fmap_w)
+                if self.pad_mode == "VAR":
+                    fmap_w_tiling = min((dy_w_tiling - MIN_STEP - 1) * self.stride_w, fmap_w_tiling)
+                else:
+                    fmap_w_tiling = min(
+                        (dy_w_tiling - MIN_STEP - 1 - self.k_w) * self.stride_w + self.k_w, fmap_w_tiling)
                 if dy_w % 16 == 0 and dy_w > dy_w_tiling - MIN_STEP and dy_w_tiling > (MIN_STEP + self.k_w):
-                    if self.pad_mode == "VAR":
-                        fmap_w_tiling = (dy_w_tiling - MIN_STEP - 1) * self.stride_w
-                    else:
-                        fmap_w_tiling = (dy_w_tiling - MIN_STEP - 1 - self.k_w) * self.stride_w + self.k_w
                     split_range_flag = True
+                else:
+                    fmap_w_tiling = max(fmap_w_tiling, fmap_w)
             return split_range_flag, fmap_w_tiling
 
         def _modify_max_range():
@@ -275,18 +300,18 @@ class Conv2dBpInputTiling(CubeTilingOp):
         tiling_range += [w_range_min, w_range_max]
         if split_range_flag:
             tiling_range_self = tiling_range[:4] + [fmap_w, fmap_w]
-            tiling_ranges = [tiling_range, tiling_range_self]
+            tiling_range_list = [tiling_range, tiling_range_self]
 
         if not tiling.get("AL1_shape"):
             if split_range_flag:
-                return tiling_ranges
+                return tiling_range_list
             return tiling_range
 
         tiling_range[-1] = _modify_max_range()
         tiling_range[3], tiling_range[5] = _get_perf_range(tiling_range[3], tiling_range[5])
 
         if split_range_flag:
-            return tiling_ranges
+            return tiling_range_list
         return tiling_range
 
     def assembly_case(self, tiling, coverage, cnt):
@@ -404,6 +429,22 @@ class Conv2dBpInputTiling(CubeTilingOp):
     def _check_and_set_default_tiling(self, tiling_in):
         if tiling_in.get("tiling").get("AL0_matrix")[2] == 32:
             tiling_in = {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
+                        "B_shape": self.b_info, "C_shape": self.c_info}
+        while not self.check_tiling_ub(tiling_in):
+            if tiling_in.get("tiling").get("manual_pingpong_buffer").get("CUB_pbuffer") == 2:
+                tiling_in["tiling"]["manual_pingpong_buffer"]["CUB_pbuffer"] = 1
+                continue
+            _, mc_factor, m0, _ = tiling_in.get("tiling").get("CUB_matrix")[:4]
+            if self.k_h == 1 and self.k_w == 1:
+                if (mc_factor * m0 - utils.FP16_M) > self.a_info[3]:
+                    tiling_in["tiling"]["CUB_matrix"][2] -= 1
+                else:
+                    return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
+                            "B_shape": self.b_info, "C_shape": self.c_info}
+            elif mc_factor > 1:
+                tiling_in["tiling"]["CUB_matrix"][2] -= 1
+            else:
+                return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                         "B_shape": self.b_info, "C_shape": self.c_info}
         return tiling_in
 

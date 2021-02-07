@@ -1606,8 +1606,11 @@ def general_schedule(
                 ]
                 sch_agent.attach_at(a_filling, a_l1, ub_shape)
                 if var_map:
+                    extent_ub_h = min(ub_shape[2] // stride_h + 1, ub_shape[2])
                     sch[a_zero].buffer_tile(
                         (None, None), (None, None), (None, ub_shape[2]), (None, ub_shape[3]), (None, None))
+                    sch[dy_vn].buffer_tile((None, None), (None, None), (None, extent_ub_h), (None, None), (None, None))
+                    sch[a_ub].buffer_tile((None, None), (None, None), (None, extent_ub_h), (None, None), (None, None))
             if var_map:
                 sch_agent.same_attach(dy_vn, a_filling)
             sch_agent.same_attach(a_zero, a_filling)
@@ -2030,6 +2033,9 @@ def general_schedule(
                 aub_co0 = cce_params.CUBE_MKN[c_col.dtype]["mac"][1]
                 aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
                 aub_co1 = aub_tiling_k // (kernel_h * kernel_w * aub_co0)
+                if tiling.get("AL1_shape"):
+                    al1_co1 = tiling.get("AL1_shape")[0] // (kernel_h * kernel_w * aub_co0)
+                    aub_co1 = min(aub_co1, al1_co1)
                 aub_filling_w = dy_w * stride_w
                 aub_h = (aub_tiling_m + stride_h - 1) // stride_h
                 al1_m = _ceil(a_l1.shape[2] * a_l1.shape[3], cl0_tiling_m0) * cl0_tiling_m0
@@ -2052,8 +2058,6 @@ def general_schedule(
                 sch[dy_vn].set_storage_bound(aub_bound)
                 sch[a_zero].set_storage_bound(a_filling_bound)
                 sch[a_ub].set_storage_bound(aub_bound)
-                sch[dy_vn].buffer_tile((None, None), (None, None), (None, aub_h), (None, None), (None, None))
-                sch[a_ub].buffer_tile((None, None), (None, None), (None, aub_h), (None, None), (None, None))
 
         al1_bound, al1_h = _get_al1_bound()
         sch[a_l1].set_storage_bound(al1_bound)
