@@ -101,7 +101,7 @@ def reduce_any(x, axes, y, keepdims=False, kernel_name="reduce_any"):
     axes["rel_pos_to_reduce"] = "axis"
 
     schedules = []
-    ins = classify([x, axes], Mode.REDUCE)
+    ins = classify([x, axes], Mode.REDUCE, {"keepdims": keepdims})
     tensors = []
 
     for (_x, _axes) in ins:

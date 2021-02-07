@@ -157,7 +157,8 @@ def reduce_mean_d(input_x, output_y, axes,
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([input_x, input_axis], tbe_base.shape_classifier.Mode.REDUCE)
+    ins = tbe_base.shape_classifier.classify([input_x, input_axis], tbe_base.shape_classifier.Mode.REDUCE,
+                                             {"keepdims": keepdims is True})
     for (_input_x, _axes) in ins:
         with tbe_base.compute():
             # not support 5HD

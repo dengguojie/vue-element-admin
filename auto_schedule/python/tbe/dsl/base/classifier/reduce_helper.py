@@ -158,6 +158,22 @@ def inputs_classify(inputs):
     return inputs_before_reduce, inputs_after_reduce, input_axis, inputs_classification
 
 
+def _process_all_unknown_shape(shape_list, range_list):
+    """
+    process input include shape -2
+    """
+    all_unknown_shape_len = 8
+    for single_shape in shape_list:
+        if tuple(single_shape) != (-2, ):
+            all_unknown_shape_len = len(single_shape)
+            break
+
+    for idx, single_shape in enumerate(shape_list):
+        if tuple(single_shape) == (-2, ):
+            shape_list[idx] = [-1] * all_unknown_shape_len
+            range_list[idx] = [(0, None)] * all_unknown_shape_len
+
+
 def generate_reduce_input(inputs_before_reduce, inputs_after_reduce=None, reduce_axis=None, keep_dims=None):
     """
     obtain the shape and range to classify
@@ -182,6 +198,8 @@ def generate_reduce_input(inputs_before_reduce, inputs_after_reduce=None, reduce
     shape_local = [x["shape"] for x in inputs_before_reduce]
     range_local = [x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0]) for x in
                    inputs_before_reduce]
+
+    _process_all_unknown_shape(shape_local, range_local)
 
     def _get_dim(i):
         return max([s[i] for s in shape_local])
@@ -209,20 +227,6 @@ def generate_reduce_input(inputs_before_reduce, inputs_after_reduce=None, reduce
             shape_out[index] = range_out[index][0]
 
     return {"shape": shape_out, "range": range_out}
-
-
-def judge_keep_dims(inputs_before_reduce, inputs_after_reduce):
-    """
-    judge keep_dims is not need or True/False
-    """
-    keep_dims = None
-    if inputs_after_reduce:
-        if len(inputs_after_reduce[0]["shape"]) == len(inputs_before_reduce[0]["shape"]):
-            keep_dims = True
-        else:
-            keep_dims = False
-
-    return keep_dims
 
 
 def generate_ins_of_after_reduce(input_x, input_axis, keep_dims):

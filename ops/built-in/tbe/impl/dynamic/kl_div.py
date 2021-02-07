@@ -201,7 +201,7 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     input_target["ori_shape"] = shape_one_dim
     input_target["range"] = [(1, 10)]
 
-    ins = classify([input_x, input_target, input_axis], Mode.REDUCE)
+    ins = classify([input_x, input_target, input_axis], Mode.REDUCE, {"keepdims": False})
 
     schedules, tensors = [], []
 

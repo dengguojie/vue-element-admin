@@ -177,7 +177,7 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     add_compile_info("_ori_axis", g_shape_list)
     input_axis = {"shape": [len(g_shape_list), ], "value": g_shape_list, "rel_pos_to_reduce": "axis"}
     global REDUCE_LIST
-    ins = classify([x, input_axis], Mode.REDUCE)
+    ins = classify([x, input_axis], Mode.REDUCE, {"keepdims": False})
     schedules, tensors = [], []
     for (_x, axes) in ins:
         with tbe_base.compute():

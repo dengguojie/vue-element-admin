@@ -108,4 +108,4 @@ def auto_schedule(outs, option=None):
 
 def build(sch, config_map=None):
 
-def classify(ins: list, mode: str):
+def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):

@@ -109,7 +109,7 @@ def reduce_max(x, axes, y, keepdims=False, kernel_name="reduce_max"):
 
     schedules = []
     tensors = []
-    ins = classify([x, axes], Mode.REDUCE)
+    ins = classify([x, axes], Mode.REDUCE, {"keepdims": keepdims})
 
     for (x, axes) in ins:
         with tbe_base.compute():

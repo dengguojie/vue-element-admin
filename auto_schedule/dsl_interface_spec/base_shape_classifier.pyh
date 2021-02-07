@@ -13,4 +13,4 @@ MODE_TO_STRING_MAP = {
     Mode.REDUCE: "reduce"
 }
 
-def classify(ins: list, mode: Mode = Mode.NONE):
+def classify(ins: list, mode: Mode = Mode.NONE, extra_params: Optional[Dict[str, Any]] = None):

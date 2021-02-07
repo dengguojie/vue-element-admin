@@ -15,6 +15,11 @@
 """
 classifier of shape
 """
+from typing import Any
+from typing import Dict
+from typing import Optional
+
+from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.classifier import classify_elewise
 from tbe.dsl.base.classifier import classify_reduction
 
@@ -31,11 +36,12 @@ CLASSIFY_SAME_PATTERN_MAP = {
 }
 
 
-def classify(ins: list, mode: str):
+def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify
     :param ins:
     :param mode:
+    :param extra_params: must include keepdims when mode is reduce
     :return:
     """
     mode = CLASSIFY_SAME_PATTERN_MAP.get(mode, mode)
@@ -44,6 +50,13 @@ def classify(ins: list, mode: str):
     if mode == BROADCAST:
         return classify_elewise(ins, support_broadcast=True)
     if mode == REDUCE:
-        return classify_reduction(ins)
+        if "keepdims" not in extra_params:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "inputs of classify must include the dict extra_params with the key keepdims " \
+                                          "when mode is reduce"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        return classify_reduction(ins, extra_params.get("keepdims"))
 
     return [ins]

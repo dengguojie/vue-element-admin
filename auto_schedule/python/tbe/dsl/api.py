@@ -17,6 +17,10 @@ tbe dsl API:
 In order to simplify the procedure of writing schedule, TBE provides a set of TensorEngine APIs.
 Using those API to develop operators, you can use the "Auto_schedule" create schedule.
 """
+from typing import Any
+from typing import Dict
+from typing import Optional
+
 from .compute import cast
 from .compute import math
 from .compute import nn
@@ -981,11 +985,12 @@ def build(sch, config_map=None):
     return tbe_build(sch, config_map)
 
 
-def classify(ins: list, mode: str):
+def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify according to mode
     :param ins:
     :param mode: support elewise, broadcast, reduce
+    :param extra_params: must include keepdims when mode is reduce
     :return:
     """
-    return shape_classifier.classify(ins, mode)
+    return shape_classifier.classify(ins, mode, extra_params)

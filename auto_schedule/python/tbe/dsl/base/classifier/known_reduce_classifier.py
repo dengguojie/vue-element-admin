@@ -15,7 +15,6 @@
 """
 classifier of shape in known reduce axis
 """
-
 from te import platform as cce
 
 from . import reduce_helper as helper
@@ -30,14 +29,14 @@ ZERO = "zero"
 
 class KnownReduceClassifier:
 
-    def __init__(self, ins: list):
+    def __init__(self, ins: list, keepdims: bool):
         self.ins = ins
         inputs_before_reduce, inputs_after_reduce, inputs_axis, self.inputs_classification = \
             helper.inputs_classify(ins)
         self.reduce_axes = inputs_axis[0].get("value")
-        self.keep_dims = helper.judge_keep_dims(inputs_before_reduce, inputs_after_reduce)
+        self.keepdims = keepdims
         self.input_x = helper.generate_reduce_input(inputs_before_reduce, inputs_after_reduce,
-                                                    self.reduce_axes, self.keep_dims)
+                                                    self.reduce_axes, self.keepdims)
 
         self.zero_axis_status = self._handle_zero_axis()
 
@@ -118,7 +117,7 @@ class KnownReduceClassifier:
             "rel_pos_to_reduce": AXIS,
             "ori_axis": self.n_reduce_axes
         }
-        ins_after_reduce = helper.generate_ins_of_after_reduce(ins_before_reduce, ins_axis, self.keep_dims)
+        ins_after_reduce = helper.generate_ins_of_after_reduce(ins_before_reduce, ins_axis, self.keepdims)
         out_ins = [helper.generate_ins_of_all(ins_before_reduce, ins_after_reduce, ins_axis,
                                               self.inputs_classification)]
 
@@ -128,7 +127,7 @@ class KnownReduceClassifier:
         out_ins = []
         for ins in helper.generate_ins(self.reduce_axis_size, self.dim_len):
             helper.refine_ins(ins[0], ins[1])
-            ins_after_reduce = helper.generate_ins_of_after_reduce(ins[0], ins[1], self.keep_dims)
+            ins_after_reduce = helper.generate_ins_of_after_reduce(ins[0], ins[1], self.keepdims)
             out_ins.append(helper.generate_ins_of_all(ins[0], ins_after_reduce, ins[1], self.inputs_classification))
 
         if self.zero_axis_status == ZeroAxisStatus.MAYBE:

@@ -106,7 +106,8 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([x, input_axis], tbe_base.shape_classifier.Mode.REDUCE)
+    ins = tbe_base.shape_classifier.classify([x, input_axis], tbe_base.shape_classifier.Mode.REDUCE,
+                                             {"keepdims": keepdims is True})
 
     for (x, axes) in ins:
         with tbe_base.compute():

@@ -619,18 +619,18 @@ def _check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT,
 
     _check_shape_range(max_rank, MIN_UNKNOWN_SHAPE_RANK, param_name, shape)
     for _, dim in enumerate(shape):
-        valid_dim = -1 <= dim <= max_dim
+        valid_dim = -2 <= dim <= max_dim
         if not valid_dim:
             error_info = {
                 'errCode': OP_ERROR_CODE_002, 'op_name': OP_NAME,
-                'param_name': param_name, 'min_value': "-1",
+                'param_name': param_name, 'min_value': "-2",
                 'max_value': max_dim, 'real_value': dim}
             raise RuntimeError(
                 error_info,
                 "In op, the parameter[%s] should be in "
                 "the range of [%s, %s], "
                 "but actually is [%s]."
-                % (error_info['param_name'], -1, max_dim, dim))
+                % (error_info['param_name'], -2, max_dim, dim))
 
 
 def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT, min_rank=0,

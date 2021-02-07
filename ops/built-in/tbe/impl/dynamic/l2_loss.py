@@ -98,7 +98,7 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []
-    ins = classify([x, input_axis], Mode.REDUCE)
+    ins = classify([x, input_axis], Mode.REDUCE, {"keepdims": False})
     tensors = []
 
     for (_x, axes) in ins:

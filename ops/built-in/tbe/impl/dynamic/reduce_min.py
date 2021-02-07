@@ -106,7 +106,7 @@ def reduce_min(x, axes, y, keepdims=False, kernel_name="reduce_min"):
 
     schedules = []
     tensors = []
-    ins = classify([x, axes], Mode.REDUCE)
+    ins = classify([x, axes], Mode.REDUCE, {"keepdims": keepdims})
 
     for (_x, _axes) in ins:
         with tbe_base.compute():

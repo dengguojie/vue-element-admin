@@ -17,6 +17,9 @@ classifier of shape
 """
 from enum import Enum
 from enum import auto
+from typing import Optional
+from typing import Dict
+from typing import Any
 
 
 class Mode(Enum):
@@ -37,12 +40,13 @@ MODE_TO_STRING_MAP = {
 }
 
 
-def classify(ins: list, mode: Mode = Mode.NONE):
+def classify(ins: list, mode: Mode = Mode.NONE, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify
     :param ins:
     :param mode:
+    :param extra_params: must include keepdims when mode is reduce
     :return:
     """
     import tbe
-    return tbe.dsl.classify(ins, MODE_TO_STRING_MAP.get(mode))
+    return tbe.dsl.classify(ins, MODE_TO_STRING_MAP.get(mode), extra_params)
