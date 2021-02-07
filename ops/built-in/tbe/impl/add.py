@@ -129,6 +129,11 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     format_5hd = ["NC1HWC0"]
+    # 2dims add (3|4)dims,fe regards 2dims as HW,actually is WC
+    if (len(shape_x) == 2 and (len(shape_y) == 3 or len(shape_y) == 4)) \
+            or (len(shape_y) == 2 and (len(shape_x) == 3 or len(shape_x) == 4)):
+        format_5hd = []
+    
     len_format_list = len(dtype_list)
     add_nd_nz = False
     add_nz_nd = False
@@ -181,29 +186,29 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1) \
                         and (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
-                    format_list.append("NC1HWC0")
+                    format_list += format_5hd
                 if format_x == format_y == "HWCN":
                     if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if x_wdim == y_wdim and x_hdim == y_hdim:
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if (x_wdim == x_hdim == 1) or (y_hdim == y_wdim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if (x_hdim == y_wdim == 1) or (x_wdim == y_hdim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                 if format_x == format_y == "NHWC":
                     if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if x_ndim == y_ndim and x_hdim == y_hdim:
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
                     if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
-                        format_list.append("NC1HWC0")
+                        format_list += format_5hd
             if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
                 if (format_x == format_y == "NHWC" and list(shape_x) == list(shape_y)) or \
                         (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
@@ -211,7 +216,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                 if format_x == format_y == "HWCN" and x_wdim * x_hdim == y_wdim * y_hdim:
                     format_list.append("FRACTAL_Z")
             if list(shape_x) == list(shape_y):
-                format_list.append("NC1HWC0")
+                format_list += format_5hd
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -229,7 +234,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
             if x_cdim % 16 == 0 and y_cdim % 16 == 0:
                 if x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1:
-                    format_list.append("NC1HWC0")
+                    format_list += format_5hd
             if x_cdim % 16 == 0 and x_ndim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0:
                 if format_x == format_y == "NCHW" and x_hdim * x_wdim == y_hdim * y_wdim and x_cdim == y_cdim:
                     if x_ndim == y_ndim:
@@ -283,7 +288,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         if len(shape_x) == 4 and len(
                 shape_y) == 1 and format_x in format_4d_list:
             if x_cdim % 16 == 0:
-                format_list.append("NC1HWC0")
+                format_list += format_5hd
             if x_cdim % 16 == 0 and x_ndim % 16 == 0:
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
@@ -302,7 +307,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     elif len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
         if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
             if y_cdim % 16 == 0:
-                format_list.append("NC1HWC0")
+                format_list += format_5hd
             if y_cdim % 16 == 0 and y_ndim % 16 == 0:
                 format_list.append("FRACTAL_Z")
         for dtype in dtype_list:
@@ -319,7 +324,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     # ND+ND,5HD+5HD
     else:
         if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
-            format_list.append("NC1HWC0")
+            format_list += format_5hd
 
         if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
             if format_x == format_y == "NCHW" or format_x == format_y == "HWCN" or format_x == format_y == "NHWC":
@@ -327,37 +332,37 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                     if (x_cdim // 16 == 1 or y_cdim // 16 == 1) or (x_cdim == y_cdim):
                         if x_ndim == y_ndim:
                             if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if x_hdim == y_hdim and x_wdim == y_wdim:
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if (x_wdim == x_hdim == 1) or (y_wdim == y_hdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if (x_hdim == 1 and y_wdim == 1) or (x_wdim == 1 and y_hdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                         if x_hdim == y_hdim:
                             if x_ndim == y_ndim and (x_wdim == 1 or y_wdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if x_wdim == y_wdim and (x_ndim == 1 or y_ndim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if x_ndim == y_ndim and x_wdim == y_wdim:
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if (x_ndim == x_wdim == 1) or (y_ndim == y_wdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if (x_ndim == 1 and y_wdim == 1) or (x_wdim == 1 and y_ndim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                         if x_wdim == y_wdim:
                             if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if x_ndim == y_ndim and x_hdim == y_hdim:
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
                             if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
-                                format_list.append("NC1HWC0")
+                                format_list += format_5hd
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         len_format_list = len(dtype_list)
@@ -374,7 +379,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             if len(shape_x) > 4 or len(shape_y) > 4:
                 formats = ["ND"]
             else:
-                formats = ["NC1HWC0"]
+                formats = format_5hd
             for item in formats:
                 dtype_total = dtype_total + dtype_list
                 format_list_input0 = format_list_input0 + [item] * len(dtype_list)

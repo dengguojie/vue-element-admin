@@ -178,4 +178,36 @@ def test_op_select_format(test_arg):
                      {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (-1, 1), "ori_format": "ND"},
                      {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (-1, 1), "ori_format": "ND"},
                      "test_add_op_select_format_2")
+    op_select_format({"shape": (1, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1, 1, 16), "ori_format": "NHWC"},
+                     {"shape": (1, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1, 1, 16), "ori_format": "NHWC"},
+                     {"shape": (1, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1, 1, 16), "ori_format": "NHWC"},
+                     "test_add_op_select_format_3")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1), "ori_format": "HWCN"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1), "ori_format": "HWCN"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1), "ori_format": "HWCN"},
+                     "test_add_op_select_format_4")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 1, 16, 1), "ori_format": "NCHW"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 1, 16, 1), "ori_format": "NCHW"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 1, 16, 1), "ori_format": "NCHW"},
+                     "test_add_op_select_format_5")
+    op_select_format({"shape": (16,), "dtype": "float16", "format": "NCHW", "ori_shape": (16,), "ori_format": "NCHW"},
+                     {"shape": (16,), "dtype": "float16", "format": "NCHW", "ori_shape": (16,), "ori_format": "NCHW"},
+                     {"shape": (16,), "dtype": "float16", "format": "NCHW", "ori_shape": (16,), "ori_format": "NCHW"},
+                     "test_add_op_select_format_6")
+    op_select_format({"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16), "ori_format": "NCHW"},
+                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16), "ori_format": "NCHW"},
+                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16), "ori_format": "NCHW"},
+                     "test_add_op_select_format_7")
+    op_select_format({"shape": (16, 16, 32, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 32, 16), "ori_format": "NCHW"},
+                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16), "ori_format": "NCHW"},
+                     {"shape": (16, 16, 32, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 32, 16), "ori_format": "NCHW"},
+                     "test_add_op_select_format_8")
+    op_select_format({"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape":  (1, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape":  (1, 16, 1, 1), "ori_format": "NCHW"},
+                     {"shape":  (1, 16, 1, 1),  "dtype": "float16", "format": "NCHW", "ori_shape":  (1, 16, 1, 1),  "ori_format": "NCHW"},
+                     "test_add_op_select_format_9")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1), "ori_format": "HWCN"},
+                     {"shape": (1, 1, 32, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 32, 1), "ori_format": "HWCN"},
+                     {"shape": (1, 1, 32, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 32, 1), "ori_format": "HWCN"},
+                     "test_add_op_select_format_10")
 ut_case.add_cust_test_func(test_func=test_op_select_format)
