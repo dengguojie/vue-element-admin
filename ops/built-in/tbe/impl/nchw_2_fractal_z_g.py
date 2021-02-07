@@ -26,6 +26,7 @@ CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 OFFSET_1 = 256 * 256
 OFFSET_2 = 0
 MAX_CORE_NUM = 32
+SRC_C_UNIT = 16
 
 
 # pylint: disable=superfluous-parens,useless-object-inheritance,invalid-name
@@ -39,127 +40,254 @@ class Nchw2Fractalzg(object):
         """
         TilingParam
         """
+        class PerCoreParam(object):
+            """
+            PerCoreParam
+            """
+            def __init__(self):
+                #le 16
+                self.loop_src_n_base = []
+                self.loop_src_n_repeat = []
+                self.loop_src_c_base = []
+                self.loop_src_c_repeat = []
+                self.loop_src_c_tail = []
+
+                #gt 16
+                self.loop_gc_base = []
+                self.loop_gc_repeat = []
+                self.loop_gc_tail = []
+                self.loop_cout_orig_base = []
+                self.loop_cout_orig_repeat = []
+                self.loop_cout_orig_tail = []
+
+            def composite_c_le_16(self, pf_src_n_base, pf_src_n_repeat, pf_src_c_base, pf_src_c_repeat):
+                """
+                composite_c_le_16
+                """
+                len_n = len(pf_src_n_base)
+                len_c = len(pf_src_c_base)
+                for n in range(len_n):
+                    for c in range(len_c):
+                        self.loop_src_n_base.append(pf_src_n_base[n])
+                        self.loop_src_n_repeat.append(pf_src_n_repeat[n])
+                        self.loop_src_c_base.append(pf_src_c_base[c])
+                        self.loop_src_c_repeat.append(pf_src_c_repeat[c])
+                self._pad_zero()
+
+            def composite_c_gt_16(self, pf_gc_base, pf_gc_repeat, gc_tail,
+                                  pf_cout_orig_base, pf_cout_orig_repeat, cout_orig_tail):
+                """
+                composite_c_gt_16
+                """
+                len_gc = len(pf_gc_base)
+                len_cout = len(pf_cout_orig_base)
+                for i in range(len_gc):
+                    for j in range(len_cout):
+                        self.loop_gc_base.append(pf_gc_base[i])
+                        self.loop_gc_repeat.append(pf_gc_repeat[i])
+                        self.loop_cout_orig_base.append(pf_cout_orig_base[j])
+                        self.loop_cout_orig_repeat.append(pf_cout_orig_repeat[j])
+                        if i == len_gc - 1:
+                            self.loop_gc_tail.append(gc_tail)
+                        else:
+                            self.loop_gc_tail.append(0)
+                        if j == len_cout - 1:
+                            self.loop_cout_orig_tail.append(cout_orig_tail)
+                        else:
+                            self.loop_cout_orig_tail.append(0)
+                self._pad_zero()
+
+            def _pad_zero_impl(self, v, n):
+                while(len(v) < n):
+                    v.append(0)
+
+            def _pad_zero(self):
+                self._pad_zero_impl(self.loop_src_n_base, CORE_NUM)
+                self._pad_zero_impl(self.loop_src_n_repeat, CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_base, CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_repeat, CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_tail, CORE_NUM)
+                self._pad_zero_impl(self.loop_gc_base, CORE_NUM)
+                self._pad_zero_impl(self.loop_gc_repeat, CORE_NUM)
+                self._pad_zero_impl(self.loop_gc_tail, CORE_NUM)
+                self._pad_zero_impl(self.loop_cout_orig_base, CORE_NUM)
+                self._pad_zero_impl(self.loop_cout_orig_repeat, CORE_NUM)
+                self._pad_zero_impl(self.loop_cout_orig_tail, CORE_NUM)
+
         def __init__(self, shape_in, shape_out, groups):
+            self.src_n = shape_in[0]
             self.cout_orig = shape_in[0] // groups
             self.cin_orig = shape_in[1]
+            self.src_c = shape_in[1]
             self.cin_orig_ms = EPB if self.cin_orig > EPB else  self.cin_orig # mjaor section
-            self.cin_orig_ts = self.cin_orig % EPB  if self.cin_orig > EPB else 0# tail section
             self.kh = shape_in[2]
             self.kw = shape_in[3]
+            self.dst_n = shape_out[1] * shape_out[2]
             self.groups = groups
             self.loop_on_chw = 1
             self.loop_on_groups = self.groups
             self.n = shape_out[1] * shape_out[2]
             self.n16 = self.n // EPB
-            self.loop_on_n = 1
+            self.loop_on_cout_orig = self.cout_orig // EPB
+            self.cout_orig_tail = self.cout_orig - self.loop_on_cout_orig * EPB
+            self.src_c_unit = SRC_C_UNIT
+            self.loop_on_src_c = 0
             self.c0 = shape_out[3]
             self.khw = self.kh * self.kw
-            self.ele_per_line = self.cin_orig_ms * self.kh * self.kw
-            self.line_blocks = (self.ele_per_line + EPB - 1) // EPB
-            self.ele_per_line_with_tail = self.line_blocks * EPB
-            self.tail_ele_num = self.ele_per_line_with_tail - self.ele_per_line
-            self.vol_per_c1 = self.khw * self.n * self.c0
-            self.unit_height = self.cout_orig * (EPB // self.cin_orig_ms)
-            self.group_height = self.cout_orig
-            self.summary_t = []
-            self.summary = []
-            self.partial = []
-            self.loops = []
+            self.vol_chw = self.src_c * self.khw
 
-            self._update_loop_on_chw()
-            self._update_loop_on_groups()
-            self._update_loop_on_n()
+            #c_le_16
+            self.pf_src_n_base = []
+            self.pf_src_n_repeat = []
+            self.pf_src_c_base = []
+            self.pf_src_c_repeat = []
+            #self.pf_src_c_tail = []
 
-            print("\n----------------------tiling_param----------------------")
-            print("ub_size = ", UB_SIZE)
-            print("core_num = ", CORE_NUM)
-            print("cout_orig = ", self.cout_orig, ",cin_orig = ", self.cin_orig)
-            print("cin_orig_ms = ", self.cin_orig_ms, ",cin_orig_ts = ", self.cin_orig_ts)
-            print("kh = ", self.kh, ", kw = ", self.kw)
-            print("groups = ", self.groups, ", n = ", self.n)
-            print("loop_on_n = ", self.loop_on_n, ",loop_on_chw = ", self.loop_on_chw,
-                  ",loop_on_groups = ", self.loop_on_groups)
-            print("ele_per_line =", self.ele_per_line, ",ele_per_line_with_tail =", self.ele_per_line_with_tail,
-                  ",tail_ele_num =", self.tail_ele_num)
-            print("line_blocks =", self.line_blocks)
-            print("summary_t:", self.summary_t)
-            print("summary:", self.summary)
-            print("loops:", self.loops)
+            #c_gt_16
+            self.gc_tail = self.groups * self.src_c % SRC_C_UNIT
+            self.pf_cout_orig_base = []
+            self.pf_cout_orig_repeat = []
+            self.pf_cout_orig_tail = []
+            self.pf_gc_base = []
+            self.pf_gc_repeat = []
+            self.pf_gc_tail = 0
 
-        def _update_loop_on_chw(self):
-            if self.cin_orig > EPB:
-                self.loop_on_chw = (self.cin_orig + EPB - 1) // EPB
+            self._calc_src_c_unit()
 
-        def _sum_all_loops(self):
+
+            self.pcp = self.PerCoreParam()
+            if (self.cin_orig <= 16):
+                self._dispatch_loop_c_le_16()
+                self.pcp.composite_c_le_16(self.pf_src_n_base, self.pf_src_n_repeat,
+                                           self.pf_src_c_base, self.pf_src_c_repeat)
+                print("\n")
+                print("core".ljust(6), "src_n".ljust(7), "src_c".ljust(7), "kh".ljust(4), "kw".ljust(4),
+                      "groups".ljust(8), "cout_orig".ljust(11),
+                      "cin_orig".ljust(10), "loop_on_src_c".ljust(13),
+                      "src_c_unit".ljust(11), "dst_n".ljust(7),
+                      "vol_chw".ljust(8), "loop_cout_orig".ljust(14), "cout_orig_tail".ljust(14))
+                print("---" * 51)
+                print(str(CORE_NUM).ljust(6), str(self.src_n).ljust(7), str(self.src_c).ljust(7),
+                      str(self.kh).ljust(4), str(self.kw).ljust(4),
+                      str(groups).ljust(8), str(self.cout_orig).ljust(11),
+                      str(self.cin_orig).ljust(10),
+                      str(self.loop_on_src_c).ljust(13), str(self.src_c_unit).ljust(11),
+                      str(self.dst_n).ljust(7),
+                      str(self.vol_chw).ljust(8), str(self.loop_on_cout_orig).ljust(14),
+                      str(self.cout_orig_tail).ljust(14))
+                print("\n")
+                print("core".ljust(4), "src_n_bs".ljust(8), "src_n_rpt".ljust(9),
+                      "src_c_bs".ljust(8), "src_c_rpt".ljust(9))
+                print("---" * 54)
+                for i in range(CORE_NUM):
+                    print(str(i).ljust(4),
+                          str(self.pcp.loop_src_n_base[i]).ljust(8), str(self.pcp.loop_src_n_repeat[i]).ljust(9),
+                          str(self.pcp.loop_src_c_base[i]).ljust(8), str(self.pcp.loop_src_c_repeat[i]).ljust(9))
+            else:
+                self._dispatch_loop_c_gt_16()
+                self.pcp.composite_c_gt_16(self.pf_gc_base, self.pf_gc_repeat, self.gc_tail,
+                                           self.pf_cout_orig_base, self.pf_cout_orig_repeat, self.cout_orig_tail)
+                print("\n")
+                print("core".ljust(6), "src_n".ljust(7), "src_c".ljust(7), "kh".ljust(4), "kw".ljust(4),
+                      "groups".ljust(8), "cout_orig".ljust(11), "cin_orig".ljust(10), "dst_n".ljust(7),
+                      "vol_chw".ljust(8), "gc_tail".ljust(7), "loop_cout_orig".ljust(14), "cout_orig_tail".ljust(14))
+                print("---" * 41)
+                print(str(CORE_NUM).ljust(6), str(self.src_n).ljust(7), str(self.src_c).ljust(7),
+                      str(self.kh).ljust(4), str(self.kw).ljust(4),
+                      str(groups).ljust(8), str(self.cout_orig).ljust(11),
+                      str(self.cin_orig).ljust(10), str(self.dst_n).ljust(7),
+                      str(self.vol_chw).ljust(8), str(self.gc_tail).ljust(7),
+                      str(self.loop_on_cout_orig).ljust(14), str(self.cout_orig_tail).ljust(14))
+                print("\n")
+                print("core".ljust(4), "loop_gc_bs".ljust(12), "loop_gc_rpt".ljust(13), "loop_gc_tail".ljust(14),
+                      "loop_cout_orig_bs".ljust(18), "loop_cout_orig_rpt".ljust(19), "loop_cout_orig_tail".ljust(20))
+                print("---" * 41)
+                for i in range(CORE_NUM):
+                    print(str(i).ljust(4),
+                          str(self.pcp.loop_gc_base[i]).ljust(12), str(self.pcp.loop_gc_repeat[i]).ljust(13),
+                          str(self.pcp.loop_gc_tail[i]).ljust(14),
+                          str(self.pcp.loop_cout_orig_base[i]).ljust(18),
+                          str(self.pcp.loop_cout_orig_repeat[i]).ljust(19),
+                          str(self.pcp.loop_cout_orig_tail[i]).ljust(20))
+
+        def _calc_src_c_unit(self):
+            if self.cin_orig <= EPB:
+                self.src_c_unit = self.src_c
+            else:
+                self.src_c_unit = SRC_C_UNIT
+
+                #if self.khw >= 32:
+                #    self.src_c_unit = EPB
+                #else:
+                #    self.src_c_unit = EPB
+                #    while self.src_c_unit * self.khw < 1024:
+                #        if self.src_c_unit >= self.src_c:
+                #            self.src_c_unit = self.src_c_unit // 2
+                #            break
+                #        else:
+                #            self.src_c_unit = self.src_c_unit * 2
+                self.loop_on_src_c = self.src_c // self.src_c_unit
+                self.src_c_tail = self.src_c - self.loop_on_src_c * self.src_c_unit
+
+        def _sum_all(self, loop):
             res = 0
-            for i in range(CORE_NUM):
-                res = res + self.loops[i]
+            for i in range(len(loop)):
+                res = res + loop[i]
             return res
 
-        def _dispatch_loop(self):
-            if self.loop_on_groups < CORE_NUM:
-                self.summary = self.summary_t
-                while len(self.loops) < self.loop_on_groups:
-                    self.loops.append(1)
-                while len(self.loops) < MAX_CORE_NUM:
-                    self.loops.append(0)
-                    self.summary.append(0)
+        def _remove_zero_data(self, tup):
+            tup = [x for x in tup if x != 0]
+
+        def _each_factor_process_num(self, total, factor, unit, base, repeat):
+            if total < unit:
+                base.append(0)
+                repeat.append(0)
+            elif total == unit:
+                base.append(0)
+                repeat.append(1)
             else:
-                each = math.ceil(self.loop_on_groups / CORE_NUM)
-                for i in range(CORE_NUM):
-                    self.loops.append(each)
-                for i in range(CORE_NUM):
-                    if self._sum_all_loops() > self.loop_on_groups:
-                        self.loops[i] = self.loops[i] - 1
-                index = 0
-                for i in range(CORE_NUM):
-                    self.summary.append(self.summary_t[index])
-                    index = index + self.loops[i]
-                while len(self.loops) < MAX_CORE_NUM:
-                    self.loops.append(0)
-                    self.summary.append(0)
+                each_factor = []
+                share = total // unit
+                item = math.ceil(share / factor)
+                for i in range(factor):
+                    each_factor.append(item)
+                for i in reversed(range(len(each_factor))):
+                    if self._sum_all(each_factor) > share:
+                        each_factor[i] = each_factor[i] - 1
+                self._remove_zero_data(each_factor)
+                r = 0
+                for i in range(len(each_factor)):
+                    base.append(r)
+                    r = r + each_factor[i]
+                    repeat.append(each_factor[i])
 
-        def _update_loop_on_groups(self):
-            self.loop_on_groups = 0
-            tp = 0
-            start = 0
-            left = self.cin_orig * self.groups
-            self.summary_t.append(0)
-            while left > 0:
-                self.loop_on_groups = self.loop_on_groups + 1
-                if tp > 0:
-                    self.summary_t.append(tp + self.summary_t[-1])
-                    left = left - tp
-                    start = tp
-                    tp = 0
-                    continue
-                ts = start + self.cin_orig_ms
-                if ts == EPB:
-                    self.summary_t.append(self.cin_orig_ms + self.summary_t[-1])
-                    left -= self.cin_orig_ms
-                    start = 0
-                elif ts > EPB:
-                    tp = EPB - start
-                    left = left - tp
-                    self.summary_t.append(tp + self.summary_t[-1])
-                    tp = self.cin_orig_ms - tp
-                    start = 0
-                else:
-                    left = left - self.cin_orig_ms
-                    self.summary_t.append(self.cin_orig_ms + self.summary_t[-1])
-                    start = ts
+        def _dispatch_loop_c_le_16(self):
+            # step 1: src_n factor
+            factor_n = self.groups if self.groups < CORE_NUM else CORE_NUM
+            unit = self.cout_orig
+            self._each_factor_process_num(self.src_n, factor_n, unit, self.pf_src_n_base, self.pf_src_n_repeat)
 
-            if self.cin_orig > EPB:
-                self.loop_on_groups = (self.cin_orig // EPB) * self.groups
+            # step 2: src_c factor
+            factor_c = CORE_NUM // factor_n
+            if factor_c == 0:
+                factor_c = 1
+            unit = self.src_c_unit
+            self._each_factor_process_num(self.src_c, factor_c, unit, self.pf_src_c_base, self.pf_src_c_repeat)
 
-            self._dispatch_loop()
+        def _dispatch_loop_c_gt_16(self):
+            # step 1: src_n factor
+            total = self.groups * self.src_c
+            unit = SRC_C_UNIT
+            factor_gc = (total // unit) if (total // unit) < CORE_NUM else CORE_NUM
+            self._each_factor_process_num(total, factor_gc, unit, self.pf_gc_base, self.pf_gc_repeat)
 
-
-        def _update_loop_on_n(self):
-            if self.cin_orig > EPB:
-                if self.n16 > 1:
-                    self.loop_on_n = (self.cin_orig + EPB - 1)// EPB
-
+            # step 2: src_c factor
+            total = self.loop_on_cout_orig
+            unit = 1
+            factor_cout = CORE_NUM // factor_gc
+            if factor_cout == 0:
+                factor_cout = 1
+            self._each_factor_process_num(total, factor_cout, unit, self.pf_cout_orig_base, self.pf_cout_orig_repeat)
 
     def __init__(self, tik_inst, data_in, data_out):
         self.tik_inst = tik_inst
@@ -171,179 +299,378 @@ class Nchw2Fractalzg(object):
         tp = self.TilingParam(shape_in, shape_out, groups)
         return tp
 
-    def _check_params(self, shape_in, shape_out, in_dtyppe, out_dtype):
-        return
+    def _get_param_by_block_idx_le_16(self, block_idx, tp, pc_src_n_base, pc_src_n_repeat):
+        for i in range(CORE_NUM):
+            with self.tik_inst.if_scope(block_idx == i):
+                pc_src_n_base.set_as(tp.pcp.loop_src_n_base[i])
+                pc_src_n_repeat.set_as(tp.pcp.loop_src_n_repeat[i])
 
-    def _clear_tail_memory(self, tp, head_offset):
-        if tp.tail_ele_num != 0:
-            effective_ele_offset = tp.cin_orig_ms * tp.khw * EPB
-            #performance could be optimized
-            self.tik_inst.vector_dup(16, self.ub_input[OFFSET_1 + head_offset + effective_ele_offset],
-                                     0, tp.tail_ele_num, 1, 1)
-
-    def _calc_head_offset(self, tp, left_zero, head_offset):
-        head_offset.set_as(left_zero * tp.khw * EPB)
-
-    def _calc_src_addr(self, tp, lgs, lcorg, src_addr):
-        with self.tik_inst.if_scope(tp.cin_orig <= EPB):
-            src_addr.set_as(lgs * tp.cout_orig * tp.cin_orig_ms * tp.khw +\
-                            lcorg * tp.cin_orig * tp.khw)
-        with self.tik_inst.else_scope():
-            src_addr.set_as((lgs // tp.loop_on_chw) * tp.cout_orig * tp.cin_orig * tp.khw +\
-                            (lgs % tp.loop_on_chw) * tp.cin_orig_ms * tp.khw +\
-                            lcorg * tp.cin_orig * tp.khw)
-
-    def _calc_dst_addr(self, tp, lhw, c1_pos, cur_height, dst_addr):
-        dst_addr.set_as(c1_pos * tp.vol_per_c1 + lhw * tp.n * EPB + cur_height * EPB)
-
-    def _calc_cur_height(self, tp, summary, cur_height):
-        cur_height.set_as((summary // tp.cin_orig_ms) * tp.cout_orig % tp.n)
-
-    def _reorder(self, tp, ub_input, left_zero, partial):
+    def _clear_tail_memory(self, tp, ub_input, left_zero, left_part, right_part, is_left):
         tik_inst = self.tik_inst
-        ele_num_per_line = tp.line_blocks * EPB
-
-        head_offset = tik_inst.Scalar("int64", init_value=0)
-        self._calc_head_offset(tp, left_zero, head_offset)
-
-        active_ele_num = tik_inst.Scalar("int64", init_value=0)
-        skip_ele_num = tik_inst.Scalar("int64", init_value=0)
-
-        with tik_inst.if_scope(partial == 0):
-            active_ele_num.set_as(tp.cin_orig_ms)
-            skip_ele_num.set_as(0)
+        with tik_inst.if_scope(is_left == 1):
+            with self.tik_inst.if_scope(left_part * tp.khw % EPB != 0):
+                self.tik_inst.vector_dup(16, ub_input[OFFSET_2 + left_zero * tp.khw * EPB + left_part * tp.khw * EPB],
+                                         0, EPB - (left_part * tp.khw % EPB), 1, 1)
         with tik_inst.else_scope():
-            active_ele_num.set_as(partial)
-            skip_ele_num.set_as(tp.cin_orig_ms - active_ele_num)
+            with self.tik_inst.if_scope(right_part * tp.khw % EPB != 0):
+                self.tik_inst.vector_dup(16, ub_input[OFFSET_2 + left_zero * tp.khw * EPB + right_part * tp.khw * EPB],
+                                         0, EPB - (right_part * tp.khw % EPB), 1, 1)
 
+    def _zero_offset_1(self, ub_input, repeat=248):
         # mask,dst,scalar, repeat_times, dst_blk_stride, dst_rep_stride
-        tik_inst.vector_dup(128, ub_input[OFFSET_1], 0, 248, 1, 8)
+        self.tik_inst.vector_dup(128, ub_input[OFFSET_1], 0, repeat, 1, 8)
 
-        # step 1 : first vnchwconv
-        with tik_inst.for_range(0, tp.loop_on_n) as ln:
-            src_addr_list = [ub_input[ln * EPB * tp.ele_per_line_with_tail + ele_num_per_line * i] for i in range(EPB)]
-            dst_addr_list = [ub_input[OFFSET_1 + head_offset + ln * EPB + tp.loop_on_n * EPB * i] for i in range(EPB)]
-            repeat_cnt_first = tp.line_blocks
-            if(repeat_cnt_first == 1):
-                src_stride = 0
-                dst_stride = 0
-            else:
-                src_stride = 1
-                dst_stride = 16 * tp.loop_on_n
-            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt_first, dst_stride, src_stride)
-            self._clear_tail_memory(tp, head_offset)
+    def _zero_offset_2(self, ub_input, repeat=248):
+        self.tik_inst.vector_dup(128, ub_input[OFFSET_2], 0, repeat, 1, 8)
 
-        tik_inst.vector_dup(128, ub_input[OFFSET_2], 0, 248, 1, 8)
+    def _calc_src_addr_le_16(self, tp, lsn, lct, left_part, is_left, src_addr):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(is_left == 1):
+            src_addr.set_as(lsn * tp.cout_orig * tp.vol_chw + lct * EPB * tp.vol_chw)
+        with tik_inst.else_scope():
+            src_addr.set_as(lsn * tp.cout_orig * tp.vol_chw + lct * EPB * tp.vol_chw + left_part * tp.khw)
 
-        # step 2 : second vnchwconv
-        src_addr_list = [ub_input[OFFSET_1 + skip_ele_num * tp.khw * EPB + tp.loop_on_n * tp.khw * EPB * i]\
-                for i in range(EPB)]
-        dst_addr_list = [ub_input[OFFSET_2 + EPB * i] for i in range(EPB)]
-        repeat_cnt_second = tp.khw * tp.loop_on_n
-        if(repeat_cnt_second == 1):
-            src_stride = 0
-            dst_stride = 0
-        else:
-            src_stride = 1
-            dst_stride = 16
-        tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt_second, dst_stride, src_stride)
+    def _calc_dst_addr_le_16(self, tp, lct, top_distance, nc0_counter, dst_addr):
+        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * EPB + lct * EPB * EPB + top_distance * EPB)
 
-    def _copy_in(self, tp, tik_inst, ub_offset, lgs, partial):
+    def _calc_burst_len(self, tp, left_part, right_part, is_left, burst_len):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(is_left == 1):
+            burst_len.set_as((left_part * tp.khw + EPB - 1) / EPB)
+        with tik_inst.else_scope():
+            burst_len.set_as((right_part * tp.khw + EPB - 1) / EPB)
+
+    def _copy_in_le_16(self, tp, ub_input, ub_offset, lsn, lct, cout_orig_tail,
+                       left_zero, left_part, right_part, is_left):
+        tik_inst = self.tik_inst
         src_addr = tik_inst.Scalar("int64", init_value=0)
-        ub_offset.set_as(0)
-        with tik_inst.for_range(0, tp.cout_orig) as lcorg:
-            ele_num_per_burst = tp.cin_orig_ms * tp.khw
-            burst_len = math.ceil(ele_num_per_burst / EPB)
-            self._calc_src_addr(tp, lgs, lcorg, src_addr)
-            tik_inst.data_move(self.ub_input[ub_offset * EPB], self.data_in[src_addr], 0, 1, burst_len, 0, 0)
+        burst_len = tik_inst.Scalar("int64", init_value=0)
+        self._calc_src_addr_le_16(tp, lsn, lct, left_part, is_left, src_addr)
+        self._calc_burst_len(tp, left_part, right_part, is_left, burst_len)
+        loop_num = tik_inst.Scalar("int64", init_value=cout_orig_tail)
+        with tik_inst.if_scope(cout_orig_tail == 0):
+            loop_num.set_as(EPB)
+        with tik_inst.for_range(0, loop_num) as i:
+            tik_inst.data_move(self.ub_input[OFFSET_1 + ub_offset * EPB],
+                               self.data_in[src_addr + i * tp.vol_chw], 0, 1, burst_len, 0, 0)
             ub_offset.set_as(ub_offset + burst_len)
 
-    def _copy_out(self, tp, tik_inst, ub_offset, c1_pos, cur_height):
-        dst_addr = tik_inst.Scalar("int64", init_value=0)
-        with tik_inst.for_range(0, tp.khw) as lhw:
-            self._calc_dst_addr(tp, lhw, c1_pos, cur_height, dst_addr)
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_2 + tp.loop_on_n * EPB * EPB * lhw],
-                               0, 1, tp.cout_orig, 0, 0)
-
-    def _update_param_per_batch(self, tp, tik_inst, summary, c1_pos, lgs, left_zero, partial, cur_height, active):
-        line_ele = tik_inst.Scalar("int64", init_value=0)
-        summary.set_as(summary + active)
-        with tik_inst.if_scope(tp.cin_orig < EPB):
-            with tik_inst.if_scope(left_zero >= EPB):
-                c1_pos.set_as(c1_pos + 1)
-                left_zero.set_as(0)
-                with tik_inst.if_scope(active != tp.cin_orig_ms):
-                    partial.set_as(tp.cin_orig_ms - active)
-                    active.set_as(partial)
-            with tik_inst.else_scope():
-                partial.set_as(0)
-                left_zero.set_as(left_zero + active)
-                with tik_inst.if_scope(left_zero == EPB):
-                    left_zero.set_as(0)
-                    c1_pos.set_as(c1_pos + 1)
-                    with tik_inst.if_scope(active != tp.cin_orig_ms):
-                        partial.set_as(tp.cin_orig_ms - active)
-                        active.set_as(partial)
-                    with tik_inst.else_scope():
-                        active.set_as(tp.cin_orig_ms)
-                with tik_inst.else_scope():
-                    line_ele.set_as(left_zero + tp.cin_orig_ms)
-                    with tik_inst.if_scope(line_ele > EPB):
-                        active.set_as(tp.cin_orig_ms - (line_ele - EPB))
-                    with tik_inst.else_scope():
-                        active.set_as(tp.cin_orig_ms)
+    def _reorder_le_16(self, tp, ub_input, left_zero, left_part, right_part, is_left):
+        tik_inst = self.tik_inst
+        # step 1 : first vnchwconv, make line be vertical
+        src_stride = tik_inst.Scalar("int64", init_value=0)
+        dst_stride = tik_inst.Scalar("int64", init_value=0)
+        with tik_inst.if_scope(is_left == 1):
+            line_blocks = (left_part * tp.khw + EPB - 1) / EPB
+            ele_num_per_line = line_blocks * EPB
+            src_addr_list = [ub_input[OFFSET_1 + ele_num_per_line * i] for i in range(EPB)]
+            dst_addr_list = [ub_input[OFFSET_2 + left_zero * tp.khw * EPB + EPB * i] for i in range(EPB)]
+            repeat_cnt_first = line_blocks
+            with tik_inst.if_scope(repeat_cnt_first != 1):
+                src_stride.set_as(1)
+                dst_stride.set_as(16)
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt_first, dst_stride, src_stride)
         with tik_inst.else_scope():
-            c1_pos.set_as(c1_pos + 1)
-            left_zero.set_as(0)
-            partial.set_as(0)
-            active.set_as(EPB)
+            line_blocks = (right_part * tp.khw + EPB - 1) / EPB
+            ele_num_per_line = line_blocks * EPB
+            src_addr_list = [ub_input[OFFSET_1 + ele_num_per_line * i] for i in range(EPB)]
+            # step 1 : first vnchwconv
+            src_addr_list = [ub_input[OFFSET_1 + ele_num_per_line * i] for i in range(EPB)]
+            dst_addr_list = [ub_input[OFFSET_2 + left_zero * tp.khw * EPB + EPB * i] for i in range(EPB)]
+            repeat_cnt_first = line_blocks
+            with tik_inst.if_scope(repeat_cnt_first != 1):
+                src_stride.set_as(1)
+                dst_stride.set_as(16)
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt_first, dst_stride, src_stride)
 
-        cur_height.set_as((summary // tp.cin_orig_ms) * tp.cout_orig % tp.n)
-        lgs.set_as(summary // tp.cin_orig_ms)
+        # step 2 : clear dirty data, because unused data should be zero, and step3 will access these data
+        self._clear_tail_memory(tp, ub_input, left_zero, left_part, right_part, is_left)
 
-    def _get_param_by_block_idx(self, block_idx, tp, summary, loops):
-        for i in range(MAX_CORE_NUM):
-            with self.tik_inst.if_scope(block_idx == i):
-                summary.set_as(tp.summary[i])
-                loops.set_as(tp.loops[i])
+        # step 3 : second vnchwconv, move block data together
+        src_addr_list = [ub_input[OFFSET_2 + tp.khw * EPB * i] for i in range(EPB)]
+        dst_addr_list = [ub_input[OFFSET_1 + EPB * i] for i in range(EPB)]
+        repeat_cnt_second = tp.khw
+        with tik_inst.if_scope(repeat_cnt_second == 1):
+            src_stride.set_as(0)
+            dst_stride.set_as(0)
+        with tik_inst.else_scope():
+            src_stride.set_as(1)
+            dst_stride.set_as(16)
+        tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt_second, dst_stride, src_stride)
 
-    def _calc_loop_param(self, block_idx, tp, summary, partial, loops, left_zero, c1_pos, cur_height, lgs):
-        self._get_param_by_block_idx(block_idx, tp, summary, loops)
-        cur_height.set_as((summary // tp.cin_orig) * tp.cout_orig % tp.n)
-        left_zero.set_as(summary % EPB)
-        c1_pos.set_as(summary // EPB)
-        lgs.set_as(summary // tp.cin_orig_ms)
-        #partial.set_as((tp.cin_orig_ms - summary % tp.cin_orig_ms) % tp.cin_orig_ms)
-        partial.set_as(tp.cin_orig_ms - summary % tp.cin_orig_ms)
+    def _copy_out_le_16(self, tp, ub_input, lsn, lct, cout_orig_tail, top_distance, nc0_counter):
+        tik_inst = self.tik_inst
+        dst_addr = tik_inst.Scalar("int64", init_value=0)
+        cout_orig_tail_s = tik_inst.Scalar("int64", init_value=cout_orig_tail)
+        self._calc_dst_addr_le_16(tp, lct, top_distance, nc0_counter, dst_addr)
+        with tik_inst.if_scope(cout_orig_tail == 0):
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1], 0, tp.khw, EPB, 0, tp.dst_n - EPB)
+        with tik_inst.else_scope():
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1],
+                               0, tp.khw, cout_orig_tail_s, EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
 
-    def _compute(self, tp, data_in, data_out):
+    def _update_param_lr_part_le_16(self, tp, left_zero, left_part, right_part):
+        tik_inst = self.tik_inst
+        with tik_inst.if_scope(left_zero + tp.cin_orig > EPB):
+            left_part.set_as(EPB - left_zero)
+            right_part.set_as(tp.cin_orig - left_part)
+        with tik_inst.else_scope():
+            left_part.set_as(tp.cin_orig)
+            right_part.set_as(0)
+
+    def _update_param_right_le_16(self, tp, is_left, left_zero, nc0_counter):
+        is_left.set_as(0)
+        left_zero.set_as(0)
+        nc0_counter.set_as(nc0_counter + 1)
+
+    def _update_param_le_16(self, tp, left_zero, top_distance, nc0_counter, left_part, right_part, is_left):
+        tik_inst = self.tik_inst
+        top_distance.set_as((top_distance + tp.cout_orig) % tp.dst_n)
+        with tik_inst.if_scope(is_left == 0):
+            left_zero.set_as(right_part)
+        with tik_inst.else_scope():
+            with tik_inst.if_scope(left_zero + tp.cin_orig < EPB):
+                left_zero.set_as(left_zero + tp.cin_orig)
+            with tik_inst.else_scope():
+                nc0_counter.set_as(nc0_counter + 1)
+                left_zero.set_as(0)
+
+    def _copy_left_part_le_16(self, tp, ub_input, ub_offset, lsn, lct, cout_orig_tail, left_zero, top_distance,
+                              nc0_counter, left_part, right_part, is_left):
+        ub_offset.set_as(0)
+        is_left.set_as(1)
+        self._zero_offset_1(ub_input)
+        self._zero_offset_2(ub_input)
+        self._copy_in_le_16(tp, ub_input, ub_offset, lsn, lct, cout_orig_tail,
+                            left_zero, left_part, right_part, is_left)
+        self._reorder_le_16(tp, ub_input, left_zero, left_part, right_part, is_left)
+        self._copy_out_le_16(tp, ub_input, lsn, lct, cout_orig_tail, top_distance, nc0_counter)
+
+    def _copy_right_part_le_16(self, tp, ub_input, ub_offset, lsn, lct, cout_orig_tail, left_zero, top_distance,
+                               nc0_counter, left_part, right_part, is_left):
+        ub_offset.set_as(0)
+        self._zero_offset_1(ub_input)
+        self._zero_offset_2(ub_input)
+        self._copy_in_le_16(tp, ub_input, ub_offset, lsn, lct, cout_orig_tail,
+                            left_zero, left_part, right_part, is_left)
+        self._reorder_le_16(tp, ub_input, left_zero, left_part, right_part, is_left)
+        self._copy_out_le_16(tp, ub_input, lsn, lct, cout_orig_tail, top_distance, nc0_counter)
+
+    def _calc_base_pos_le_16(self, tp, pc_src_n_base, left_zero, top_distance, nc0_counter):
+        left_zero.set_as(pc_src_n_base * tp.cin_orig % EPB)
+        top_distance.set_as(pc_src_n_base * tp.cout_orig % tp.dst_n)
+        nc0_counter.set_as(pc_src_n_base * tp.cin_orig / EPB)
+
+    def compute_c_le_16(self, tp, data_in, data_out):
+        """
+        nchw_2_fractal_z_g entrance function
+        """
         tik_inst = self.tik_inst
         ub_offset = tik_inst.Scalar("int64", init_value=0)
-        summary = tik_inst.Scalar("int64", init_value=0)
-        partial = tik_inst.Scalar("int64", init_value=0)
-        loops = tik_inst.Scalar("int64", init_value=0)
+        pc_src_n_base = tik_inst.Scalar("int64", init_value=0)
+        pc_src_n_repeat = tik_inst.Scalar("int64", init_value=0)
         left_zero = tik_inst.Scalar("int64", init_value=0)
-        c1_pos = tik_inst.Scalar("int64", init_value=0)
-        cur_height = tik_inst.Scalar("int64", init_value=0)
-        lgs = tik_inst.Scalar("int64", init_value=0)
-        active = tik_inst.Scalar("int64", init_value=0)
+        top_distance = tik_inst.Scalar("int64", init_value=0)
+        nc0_counter = tik_inst.Scalar("int64", init_value=0)
+        left_part = tik_inst.Scalar("int64", init_value=tp.cin_orig)
+        right_part = tik_inst.Scalar("int64", init_value=0)
+        is_left = tik_inst.Scalar("int64", init_value=1)
 
-        with tik_inst.for_range(0, CORE_NUM, block_num = CORE_NUM) as block_idx:
-            self._calc_loop_param(block_idx, tp, summary, partial, loops, left_zero, c1_pos, cur_height, lgs)
-            active.set_as(summary % tp.cin_orig_ms)
-            with tik_inst.if_scope(active == 0):
-                active.set_as(tp.cin_orig_ms)
-            with tik_inst.else_scope():
-                active.set_as(tp.cin_orig_ms - active)
+        with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+            self._get_param_by_block_idx_le_16(block_idx, tp, pc_src_n_base, pc_src_n_repeat)
+            self._calc_base_pos_le_16(tp, pc_src_n_base, left_zero, top_distance, nc0_counter)
 
-            with tik_inst.for_range(0, loops):
-                self._copy_in(tp, tik_inst, ub_offset, lgs, partial)
-                self._reorder(tp, self.ub_input, left_zero, partial)
-                self._copy_out(tp, tik_inst, ub_offset, c1_pos, cur_height)
-                self._update_param_per_batch(tp, tik_inst, summary, c1_pos, lgs, left_zero, partial, cur_height, active)
-        return
+            with tik_inst.for_range(pc_src_n_base, pc_src_n_base + pc_src_n_repeat) as lsn:
+                self._update_param_lr_part_le_16(tp, left_zero, left_part, right_part)
+                with tik_inst.for_range(0, tp.loop_on_cout_orig) as lct:
+                    self._copy_left_part_le_16(tp, self.ub_input, ub_offset, lsn, lct, 0, left_zero, top_distance,
+                                               nc0_counter, left_part, right_part, is_left)
+
+                with tik_inst.if_scope(tp.cout_orig_tail != 0):
+                    self._copy_left_part_le_16(tp, self.ub_input, ub_offset, lsn,
+                                               tp.loop_on_cout_orig, tp.cout_orig_tail, left_zero,
+                                               top_distance, nc0_counter, left_part, right_part, is_left)
+
+                with tik_inst.if_scope(right_part != 0):
+                    self._update_param_right_le_16(tp, is_left, left_zero, nc0_counter)
+                    with tik_inst.for_range(0, tp.loop_on_cout_orig) as lct:
+                        self._copy_right_part_le_16(tp, self.ub_input, ub_offset, lsn, lct, 0, left_zero, top_distance,
+                                                    nc0_counter, left_part, right_part, is_left)
+
+                    with tik_inst.if_scope(tp.cout_orig_tail != 0):
+                        self._copy_right_part_le_16(tp, self.ub_input, ub_offset, lsn, tp.loop_on_cout_orig,
+                                                    tp.cout_orig_tail, left_zero, top_distance,
+                                                    nc0_counter, left_part, right_part, is_left)
+
+                self._update_param_le_16(tp, left_zero, top_distance, nc0_counter, left_part, right_part, is_left)
+
+    def _get_param_by_block_idx_gt_16(self, block_idx, tp, pc_gc_base, pc_gc_repeat, pc_gc_tail,
+                                      pc_cout_orig_base, pc_cout_orig_repeat, pc_cout_orig_tail):
+        for i in range(CORE_NUM):
+            with self.tik_inst.if_scope(block_idx == i):
+                pc_gc_base.set_as(tp.pcp.loop_gc_base[i])
+                pc_gc_repeat.set_as(tp.pcp.loop_gc_repeat[i])
+                pc_gc_tail.set_as(tp.pcp.loop_gc_tail[i])
+                pc_cout_orig_base.set_as(tp.pcp.loop_cout_orig_base[i])
+                pc_cout_orig_repeat.set_as(tp.pcp.loop_cout_orig_repeat[i])
+                pc_cout_orig_tail.set_as(tp.pcp.loop_cout_orig_tail[i])
+
+    def _calc_param_gt_16(self, tp, lgc, left_zero, top_distance, nc0_counter, left_part, right_part):
+        tik_inst = self.tik_inst
+        top_distance.set_as(lgc * EPB // tp.cin_orig * tp.cout_orig % tp.dst_n)
+        nc0_counter.set_as(lgc)
+        left_zero.set_as(0)
+        left_part.set_as((tp.src_c - (lgc * EPB) % tp.src_c))
+        with tik_inst.if_scope(left_part >= EPB):
+            left_part.set_as(EPB)
+            right_part.set_as(0)
+        with tik_inst.else_scope():
+            right_part.set_as(EPB - left_part)
+
+    def _calc_param_cg_tail_gt_16(self, tp, lgc, lct, left_zero, top_distance,
+                                  nc0_counter, left_part, right_part, is_left):
+        left_zero.set_as(0)
+        top_distance.set_as(lgc * EPB // tp.cin_orig * tp.cout_orig % tp.dst_n)
+        nc0_counter.set_as(lgc)
+        left_part.set_as((tp.src_c - (lgc * EPB) % tp.src_c))
+        right_part.set_as(0)
+        is_left.set_as(1)
+
+    def _calc_src_addr_gt_16(self, tp, lgc, lct, left_part, is_left, src_addr):
+        tik_inst = self.tik_inst
+        hwc_counter = tik_inst.Scalar("int64", init_value=0)
+        with tik_inst.if_scope(is_left == 1):
+            hwc_counter.set_as(lgc * EPB // tp.src_c)
+            src_addr.set_as(hwc_counter * tp.cout_orig * tp.vol_chw +\
+                            lct * EPB * tp.vol_chw +\
+                            lgc * EPB % tp.src_c * tp.khw)
+        with tik_inst.else_scope():
+            hwc_counter.set_as((lgc * EPB + left_part) // tp.src_c)
+            src_addr.set_as(hwc_counter * tp.cout_orig * tp.vol_chw + lct * EPB * tp.vol_chw)
+
+    def _calc_dst_addr_gt_16(self, tp, lgc, lct, top_distance, nc0_counter, dst_addr):
+        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * EPB + lct * EPB * EPB + top_distance * EPB)
+
+    def _copy_in_gt_16(self, tp, ub_input, ub_offset, lgc, lct, cout_orig_tail,
+                       left_zero, left_part, right_part, is_left):
+        tik_inst = self.tik_inst
+        src_addr = tik_inst.Scalar("int64", init_value=0)
+        burst_len = tik_inst.Scalar("int64", init_value=0)
+        self._calc_src_addr_gt_16(tp, lgc, lct, left_part, is_left, src_addr)
+        self._calc_burst_len(tp, left_part, right_part, is_left, burst_len)
+        loop_num = tik_inst.Scalar("int64", init_value=cout_orig_tail)
+        with tik_inst.if_scope(cout_orig_tail == 0):
+            loop_num.set_as(EPB)
+        with tik_inst.for_range(0, loop_num) as i:
+            tik_inst.data_move(self.ub_input[OFFSET_1 + ub_offset * EPB],
+                               self.data_in[src_addr + i * tp.vol_chw], 0, 1, burst_len, 0, 0)
+            ub_offset.set_as(ub_offset + burst_len)
+
+    def _copy_out_gt_16(self, tp, ub_input, lgc, lct, cout_orig_tail, top_distance, nc0_counter):
+        tik_inst = self.tik_inst
+        dst_addr = tik_inst.Scalar("int64", init_value=0)
+        cout_orig_tail_s = tik_inst.Scalar("int64", init_value=cout_orig_tail)
+        self._calc_dst_addr_gt_16(tp, lgc, lct, top_distance, nc0_counter, dst_addr)
+        with tik_inst.if_scope(cout_orig_tail == 0):
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1], 0, tp.khw, EPB, 0, tp.dst_n - EPB)
+        with tik_inst.else_scope():
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1],
+                               0, tp.khw, cout_orig_tail_s, EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
+
+    def _copy_left_part_gt_16(self, tp, ub_input, ub_offset, lgc, lct, cout_orig_tail, left_zero, top_distance,
+                              nc0_counter, left_part, right_part, is_left):
+        ub_offset.set_as(0)
+        is_left.set_as(1)
+        self._zero_offset_1(ub_input)
+        self._zero_offset_2(ub_input)
+        self._copy_in_gt_16(tp, ub_input, ub_offset, lgc, lct, cout_orig_tail,
+                            left_zero, left_part, right_part, is_left)
+        self._reorder_le_16(tp, ub_input, left_zero, left_part, right_part, is_left)
+        self._copy_out_gt_16(tp, ub_input, lgc, lct, cout_orig_tail, top_distance, nc0_counter)
+
+    def _copy_right_part_gt_16(self, tp, ub_input, ub_offset, lgc, lct, cout_orig_tail, left_zero, top_distance,
+                               nc0_counter, left_part, right_part, is_left):
+        ub_offset.set_as(0)
+        is_left.set_as(0)
+        self._zero_offset_1(ub_input)
+        self._zero_offset_2(ub_input)
+        self._copy_in_gt_16(tp, ub_input, ub_offset, lgc, lct, cout_orig_tail,
+                            left_zero, left_part, right_part, is_left)
+        self._reorder_le_16(tp, ub_input, left_zero, left_part, right_part, is_left)
+        self._copy_out_gt_16(tp, ub_input, lgc, lct, cout_orig_tail, top_distance, nc0_counter)
+
+    def _update_param_right_gt_16(self, tp, is_left, left_part, left_zero, top_distance):
+        is_left.set_as(0)
+        left_zero.set_as(left_part)
+        top_distance.set_as((top_distance + tp.cout_orig) % tp.dst_n)
+
+    def compute_c_gt_16(self, tp, data_in, data_out):
+        """
+        nchw_2_fractal_z_g entrance function
+        """
+        tik_inst = self.tik_inst
+        ub_offset = tik_inst.Scalar("int64", init_value=0)
+
+        pc_gc_base = tik_inst.Scalar("int64", init_value=0)
+        pc_gc_repeat = tik_inst.Scalar("int64", init_value=0)
+        pc_gc_tail = tik_inst.Scalar("int64", init_value=0)
+        pc_cout_orig_base = tik_inst.Scalar("int64", init_value=0)
+        pc_cout_orig_repeat = tik_inst.Scalar("int64", init_value=0)
+        pc_cout_orig_tail = tik_inst.Scalar("int64", init_value=0)
+
+        left_zero = tik_inst.Scalar("int64", init_value=0)
+        top_distance = tik_inst.Scalar("int64", init_value=0)
+        nc0_counter = tik_inst.Scalar("int64", init_value=0)
+        left_part = tik_inst.Scalar("int64", init_value=tp.cin_orig)
+        right_part = tik_inst.Scalar("int64", init_value=0)
+        is_left = tik_inst.Scalar("int64", init_value=1)
+
+        with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+            self._get_param_by_block_idx_gt_16(block_idx, tp, pc_gc_base, pc_gc_repeat, pc_gc_tail,
+                                               pc_cout_orig_base, pc_cout_orig_repeat, pc_cout_orig_tail)
+
+            with tik_inst.for_range(pc_gc_base, pc_gc_base + pc_gc_repeat) as lgc:
+                self._calc_param_gt_16(tp, lgc, left_zero, top_distance, nc0_counter, left_part, right_part)
+
+                with tik_inst.for_range(pc_cout_orig_base, pc_cout_orig_base + pc_cout_orig_repeat) as lct:
+                    self._copy_left_part_gt_16(tp, self.ub_input, ub_offset, lgc, lct, 0, left_zero,
+                                               top_distance, nc0_counter, left_part, right_part, is_left)
+
+                with tik_inst.if_scope(pc_cout_orig_tail != 0):
+                    self._copy_left_part_gt_16(tp, self.ub_input, ub_offset,
+                                               lgc, pc_cout_orig_base + pc_cout_orig_repeat,
+                                               pc_cout_orig_tail, left_zero, top_distance,
+                                               nc0_counter, left_part, right_part, is_left)
+
+                with tik_inst.if_scope(right_part != 0):
+                    self._update_param_right_gt_16(tp, is_left, left_part, left_zero, top_distance)
+                    with tik_inst.for_range(pc_cout_orig_base, pc_cout_orig_base + pc_cout_orig_repeat) as lct:
+                        self._copy_right_part_gt_16(tp, self.ub_input, ub_offset, lgc, lct, 0, left_zero,
+                                                    top_distance, nc0_counter, left_part, right_part, is_left)
+
+                    with tik_inst.if_scope(pc_cout_orig_tail != 0):
+                        self._copy_right_part_gt_16(tp, self.ub_input, ub_offset, lgc,
+                                                    pc_cout_orig_base + pc_cout_orig_repeat,
+                                                    pc_cout_orig_tail, left_zero, top_distance,
+                                                    nc0_counter, left_part, right_part, is_left)
+
+            with tik_inst.if_scope(pc_gc_tail != 0):
+                self._calc_param_cg_tail_gt_16(tp, pc_gc_base + pc_gc_repeat, lct, left_zero,
+                                               top_distance, nc0_counter, left_part, right_part, is_left)
+
+                with tik_inst.for_range(pc_cout_orig_base, pc_cout_orig_base + pc_cout_orig_repeat) as lct:
+                    self._copy_left_part_gt_16(tp, self.ub_input, ub_offset, pc_gc_base + pc_gc_repeat,
+                                               lct, 0, left_zero, top_distance, nc0_counter,
+                                               left_part, right_part, is_left)
+
+                with tik_inst.if_scope(pc_cout_orig_tail != 0):
+                    self._copy_left_part_gt_16(tp, self.ub_input, ub_offset,
+                                               pc_gc_base + pc_gc_repeat, pc_cout_orig_base + pc_cout_orig_repeat,
+                                               pc_cout_orig_tail, left_zero, top_distance,
+                                               nc0_counter, left_part, right_part, is_left)
 
 
+# pylint: disable=unused-argument
 @para_check.check_input_type(dict, dict, str, str, int, str)
 def nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="nchw_2_fractal_z_g"):
     """
@@ -374,7 +701,10 @@ def nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="nc
     data_in = tik_inst.Tensor(in_dtype, shape_in, tik.scope_gm, name="data_in")
     data_out = tik_inst.Tensor(out_dtype, shape_out, tik.scope_gm, name="data_out", is_atomic_add=True)
     instance = Nchw2Fractalzg(tik_inst, data_in, data_out)
-    instance._check_params(shape_in, shape_out, in_dtype, out_dtype)
     tp = instance._tiling(shape_in, shape_out, groups)
-    instance._compute(tp, data_in, data_out)
+    if (shape_in[1] <= EPB):
+        instance.compute_c_le_16(tp, data_in, data_out)
+    else:
+        instance.compute_c_gt_16(tp, data_in, data_out)
+    #build_config = {"enable_const_fold":True}
     tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[data_in], outputs=[data_out])

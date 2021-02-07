@@ -83,147 +83,123 @@ def gen_trans_data_precision_case(src, dst, dtype, groups, case_name_val, expect
             "precision_standard": precision_info.PrecisionStandard(0.00, 0.00)}
 
 
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((6, 4, 3, 3), (9, 1, 16, 16),
-#                                                         "int16", 2, "hwcn_2_fractal_z_g_precision_001",
-#                                                         "success"))
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((9, 4, 3, 3), (9, 1, 16, 16),
-#                                                         "int16", 3, "hwcn_2_fractal_z_g_precision_002",
-#                                                         "success"))
-#
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((16, 3, 3, 3), (9, 1, 16, 16),
-#                                                         "int16", 4, "hwcn_2_fractal_z_g_precision_003",
-#                                                         "success"))
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((16, 5, 3, 3), (18, 1, 16, 16),
-#                                                         "int16", 4, "hwcn_2_fractal_z_g_precision_004",
-#                                                         "success"))
-#
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((32, 5, 3, 3), (18, 2, 16, 16),
-#                                                         "int16", 4, "hwcn_2_fractal_z_g_precision_005",
-#                                                         "success"))
-#
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((32, 5, 3, 3), (27, 2, 16, 16),
-#                                                         "int16", 8, "hwcn_2_fractal_z_g_precision_006",
-#                                                         "success"))
-#
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((8, 32, 3, 3), (36, 1, 16, 16),
-#                                                         "int16", 2, "hwcn_2_fractal_z_g_precision_007",
-#                                                         "success"))
-#
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((320, 3, 2, 2), (24, 10, 16, 16),
-#                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_008",
-#                                                         "success"))
-#
-#ut_case.add_precision_case(["Ascend910", "Ascend310"],
-#                           gen_trans_data_precision_case((320, 4, 2, 2), (32, 5, 16, 16),
-#                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_009",
-#                                                         "success"))
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
+                           gen_trans_data_precision_case((2, 2, 3, 320), (24, 10, 16, 16),
+                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_001",
+                                                         "success"))
 
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
+                           gen_trans_data_precision_case((3, 3, 37, 256), (666, 8, 16, 16),
+                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_002",
+                                                         "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 2, 128), (36, 2, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_101",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 4, 128), (72, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_102",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 8, 128), (144, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_103",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 8, 256), (144, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_104",
                                                          "success"))
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 16, 256), (288, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_105",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 16, 512), (288, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_106",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 32, 512), (576, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_107",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 32, 1024), (576, 2, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_108",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 64, 1024), (1152, 2, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_109",
                                                          "success"))
 
-
-
-
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 8, 112), (63, 1, 16, 16),
                                                          "int16", 14, "hwcn_2_fractal_z_g_precision_net_201",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((2, 2, 8, 256), (64, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_202",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 8, 256), (144, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_203",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((2, 2, 16, 512), (128, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_204",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 16, 512), (288, 1, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_205",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((2, 2, 32, 1024), (256, 2, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_206",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 32, 1024), (576, 2, 16, 16),
                                                          "int16", 32, "hwcn_2_fractal_z_g_precision_net_207",
                                                          "success"))
 
+ut_case.add_precision_case(["Ascend910A", "Ascend310", "Ascend310"],
+                           gen_trans_data_precision_case((3, 3, 1, 32), (18, 1, 16, 16),
+                                                         "int16", 32, "hwcn_2_fractal_z_g_precision_net_301",
+                                                         "success"))
 
+ut_case.add_precision_case(["Ascend910A", "Ascend310", "Ascend310"],
+                           gen_trans_data_precision_case((3, 3, 1, 64), (36, 1, 16, 16),
+                                                         "int16", 64, "hwcn_2_fractal_z_g_precision_net_302",
+                                                         "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310", "Ascend310"],
+                           gen_trans_data_precision_case((3, 3, 1, 128), (72, 1, 16, 16),
+                                                         "int16", 128, "hwcn_2_fractal_z_g_precision_net_303",
+                                                         "success"))
+
+ut_case.add_precision_case(["Ascend910A", "Ascend310", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 1, 256), (144, 1, 16, 16),
-                                                         "int16", 256, "hwcn_2_fractal_z_g_precision_net_301",
+                                                         "int16", 256, "hwcn_2_fractal_z_g_precision_net_304",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 1, 512), (288, 1, 16, 16),
-                                                         "int16", 512, "hwcn_2_fractal_z_g_precision_net_302",
+                                                         "int16", 512, "hwcn_2_fractal_z_g_precision_net_305",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910", "Ascend310"],
+ut_case.add_precision_case(["Ascend910A", "Ascend310", "Ascend310"],
                            gen_trans_data_precision_case((3, 3, 1, 1024), (576, 1, 16, 16),
-                                                         "int16", 1024, "hwcn_2_fractal_z_g_precision_net_303",
+                                                         "int16", 1024, "hwcn_2_fractal_z_g_precision_net_306",
                                                          "success"))
 
 
@@ -232,5 +208,5 @@ ut_case.add_precision_case(["Ascend910", "Ascend310"],
 
 if __name__ == '__main__':
     simulator_lib_path ="/home/shenmin/Ascend/toolkit/tools/simulator"
-    ut_case.run(["Ascend910"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
     #ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
