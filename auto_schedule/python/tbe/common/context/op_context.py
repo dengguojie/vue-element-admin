@@ -53,6 +53,8 @@ class OpContext:
 
         self._buffer_manager = None  # type: Any
 
+        self._additional_params = {}  # type: Dict[str, Any]
+
         self._custom_context = {}  # type: Dict[str, Callable[[], Any]]
         for _name, _clz in _custom_contexts.items():
             self._custom_context[_name] = _clz()
@@ -180,6 +182,25 @@ class OpContext:
         :return:
         """
         return self._custom_context.get(k)
+
+    def add_addition(self, key, value):
+        # type: (str, Any) -> None
+        """
+
+        :param key:
+        :param value:
+        :return:
+        """
+        self._additional_params[key] = value
+
+    def get_addition(self, key):
+        # type: (str) -> Any
+        """
+
+        :param key:
+        :return:
+        """
+        return self._additional_params.get(key)
 
 
 def get_context():
