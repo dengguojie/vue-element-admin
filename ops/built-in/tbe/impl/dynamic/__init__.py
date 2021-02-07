@@ -154,6 +154,7 @@ from .sigmoid import sigmoid
 from .sin import sin
 from .sinh import sinh
 from .tan import tan
+from .scale import scale
 from .asinh import asinh
 from .asinh_grad import asinh_grad
 from .expm1 import expm1

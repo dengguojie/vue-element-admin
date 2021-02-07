@@ -488,14 +488,20 @@ VERIFY_FUNC_REG(DropOutDoMask, DropOutDoMaskVerify);
 //---------------------------------Scale------------------------------------
 IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   OP_LOGI("Scale", "infer shape begin---");
-  DataType dtype_x = op.GetInputDesc("x").GetDataType();
-  ge::Shape shape_x = op.GetInputDesc("x").GetShape();
-  std::vector<int64_t> dims_x = shape_x.GetDims();
-  // set output
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(shape_x);
-  output_desc.SetDataType(dtype_x);
-  (void)op.UpdateOutputDesc("y", output_desc);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto desc_x = op_info->MutableInputDesc("x");
+  auto shape_x = desc_x->MutableShape();
+  vector<int64_t> dims_x = shape_x.GetDims();
+  DataType dtype_x = desc_x->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+  desc_x->GetShapeRange(shape_range_x);
+  MakeUpShapeRange(dims_x, shape_range_x);
+
+  auto output_desc_y = op_info->MutableOutputDesc("y");
+  output_desc_y->SetShape(shape_x);
+  output_desc_y->SetOriginShape(shape_x);
+  output_desc_y->SetShapeRange(shape_range_x);
+  output_desc_y->SetDataType(dtype_x);
 
   int64_t axis;
   int64_t num_axes;
@@ -517,10 +523,12 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   }
 
   int64_t length_x = dims_x.size();
-  ge::Shape shape_scale = op.GetInputDesc("scale").GetShape();
-  int64_t scale_dim_num = shape_scale.GetDimNum();
-  std::vector<int64_t> dims_scale = shape_scale.GetDims();
+  
+  auto desc_scale = op_info->MutableInputDesc("scale");
+  auto shape_scale = desc_scale->MutableShape();
+  vector<int64_t> dims_scale = shape_scale.GetDims();
   int64_t length_scale = dims_scale.size();
+  int64_t scale_dim_num = shape_scale.GetDimNum();
 
   int64_t axis_;
   if (axis < 0) {
@@ -559,6 +567,8 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   // shape process
   if (dims_x.size() == 4 && scale_dim_num != 0) {
     std::vector<int64_t> dims_scale_tmp;
+    std::vector<std::pair<int64_t, int64_t>> range_scale_new;
+    desc_scale->GetShapeRange(range_scale_new);
 
     if (scale_from_blob) {
       std::vector<int64_t> dims_scale_tmp1 = shape_scale.GetDims();
@@ -569,14 +579,17 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
       if (num_axes == -1) {
         for (int64_t i = 0; i < axis_; i++) {
           dims_scale_tmp.insert(dims_scale_tmp.begin(), (int64_t)1);
+          range_scale_new.insert(range_scale_new.begin(), {1, 1});
         }
       } else if (num_axes > 0) {
         int64_t left_length = length_x - num_axes - axis_;
         for (int64_t i = 0; i < axis_; i++) {
           dims_scale_tmp.insert(dims_scale_tmp.begin(), (int64_t)1);
+          range_scale_new.insert(range_scale_new.begin(), {1, 1});
         }
         for (int64_t i = 0; i < left_length; i++) {
           dims_scale_tmp.push_back((int64_t)1);
+          range_scale_new.push_back({1, 1});
         }
       }
     } else {
@@ -587,9 +600,11 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
       int64_t left_length = length_x - length_scale_new - axis_;
       for (int64_t i = 0; i < axis_; i++) {
         dims_scale_tmp.insert(dims_scale_tmp.begin(), (int64_t)1);
+        range_scale_new.insert(range_scale_new.begin(), {1, 1});
       }
       for (int64_t i = 0; i < left_length; i++) {
         dims_scale_tmp.push_back((int64_t)1);
+        range_scale_new.push_back({1, 1});
       }
     }
 
@@ -599,22 +614,23 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
       dims_scale_tmp = {1};
     }
     // update scale shape
-    ge::Shape output_scale_shape = ge::Shape(dims_scale_tmp);
-    TensorDesc scale_desc = op.GetInputDesc("scale");
-    scale_desc.SetShape(output_scale_shape);
-    scale_desc.SetOriginShape(output_scale_shape);
-    (void)op.UpdateInputDesc("scale", scale_desc);
+    auto output_scale_shape = ge::Shape(dims_scale_tmp);
+    
+    desc_scale->SetShape(GeShape(dims_scale_tmp));
+    desc_scale->SetOriginShape(GeShape(dims_scale_tmp));
 
     // update bias shape
-    DataType dtype_bias = op.GetInputDesc("bias").GetDataType();
-    Format format_bias = op.GetInputDesc("bias").GetFormat();
+    auto desc_bias = op_info->MutableInputDesc("bias");
+    auto shape_bias = desc_bias->MutableShape();
+    vector<int64_t> dims_bias = shape_bias.GetDims();
+    DataType dtype_bias = desc_bias->GetDataType();
+    Format format_bias = desc_bias->GetFormat();
     if (!((dtype_bias == DT_UNDEFINED) && (format_bias == FORMAT_RESERVED))) {
       // bias input
-      ge::Shape output_bias_shape = ge::Shape(dims_scale_tmp);
-      TensorDesc bias_desc = op.GetInputDesc("bias");
-      bias_desc.SetShape(output_bias_shape);
-      bias_desc.SetOriginShape(output_bias_shape);
-      (void)op.UpdateInputDesc("bias", bias_desc);
+      
+      desc_bias->SetShape(GeShape(dims_scale_tmp));
+      desc_bias->SetOriginShape(GeShape(dims_scale_tmp));
+      desc_bias->SetShapeRange(range_scale_new);
     }
   }
 
@@ -623,10 +639,13 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
 }
 
 IMPLEMT_VERIFIER(Scale, ScaleVerify) {
-  ge::Shape shape_x = op.GetInputDesc("x").GetShape();
-  ge::Shape shape_scale = op.GetInputDesc("scale").GetShape();
-  std::vector<int64_t> dims_x = shape_x.GetDims();
-  std::vector<int64_t> dims_scale = shape_scale.GetDims();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto desc_x = op_info->MutableInputDesc("x");
+  auto shape_x = desc_x->MutableShape();
+  vector<int64_t> dims_x = shape_x.GetDims();
+  auto desc_scale = op_info->MutableInputDesc("scale");
+  auto shape_scale = desc_scale->MutableShape();
+  vector<int64_t> dims_scale = shape_scale.GetDims();
   int64_t scale_dim_num = shape_scale.GetDimNum();
 
   int64_t axis;
