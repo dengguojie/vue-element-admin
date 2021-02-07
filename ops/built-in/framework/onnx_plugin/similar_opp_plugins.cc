@@ -160,6 +160,7 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Where, SelectV2, WhereV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Range, Range, RangeV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Expand, Expand, ExpandV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Dropout, Dropout, DropoutV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::GreaterOrEqual, GreaterEqual, GreaterOrEqualV12);
 
 //onnx::13
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Acos, Acos, AcosV13);
