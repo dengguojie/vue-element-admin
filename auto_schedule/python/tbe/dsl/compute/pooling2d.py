@@ -346,7 +346,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
         res = _pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w,
                              pooling_params, setfmatrix_dict, fusion_params, impl_mode)
     elif pooling_mode == "GAP":
-        res = _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w,
+        res = _pooling2d_gap(tensor_in_ub, res_output_shape, in_size_h, in_size_w,
                              pooling_params, setfmatrix_dict, fusion_params, impl_mode)
 
     return res
