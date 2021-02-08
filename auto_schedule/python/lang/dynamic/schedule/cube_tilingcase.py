@@ -423,7 +423,6 @@ class TilingSelection:
         # for default tiling
         if None in batch_range and self.op.op_type == "convolution_3d":
             batch_range = [batch_range[0], MAX_RANGE]
-            print("tgt area is ",tgt_area)
             cur_seed = next(self.seed_cnt)
             default_tiling = self.op.get_default_tiling()
             tiling_cases.append(
