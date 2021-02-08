@@ -598,8 +598,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
         if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
-            if x_cdim % 16 == 0 and x_ndim % 16 == 0:
-                format_list.append("FRACTAL_Z")
+            format_list.append("FRACTAL_Z")
         format_list.append("FRACTAL_NZ")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
@@ -642,8 +641,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
         if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
-            if y_cdim % 16 == 0 and y_ndim % 16 == 0:
-                format_list.append("FRACTAL_Z")
+            format_list.append("FRACTAL_Z")
         format_list.append("FRACTAL_NZ")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
