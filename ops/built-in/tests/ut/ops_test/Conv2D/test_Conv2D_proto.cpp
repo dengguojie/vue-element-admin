@@ -335,3 +335,21 @@ TEST_F(Conv2DProtoTest, conv2dSplicDataTest) {
     std::vector<int> expect_pads = {1, 1, 0, 0};
     EXPECT_EQ(expect_pads, pads);
 }
+
+// base dynamic ut with range(6, -1)
+TEST_F(Conv2DProtoTest, conv2dDynamicBaseTest) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
+                                                        ge::FORMAT_NHWC, {{4, 4}, {6, -1}, {6, -1}, {64, 64}}));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{1, 1, 64, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateOutputDesc("y", create_desc_shape_range({4, -1, -1, 1}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 1},
+                                                        ge::FORMAT_NHWC, {{4, 4}, {6, -1}, {6, -1}, {1, 1}}));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {0, 0, 0, 0});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    auto status = conv2d.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+    auto ret = conv2d.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

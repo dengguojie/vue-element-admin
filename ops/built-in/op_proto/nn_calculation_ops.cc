@@ -3199,18 +3199,17 @@ static void SetConv2dOutShapeRange(const std::string& pad_str,
   int32_t kernel = attr_params[attr_idx++];
   int32_t low = fm_range[idx].first;
   int32_t high = fm_range[idx].second;
-
-  if (low == 1 && high == -1) {
-    out_range[idx].first = low;
-    out_range[idx].second = high;
+  if (pad_str == "SAME") {
+    out_range[idx].first = (low + stride -1) / stride;
+    out_range[idx].second = (high + stride -1) / stride;
   } else {
-    if (pad_str == "SAME") {
-      out_range[idx].first = (low + stride -1) / stride;
-      out_range[idx].second = (high + stride -1) / stride;
-    } else {
-      out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
-      out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
-    }
+    out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
+    out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
+  }
+  out_range[idx].first = std::max(out_range[idx].first, kDynamicRangeLowerBound);
+  out_range[idx].second = std::min(out_range[idx].second, kDynamicRangeUpperBound);
+  if(high == -1) {
+    out_range[idx].second = high;
   }
 }
 
