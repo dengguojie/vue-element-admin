@@ -244,7 +244,7 @@ def _find_idx_in_tensor_list(args: Union[Tuple, List]):
         dict_args["detailed_cause"] = "Size of args should more than 2"
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    tensor_list = args[1].get("tensor_list")[0]
+    tensor_list = args[1].get("tensor_list")
     _before_reduce = operation.get_context().get("placeholder_before_reduce")
     _after_reduce = operation.get_context().get("placeholder_after_reduce")
 
