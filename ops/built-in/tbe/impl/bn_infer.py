@@ -24,6 +24,7 @@ from te.utils.error_manager import error_manager_vector
 tbe_platform.cce_policy.disableL2()
 
 
+# pylint: disable=locally-disabled,too-many-locals,unused-argument
 def _check_shape(shape_x, shape_scale, data_format):
     """
     Function to check if the shape is in line with norms.
@@ -47,19 +48,12 @@ def _check_shape(shape_x, shape_scale, data_format):
         error_detail = "The data format is 5HD or 6HD, but x or scale's shape length is not 5 or 6"
         error_manager_vector.raise_err_two_input_shape_invalid("bn_infer", "x", \
                                                                "scale", error_detail)
-    if data_format == "NC1HWC0":
-        dim_c1 = shape_x[1]
-        dim_c0 = shape_x[4]
-        if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
-            error_detail = "Dimension C must be equal"
-            error_manager_vector.raise_err_input_shape_invalid("bn_infer", "scale", \
-                                                           error_detail)
-    else:
-        dim_c1 = shape_x[2]
-        dim_c0 = shape_x[5]
-        if shape_scale[2] != dim_c1 or shape_scale[5] != dim_c0:
-            error_detail = "Dimension C must be equal"
-            error_manager_vector.raise_err_input_shape_invalid("bn_infer", "scale", \
+
+    dim_c1 = shape_x[1]
+    dim_c0 = shape_x[4]
+    if shape_scale[1] != dim_c1 or shape_scale[4] != dim_c0:
+        error_detail = "Dimension C must be equal"
+        error_manager_vector.raise_err_input_shape_invalid("bn_infer", "scale", \
                                                            error_detail)
 
 
@@ -196,8 +190,8 @@ def bn_infer(x, scale, offset, mean, variance, y,
 
     data_format = x.get("format").upper()
 
-    if data_format not in ("NC1HWC0", "NDC1HWC0"):
-        format_rule = "Format only support 5HD ,NDC1HWC0"
+    if data_format != "NC1HWC0":
+        format_rule = "Format only support 5HD "
         error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
     shape_util.compare_tensor_dict_key(scale, offset, "shape")
     shape_util.compare_tensor_dict_key(scale, mean, "shape")
@@ -205,9 +199,6 @@ def bn_infer(x, scale, offset, mean, variance, y,
     _check_shape(shape_x, shape_scale, data_format)
 
     _check_dtype(dtype_x, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
-    if data_format == "NDC1HWC0":
-        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
-        shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
 
     x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
     scale_input = tvm.placeholder(shape_scale, name="scale_input", dtype=dtype_scale.lower())

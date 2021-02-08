@@ -39,7 +39,7 @@ case3 = {"params": [{"shape": (4,2,2,7,8,16), "dtype": "float16", "format": "NDC
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
-ut_case.add_case(["Ascend910A"], case3)
+#ut_case.add_case(["Ascend910A"], case3)
 
 
 if __name__ == '__main__':

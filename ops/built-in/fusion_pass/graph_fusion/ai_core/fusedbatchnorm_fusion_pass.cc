@@ -217,8 +217,11 @@ Status FusedBatchnormFusionPass::MatchSubNode(NodePtr subNodePtr, PassMatchResul
   // mul has a const input node
   NodePtr constNode = FindInputNode(mulNodePtr, "Constant", matchResult, true);
   if (constNode == nullptr) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Mul Node does not have a const input node.");
-    return FAILED;
+    constNode = FindInputNode(mulNodePtr, "Const", matchResult, true);
+    if (constNode == nullptr) {
+        OP_LOGI(FUSED_OP_TYPE.c_str(), "Mul Node does not have a const input node.");
+        return FAILED;
+    }
   }
   if (matchResult.constNodeVec.empty()) {
     matchResult.constNodeVec.push_back(constNode);

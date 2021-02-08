@@ -97,32 +97,18 @@ def _check_shape(shape_grads, shape_batch_variance, data_format):
     para_check.check_shape(shape_grads, param_name="grads")
 
     para_check.check_shape(shape_batch_variance, param_name="batch_variance")
-    dim_c0 = 0
-    if data_format == "NC1HWC0":
-        dim_c1 = shape_grads[1]
-        dim_c0 = shape_grads[4]
-        if shape_batch_variance[0] != 1 or shape_batch_variance[2] != 1 \
-                        or shape_batch_variance[3] != 1:
-            error_detail = "Dimensions except Dimension C must be one for shape_batch_mean"
-            error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance", error_detail)
 
-        if shape_batch_variance[1] != dim_c1 or shape_batch_variance[4] != dim_c0:
-            batch_variance_rule = "Dimension C of grads and batch_variance must be equal"
-            error_manager_vector.raise_err_check_params_rules("bn_infer_grad", batch_variance_rule, "batch_variance",
-                                                              shape_batch_variance[1] * shape_batch_variance[4])
-    else:
-        dim_c1 = shape_grads[2]
-        dim_c0 = shape_grads[5]
-        shape_n = shape_batch_variance[0] * shape_batch_variance[1]
-        if shape_n != 1 or shape_batch_variance[3] != 1 \
-                or shape_batch_variance[4] != 1:
-            error_detail = "Dimensions except Dimension C must be one for shape_batch_mean"
-            error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance", error_detail)
+    dim_c1 = shape_grads[1]
+    dim_c0 = shape_grads[4]
+    if shape_batch_variance[0] != 1 or shape_batch_variance[2] != 1 \
+                    or shape_batch_variance[3] != 1:
+        error_detail = "Dimensions except Dimension C must be one for shape_batch_mean"
+        error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance", error_detail)
 
-        if shape_batch_variance[2] != dim_c1 or shape_batch_variance[5] != dim_c0:
-            batch_variance_rule = "Dimension C of grads and batch_variance must be equal"
-            error_manager_vector.raise_err_check_params_rules("bn_infer_grad", batch_variance_rule, "batch_variance",
-                                                              shape_batch_variance[1] * shape_batch_variance[4])
+    if shape_batch_variance[1] != dim_c1 or shape_batch_variance[4] != dim_c0:
+        batch_variance_rule = "Dimension C of grads and batch_variance must be equal"
+        error_manager_vector.raise_err_check_params_rules("bn_infer_grad", batch_variance_rule, "batch_variance",
+                                                          shape_batch_variance[1] * shape_batch_variance[4])
 
     if len(shape_grads) not in (5, 6):
         error_detail = "This operator can only support 5D"
@@ -178,9 +164,6 @@ def bn_infer_grad(grads, scale, batch_variance, x_backprop, epsilon=0.0001, kern
 
     _check_shape(shape_grads, shape_batch_variance, data_format)
     shape_util.compare_tensor_dict_key(scale, batch_variance, "shape")
-    if data_format == "NDC1HWC0":
-        shape_grads = [shape_grads[0] * shape_grads[1], shape_grads[2], shape_grads[3], shape_grads[4], shape_grads[5]]
-        shape_scale = [shape_scale[0] * shape_scale[1], shape_scale[2], shape_scale[3], shape_scale[4], shape_scale[5]]
 
     grads_input = tvm.placeholder(shape_grads, name="grads_input", dtype=input_grads_dtype)
     scale_input = tvm.placeholder(shape_scale, name="x_input", dtype=input_scale_dtype)

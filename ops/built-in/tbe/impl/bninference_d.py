@@ -42,7 +42,7 @@ def _format_check(arg_input):
     None
     """
     format_data = arg_input.get("format")
-    excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC", "NDC1HWC0"]
+    excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC"]
     para_check.check_format(format_data, excepted_format_list, param_name="arg_input")
 
 
@@ -597,10 +597,6 @@ def gen_tensor(x, mean, variance, scale, offect):
             index_c = 0
         else:
             index_c = 3
-    elif format_x == "NDC1HWC0":
-        c1 = shape_x[2]
-        c0 = shape_x[5]
-        shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
     else:
         c1 = shape_x[1]
         c0 = shape_x[4]
