@@ -86,8 +86,6 @@ class PatternFusionUtil {
   static Status SetOutputDescAttrForDataDump(ge::NodePtr fusedNode, ge::NodePtr fusionNode);
   static Status RecordOriginalNamesForConstToAttr(ge::NodePtr& fusedNode, std::vector<PassAttrInfo>& attrInfos,
                                                   std::vector<ge::NodePtr>& originalNodes);
-  static Status InsertSliceDNodes(ComputeGraph& graph, NodePtr srcNode, unsigned int constIdx,
-                                  const vector<NodePtr>& newConvNodes, int64_t group, size_t sliceDimIdx);
   static Status AddInputToOutput(ge::NodePtr node, std::vector<PassInputInfo>& inputInfoVec);
   static Status ParseChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& channelIdx);
   static Status ParseNChannelIdx(ge::GeTensorDesc& tensorDesc, size_t& channelIdx);
