@@ -384,23 +384,11 @@ class IROpInfo(OpInfo):
 
     @staticmethod
     def _mapping_input_output_type(ir_type, ir_name):
-        if ir_type in utils.INPUT_OUTPUT_DTYPE_MAP:
-            return utils.INPUT_OUTPUT_DTYPE_MAP.get(ir_type)
-        else:
-            utils.print_warn_log("The %s 'TypeRange' '%s' in the .xlsx file "
-                                 "is unsupported. Please check. If you "
-                                 "aren't having problems, "
-                                 "just ignore the warning."
-                                 % (ir_name, ir_type))
-        return ""
+        file_type = utils.INPUT_FILE_XLSX
+        return utils.CheckFromConfig().trans_io_dtype(ir_type, ir_name,
+                                                      file_type)
 
     @staticmethod
     def _mapping_attr_type(attr_type):
-        if attr_type in utils.IR_ATTR_TYPE_MAP:
-            return utils.IR_ATTR_TYPE_MAP.get(attr_type)
-        utils.print_warn_log("The attr type '%s' specified in "
-                             "the .xlsx file is unsupported. Please check "
-                             "the input or output type. If you aren't "
-                             "having problems, just ignore the warning."
-                             % attr_type)
-        return ""
+        file_type = utils.INPUT_FILE_XLSX
+        return utils.CheckFromConfig().trans_ir_attr_type(attr_type, file_type)

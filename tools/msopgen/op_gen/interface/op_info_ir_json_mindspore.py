@@ -20,15 +20,9 @@ class JsonMSIROpInfo(JsonIROpInfo):
 
     @staticmethod
     def _mapping_input_output_type(ir_type, ir_name):
-        if ir_type in utils.MS_INPUT_OUTPUT_DTYPE_LIST:
-            return ir_type
-        else:
-            utils.print_warn_log("The %s 'TypeRange' '%s' in the .json file "
-                                 "is unsupported. Please check. If you "
-                                 "aren't having problems, "
-                                 "just ignore the warning."
-                                 % (ir_name, ir_type))
-        return ""
+        file_type = utils.INPUT_FILE_JSON
+        return utils.CheckFromConfig().trans_ms_io_dtype(ir_type, ir_name,
+                                                         file_type)
 
     @staticmethod
     def _init_op_format(input_output_map, prefix, input_output_name,

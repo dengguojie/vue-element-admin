@@ -219,14 +219,7 @@ class OpFileAiCore(OPFile):
     @staticmethod
     def _mapping_attr_type_for_ini(attr_type):
         attr_type = attr_type.strip()
-        if attr_type in utils.INI_ATTR_TYPE_MAP:
-            return utils.INI_ATTR_TYPE_MAP.get(attr_type)
-        utils.print_warn_log("The attr type '%s' "
-                             "is unsupported for .ini file. "
-                             "Please check the attr type. If "
-                             "you aren't having problems, just ignore "
-                             "the warning." % attr_type)
-        return ""
+        return utils.CheckFromConfig().trans_ini_attr_type(attr_type)
 
     @staticmethod
     def _mapping_info_cfg_type(op_type):

@@ -109,33 +109,15 @@ INFO_IR_TYPES_KEY = "ir_type_list"
 INFO_PARAM_TYPE_KEY = "param_type"
 INFO_PARAM_FORMAT_KEY = "format_list"
 
-# mindspore support dtype
-MS_INPUT_OUTPUT_DTYPE_LIST = [
-    "None_None", "BOOL_None", "BOOL_Default", "BOOL_5HD", "BOOL_FracZ",
-    "BOOL_FracNZ", "BOOL_C1HWNCoC0", "BOOL_NCHW", "BOOL_NHWC", "BOOL_NDHWC",
-    "I8_None", "I8_Default", "I8_5HD", "I8_FracZ", "I8_FracNZ", "I8_C1HWNCoC0",
-    "I8_NCHW", "I8_NHWC", "I8_HWCN", "I8_NDHWC", "U8_None", "U8_Default",
-    "U8_5HD", "U8_FracZ", "U8_FracNZ", "U8_C1HWNCoC0", "U8_NCHW", "U8_NHWC",
-    "U8_HWCN", "U8_NDHWC", "I16_None", "I16_Default", "I16_5HD", "I16_FracZ",
-    "I16_FracNZ", "I16_C1HWNCoC0", "I16_NCHW", "I16_NHWC", "I16_HWCN",
-    "I16_NDHWC", "U16_None", "U16_Default", "U16_5HD", "U16_FracZ",
-    "U16_FracNZ", "U16_C1HWNCoC0", "U16_NCHW", "U16_NHWC", "U16_HWCN",
-    "U16_NDHWC", "I32_None", "I32_Default", "I32_5HD", "I32_FracZ",
-    "I32_FracNZ", "I32_C1HWNCoC0", "I32_NCHW", "I32_NHWC", "I32_HWCN",
-    "I32_NDHWC", "U32_None", "U32_Default", "U32_5HD", "U32_FracZ",
-    "U32_FracNZ", "U32_C1HWNCoC0", "U32_NCHW", "U32_NHWC", "U32_HWCN",
-    "U32_NDHWC", "I64_None", "I64_Default", "I64_5HD", "I64_FracZ",
-    "I64_FracNZ", "I64_C1HWNCoC0", "I64_NCHW", "I64_NHWC", "I64_HWCN",
-    "I64_NDHWC", "U64_None", "U64_Default", "U64_5HD", "U64_FracZ",
-    "U64_FracNZ", "U64_C1HWNCoC0", "U64_NCHW", "U64_NHWC", "U64_HWCN",
-    "U64_NDHWC", "F16_None", "F16_Default", "F16_5HD", "F16_FracZ",
-    "F16_FracNZ", "F16_C1HWNCoC0", "F16_NCHW", "F16_NHWC", "F16_HWCN",
-    "F16_NDHWC", "F16_FracZNLSTM", "F32_None", "F32_Default", "F32_5HD",
-    "F32_FracZ", "F32_FracNZ", "F32_C1HWNCoC0", "F32_NCHW", "F32_NHWC",
-    "F32_HWCN", "F32_NDHWC", "F32_FracZNLSTM", "F64_None",
-    "F64_Default", "F64_5HD", "F64_FracZ", "F64_FracNZ", "F64_C1HWNCoC0",
-    "F64_NCHW", "F64_NHWC", "F64_HWCN", "F64_NDHWC"
-]
+
+class MsOpGenException(Exception):
+    """
+    The class for compare error
+    """
+
+    def __init__(self, error_info):
+        super().__init__(error_info)
+        self.error_info = error_info
 
 
 class GenModeType:
@@ -144,96 +126,6 @@ class GenModeType:
        """
     GEN_PROJECT = '0'
     GEN_OPERATOR = '1'
-
-
-INPUT_OUTPUT_DTYPE_MAP = {
-    "float": "DT_FLOAT",
-    "bool": "DT_BOOL",
-    "int32": "DT_INT32",
-    "int64": "DT_INT64",
-    "half": "DT_FLOAT16",
-    "uint32": "DT_UINT32",
-    "uint64": "DT_UINT64",
-    "numbertype": "DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16, "
-                  "DT_INT32,DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32,"
-                  "DT_UINT64, DT_QINT8,DT_QUINT8, DT_QINT16, DT_QUINT16, "
-                  "DT_QINT32, DT_BOOL",
-    "realnumbertype": "DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_INT8, DT_INT16, "
-                      "DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, "
-                      "DT_UINT64, DT_QINT8, DT_QUINT8, DT_QINT16, "
-                      "DT_QUINT16, DT_QINT32, DT_BOOL",
-    "quantizedtype": "DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32",
-    "all": "DT_FLOAT,DT_DOUBLE,DT_INT32,DT_UINT8,DT_INT16,DT_INT8,DT_STRING,"
-           "DT_COMPLEX64,DT_INT64,DT_BOOL,DT_QINT8, DT_QUINT8,DT_QINT32,"
-           "DT_Bfp16,DT_QINT16,DT_QUINT16,DT_UINT16,DT_COMPLEX128,DT_HALF,"
-           "DT_RESOURCE, DT_VARIANT,DT_UINT32,DT_UINT64",
-    "BasicType": "DT_FLOAT,DT_DOUBLE,DT_INT32,DT_UINT8,DT_INT16,DT_INT8,"
-                 "DT_COMPLEX64,DT_INT64,DT_QINT8, DT_QUINT8,DT_QINT32, "
-                 "DT_QINT16,DT_QUINT16,DT_UINT16,DT_COMPLEX128,DT_HALF,"
-                 "DT_UINT32,DT_UINT64",
-    "IndexNumberType": "DT_INT32,DT_INT64 ",
-    "int8": "DT_INT8",
-    "int16": "DT_INT16",
-    "uint8": "DT_UINT8",
-    "uint16": "DT_UINT16",
-    "qint8": "DT_QINT8",
-    "qint16": "DT_QINT16",
-    "qint32": "DT_QINT32",
-    "quint8": "DT_QUINT8",
-    "quint16": "DT_QUINT16",
-    "fp16": "DT_FLOAT16",
-    "fp32": "DT_FLOAT32",
-    "double": "DT_DOUBLE",
-    "complex64": "DT_COMPLEX64",
-    "complex128": "DT_COMPLEX128",
-    "string": "DT_STRING",
-    "resource": "DT_RESOURCE"
-}
-
-IR_ATTR_TYPE_MAP = {
-    "int": "Int",
-    "float": "Float",
-    "string": "String",
-    "bool": "Bool",
-    "type": "Type",
-    "list_int": "ListInt",
-    "list_string": "ListString",
-    "list_bool": "ListBool",
-    "list_list_int": "ListListInt",
-    "tensor": "Tensor",
-    "list_float": "ListFloat",
-    "list_tensor": "ListTensor",
-    "list_type": "ListType"
-}
-
-INI_ATTR_TYPE_MAP = {
-    "Int": "int",
-    "Float": "float",
-    "String": "str",
-    "Bool": "bool",
-    "Tensor": "tensor",
-    "Type": "type",
-    "ListInt": "listInt",
-    "ListFloat": "listFloat",
-    "ListString": "listStr",
-    "ListBool": "listBool",
-    "ListTensor": "listTensor",
-    "ListType": "listType",
-    "ListListInt": "listListInt"
-}
-
-TF_ATTR_TYPE_MAP = {
-    "int": "Int",
-    "float": "Float",
-    "string": "String",
-    "bool": "Bool",
-    "type": "Type",
-    "list(int)": "ListInt",
-    "list(string)": "ListString",
-    "list(bool)": "ListBool",
-    "list(list(int))": "ListListInt",
-    "list(float)": "ListFloat"
-}
 
 
 class CoreType:
@@ -251,16 +143,6 @@ class PathType:
     All = 0
     File = 1
     Directory = 2
-
-
-class MsOpGenException(Exception):
-    """
-    The class for compare error
-    """
-
-    def __init__(self, error_info):
-        super().__init__(error_info)
-        self.error_info = error_info
 
 
 def _print_log(level, msg):
@@ -296,6 +178,174 @@ def print_info_log(info_msg):
     @return: none
     """
     _print_log("INFO", info_msg)
+
+
+def read_json_file(json_path):
+    """
+    read json file to get json object
+    @param json_path: the path of json file
+    @return: json object
+    """
+    try:
+        with open(json_path, 'rb') as jsonfile:
+            try:
+                return json.load(jsonfile)
+            except Exception as ex:
+                print_error_log(
+                    'Failed to load json file %s. Please modify it. %s'
+                    % (json_path, str(ex)))
+                raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+    except IOError as io_error:
+        print_error_log(
+            'Failed to open json file %s. %s' % (json_path, str(io_error)))
+        raise MsOpGenException(MS_OP_GEN_OPEN_FILE_ERROR)
+
+
+class CheckFromConfig:
+    """
+    The class for check param from config file
+    """
+    def __init__(self):
+        # verification limit
+        self.ms_io_dtype_list = \
+            self.get_trans_value("MS_INPUT_OUTPUT_DTYPE_LIST")
+        self.io_dtype_map = self.get_trans_value("INPUT_OUTPUT_DTYPE_MAP")
+        self.ir_attr_type_map = self.get_trans_value("IR_ATTR_TYPE_MAP")
+        self.ini_attr_type_map = self.get_trans_value("INI_ATTR_TYPE_MAP")
+        self.tf_attr_type_map = self.get_trans_value("TF_ATTR_TYPE_MAP")
+        self.ms_tf_io_dtype_map = \
+            self.get_trans_value("MS_TF_INPUT_OUTPUT_DTYPE_MAP")
+        self.tf_io_dtype_map = \
+            self.get_trans_value("TF_INPUT_OUTPUT_DTYPE_MAP")
+
+    @staticmethod
+    def get_trans_value(key):
+        """
+        get verification limit from config file
+        @param key: key of config json file
+        @return: value of config json file
+        """
+        current_path = os.path.abspath(__file__)
+        transform_json_path = os.path.join(os.path.abspath(
+            os.path.dirname(current_path) + os.path.sep + ".."),
+            "config", "transform.json")
+        trans_data = read_json_file(transform_json_path)
+
+        if trans_data is None:
+            print_error_log("Config file is empty or invalid, please check!")
+            raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+        trans_data_value = trans_data.get(key)
+        if trans_data_value is None:
+            print_error_log(
+                "%s in Config file is None or invalid, please check!"
+                % key)
+            raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
+        return trans_data_value
+
+    def trans_ms_io_dtype(self, ir_type, ir_name, file_type):
+        """
+        transform input output type for mindspore
+        @param ir_type: type from template file
+        @param ir_name: name from template file
+        @param file_type: template file type
+        @return: type for mindspore
+        """
+        if ir_type in self.ms_io_dtype_list:
+            return ir_type
+        else:
+            print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
+                           "unsupported. Please check. If you aren't having "
+                           "problems, just ignore the warning."
+                           % (ir_name, ir_type, file_type))
+        return ""
+
+    def trans_io_dtype(self, ir_type, ir_name, file_type):
+        """
+        transform input output type for tf,caffee,pytorch
+        @param ir_type: type from template file
+        @param ir_name: name from template file
+        @param file_type: template file type
+        @return: type for tf,caffee,pytorch
+        """
+        if ir_type in self.io_dtype_map:
+            return self.io_dtype_map.get(ir_type)
+        else:
+            print_warn_log("The %s 'TypeRange' '%s' in the %s file is "
+                           "unsupported. Please check. If you aren't having "
+                           "problems, just ignore the warning."
+                           % (ir_name, ir_type, file_type))
+        return ""
+
+    def trans_ir_attr_type(self, attr_type, file_type):
+        """
+        transform attr type for ir.h
+        @param attr_type: type from template file
+        @param file_type: template file type
+        @return: attr type for ir.h
+        """
+        if attr_type in self.ir_attr_type_map:
+            return self.ir_attr_type_map.get(attr_type)
+        print_warn_log("The attr type '%s' specified in the %s file is "
+                       "unsupported. Please check the input or output type. "
+                       "If you aren't having problems, just ignore the "
+                       "warning." % (attr_type, file_type))
+        return ""
+
+    def trans_ini_attr_type(self, attr_type):
+        """
+        transform attr type for .ini
+        @param attr_type: attr type from template file
+        @return: attr type for .ini
+        """
+        if attr_type in self.ini_attr_type_map:
+            return self.ini_attr_type_map.get(attr_type)
+        print_warn_log("The attr type '%s' is unsupported for .ini file. "
+                       "Please check the attr type. If you aren't having "
+                       "problems, just ignore the warning." % attr_type)
+        return ""
+
+    def trans_tf_attr_type(self, tf_type):
+        """
+        transform attr type from tf .txt
+        @param tf_type: tf type from template file
+        @return: attr type for .ini
+        """
+        if tf_type in self.tf_attr_type_map:
+            return self.tf_attr_type_map.get(tf_type)
+        print_warn_log("The attr type '%s'  in the .txt file is unsupported. "
+                       "Please check the input or output type. If you aren't "
+                       "having problems, just ignore the warning." % tf_type)
+        return ""
+
+    def trans_ms_tf_io_dtype(self, tf_type, name):
+        """
+        transform tf type from tf mindspore .txt
+        @param tf_type: tf type from template file
+        @param name: tf name from template file
+        @return: type for tf mindspore
+        """
+        if tf_type in self.ms_tf_io_dtype_map:
+            return self.ms_tf_io_dtype_map.get(tf_type)
+        else:
+            print_warn_log("The '%s' type '%s' in the .txt file is "
+                           "unsupported. Please check. If you aren't "
+                           "having problems, just ignore the warning."
+                           % (name, tf_type))
+        return ""
+
+    def trans_tf_io_dtype(self, tf_type, name):
+        """
+        transform tf type from tf  .txt
+        @param tf_type: tf type from template file
+        @param name: tf name from template file
+        @return: type for tf
+        """
+        if tf_type in self.tf_io_dtype_map:
+            return self.tf_io_dtype_map.get(tf_type)
+        print_warn_log("The '%s' type '%s' in the .txt file is unsupported. "
+                       "Please check. If you aren't having problems, just "
+                       "ignore the warning." % (name, tf_type))
+        return ""
 
 
 def check_name_valid(name):
@@ -481,22 +531,6 @@ def write_json_file(json_path, content):
         raise MsOpGenException(MS_OP_GEN_WRITE_FILE_ERROR)
     print_info_log(
         "Generate file %s successfully." % json_path)
-
-
-def read_json_file(json_path):
-    try:
-        with open(json_path, 'rb') as jsonfile:
-            try:
-                return json.load(jsonfile)
-            except Exception as ex:
-                print_error_log(
-                    'Failed to load json file %s. Please modify it. %s'
-                    % (json_path, str(ex)))
-                raise MsOpGenException(MS_OP_GEN_READ_FILE_ERROR)
-    except IOError as io_error:
-        print_error_log(
-            'Failed to open json file %s. %s' % (json_path, str(io_error)))
-        raise MsOpGenException(MS_OP_GEN_OPEN_FILE_ERROR)
 
 
 def fix_name_lower_with_under(name):

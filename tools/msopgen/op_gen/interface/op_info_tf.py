@@ -15,58 +15,6 @@ from . import utils
 from .op_info import OpInfo
 from .arg_parser import ArgParser
 
-TF_INPUT_OUTPUT_DTYPE_MAP = {
-    "float": "DT_FLOAT",
-    "DT_FLOAT": "DT_FLOAT",
-    "half": "DT_FLOAT16",
-    "DT_HALF": "DT_FLOAT16",
-    "double": "DT_DOUBLE",
-    "DT_DOUBLE": "DT_DOUBLE",
-    "int8": "DT_INT8",
-    "DT_INT8": "DT_INT8",
-    "int16": "DT_INT16",
-    "DT_INT16": "DT_INT16",
-    "int32": "DT_INT32",
-    "DT_INT32": "DT_INT32",
-    "int64": "DT_INT64",
-    "DT_INT64": "DT_INT64",
-    "uint8": "DT_UINT8",
-    "DT_UINT8": "DT_UINT8",
-    "uint16": "DT_UINT16",
-    "DT_UINT16": "DT_UINT16",
-    "uint32": "DT_UINT32",
-    "DT_UINT32": "DT_UINT32",
-    "uint64": "DT_UINT64",
-    "DT_UINT64": "DT_UINT64",
-    "qint8": "DT_QINT8",
-    "DT_QINT8": "DT_QINT8",
-    "qint16": "DT_QINT16",
-    "DT_QINT16": "DT_QINT16",
-    "qint32": "DT_QINT32",
-    "DT_QINT32": "DT_QINT32",
-    "quint8": "DT_QUINT8",
-    "DT_QUINT8": "DT_QUINT8",
-    "quint16": "DT_QUINT16",
-    "DT_QUINT16": "DT_QUINT16",
-    "complex64": "DT_COMPLEX64",
-    "DT_COMPLEX64": "DT_COMPLEX64",
-    "complex128": "DT_COMPLEX128",
-    "DT_COMPLEX128": "DT_COMPLEX128",
-    "bool": "DT_BOOL",
-    "DT_BOOL": "DT_BOOL",
-    "string": "DT_STRING",
-    "DT_STRING": "DT_STRING",
-    "resource": "DT_RESOURCE",
-    "DT_RESOURCE": "DT_RESOURCE",
-    "numbertype": " DT_FLOAT, DT_DOUBLE,DT_INT64, DT_INT32, DT_UINT8, "
-                  "DT_UINT16, DT_INT16, DT_INT8, DT_COMPLEX64,DT_COMPLEX128,"
-                  "DT_QINT8,DT_QINT32, DT_FLOAT16, DT_UINT32,DT_UINT64",
-    "realnumbertype": "DT_FLOAT, DT_DOUBLE,  DT_INT32, DT_INT64, DT_UINT8, "
-                      "DT_INT16, DT_INT8, DT_UINT16, DT_FLOAT16, DT_UINT32, "
-                      "DT_UINT64",
-    "quantizedtype": "DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32"
-}
-
 
 class TFOpInfo(OpInfo):
     """
@@ -299,22 +247,9 @@ class TFOpInfo(OpInfo):
 
     @staticmethod
     def _mapping_attr_type(tf_type):
-        if tf_type in utils.TF_ATTR_TYPE_MAP:
-            return utils.TF_ATTR_TYPE_MAP.get(tf_type)
-        utils.print_warn_log("The attr type '%s'  in "
-                             "the .txt file is unsupported. Please check "
-                             "the input or output type. If you aren't "
-                             "having problems, just ignore the warning."
-                             % tf_type)
-        return ""
+        return utils.CheckFromConfig().trans_tf_attr_type(tf_type)
 
     @staticmethod
     def _mapping_input_output_type(tf_type, name):
         # mapping from tf type to D enum
-        if tf_type in TF_INPUT_OUTPUT_DTYPE_MAP:
-            return TF_INPUT_OUTPUT_DTYPE_MAP.get(tf_type)
-        utils.print_warn_log("The '%s' type '%s' in "
-                             "the .txt file is unsupported. Please "
-                             "check. If you aren't having problems, "
-                             "just ignore the warning." % (name, tf_type))
-        return ""
+        return utils.CheckFromConfig().trans_tf_io_dtype(tf_type, name)
