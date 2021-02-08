@@ -61,20 +61,6 @@ int32_t Reduce::CalcConstPattern(std::vector<int32_t>& reduce_axis) {
   return dict_key;
 }
 
-int32_t Reduce::GetBlockSize(std::string dtypeUB) {
-  int32_t block_size = 0;
-
-  if (dtypeUB == "float32" || dtypeUB == "int32" || dtypeUB == "uint32") {
-    block_size = 8;
-  } else if (dtypeUB == "float16" || dtypeUB == "int16" || dtypeUB == "uint16") {
-    block_size = 16;
-  } else if (dtypeUB == "int8" || dtypeUB == "uint8") {
-    block_size = 32;
-  }
-
-  return block_size;
-}
-
 int64_t Reduce::GetReorderInputShapeMul(int32_t axis_index, int32_t block_tiling_axis_in_reorder) {
   int64_t result = 1;
 
@@ -209,7 +195,8 @@ bool Reduce::ConstInputProcPost() {
       ByteBufferPut(run_info.tiling_data, pattern);
     }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: Func: ConstInputProcPost get error message. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s]: Func: ConstInputProcPost get error message. Error message: %s",
+            op_type.c_str(), e.what());
     return false;
   }
 
@@ -293,72 +280,75 @@ bool Reduce::GetCompileInfo() {
   std::vector<int32_t> common_info;
   std::vector<int32_t> pattern_info;
   std::vector<int32_t> ub_info;
+
   try {
-    CHECK((op_info.find("common_info") != op_info.end()), "op [%s] : compile info not contain [common_info]",
-          op_type.c_str());
-    CHECK((op_info.find("pattern_info") != op_info.end()), "op [%s] : compile info not contain [pattern_info]",
-          op_type.c_str());
-    CHECK((op_info.find("ub_info") != op_info.end()), "op [%s] : compile info not contain [ub_info]",
-          op_type.c_str());
     common_info = op_info.at("common_info").get<std::vector<int32_t>>();
     pattern_info = op_info.at("pattern_info").get<std::vector<int32_t>>();
     ub_info = op_info.at("ub_info").get<std::vector<int32_t>>();
-  } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get common_info, pattern_info, ub_info error. Error message: %s", op_type.c_str(), e.what());
-    return false;
-  }
 
-  try {
+    const int32_t common_info_size = 5;
+    CHECK_EQ(common_info.size(), common_info_size,
+             "op [%s]: size of common_info should be 5.", op_type.c_str());
     compileInfo.core_num = common_info[0];
     compileInfo.is_keep_dims = (bool)common_info[1];
     compileInfo.min_block_size = common_info[2];
     compileInfo.atomic = (bool)common_info[3];
     compileInfo.coef = common_info[4];
-  } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get compileInfo[common_info] error. Error message: %s", op_type.c_str(), e.what());
-    return false;
-  }
+    // CHECK VALUE
+    CHECK(!compileInfo.coef <= 0,
+          "op [%s] : coef is %d that is illegal", op_type.c_str(), compileInfo.coef);
+    CHECK(!compileInfo.min_block_size <= 0,
+          "op [%s] : min_block_size is %d that is illegal", op_type.c_str(), compileInfo.min_block_size);
+    CHECK(!compileInfo.core_num <= 0,
+          "op [%s] : core_num is %d that is illegal", op_type.c_str(), compileInfo.core_num);
 
-  uint idx = 0;
-  for (auto item : pattern_info) {
-    if (item == pattern) {
+    uint idx = 0;
+    for (auto item : pattern_info) {
+      if (item == pattern) {
         break;
+      }
+      idx += 1;
     }
-    idx += 1;
-  }
-  if (idx >= pattern_info.size()) {
-    GE_LOGE("pattern is %d that not in pattern_info", pattern);
-    return false;
-  }
-  CHECK_EQ(pattern_info.size(), ub_info.size(), "op [%s] : pattern_info's size "
-           "should be as same as ub_info", op_type.c_str());
-  compileInfo.max_ub_count = ub_info[idx];
-  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
+    if (idx >= pattern_info.size()) {
+      GE_LOGE("pattern is %d that not in pattern_info", pattern);
+      return false;
+    }
 
-  // special process(reduce_mean_d)
-  set_reduce_mean_cof_flag = 0;
-  // reduce_mean_cof is not required when handling pure dma_copy case
-  if (input_shape[0] == 1 && reduce_axis[0] == 0) {
-    return true;
-  }
-  reduce_mean_cof = 1.0;
-  if (op_info.count("reduce_mean_cof_dtype") > 0) {
-    const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
-    if (reduce_mean_cof_dtype == "float32") {
-      set_reduce_mean_cof_flag = REDUCE_MEAN_COF_FP32;
-      for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if (IsInVector(reduce_axis, i)) {
-          reduce_mean_cof = reduce_mean_cof / input_shape[i];
+    CHECK_EQ(pattern_info.size(), ub_info.size(),
+             "op [%s] : pattern_info's size should be as same as ub_info", op_type.c_str());
+    compileInfo.max_ub_count = ub_info[idx];
+    CHECK(!compileInfo.max_ub_count <= 0,
+          "op [%s] : max_ub_count is %d that is illegal", op_type.c_str(), compileInfo.max_ub_count);
+    is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
+
+    // special process(reduce_mean_d)
+    set_reduce_mean_cof_flag = 0;
+    // reduce_mean_cof is not required when handling pure dma_copy case
+    if (input_shape[0] == 1 && reduce_axis[0] == 0) {
+      return true;
+    }
+    reduce_mean_cof = 1.0;
+    if (op_info.count("reduce_mean_cof_dtype") > 0) {
+      const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
+      if (reduce_mean_cof_dtype == "float32") {
+        set_reduce_mean_cof_flag = REDUCE_MEAN_COF_FP32;
+        for (uint32_t i = 0; i < input_shape.size(); i++) {
+          if (IsInVector(reduce_axis, i)) {
+            reduce_mean_cof = reduce_mean_cof / input_shape[i];
+          }
         }
-      }
-    } else if (reduce_mean_cof_dtype == "float16") {
-      set_reduce_mean_cof_flag = REDUCE_MEAN_COF_FP16;
-      for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if (IsInVector(reduce_axis, i)) {
-          reduce_mean_cof = reduce_mean_cof / input_shape[i];
+      } else if (reduce_mean_cof_dtype == "float16") {
+        set_reduce_mean_cof_flag = REDUCE_MEAN_COF_FP16;
+        for (uint32_t i = 0; i < input_shape.size(); i++) {
+          if (IsInVector(reduce_axis, i)) {
+            reduce_mean_cof = reduce_mean_cof / input_shape[i];
+          }
         }
       }
     }
+  } catch (const std::exception &e) {
+    GE_LOGE("op [%s]: Func: GetCompileInfo error. Error message: %s", op_type.c_str(), e.what());
+    return false;
   }
 
   return true;
@@ -392,7 +382,7 @@ bool Reduce::ChooseAtomic() {
   ubSizeA = ubSizeB / compileInfo.coef;
   bool is_outermost_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
                                        (int32_t)1) != reduce_axis.end() && input_shape[0] == (int32_t)1;
-  
+
   // 1: Check if atomic is enabled
   // 2: Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
   // 3: Check normal atomic rules
@@ -742,6 +732,12 @@ bool Reduce::SpecialUBTiling() {
   int32_t blk_factor = tilingInfo.block_tiling_factor;
   int32_t ub_axis = tilingInfo.ub_tiling_axis;
   int32_t blk_axis = tilingInfo.block_tiling_axis;
+
+  CHECK(!(ub_factor <= 0 || blk_factor <= 0),
+        "op [%s]: ub_factor and blk_factor must bigger than 0,"
+        "while ub_factor is %d, blk_factor is %d",
+        op_type.c_str(), ub_factor, blk_factor);
+
   if (ub_axis != blk_axis) {
     return true;
   }
@@ -761,80 +757,75 @@ bool Reduce::SpecialUBTiling() {
 }
 
 bool Reduce::Init() {
-  // get ori input_shape
   try {
-    if (op_info.count("idx_before_reduce") > 0) {
-      uint idx = op_info.at("idx_before_reduce");
-      input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
-    } else if (op_paras.inputs.size() > 0 && op_paras.inputs[0].tensor.size() > 0) {
-      input_shape_ori = op_paras.inputs[0].tensor[0].shape;
+    int idx = op_info.count("idx_before_reduce") > 0 ?
+              op_info.at("idx_before_reduce").get<int>() : 0;
+    // CHECK INPUT
+    CHECK(!op_paras.inputs.empty(),
+          "op [%s]: inputs cannot be empty", op_type.c_str());
+    CHECK(!(op_paras.inputs.size() <= uint(idx) || idx < 0),
+          "op [%s]: idx is invalid index for inputs", op_type.c_str());
+    CHECK(!op_paras.inputs[uint(idx)].tensor.empty(),
+          "op [%s]: tensor cannot be empty", op_type.c_str());
+    input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
+
+    // Get ori reduce aixs
+    if (op_paras.const_inputs.find("axes") != op_paras.const_inputs.end()) {
+      // axis_unknown
+      TeConstTensorData reduce_axis_info = op_paras.const_inputs.at("axes");
+      auto size = std::get<1>(reduce_axis_info);
+      ge::DataType axis_type = std::get<2>(reduce_axis_info).GetTensorDesc().GetDataType();
+      CHECK(!(axis_type != ge::DT_INT32 && axis_type != ge::DT_INT64),
+            "op [%s]: axis_type is not belong to [int32, int64]", op_type.c_str());
+
+      if (axis_type == ge::DT_INT32) {
+        int count = size / sizeof(int32_t);
+        const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(reduce_axis_info));
+        reduce_axis_ori.resize(count);
+        for (int i = 0; i < count; i++) {
+          reduce_axis_ori[i] = *data_addr;
+          data_addr++;
+        }
+      } else {
+        int count = size / sizeof(int64_t);
+        const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(reduce_axis_info));
+        reduce_axis_ori.resize(count);
+        for (int i = 0; i < count; i++) {
+          reduce_axis_ori[i] = (int32_t)*data_addr;
+          data_addr++;
+        }
+      }
     } else {
-      GE_LOGE("op [%s] : input shape error.", op_type.c_str());
-      return false;
+      // axis_known
+      reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();
     }
-  } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get input_data error. Error message: %s", op_type.c_str(), e.what());
-    return false;
-  }
 
-  // get ori reduce axis
-  if (op_paras.const_inputs.find("axes") != op_paras.const_inputs.end()) {
-    // axis_unknown
-    const std::string& axis_type = op_paras.inputs[1].tensor[0].dtype;
-    TeConstTensorData reduce_axis_info = op_paras.const_inputs.at("axes");
-    auto size = std::get<1>(reduce_axis_info);
-    if (axis_type == "int32") {
-      int count = size / sizeof(int32_t);
-      const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(reduce_axis_info));
-      reduce_axis_ori.resize(count);
-      for (int i = 0; i < count; i++) {
-        reduce_axis_ori[i] = *data_addr;
-        data_addr++;
+    // Convert reduce axis (-1 -> length+1)
+    // CHECK AXIS VALUE
+    int32_t max_value = int32_t(input_shape_ori.size());
+    int32_t min_value = -1 * max_value;
+    for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
+      if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
+        GE_LOGE("op [%s]: value of axis is illegal.", op_type.c_str());
+        return false;
       }
-    } else if (axis_type == "int64") {
-      int count = size / sizeof(int64_t);
-      const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(reduce_axis_info));
-      reduce_axis_ori.resize(count);
-      for (int i = 0; i < count; i++) {
-        reduce_axis_ori[i] = (int32_t)*data_addr;
-        data_addr++;
+      if (reduce_axis_ori[i] < 0) {
+        reduce_axis_ori[i] = input_shape_ori.size() + reduce_axis_ori[i];
       }
-    } else {
-      GE_LOGE("op [%s] : axis type is not int32 or int64.", op_type.c_str());
-      return false;
     }
-  } else {
-    // axis_known
-    CHECK((op_info.find("_ori_axis") != op_info.end()), "op [%s] : compile info not contain [_ori_axis]",
-          op_type.c_str());
-    try {
-      const auto& reduce_axis_tmp = op_info.at("_ori_axis");
-      reduce_axis_ori.resize(reduce_axis_tmp.size());
-      size_t i = 0;
-      for (const auto& axis : reduce_axis_tmp) {
-        reduce_axis_ori[i] = axis;
-        i++;
-      }
-    } catch (const std::exception &e) {
-      GE_LOGE("op [%s]: get compileInfo[_ori_axis] error. Error message: %s", op_type.c_str(), e.what());
-      return false;
-    }
-  }
 
-  // convert reduce axis (-1 -> length+1)
-  for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
-    if (reduce_axis_ori[i] < 0) {
-      reduce_axis_ori[i] = input_shape_ori.size() + reduce_axis_ori[i];
-    }
-  }
+    // CHECK AXIS DIMS
+    CHECK(!reduce_axis_ori.size() > input_shape_ori.size(),
+          "op [%s]: axis.size is %d that "
+          "should less than input.size which is %d",
+          op_type.c_str(), reduce_axis_ori.size(), input_shape_ori.size());
 
-  // discard "1" and default sorted
-  EliminateOne();
-  try {
+    // Discard "1" and default sorted
+    EliminateOne();
     compileInfo.is_const = op_info.count("reduce_shape_known") > 0 &&
-            op_info.at("reduce_shape_known").get<bool>();
+                           op_info.at("reduce_shape_known").get<bool>();
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get reduce_shape_known error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s]: Func of Init error. Error message: %s", op_type.c_str(), e.what());
     return false;
   }
 
@@ -843,11 +834,20 @@ bool Reduce::Init() {
 
 bool Reduce::WriteTilingData() {
   if (exit_zero_axis) {
-    ByteBufferPut(run_info.tiling_data, (int32_t)zero_tiling_key);
-    ByteBufferPut(run_info.tiling_data, (int32_t)fusion_dim_value);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
-    run_info.block_dim = (int32_t)1;
-
+    try {
+      int status = op_info.at("push_status");
+      if (status == 0) {
+        ByteBufferPut(run_info.tiling_data, (int32_t)zero_tiling_key);
+      }
+      ByteBufferPut(run_info.tiling_data, (int32_t)fusion_dim_value);
+      ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+      run_info.block_dim = (int32_t)1;
+      run_info.tiling_key = (int32_t)zero_tiling_key;
+    } catch (const std::exception &e) {
+      GE_LOGE("op [%s]: get push status error. Error message: %s",
+              op_type.c_str(), e.what());
+      return false;
+    }
     return true;
   }
 
@@ -877,7 +877,8 @@ bool Reduce::WriteTilingData() {
       ByteBufferPut(run_info.tiling_data, tiling_key);
     }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
+    GE_LOGE("op [%s]: get push_status error. Error message: %s",
+            op_type.c_str(), e.what());
     return false;
   }
 
@@ -920,7 +921,6 @@ bool Reduce::DoTiling() {
      2. input(unknown):
         do all process
   */
-  GELOGD("op [%s]: tiling running", op_type.c_str());
   bool ret = true;
   ret = ret && Init();
 
@@ -999,6 +999,7 @@ bool Reduce::DoTiling() {
 
 bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                   OpRunInfo& run_info) {
+  GELOGD("op [%s]: tiling running", op_type.c_str());
   Reduce reduce(op_type, op_paras, op_info, run_info);
   bool ret = reduce.DoTiling();
   ret = ret && reduce.WriteTilingData();

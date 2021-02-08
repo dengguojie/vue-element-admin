@@ -237,6 +237,36 @@ def _gen_zero_tiling_case():
     return zero_tiling_case
 
 
+def _find_idx_in_tensor_list(args: Union[Tuple, List]):
+    if len(args) < 2:
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "Size of args should more than 2"
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    tensor_list = args[1].get("tensor_list")[0]
+    _before_reduce = operation.get_context().get("placeholder_before_reduce")
+    _after_reduce = operation.get_context().get("placeholder_after_reduce")
+
+    if not _before_reduce and not _after_reduce:
+        return
+
+    for tensors in tensor_list:
+        for _idx, _tensor in enumerate(tensors):
+            if _tensor in _before_reduce:
+                operation.add_compile_info("idx_before_reduce", _idx)
+                return
+        for _idx, _tensor in enumerate(tensors):
+            if _tensor in _after_reduce:
+                operation.add_compile_info("idx_before_reduce", _idx)
+                return
+
+    dict_args = dict()
+    dict_args["errCode"] = "E90003"
+    dict_args["detailed_cause"] = "Can not find placeholder_op"
+    raise RuntimeError(dict_args, get_error_message(dict_args))
+
+
 @register_build_pointcut(pattern=Pattern.REDUCE)
 def build_pointcut(func, *args, **kwargs):
     """
@@ -246,6 +276,7 @@ def build_pointcut(func, *args, **kwargs):
     :param kwargs:
     :return:
     """
+    _find_idx_in_tensor_list(args)
     func(*args, **kwargs)
 
 

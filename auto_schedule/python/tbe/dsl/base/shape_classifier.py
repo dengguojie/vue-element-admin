@@ -56,7 +56,7 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
     if mode == BROADCAST:
         return classify_elewise(ins, support_broadcast=True, extra_params=extra_params)
     if mode == REDUCE:
-        if "keepdims" not in extra_params:
+        if extra_params is None or "keepdims" not in extra_params:
             dict_args = dict()
             dict_args["errCode"] = "E90001"
             dict_args["detailed_cause"] = "inputs of classify must include the dict extra_params with the key keepdims " \

@@ -36,6 +36,7 @@ from te.platform.cce_conf import get_soc_spec
 
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
+from .util import is_placeholder
 from .constants import *
 
 
@@ -362,6 +363,12 @@ class ComputeGraphInfo:
 
         # [Common Reduce] Find maximum sub_graph
         self.get_all_tensors_before_reduce()
+        if not operation.get_context().get("placeholder_before_reduce") and \
+                not operation.get_context().get("placeholder_after_reduce"):
+            placeholder_before_reduce = [x for x in self.tensors_before_reduce if is_placeholder(x)]
+            operation.get_context().add("placeholder_before_reduce", placeholder_before_reduce)
+            placeholder_after_reduce = [x for x in self.tensors_after_reduce if is_placeholder(x)]
+            operation.get_context().add("placeholder_after_reduce", placeholder_after_reduce)
         coexisting_quantities, dependent_map = [], {}
         _out = list(self.output_tensor_set)[0]
 
