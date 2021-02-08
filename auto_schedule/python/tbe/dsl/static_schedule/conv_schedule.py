@@ -408,18 +408,19 @@ def reget_tensor_list(outs):
         """
         reluv2, mask = outs
         res_reluv2_fp16 = tvm.compute(reluv2.shape,
-                lambda i, j, k, l: reluv2(i, j, k, l),
-                name = "res_reluv2_fp16",
-                tag = "res_reluv2_fp16")
+                                      lambda i, j, k, l: reluv2(i, j, k, l),
+                                      name="res_reluv2_fp16",
+                                      tag="res_reluv2_fp16")
         res_mask_u8 = tvm.compute(mask.shape,
-                lambda i, j, k, l: mask(i, j, k, l),
-                name = "res_mask_u8",
-                tag = "res_mask_u8")
+                                  lambda i, j, k, l: mask(i, j, k, l),
+                                  name="res_mask_u8",
+                                  tag="res_mask_u8")
         virtual_res = tvm.compute(res_reluv2_fp16.shape,
-                lambda i, j, k, l: res_reluv2_fp16(i, j, k, l) + 
-                    res_mask_u8(i, j, k, l//8),
-                name = "conv_virtual_res",
-                tag = "conv_virtual_res")
+                                  lambda i, j, k, l:
+                                  res_reluv2_fp16(i, j, k, l) +
+                                  res_mask_u8(i, j, k, l//8),
+                                  name="conv_virtual_res",
+                                  tag="conv_virtual_res")
         ConvParam.tensor_map["res_reluv2_fp16"] = res_reluv2_fp16
         ConvParam.tensor_map["res_mask_u8"] = res_mask_u8
         ConvParam.tensor_map["reluv2_virtual_res"] = virtual_res
