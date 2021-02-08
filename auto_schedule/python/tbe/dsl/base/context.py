@@ -24,6 +24,7 @@ from typing import Optional
 from tbe.common.utils.errormgr import get_error_message
 
 from . import operation
+from .var import AttrVarDesc
 from .var import Var
 
 
@@ -36,6 +37,7 @@ class OperatorContext:
         self._pattern = None  # type: Optional[str]
 
         self._vars = []  # type: List[Var]
+        self._attr_vars_desc = []  # type: List[AttrVarDesc]
         self._computes = []  # type: List[ComputeContext]
         self._current_compute = None  # type: Optional[ComputeContext]
 
@@ -111,6 +113,24 @@ class OperatorContext:
         :return:
         """
         return self._vars
+
+    def add_attr_var_desc(self, attr_var_desc):
+        # type: (AttrVarDesc) -> None
+        """
+        :param attr_var_desc:
+        :return:
+        """
+        if self._computes:
+            self._computes[-1].add_attr_var_desc(attr_var_desc)
+        else:
+            self._attr_vars_desc.append(attr_var_desc)
+
+    def get_attr_vars_desc(self):
+        # type: () -> List[AttrVarDesc]
+        """
+        :return:
+        """
+        return self._attr_vars_desc
 
     def begin_compute(self, _compute):
         # type: (ComputeContext) -> None
@@ -222,6 +242,7 @@ class ComputeContext:
         self._operator = operation.get_context() if _operator is None else _operator  # type: Optional[OperatorContext]
 
         self._vars = []  # type: List[Var]
+        self._attr_vars_desc = []  # type: List[AttrVarDesc]
         self._schedules = []  # type: List[ScheduleContext]
         self._current_schedule = None  # type: Optional[ScheduleContext]
 
@@ -317,6 +338,24 @@ class ComputeContext:
                 return var_i
         return None
 
+    def add_attr_var_desc(self, attr_var_desc):
+        # type: (AttrVarDesc) -> None
+        """
+        :param attr_var_desc:
+        :return:
+        """
+        if self._schedules:
+            self._schedules[-1].add_attr_var_desc(attr_var_desc)
+        else:
+            self._attr_vars_desc.append(attr_var_desc)
+
+    def get_attr_vars_desc(self):
+        # type: () -> List[AttrVarDesc]
+        """
+        :return:
+        """
+        return self._attr_vars_desc
+
     def add(self, key, value):
         # type: (str, Any) -> None
         """
@@ -386,6 +425,7 @@ class ScheduleContext:
             if _compute is None else _compute  # type: Optional[ComputeContext]
 
         self._vars = []  # type: List[Var]
+        self._attr_vars_desc = []  # type: List[AttrVarDesc]
         self._addition = {}  # type: Dict[str, Any]
         self._exclude_bound_vars = []  # type: List[Var]
 
@@ -428,6 +468,21 @@ class ScheduleContext:
             if var_i.get_name() == name:
                 return var_i
         return None
+
+    def add_attr_var_desc(self, attr_var_desc):
+        # type: (AttrVarDesc) -> None
+        """
+        :param attr_var_desc:
+        :return:
+        """
+        self._attr_vars_desc.append(attr_var_desc)
+
+    def get_attr_vars_desc(self):
+        # type: () -> List[AttrVarDesc]
+        """
+        :return:
+        """
+        return self._attr_vars_desc
 
     def add(self, key, value):
         # type: (str, Any) -> None

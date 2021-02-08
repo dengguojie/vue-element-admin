@@ -15,6 +15,7 @@
 """
 var
 """
+from dataclasses import dataclass
 from enum import Enum
 from enum import auto
 from typing import Any
@@ -88,3 +89,16 @@ class Var:
         :return:
         """
         return self._addition
+
+
+@dataclass
+class AttrVarDesc:
+    """
+    attribute var description
+    """
+    # the name of var, whether it's primitive type or list type
+    name: str
+    # such as int32, float16, etc. If list type, take primitive part
+    dtype: str
+    # None means primitive type, other list type
+    length: Optional[int] = None

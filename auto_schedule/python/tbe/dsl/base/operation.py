@@ -16,6 +16,7 @@
 operation
 """
 import functools
+import re
 import threading
 from dataclasses import dataclass
 from typing import Any
@@ -27,10 +28,13 @@ from typing import Tuple
 from typing import Union
 
 from tbe.common.context import op_context
+from tbe.common.utils.errormgr import get_error_message
 
 from .context import ComputeContext
 from .context import OperatorContext
 from .context import ScheduleContext
+from .var import AttrVarDesc
+from .var import Category
 from .var import Var
 
 _schedules = {}
@@ -299,8 +303,50 @@ def var(name, bound=None, dtype="int32", addition=None):
     :param addition:
     :return:
     """
-    # TODO add check, cannot start with '_'
-    return _var(name, bound, dtype, addition)
+    # TODO add check, cannot start with '_', NORMAL -> CUSTOM
+    return _var(name, bound, dtype, Category.NORMAL, addition)
+
+
+def var_attr(name, bound=None, dtype="int32", addition=None):
+    """
+    var attribute
+    :param name:
+    :param bound:
+    :param dtype: such as int32, float16, int32[4]
+    :param addition:
+    :return:
+    """
+    # simple dtype, like int32, float16
+    simple_dtype_pattern = r"^\w+$"
+    if re.match(simple_dtype_pattern, dtype):
+        get_context().add_attr_var_desc(AttrVarDesc(name, dtype))
+
+        return _var(name, bound, dtype, Category.ATTR, addition)
+
+    # list dtype, like int32[4], float16[2]
+    list_dtype_pattern = r"^(\w+)\[(\d+)]$"
+    m2 = re.match(list_dtype_pattern, dtype)
+    if m2:
+        length = int(m2.group(2))
+        if length < 0:
+            _raise_error("If var is list dtype, the size must greater than zero.")
+
+        if bound is None:
+            bound = [(1, None)] * length
+
+        if not (isinstance(bound, (tuple, list)) and len(bound) == length):
+            _raise_error("If var is list dtype, the bound must be list and have the same size as var.")
+
+        s_dtype = m2.group(1)
+        attr_vars = []
+        for i in range(length):
+            attr_vars.append(_var("{}_{}".format(name, i), bound[i], s_dtype, Category.ATTR, addition))
+
+        get_context().add_attr_var_desc(AttrVarDesc(name, s_dtype, length))
+
+        return attr_vars
+
+    _raise_error("Invalid dtype, dtype must like: int32, float16, int32[4], etc.")
 
 
 def var_inner(name, bound=None, dtype="int32", addition=None):
@@ -313,11 +359,11 @@ def var_inner(name, bound=None, dtype="int32", addition=None):
     :return:
     """
     # TODO add check, must start with '_'
-    return _var(name, bound, dtype, addition)
+    return _var(name, bound, dtype, Category.NORMAL, addition)
 
 
-def _var(name, bound, dtype, addition):
-    var_ = Var(name, bound, dtype, addition)
+def _var(name, bound, dtype, category, addition):
+    var_ = Var(name, bound, dtype, category, addition)
     context = get_context()
     if context is not None:
         context.add_var(var_)
@@ -481,3 +527,10 @@ def _():
 
 def _in_compatible_mode():
     return _get_contexts()[-1] if _get_contexts() else None
+
+
+def _raise_error(message):
+    dict_args = dict()
+    dict_args["errCode"] = "E90001"
+    dict_args["detailed_cause"] = message
+    raise RuntimeError(dict_args, get_error_message(dict_args))

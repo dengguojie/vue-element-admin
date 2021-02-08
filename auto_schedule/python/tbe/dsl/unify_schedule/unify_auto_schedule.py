@@ -16,12 +16,19 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
+from typing import Any
+from typing import Dict
+from typing import List
+
+from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base import operation
+from tbe.dsl.base.var import AttrVarDesc
+from tbe.dsl.base.var import Category
+from tbe.dsl.base.var import Var
 from te import platform as cce
 from te import tvm
-from tbe.dsl.base import operation
-from te.tvm.build_module import BuildConfigs
 from te.platform import cce_conf
-from tbe.common.utils.errormgr import get_error_message
+from te.tvm.build_module import BuildConfigs
 
 from . import CompileInfo
 from . import Pattern
@@ -160,19 +167,25 @@ class Builder:
 
     def _traverse_context(self):
         op_context = operation.get_context()
+
         op_vars = op_context.get_vars()
         op_ebv = op_context.get_exclude_bound_vars()
+        op_attr_vars_desc = op_context.get_attr_vars_desc()
 
         # 'ebv' means 'exclude bound vars'
-        te_vars_list, ebv_list, sch_tensors_list = [], [], []
+        te_vars_list, ebv_list, attr_vars_desc_list, sch_tensors_list = [], [], [], []
         for i, cpt in enumerate(op_context.get_computes()):
             cpt_vars = cpt.get_vars()
             cpt_ebv = cpt.get_exclude_bound_vars()
+            cpt_attr_vars_desc = cpt.get_attr_vars_desc()
             for sch_context in cpt.get_schedules():
                 sch_vars = sch_context.get_vars()
                 sch_ebv = sch_context.get_exclude_bound_vars()
+                sch_attr_vars_desc = sch_context.get_attr_vars_desc()
+
                 te_vars_list.append(op_vars + cpt_vars + sch_vars)
                 ebv_list.append(op_ebv + cpt_ebv + sch_ebv)
+                attr_vars_desc_list.append(op_attr_vars_desc + cpt_attr_vars_desc + sch_attr_vars_desc)
                 sch_tensors_list.append(list(self.tensors[i]))
 
         lens = [len(self.schedules), len(te_vars_list), len(ebv_list)]
@@ -186,20 +199,30 @@ class Builder:
 
         self.te_vars_list = te_vars_list
         self.ebv_list = ebv_list
+        self.attr_vars_desc_list = attr_vars_desc_list
         self.sch_tensors_list = sch_tensors_list
 
     def _traverse_schedules(self):
         args_list, tiling_keys, valid_schs = [], [], []
-        compile_vars = {}
+        compile_vars, compile_attr_vars, compile_custom_vars = {}, {}, {}
 
-        for sch, te_vars, ebv, sch_tensors in zip(self.schedules, self.te_vars_list,
-                                                  self.ebv_list, self.sch_tensors_list):
+        for sch, te_vars, ebv, attr_vars_desc, sch_tensors in zip(self.schedules,
+                                                                  self.te_vars_list,
+                                                                  self.ebv_list,
+                                                                  self.attr_vars_desc_list,
+                                                                  self.sch_tensors_list):
             if sch is None:
                 continue
 
             valid_schs.append(sch)
             real_sch_tensors = self._handle_tensors(sch_tensors, sch)
 
+            var_groups = self._group_vars(te_vars)
+            normal_vars = var_groups.get(Category.NORMAL, [])
+            attr_vars = var_groups.get(Category.ATTR, [])
+            custom_vars = var_groups.get(Category.CUSTOM, [])
+
+            te_vars = normal_vars + attr_vars + custom_vars
             tvm_vars = [x.get_tvm_var() for x in te_vars]
             bounds = [x.get_bound() for x in te_vars]
             for tvm_var, bound in zip(tvm_vars, bounds):
@@ -209,13 +232,26 @@ class Builder:
 
             args_list.append(real_sch_tensors + tvm_vars)
             tiling_keys.append(sch.tiling_key)
-            var_names = [x.get_name() for x in te_vars]
-            compile_vars[sch.tiling_key] = var_names
+            normal_var_names = [x.get_name() for x in normal_vars]
+            compile_vars[sch.tiling_key] = normal_var_names
+            compile_attr_vars[sch.tiling_key] = attr_vars_desc
+            compile_custom_vars[sch.tiling_key] = custom_vars
 
         self.args_list = args_list
         self.tiling_keys = tiling_keys
         self.valid_schs = valid_schs
         self.compile_vars = compile_vars
+        self.compile_attr_vars = compile_attr_vars
+        self.compile_custom_vars = compile_custom_vars
+
+    # noinspection PyMethodMayBeStatic
+    def _group_vars(self, te_vars):
+        # type: (List[Var]) -> Dict[Category, List[Var]]
+        ret = {}
+        for te_var in te_vars:
+            ret.setdefault(te_var.get_category(), []).append(te_var)
+
+        return ret
 
     # noinspection PyMethodMayBeStatic
     def _handle_tensors(self, sch_tensors, sch):
@@ -272,7 +308,35 @@ class Builder:
                           )
 
     def _handle_compile_info(self):
-        operation.add_compile_info(CompileInfo.VARS, self.compile_vars)
+        def add_vars():
+            operation.add_compile_info(CompileInfo.VARS, self.compile_vars)
+
+        def convert_attr_var(attr_var):
+            # type: (AttrVarDesc) -> Dict[str, Any]
+
+            dtype, length = attr_var.dtype, attr_var.length
+            if length:
+                dtype = "List" + dtype.capitalize()
+
+            return {
+                "name": attr_var.name,
+                "type": dtype,
+                "length": length or 0
+            }
+
+        def add_attr_vars():
+            # key: tiling_key, value: [@see convert_attr_var()]
+            value = {k: [convert_attr_var(x) for x in v] for k, v in self.compile_attr_vars.items()}
+            operation.add_compile_info(CompileInfo.ATTR_VARS, value)
+
+        def add_custom_vars():
+            # key: tiling_key, value: [var_name]
+            value = {k: [x.get_name() for x in v] for k, v in self.compile_custom_vars.items()}
+            operation.add_compile_info(CompileInfo.CUSTOM_VARS, value)
+
+        add_vars()
+        add_attr_vars()
+        add_custom_vars()
 
     def _handle_addition(self):
         operation.get_context().add("_tiling_keys", self.tiling_keys)
