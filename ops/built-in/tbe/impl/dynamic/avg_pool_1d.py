@@ -64,8 +64,7 @@ def avg_pool_1d_compute(x,
     x_c0 = x.shape[-1].value
     mid_shape = (x_fused_axis, x_wi + pad_l + pad_r, x_c0)
 
-
-    tensor_zero = tvm.compute(mid_shape, lambda *i: tvm.const(0, "float16"), name="tensor_zero")
+    tensor_zero = tvm.compute(mid_shape, lambda *i: tvm.const(0, div.dtype), name="tensor_zero")
 
     tensor_pad = tvm.compute(
         mid_shape,
