@@ -2288,12 +2288,12 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
 
     output_v_desc->SetShape(GeShape(dims_in));
     output_v_desc->SetShapeRange(shape_range);
-    output_v_desc->SetDataType(input_desc->GetDataType());
 
     output_i_desc->SetShape(GeShape(dims_in));
     output_i_desc->SetShapeRange(shape_range);
-    output_i_desc->SetDataType(DT_INT32);
   }
+  output_v_desc->SetDataType(input_desc->GetDataType());
+  output_i_desc->SetDataType(DT_INT32);
   return true;
 }
 

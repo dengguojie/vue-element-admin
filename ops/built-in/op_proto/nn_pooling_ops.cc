@@ -1568,9 +1568,16 @@ IMPLEMT_VERIFIER(AvgPool3D, AvgPool3DVerify) {
   auto ksize = op.get_attr_ksize();
   auto strides = op.get_attr_strides();
   auto x_shape = op.get_input_desc_x().GetShape().GetDims();
-  bool invalid_param = (x_shape.size() != 5 || ksize.size() > 5 || strides.size() > 5);
-  if (invalid_param) {
-    OP_LOGE(op.GetName().c_str(), "AvgPool3D check x_shape or ksize or strides size is invalid!");
+  bool invalid_param = x_shape.size() != 5;
+  bool invalid_ksize = ksize.size() != 1 && ksize.size() != 3 && ksize.size() != 5;
+  bool invalid_strides = strides.size() != 1 && strides.size() !=3 && strides.size() != 5;
+  bool invalid_pads = false;
+  std::vector<int32_t> pads;
+  if (op.GetAttr("pads", pads) == GRAPH_SUCCESS) {
+    invalid_pads = pads.size() != 6;
+  }
+  if (invalid_param || invalid_ksize || invalid_strides || invalid_pads) {
+    OP_LOGE(op.GetName().c_str(), "AvgPool3D check x_shape or ksize or strides size or pads size is invalid!");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

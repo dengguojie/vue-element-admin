@@ -376,6 +376,8 @@ def _transform_shape_with_format(ori_format, shape):
     idx_h = ori_format.find('H')
     idx_w = ori_format.find('W')
     shape_all = [1, 1, 1, 1, 1]
+    if len(shape) not in (1, 3, 5):
+        error_manager_vector.raise_err_check_params_rules('avg_pool3d', 'ksize or strides size error', 'shape', shape)
     if len(shape) == 1:
         shape_dhw = (shape[0], shape[0], shape[0])
         shape_all[idx_d] = shape[0]
