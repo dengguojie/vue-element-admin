@@ -41,6 +41,7 @@ struct CompileInfo {
   bool is_support_broadcast{false};
   bool is_support_absorbable_broadcast{false};
   bool use_special_pattern{false};
+  bool is_unknown_rank{false};
 };
 
 enum Pattern {
@@ -57,6 +58,7 @@ enum Pattern {
 class Broadcast {
 public:
   static const int64_t BLOCK_SIZE = 32;
+  static const size_t MAX_UNKNOWN_RANK = 8;
   static const int64_t DOUBLE_BUFFER_SIZE = 2;
   static const int64_t N_LAST_BROADCAST_THRESHOLD = 512;
   static const int64_t LAST_AND_N_LAST_FACTOR = 7;
@@ -70,10 +72,9 @@ public:
 public:
   explicit Broadcast(const std::string& _op_type, const TeOpParas& _op_paras,
                      const nlohmann::json& _op_info, const std::vector<bool>& _flag_info,
-                     size_t _input_num, size_t _dim_len,
-                     std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& _input_shapes)
+                     size_t _dim_len, std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& _input_shapes)
       : op_type(_op_type), op_paras(_op_paras), op_info(_op_info), flag_info(_flag_info),
-        input_num(_input_num), dim_len(_dim_len), input_shapes(_input_shapes) {
+        dim_len(_dim_len), input_shapes(_input_shapes) {
   }
   ~Broadcast() {
   }
@@ -102,12 +103,12 @@ private:
   const TeOpParas& op_paras;
   const nlohmann::json& op_info;
   const std::vector<bool>& flag_info;
-  size_t input_num{0};
   size_t dim_len{0};
   std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes;
   std::vector<std::vector<size_t>> fusion_index{};
   std::vector<int64_t> output_shape{};
   std::array<bool, B_MAX_DIM_LEN> broadcast_axis{};
+  size_t input_num{0};
   size_t max_output_shape_size{1};
   int64_t key{-1};
   int64_t output_size{1};

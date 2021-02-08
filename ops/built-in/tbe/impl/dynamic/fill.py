@@ -21,6 +21,8 @@ from te import tvm
 import te.lang.base as tbe_base
 from te.utils import shape_util
 from te.utils import para_check
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
 from impl.util.platform_adapter import register_operator
 
 
@@ -69,7 +71,6 @@ def fill(dims, value, y, kernel_name="fill"):
     None
     """
     # get the shape and dtype
-    shape = value.get("shape")
     dtype = value.get("dtype").lower()
     dtype_dims = dims.get("dtype").lower()
     dims["shape"] = [-1]
@@ -79,18 +80,20 @@ def fill(dims, value, y, kernel_name="fill"):
     check_list = ("int32", "float16", "float32")
     para_check.check_dtype(dtype, check_list)
 
+    extra_params = {"disable_optimization": True}
+    ins = tbe_base.classify([dims, value], tbe_base.Mode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
+    for (_dims, _value) in ins:
+        with tbe_base.compute():
+            shape_dim, shape = shape_util.variable_shape([_dims, _value], support_broadcast=True)
+            x_input = tvm.placeholder(shape, name="x_input", dtype=dtype)
+            dim_input = tvm.placeholder(shape_dim, name="dim_input", dtype=dtype_dims)
 
-    with tbe_base.compute():
-        shape_dim = shape_util.variable_shape([dims], support_broadcast=True)
-        x_input = tvm.placeholder(shape, name="x_input", dtype=dtype)
-        dim_input = tvm.placeholder(shape_dim[0], name="dim_input", dtype=dtype_dims)
-
-        res = fill_compute(shape_dim[0], x_input, y, kernel_name=kernel_name)
-        tensors.append([dim_input, x_input, res])
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
-    schedules.append(sch)
+            res = fill_compute(shape_dim, x_input, y, kernel_name=kernel_name)
+            tensors.append([dim_input, x_input, res])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
 

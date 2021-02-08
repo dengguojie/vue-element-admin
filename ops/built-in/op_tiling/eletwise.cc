@@ -88,8 +88,7 @@ bool Eletwise::Init() {
 
 bool Eletwise::GenerateOutputShape() {
   const std::vector<int64_t>& shapes = op_paras.outputs[0].tensor[0].shape;
-  const int64_t long_long_one = 1ll;
-  int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), long_long_one, std::multiplies<int64_t>());
+  int64_t fused_output = std::accumulate(shapes.begin(), shapes.end(), 1LL, std::multiplies<int64_t>());
   CHECK_LE(fused_output, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
   CHECK_GT(fused_output, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str());
   output_shape = {fused_output};
@@ -264,13 +263,13 @@ bool Eletwise::DoTiling() {
 }
 
 bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_NUMS>& input_shapes,
-                     const size_t input_num, size_t& dim_len, bool& is_pure_elementwise,
+                     size_t& dim_len, bool& is_pure_elementwise,
                      const std::string& op_type, const TeOpParas& op_paras) {
+  size_t input_num = op_paras.inputs.size();
   CHECK_LE(input_num, B_MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str());
-  const int64_t long_long_one = 1ll;
   for (size_t i = 0; i < input_num; i++) {
     CHECK(!op_paras.inputs[i].tensor.empty(), "op [%s] : input tensor cannot be empty", op_type.c_str());
-    input_shapes[i].fill(long_long_one);
+    input_shapes[i].fill(1LL);
     if (op_paras.inputs[i].tensor[0].shape.size() > dim_len) {
       dim_len = op_paras.inputs[i].tensor[0].shape.size();
     }
@@ -288,14 +287,14 @@ bool CompletedShapes(std::array<std::array<int64_t, B_MAX_DIM_LEN>, B_MAX_INPUT_
     for (size_t j = 1; j < input_num; j++) {
       bool verify_broadcast = input_shapes[j][i] != 1 &&
           (input_shapes[j][i] != max_output && max_output != 1);
+      CHECK((!verify_broadcast), "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
+            std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
       if (input_shapes[j][i] != max_output) {
         is_pure_elementwise = false;
       }
       if (input_shapes[j][i] > max_output) {
         max_output = input_shapes[j][i];
       }
-      CHECK(!verify_broadcast, "op [%s] : input shapes [%s] cannot broadcast to shape [%s]", op_type.c_str(),
-            std::to_string(input_shapes[j][i]).c_str(), std::to_string(max_output).c_str());
     }
   }
   return true;
@@ -371,10 +370,9 @@ bool CalcConstKey(const std::string& op_type, const TeOpParas& op_paras,
 
 bool IsEmptyTensor(const std::string& op_type, const TeOpParas& op_paras) {
   bool has_zero = false;
-  const int64_t long_long_one = 1ll;
   for (size_t i = 0; i < op_paras.outputs.size(); i++) {
     int64_t output_size = std::accumulate(op_paras.outputs[i].tensor[0].shape.begin(),
-        op_paras.outputs[i].tensor[0].shape.end(), long_long_one, std::multiplies<int64_t>());
+        op_paras.outputs[i].tensor[0].shape.end(), 1LL, std::multiplies<int64_t>());
     if (output_size == 0) {
       has_zero = true;
     } else {
@@ -418,24 +416,23 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
     is_const = flag_info[1];
     is_support_broadcast = flag_info[2];
   }
-  size_t input_num = op_paras.inputs.size();
   size_t dim_len = 0;
   bool is_pure_elementwise = true;
-  bool ret = CompletedShapes(input_shapes, input_num, dim_len, is_pure_elementwise, op_type, op_paras);
+  bool ret = CompletedShapes(input_shapes, dim_len, is_pure_elementwise, op_type, op_paras);
   if (is_const) {
     int64_t key{0};
     int64_t block_dims{1};
     ret = ret && CalcConstKey(op_type, op_paras, op_info, is_support_broadcast, key, block_dims);
     ret = ret && WriteConstTiling(op_type, op_info, run_info, key, block_dims);
   } else if (IsEmptyTensor(op_type, op_paras)) {
-    ret = WriteConstTiling(op_type, op_info, run_info, INT32_MIN, 1);
+    ret = ret && WriteConstTiling(op_type, op_info, run_info, INT32_MIN, 1);
   } else if (is_pure_elementwise || !is_support_broadcast) {
     Eletwise eletwise(op_type, op_paras, op_info, flag_info);
-    ret = eletwise.DoTiling();
+    ret = ret && eletwise.DoTiling();
     ret = ret && eletwise.WriteTilingData(run_info);
   } else {
-    Broadcast broadcast(op_type, op_paras, op_info, flag_info, input_num, dim_len, input_shapes);
-    ret = broadcast.DoTiling();
+    Broadcast broadcast(op_type, op_paras, op_info, flag_info, dim_len, input_shapes);
+    ret = ret && broadcast.DoTiling();
     ret = ret && broadcast.WriteTilingData(run_info);
   }
   return ret;

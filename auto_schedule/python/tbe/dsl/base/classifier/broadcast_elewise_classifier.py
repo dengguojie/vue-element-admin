@@ -15,9 +15,13 @@
 """
 classifier of shape in broadcast elewise
 """
+from typing import Any
+from typing import Dict
+from typing import Optional
 import copy
 from functools import reduce
 from enum import Enum, auto
+
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 
@@ -33,6 +37,8 @@ ORIGINAL = "original"
 EMPTY = "empty"
 VAR_BOUND_LIMIT = 2147483647
 MAX_BROADCAST_INPUT = 70
+UNKNOWN_RANK = -2
+MAX_RANK = 8
 
 
 class BroadcastElewiseClassifier:
@@ -40,14 +46,17 @@ class BroadcastElewiseClassifier:
     Elewise with broadcast classifier
     """
 
-    def __init__(self, ins: list):
+    def __init__(self, ins: list, extra_params: Optional[Dict[str, Any]]):
         """
         init
         :param ins:
         """
         self.ins = ins
+        self.extra_params = {} if extra_params is None else extra_params
+        self.is_unknown_rank = self._check_update_unknown_rank()
         shapes = [x["shape"] for x in self.ins]
         self.dim_length = max([len(s) for s in shapes])
+        operation.get_context().add("_unknown_rank", self.is_unknown_rank)
 
         self.completed_ins = self._complete()
         self.completed_shapes = [x["shape"] for x in self.completed_ins]
@@ -83,6 +92,21 @@ class BroadcastElewiseClassifier:
             return in_x
 
         return [clone_complete(x) for x in self.ins]
+
+    def _check_update_unknown_rank(self):
+        is_unknown_rank = False
+        for _in in self.ins:
+            shapes = list(_in["shape"])
+            if UNKNOWN_RANK in shapes:
+                if len(shapes) != 1:
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "if the shape contains -2, it must be [-2] or (-2,)"
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                _in["shape"] = [-1] * MAX_RANK
+                _in["range"] = [(1, None)] * MAX_RANK
+                is_unknown_rank = True
+        return is_unknown_rank
 
     def _normalize(self):
         normalize_shapes = copy.deepcopy(self.f_shapes)
@@ -410,7 +434,7 @@ class BroadcastElewiseClassifier:
             return ins_list
 
         def add_original():
-            if _get_broadcast_axis_size(self.normalize_shapes) <= 1:
+            if _get_broadcast_axis_size(self.normalize_shapes) <= 1 and not disable_optimization:
                 return []
 
             t_shapes = list(map(list, zip(*self.f_shapes)))
@@ -423,7 +447,7 @@ class BroadcastElewiseClassifier:
             return [ins]
 
         def add_empty():
-            if not self.maybe_empty_tensor:
+            if not (self.maybe_empty_tensor or self.is_unknown_rank):
                 return []
             input_length = len(self.completed_shapes)
             ins = [EmptyMode.gen_in()] * input_length
@@ -469,7 +493,8 @@ class BroadcastElewiseClassifier:
             get_known_broadcast_and_const(self.normalize_shapes)
         left_no_one, right_no_one = get_no_one_index()
         ret = []
-        if len(known_broadcast_pattern) <= 1:
+        disable_optimization = self.extra_params.get("disable_optimization", False)
+        if len(known_broadcast_pattern) <= 1 and not disable_optimization:
             input_length = len(self.completed_shapes)
             dim_length = len(self.f_shapes)
             ret.extend(add_special())
@@ -764,8 +789,15 @@ class ShapeSimplifier:
         :param dim2:
         :return:
         """
-
-        return [-1 if -1 in (d1, d2) else d1 * d2 for d1, d2 in zip(dim1, dim2)]
+        dims = []
+        for d1, d2 in zip(dim1, dim2):
+            if 0 in (d1, d2):
+                dims.append(0)
+            elif -1 in (d1, d2):
+                dims.append(-1)
+            else:
+                dims.append(d1 * d2)
+        return dims
 
     @classmethod
     def combine_range(cls, range1, range2):

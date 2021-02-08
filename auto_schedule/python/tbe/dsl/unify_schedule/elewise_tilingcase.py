@@ -262,6 +262,8 @@ def _pre_build(schedules_list):
 
     only_const_tiling = False
     support_broadcast = operation.get_context().get("support_broadcast")
+    unknown_rank = operation.get_context().get("_unknown_rank")
+    unknown_rank = False if unknown_rank is None else unknown_rank
     cpt_computes = operation.get_context().get_computes()
     use_special_pattern = False
     support_absorbable_broadcast = False
@@ -279,13 +281,13 @@ def _pre_build(schedules_list):
         operation.add_compile_info(CompileInfo.CONST_SHAPES, const_shapes)
         operation.add_compile_info(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
         flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
-                     use_special_pattern, support_absorbable_broadcast]
+                     use_special_pattern, support_absorbable_broadcast, unknown_rank]
         operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
         return
     else:
         is_const_shapes = False
     flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
-                 use_special_pattern, support_absorbable_broadcast]
+                 use_special_pattern, support_absorbable_broadcast, unknown_rank]
     operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
 
     schedules = []
@@ -295,6 +297,8 @@ def _pre_build(schedules_list):
     op_vars = operation.get_context().get_vars()
     base_info = {}
     for i, cpt in enumerate(cpt_computes):
+        if cpt.get("mode") == EMPTY:
+            continue
         cpt_vars = cpt.get_vars()
         cpt_ub_sizes, cpt_max_dtypes, cpt_coexisting_quantitys, cores = [], [], [], []
         for sch_context in cpt.get_schedules():

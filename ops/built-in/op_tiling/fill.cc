@@ -50,8 +50,6 @@ bool FillTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
   TeOpParas op_paras_tmp = std::move(op_paras);
   CHECK(!op_paras_tmp.inputs.empty(),
         "op [%s] : op_paras_tmp.inputs cannot be empty", op_type.c_str());
-  TeOpTensorArg broadcast_input(op_paras_tmp.inputs[0]);
-  op_paras_tmp.inputs.push_back(broadcast_input);
   CHECK(!op_paras_tmp.inputs[0].tensor.empty(),
         "op [%s] : op_paras_tmp.inputs[0].tensor cannot be empty", op_type.c_str());
   op_paras_tmp.inputs[0].tensor[0].shape = {fused_output};

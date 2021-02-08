@@ -46,9 +46,15 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
     """
     mode = CLASSIFY_SAME_PATTERN_MAP.get(mode, mode)
     if mode == ELEWISE:
-        return classify_elewise(ins, support_broadcast=False)
+        if not extra_params is None and "disable_optimization" in extra_params:
+            dict_args = dict()
+            dict_args["errCode"] = "E90001"
+            dict_args["detailed_cause"] = "inputs of classify not support the dict extra_params with "\
+                                           "the key disable_optimization when mode is ELEWISE"
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+        return classify_elewise(ins, support_broadcast=False, extra_params=extra_params)
     if mode == BROADCAST:
-        return classify_elewise(ins, support_broadcast=True)
+        return classify_elewise(ins, support_broadcast=True, extra_params=extra_params)
     if mode == REDUCE:
         if "keepdims" not in extra_params:
             dict_args = dict()

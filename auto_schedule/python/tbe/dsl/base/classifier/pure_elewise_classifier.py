@@ -16,6 +16,8 @@
 classifier of shape in pure elewise
 """
 from functools import reduce as reduceIns
+from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base import operation
 
 from . import util
 
@@ -23,7 +25,7 @@ COMMON = "common"
 SPECIAL = "special"
 CONST = "const"
 EMPTY = "empty"
-ZERO = 0
+UNKNOWN_RANK = -2
 
 
 class PureElewiseClassifier:
@@ -37,6 +39,8 @@ class PureElewiseClassifier:
         :param ins:
         """
         self.ins = ins
+        self.is_unknown_rank = self._check_update_unknown_rank()
+        operation.get_context().add("_unknown_rank", self.is_unknown_rank)
         self.shapes = [x["shape"] for x in self.ins]
         self.dim_length = len(self.shapes[0])
 
@@ -46,6 +50,21 @@ class PureElewiseClassifier:
         :return:
         """
         return self._classify_const() if self._is_const() else self._classify_var()
+
+    def _check_update_unknown_rank(self):
+        is_unknown_rank = False
+        for _in in self.ins:
+            shapes = list(_in["shape"])
+            if UNKNOWN_RANK in shapes:
+                if len(shapes) != 1:
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "if the shape contains -2, it must be [-2] or (-2,)"
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                _in["shape"] = [-1]
+                _in["range"] = [(1, None)]
+                is_unknown_rank = True
+        return is_unknown_rank
 
     def _is_const(self):
         for i in range(self.dim_length):
@@ -68,8 +87,8 @@ class PureElewiseClassifier:
         for x in self.ins:
             in_x = SpecialMode.gen_in([-1])
             in_x["range"] = [util.combine_range(x["range"])]
-            maybe_empty_tensor = maybe_empty_tensor or ZERO in in_x["range"][0]
-            if ZERO in x["shape"] or (ZERO, ZERO) in x["range"] or [ZERO, ZERO] in x["range"]:
+            maybe_empty_tensor = maybe_empty_tensor or 0 in in_x["range"][0]
+            if 0 in x["shape"] or (0, 0) in x["range"] or [0, 0] in x["range"]:
                 must_empty_tensor = True
                 break
             ins.append(in_x)
@@ -77,7 +96,7 @@ class PureElewiseClassifier:
         ret = []
         if not must_empty_tensor:
             ret.append(ins)
-        if maybe_empty_tensor:
+        if maybe_empty_tensor or self.is_unknown_rank:
             input_length = len(self.ins)
             ins = [EmptyMode.gen_in()] * input_length
             ret.append(ins)
@@ -96,8 +115,8 @@ class EmptyMode:
         generate input
         :return:
         """
-        return {"shape": (ZERO, ),
-                "range": [(ZERO, ZERO)],
+        return {"shape": (0, ),
+                "range": [(0, 0)],
                 "support_broadcast": True,
                 "mode": EMPTY,
                 }
