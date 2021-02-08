@@ -25,9 +25,11 @@ class ArgParser:
         parse = argparse.ArgumentParser()
         subparsers = parse.add_subparsers(help='commands')
         mi_parser = subparsers.add_parser(
-            utils.INPUT_ARGUMENT_CMD_MI, help='Machine interface for IDE.')
+            utils.INPUT_ARGUMENT_CMD_MI, help='Machine interface for IDE.',
+            allow_abbrev=False)
         gen_parser = subparsers.add_parser(
-            utils.INPUT_ARGUMENT_CMD_GEN, help=' Generator operator project.')
+            utils.INPUT_ARGUMENT_CMD_GEN, help=' Generator operator project.',
+            allow_abbrev=False)
         self._gen_parse_add_arguments(gen_parser)
         self._mi_parse_add_arguments(mi_parser)
         args = parse.parse_args(sys.argv[1:])

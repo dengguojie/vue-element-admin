@@ -263,11 +263,11 @@ def main():
     parse = argparse.ArgumentParser()
     subparsers = parse.add_subparsers(help='commands')
     create_parser = subparsers.add_parser(
-        'create', help='Create test case json file.')
+        'create', help='Create test case json file.', allow_abbrev=False)
     run_parser = subparsers.add_parser(
-        'run', help='Run the test case on the aihost.')
+        'run', help='Run the test case on the aihost.', allow_abbrev=False)
     mi_parser = subparsers.add_parser(
-        'mi', help='Interaction with the IDE.')
+        'mi', help='Interaction with the IDE.', allow_abbrev=False)
     _create_parser(create_parser)
     _run_parser(run_parser)
     _mi_parser(mi_parser)
