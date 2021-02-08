@@ -793,6 +793,8 @@ class ElewiseSchedule:
         self._coexisting_quantity = max(coexisting_quantities)
         if self._coexisting_quantity == 1:
             self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
+        if len(self._broadcast_tensors - self._compute_inline_tensors - self._compute_inline_broadcast) > 0:
+            self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
 
         tensor_space = self._ub_size // self._coexisting_quantity
         if self._is_db:
