@@ -2246,5 +2246,21 @@ IMPLEMT_VERIFIER(Triu, TriuVerify) {
 INFER_FUNC_REG(Triu, TriuInferShape);
 VERIFY_FUNC_REG(Triu, TriuVerify);
 // ----------------Triu END----------------
+// ---------------Tril--------------
+IMPLEMT_COMMON_INFERFUNC(TrilInferShape) {
+    Shape input_shape = op.GetInputDesc(0).GetShape();
+    DataType input_dtype = op.GetInputDesc(0).GetDataType();
+    TensorDesc td = op.GetOutputDesc(0);
+    td.SetShape(ge::Shape(input_shape));
+    td.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Tril, TrilVerify) { return GRAPH_SUCCESS; }
+
+INFER_FUNC_REG(Tril, TrilInferShape);
+VERIFY_FUNC_REG(Tril, TrilVerify);
+// ----------------Tril END----------------
 }  // namespace ge
 
