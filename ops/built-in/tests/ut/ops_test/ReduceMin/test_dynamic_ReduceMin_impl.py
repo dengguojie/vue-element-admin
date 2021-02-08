@@ -25,7 +25,9 @@ def gen_dynamic_reduce_min_case(shape_x, range_x, shape_axes, range_axes, dtype_
 ut_case.add_case("all", gen_dynamic_reduce_min_case((-1,3,-1,2), [(1,None), (3,3), (1,None), (2,2)],
                                        (1,), [(1,1),], "float16", "ND", (-1,3,-1,2), (1, ), 
                                        True, "dynamic_reduce_min_ND_1", "success"))
-
+ut_case.add_case("all", gen_dynamic_reduce_min_case((-1,3,-1,2), [(1,None), (3,3), (1,None), (2,2)],
+                                       (1,), [(1,1),], "int32", "ND", (-1,3,-1,2), (1, ), 
+                                       True, "dynamic_reduce_min_ND_2", "success"))
 with te.op.dynamic():
     ut_case.run("Ascend910")
 

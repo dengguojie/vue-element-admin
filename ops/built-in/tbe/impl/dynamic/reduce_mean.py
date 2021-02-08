@@ -148,7 +148,7 @@ def reduce_mean(x, axes, y,
 
     dtype_x = x["dtype"]
     dtype_lower_x = dtype_x.lower()
-    check_list_x = ("float16", "float32", "int8", "uint8", "int32")
+    check_list_x = ("float16", "float32", "int8", "uint8")
     para_check.check_dtype(dtype_lower_x, check_list_x)
     x["rel_pos_to_reduce"] = "before"
 
