@@ -58,7 +58,7 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
 
     has_improve_precision = False
     if dtype != "float32" and \
-            tbe_platform.cce_conf.api_check_support("tbe.vdiv", "float32"):
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
         has_improve_precision = True
@@ -80,7 +80,7 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
     data_div_min_ceil = tbe.ceil(data_div_min)
 
     if dtype != "int32" and \
-            tbe_platform.cce_conf.api_check_support("tbe.vmul", "float32"):
+            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
         data_div_max_floor = tbe.cast_to(data_div_max_floor, "float32")
         data_div_min_ceil = tbe.cast_to(data_div_min_ceil, "float32")
 
