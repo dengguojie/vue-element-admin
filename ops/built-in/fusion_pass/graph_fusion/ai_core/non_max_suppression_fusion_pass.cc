@@ -38,7 +38,7 @@ namespace fe {
     const std::string NonMaxSuppressionV6Pass::PATTERN_FUSEDNODE = "NonMaxSuppressionFusedNode";
     const uint16_t UINT_NUM_ZERO = 0;
     const uint8_t MAX_OUTPUT_SIZE_IDX = 2;
-    const int64_t CHANNEL = 3;
+    const int64_t CHANNEL = 4;
     const int64_t SHAPE_SIZE = 4;
     vector<FusionPattern *> NonMaxSuppressionV6Pass::DefinePatterns()
     {
@@ -99,9 +99,11 @@ namespace fe {
                     int64_t iIdx = i * classLen * scoreLen * CHANNEL + j * scoreLen * CHANNEL + k * CHANNEL;
                     int64_t jIdx = i * classLen * scoreLen * CHANNEL + j * scoreLen * CHANNEL + k * CHANNEL + 1;
                     int64_t kIdx = i * classLen * scoreLen * CHANNEL + j * scoreLen * CHANNEL + k * CHANNEL + 2;
-                    index_id[iIdx] = i*1.0;
-                    index_id[jIdx] = j*1.0;
-                    index_id[kIdx] = k*1.0;
+                    int64_t hIdx = i * classLen * scoreLen * CHANNEL + j * scoreLen * CHANNEL + k * CHANNEL + 3;
+                    index_id[iIdx] = i * 1.0;
+                    index_id[jIdx] = j * 1.0;
+                    index_id[kIdx] = (k / 1000) * 1.0;
+                    index_id[hIdx] = (k % 1000) * 1.0;
                 }
             }
         }
