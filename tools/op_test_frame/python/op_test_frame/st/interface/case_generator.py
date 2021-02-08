@@ -109,11 +109,10 @@ class CaseGenerator:
                     default_value = [self._parse_bool_value(x) for x in
                                      value_list]
         except ValueError as ex:
-            utils.print_error_log(
+            utils.print_warn_log(
                 'The default value(%s) is invalid for type(%s). Please modify '
                 'the default value in "%s" attr. %s' % (
                     default_value_str, attr_type, attr_name, ex))
-            raise utils.OpTestGenException(utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         return default_value
 
     def _parse_ini_to_json(self):
@@ -323,14 +322,17 @@ class CaseGenerator:
                 'The "%s" is missing "type". Please modify it.' % key)
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
-        self._check_op_info_list_valid(
-            [value['type']], list(utils.ATTR_TYPE_MAP.keys()), key + '.type')
+        if not self._is_aicpu_op():
+            self._check_op_info_list_valid(
+                [value.get('type')], 
+                list(utils.ATTR_TYPE_MAP.keys()), key + '.type')
+
         default_value = None
         if 'defaultValue' in value:
             default_value = self._get_default_attr_value(
-                value['type'], value['defaultValue'], name)
+                value.get('type'), value.get('defaultValue'), name)
         return {'name': name,
-                'type': utils.ATTR_TYPE_MAP[value['type']],
+                'type': utils.ATTR_TYPE_MAP.get(value.get('type')),
                 'value': default_value}
 
     def _check_desc_valid(self, base_case, key):
@@ -360,26 +362,44 @@ class CaseGenerator:
             return False
         return True
 
-    def _prase_aicpu_input_output_info(self, line, input_count, output_count):
+    def _parse_name_from_op_proto_file(self, op_key, start_str):
+        # regular match to get input/output/attr name.
+        head_file = utils.fix_name_lower_with_under(self.op_type) + '.h'
+        try:
+            # parse sample as INPUT(x, TensorType({DT_FLOAT}))
+            return re.findall(r'[(](.*?)[,]', start_str)[0]
+        except IndexError as index_error:
+            utils.print_warn_log(
+                "Can't parse operator information of %s in %s,"
+                "please check." % (op_key, head_file))
+            return
+
+    def _parse_aicpu_input_output_info(self, line, input_count, output_count):
         for op_key in utils.IN_OUT_OP_KEY_MAP.keys():
             if line.startswith(op_key):
+                # find keyword.
                 start_str = line[line.find(op_key):]
-                name = re.findall(r'[(](.*?)[,]', start_str)[0]
+                # match name.
+                name = self._parse_name_from_op_proto_file(op_key, start_str)
+                if name is None:
+                    break
+                # match type.
                 input_tensor_type = start_str[
                                     start_str.find("{") + 1:start_str.find("}")]
+
                 op_info_key = ''
+                # record the input information of key
                 if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'input':
                     input_count += 1
                     op_info_key = '%s%s' % (
                         utils.IN_OUT_OP_KEY_MAP.get(op_key), input_count)
+                # record the output information of key
                 if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'output':
                     output_count += 1
                     op_info_key = '%s%s' % (
                         utils.IN_OUT_OP_KEY_MAP.get(op_key), output_count)
-
                 if op_info_key not in self.op_info:
                     self.op_info[op_info_key] = {}
-
                 if op_info_key:
                     self.op_info[op_info_key]['name'] = name
                     self.op_info[op_info_key][
@@ -387,71 +407,97 @@ class CaseGenerator:
                     self.op_info[op_info_key]['format'] = ''
         return input_count, output_count
 
-    def _prase_aicpu_attr(self, line):
+    def _parse_aicpu_attr(self, line):
         for op_key in utils.AICPU_ATTR_LIST:
             if line.startswith(op_key):
+                # find keyword.
                 attr_str = line[line.find(op_key):]
-                name = re.findall(r'[(](.*?)[,]', attr_str)[0]
-                type_attrs = attr_str[attr_str.find(",") + 1:].strip()
+                # match name.
+                name = self._parse_name_from_op_proto_file(op_key, attr_str)
+                if name is None:
+                    break
                 attr_name = 'attr_%s' % name
                 if attr_name not in self.op_info:
                     self.op_info[attr_name] = {}
                 self.op_info[attr_name]['name'] = name
+                # obtain type txt.
+                type_attrs = attr_str[attr_str.find(",") + 1:].strip()
+                # match type consider different attr.
                 if op_key == 'ATTR':
-                    attr_tensor_type = type_attrs.split(',')[0]
+                    # example: .ATTR(attr1, Float, 0.001)
+                    try:
+                        attr_tensor_type = type_attrs.split(',', 1)[0]
+                        defaultvalue = type_attrs.split(',', 1)[1]
+                    except IndexError as index_error:
+                        utils.print_warn_log(
+                            "Can't parse operator information of %s, "
+                            "please check." % attr_name)
+                        return
                     self.op_info[attr_name]['defaultValue'] = \
-                        re.findall(r'[,](.*?)[)]', type_attrs)[0]
+                        defaultvalue.replace("\"", "")
                 else:
+                    # example: .REQUIRED_ATTR(attr2, Int)
                     attr_tensor_type = type_attrs.split(')')[0]
-                if attr_tensor_type.istitle():
-                    self.op_info[attr_name]['type'] =\
-                        attr_tensor_type.strip().lower()
-                else:
-                    self.op_info[attr_name]['type'] = attr_tensor_type.strip()
+                # check invalid for attr type.
+                self._check_op_info_list_valid(
+                    [attr_tensor_type],
+                    list(utils.OP_PROTO_PARSE_ATTR_TYPE_MAP.keys()),
+                    'attr_' + name + '.type')
+                self.op_info[attr_name]['type'] = \
+                    utils.OP_PROTO_PARSE_ATTR_TYPE_MAP.get(attr_tensor_type)
 
-    def _prase_aicpu_op_proto(self, file_path):
+    def _parse_aicpu_op_proto(self, file_path):
+        # read op_name.h as an txt.
         op_name_h_text = utils.read_file(file_path)
         if op_name_h_text:
+            # find keyword 'REG_OP'.
             reg_op_info_str = op_name_h_text[op_name_h_text.find('REG_OP'):]
             reg_op_info_str = reg_op_info_str.strip()
             if reg_op_info_str.startswith('REG_OP'):
-                # delete code comments in op_name.h
+                # delete code comments in op_name.h and format.
                 no_comments_content = self._delete_comments(reg_op_info_str)
                 new_line = no_comments_content.replace('\n', utils.EMPTY)\
                     .replace('\r', utils.EMPTY) \
                     .replace('\t', utils.EMPTY)
                 pattern = re.compile(utils.SPACE)
                 line = pattern.sub(utils.EMPTY, new_line)
-                line_point_list = line.split('.')
+                line_point_list = line.split(').')
+                # record the number of input and output.
                 input_count = 0
                 output_count = 0
                 for line in line_point_list:
                     line = line.strip()
+                    # parse op_name and type of input or output.
                     input_count, output_count = \
-                        self._prase_aicpu_input_output_info(
+                        self._parse_aicpu_input_output_info(
                             line, input_count, output_count)
-                    self._prase_aicpu_attr(line)
+                    # parse op_name and type of attr.
+                    self._parse_aicpu_attr(line)
                 return True
             else:
                 return False
         return False
 
     def _find_aicpu_op_proto_path(self):
+        # search op_name.h upward through the ini file
         op_proto_path = os.path.realpath(
             os.path.join(os.path.dirname(self.input_file_path),
                          '../../../op_proto'))
         op_proto_file_name = utils.fix_name_lower_with_under(self.op_type)\
                              + '.h'
         op_proto_file_path = os.path.join(op_proto_path, op_proto_file_name)
+        # check invalid for the op_name.h file.
         is_file_exist = self._check_op_proto_path_valid(op_proto_file_path)
-        is_prase_success = False
+
+        is_parse_success = False
         if is_file_exist:
             utils.print_info_log("Start parse %s to obtain operator "
                                  "information." % op_proto_file_path)
-            is_prase_success = self._prase_aicpu_op_proto(op_proto_file_path)
-            if is_prase_success:
+            # parse aicpu op_name.h file to obtain op_name and type.
+            is_parse_success = self._parse_aicpu_op_proto(op_proto_file_path)
+            if is_parse_success:
                 utils.print_info_log("Finish parse %s." % op_proto_file_path)
-        if not is_file_exist or not is_prase_success:
+        if not is_file_exist or not is_parse_success:
             utils.print_warn_log("There are unavailable operator information "
                                  "in %s." % op_proto_file_path)
             return False
@@ -461,6 +507,7 @@ class CaseGenerator:
         varible_name = value.get('name')
         op_format = [] if len(value['format']) == 0 else \
             list(set(value['format'].split(',')))
+
         if len(value['dtype']) == 0:
             op_dtype = []
         else:
@@ -475,6 +522,7 @@ class CaseGenerator:
                     trans_dtype_list.append(
                         utils.DTYPE_TO_TYPE_MAP.get(dtype_key))
             op_dtype = trans_dtype_list
+
         if op_key == 'input_desc':
             op_desc = {'format': op_format,
                        'type': op_dtype,
@@ -490,6 +538,7 @@ class CaseGenerator:
         base_case[op_key].append(op_desc)
 
     def _generate_aicpu_base_case(self):
+        # find aicpu op_proto op_name.h file, if it existed, parse it.
         is_find_op_proto_path = self._find_aicpu_op_proto_path()
         base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
                                   + '_001',
@@ -774,6 +823,7 @@ class CaseGenerator:
             self._parse_py_to_json()
 
         if self._is_aicpu_op():
+            # generate aicpu base case of case.json
             base_case = self._generate_aicpu_base_case()
         else:
             # check json valid

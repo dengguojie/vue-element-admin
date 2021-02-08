@@ -150,6 +150,18 @@ OP_ATTR_TYPE_MAP = {
     'list_list_int': 'OP_LIST_INT_PTR'
 }
 
+OP_PROTO_PARSE_ATTR_TYPE_MAP = {
+    "Int": "int",
+    "Float": "float",
+    "String": "str",
+    "Bool": "bool",
+    "ListInt": "listInt",
+    "ListFloat": "listFloat",
+    "ListString": "listStr",
+    "ListBool": "listBool",
+    "ListListInt": "listListInt"
+}
+
 ATTR_MEMBER_VAR_MAP = {
     'int': 'intAttr',
     'float': 'floatAttr',
