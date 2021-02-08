@@ -599,7 +599,9 @@ IMPLEMT_VERIFIER(ApplyGradientDescent, ApplyGradientDescentVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyGradientDescentInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyGradientDescent op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
