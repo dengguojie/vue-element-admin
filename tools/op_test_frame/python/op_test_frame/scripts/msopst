@@ -22,6 +22,7 @@ from op_test_frame.st.interface.data_generator import DataGenerator
 from op_test_frame.st.interface.model_parser import change_shape
 from op_test_frame.st.interface.model_parser import get_shape
 from op_test_frame.st.interface import st_report
+from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
 from atexit import register
 
 abnormal_termination = False
@@ -36,6 +37,45 @@ def _check_device_id(device_id):
     return
 
 
+def _generate_op_project(args, report, machine_type):
+    # design test case list from json file
+    design = CaseDesign(args.input_file, args.case_name, report)
+    case_list = design.design()
+    output_path = os.path.realpath(args.output_path)
+    # create op project path and generate op test case code
+    if case_list[0].get('st_mode') == 'ms_python_train':
+        ms_op_generator_instance = MsOpGenerator(
+            case_list, output_path, args.device_id, machine_type, report)
+        ms_op_generator_instance.generate()
+    else:
+        acl_op_generator_instance = AclOpGenerator(
+            case_list, output_path, args.device_id, machine_type, report)
+        acl_op_generator_instance.generate()
+
+    # generate data
+    data_generator = DataGenerator(case_list, output_path,
+                                   machine_type, report)
+    data_generator.generate()
+    return case_list
+
+
+def _runner_and_compare(args, case_list, report, get_advance_args=None):
+    output_path = os.path.realpath(args.output_path)
+    # run operator
+    path = os.path.join(output_path,
+                        case_list[0]['op'].replace('/', '_'))
+    if case_list[0].get('st_mode') == 'ms_python_train':
+        op_name_fixed = utils.fix_name_lower_with_under(case_list[0]['op'])
+        runner = MsOpRunner(path, op_name_fixed, args.soc_version, report)
+        runner.process()
+    else:
+        runner = AclOpRunner(path, args.soc_version, report, get_advance_args)
+        runner.process()
+
+        # compare
+        result_comparer.compare(report, path)
+
+
 def _do_mi_cmd(args, cmd, report):
     try:
         if cmd == "get_shape":
@@ -45,24 +85,7 @@ def _do_mi_cmd(args, cmd, report):
         elif cmd == "gen":
             # check device id invaild
             _check_device_id(args.device_id)
-            # design test case list from json file
-            design = CaseDesign(args.input_file, args.case_name, report)
-            case_list = design.design()
-            # create acl_op project path and generate op test case code
-            output_path = os.path.realpath(args.output_path)
-            if case_list[0].get('st_mode') == 'ms_python_train':
-                ms_op_generator_instance = MsOpGenerator(
-                    case_list, output_path, args.device_id, True, report)
-                ms_op_generator_instance.generate()
-            else:
-                acl_op_generator_instance = AclOpGenerator(
-                    case_list, output_path, args.device_id, True, report)
-                acl_op_generator_instance.generate()
-
-            # generate data
-            data_generator = DataGenerator(case_list, output_path, True,
-                                           report)
-            data_generator.generate()
+            _generate_op_project(args, report, True)
         elif cmd == "compare2":
             result_comparer.compare2(args.result_path, args.expect_path)
         elif cmd == "compare":
@@ -85,7 +108,6 @@ def _do_mi_cmd(args, cmd, report):
 
 
 def _do_run_cmd(args, report):
-    output_path = os.path.realpath(args.output_path)
     try:
         if args.soc_version == '':
             utils.print_error_log(
@@ -93,40 +115,61 @@ def _do_run_cmd(args, report):
             sys.exit(utils.OP_TEST_GEN_INVALID_PARAM_ERROR)
         # check device id invaild
         _check_device_id(args.device_id)
-        # design test case list from json file
-        design = CaseDesign(args.input_file, args.case_name, report)
-        case_list = design.design()
-        # create op project path and generate op test case code
-        if case_list[0].get('st_mode') == 'ms_python_train':
-            ms_op_generator_instance = MsOpGenerator(
-                case_list, output_path, args.device_id, False, report)
-            ms_op_generator_instance.generate()
+        if args.config_file != "":
+            # check config_file invalid
+            utils.check_path_valid(args.config_file)
+            _gen_build_convert_run(args, report)
         else:
-            output_path = os.path.realpath(args.output_path)
-            acl_op_generator_instance = AclOpGenerator(
-                case_list, output_path, args.device_id, False, report)
-            acl_op_generator_instance.generate()
-
-        # generate data
-        data_generator = DataGenerator(case_list, output_path, False, report)
-        data_generator.generate()
-
-        # run operator
-        path = os.path.join(output_path,
-                            case_list[0]['op'].replace('/', '_'))
-        if case_list[0].get('st_mode') == 'ms_python_train':
-            op_name_fixed = utils.fix_name_lower_with_under(case_list[0]['op'])
-            runner = MsOpRunner(path, op_name_fixed, args.soc_version, report)
-            runner.process()
-        else:
-            runner = AclOpRunner(path, args.soc_version, report)
-            runner.process()
-
-            # compare
-            result_comparer.compare(report, path)
+            case_list = _generate_op_project(args, report, False)
+            _runner_and_compare(args, case_list, report)
 
     except utils.OpTestGenException as ex:
         sys.exit(ex.error_info)
+
+
+def _gen_build_convert_run(args, report):
+    output_path = os.path.realpath(args.output_path)
+    get_advance_args = AdvanceIniParser(args.config_file)
+    get_advance_args.get_advance_args_option()
+    acl_mode = get_advance_args.get_mode_flag()
+    if acl_mode == utils.BOTH_GEN_AND_RUN_ACL_PROJ:
+        # gen op project and build & convert & execute the project.
+        case_list = _generate_op_project(args, report, False)
+        _runner_and_compare(args, case_list, report, get_advance_args)
+    elif acl_mode == utils.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
+        # only gen op project.
+        _generate_op_project(args, report, False)
+    elif acl_mode == utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ:
+        # only build & convert & execute the project.
+        # when the report is input,should avoid update the report
+        global abnormal_termination
+        abnormal_termination = True
+        report_path = os.path.join(output_path, 'st_report.json')
+        utils.check_path_valid(report_path)
+        report.load(report_path)
+        utils.print_info_log("Load %s success." % report_path)
+        op_case_list = utils.load_json_file(args.input_file)
+        if len(op_case_list) == 0:
+            utils.print_error_log("Failed to get %s, please check."
+                                  % args.input_file)
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_PATH_ERROR)
+        op_name = op_case_list[0].get('op')
+        st_mode = op_case_list[0].get('st_mode')
+        # run operator
+        path = os.path.join(output_path, op_name)
+        if st_mode == 'ms_python_train':
+            op_name_fixed = utils.fix_name_lower_with_under(op_name)
+            runner = MsOpRunner(path, op_name_fixed, args.soc_version, report)
+            runner.process()
+        else:
+            runner = AclOpRunner(path, args.soc_version,
+                                 report, get_advance_args)
+            runner.process()
+            # compare
+            result_comparer.compare(report, path)
+            report.save(report_path)
+            utils.print_info_log('The st report saved in: %s.' % report_path)
 
 
 def _create_parser(create_parser):
@@ -171,6 +214,10 @@ def _run_parser(run_parser):
         '-d', "--device_id", dest="device_id", default="0",
         help="<Optional> input device id, default is 0."
         , required=False)
+    run_parser.add_argument(
+        '-conf', "--config_file", dest="config_file", default="",
+        help="<Optional> config_file, msopst advance config file.",
+        required=False)
 
 
 def _mi_parser(mi_parser):

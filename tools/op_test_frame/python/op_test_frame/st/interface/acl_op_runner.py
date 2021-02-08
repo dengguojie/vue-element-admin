@@ -28,12 +28,13 @@ class AclOpRunner:
     Class for compile and run acl op test code.
     """
 
-    def __init__(self, path, soc_version, report):
+    def __init__(self, path, soc_version, report, advance_args=None):
         self.path = path
         self.soc_version = soc_version
         self.report = report
+        self.advance_args = advance_args
 
-    def compile(self):
+    def acl_compile(self):
         """
         Compile acl op
         """
@@ -65,13 +66,13 @@ class AclOpRunner:
         utils.print_info_log('Finish to compile %s.' % self.path)
         self.add_op_st_stage_result(op_status.SUCCESS, "compile_acl_code",
                                     None, cmd_str)
-
+        # set atc & acl log level env.
+        self.set_log_level_env()
         # do atc single op model conversion
         utils.print_info_log('Start to convert single op.')
         run_out_path = os.path.join(self.path, RUN_OUT)
         os.chdir(run_out_path)
-        atc_cmd = ['atc', '--singleop=test_data/config/acl_op.json',
-                   '--soc_version=' + self.soc_version, '--output=op_models']
+        atc_cmd = self._get_atc_cmd()
         cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
         utils.print_info_log("ATC command line: %s" % cmd_str)
         try:
@@ -92,6 +93,14 @@ class AclOpRunner:
         for case_report in self.report.report_list:
             case_report.trace_detail.add_stage_result(stage_result)
 
+    def _get_atc_cmd(self):
+        atc_cmd = ['atc', '--singleop=test_data/config/acl_op.json',
+                   '--soc_version=' + self.soc_version, '--output=op_models']
+        if self.advance_args is not None:
+            atc_advance_cmd = self.advance_args.get_atc_advance_cmd()
+            atc_cmd.extend(atc_advance_cmd)
+        return atc_cmd
+
     @staticmethod
     def _execute_command(cmd):
         utils.print_info_log('Execute command: %s' % cmd)
@@ -106,6 +115,21 @@ class AclOpRunner:
             utils.print_error_log('Failed to execute command: %s' % cmd)
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+    def set_log_level_env(self):
+        if self.advance_args is not None:
+            utils.print_info_log('Set env for ATC & ACL.')
+            get_log_level, get_slog_flag = self.advance_args.get_env_value()
+            set_log_level_env = ['export', 'ASCEND_GLOBAL_LOG_LEVEL='
+                                 + get_log_level]
+            set_slog_print_env = ['export', 'ASCEND_SLOG_PRINT_TO_STDOUT='
+                                  + get_slog_flag]
+            utils.print_info_log("Set env command line: %s && %s " % (
+                " ".join(set_log_level_env), " ".join(set_slog_print_env)))
+            os.environ['ASCEND_GLOBAL_LOG_LEVEL'] = get_log_level
+            os.environ['ASCEND_SLOG_PRINT_TO_STDOUT'] = get_slog_flag
+            utils.print_info_log('Finish to set env for ATC & ACL.')
+        return
 
     def run(self):
         """
@@ -132,5 +156,5 @@ class AclOpRunner:
         """
         compile and run acl op
         """
-        self.compile()
+        self.acl_compile()
         self.run()

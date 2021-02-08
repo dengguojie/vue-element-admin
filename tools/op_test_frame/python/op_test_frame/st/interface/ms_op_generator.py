@@ -129,14 +129,7 @@ class MsOpGenerator:
 
     def _check_output_path(self, output_path, testcase_list):
         formalized_path = os.path.realpath(output_path)
-        if not (os.path.exists(formalized_path) and
-                os.path.isdir(formalized_path) and os.access(formalized_path,
-                                                             os.W_OK)):
-            utils.print_error_log("Output path error: " + formalized_path +
-                                  ", please input an existed"
-                                  " and writable dir path.")
-            sys.exit(utils.OP_TEST_GEN_CONFIG_INVALID_OUTPUT_PATH_ERROR)
-
+        utils.check_path_valid(formalized_path, True)
         if self.machine_type:
             self.output_path = output_path
         else:
