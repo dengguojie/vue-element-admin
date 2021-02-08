@@ -38,27 +38,37 @@ def _check_param(input_x1, input_x2, bias, trans_a, trans_b):
     shape_b = input_x2.get("ori_shape")
     bias_shape = bias.get("ori_shape")
 
-    if len(shape_a) != 2:
+    if len(shape_a) not in (2, 4):
         args_dict = {
             "errCode": "E60006",
             "param_name": "a",
-            "expected_length": "2",
+            "expected_length": "2 or 4",
             "length": "{}".format(len(shape_a)),
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-    if len(shape_b) != 2:
+    if len(shape_b) not in (2, 4):
         args_dict = {
             "errCode": "E60006",
             "param_name": "b",
-            "expected_length": "2",
+            "expected_length": "2 or 4",
             "length": "{}".format(len(shape_b)),
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     km_shape = shape_a[0] if trans_a else shape_a[1]
     m_shape = shape_a[1] if trans_a else shape_a[0]
+    km_shape, m_shape = (m_shape, km_shape) if input_x1.get("ori_format") == "FRACTAL_NZ" else (km_shape, m_shape)
     kn_shape = shape_b[1] if trans_b else shape_b[0]
     n_shape = shape_b[0] if trans_b else shape_b[1]
+    kn_shape, n_shape = (n_shape, kn_shape) if input_x2.get("ori_format") == "FRACTAL_NZ" else (kn_shape, n_shape)
+    block_out = tbe_platform.BLOCK_OUT
+    block_in = tbe_platform.BLOCK_IN
+    need_align_bias = ((input_x1.get("ori_format") == "FRACTAL_NZ")
+        and (input_x2.get("ori_format") in ("FRACTAL_NZ", "FRACTAL_Z"))
+        and (bias.get("ori_format") == "ND"))
+    if need_align_bias:
+        bias_shape[0] = (bias_shape[0] + block_in - 1) // block_in
+        bias_shape[1] = (bias_shape[1] + block_out - 1) // block_out
     if km_shape != kn_shape:
         args_dict = {"errCode": "E60009", "a_1d": km_shape, "b_0d": kn_shape}
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))

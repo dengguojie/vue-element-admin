@@ -41,7 +41,7 @@ def gen_trans_data_case(shape_a, shape_b, src_dtype,dst_dtype,trans_a,trans_b,da
         if dst_dtype == "int32":
             input_bias["format"] = "ND"
     else:
-            input_bias["format"] = "ND"
+        input_bias["format"] = "ND"
     output = {"ori_shape":output_shape, "shape":output_shape, "ori_format": format_a, "format":format_a, "dtype":dst_dtype}
     return {"params": [input_x,input_y,input_bias,alpha,beta,output,trans_a,trans_b],
             "case_name": kernel_name,
@@ -59,10 +59,23 @@ def test_op_check_supported(test_arg):
     output_y = {"ori_shape": (16, 32), "dtype": "float16", "ori_format": "ND"}
     check_supported(input_x1, input_x2, bias, alpha, beta, output_y=output_y, trans_a=False, trans_b=False, kernel_name="gemm")
 
+
+def test_op_check_supported_nz(test_arg):
+    from impl.gemm import check_supported
+    input_x1 = {"ori_shape": (1, 1, 16, 16), "dtype": "float16", "ori_format": "FRACTAL_NZ"}
+    input_x2 = {"ori_shape": (1, 1, 16, 16), "dtype": "float16", "ori_format": "FRACTAL_NZ"}
+    bias = {"ori_shape": (2, 2), "dtype": "float16", "ori_format": "ND"}
+    alpha = {"ori_shape": (1, ), "dtype": "float16", "ori_format": "ND"}
+    beta = {"ori_shape": (1, ), "dtype": "float16", "ori_format": "ND"}
+    output_y = {"ori_shape": (2, 2), "dtype": "float16", "ori_format": "ND"}
+    check_supported(input_x1, input_x2, bias, alpha, beta, output_y=output_y, trans_a=False, trans_b=False, kernel_name="gemm")
+
+
 for t in gemm_op_testcase:
     print("adding gemm op testcases")
     ut_case.add_case("Ascend910A", gen_trans_data_case(t[0], t[1],t[2],t[3],t[7],t[8],t[6], "success"))
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_nz)
 
 if __name__ == '__main__':
     ut_case.run()
