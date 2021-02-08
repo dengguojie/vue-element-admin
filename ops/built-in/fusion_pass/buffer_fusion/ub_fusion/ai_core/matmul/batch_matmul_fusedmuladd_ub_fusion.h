@@ -33,16 +33,8 @@ class TbeBatchMatmulFusedMulAddFusionPass : public BufferFusionPassBase {
     ~TbeBatchMatmulFusedMulAddFusionPass() {}
 
   protected:
-   /*
-    * @brief:  define BatchMatmul and FusedMulAdd op fusion pattern
-    *
-    *   BatchMatmul + FusedMulAdd
-    *
-    * fusion node:  BatchMatmul, FusedMulAdd
-    *
-    * @return BufferFusionPattern: return all valid patterns.
-    */
     vector<BufferFusionPattern*> DefinePatterns() override;
+    Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
   private:
     const string FUSED_OP_TYPE = "FusedOp";

@@ -59,6 +59,43 @@ vector<BufferFusionPattern*> TbeBatchMatmulFusedMulAddFusionPass::DefinePatterns
   return patterns;
 }
 
+Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do TbeBatchMatmulFusedMulAddFusionPass!");
+  fusion_nodes = GetMatchedNodes(mapping);
+
+  // buffer fusion do not support dynamic shape now
+  vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL, mapping);
+  for (const auto& matmulNode : matmulNodes){
+    vector<int64_t> input0Dims = matmulNode->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+    vector<int64_t> input1Dims = matmulNode->GetOpDesc()->GetInputDesc(1).GetOriginShape().GetDims();
+    vector<int64_t> allDims;
+    allDims.resize(input0Dims.size() + input1Dims.size());
+    merge(input0Dims.begin(), input0Dims.end(), input1Dims.begin(), input1Dims.end(), allDims.begin());
+    for (auto singleDim : allDims) {
+      if (singleDim < 0) {
+        fusion_nodes.clear();
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "ub fusion not support dynamic shape");
+        return SUCCESS;
+      }
+    }
+  }
+
+  vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
+
+  FUSION_PASS_CHECK(elemNode.empty(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
+                    return SUCCESS);
+
+  auto inputs = elemNode[0]->GetOpDesc()->GetAllInputsDesc();
+  FUSION_PASS_CHECK(inputs.size() != 3,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
+                    return SUCCESS);
+  fusion_nodes = GetMatchedNodes(mapping);
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do TbeBatchMatmulFusedMulAddFusionPass!");
+
+  return SUCCESS;
+}
+
 REGISTER_BUFFER_FUSION_PASS("TbeBatchMatmulFusedMulAddFusionPass", BUILT_IN_AI_CORE_BUFFER_FUSION_PASS,
                             TbeBatchMatmulFusedMulAddFusionPass);
 }  // namespace fe
