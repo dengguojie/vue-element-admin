@@ -189,3 +189,4 @@ from .data_format_dim_map import data_format_dim_map
 from .elu import elu
 from .bn_infer import bn_infer
 from .bn_infer_grad import bn_infer_grad
+from .selu import selu
