@@ -77,4 +77,13 @@
 #define D_FUSION_PASS_LOGD(fmt, ...)
 #endif
 
+#define OP_CHECK(condition, log_func, do_expr)                                                                 \
+  static_assert(std::is_same<bool, std::decay<decltype(condition)>::type>::value, "condition should be bool"); \
+  do {                                                                                                         \
+    if (condition) {                                                                                           \
+      log_func;                                                                                                \
+      do_expr;                                                                                                 \
+    }                                                                                                          \
+  } while (0)
+
 #endif //GE_OP_LOG_H
