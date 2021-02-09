@@ -1186,7 +1186,7 @@ def set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if pver().is_mini_version() or pver().is_cloud_version():
+    if pver().is_mini_version():
         # mini/cloud
         emit_insn_str = "vector_conv"
     else:
