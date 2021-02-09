@@ -1,0 +1,14 @@
+onnx-reducemin_test:
++
+datareduced"	ReduceMin*
+keepdims test_reducemin_case_1Z
+data
+
+
+
+b
+reduced
+
+
+
+B
