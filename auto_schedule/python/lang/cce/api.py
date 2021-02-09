@@ -241,8 +241,12 @@ def vrec(raw_tensor, priority_flag=1):
     wrapped_tensor : vrec(raw_tensor)
     """
     warnings.warn("te.lang.cce.vrec is expired, please replace it with tbe.dsl.vrec", DeprecationWarning)
+    impl_mode = "high_precision"
+    from .te_compute.util import _get_priority_flag_value
+    if _get_priority_flag_value(priority_flag) == 0.0:
+        impl_mode = "high_performance"
     import tbe.dsl
-    return tbe.dsl.vrec(raw_tensor, priority_flag)
+    return tbe.dsl.vrec(raw_tensor, impl_mode)
 
 
 def vmod(lhs, rhs):
@@ -319,8 +323,12 @@ def vlog(raw_tensor, priority_flag=0):
     wrapped_tensor : log(raw_tensor)
     """
     warnings.warn("te.lang.cce.vlog is expired, please replace it with tbe.dsl.vlog", DeprecationWarning)
+    impl_mode = "high_performance"
+    from .te_compute.util import _get_priority_flag_value
+    if _get_priority_flag_value(priority_flag) == 1.0:
+        impl_mode = "high_precision"
     import tbe.dsl
-    return tbe.dsl.vlog(raw_tensor, priority_flag)
+    return tbe.dsl.vlog(raw_tensor, impl_mode)
 
 
 @auto_cast_of_elewise
@@ -375,8 +383,12 @@ def vsqrt(raw_tensor, priority_flag=0):
     wrapped_tensor : vsqrt(raw_tensor)
     """
     warnings.warn("te.lang.cce.vsqrt is expired, please replace it with tbe.dsl.vsqrt", DeprecationWarning)
+    impl_mode = "high_performance"
+    from .te_compute.util import _get_priority_flag_value
+    if _get_priority_flag_value(priority_flag) == 1.0:
+        impl_mode = "high_precision"
     import tbe.dsl
-    return tbe.dsl.vsqrt(raw_tensor, priority_flag)
+    return tbe.dsl.vsqrt(raw_tensor, impl_mode)
 
 
 @auto_cast_of_elewise
@@ -393,8 +405,12 @@ def vrsqrt(raw_tensor, priority_flag=0):
     wrapped_tensor : vrsqrt(raw_tensor)
     """
     warnings.warn("te.lang.cce.vrsqrt is expired, please replace it with tbe.dsl.vrsqrt", DeprecationWarning)
+    impl_mode = "high_performance"
+    from .te_compute.util import _get_priority_flag_value
+    if _get_priority_flag_value(priority_flag) == 1.0:
+        impl_mode = "high_precision"
     import tbe.dsl
-    return tbe.dsl.vrsqrt(raw_tensor, priority_flag)
+    return tbe.dsl.vrsqrt(raw_tensor, impl_mode)
 
 
 @auto_cast_of_elewise
@@ -858,8 +874,11 @@ def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     res : wrapped_tensor
     """
     warnings.warn("te.lang.cce.reduce_min is expired, please replace it with tbe.dsl.reduce_min", DeprecationWarning)
+    impl_mode = "high_performance"
+    if priority_flag:
+        impl_mode = "high_precision"
     import tbe.dsl
-    return tbe.dsl.reduce_min(raw_tensor, axis, keepdims, priority_flag)
+    return tbe.dsl.reduce_min(raw_tensor, axis, keepdims, impl_mode)
 
 
 @auto_cast_of_reduce
@@ -878,8 +897,11 @@ def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     res : wrapped_tensor
     """
     warnings.warn("te.lang.cce.reduce_max is expired, please replace it with tbe.dsl.reduce_max", DeprecationWarning)
+    impl_mode = "high_performance"
+    if priority_flag:
+        impl_mode = "high_precision"
     import tbe.dsl
-    return tbe.dsl.reduce_max(raw_tensor, axis, keepdims, priority_flag)
+    return tbe.dsl.reduce_max(raw_tensor, axis, keepdims, impl_mode)
 
 
 @auto_cast_of_reduce

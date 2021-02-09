@@ -620,10 +620,10 @@ def __vlog_calculate_by_taylor(data_x):
         threshold_4 = tbe.dsl.broadcast(tvm.const(const_half, dtype), shape)
         if in_dynamic_and_static_unify():
             res = vcmpsel(data_x, threshold_4, 'le',
-                          vmuls(_log_compute_block_gt_1(vrec(data_x), shape), const_neg_one), res)
+                          vmuls(_log_compute_block_gt_1(vrec(data_x, "high_precision"), shape), const_neg_one), res)
         else:
             index_5 = vcmp(data_x, threshold_4, 'le')
-            res = vsel(index_5, vmuls(_log_compute_block_gt_1(vrec(data_x), shape),
+            res = vsel(index_5, vmuls(_log_compute_block_gt_1(vrec(data_x, "high_precision"), shape),
                                       const_neg_one), res)
         res = cast_to(res, dtype)
 
@@ -640,14 +640,14 @@ def __vlog_calculate_by_taylor(data_x):
 
 @source_info_decorator()
 @dtype_check_decorator
-def vlog(raw_tensor, priority_flag=0):
+def vlog(raw_tensor, impl_mode="high_performance"):
     """
     calculate ln(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-    priority_flag : priority flag, only support 1(precision) and 0(performance)
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
@@ -655,7 +655,7 @@ def vlog(raw_tensor, priority_flag=0):
     """
 
     if not intrinsic_check_support("Intrinsic_vln", "float32") \
-            and _get_priority_flag_value(priority_flag) == 1.0:
+            and impl_mode == "high_precision":
         return __vlog_calculate_by_taylor(raw_tensor)
 
     dtype = raw_tensor.dtype
@@ -702,14 +702,14 @@ def vabs(raw_tensor):
 
 @source_info_decorator()
 @dtype_check_decorator
-def vrec(raw_tensor, priority_flag=1):
+def vrec(raw_tensor, impl_mode="high_performance"):
     """
     calculate vrec(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-    priority_flag: priority flag, only support 1(precision), 0(performance)
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
@@ -717,7 +717,7 @@ def vrec(raw_tensor, priority_flag=1):
     """
     dtype = raw_tensor.dtype
 
-    return __single_elewise_op(raw_tensor, dtype, 'elewise_single_rec', args=[priority_flag])
+    return __single_elewise_op(raw_tensor, dtype, 'elewise_single_rec', args=[impl_mode])
 
 
 def _check_multi_compute_pattern(pattern, *tensors):
@@ -815,15 +815,14 @@ def __vsqrt_calculate_by_newton(raw_tensor):
 
 @source_info_decorator()
 @dtype_check_decorator
-def vsqrt(raw_tensor, priority_flag=0):
+def vsqrt(raw_tensor, impl_mode="high_performance"):
     """
     calculate vsqrt(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-
-    priority_flag: priority flag, only support 1(precision), 0(performance)
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
@@ -831,11 +830,11 @@ def vsqrt(raw_tensor, priority_flag=0):
     """
 
     if not intrinsic_check_support("Intrinsic_vsqrt"):
-        if _get_priority_flag_value(priority_flag) == 1.0:
+        if impl_mode == "high_precision":
             return __vsqrt_calculate_by_newton(raw_tensor)
         dtype = raw_tensor.dtype
         res = __single_elewise_op(raw_tensor, dtype, 'elewise_single_rsqrt')
-        return vrec(res)
+        return vrec(res, "high_precision")
     dtype = raw_tensor.dtype
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_sqrt')
 
@@ -868,18 +867,19 @@ def __vrsqrt_calculate_by_newton(raw_tensor):
         res = vadd(vadd_inputs[0], vadd_inputs[1],)
         res = vmuls(res, tvm.const(const_half, dtype))
         init_res = res
-    return vrec(res)
+    return vrec(res, "high_precision")
 
 
 @source_info_decorator()
 @dtype_check_decorator
-def vrsqrt(raw_tensor, priority_flag=0):
+def vrsqrt(raw_tensor, impl_mode="high_performance"):
     """
     calculate vrsqrt(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
@@ -887,7 +887,7 @@ def vrsqrt(raw_tensor, priority_flag=0):
     """
 
     if not intrinsic_check_support("Intrinsic_vsqrt") \
-            and _get_priority_flag_value(priority_flag) == 1.0:
+            and impl_mode == "high_precision":
         return __vrsqrt_calculate_by_newton(raw_tensor)
     dtype = raw_tensor.dtype
     return __single_elewise_op(raw_tensor, dtype, 'elewise_single_rsqrt')
@@ -955,12 +955,9 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
     with tvm.tag_scope(op_name):
         tmp = tvm.compute(shape, lambda_func, name=name)
 
-    # vrec don't need newton iter scene
-    # 1. vrec interface parameter priority_flag is set 0(high performance)
     is_use_newton_iter = False
-    if op_name == "elewise_single_rec":
-        if not (args is not None and _get_priority_flag_value(args[0]) == 0.0):
-            is_use_newton_iter = True
+    if op_name == "elewise_single_rec" and args[0] == "high_precision":
+        is_use_newton_iter = True
 
     if is_use_newton_iter:
         def __get_newton_iter_num():
@@ -1073,7 +1070,7 @@ def vdiv(lhs, rhs):
 
     if not intrinsic_check_support("Intrinsic_vdiv"):
         dtype = rhs.dtype
-        reciprocal_rhs = __single_elewise_op(rhs, dtype, 'elewise_single_rec')
+        reciprocal_rhs = __single_elewise_op(rhs, dtype, 'elewise_single_rec', ['high_precision'])
         vdiv_value = __binary_elewise_op(lhs, reciprocal_rhs, "elewise_binary_mul")
         return vdiv_value
 
@@ -1116,7 +1113,7 @@ def __vmod_mini(lhs, rhs):
     # 1. calculate result for testing, using float32 for better precision
     lhs = _cast(lhs, "float32")
     rhs = _cast(rhs, "float32")
-    test_div = vmul(lhs, vrec(rhs))
+    test_div = vmul(lhs, vrec(rhs, "high_precision"))
     test_div = _cast(test_div, "float16")
     test_floor = _cast(floor(test_div), "float32")
     test_res = vsub(lhs, vmul(rhs, test_floor))

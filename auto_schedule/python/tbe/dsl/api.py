@@ -208,20 +208,20 @@ def vdiv(lhs, rhs):
     return math.vdiv(lhs, rhs)
 
 
-def vrec(raw_tensor, priority_flag=1):
+def vrec(raw_tensor, impl_mode="high_performance"):
     """
     calculate vrec(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-    priority_flag: priority flag, only support 1(precision), 0(performance)
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
     wrapped_tensor : vrec(raw_tensor)
     """
-    return math.vrec(raw_tensor, priority_flag)
+    return math.vrec(raw_tensor, impl_mode)
 
 
 def vmod(lhs, rhs):
@@ -275,20 +275,20 @@ def vmin(lhs, rhs):
     return math.vmin(lhs, rhs)
 
 
-def vlog(raw_tensor, priority_flag=0):
+def vlog(raw_tensor, impl_mode="high_performance"):
     """
     calculate ln(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-    priority_flag : priority flag, only support 1(precision) and 0(performance)
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
     wrapped_tensor : log(raw_tensor)
     """
-    return math.vlog(raw_tensor, priority_flag)
+    return math.vlog(raw_tensor, impl_mode)
 
 
 def vexp(raw_tensor):
@@ -321,36 +321,36 @@ def vabs(raw_tensor):
     return math.vabs(raw_tensor)
 
 
-def vsqrt(raw_tensor, priority_flag=0):
+def vsqrt(raw_tensor, impl_mode="high_performance"):
     """
     calculate vsqrt(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
-
-    priority_flag: priority flag, only support 1(precision), 0(performance)
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
     wrapped_tensor : vsqrt(raw_tensor)
     """
-    return math.vsqrt(raw_tensor, priority_flag)
+    return math.vsqrt(raw_tensor, impl_mode)
 
 
-def vrsqrt(raw_tensor, priority_flag=0):
+def vrsqrt(raw_tensor, impl_mode="high_performance"):
     """
     calculate vrsqrt(raw_tensor)
 
     Parameters
     ----------
     raw_tensor : wrapped_tensor or tvm.tensor
+    impl_mode : only support high_performance and high_precision
 
     Returns
     -------
     wrapped_tensor : vrsqrt(raw_tensor)
     """
-    return math.vrsqrt(raw_tensor, priority_flag)
+    return math.vrsqrt(raw_tensor, impl_mode)
 
 
 def vnot(raw_tensor):
@@ -742,7 +742,7 @@ def reduce_sum(raw_tensor, axis, keepdims=False):
     return reduce.reduce_sum(raw_tensor, axis, keepdims)
 
 
-def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
+def reduce_min(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
     """
     calculate reduce_min of raw_tensor, only support float16
     Parameters
@@ -755,10 +755,10 @@ def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     -------
     res : wrapped_tensor
     """
-    return reduce.reduce_min(raw_tensor, axis, keepdims, priority_flag)
+    return reduce.reduce_min(raw_tensor, axis, keepdims, impl_mode)
 
 
-def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
+def reduce_max(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
     """
     calculate reduce_max of raw_tensor, only support float16
     Parameters
@@ -772,7 +772,7 @@ def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     -------
     res : wrapped_tensor
     """
-    return reduce.reduce_max(raw_tensor, axis, keepdims, priority_flag)
+    return reduce.reduce_max(raw_tensor, axis, keepdims, impl_mode)
 
 
 def reduce_prod(raw_tensor, axis, keepdims=False):

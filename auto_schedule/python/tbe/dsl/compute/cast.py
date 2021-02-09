@@ -322,7 +322,7 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
         new_data = tbe.dsl.vmuls(data1, fp32_max)
         tmp2 = tbe.dsl.vabs(new_data)
         tmp3 = tbe.dsl.vadds(tmp2, fp32_min)
-        fp32_res = tbe.dsl.vmul(new_data, tbe.dsl.vrec(tmp3))
+        fp32_res = tbe.dsl.vmul(new_data, tbe.dsl.vrec(tmp3, "high_precision"))
         if not cceconf.cce_conf.api_check_support("te.lang.cce.round", "float32"):
             fp32_res = _cast(fp32_res, dst_dtype="float16")
         sign_res = round(fp32_res)  # get the sign data[-1,0,1]
@@ -343,7 +343,7 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
         new_data = tbe.dsl.vmuls(data1, fp16_max)
         tmp2 = tbe.dsl.vabs(new_data)
         tmp3 = tbe.dsl.vadds(tmp2, fp16_min)
-        fp16_res = tbe.dsl.vmul(new_data, tbe.dsl.vrec(tmp3))
+        fp16_res = tbe.dsl.vmul(new_data, tbe.dsl.vrec(tmp3, "high_precision"))
         sign_res = round(fp16_res)
 
         floor_data = floor(tbe.dsl.vabs(data))

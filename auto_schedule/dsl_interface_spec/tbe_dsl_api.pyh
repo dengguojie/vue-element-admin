@@ -20,7 +20,7 @@ def vmul(lhs, rhs):
 
 def vdiv(lhs, rhs):
 
-def vrec(raw_tensor, priority_flag=1):
+def vrec(raw_tensor, impl_mode="high_performance"):
 
 def vmod(lhs, rhs):
 
@@ -28,15 +28,15 @@ def vmax(lhs, rhs):
 
 def vmin(lhs, rhs):
 
-def vlog(raw_tensor, priority_flag=0):
+def vlog(raw_tensor, impl_mode="high_performance"):
 
 def vexp(raw_tensor):
 
 def vabs(raw_tensor):
 
-def vsqrt(raw_tensor, priority_flag=0):
+def vsqrt(raw_tensor, impl_mode="high_performance"):
 
-def vrsqrt(raw_tensor, priority_flag=0):
+def vrsqrt(raw_tensor, impl_mode="high_performance"):
 
 def vnot(raw_tensor):
 
@@ -82,9 +82,9 @@ def broadcast(var, shape, output_dtype=None):
 
 def reduce_sum(raw_tensor, axis, keepdims=False):
 
-def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
+def reduce_min(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
 
-def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
+def reduce_max(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
 
 def reduce_prod(raw_tensor, axis, keepdims=False):
 
