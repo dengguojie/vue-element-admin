@@ -19,127 +19,85 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
-from te.utils import shape_util
+from te.utils.shape_util import broadcast_shapes
 
 MIN_TENSOR_NUM = 1
 MAX_TENSOR_NUM = 40
-NUM_ONE = 1
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("accumulate_nv2")
-def _accumulate_nv2_compute(x, y, num, kernel_name='accumulate_nv2'):
+def _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num):
     """
     Process accumulate_nv2 operator.
 
     Parameters:
     ----------
-    x : the list of input tensor.
-
-    y : the dict of output.
-
+    tensor_list : the list of input tensor.
+    out_shape : the shape of output.
+    out_dtype : the data type of output.
     num : the size of input.
-
-    kernel_name : cce kernel name, default value is "accumulate_nv2".
-
-    Returns:
-    -------
-    result : result of accumulate.
+    ----------
     """
 
-    dtype = x[0].dtype
-    shape = x[0].shape
-    length = len(x)
-
-    result = x[0]
+    result = tbe.broadcast(tensor_list[0], out_shape)
     # in order to improve the accuracy, convert float16 to float32
-    if dtype == 'float16' and length > 1 and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+    if out_dtype == 'float16' and num > 1:
+
         result = tbe.cast_to(result, 'float32')
-
-    for i in range(1, length):
-        rhs = x[i]
-        if dtype == 'float16' and \
-           tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
-            rhs = tbe.cast_to(x[i], 'float32')
-        result = tbe.vadd(result, rhs)
-
-    if length == 1:
-        # tbe.vmuls supports float16, float32. int8, uint8, int32 will
-        # be converted to float16. This will cause the data to be truncated.
-        # so use tbe.vmul.
-        if dtype == "int32":
-            value_one = tvm.const(NUM_ONE, dtype=dtype)
-            value_one_tensor = tbe.broadcast(value_one, shape)
-            result = tbe.vmul(result, value_one_tensor)
-        else:
-            result = tbe.vmuls(result, NUM_ONE)
+        for i in range(1, num):
+            tmp = tbe.broadcast(tensor_list[i], out_shape)
+            tmp = tbe.cast_to(tmp, 'float32')
+            result = tbe.vadd(result, tmp)
+    else:
+        for i in range(1, num):
+            tmp = tbe.broadcast(tensor_list[i], out_shape)
+            result = tbe.vadd(result, tmp)
 
     # in order to improve the accuracy, convert float32 back to float16
-    if dtype == 'float16' and length > 1:
+    if out_dtype == 'float16' and num > 1:
         result = tbe.cast_to(result, 'float16')
 
     return result
+ 
 
-
-def _get_shape_and_dtype(input_dict):
-    """
-    Get shape and data type from dictionary.
-
-    Parameters:
-    ----------
-    input_dict : input dictionary.
-
-    Returns:
-    -------
-    shape: the shape of input tensor.
-
-    inp_dtype: the lower data type of input tensor.
-    """
-
-    shape = input_dict.get('shape')
-    para_check.check_shape(shape, param_name="x")
-
-    check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
-    dtype = input_dict.get('dtype')
-    para_check.check_dtype(dtype, check_list, param_name="x")
-    inp_dtype = dtype.lower()
-
-    return shape, inp_dtype
-
-
-def _check_all_shape_and_dtype_same(input_list):
+def _check_all_shape_and_dtype_same(x, num):
     """
     Check shape and data type of inputs are all same, and return shape and dtype.
 
     Parameters:
     ----------
-    input_list : the list of input dict.
-
-    Returns:
-    -------
-    shape: the shape of input tensor.
-
-    dtype: the data type of input tensor.
+    x : the list of input dict.
+    num : the size of input.
+    ----------
     """
 
-    if input_list is None or len(input_list) < MIN_TENSOR_NUM:
-        raise ValueError(
-            'inputs must be a list of at least one Tensor with the same dtype and shape'
-        )
-
     # ccec compiler does not support more than 40 parameters, so limit it
-    if len(input_list) > MAX_TENSOR_NUM:
+    if num > MAX_TENSOR_NUM or num < MIN_TENSOR_NUM:
         raise RuntimeError('tensor_num need in range [1, 40].')
+    
+    check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
+    shape_list = []
+    dtype_list = []
+    for i in range(num):
+        shape = x[i].get('shape') 
+        para_check.check_shape(shape)
 
-    shape, dtype = _get_shape_and_dtype(input_list[0])
+        
+        dtype = x[i].get('dtype').lower()
+        para_check.check_dtype(dtype, check_list)
+        
+        shape_list.append(shape)
+        dtype_list.append(dtype)
+        
+    
+    out_shape = shape_list[0]
+    out_dtype = dtype_list[0]
 
-    if not all((shape, dtype) == _get_shape_and_dtype(x) for x in input_list):
-        raise ValueError(
-            'inputs must be a list of at least one Tensor with the same dtype and shape'
-        )
-
-    return shape, dtype
+    for i in range(1, num):
+        _, _, out_shape = broadcast_shapes(out_shape, shape_list[i])
+        
+    return shape_list, out_shape, out_dtype
 
 
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
@@ -151,32 +109,26 @@ def accumulate_nv2(x, y, num, kernel_name="accumulate_nv2"):
     Parameters:
     ----------
     x : the list of input dict. support dtype: float16, float32, int8, uint8, int32.
-
     y : the dict of output.
-
     num : the size of input.
-
     kernel_name : cce kernel name, default value is "accumulate_nv2".
-
-    Returns:
-    -------
-    None
+    ----------
     """
-    shape, dtype = _check_all_shape_and_dtype_same(x)
     if len(x) != num:
         raise RuntimeError(
             'The size of input and num must be same.'
         )
-    shape, _ = shape_util.refine_shape_axes(shape, [])
+    shape_list, out_shape, out_dtype = _check_all_shape_and_dtype_same(x, num)
+    para_check.check_kernel_name(kernel_name)
 
-    tensor_list = [None]*len(x)
-    for i in range(len(x)):
+    tensor_list = []
+    for i in range(num):
         data_name = 'data%d' % i
-        data = tvm.placeholder(shape, name=data_name, dtype=dtype)
-        tensor_list[i] = data
-
+        data = tvm.placeholder(shape_list[i], name=data_name, dtype=out_dtype)
+        tensor_list.append(data)
+        
+    res = _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num)
     with tvm.target.cce():
-        res = _accumulate_nv2_compute(tensor_list, y, kernel_name)
         sch = tbe.auto_schedule(res)
 
     tensor_list.append(res)

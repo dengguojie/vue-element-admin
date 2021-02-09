@@ -1125,6 +1125,53 @@ int64_t GetAccumulateNV2ConstValue(const ge::Operator& op) {
   return tensor_num;
 }
 
+int64_t GenerateOutshape(std::vector<int64_t> shape1, std::vector<int64_t> shape2,int64_t index) {
+    if (shape1[index] < shape2[index]) {
+        if (shape2[index] % shape1[index] == 0) {
+            return shape2[index];
+        } else {
+            return -1;
+        }
+    } else {
+        if (shape1[index] % shape2[index] == 0){
+            return shape1[index];
+        } else {
+            return -1;
+        }
+    }
+}
+
+std::vector<int64_t> Broadcast(std::vector<int64_t> shape1, std::vector<int64_t> shape2) {
+    std::vector<int64_t> shorter;
+    std::vector<int64_t> longer;
+    if (shape1.size() < shape2.size()) {
+        shorter = shape1;
+        longer = shape2;
+    } else {
+        shorter = shape2;
+        longer = shape1;
+    }
+    int64_t l_size = longer.size();
+    int64_t s_size = shorter.size();
+    std::vector<int64_t> temp(l_size - s_size, 1);
+    for (int64_t i  = 0; i < s_size; i++) {
+        temp.push_back(shorter[i]);
+    }
+    std::vector<int64_t> out_shape;
+    for (int64_t i  = 0; i < l_size; i++) {
+        if (temp[i] == 1) {
+            out_shape.push_back(longer[i]);
+        } else {
+            if (longer[i] == 1) {
+                out_shape.push_back(temp[i]);
+            } else {
+                out_shape.push_back(GenerateOutshape(temp, longer, i));
+            }
+        }
+    }
+    return out_shape;
+}
+
 IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
   /*
   Accumulate_nv2 has four type inputs:
@@ -1194,21 +1241,33 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
     auto input_desc = op_info->MutableInputDesc(0);
     std::vector<int64_t> shape_vector = input_desc->MutableShape().GetDims();
     DataType x_dtype = input_desc->GetDataType();
-    for (int64_t i = 0; i < tensor_num; i++) {
-      auto input_desc = op_info->MutableInputDesc(i);
-      std::vector<int64_t> temp_vector = input_desc->MutableShape().GetDims();
-      if (!shape_vector.empty() && !IsUnknownRankShape(shape_vector)) {
-        shape_vector = temp_vector;
-        break;
-      }
+    std::vector<int64_t> temp_vector;
+    for (int64_t i = 1; i < tensor_num; i++) {
+        auto input_desc = op_info->MutableInputDesc(i);
+        temp_vector = input_desc->MutableShape().GetDims();
+        if (!shape_vector.empty() && !IsUnknownRankShape(shape_vector)) {
+            if (!IsUnknownRankShape(temp_vector)) {
+                shape_vector = Broadcast(shape_vector, temp_vector);
+                for (int64_t j = 0; j < shape_vector.size(); j++) {
+                    if (shape_vector[j] == -1) {
+                        OP_LOGE(op.GetName().c_str(),
+                            "Operands could not be broadcast together with these shapes."); 
+                        return GRAPH_FAILED;
+                    }
+                }
+            } else {
+                shape_vector = temp_vector;
+                break;
+            }
+        }
     }
     auto y_desc = op_info->MutableOutputDesc("y");
     y_desc->SetShape(GeShape(shape_vector));
     y_desc->SetDataType(x_dtype);
-    std::vector<std::pair<int64_t,int64_t>> out_range;
+    std::vector<std::pair<int64_t, int64_t>> out_range;
     MakeUpShapeRange(shape_vector, out_range);
     y_desc->SetShapeRange(out_range);
-  } else {
+    } else {
     auto input_desc = op_info->MutableInputDesc(0);
     std::vector<int64_t> out_shape = input_desc->MutableShape().GetDims();
     DataType x_dtype = input_desc->GetDataType();
