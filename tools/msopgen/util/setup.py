@@ -24,7 +24,8 @@ __version__ = "0.1"
 
 with open("MANIFEST.in", "w") as fo:
     fo.write("recursive-include ../op_gen/template *\n"
-             "recursive-include ../op_gen/json_template *\n")
+             "recursive-include ../op_gen/json_template *\n"
+             "recursive-include ../op_gen/config *\n")
 
 setup_kwargs = {
     "include_package_data": True
