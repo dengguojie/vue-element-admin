@@ -17,11 +17,11 @@
 
 #include <algorithm>
 
+#include "securec.h"
 #include "Eigen/Core"
 #include "unsupported/Eigen/CXX11/Tensor"
 #include "cpu_types.h"
 #include "log.h"
-#include "securec.h"
 #include "status.h"
 #include "utils/kernel_util.h"
 
@@ -197,8 +197,8 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   } else {
     KERNEL_LOG_WARN(
         "Format is not FORMAT_DHWCN or FORMAT_NDHWC or FORMAT_NCDHW or "
-        "FORMAT_NHWC or FORMAT_NCHW, current input format is [%d]",
-        input_format);
+        "FORMAT_NHWC or FORMAT_NCHW or FORMAT_HWCN, current input "
+        "format is [%d]", input_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -512,7 +512,7 @@ uint32_t TransDataCpuKernel::GetPaddingOneShape(
   auto c = args.src_shape.at(2);
   auto n = args.src_shape.at(3);
   if (c > kMaxDimsNumC) {
-    KERNEL_LOG_ERROR("Invalie dim c num[%lu].It should be in (0, %ld]", c, kMaxDimsNumC);
+    KERNEL_LOG_ERROR("Invalid dim c num[%lu].It should be in (0, %ld]", c, kMaxDimsNumC);
     return KERNEL_STATUS_PARAM_INVALID;
   }
   dst_shape.resize(4);
@@ -520,10 +520,6 @@ uint32_t TransDataCpuKernel::GetPaddingOneShape(
   dst_shape[1] = w;
   dst_shape[2] = kMaxDimsNumC;
   int64_t tmp = Ceil(n, cube);
-  if (tmp < 0) {
-    KERNEL_LOG_ERROR("Invalie cube [%lu].It should be > 0", cube);
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
   dst_shape[3] = tmp * cube;
   return KERNEL_STATUS_OK;
 }
@@ -536,10 +532,6 @@ uint32_t TransDataCpuKernel::GetPaddingTwoShape(
   dst_shape.resize(2);
   dst_shape[0] = n;
   int64_t tmp = Ceil(z, cube);
-  if (tmp < 0) {
-    KERNEL_LOG_ERROR("Invalie cube [%lu].It should be > 0", cube);
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
   dst_shape[1] = tmp * cube;
   return KERNEL_STATUS_OK;
 }
