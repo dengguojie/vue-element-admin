@@ -4321,20 +4321,15 @@ IMPLEMT_VERIFIER(DataCompare, DataCompareVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(DataCompareInferShape) {
-  TensorDesc tensordesc_num = op.GetOutputDesc("num");
-  TensorDesc tensordesc_diff = op.GetOutputDesc("diff");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_desc = op_info->MutableOutputDesc("num");
 
-  std::vector<int64_t> oShapeVector;
-  Shape oShape(oShapeVector);
-  
-  tensordesc_num.SetShape(ge::Shape(oShape));
-  tensordesc_num.SetDataType(DT_INT32);
-  (void)op.UpdateOutputDesc("num", tensordesc_num);
-
-  tensordesc_diff.SetShape(ge::Shape(oShape));
-  tensordesc_diff.SetDataType(DT_FLOAT16);
-  (void)op.UpdateOutputDesc("diff", tensordesc_diff);
-
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  std::vector<int64_t> shape_vector;
+  output_desc->SetShape(GeShape(shape_vector));
+  output_desc->SetOriginShape(GeShape(shape_vector));
+  output_desc->SetShapeRange(input_range);
+  output_desc->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
 }

@@ -32,8 +32,7 @@ __all__ = ["data_compare"]
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("data_compare")
-def data_compare_compute(input_x, input_y, output_num, output_diff, atol, rtol,
-                              kernel_name="data_compare"):
+def data_compare_compute(input_x, input_y, output_num, atol, rtol, kernel_name="data_compare"):
     """
     algorithm: data_compare
 
@@ -46,7 +45,6 @@ def data_compare_compute(input_x, input_y, output_num, output_diff, atol, rtol,
     atol: default 1e-5
     rtol: default 1e-3
     output_num: shape and dtype of output
-    output_diff: shape and dtype of output
     kernel_name: cce kernel name, default value is "data_compare"
     Returns
     -------
@@ -78,18 +76,12 @@ def data_compare_compute(input_x, input_y, output_num, output_diff, atol, rtol,
     res_sel = tbe.cast_to(res_sel, "float32")
     res_num = tbe.sum(res_sel, axis = shape_list)
 
-    res_div = tbe.vdiv(res_vabs, y_vabs)
-    res_mul = tbe.vmul(res_div, res_sel)
-    res_diff = tbe.reduce_max(res_mul, axis = shape_list)
-
-    return res_num, res_diff
+    return res_num
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
-                            para_check.KERNEL_NAME)
-def data_compare(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3,
-                      kernel_name="data_compare"):
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+def data_compare(input_x, input_y, output_num, atol=1e-5, rtol=1e-3, kernel_name="data_compare"):
     """
     abs(x-y) > atol + rtol * abs(y)
     Parameters
@@ -101,7 +93,6 @@ def data_compare(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3
         shape of tensors, assume src_shape equals dst_shape
 
     output_num : dict, include shape and dtype, reserve
-    output_diff : dict, include shape and dtype, reserve
 
     atol: default 1e-5
     rtol: default 0.001
@@ -150,14 +141,12 @@ def data_compare(input_x, input_y, output_num, output_diff, atol=1e-5, rtol=1e-3
     in_data_x = tvm.placeholder(shape_x, name="shape_x", dtype=in_dtype)
     in_data_y = tvm.placeholder(shape_y, name="shape_y", dtype=in_dtype)
 
-    res_num, res_diff = data_compare_compute(in_data_x, in_data_y, output_num, output_diff,
-                                          atol, rtol, kernel_name)
+    res = data_compare_compute(in_data_x, in_data_y, output_num, atol, rtol, kernel_name)
 
-    res = [res_num, res_diff]
     with tvm.target.cce():
         auto_sch = tbe.auto_schedule(res)
 
-    tensor_list = [in_data_x, in_data_y] + res
+    tensor_list = [in_data_x, in_data_y, res]
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list,

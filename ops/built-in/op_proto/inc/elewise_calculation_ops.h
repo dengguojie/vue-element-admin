@@ -3623,8 +3623,7 @@ REG_OP(Lerp)
 * rtol: Defaults to "1e-03".
 *
 *@par Outputs:
-* num: A tensor of type int32.
-* diff: A tensor of type float16.
+* num: A tensor of type float32.
 *
 *@par Restrictions:
 *Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
@@ -3634,7 +3633,6 @@ REG_OP(DataCompare)
   .INPUT(x1, TensorType({ DT_FLOAT16, DT_FLOAT,DT_INT8, DT_UINT8, DT_INT32 }))
   .INPUT(x2, TensorType({ DT_FLOAT16, DT_FLOAT,DT_INT8, DT_UINT8, DT_INT32 }))
   .OUTPUT(num, TensorType({DT_FLOAT}))
-  .OUTPUT(diff, TensorType({DT_FLOAT16}))
   .ATTR(atol, Float, 1e-5)
   .ATTR(rtol, Float, 1e-3)
   .OP_END_FACTORY_REG(DataCompare)
