@@ -23,40 +23,49 @@
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 #include "linalg_ops_shape_fns.h"
+#include "util/util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(CholeskyGrad, CholeskyGradInfer) {
-  auto tensor = op.get_input_desc_x();
-  Shape result;
-  if (MakeBatchSquareMatrix(tensor, result, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op CholeskyGrad first input x tensor Make Batch Square Matrix failed.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+
+  GeShape y_shape;
+  if (MakeBatchSquareMatrix(x_desc, y_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(),
+            "Op CholeskyGrad first input x tensor make batch square matrix "
+            "failed.");
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("x").GetDataType();
+  DataType type = x_desc->GetDataType();
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(y_shape);
+  y_desc->SetDataType(type);
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(Shape(result));
-  y_desc.SetDataType(type);
-  op.UpdateOutputDesc("y", y_desc);
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(CholeskyGrad, CholeskyGradInfer);
 
 IMPLEMT_INFERFUNC(Cholesky, CholeskyInfer) {
-  auto x_tensor_desc = op.GetInputDesc(0);
-  Shape y_shape;
-  if (MakeBatchSquareMatrix(x_tensor_desc, y_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op Cholesky first input x's tensor Make Batch Square Matrix failed.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+
+  GeShape y_shape;
+  if (MakeBatchSquareMatrix(x_desc, y_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    OP_LOGE(
+        op.GetName().c_str(),
+        "Op Cholesky first input x's tensor make batch square matrix failed.");
     return GRAPH_FAILED;
   }
+  DataType type = x_desc->GetDataType();
 
-  DataType type = op.GetInputDesc("x").GetDataType();
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(Shape(y_shape));
-  y_desc.SetDataType(type);
-  op.UpdateOutputDesc("y", y_desc);
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(y_shape);
+  y_desc->SetDataType(type);
 
   return GRAPH_SUCCESS;
 }

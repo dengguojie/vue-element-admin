@@ -200,13 +200,18 @@ IMPLEMT_INFERFUNC(InvertPermutation, InvertPermutationInfer) {
 INFER_FUNC_REG(InvertPermutation, InvertPermutationInfer);
 
 IMPLEMT_INFERFUNC(CheckNumerics, CheckNumericsInfer) {
-  DataType type = op.GetInputDesc("x").GetDataType();
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(op.GetInputDesc(0).GetShape());
-  y_desc.SetDataType(type);
-  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (x_desc->GetShapeRange(range) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
+
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(x_desc->GetShape());
+  y_desc->SetShapeRange(range);
+  y_desc->SetDataType(x_desc->GetDataType());
 
   return GRAPH_SUCCESS;
 }

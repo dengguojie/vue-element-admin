@@ -4715,12 +4715,21 @@ IMPLEMT_INFERFUNC(FractionalMaxPool, FractionalMaxPoolInfer) {
 INFER_FUNC_REG(FractionalMaxPool, FractionalMaxPoolInfer);
 
 IMPLEMT_INFERFUNC(DataFormatVecPermute, DataFormatVecPermuteInfer) {
-  DataType y_type = op.GetInputDesc("x").GetDataType();
-  TensorDesc desc = op.GetOutputDesc("y");
-  desc.SetShape(op.GetInputDesc("x").GetShape());
-  desc.SetDataType(y_type);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
 
-  return op.UpdateOutputDesc("y", desc);
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (x_desc->GetShapeRange(range) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  DataType y_type = x_desc->GetDataType();
+
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(x_desc->GetShape());
+  y_desc->SetShapeRange(range);
+  y_desc->SetDataType(y_type);
+
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(DataFormatVecPermute, DataFormatVecPermuteInfer);

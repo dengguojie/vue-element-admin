@@ -21,6 +21,7 @@
 #include "inc/state_ops.h"
 #include "common/inc/op_log.h"
 #include "common_shape_fns.h"
+#include "util/util.h"
 
 namespace ge {
 
@@ -75,17 +76,26 @@ IMPLEMT_INFERFUNC(VarIsInitializedOp, VarIsInitializedOpInfer) {
 INFER_FUNC_REG(VarIsInitializedOp, VarIsInitializedOpInfer);
 
 IMPLEMT_INFERFUNC(CountUpTo, CountUpToInfer) {
-  Shape out;
-  if (WithRank(op.GetInputDesc(0), 0, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto ref_desc = op_desc->MutableInputDesc(0);
+
+  GeShape out;
+  if (WithRank(ref_desc, 0, out) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 
-  DataType type = op.GetInputDesc("ref").GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (ref_desc->GetShapeRange(range) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  DataType type = ref_desc->GetDataType();
 
-  TensorDesc outputDesc = op.GetOutputDesc("y");
-  outputDesc.SetShape(out);
-  outputDesc.SetDataType(type);
-  return op.UpdateOutputDesc("y", outputDesc);
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(out);
+  y_desc->SetDataType(type);
+  y_desc->SetShapeRange(range);
+
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(CountUpTo, CountUpToInfer);

@@ -22,6 +22,8 @@
 #define OPS_BUILT_IN_OP_PROTO_UTIL_LINALG_OPS_SHAPE_FNS_H_
 
 #include "graph/tensor.h"
+#include "graph/ge_tensor.h"
+#include "graph/op_desc.h"
 
 namespace ge {
 
@@ -32,6 +34,14 @@ namespace ge {
  * @return status whether this operation success
  */
 graphStatus MakeBatchSquareMatrix(const TensorDesc& tensor, Shape& out, const char* op_name);
+/**
+ * Generate a square matrix's Shape
+ * @param tensor Input ge tensor desc ptr
+ * @param out Output GeShape
+ * @return status whether this operation success
+ */
+graphStatus MakeBatchSquareMatrix(const GeTensorDescPtr& tensor_desc,
+                                  GeShape& out, const char* op_name);
 /**
  * Solving linear equations from matrices common shape func
  * @param tensor1 first input tensor
