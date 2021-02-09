@@ -195,8 +195,7 @@ bool Reduce::ConstInputProcPost() {
       ByteBufferPut(run_info.tiling_data, pattern);
     }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: Func: ConstInputProcPost get error message. Error message: %s",
-            op_type.c_str(), e.what());
+    OP_LOGE(op_type.c_str(), "Func: ConstInputProcPost get error message. Error message: %s", e.what());
     return false;
   }
 
@@ -287,20 +286,24 @@ bool Reduce::GetCompileInfo() {
     ub_info = op_info.at("ub_info").get<std::vector<int32_t>>();
 
     const int32_t common_info_size = 5;
-    CHECK_EQ(common_info.size(), common_info_size,
-             "op [%s]: size of common_info should be 5.", op_type.c_str());
+    V_CHECK_EQ(common_info.size(), common_info_size,
+               OP_LOGE(op_type.c_str(), "size of common_info should be 5"),
+               return false);
     compileInfo.core_num = common_info[0];
     compileInfo.is_keep_dims = (bool)common_info[1];
     compileInfo.min_block_size = common_info[2];
     compileInfo.atomic = (bool)common_info[3];
     compileInfo.coef = common_info[4];
     // CHECK VALUE
-    CHECK(!compileInfo.coef <= 0,
-          "op [%s] : coef is %d that is illegal", op_type.c_str(), compileInfo.coef);
-    CHECK(!compileInfo.min_block_size <= 0,
-          "op [%s] : min_block_size is %d that is illegal", op_type.c_str(), compileInfo.min_block_size);
-    CHECK(!compileInfo.core_num <= 0,
-          "op [%s] : core_num is %d that is illegal", op_type.c_str(), compileInfo.core_num);
+    V_OP_TILING_CHECK(!compileInfo.coef <= 0,
+                      OP_LOGE(op_type.c_str(), "coef is %d that is illegal", compileInfo.coef),
+                      return false);
+    V_OP_TILING_CHECK(!compileInfo.min_block_size <= 0,
+                      OP_LOGE(op_type.c_str(), "min_block_size is %d that is illegal", compileInfo.min_block_size),
+                      return false);
+    V_OP_TILING_CHECK(!compileInfo.core_num <= 0,
+                      OP_LOGE(op_type.c_str(), "core_num is %d that is illegal", compileInfo.core_num),
+                      return false);
 
     uint idx = 0;
     for (auto item : pattern_info) {
@@ -310,15 +313,17 @@ bool Reduce::GetCompileInfo() {
       idx += 1;
     }
     if (idx >= pattern_info.size()) {
-      GE_LOGE("pattern is %d that not in pattern_info", pattern);
+      OP_LOGE(op_type.c_str(), "pattern is %d that not in pattern_info", pattern);
       return false;
     }
 
-    CHECK_EQ(pattern_info.size(), ub_info.size(),
-             "op [%s] : pattern_info's size should be as same as ub_info", op_type.c_str());
+    V_CHECK_EQ(pattern_info.size(), ub_info.size(),
+               OP_LOGE(op_type.c_str(), "pattern_info's size should be as same as ub_info"),
+               return false);
     compileInfo.max_ub_count = ub_info[idx];
-    CHECK(!compileInfo.max_ub_count <= 0,
-          "op [%s] : max_ub_count is %d that is illegal", op_type.c_str(), compileInfo.max_ub_count);
+    V_OP_TILING_CHECK(!compileInfo.max_ub_count <= 0,
+                      OP_LOGE(op_type.c_str(), "max_ub_count is %d that is illegal", compileInfo.max_ub_count),
+                      return false);
     is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 
     // special process(reduce_mean_d)
@@ -347,7 +352,7 @@ bool Reduce::GetCompileInfo() {
       }
     }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: Func: GetCompileInfo error. Error message: %s", op_type.c_str(), e.what());
+    OP_LOGE(op_type.c_str(), "Func: GetCompileInfo error. Error message: %s", e.what());
     return false;
   }
 
@@ -693,7 +698,7 @@ bool Reduce::ProcessNormalTiling() {
   // rewrite TilingInfo(block)
   if (!GetBlockTilingInfo()) {
     if (total_output_count > ubSizeA) {
-      GE_LOGE("GetBlockTilingInfo error.");
+      OP_LOGE(op_type.c_str(), "GetBlockTilingInfo error");
       return false;
     }
     tilingInfo.block_dim = 1;
@@ -731,10 +736,10 @@ bool Reduce::SpecialUBTiling() {
   int32_t ub_axis = tilingInfo.ub_tiling_axis;
   int32_t blk_axis = tilingInfo.block_tiling_axis;
 
-  CHECK(!(ub_factor <= 0 || blk_factor <= 0),
-        "op [%s]: ub_factor and blk_factor must bigger than 0,"
-        "while ub_factor is %d, blk_factor is %d",
-        op_type.c_str(), ub_factor, blk_factor);
+  V_OP_TILING_CHECK(!(ub_factor <= 0 || blk_factor <= 0),
+                    OP_LOGE(op_type.c_str(), "ub_factor and blk_factor must bigger than 0,"
+                            "while ub_factor is %d, blk_factor is %d", op_type.c_str(), ub_factor, blk_factor),
+                    return false);
 
   if (ub_axis != blk_axis) {
     return true;
@@ -759,12 +764,15 @@ bool Reduce::Init() {
     int idx = op_info.count("idx_before_reduce") > 0 ?
               op_info.at("idx_before_reduce").get<int>() : 0;
     // CHECK INPUT
-    CHECK(!op_paras.inputs.empty(),
-          "op [%s]: inputs cannot be empty", op_type.c_str());
-    CHECK(!(op_paras.inputs.size() <= uint(idx) || idx < 0),
-          "op [%s]: idx is invalid index for inputs", op_type.c_str());
-    CHECK(!op_paras.inputs[uint(idx)].tensor.empty(),
-          "op [%s]: tensor cannot be empty", op_type.c_str());
+    V_OP_TILING_CHECK(!op_paras.inputs.empty(),
+                      OP_LOGE(op_type.c_str(), "inputs cannot be empty"),
+                      return false);
+    V_OP_TILING_CHECK(!(op_paras.inputs.size() <= uint(idx) || idx < 0),
+                      OP_LOGE(op_type.c_str(), "idx is invalid index for inputs"),
+                      return false);
+    V_OP_TILING_CHECK(!op_paras.inputs[uint(idx)].tensor.empty(),
+                      OP_LOGE(op_type.c_str(), "tensor cannot be empty"),
+                      return false);
     input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
 
     // Get ori reduce aixs
@@ -773,8 +781,9 @@ bool Reduce::Init() {
       TeConstTensorData reduce_axis_info = op_paras.const_inputs.at("axes");
       auto size = std::get<1>(reduce_axis_info);
       ge::DataType axis_type = std::get<2>(reduce_axis_info).GetTensorDesc().GetDataType();
-      CHECK(!(axis_type != ge::DT_INT32 && axis_type != ge::DT_INT64),
-            "op [%s]: axis_type is not belong to [int32, int64]", op_type.c_str());
+      V_OP_TILING_CHECK(!(axis_type != ge::DT_INT32 && axis_type != ge::DT_INT64),
+                        OP_LOGE(op_type.c_str(), "axis_type is not belong to [int32, int64]"),
+                        return false);
 
       if (axis_type == ge::DT_INT32) {
         int count = size / sizeof(int32_t);
@@ -804,7 +813,7 @@ bool Reduce::Init() {
     int32_t min_value = -1 * max_value;
     for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
       if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
-        GE_LOGE("op [%s]: value of axis is illegal.", op_type.c_str());
+        OP_LOGE(op_type.c_str(), "value of axis is illegal.");
         return false;
       }
       if (reduce_axis_ori[i] < 0) {
@@ -813,17 +822,17 @@ bool Reduce::Init() {
     }
 
     // CHECK AXIS DIMS
-    CHECK(!reduce_axis_ori.size() > input_shape_ori.size(),
-          "op [%s]: axis.size is %d that "
-          "should less than input.size which is %d",
-          op_type.c_str(), reduce_axis_ori.size(), input_shape_ori.size());
+    V_OP_TILING_CHECK(!reduce_axis_ori.size() > input_shape_ori.size(),
+                      OP_LOGE(op_type.c_str(), "axis.size is %d that should less than input.size which is %d",
+                              reduce_axis_ori.size(), input_shape_ori.size()),
+                      return false);
 
     // Discard "1" and default sorted
     EliminateOne();
     compileInfo.is_const = op_info.count("reduce_shape_known") > 0 &&
                            op_info.at("reduce_shape_known").get<bool>();
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: Func of Init error. Error message: %s", op_type.c_str(), e.what());
+    OP_LOGE(op_type.c_str(), "Func of Init error. Error message: %s", e.what());
     return false;
   }
 
@@ -842,8 +851,7 @@ bool Reduce::WriteTilingData() {
       run_info.block_dim = (int32_t)1;
       run_info.tiling_key = (int32_t)zero_tiling_key;
     } catch (const std::exception &e) {
-      GE_LOGE("op [%s]: get push status error. Error message: %s",
-              op_type.c_str(), e.what());
+      OP_LOGE(op_type.c_str(), "get push status error. Error message: %s", e.what());
       return false;
     }
     return true;
@@ -875,8 +883,7 @@ bool Reduce::WriteTilingData() {
       ByteBufferPut(run_info.tiling_data, tiling_key);
     }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get push_status error. Error message: %s",
-            op_type.c_str(), e.what());
+    OP_LOGE(op_type.c_str(), "get push_status error. Error message: %s", e.what());
     return false;
   }
 
@@ -887,26 +894,26 @@ bool Reduce::WriteTilingData() {
   }
   for (uint32_t i = offset; i < input_shape.size(); i++) {
     ByteBufferPut(run_info.tiling_data, (int32_t)input_shape[i]);
-    GELOGD("input shape:%d", input_shape[i]);
+    OP_LOGD(op_type.c_str(), "input shape:%d", input_shape[i]);
   }
 
   if (set_reduce_mean_cof_flag == REDUCE_MEAN_COF_FP32) {
     ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
-    GELOGD("reduce mean cof:%f", reduce_mean_cof);
+    OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
   } else if (set_reduce_mean_cof_flag == REDUCE_MEAN_COF_FP16) {
     fe::fp16_t reduce_mean_cof_fp16;
     reduce_mean_cof_fp16 = reduce_mean_cof;
     ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
     ByteBufferPut(run_info.tiling_data, (uint16_t)0);
-    GELOGD("reduce mean cof:%f", reduce_mean_cof);
+    OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
   }
 
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
-  GELOGD("block/res_ub tilling axis:%d", tilingInfo.block_tiling_axis);
-  GELOGD("block/res_ub tilling factor:%d", tilingInfo.block_tiling_factor);
-  GELOGD("ub/input_ub tilling axis:%d", tilingInfo.ub_tiling_axis);
-  GELOGD("ub/input_ub tilling factor:%d", tilingInfo.ub_tiling_factor);
+  OP_LOGD(op_type.c_str(), "block/res_ub tilling axis:%d", tilingInfo.block_tiling_axis);
+  OP_LOGD(op_type.c_str(), "block/res_ub tilling factor:%d", tilingInfo.block_tiling_factor);
+  OP_LOGD(op_type.c_str(), "ub/input_ub tilling axis:%d", tilingInfo.ub_tiling_axis);
+  OP_LOGD(op_type.c_str(), "ub/input_ub tilling factor:%d", tilingInfo.ub_tiling_factor);
 
   return true;
 }
@@ -947,7 +954,7 @@ bool Reduce::DoTiling() {
         zero_tiling_key = 10;
         tilingInfo.ub_tiling_factor = op_info.at("zero_ub_factor").get<std::int64_t>();
       } catch (const std::exception &e) {
-        GE_LOGE("op [%s]: get zero_ub_factor error. Error message: %s", op_type.c_str(), e.what());
+        OP_LOGE(op_type.c_str(), "get zero_ub_factor error. Error message: %s", e.what());
         return false;
       }
     }
@@ -971,7 +978,7 @@ bool Reduce::DoTiling() {
         input_shape = input_shape_ori;
       }
     } catch (const std::exception &e) {
-      GE_LOGE("op [%s]: get compile_info error. Error message: %s", op_type.c_str(), e.what());
+      OP_LOGE(op_type.c_str(), "get compile_info error. Error message: %s", e.what());
       return false;
     }
   } else {
@@ -997,7 +1004,7 @@ bool Reduce::DoTiling() {
 
 bool ReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                   OpRunInfo& run_info) {
-  GELOGD("op [%s]: tiling running", op_type.c_str());
+  OP_LOGD(op_type.c_str(), "tiling running");
   Reduce reduce(op_type, op_paras, op_info, run_info);
   bool ret = reduce.DoTiling();
   ret = ret && reduce.WriteTilingData();

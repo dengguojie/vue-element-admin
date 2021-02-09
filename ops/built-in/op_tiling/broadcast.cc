@@ -23,7 +23,6 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "error_log.h"
 #include "vector_tiling.h"
 
 namespace optiling {
@@ -62,18 +61,21 @@ const int64_t BGetElementByType(const std::string& dtype) {
 }
 
 bool Broadcast::Init() {
-  CHECK((!op_paras.inputs.empty() && !op_paras.inputs[0].tensor.empty()), "op [%s] : input shape cannot be empty",
-        op_type.c_str());
+  V_OP_TILING_CHECK((!op_paras.inputs.empty() && !op_paras.inputs[0].tensor.empty()),
+                    OP_LOGE(op_type.c_str(), "input shape cannot be empty"),
+                    return false);
   in_type = op_paras.inputs[0].tensor[0].dtype;
   input_num = op_paras.inputs.size();
-  CHECK((!op_paras.outputs.empty() && !op_paras.outputs[0].tensor.empty()), "op [%s] : output shape cannot be empty",
-        op_type.c_str());
+  V_OP_TILING_CHECK((!op_paras.outputs.empty() && !op_paras.outputs[0].tensor.empty()),
+                    OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
+                    return false);
   out_type = op_paras.outputs[0].tensor[0].dtype;
   int64_t type_size = BGetElementByType(out_type);
   max_output_shape_size = op_paras.outputs[0].tensor[0].shape.size();
   for (size_t i = 1; i < op_paras.outputs.size(); i++) {
-    CHECK(!op_paras.outputs[i].tensor.empty(), "op [%s] : output shape cannot be empty",
-        op_type.c_str());
+    V_OP_TILING_CHECK(!op_paras.outputs[i].tensor.empty(),
+                      OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
+                      return false);
     int64_t cur_type_size = BGetElementByType(op_paras.outputs[i].tensor[0].dtype);
     if (cur_type_size > type_size) {
       out_type = op_paras.outputs[i].tensor[0].dtype;
@@ -86,12 +88,16 @@ bool Broadcast::Init() {
   is_multi_output = op_paras.outputs.size() > 1;
   // "_flag_info": ["_only_const_tiling", "_is_const_shapes", "_is_support_broadcast", "_use_special_pattern",
   // "_is_support_absorbable_broadcast", , "_unknown_rank"]
-  CHECK_GE(flag_info.size(), 1, "op [%s] : flag info error", op_type.c_str());
+  V_CHECK_GE(flag_info.size(), 1,
+             OP_LOGE(op_type.c_str(), "flag info error"),
+             return false);
   only_const_tiling = flag_info[0];
   if (!only_const_tiling) {
     const size_t flag_info_size = 6;
-    CHECK_EQ(flag_info.size(), flag_info_size, "op [%s] : flag info must be _only_const_tiling, _is_const_shapes, "
-             "_is_support_broadcast, _use_special_pattern, _is_support_absorbable_broadcast", op_type.c_str());
+    V_CHECK_EQ(flag_info.size(), flag_info_size,
+               OP_LOGE(op_type.c_str(), "flag info must be _only_const_tiling, _is_const_shapes, "
+                       "_is_support_broadcast, _use_special_pattern, _is_support_absorbable_broadcast"),
+               return false);
     compileInfo.is_support_broadcast = flag_info[2];
     compileInfo.use_special_pattern = flag_info[3];
     compileInfo.is_support_absorbable_broadcast = flag_info[4];
@@ -273,11 +279,13 @@ bool Broadcast::GenerateOutputShape() {
         fusion_index.push_back({i});
       }
     } catch (const std::exception &e) {
-      GE_LOGE("op [%s] : get compile_info[_broadcast_axis] error. Error message: %s", op_type.c_str(), e.what());
+      OP_LOGE(op_type.c_str(), "get compile_info[_broadcast_axis] error. Error message: %s", e.what());
       return false;
     }
   } else {
-    CHECK(compileInfo.is_support_broadcast, "op [%s] : compile shape and runtime shape not same", op_type.c_str());
+    V_OP_TILING_CHECK(compileInfo.is_support_broadcast,
+                      OP_LOGE(op_type.c_str(), "compile shape and runtime shape not same"),
+                      return false);
     if (input_num == SPECIAL_BROADCAST_INPUT_NUMS) {
       ret = ret && TrySwitchToPerfPattern();
     } else {
@@ -302,7 +310,7 @@ bool Broadcast::RefineShapesForBroadcast() {
     try {
       fusion_index = op_info.at("_fusion_index").get<std::vector<std::vector<size_t>>>();
     } catch (const std::exception &e) {
-      GE_LOGE("op [%s] : get compile_info[_fusion_index] error. Error message: %s", op_type.c_str(), e.what());
+      OP_LOGE(op_type.c_str(), "get compile_info[_fusion_index] error. Error message: %s", e.what());
       return false;
     }
   }
@@ -352,25 +360,33 @@ bool Broadcast::CalcTiling() {
     const auto& base_info = op_info.at("_base_info").at(pattern_key);
     // "_base_info": ["_ub_size", "_max_dtype", "_coexisting_quantity", "_core_num"]
     const size_t base_info_size = 4;
-    CHECK_EQ(base_info.size(), base_info_size, "op [%s] : base info must be _ub_size, _max_dtype, _coexisting_quantity"
-            " and _core_num", op_type.c_str());
+    V_CHECK_EQ(base_info.size(), base_info_size,
+               OP_LOGE(op_type.c_str(), "base info must be _ub_size, _max_dtype, _coexisting_quantity and _core_num"),
+               return false);
     compileInfo.ub_size = base_info[0];
     compileInfo.max_dtype = base_info[1];
     compileInfo.coexisting_quantity = base_info[2];
     compileInfo.core_num = base_info[3];
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s] : get compile_info[_base_info] error. Error message: %s", op_type.c_str(), e.what());
+    OP_LOGE(op_type.c_str(), "get compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
-  CHECK_GT(compileInfo.coexisting_quantity, 0, "op [%s] : compileInfo coexisting_quantity error, it is [%d]",
-           op_type.c_str(), compileInfo.coexisting_quantity);
-  CHECK_GT(compileInfo.max_dtype, 0, "op [%s] : compileInfo max_dtype error, it is [%d]",
-           op_type.c_str(), compileInfo.max_dtype);
+  V_CHECK_GT(compileInfo.coexisting_quantity, 0,
+             OP_LOGE(op_type.c_str(), "compileInfo coexisting_quantity error, it is [%d]",
+                     compileInfo.coexisting_quantity),
+             return false);
+  V_CHECK_GT(compileInfo.max_dtype, 0,
+             OP_LOGE(op_type.c_str(), "compileInfo max_dtype error, it is [%d]", compileInfo.max_dtype),
+             return false);
   max_available_ub =
           (((compileInfo.ub_size / compileInfo.coexisting_quantity) / BLOCK_SIZE) * BLOCK_SIZE) / compileInfo.max_dtype;
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
-  CHECK_LE(output_size, INT32_MAX, "op [%s] : The output shape is too large", op_type.c_str());
-  CHECK_GT(output_size, 0, "op [%s] : The output shape must be greater than 0", op_type.c_str());
+  V_CHECK_LE(output_size, INT32_MAX,
+             OP_LOGE(op_type.c_str(), "The output shape is too large"),
+             return false);
+  V_CHECK_GT(output_size, 0,
+             OP_LOGE(op_type.c_str(), "The output shape must be greater than 0"),
+             return false);
   const int64_t multi_core_threshold = BGetElementByType(out_type) * compileInfo.core_num * DOUBLE_BUFFER_SIZE;
   if (output_size < multi_core_threshold) {
     need_multi_core = false;
@@ -380,8 +396,9 @@ bool Broadcast::CalcTiling() {
 
 bool Broadcast::DoBlockTiling() {
   int64_t cur_core = compileInfo.core_num;
-  CHECK_GT(compileInfo.core_num, 0, "op [%s] : compileInfo core_num error, it is [%d]",
-           op_type.c_str(), compileInfo.core_num);
+  V_CHECK_GT(compileInfo.core_num, 0,
+             OP_LOGE(op_type.c_str(), "compileInfo core_num error, it is [%d]", compileInfo.core_num),
+             return false);
   for (size_t i = 0; i < output_shape.size(); i++) {
     if (output_shape[i] > cur_core) {
       multi_core_output = output_shape[i];
@@ -458,8 +475,9 @@ void Broadcast::CheckUpdateBlockTiling() {
 
 bool Broadcast::DoUbTiling() {
   int64_t limit = max_available_ub;
-  CHECK((SPLIT_FACTORS.find(compileInfo.max_dtype) != SPLIT_FACTORS.end()),
-        "op [%s] : compileInfo max_dtype not in SPLIT_FACTORS", op_type.c_str())
+  V_OP_TILING_CHECK((SPLIT_FACTORS.find(compileInfo.max_dtype) != SPLIT_FACTORS.end()),
+                    OP_LOGE(op_type.c_str(), "compileInfo max_dtype not in SPLIT_FACTORS"),
+                    return false);
   if (output_shape.size() == 1 &&  max_available_ub > SPLIT_FACTORS.at(compileInfo.max_dtype)) {
     limit = SPLIT_FACTORS.at(compileInfo.max_dtype);
   }
@@ -601,12 +619,12 @@ void Broadcast::CalcKey() {
 }
 
 bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
-  GELOGD("op [%s] tiling key:%lld", op_type.c_str(), key);
-  GELOGD("op [%s] tiling block_dims:%lld", op_type.c_str(), block_dims);
-  GELOGD("op [%s] tiling block_factor:%lld", op_type.c_str(), block_factor);
-  GELOGD("op [%s] tiling ub_factor:%lld", op_type.c_str(), ub_factor);
-  GELOGD("op [%s] tiling block_axis:%lld", op_type.c_str(), block_axis);
-  GELOGD("op [%s] tiling ub_axis:%lld", op_type.c_str(), ub_axis);
+  OP_LOGD(op_type.c_str(), "tiling key:%lld", key);
+  OP_LOGD(op_type.c_str(), "tiling block_dims:%lld", block_dims);
+  OP_LOGD(op_type.c_str(), "tiling block_factor:%lld", block_factor);
+  OP_LOGD(op_type.c_str(), "tiling ub_factor:%lld", ub_factor);
+  OP_LOGD(op_type.c_str(), "tiling block_axis:%lld", block_axis);
+  OP_LOGD(op_type.c_str(), "tiling ub_axis:%lld", ub_axis);
 
   run_info.block_dim = static_cast<uint32_t>(block_dims);
   if (only_const_tiling) {
@@ -624,11 +642,13 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
       ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
     }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
+    OP_LOGE(op_type.c_str(), "get push_status error. Error message: %s", e.what());
     return false;
   }
 
-  CHECK_GE(key, 0, "op [%s] : Tiling key error, it is [%d], please check it", op_type.c_str(), key);
+  V_CHECK_GE(key, 0,
+             OP_LOGE(op_type.c_str(), "Tiling key error, it is [%d], please check it", key),
+             return false);
   int64_t cur_key = key;
   int64_t key_len = cur_key == 0 ? 7 : 8;
   char keys[10] = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '\0'};
@@ -642,23 +662,31 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
     const auto& all_vars = op_info.at("_elewise_vars").at(str_key);
     for (const auto& var : all_vars) {
       if (var >= 30000) {
-        CHECK((ub_axis >= 0), "op [%s] : Not cut ub", op_type.c_str());
+        V_CHECK_GE(ub_axis, 0,
+                   OP_LOGE(op_type.c_str(), "Not cut ub"),
+                   return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
       } else if (var >= 20000) {
-        CHECK((block_axis >= 0), "op [%s] : Not cut block", op_type.c_str());
+        V_CHECK_GE(block_axis, 0,
+                   OP_LOGE(op_type.c_str(), "Not cut block"),
+                   return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
       } else {
         int64_t var_value = var;
         size_t operator_index = var_value % 100;
         var_value /= 100;
         size_t dim_index = var_value % 100;
-        CHECK_LT(operator_index, B_MAX_INPUT_NUMS, "op [%s] : more than 70 input are not supported", op_type.c_str());
-        CHECK_LT(dim_index, B_MAX_DIM_LEN, "op [%s] : more than 16 dims are not supported", op_type.c_str());
+        V_CHECK_LT(operator_index, B_MAX_INPUT_NUMS,
+                   OP_LOGE(op_type.c_str(), "more than 70 input are not supported"),
+                   return false);
+        V_CHECK_LT(dim_index, B_MAX_DIM_LEN,
+                   OP_LOGE(op_type.c_str(), "more than 16 dims are not supported"),
+                   return false);
         ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(input_shapes[operator_index][dim_index]));
       }
     }
   } catch (const std::exception &e) {
-    GE_LOGE("op [%s] : get compile_info[_elewise_vars] error. Error message: %s", op_type.c_str(), e.what());
+    OP_LOGE(op_type.c_str(), "get compile_info[_elewise_vars] error. Error message: %s", e.what());
     return false;
   }
   return true;
@@ -669,7 +697,7 @@ bool Broadcast::IsNeedDoubleBuffer() const {
 }
 
 bool Broadcast::DoTiling() {
-  GELOGI("op [%s]: tiling running", op_type.c_str());
+  OP_LOGI(op_type.c_str(), "tiling running");
   bool ret = Init();
   ret = ret && GenerateOutputShape();
   ret = ret && CalcTiling();
