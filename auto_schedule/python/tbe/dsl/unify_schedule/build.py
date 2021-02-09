@@ -29,7 +29,8 @@ def build(sch, config_map=None):
     :param config_map:
     :return:
     """
-    if operation.get_context():
+    context = operation.get_context()
+    if context is not None and context.get_mode() in ("dynamic", "static"):
         return dynamic_build(sch, config_map)
 
     sch = sch[0] if isinstance(sch, list) else sch

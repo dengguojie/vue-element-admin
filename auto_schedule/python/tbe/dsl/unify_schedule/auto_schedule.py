@@ -45,7 +45,8 @@ def auto_schedule(outs, option=None):
 @auto_schedule.register("cce")
 @generic.auto_schedule.register("cce")
 def _schedule_cce(outs, option=None):
-    if operation.get_context():
+    context = operation.get_context()
+    if context is not None and context.get_mode() in ("dynamic", "static"):
         return dynamic.schedule_cce(outs, option)
 
     return static.schedule_cce(outs, option)
