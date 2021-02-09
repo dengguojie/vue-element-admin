@@ -174,9 +174,15 @@ class Unpack:
         self.axis_at_last_dim = bool(real_axis == len(x_shape) - 1)
 
         for idx in range(real_axis):
+            if not x_range[idx][1]:
+                left_upper = None
+                break
             left_upper *= x_range[idx][1]
 
         for idx in range(real_axis + 1, len(x_shape)):
+            if not x_range[idx][1]:
+                right_upper = None
+                break
             right_upper *= x_range[idx][1]
 
         left_dim_upper = (1, left_upper)

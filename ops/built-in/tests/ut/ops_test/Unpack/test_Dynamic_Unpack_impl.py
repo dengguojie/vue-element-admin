@@ -38,6 +38,15 @@ ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
                       "format": "ND", "ori_format": "ND","range":((1,32),(1,20))}],2,1,
                      "dynamic_unpack_01", "success"))
 
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
+                 gen_dynamic_unpack_case(
+                     {"shape": (-1, -1, -1), "dtype": "float32", "ori_shape": (-1, -1, -1),
+                      "format": "ND", "ori_format": "ND", "range": ((1, None), (1, None), (1, 20))},
+                    [{"shape": (32,20), "dtype": "float32", "ori_shape": (32,20),
+                      "format": "ND", "ori_format": "ND","range":((1,32),(1,20))},{"shape": (32,20), "dtype": "float32", "ori_shape": (32,20),
+                      "format": "ND", "ori_format": "ND","range":((1,32),(1,20))}],2,1,
+                     "dynamic_unpack_01", "success"))
+
 
 if __name__ == '__main__':
     with te.op.dynamic():
