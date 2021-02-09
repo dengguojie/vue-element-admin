@@ -3609,14 +3609,15 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   if (x_dtype != w_dtype) {
     OP_LOGE(op.GetName().c_str(),
             "input x dtype is differ from filter dtype."
-            " actual x dtype is: %d filter dtype is: %d",
-            (int)x_dtype, (int)w_dtype);
+            " actual x dtype is: %s filter dtype is: %s",
+            TypeUtils::DataTypeToSerialString(x_dtype).c_str(),
+            TypeUtils::DataTypeToSerialString(w_dtype).c_str());
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
     err_map["param1"] = "x";
-    err_map["param1_data_type"] = std::to_string(x_dtype);
+    err_map["param1_data_type"] = TypeUtils::DataTypeToSerialString(x_dtype);
     err_map["param2"] = "filter";
-    err_map["param2_data_type"] = std::to_string(w_dtype);
+    err_map["param2_data_type"] = TypeUtils::DataTypeToSerialString(w_dtype);
     err_map["rule"] = "input x dtype is same as filter dtype";
     std::string report_error_code = "E50004";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
