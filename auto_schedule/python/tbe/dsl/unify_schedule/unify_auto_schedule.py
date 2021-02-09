@@ -204,7 +204,7 @@ class Builder:
 
     def _traverse_schedules(self):
         args_list, tiling_keys, valid_schs = [], [], []
-        compile_vars, compile_attr_vars, compile_custom_vars = {}, {}, {}
+        compile_vars, compile_normal_vars, compile_attr_vars, compile_custom_vars = {}, {}, {}, {}
 
         for sch, te_vars, ebv, attr_vars_desc, sch_tensors in zip(self.schedules,
                                                                   self.te_vars_list,
@@ -221,8 +221,8 @@ class Builder:
             normal_vars = var_groups.get(Category.NORMAL, [])
             attr_vars = var_groups.get(Category.ATTR, [])
             custom_vars = var_groups.get(Category.CUSTOM, [])
-
             te_vars = normal_vars + attr_vars + custom_vars
+
             tvm_vars = [x.get_tvm_var() for x in te_vars]
             bounds = [x.get_bound() for x in te_vars]
             for tvm_var, bound in zip(tvm_vars, bounds):
@@ -232,8 +232,9 @@ class Builder:
 
             args_list.append(real_sch_tensors + tvm_vars)
             tiling_keys.append(sch.tiling_key)
-            normal_var_names = [x.get_name() for x in normal_vars]
-            compile_vars[sch.tiling_key] = normal_var_names
+
+            compile_vars[sch.tiling_key] = te_vars
+            compile_normal_vars[sch.tiling_key] = normal_vars
             compile_attr_vars[sch.tiling_key] = attr_vars_desc
             compile_custom_vars[sch.tiling_key] = custom_vars
 
@@ -241,6 +242,7 @@ class Builder:
         self.tiling_keys = tiling_keys
         self.valid_schs = valid_schs
         self.compile_vars = compile_vars
+        self.compile_normal_vars = compile_normal_vars
         self.compile_attr_vars = compile_attr_vars
         self.compile_custom_vars = compile_custom_vars
 
@@ -309,24 +311,31 @@ class Builder:
 
     def _handle_compile_info(self):
         def add_vars():
-            operation.add_compile_info(CompileInfo.VARS, self.compile_vars)
+            # key: tiling_key, value: [var_name]
+            value = {k: [x.get_name() for x in v] for k, v in self.compile_vars.items()}
+            operation.add_compile_info(CompileInfo.VARS, value)
 
-        def convert_attr_var(attr_var):
-            # type: (AttrVarDesc) -> Dict[str, Any]
-
-            dtype, length = attr_var.dtype, attr_var.length
-            if length:
-                dtype = "List" + dtype.capitalize()
-
-            return {
-                "name": attr_var.name,
-                "type": dtype,
-                "length": length or 0
-            }
+        def add_normal_vars():
+            # key: tiling_key, value: [var_name]
+            value = {k: [x.get_name() for x in v] for k, v in self.compile_normal_vars.items()}
+            operation.add_compile_info(CompileInfo.NORMAL_VARS, value)
 
         def add_attr_vars():
+            def convert(attr_var):
+                # type: (AttrVarDesc) -> Dict[str, Any]
+
+                dtype, length = attr_var.dtype, attr_var.length
+                if length:
+                    dtype = "List" + dtype.capitalize()
+
+                return {
+                    "name": attr_var.name,
+                    "type": dtype,
+                    "length": length or 0
+                }
+
             # key: tiling_key, value: [@see convert_attr_var()]
-            value = {k: [convert_attr_var(x) for x in v] for k, v in self.compile_attr_vars.items()}
+            value = {k: [convert(x) for x in v] for k, v in self.compile_attr_vars.items()}
             operation.add_compile_info(CompileInfo.ATTR_VARS, value)
 
         def add_custom_vars():
@@ -335,6 +344,7 @@ class Builder:
             operation.add_compile_info(CompileInfo.CUSTOM_VARS, value)
 
         add_vars()
+        add_normal_vars()
         add_attr_vars()
         add_custom_vars()
 

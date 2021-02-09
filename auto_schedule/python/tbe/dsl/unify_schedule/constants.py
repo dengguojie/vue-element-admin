@@ -48,6 +48,7 @@ class CompileInfo:
     CONST_SHAPES = "_const_shapes"
     CONST_BLOCK_DIMS = "_const_block_dims"
     VARS = "_vars"
+    NORMAL_VARS = "_normal_vars"
     ATTR_VARS = "_attr_vars"
     CUSTOM_VARS = "_custom_vars"
     ELEWISE_VARS = "_elewise_vars"
