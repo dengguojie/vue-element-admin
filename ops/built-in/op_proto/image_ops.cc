@@ -41,8 +41,14 @@ IMPLEMT_INFERFUNC(AdjustHue, AdjustHueInfer) {
     return GRAPH_FAILED;
   }
 
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (images_desc->GetShapeRange(range) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
   auto y_desc = op_desc->MutableOutputDesc(0);
   y_desc->SetShape(out);
+  y_desc->SetShapeRange(range);
   y_desc->SetDataType(images_desc->GetDataType());
 
   return GRAPH_SUCCESS;
@@ -60,8 +66,14 @@ IMPLEMT_INFERFUNC(AdjustSaturation, AdjustSaturationInfer) {
     return GRAPH_FAILED;
   }
 
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (images_desc->GetShapeRange(range) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
   auto y_desc = op_desc->MutableOutputDesc(0);
   y_desc->SetShape(out);
+  y_desc->SetShapeRange(range);
   y_desc->SetDataType(images_desc->GetDataType());
 
   return GRAPH_SUCCESS;

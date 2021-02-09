@@ -894,41 +894,50 @@ graphStatus EncodeWavShapeFn(Operator& op) {
 }
 
 graphStatus SparseSegmentReductionShapeFn(Operator& op) {
-  Shape x_shape;
-  if (WithRankAtLeast(op.GetInputDesc(0), 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input x should be at least 1-D.");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeShape x_shape;
+  auto x_desc = op_desc->MutableInputDesc(0);
+  if (WithRankAtLeast(x_desc, 1, x_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input x should be at least 1-D.");
     return GRAPH_FAILED;
   }
-  Shape indices_shape;
-  if (WithRank(op.GetInputDesc(1), 1, indices_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input indices must be 1-D.");
+
+  GeShape indices_shape;
+  auto indices_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(indices_desc, 1, indices_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input indices must be 1-D.");
     return GRAPH_FAILED;
   }
-  Shape segment_ids_shape;
-  if (WithRank(op.GetInputDesc(2), 1, segment_ids_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input segment_ids must be 1-D.");
+
+  GeShape segment_ids_shape;
+  auto segment_ids_desc = op_desc->MutableInputDesc(2);
+  if (WithRank(segment_ids_desc, 1, segment_ids_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input segment_ids must be 1-D.");
     return GRAPH_FAILED;
   }
-  Shape unused;
-  if (Merge(indices_shape, segment_ids_shape, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+
+  GeShape unused;
+  if (Merge(indices_shape, segment_ids_shape, unused, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  Shape subshape;
-  if (SubShape(x_shape, 1, x_shape.GetDimNum(), 1, subshape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+
+  GeShape subshape;
+  if (SubShape(x_shape, 1, x_shape.GetDimNum(), 1, subshape,
+               op.GetName().c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  Shape out;
-  Shape unknown_dim_shape({ge::UNKNOWN_DIM});
+
+  GeShape out;
+  GeShape unknown_dim_shape({ge::UNKNOWN_DIM});
   if (Concatenate(unknown_dim_shape, subshape, out) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  TensorDesc out_desc = op.GetOutputDesc(0);
-  out_desc.SetDataType(op.GetInputDesc(0).GetDataType());
-  out_desc.SetShape(out);
-  if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
-    return GRAPH_FAILED;
-  }
+
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetDataType(x_desc->GetDataType());
+  y_desc->SetShape(out);
+
   return GRAPH_SUCCESS;
 }
 

@@ -715,14 +715,13 @@ IMPLEMT_INFERFUNC(SparseReduceMaxSparse, SparseReduceMaxSparseInfer) {
 INFER_FUNC_REG(SparseReduceMaxSparse, SparseReduceMaxSparseInfer);
 
 IMPLEMT_INFERFUNC(SparseReduceSum, SparseReduceSumInfer) {
-  Shape unknown_shape(ge::UNKNOWN_SHAPE);
-
+  GeShape unknown_shape(ge::UNKNOWN_SHAPE);
   DataType y_type = op.GetInputDesc("x_values").GetDataType();
 
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(unknown_shape);
-  y_desc.SetDataType(y_type);
-  op.UpdateOutputDesc("y", y_desc);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto y_desc = op_desc->MutableOutputDesc(0); 
+  y_desc->SetShape(unknown_shape);
+  y_desc->SetDataType(y_type);
 
   return GRAPH_SUCCESS;
 }

@@ -327,46 +327,45 @@ IMPLEMT_INFERFUNC(MirrorPad, MirrorPadInfer) {
 INFER_FUNC_REG(MirrorPad, MirrorPadInfer);
 
 IMPLEMT_INFERFUNC(ListDiff, ListDiffInfer) {
-  auto x = op.GetInputDesc("x");
-  auto y = op.GetInputDesc("y");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+  auto y_desc = op_desc->MutableInputDesc(1);
 
   Shape unused_shape;
-  if (WithRank(x, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(x.GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "input x rank must be 1.");
+  if (WithRank(x_desc, 1, unused_shape) != GRAPH_SUCCESS) {
+    ShapeErrReport(0,
+                   op.GetName(),
+                   DebugString(x_desc->GetShape().GetDims()),
+                   "1D");
+    OP_LOGE(op.GetName().c_str(), "Input x rank must be 1-D.");
     return GRAPH_FAILED;
   }
 
-  if (WithRank(y, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    ShapeErrReport(1, op.GetName(), DebugString(y.GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "input y rank must be 1.");
+  if (WithRank(y_desc, 1, unused_shape) != GRAPH_SUCCESS) {
+    ShapeErrReport(1,
+                   op.GetName(),
+                   DebugString(y_desc->GetShape().GetDims()),
+                   "1D");
+    OP_LOGE(op.GetName().c_str(), "Input y rank must be 1-D.");
     return GRAPH_FAILED;
   }
 
-  DataType out_type = op.GetInputDesc("x").GetDataType();
+  DataType out_type = x_desc->GetDataType();
   DataType idx_type;
   if (op.GetAttr("out_idx", idx_type) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Op get attr out_idx failed");
     return GRAPH_FAILED;
   }
 
-  Shape result;
-  Vector(ge::UNKNOWN_DIM, result);
-  TensorDesc desc_out = op.GetOutputDesc("out");
-  desc_out.SetShape(Shape(result));
-  desc_out.SetDataType(out_type);
-  if (op.UpdateOutputDesc("out", desc_out) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update out desc failed.");
-    return GRAPH_FAILED;
-  }
+  GeShape result({ge::UNKNOWN_DIM});
+  auto out_desc = op_desc->MutableOutputDesc(0);
+  out_desc->SetShape(GeShape(result));
+  out_desc->SetDataType(out_type);
 
-  TensorDesc desc_idx = op.GetOutputDesc("idx");
-  desc_idx.SetShape(Shape(result));
-  desc_idx.SetDataType(idx_type);
-  if (op.UpdateOutputDesc("idx", desc_idx) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update idx desc failed.");
-    return GRAPH_FAILED;
-  }
+  auto idx_desc = op_desc->MutableOutputDesc(1);
+  idx_desc->SetShape(GeShape(result));
+  idx_desc->SetDataType(idx_type);
+
   return GRAPH_SUCCESS;
 }
 
