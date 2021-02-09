@@ -380,8 +380,6 @@ bool Reduce::ChooseAtomic() {
   block_size = compileInfo.min_block_size;
   ubSizeB = compileInfo.max_ub_count;
   ubSizeA = ubSizeB / compileInfo.coef;
-  bool is_outermost_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
-                                       (int32_t)1) != reduce_axis.end() && input_shape[0] == (int32_t)1;
 
   // 1: Check if atomic is enabled
   // 2: Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
@@ -395,8 +393,8 @@ bool Reduce::ChooseAtomic() {
                        total_output_count < (int64_t)compileInfo.core_num * block_size / 2 &&
                         total_reduce_count > (int64_t)compileInfo.core_num / 2;
   // Layer 2
-  compileInfo.atomic = compileInfo.atomic ||
-                       (is_outermost_reduce && input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * 4);
+  // Currently unavailable
+
   // Final
   compileInfo.atomic = atomic_available && compileInfo.atomic;
   return true;
