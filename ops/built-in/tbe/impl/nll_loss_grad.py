@@ -113,7 +113,7 @@ class NllLossGradCompute:
         self.x_dim = len(self.x_shape)
         self.c_dim = self.x_shape[-1]
         self.invalid_target = (ignore_index < 0 or ignore_index >= self.c_dim) \
-            and ignore_index != -100 and self.reduction == "mean"
+            and ignore_index != -100
         self.init_size()
         self.init_gm()
 
@@ -708,7 +708,7 @@ class NllLossGradCompute:
                                        dst[index*offset], self.total_weight_ub,
                                        repeat, 1, 1, 1, 8, 8, 0)
 
-    def _set_valid_target(self, names, var):
+    def _set_valid_target(self, names, var, dst_need_index, src_need_index):
         """
         set valid target when target index is out c range, x set 0, weight set -1.
 
@@ -724,8 +724,13 @@ class NllLossGradCompute:
 
         with self.tik_instance.if_scope(tik.any(names["index_x" + str(var)] < 0,
                                                 names["index_x" + str(var)] >= self.c_dim)):
-            names["index_x" + str(var)].set_as(0)
-            names["index_x" + "w" + str(var)].set_as(-1)
+            if dst_need_index and src_need_index:
+                names["index_x" + str(var)].set_as(0)
+                names["index_x" + "w" + str(var)].set_as(-1)
+            elif src_need_index:
+                names["index_x" + str(var)].set_as(-1)
+            elif dst_need_index:
+                names["index_x" + str(var)].set_as(0)
 
     def select_valid_value(self, line_num, line_size, dst, src, target,
                            dst_need_index=True, src_need_index=True):
@@ -750,42 +755,42 @@ class NllLossGradCompute:
         names = locals()
         for i in range(0, vars_num):
             names["index_x" + str(i)] = self.tik_instance.Scalar(dtype="int32")
-            if self.invalid_target:
+            if self.invalid_target and dst_need_index and src_need_index:
                 names["index_x" + "w" + str(i)] = self.tik_instance.Scalar(dtype="int32")
         with self.tik_instance.for_range(0, loop_num) as time:
             offset_set = 8 * time
             for i in range(0, vars_num):
                 names["index_x" + str(i)].set_as(target[offset_set + i])
-                if self.invalid_target:
+                if self.invalid_target and dst_need_index and src_need_index:
                     names["index_x" + "w" + str(i)].set_as(target[offset_set + i])
 
             for i in range(0, vars_num):
                 dst_offset = (offset_set+i)*line_size +\
                              names["index_x" + str(i)]
                 src_offset = names["index_x" + str(i)]
-                if self.invalid_target:
+                if self.invalid_target and dst_need_index and src_need_index:
                     src_offset = names["index_x" + "w" + str(i)]
                 if not dst_need_index:
                     dst_offset = (offset_set+i)*line_size
                 if not src_need_index:
                     src_offset = offset_set+i
-                self._set_valid_target(names, i)
+                self._set_valid_target(names, i, dst_need_index, src_need_index)
                 dst[dst_offset].set_as(src[src_offset])
         for i in range(0, last_line):
             names["index_x" + str(i)].set_as(target[loop_num*8 + i])
-            if self.invalid_target:
+            if self.invalid_target and dst_need_index and src_need_index:
                 names["index_x" + "w" + str(i)].set_as(target[loop_num*8 + i])
         for i in range(0, last_line):
             dst_offset = (loop_num*8+i)*line_size + \
                              names["index_x" + str(i)]
             src_offset = names["index_x" + str(i)]
-            if self.invalid_target:
+            if self.invalid_target and dst_need_index and src_need_index:
                 src_offset = names["index_x" + "w" + str(i)]
             if not dst_need_index:
                 dst_offset = (loop_num*8+i)*line_size
             if not src_need_index:
                 src_offset = loop_num*8+i
-            self._set_valid_target(names, i)
+            self._set_valid_target(names, i, dst_need_index, src_need_index)
             dst[dst_offset].set_as(src[src_offset])
 
     def _normal_two_tim_process(self, line_num, core_offset,

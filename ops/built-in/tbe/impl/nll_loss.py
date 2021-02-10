@@ -91,7 +91,7 @@ class NllLossCompute:
         self.n_dim = self.x_shape[0]
         self.c_dim = self.x_shape[-1]
         self.invalid_target = (ignore_index < 0 or ignore_index >= self.c_dim) \
-            and ignore_index != -100 and self.reduction == "mean"
+            and ignore_index != -100
         self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
             "Unified_Buffer") - TWO_KB
         self.init_gm_size()
@@ -651,6 +651,10 @@ class NllLossCompute:
                     lower_core_offset = cycle*8
                 loop_offset = loop*self.core_num*self.move_max_line
                 self.init_normal_ub()
+
+                if self.invalid_target:
+                    self.tik_instance.vector_dup(8, self.zero_weight_ub, 0, 1, 1, 8)
+
                 with self.tik_instance.if_scope(loop < self.loop_time - 1):
                     self._none_and_sum_compute_process(
                         self.move_max_line, self.max_vmul_repeat,
