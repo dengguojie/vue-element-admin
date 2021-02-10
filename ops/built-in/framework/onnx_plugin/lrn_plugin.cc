@@ -25,9 +25,10 @@ Status ParseParamsLRN(const Message *op_src, ge::Operator &op_dst) {
     return FAILED;
   }
   float alpha = 0.0001;
-  float beta = 0.5;
+  float beta = 0.75;
   float bias = 1.0;
   int32_t size = -1;
+  int32_t depth_radius = -1;
   bool bfind_size = false;
 
   for (auto attr : node->attribute()) {
@@ -54,7 +55,8 @@ Status ParseParamsLRN(const Message *op_src, ge::Operator &op_dst) {
     return FAILED;
   }
   alpha = alpha / size;
-  op_dst.SetAttr("depth_radius", size);
+  depth_radius = (size - 1) / 2;
+  op_dst.SetAttr("depth_radius", depth_radius);
   op_dst.SetAttr("bias", bias);
   op_dst.SetAttr("alpha", alpha);
   op_dst.SetAttr("beta", beta);

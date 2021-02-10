@@ -33,7 +33,7 @@ Status ParseParamsTopK(const Message* op_src, ge::Operator& op_dest) {
       sorted = static_cast<bool>(attr.i());
     } else if (attr.name() == "largest" && attr.type() == ge::onnx::AttributeProto::INT) {
       largest = static_cast<bool>(attr.i());
-    } else if (attr.name() == "dim" && attr.type() == ge::onnx::AttributeProto::INT) {
+    } else if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
       dim = attr.i();
     }
   }
