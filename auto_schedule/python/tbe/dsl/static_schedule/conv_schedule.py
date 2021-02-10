@@ -438,9 +438,31 @@ def reget_tensor_list(outs):
         reduce_shape = (conv_res_shape[1], conv_res_shape[3])
         k_0 = tvm.reduce_axis((0, conv_res_shape[0]), name='k_0')
         k_1 = tvm.reduce_axis((0, conv_res_shape[2]), name='k_1')
-        cub = conv_out.op.input_tensors[0]
+        op_tag = "convolution_"
+
+        if ConvParam.tiling_query_param["bias_flag"]:
+            cub = ConvParam.tensor_map["c_ub"]
+            bias_ub = ConvParam.tensor_map["bias_ub"]
+        else:
+            cub = ConvParam.tensor_map["c_ub"]
+
         c_col = cub.op.input_tensors[0]
         group = ConvParam.para_dict["group"]
+
+        if ConvParam.tiling_query_param["bias_flag"]:
+            mad_shape = c_col.shape
+            bias_l0c = tvm.compute(mad_shape, lambda group, n, c1_opt, m, c0:
+                                bias_ub(group*mad_shape[2]*mad_shape[4] +
+                                c1_opt*mad_shape[4] + c0).astype(c_col.dtype),
+                                name=op_tag + "bias_l0c",
+                                tag=op_tag + "bias_l0c")
+            c_col = tvm.compute(mad_shape, lambda *indice:
+                                bias_l0c(*indice) + c_col(*indice),
+                                name=op_tag + "c_col_bias",
+                                tag=op_tag + "c_col_bias")
+            ConvParam.tensor_map["c_col_bias"] = c_col
+            ConvParam.tensor_map["bias_l0c"] = bias_l0c
+
         c_ub = tvm.compute(cub.shape,
                            lambda batch, cout1, howo, cout0: \
                            c_col(0 if group == 1 else cout1 // cout1_opt,
@@ -448,14 +470,25 @@ def reget_tensor_list(outs):
                                  cout1 if group == 1 else cout1 % cout1_opt,
                                  howo, cout0),
                            name='c_ub',
-                           tag="convolution_" + "c_ub",
+                           tag=op_tag + "c_ub",
                            attrs=cub.op.attrs)
         ConvParam.tensor_map["c_ub"] = c_ub
+
+        if ConvParam.v200_width_out_1_flag:
+            removepad_shape = ConvParam.tensor_map["remove_padded_column"].shape
+            res_tensor = tvm.compute(removepad_shape, lambda batch, cout1, howo, cout0:
+                                c_ub(batch, cout1, howo*2, cout0),
+                                name="remove_padded_column",
+                                tag=op_tag + "remove_padded_column",
+                                attrs={"width_out": ConvParam.w_out})
+            ConvParam.tensor_map["remove_padded_column"] = res_tensor
+            c_ub = res_tensor
+
         res_c = tvm.compute(conv_res_shape,
                             lambda batch, cout1, howo, cout0:
                             c_ub(batch, cout1, howo, cout0),
                             name='C',
-                            tag="convolution_" + "C",
+                            tag=op_tag + "C",
                             attrs={"width_out": ConvParam.w_out})
         ConvParam.tensor_map["C"] = res_c
         cast_0_ub = tvm.compute(conv_res_shape,
@@ -1314,10 +1347,7 @@ class CceConvOp:
                     """
                     avoid cyclomatic complexity, handle block_dim
                     """
-                    if self._convbn1_flag:
-                        tiling["block_dim"] = tiling_new["block_dim"]
-                    else:
-                        tiling["block_dim"] = [1, 1, 1, 1]
+                    tiling["block_dim"] = [1, 1, 1, 1]
                     device_core_num = self._corenum
                     if (ConvParam.batch > 1) and (device_core_num > 1):
                         if ConvParam.batch <= device_core_num:
@@ -1947,6 +1977,9 @@ class CceConvOp:
                 # L0C
                 if double_buffer_flag["CL0_pbuffer"] == 2:
                     sch[c_col].double_buffer()
+                    if self._convbn1_flag and ConvParam.tiling_query_param["bias_flag"]:
+                        sch[tensor_map["bias_l0c"]].double_buffer()
+                        sch[tensor_map["c_col_bias"]].double_buffer()
                     if bias_preload_flag:
                         sch[bias_l0c].double_buffer()
                         sch[c_col_bias].double_buffer()
@@ -2045,7 +2078,16 @@ class CceConvOp:
                             bias_l0c.op.axis[1], 'dma_copy')
                         sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
                 elif "fp16_bias" in tensor_map.keys():
-                    sch[tensor_map["bias_ub"]].emit_insn(tensor_map["bias_ub"].op.axis[0], 'dma_copy')
+                    if self._convbn1_flag and ConvParam.tiling_query_param["bias_flag"]:
+                        sch[tensor_map["bias_l0c"]].set_scope(cce.scope_cc)
+                        sch[tensor_map["c_col_bias"]].set_scope(cce.scope_cc)
+                        sch[tensor_map["bias_l0c"]].reused_by(tensor_map["c_col_bias"], c_col)
+                        sch[tensor_map["c_col_bias"]].emit_insn(tensor_map["c_col_bias"].op.axis, "phony_insn")
+                        sch[tensor_map["bias_l0c"]].emit_insn(tensor_map["bias_l0c"].op.axis[1], "dma_copy")
+
+                        sch[tensor_map["bias_ub"]].emit_insn(tensor_map["bias_ub"].op.axis[0], 'dma_copy')
+                    else:
+                        sch[tensor_map["bias_ub"]].emit_insn(tensor_map["bias_ub"].op.axis[0], 'dma_copy')
 
             def config_setfmatrix(setfmatrix_dict):
                 """
@@ -2667,6 +2709,8 @@ class CceConvOp:
                                     k_outer_outer_inner]}
             if "int32_bias" in tensor_map.keys():
                 # only use this pragma in bias case
+                mad_dict["init_bias"] = 1
+            if self._convbn1_flag and ConvParam.tiling_query_param["bias_flag"]:
                 mad_dict["init_bias"] = 1
             sch[c_col].emit_insn(cn_axis, 'mad', mad_dict)
 
@@ -3752,7 +3796,10 @@ class CceConvOp:
             for conv1d case, use buffer_tile to split width
             """
             if self._conv1d_split_w_flag:
-                howo = res.shape[2].value
+                if self._convbn1_flag:
+                    howo = res.op.input_tensors[0].shape[2].value
+                else:
+                    howo = res.shape[2].value
                 blockdim = tiling.get('block_dim')[2]
 
                 al1_multiple = int_ceil_div(int_ceil_div(ceil(howo, 16),
@@ -4146,6 +4193,9 @@ class CceConvOp:
                 sch[c_col_bias].compute_at(sch[res_c], c_slice_axis)
                 sch[bias_l0c].compute_at(sch[res_c], c_slice_axis)
             elif "fp16_bias" in tensor_map.keys(): # float bias
+                if self._convbn1_flag and ConvParam.tiling_query_param["bias_flag"]:
+                    sch[tensor_map["bias_l0c"]].compute_at(sch[res_c], c_slice_axis)
+                    sch[tensor_map["c_col_bias"]].compute_at(sch[res_c], c_slice_axis)
                 if tiling["CUB_channel_wise_flag"]:
                     sch[tensor_map["bias_ub"]].compute_at(sch[res_c], c_slice_axis)
                 else:
@@ -6396,6 +6446,7 @@ class AutoScheduleOp:
             "fusion_type_5_4_2_1_3": 19,
             "fusion_type_5_4_1_2_3": 19,
             "fusion_type_11_3_3_3_1_5_4": 20,
+            "fusion_type_11_3_3_3_1_5_9_4": 20,
             # Conv2d+Eltwise
             "fusion_type_4_1": 22,
             "fusion_type_4_2_1": 23,
