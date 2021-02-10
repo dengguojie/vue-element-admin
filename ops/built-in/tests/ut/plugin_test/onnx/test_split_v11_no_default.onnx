@@ -1,0 +1,29 @@
+onnx:û
+V
+inputoutput_0output_1output_2	split_v11"Split*
+axis *
+split@@@ split_v11_no_defaultZ
+input
+
+
+
+
+b"
+output_0
+
+
+
+
+b"
+output_1
+
+
+
+
+b"
+output_2
+
+
+
+
+B
