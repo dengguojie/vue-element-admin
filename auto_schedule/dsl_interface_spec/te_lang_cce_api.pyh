@@ -1,5 +1,8 @@
 # source file:python/te/lang/cce/api.py
 
+STACKLEVEL_FOR_DSL_AUTOCAST = 4
+STACKLEVEL_FOR_DSL_NO_AUTOCAST = 2
+
 def ceil(raw_tensor):
 
 def floor(raw_tensor):

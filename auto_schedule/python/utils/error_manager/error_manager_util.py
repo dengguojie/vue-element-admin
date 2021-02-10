@@ -19,6 +19,8 @@ import json
 import os
 import warnings
 
+STACKLEVEL_FOR_ERROR_MESSAGE = 2
+
 
 def get_error_message(args):
     """
@@ -28,7 +30,7 @@ def get_error_message(args):
             formatted message
     """
     warnings.warn("te.utils.error_manager is expired, please replace it with tbe.common.utils.errormgr",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_ERROR_MESSAGE)
     from tbe.common.utils.errormgr import get_error_message
     return get_error_message(args)
 
@@ -40,7 +42,7 @@ def raise_runtime_error(dict_args):
     :param dict_args: error message dict
     """
     warnings.warn("te.utils.error_manager is expired, please replace it with tbe.common.utils.errormgr",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_ERROR_MESSAGE)
     from tbe.common.utils.errormgr import raise_runtime_error
     return raise_runtime_error(dict_args)
 
@@ -52,6 +54,6 @@ def raise_runtime_error_cube(args_dict, msg):
     :param msg: error message
     """
     warnings.warn("te.utils.error_manager is expired, please replace it with tbe.common.utils.errormgr",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_ERROR_MESSAGE)
     from tbe.common.utils.errormgr import raise_runtime_error_cube
     return raise_runtime_error_cube(args_dict, msg)

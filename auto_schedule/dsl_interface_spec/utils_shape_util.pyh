@@ -1,5 +1,7 @@
 # source file:python/te/utils/shape_util.py
 
+STACKLEVEL_FOR_SHAPE_UTIL = 2
+
 def squeeze_shape(shape):
 
 def wrap_axes_to_positive(axes, rank):

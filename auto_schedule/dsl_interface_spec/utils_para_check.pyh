@@ -1,5 +1,6 @@
 # source file:python/te/utils/para_check.py
 
+STACKLEVEL_FOR_PARA_CHECK = 2
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1
 SHAPE_SIZE_ZERO = 0
 DIM_LIMIT = SHAPE_SIZE_LIMIT

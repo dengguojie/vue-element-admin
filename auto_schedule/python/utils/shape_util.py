@@ -19,13 +19,15 @@ import warnings
 
 from te.utils import para_check
 
+STACKLEVEL_FOR_SHAPE_UTIL = 2
+
 
 def squeeze_shape(shape):
     """
     squeeze shape
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import squeeze_shape
     return squeeze_shape(shape)
 
@@ -35,7 +37,7 @@ def wrap_axes_to_positive(axes, rank):
     wrap axis to positive
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import wrap_axes_to_positive
     return wrap_axes_to_positive(axes, rank)
 
@@ -65,7 +67,7 @@ def refine_shape_axes(shape, axes):
 
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import refine_shape_axes
     return refine_shape_axes(shape, axes)
 
@@ -76,7 +78,7 @@ def broadcast_shapes(shape1, shape2, op_name=para_check.OP_NAME,
     two input shapes produce three output shape
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import broadcast_shapes
     return broadcast_shapes(shape1, shape2, op_name, param_name_input1, param_name_input2)
 
@@ -86,7 +88,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
     Fusing the axes for the input shapes
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import refine_shapes_for_broadcast
     return refine_shapes_for_broadcast(shape1, shape2)
 
@@ -99,7 +101,7 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
     :return:
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import variable_shape
     return variable_shape(inputs, op_mode, support_broadcast)
 
@@ -109,7 +111,7 @@ def simplify_axis_shape(shape, axis):
     simplify the shape and aixs
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import simplify_axis_shape
     return simplify_axis_shape(shape, axis)
 
@@ -142,7 +144,7 @@ def shape_refine(shape, reduce_axis=None, keep_dims=True):
     """
 
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import shape_refine
     return shape_refine(shape, reduce_axis, keep_dims)
 
@@ -164,7 +166,7 @@ def refine_axis(axis, shape):
         refined axis
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import refine_axis
     return refine_axis(axis, shape)
 
@@ -189,7 +191,7 @@ def axis_check(shape_len, axis):
     Check the value of axis and return the sorted axis
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import axis_check
     return axis_check(shape_len, axis)
 
@@ -199,7 +201,7 @@ def produce_shapes(shape1, shape2):
     two input shapes produce three output shape
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import produce_shapes
     return produce_shapes(shape1, shape2)
 
@@ -216,7 +218,7 @@ def check_reduce_need_refine(shape, reduce_axis, keep_dims):
     """
 
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import check_reduce_need_refine
     return check_reduce_need_refine(shape, reduce_axis, keep_dims)
 
@@ -232,7 +234,7 @@ def scalar2tensor_one(shape):
     list:[1]
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import scalar2tensor_one
     return scalar2tensor_one(shape)
 
@@ -242,7 +244,7 @@ def axis_transform_5d(axis, data_format):
     4d format axis to 5d mapping
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import axis_transform_5d
     return axis_transform_5d(axis, data_format)
 
@@ -266,7 +268,7 @@ def compare_tensor_dict_key(dict1, dict2, dict_key):
     None
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import compare_tensor_dict_key
     return compare_tensor_dict_key(dict1, dict2, dict_key)
 
@@ -281,7 +283,7 @@ def get_shape_size(shape):
     -------
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import get_shape_size
     return get_shape_size(shape)
 
@@ -303,7 +305,7 @@ def cast(x, dtype):
         The result.
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import cast
     return cast(x, dtype)
 
@@ -313,6 +315,6 @@ def shape_to_list(shape):
     translate tvm.shape to list type in python
     """
     warnings.warn("te.utils.shape_util is expired, please replace it with tbe.common.utils.shape_util",
-                  DeprecationWarning)
+                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_SHAPE_UTIL)
     from tbe.common.utils import shape_to_list
     return shape_to_list(shape)
