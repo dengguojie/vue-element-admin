@@ -447,7 +447,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
 
         compute = operation.get_context().get_current_compute()
         if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
-            out_tensor = list(self.graph_info.output_tensor_set)[0]
+            out_tensor = list(self.graph_info.real_output_tensor_set)[0]
             self.cache_write(out_tensor, self.compute_scope)
             for tensor in self.graph_info.tensor_list:
                 if tensor != out_tensor:
@@ -458,7 +458,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
             if tensor in ignore_tensors:
                 continue
             my_scope: str = self._tensor_to_scope_map.setdefault(tensor, "")
-            if tensor in self.graph_info.output_tensor_set:
+            if tensor in self.graph_info.real_output_tensor_set:
                 source_scope = None
                 for producer in self.backward_compute_graph_map[tensor]:
                     producer_scope: str = self._tensor_to_scope_map.setdefault(producer, "")
@@ -475,12 +475,12 @@ class VectorSchedule(VectorScheduleBase, ABC):
             scope_to_consumers_map: Dict[str, Set[Tensor, ...]] = {}
             for consumer in self.forward_compute_graph_map[tensor]:
                 consumer_scope: str = self._tensor_to_scope_map.setdefault(consumer, "")
-                if tensor in self.graph_info.input_tensor_set and consumer in self.graph_info.output_tensor_set:
+                if tensor in self.graph_info.input_tensor_set and consumer in self.graph_info.real_output_tensor_set:
                     consumer_scope = self.compute_scope
                     consumer = self.get_buffers_of(consumer)[0]
                 different_scope = my_scope != consumer_scope
                 not_mid_tensor = tensor not in self.graph_info.mid_tensor_set
-                not_to_output_tensor = consumer not in self.graph_info.output_tensor_set
+                not_to_output_tensor = consumer not in self.graph_info.real_output_tensor_set
                 not_mid_to_output_tensor = not_mid_tensor and not_to_output_tensor
                 can_cache_read = different_scope and not_mid_to_output_tensor
                 if can_cache_read:

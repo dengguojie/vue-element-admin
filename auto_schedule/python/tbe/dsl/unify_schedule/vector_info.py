@@ -37,6 +37,9 @@ from te.platform.cce_conf import get_soc_spec
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import is_placeholder
+from .util import shape_to_list
+from .util import equals_one
+from .util import expr_equal
 from .constants import *
 
 
@@ -50,7 +53,9 @@ class ComputeGraphInfo:
         """
         # Basic Info
         self.soc_ub_size = get_soc_spec("UB_SIZE")
+        # real_output_tensor_set: set doesn't contain fake_node
         self.output_tensor_set: Optional[Set[Tensor]] = None
+        self.real_output_tensor_set: Optional[Set[Tensor]] = None
         self.tensor_consumers_map: Optional[Dict[Tensor, Set[Tensor]]] = None
         self.tensor_producers_map: Optional[Dict[Tensor, Set[Tensor]]] = None
         self.tensor_list: Optional[List[Tensor]] = None
@@ -74,6 +79,8 @@ class ComputeGraphInfo:
         self.coef: Optional[int] = None
         # Do info collection
         self._collect_info(output_tensors)
+        self._fake_node()
+        self._current_support_check()
         self._init_max_ub_count()
 
     def _collect_info(self, output_tensors: Iterable[Tensor]):
@@ -102,6 +109,62 @@ class ComputeGraphInfo:
         self.gen_mid_tensor_sets()
         # endpoint_output_tensor_set
         self.gen_endpoint_output_tensor_set()
+
+    def _fake_node(self):
+        # after _collect_info(outer_most), middle_output_tensors has been assured.
+        # middle_output_tensors: connect to next node in graph,
+        # fake_node doesn't need them as producers for it
+
+        def _fake_node_compute(tensors):
+            # fake_node must be the biggest node (type and shape)
+            dtype = tensors[0].dtype
+            dim_length = max([len(t.shape) for t in tensors])
+            shape = [1] * dim_length
+
+            # update fake_node's shape and dtype
+            for tensor_i in tensors:
+                if DTYPE_BYTE_MAPPING[tensor_i.dtype] > DTYPE_BYTE_MAPPING[dtype]:
+                    dtype = tensor_i.type
+                shape_i = shape_to_list(tensor_i.shape)
+                diff = dim_length - len(shape_i)
+                shape_i = [1] * diff + shape_i
+                for j in range(diff, dim_length):
+                    if equals_one(shape[j]):
+                        shape[j] = shape_i[j]
+                    elif not expr_equal(shape[j], shape_i[j]) and not equals_one(shape_i[j]):
+                        # ReduceSch couldn't in the branch, while ReduceSch not support broadcast
+                        shape[j] = tvm.max(shape_i[j], shape[j])
+
+            def _compute(*indices):
+                res_ = tvm.const(1, dtype)
+                for tensor in tensors:
+                    cur_indices = []
+                    for idx, dim in enumerate(tensor.shape):
+                        if equals_one(dim):
+                            cur_indices.append(0)
+                        else:
+                            cur_indices.append(indices[idx])
+                    res_ *= tvm.expr.Cast(dtype, tensor(*cur_indices))
+                return res_
+
+            with tvm.tag_scope(FAKE_NODE_TAG):
+                res = tvm.compute(shape, _compute, name="fake_node")
+
+            return res
+
+        self.real_output_tensor_set = self.output_tensor_set
+        pure_out_tensors = list(self.real_output_tensor_set - self.mid_output_tensor_set)
+        if len(pure_out_tensors) > 1:
+            _out = _fake_node_compute(pure_out_tensors)
+            # update info while last_node is fake_node
+            self._collect_info([_out, ])
+
+    def _current_support_check(self):
+        _shape = list(list(self.real_output_tensor_set)[0].shape)
+        for _tensor in self.real_output_tensor_set:
+            if list(_tensor.shape) != _shape:
+                raise RuntimeError("Dynamic ReduceSchedule does "
+                                   "not support outputs with different shapes")
 
     def gen_endpoint_output_tensor_set(self):
         for output_tensor in self.output_tensor_set:

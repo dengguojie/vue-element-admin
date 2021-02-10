@@ -103,7 +103,7 @@ class ReduceSchedule(VectorSchedule):
 
     def _calc_data_flow_control(self) -> NoReturn:
         for tensor in self.graph_info.mid_tensor_set:
-            if tensor not in self.graph_info.output_tensor_set:
+            if tensor not in self.graph_info.real_output_tensor_set:
                 self._tensor_to_scope_map[tensor] = "local.UB"
         self.do_auto_data_flow_control()
 
@@ -116,6 +116,13 @@ class ReduceSchedule(VectorSchedule):
     def _calc_storage_bound(self) -> NoReturn:
         for stage_tensor in self.forward_stage_graph_map:
             if self.forward_stage_graph_map[stage_tensor]:
+                if stage_tensor in self.graph_info.real_output_tensor_set:
+                    # don't set bound for real_output_tensors(gm)
+                    continue
+                if stage_tensor in self.graph_info.input_tensor_set:
+                    # don't set bound for input_tensor_set(gm)
+                    continue
+
                 if stage_tensor in self.graph_info.tensors_after_reduce:
                     ub_count = self.graph_info.tensor_ub_size_after_reduce
                 elif stage_tensor in self.graph_info.tensors_before_reduce:
@@ -143,10 +150,6 @@ class ReduceSchedule(VectorSchedule):
         case: ReduceTilingCase = self.tiling_case
         if not isinstance(case, ReduceTilingCase):
             raise RuntimeError("ReduceTilingCase required for ReduceSchedule!")
-
-        # Warning: single output supported only
-        if len(self.graph_info.output_tensor_set) != 1:
-            raise RuntimeError("SingleReduceSchedule supports single output only")
 
         # Get tiling tensor
         res_tensor = tuple(self.graph_info.output_tensor_set)[0]
@@ -468,26 +471,43 @@ class ReduceSchedule(VectorSchedule):
                                                                    emit_insn_axis,
                                                                    INSN_MAPPING[get_dsl_insn(reduce_ub_tensor)],
                                                                    {"extra_space": extra_space}))
+
+        def _traverse():
+            # tensors_before_root: exclude reduce_tensor unless reduce_tensor is output_tensor
+            tensors_before_root = self.get_all_producer_stages(list(self.graph_info.output_tensor_set)[0])
+            remove_list = []
+            for _tensor_i in tensors_before_root:
+                if is_reduce_tensor(_tensor_i):
+                    remove_list.append(_tensor_i)
+                    continue
+            for item in remove_list:
+                if item not in self.graph_info.real_output_tensor_set:
+                    tensors_before_root.remove(item)
+
+            # add fake_node
+            tensors_set = tensors_before_root | self.graph_info.output_tensor_set
+            return tensors_set
+
         # Before-And-After-reduce
         before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
         after_reduce_tensors = self.get_all_consumer_stages(reduce_ub_tensor)
         remaining_tensors = before_reduce_tensors | after_reduce_tensors
         if get_context().get_current_compute().get("mode") != "zero":
-            # other tensors: which not in consumers or producers for reduce_ub_tensor
-            _other_tensors = set()
-            for _tensor in self.graph_info.tensor_list:
-                if is_reduce_tensor(_tensor):
-                    continue
-                _other_tensors.add(self.get_buffers_of(_tensor)[0])
-            remaining_tensors = remaining_tensors | _other_tensors
+            # traversing all tensors and their buffers
+            remaining_tensors = _traverse()
         for tensor in remaining_tensors:
             if tensor in self.graph_info.input_tensor_set:
                 continue
             insn = get_dsl_insn(tensor)
             emit_insn_axis_index = 0
-            if tensor in self.graph_info.output_tensor_set:
+
+            # if not have fake_node: output_tensor_set will cover real_output_tensor_set
+            if tensor in self.graph_info.real_output_tensor_set:
                 insn = "dma_copy"
+                emit_insn_axis_index = 0
+            if tensor in self.graph_info.output_tensor_set:
                 emit_insn_axis_index = self.block_tiling_result_pair[1]
+
             if insn == "":
                 insn = "dma_copy"
 
