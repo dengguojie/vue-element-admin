@@ -134,7 +134,7 @@ int64_t BatchnormFusionPass::GetKernelNumOfOutputOfConv3D(const ge::NodePtr& con
     return 0;
   }
 
-  ge::Format curFormat = outputDesc.GetFormat();
+  ge::Format curFormat = outputDesc.GetOriginFormat();
   if (curFormat == ge::FORMAT_NDHWC) {
     return dims.at(NDHWC_DIM_C);
   } else if (curFormat == ge::FORMAT_NCDHW) {

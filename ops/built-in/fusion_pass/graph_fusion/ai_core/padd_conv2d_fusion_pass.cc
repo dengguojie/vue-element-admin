@@ -104,12 +104,12 @@ Status PaddConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   int64_t paddings_b;
   int64_t paddings_l;
   int64_t paddings_r;
-  if (padd_node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NCHW) {
+  if (padd_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat() == ge::FORMAT_NCHW) {
     paddings_t = paddings[2][0];
     paddings_b = paddings[2][1];
     paddings_l = paddings[3][0];
     paddings_r = paddings[3][1];
-  } else if (padd_node->GetOpDesc()->GetInputDesc(0).GetFormat() == ge::FORMAT_NHWC) {
+  } else if (padd_node->GetOpDesc()->GetInputDesc(0).GetOriginFormat() == ge::FORMAT_NHWC) {
     paddings_t = paddings[1][0];
     paddings_b = paddings[1][1];
     paddings_l = paddings[2][0];
@@ -125,14 +125,14 @@ Status PaddConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     return NOT_CHANGED;
   }
   ge::NodePtr kernel_node = conv2d_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
-  if (kernel_node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_NCHW &&
+  if (kernel_node->GetOpDesc()->GetOutputDesc(0).GetOriginFormat() == ge::FORMAT_NCHW &&
       (kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) <= paddings_t ||
        kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) <= paddings_b)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Filter_H more than pad_H, can not fusion.");
     return NOT_CHANGED;
   }
 
-  if (kernel_node->GetOpDesc()->GetOutputDesc(0).GetFormat() == ge::FORMAT_HWCN &&
+  if (kernel_node->GetOpDesc()->GetOutputDesc(0).GetOriginFormat() == ge::FORMAT_HWCN &&
       (kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(0) <= paddings_t ||
        kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(0) <= paddings_b)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Filter_H more than pad_H, can not fusion.");

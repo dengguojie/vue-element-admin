@@ -149,7 +149,7 @@ Status ConvFusionPassBase::AddBiasNode(ge::ComputeGraph& graph, ge::NodePtr& con
 
 Status ConvFusionPassBase::GetConvKernelIndex(ge::OpDescPtr convOpdesc, const ge::GeTensorDesc& constInputDesc,
                                               ge::Format& filterFormat, size_t& kernerlIndex) {
-  filterFormat = constInputDesc.GetFormat();
+  filterFormat = constInputDesc.GetOriginFormat();
   if (filterFormat == ge::FORMAT_NCHW) {
     if (convOpdesc->GetType() == DEPTHWISECONV2D) {
       kernerlIndex = NCHW_DIM_C;

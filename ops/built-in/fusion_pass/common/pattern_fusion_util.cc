@@ -621,7 +621,7 @@ Status PatternFusionUtil::GenGroupPaddingTensor(ge::GeTensorDesc& inTensor, ge::
                     OP_LOGE(weightOpDesc->GetType().c_str(),
                             "The original format of node[%s, %s]'s output0 is %s, which is unsupportable.",
                             weightOpDesc->GetName().c_str(), weightOpDesc->GetType().c_str(),
-                            ge::TypeUtils::FormatToSerialString(weightOutputDesc.GetFormat()).c_str()),
+                            ge::TypeUtils::FormatToSerialString(weightOutputDesc.GetOriginFormat()).c_str()),
                     return FAILED);
   int cDIm = weightOutputShape.GetDim(outChannelIdx);
   weightOutputShape.SetDim(outChannelIdx, cDIm * groups);
