@@ -11,36 +11,92 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 
+#include <vector>
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
+#include "graph.h"
+#include "all_ops.h"
+
+using namespace std;
+using namespace ge;
+using ge::Operator;
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
+// only support onnx flatten axis be [0,r)
 Status ParseParamsFlatten(const Message *op_src, ge::Operator &op_dest) {
+  // 1.add dynamic input and out
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  if (opDesc == nullptr) {
+    OP_LOGE("Flatten", "Get OpDesc From operator failed.");
+    return FAILED;
+  }
+  opDesc->AddDynamicInputDesc("args", 1);
+  opDesc->AddDynamicOutputDesc("output", 1);
+  // 2.set original_type
+  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::11::Flatten");
+  // 3.set attr if needed
   const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
     OP_LOGE("Flatten", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
 
+  int axis = 1;
   for (auto attr : node->attribute()) {
     if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
-      if (attr.i() != 1) {
-        OP_LOGE("Flatten", "axis value [%d] is not support.", attr.i());
-        return FAILED;
-      }
+      axis = attr.i();
     }
   }
+  op_dest.SetAttr("axis", axis);
 
   return SUCCESS;
 }
 
-// register Abs op info to GE
-REGISTER_CUSTOM_OP("Flatten")
+static Status ParseOpToGraphFlatten(const Operator &op, Graph &graph) {
+  int axis = 1;
+  if (op.GetAttr("axis", axis) != SUCCESS) {
+    OP_LOGE("Flatten", "get axis from op failed");
+    return FAILED;
+  }
+  if (axis < 0) {
+    OP_LOGE("Flatten", "negative axis[%d] is not support.", axis);
+    return FAILED;
+  }
+
+  auto data0 = op::Data("data0").set_attr_index(0);
+  std::vector<Operator> inputs {data0};
+  std::vector<std::pair<Operator, std::vector<size_t>>> output_indexs;
+  if (axis == 0) {
+    auto flattenV2 = op::FlattenV2().set_input_x(data0).set_attr_axis(0).set_attr_end_axis(-1);
+
+    std::vector<int64_t> dims = {1};
+    ge::Shape shape(dims);
+    TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_INT32);
+    int32_t tmpAxis = 0;
+    ge::Tensor tensorAxis(tensorDesc, reinterpret_cast<uint8_t*>(&tmpAxis), sizeof(ge::DT_INT32));
+    auto data1 = op::Const("data1").set_attr_value(tensorAxis);
+    auto expandDims = op::ExpandDims().set_input_x(flattenV2).set_input_axis(data1);
+
+    output_indexs.emplace_back(expandDims, vector<std::size_t>{0});
+  } else {
+    auto flattenV2_1 = op::FlattenV2().set_input_x(data0).set_attr_axis(0).set_attr_end_axis(axis - 1);
+    auto flattenV2_2 = op::FlattenV2().set_input_x(flattenV2_1).set_attr_axis(1).set_attr_end_axis(-1);
+
+    output_indexs.emplace_back(flattenV2_2, vector<std::size_t>{0});
+  }
+
+  graph.SetInputs(inputs).SetOutputs(output_indexs);
+  return SUCCESS;
+}
+
+// register Flatten op info to GE
+REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
   .OriginOpType("ai.onnx::11::Flatten")
   .ParseParamsFn(ParseParamsFlatten)
+  .ParseOpToGraphFn(ParseOpToGraphFlatten)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
