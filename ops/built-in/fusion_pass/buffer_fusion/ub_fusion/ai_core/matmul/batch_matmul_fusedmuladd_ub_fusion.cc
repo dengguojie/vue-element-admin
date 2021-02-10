@@ -61,6 +61,17 @@ vector<BufferFusionPattern*> TbeBatchMatmulFusedMulAddFusionPass::DefinePatterns
 
 Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do TbeBatchMatmulFusedMulAddFusionPass!");
+
+  vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
+
+  FUSION_PASS_CHECK(elemNode.empty(),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
+                    return SUCCESS);
+
+  auto inputs = elemNode[0]->GetOpDesc()->GetAllInputsDesc();
+  FUSION_PASS_CHECK(inputs.size() != 3,
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
+                    return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
 
   // buffer fusion do not support dynamic shape now
@@ -80,17 +91,6 @@ Status TbeBatchMatmulFusedMulAddFusionPass::GetFusionNodes(const BufferFusionMap
     }
   }
 
-  vector<ge::NodePtr> elemNode = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
-
-  FUSION_PASS_CHECK(elemNode.empty(),
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
-                    return SUCCESS);
-
-  auto inputs = elemNode[0]->GetOpDesc()->GetAllInputsDesc();
-  FUSION_PASS_CHECK(inputs.size() != 3,
-                    OP_LOGW(FUSED_OP_TYPE.c_str(), "ElemWise node not match!"),
-                    return SUCCESS);
-  fusion_nodes = GetMatchedNodes(mapping);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do TbeBatchMatmulFusedMulAddFusionPass!");
 
   return SUCCESS;
