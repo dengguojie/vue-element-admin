@@ -328,7 +328,7 @@ def op_select_format(input0, input1, input2, input3, input4,
         support_format = support_format + ["FRACTAL_Z_3D"] * len(dtype_list)
         dtype_list_out = dtype_list_out + dtype_list + dtype_list
     
-    dtype_str = ','.join(dtype_list)
+    dtype_str = ','.join(dtype_list_out)
     format_str = ','.join(support_format)
 
     input0_param = util_select_op_base.gen_param(classify="input0", name="input0",
