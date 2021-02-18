@@ -42,6 +42,7 @@ Status ParseParamsAbs(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("Abs")
     .FrameworkType(ONNX)
     .OriginOpType("ai.onnx::11::Abs")
+    .OriginOpType("ai.onnx::12::Abs")
     .ParseParamsFn(ParseParamsAbs)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
