@@ -268,7 +268,7 @@ bool TbeAippFusionRule::CheckAippConvEltwiseFusionValidation(const ge::NodePtr c
 
 bool TbeAippFusionRule::CheckElemwiseValidation(ge::NodePtr elemwise_node) {
   // only support relu, relu6 or leakyrelu
-  const std::vector<std::string> elemwise_op_type_vec = {"Relu", "Relu6", "LeakyRelu"};
+  const std::vector<std::string> elemwise_op_type_vec = {"Relu", "Relu6", "LeakyRelu", "Mish"};
   auto iter = std::find(elemwise_op_type_vec.begin(), elemwise_op_type_vec.end(), elemwise_node->GetType());
   return iter != elemwise_op_type_vec.end();
 }
