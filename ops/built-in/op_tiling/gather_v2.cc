@@ -182,9 +182,10 @@ void PrintGatherV2Params(const GatherV2TilingParams& params) {
 }
 
 bool checkTensorShape(const std::string& opType, std::vector<int64_t> paramsShape, std::vector<int64_t> indicesShape,
-                      std::vector<int64_t> yShape, int64_t axis) {
+                      std::vector<int64_t> indicesOriShape, std::vector<int64_t> yShape, int64_t axis) {
   int64_t paramsDims = paramsShape.size();
   int64_t indicesDims = indicesShape.size();
+  int64_t indicesOriDims = indicesOriShape.size();
   int64_t yDims = yShape.size();
 
   std::vector<int64_t> outputShape;
@@ -193,8 +194,10 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
       outputShape.push_back(paramsShape[i]);
     }
   }
-  for (int64_t i = 0; i < indicesDims; i++) {
-    outputShape.push_back(indicesShape[i]);
+  if (indicesOriDims > 0) {
+    for (int64_t i = 0; i < indicesDims; i++) {
+      outputShape.push_back(indicesShape[i]);
+    }
   }
   if (axis + 1 < paramsDims) {
     for (int64_t i = axis + 1; i < paramsDims; i++) {
@@ -438,6 +441,7 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
 
   std::vector<int64_t> paramsShape = opParas.inputs[0].tensor[0].shape;
   std::vector<int64_t> indicesShape = opParas.inputs[1].tensor[0].shape;
+  std::vector<int64_t> indicesOriShape = opParas.inputs[1].tensor[0].ori_shape;
   std::vector<int64_t> axisShape = opParas.inputs[2].tensor[0].shape;
   std::vector<int64_t> yShape = opParas.outputs[0].tensor[0].shape;
 
@@ -479,7 +483,7 @@ bool GatherV2Tiling(const std::string& opType, const TeOpParas& opParas, const n
     axis += paramsDims;
   }
 
-  bool ret = checkTensorShape(opType, paramsShape, indicesShape, yShape, axis);
+  bool ret = checkTensorShape(opType, paramsShape, indicesShape, indicesOriShape, yShape, axis);
   if (!ret) {
     OP_LOGE(opType.c_str(), "op GatherV2Tiling: [checkTensorShape] failed.");
     return ret;

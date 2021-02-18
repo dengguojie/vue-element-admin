@@ -49,6 +49,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_0) {
   tensor_inputA.dtype = "float16";
   TeOpTensor tensor_inputB;
   tensor_inputB.shape = inputB;
+  tensor_inputB.ori_shape = inputB;
   tensor_inputB.dtype = "int32";
   TeOpTensor tensor_inputC;
   tensor_inputC.shape = inputC;
@@ -106,6 +107,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_1) {
   tensor_inputA.dtype = "float16";
   TeOpTensor tensor_inputB;
   tensor_inputB.shape = inputB;
+  tensor_inputB.ori_shape = inputB;
   tensor_inputB.dtype = "int32";
   TeOpTensor tensor_inputC;
   tensor_inputC.shape = inputC;
@@ -163,6 +165,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_2) {
   tensor_inputA.dtype = "float16";
   TeOpTensor tensor_inputB;
   tensor_inputB.shape = inputB;
+  tensor_inputB.ori_shape = inputB;
   tensor_inputB.dtype = "int32";
   TeOpTensor tensor_inputC;
   tensor_inputC.shape = inputC;
@@ -220,6 +223,7 @@ TEST_F(GatherV2Tiling, gather_v2_tiling_3) {
   tensor_inputA.dtype = "float16";
   TeOpTensor tensor_inputB;
   tensor_inputB.shape = inputB;
+  tensor_inputB.ori_shape = inputB;
   tensor_inputB.dtype = "int32";
   TeOpTensor tensor_inputC;
   tensor_inputC.shape = inputC;

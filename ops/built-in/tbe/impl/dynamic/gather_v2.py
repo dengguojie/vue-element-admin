@@ -280,59 +280,60 @@ class GatherV2():
         remain_half_ub_size = (self.ub_size - CACHE_UB_SIZE - RESERVED_UB_SIZE) // 2
         tik_instance = self.tik_instance
 
+        # get tiling data
+        tiling_ub = tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name="tiling_ub",
+                                        scope=tik.scope_ubuf)
+        tik_instance.data_move(tiling_ub, self.tiling_gm, 0,
+                               1, ceil_value(TILING_ARG_NUM * TYPE_LEN_DICT.get(self.tiling_dtype), BLOCK_SIZE),
+                               0, 0)
+
+        tiling_mode = self.tik_instance.Scalar(dtype=self.tiling_dtype, name="tiling_mode")
+        tiling_mode.set_as(tiling_ub[0])
+
+        # get run info
+        self.get_tiling_args(tiling_ub)
+
         with tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
-            # get tiling data
-            tiling_ub = tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name="tiling_ub",
-                                            scope=tik.scope_ubuf)
-            tik_instance.data_move(tiling_ub, self.tiling_gm, 0,
-                                   1, ceil_value(TILING_ARG_NUM * TYPE_LEN_DICT.get(self.tiling_dtype), BLOCK_SIZE),
-                                   0, 0)
-
-            tiling_mode = self.tik_instance.Scalar(dtype=self.tiling_dtype, name="tiling_mode")
-            tiling_mode.set_as(tiling_ub[0])
-
-            # get run info
-            self.get_tiling_args(tiling_ub)
-
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_1):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_1(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_2):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_2(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_3):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_3(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_4):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_4(remain_half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_5):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_5(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_6):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_6(remain_half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_7):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_7(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_8):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_8(remain_half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_9):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_9(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_10):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_10(remain_half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_11):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_11(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_12):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_12(half_ub_size, block_id)
-            with tik_instance.if_scope(tiling_mode == TILING_MODE_13):
-                with tik_instance.new_stmt_scope():
-                    self.compute_mode_13(half_ub_size, block_id)
+            with tik_instance.if_scope(block_id < self.need_core_num):
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_1):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_1(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_2):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_2(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_3):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_3(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_4):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_4(remain_half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_5):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_5(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_6):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_6(remain_half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_7):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_7(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_8):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_8(remain_half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_9):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_9(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_10):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_10(remain_half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_11):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_11(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_12):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_12(half_ub_size, block_id)
+                with tik_instance.if_scope(tiling_mode == TILING_MODE_13):
+                    with tik_instance.new_stmt_scope():
+                        self.compute_mode_13(half_ub_size, block_id)
 
     def compute_mode_1(self, half_ub_size, block_id):
         """
@@ -1740,10 +1741,6 @@ class GatherV2():
         opt_config = {
             "out_of_bound_sync_check": True
         }
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.x, self.indices, self.axis),
-                                   outputs=(self.y,),
-                                   flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
 
         # add compile info
         te.op.add_compile_info("vars", {"core_num": self.core_num,
@@ -1752,6 +1749,11 @@ class GatherV2():
                                         "params_dsize": self.params_dsize,
                                         "indices_dsize": self.indices_dsize
                                         })
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.x, self.indices, self.axis),
+                                   outputs=(self.y,),
+                                   flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
 
     def gather_compute(self):
         """
@@ -1776,11 +1778,6 @@ class GatherV2():
 
         self.gather_v2_compute_tiling()
 
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.x, self.indices),
-                                   outputs=(self.y,),
-                                   flowtable=(self.tiling_gm,), enable_l2=True)
-
         # add compile info
         te.op.add_compile_info("vars", {"core_num": self.core_num,
                                         "ub_size": self.ub_size,
@@ -1789,10 +1786,13 @@ class GatherV2():
                                         "indices_dsize": self.indices_dsize
                                         })
 
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.x, self.indices),
+                                   outputs=(self.y,),
+                                   flowtable=(self.tiling_gm,), enable_l2=True)
+
 
 @register_operator("GatherV2")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def gather_v2(x_dict, indices_dict, axis_dict, y_dict, kernel_name="GatherV2"):
     """
     gather_v2 interface
