@@ -834,7 +834,17 @@ def vlrelu(raw_tensor, alpha=0):
     """
     warnings.warn("te.lang.cce.vlrelu is expired, please replace it with tbe.dsl.vlrelu",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
+
+    dtype = raw_tensor.dtype
+    from te.platform import intrinsic_check_support
     import tbe.dsl
+    is_current_chip_support = intrinsic_check_support("Intrinsic_vlrelu")
+    if not is_current_chip_support:
+        if dtype == "int32":
+            raw_tensor = cast_to(raw_tensor, "float32")
+            res = tbe.dsl.vlrelu(raw_tensor, alpha)
+            return cast_to(res, "int32")
+
     return tbe.dsl.vlrelu(raw_tensor, alpha)
 
 
