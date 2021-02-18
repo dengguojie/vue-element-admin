@@ -71,6 +71,12 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_reluv2_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_dequant_add_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/conv/conv2d_writeselect_stridewrite_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequant_vadd_relu_quant_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_dequantS16_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_double_in_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_requant_pass.cc
+  buffer_fusion/ub_fusion/ai_core/conv/tbe_conv_sigmoid_mul_quant_pass.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_confusiontranspose_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_confusiontranspose_ub_fusion.cc
   buffer_fusion/ub_fusion/ai_core/matmul/matmul_gelugrad_ub_fusion.cc
@@ -78,6 +84,8 @@ set(_aicore_fusion_srcs
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_fullyconnection_elemwise_fusion_pass.cc
   buffer_fusion/ub_fusion/ai_core/matmul/tbe_matmul_elemwise.cc
   buffer_fusion/ub_fusion/ai_core/matmul/batch_matmul_fusedmuladd_ub_fusion.cc
+  buffer_fusion/ub_fusion/ai_core/pooling/tbe_antiquant_maxpooling_fusion_pass.cc
+  buffer_fusion/ub_fusion/ai_core/pooling/tbe_pooling_quant_fusion_pass.cc
   graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
   graph_fusion/ai_core/a_conv2d_mul_fusion_pass.cc
   graph_fusion/ai_core/adaptive_max_pool2d_fusion_pass.cc
