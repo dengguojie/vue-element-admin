@@ -54,7 +54,7 @@ def assign_sub_compute(var, value, output_z, kernel_name="assign_sub"):
     dtype = value.dtype
     if dtype in ("int8", "uint8"):
         var = tbe.cast_to(var, "float16")
-        value = tbe.cast_to(var, "float16")
+        value = tbe.cast_to(value, "float16")
     res = tbe.vsub(var, value)
     if dtype in ("int8", "uint8"):
         res = tbe.cast_to(res, dtype)
