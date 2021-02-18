@@ -145,7 +145,7 @@ def _evaluate_bind_core(core_n, cherry_num, factor):
 
 def _find_core_factor(cherry_num, core_n):
     core_gap = cherry_num * core_n
-    factor = 1
+    factor = cherry_num
 
     for i in range(cherry_num, 0, -1):
         i_gap = _evaluate_bind_core(core_n, cherry_num, i)
