@@ -1003,7 +1003,7 @@ def general_schedule(
             _raise_dx_general_err("AL0_matrix/BL0_matrix/CL0_matrix " "can't be None.")
 
     def _tiling_l0_process():
-        if al0_tiling_ma == a_col_ma and al0_tiling_ka == a_col_ka and a_col_batch == 1:
+        if al0_tiling_ma == a_col_ma and al0_tiling_ka == a_col_ka and a_col_batch == 1 and g_after == 1:
             tiling["AL0_matrix"] = []
 
         if tiling.get("BL0_matrix") != []:
