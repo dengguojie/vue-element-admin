@@ -36,13 +36,23 @@ template <typename T>
 struct ValueIndex {
   T value;
   int32_t index;
-  bool operator<(const ValueIndex<T> &other) const {
-    if (value == other.value) {
-      return index < other.index;
-    }
-    return value > other.value;
-  }
 };
+
+template <typename T>
+bool CompareDescending(const ValueIndex<T> &one, const ValueIndex<T> &another) {
+  if (one.value == another.value) {
+    return one.index < another.index;
+  }
+  return one.value > another.value;
+}
+
+template <typename T>
+bool CompareAscending(const ValueIndex<T> &one, const ValueIndex<T> &another) {
+  if (one.value == another.value) {
+    return one.index < another.index;
+  }
+  return one.value < another.value;
+}
 
 class TopK {
  public:
@@ -306,9 +316,9 @@ uint32_t TopKCpuKernel::DoCompute(CpuKernelContext &ctx) {
   auto values_data = reinterpret_cast<T *>(output_values_->GetData());
   auto indices_data = reinterpret_cast<int32_t *>(output_indices_->GetData());
   auto shard_top_k = [&](size_t start, size_t end) {
-    TopKCpuKernel::TopKForNVector(
+    TopKForNVector(
         input_data + start * col_, values_data + start * k_,
-        indices_data + start * k_, col_, k_, end - start, sorted_);
+        indices_data + start * k_ * (input_rank_ - dim_), end - start);
   };
   uint32_t ret = CpuKernelUtils::ParallelFor(
       ctx, row_, 1, shard_top_k);  // the minimum unit of segmentation is 1
@@ -322,20 +332,42 @@ uint32_t TopKCpuKernel::DoCompute(CpuKernelContext &ctx) {
 
 template <typename T>
 void TopKCpuKernel::TopKForNVector(T *input, T *value, int32_t *indices,
-                                   int col, int k, int n, bool sorted) {
+                                   int n) {
+  std::shared_ptr<TensorShape> input_shape = input_tensor_->GetTensorShape();
+  std::vector<int32_t> shape_end(input_rank_ - dim_);
+  shape_end[input_rank_ - dim_ - 1] = 1;
+  for (int32_t i = input_rank_ - dim_ - 2; i >= 0; i--) {
+    shape_end[i] = shape_end[i + 1] * input_shape->GetDimSize(i + dim_);
+  }
   for (int i = 0; i < n; i++) {
-    TopK::GetValueAndSelect(input + i * col, value + i * k, indices + i * k, k);
-    TopK::Select(input + i * col, value + i * k, indices + i * k, k, col);
-    if (sorted) {
-      std::vector<ValueIndex<T>> data(k);
-      for (int j = 0; j < k; j++) {
-        data[j].value = *(value + i * k + j);
-        data[j].index = *(indices + i * k + j);
+    TopK::GetValueAndSelect(input + i * col_, value + i * k_, indices + i * k_ * (input_rank_ - dim_), k_);
+    TopK::Select(input + i * col_, value + i * k_, indices + i * k_ * (input_rank_ - dim_), k_, col_);
+    if (sorted_) {
+      std::vector<ValueIndex<T>> data(k_);
+      for (int j = 0; j < k_; j++) {
+        data[j].value = *(value + i * k_ + j);
+        data[j].index = *(indices + i * k_ * (input_rank_ - dim_) + j);
       }
-      std::sort(data.begin(), data.end());
-      for (int j = 0; j < k; j++) {
-        *(value + i * k + j) = data[j].value;
-        *(indices + i * k + j) = data[j].index;
+      if (largest_) {
+        std::sort(data.begin(), data.end(), CompareDescending<T>);
+      } else {
+        std::sort(data.begin(), data.end(), CompareAscending<T>);
+      }
+      for (int j = 0; j < k_; j++) {
+        *(value + i * k_ + j) = data[j].value;
+        int32_t index_old = data[j].index;
+        for (size_t m = 0; m < shape_end.size(); m++) {
+          *(indices + (i * k_ + j) * (input_rank_ - dim_) + m) = index_old / shape_end[m];
+          index_old %= shape_end[m];
+        }
+      }
+    } else {
+      for (int j = 0; j < k_; j++) {
+        int32_t index_old = *(indices + i * k_ * (input_rank_ - dim_) + j);
+        for (size_t m = 0; m < shape_end.size(); m++) {
+          *(indices + (i * k_ + j) * (input_rank_ - dim_) + m) = index_old / shape_end[m];
+          index_old %= shape_end[m];
+        }
       }
     }
   }
@@ -347,7 +379,7 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(input_tensor_, KERNEL_STATUS_PARAM_INVALID,
                        "Get input[0], name[x] failed");
 
-  // get col_
+  // get attr: dim
   std::shared_ptr<TensorShape> input_shape = input_tensor_->GetTensorShape();
   KERNEL_CHECK_NULLPTR(input_shape, KERNEL_STATUS_PARAM_INVALID,
                        "Get shape of input[0], name[x] failed");
@@ -356,22 +388,35 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("Rank[%d] must be >= 1-D", input_rank);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  col_ = input_shape->GetDimSize(input_rank - 1);
-  if (col_ <= 0) {
-    KERNEL_LOG_ERROR("Col[%d] must be > 0", col_);
-    return KERNEL_STATUS_PARAM_INVALID;
+  input_rank_ = input_rank;
+  AttrValue *dim = ctx.GetAttr("dim");
+  KERNEL_CHECK_NULLPTR(dim, KERNEL_STATUS_PARAM_INVALID,
+                       "Get attr[dim] failed.");
+  dim_ = dim->GetInt();
+  dim_ = dim_ < 0 ? (input_rank + dim_) : dim_;
+  KERNEL_CHECK_FALSE(((dim_ >= 0) && (dim_ < input_rank)),
+                     KERNEL_STATUS_PARAM_INVALID,
+                     "Get Invalid attr[dim] value[%d]", dim_);
+
+  // get col_ and row_
+  col_ = 1;
+  row_ = 1;
+  for (int i = 0; i < input_rank; i++) {
+    if (i < dim_) {
+      row_ *= input_shape->GetDimSize(i);
+    } else {
+      col_ *= input_shape->GetDimSize(i);
+    }
   }
+  KERNEL_CHECK_FALSE((col_ > 0),
+                     KERNEL_STATUS_PARAM_INVALID,
+                     "Col[%d] must be > 0", col_);
+  KERNEL_CHECK_FALSE((row_ > 0),
+                     KERNEL_STATUS_PARAM_INVALID,
+                     "Row[%d] must be > 0", row_);
 
   // get data_type_
   data_type_ = static_cast<DataType>(input_tensor_->GetDataType());
-
-  // cal row_
-  size_t input_size = 1;
-  for (int i = 0; i < input_rank; i++) {
-    input_size *= input_shape->GetDimSize(i);
-  }
-
-  row_ = input_size / col_;
 
   // get k
   Tensor *k_tensor = ctx.Input(1);
@@ -395,6 +440,12 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(sorted, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr[sorted] failed.");
   sorted_ = sorted->GetBool();
+
+  // get attr: largest
+  AttrValue *largest = ctx.GetAttr("largest");
+  KERNEL_CHECK_NULLPTR(largest, KERNEL_STATUS_PARAM_INVALID,
+                       "Get attr[largest] failed.");
+  largest_ = largest->GetBool();
 
   // get values
   output_values_ = ctx.Output(0);

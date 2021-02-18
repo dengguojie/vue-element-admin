@@ -14,6 +14,22 @@
 using namespace std;
 using namespace aicpu;
 
+namespace {
+  template <typename T>
+  struct ValueIndex {
+    T value;
+    int32_t index;
+  };
+
+  template <typename T>
+  bool CompareDescending(const ValueIndex<T> &one, const ValueIndex<T> &another) {
+    if (one.value == another.value) {
+      return one.index < another.index;
+    }
+    return one.value > another.value;
+  }
+}
+
 class TEST_TOPK_UT : public testing::Test {};
 
 #define CREATE_NODEDEF(shapes, data_types, datas)                              \
@@ -23,7 +39,9 @@ class TEST_TOPK_UT : public testing::Test {};
       .Input({"k", data_types[1], shapes[1], datas[1]})                        \
       .Output({"values", data_types[2], shapes[2], datas[2]})                  \
       .Output({"indices", data_types[3], shapes[3], datas[3]})                 \
-      .Attr("sorted", true);
+      .Attr("sorted", true)                                                    \
+      .Attr("largest", true)                                                   \
+      .Attr("dim", -1);
 
 #define ADD_CASE(base_type, aicpu_type)                                        \
   TEST_F(TEST_TOPK_UT, TestTopK_##aicpu_type) {                                \
@@ -31,6 +49,13 @@ class TEST_TOPK_UT : public testing::Test {};
     vector<vector<int64_t>> shapes = {{24}, {}, {7}, {7}};                     \
     base_type input[24];                                                       \
     SetRandomValue<base_type>(input, 24);                                      \
+    vector<ValueIndex<base_type>> output_expect(24);                           \
+    for (int i = 0; i < 24; i++) {                                             \
+      output_expect[i].index = i;                                              \
+      output_expect[i].value = input[i];                                       \
+    }                                                                          \
+    sort(output_expect.begin(), output_expect.end(),                           \
+         CompareDescending<base_type>);                                        \
     int32_t k = 7;                                                             \
     base_type output_value[7] = {(base_type)0};                                \
     int32_t output_index[7] = {0};                                             \
@@ -38,6 +63,10 @@ class TEST_TOPK_UT : public testing::Test {};
                             (void *)output_index};                             \
     CREATE_NODEDEF(shapes, data_types, datas);                                 \
     RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
+    for (int i = 0; i < 7; i++) {                                              \
+      EXPECT_EQ(output_value[i], output_expect[i].value);                      \
+      EXPECT_EQ(output_index[i], output_expect[i].index);                      \
+    }                                                                          \
   }
 
 ADD_CASE(Eigen::half, DT_FLOAT16)

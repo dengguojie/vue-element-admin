@@ -42,14 +42,16 @@ class TopKCpuKernel : public CpuKernel {
    * descending order
    */
   template <typename T>
-  static void TopKForNVector(T *input, T *value, int32_t *indices, int col,
-                             int k, int n, bool sorted);
-  int32_t k_;
-  bool sorted_;
-  DataType data_type_;
-  Tensor *input_tensor_;
-  Tensor *output_values_;
-  Tensor *output_indices_;
+  void TopKForNVector(T *input, T *value, int32_t *indices, int n);
+  int32_t k_ = 0;
+  bool sorted_ = true;
+  bool largest_ = true;
+  int32_t dim_ = 0;
+  int32_t input_rank_ = 0;
+  DataType data_type_ = DT_DOUBLE;
+  Tensor *input_tensor_ = nullptr;
+  Tensor *output_values_ = nullptr;
+  Tensor *output_indices_ = nullptr;
   int32_t col_ = 0;
   int32_t row_ = 0;
 };
