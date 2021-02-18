@@ -25,6 +25,7 @@
 #include "op_log.h"
 #include "./util/error_util.h"
 #include "graph/utils/node_utils.h"
+#include "common/inc/op_log.h"
 
 namespace ge {
 // --------------------------LogSoftmaxGrad-------------------------
@@ -166,8 +167,6 @@ COMMON_INFER_FUNC_REG(SmoothL1Loss, SmoothL1LossInferShape);
 
 // --------------------------BinaryCrossEntropy-------------------------
 IMPLEMT_COMMON_INFERFUNC(BinaryCrossEntropyInferShape) {
-  TensorDesc outputTensordesc = op.GetOutputDesc("output");
-
   std::string reduceType = "mean";
   if (op.GetAttr("reduction", reduceType) == GRAPH_FAILED) {
     OpsGetAttrErrReport(op.GetName(), "reduction");
@@ -177,18 +176,27 @@ IMPLEMT_COMMON_INFERFUNC(BinaryCrossEntropyInferShape) {
   if (reduceType == "none") {
     // if reduction == "none" , output shape == x.shape
     OP_LOGI(op.GetName().c_str(), "the attr reduction = none");
-    outputTensordesc.SetShape(op.GetInputDesc("x").GetShape());
+    if (OneInOneOutDynamicInfer(op, "x", {"output"})){
+      return GRAPH_SUCCESS;
+    }
+    return GRAPH_SUCCESS;
   } else {
     // if reduction == "mean" or reduction == "sum" , output a scalar
-    std::vector<int64_t> oShapeVector;
-    Shape oShape(oShapeVector);
-    outputTensordesc.SetShape(ge::Shape(oShape));
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    if (op_info == nullptr) {
+      OP_LOGE(op.GetName().c_str(), "op_info should not be nullptr");
+      return GRAPH_FAILED;
+    }
+    auto outputTensordesc = op_info->MutableOutputDesc("output");
+    auto x_desc = op_info->MutableInputDesc("x");
+    DataType x_dtype = x_desc->GetDataType();
+    std::vector<int64_t> oShape;
+    std::vector<std::pair<int64_t, int64_t>> oRange;
+    outputTensordesc->SetShape(GeShape(oShape));
+    outputTensordesc->SetShapeRange(oRange);
+    outputTensordesc->SetDataType(x_dtype);
+    return GRAPH_SUCCESS;
   }
-
-  outputTensordesc.SetDataType(op.GetInputDesc("x").GetDataType());
-  (void)op.UpdateOutputDesc("output", outputTensordesc);
-
-  return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(BinaryCrossEntropy, BinaryCrossEntropyInferShape);
