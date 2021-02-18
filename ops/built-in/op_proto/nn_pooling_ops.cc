@@ -46,7 +46,7 @@ namespace {
   map<int, std::string> format2str = {
     {ge::FORMAT_NCHW, "NCHW"}, {ge::FORMAT_NHWC, "NHWC"}, {ge::FORMAT_HWCN, "HWCN"},
     {ge::FORMAT_DHWNC, "DHWNC"}, {ge::FORMAT_DHWCN, "DHWCN"}, {ge::FORMAT_NDHWC, "NDHWC"},
-    {ge::FORMAT_NCDHW, "NCDHWS"}
+    {ge::FORMAT_NCDHW, "NCDHW"}
   };
 }
 
