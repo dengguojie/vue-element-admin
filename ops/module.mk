@@ -404,6 +404,8 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/tile_d.cc \
         built-in/op_tiling/tile.cc \
         built-in/op_tiling/max_pool.cc \
+        built-in/op_tiling/batch_to_space_nd.cc \
+        built-in/op_tiling/space_to_batch_nd.cc \
         built-in/op_tiling/top_k.cc \
         built-in/op_tiling/gemm.cc \
         built-in/op_tiling/lock.cc \

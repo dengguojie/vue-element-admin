@@ -129,6 +129,10 @@ from .assign import assign
 from .assign_add import assign_add
 from .bias_add import bias_add
 from .bias_add_grad import bias_add_grad
+from .batch_to_space import batch_to_space
+from .batch_to_space_nd import batch_to_space_nd
+from .space_to_batch import space_to_batch
+from .space_to_batch_nd import space_to_batch_nd
 from .greater import greater
 from .l2_loss import l2_loss
 from .log import log

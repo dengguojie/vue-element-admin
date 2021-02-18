@@ -119,7 +119,10 @@ from .rsqrt import rsqrt
 
 # tbe it6
 from .greater import greater
+from .batch_to_space_nd import batch_to_space_nd
 from .batch_to_space_nd_d import batch_to_space_nd_d
+from .space_to_batch_nd import space_to_batch_nd
+from .space_to_batch_nd_d import space_to_batch_nd_d
 from .batch_norm import batch_norm
 from .batch_norm_grad import batch_norm_grad
 from .bn_training_reduce import bn_training_reduce

@@ -24,19 +24,48 @@ protected:
 TEST_F(space_to_batch_d_infer_test, space_to_batch_d_infer_test_1) {
 
  // set input info
-  auto input_shape = vector<int64_t>({10, 11, 20, 16});
-  std::vector<std::pair<int64_t,int64_t>> input_range = {{10, 10}, {11, 11}, {20, 20}, {16, 16}};
-  auto block_size = 1;
-  auto paddings = vector<int64_t>({0,0,0,0});
+  auto input_shape = vector<int64_t>({10, 11, 17, 16});
+  std::vector<std::pair<int64_t,int64_t>> input_range = {{10, 10}, {11, 11}, {17, 17}, {16, 16}};
+  auto block_size = 2;
+  auto paddings = vector<int64_t>({1,2,2,1});
   auto test_format = ge::FORMAT_NHWC;
 
   // expect result
-  std::vector<int64_t> expected_shape = {10, 11, 20, 16};
-  std::vector<std::pair<int64_t,int64_t>> expected_range = {{10, 10}, {11, 11}, {20, 20}, {16, 16}};
+  std::vector<int64_t> expected_shape = {40, 7, 10, 16};
 
   // create desc
   auto input_desc = create_desc_shape_range(input_shape, ge::DT_FLOAT16, test_format,
                                             input_shape, test_format, input_range);
+
+  // new op and do infershape
+  ge::op::SpaceToBatchD op;
+  op.UpdateInputDesc("x", input_desc);
+  op.set_attr_block_size(block_size);
+  op.set_attr_paddings(paddings);
+
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+}
+
+TEST_F(space_to_batch_d_infer_test, space_to_batch_d_infer_test_4) {
+
+  // set input info
+  auto input_shape = vector<int64_t>({10, 16, 11, 17});
+  std::vector<std::pair<int64_t,int64_t>> input_range = {{10, 10}, {16, 16}, {11, 11}, {17, 17}};
+  auto block_size = 2;
+  auto paddings = vector<int64_t>({1,2,2,1});
+  auto test_format = ge::FORMAT_NCHW;
+
+  // expect result
+  std::vector<int64_t> expected_shape = {40, 16, 7, 10};
+
+  // create desc
+  auto input_desc = create_desc_shape_range(input_shape, ge::DT_FLOAT16, test_format,
+  input_shape, test_format, input_range);
 
   // new op and do infershape
   ge::op::SpaceToBatchD op;
@@ -64,6 +93,40 @@ TEST_F(space_to_batch_d_infer_test, space_to_batch_d_infer_test_2) {
   // expect result
   std::vector<int64_t> expected_shape = {40, -1, -1, 16};
   std::vector<std::pair<int64_t,int64_t>> expected_range = {{40, 40}, {7, 7}, {11, 11}, {16, 16}};
+
+  // create desc
+  auto input_desc = create_desc_shape_range(input_shape, ge::DT_FLOAT16, test_format,
+  input_shape, test_format, input_range);
+
+  // new op and do infershape
+  ge::op::SpaceToBatchD op;
+  op.UpdateInputDesc("x", input_desc);
+  op.set_attr_block_size(block_size);
+  op.set_attr_paddings(paddings);
+
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(output_range, expected_range);
+}
+
+TEST_F(space_to_batch_d_infer_test, space_to_batch_d_infer_test_5) {
+
+  // set input info
+  auto input_shape = vector<int64_t>({10, 16, -1, -1});
+  std::vector<std::pair<int64_t,int64_t>> input_range = {{10, 10}, {16, 16}, {12, 12}, {20, 20}};
+  auto block_size = 2;
+  auto paddings = vector<int64_t>({1,1,1,1});
+  auto test_format = ge::FORMAT_NCHW;
+
+  // expect result
+  std::vector<int64_t> expected_shape = {40, 16, -1, -1};
+  std::vector<std::pair<int64_t,int64_t>> expected_range = {{40, 40}, {16, 16}, {7, 7}, {11, 11}};
 
   // create desc
   auto input_desc = create_desc_shape_range(input_shape, ge::DT_FLOAT16, test_format,
