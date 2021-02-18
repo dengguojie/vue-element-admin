@@ -3423,6 +3423,21 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 
   int64_t groups = 1;
   op.GetAttr("groups", groups);
+  if ((!unknown_rank) && (groups == 1)) {
+    if (ic % kc == 0) {
+      groups = ic / kc;
+      op.SetAttr("groups", groups);
+      OP_LOGD(op.GetName().c_str(), "parameter groups is implicitly changed.");
+    } else {
+      OP_LOGE(op.GetName().c_str(), "in_channels should be divisible by kernel_channels when groups = 1.");
+      map<string, string> err_map;
+      err_map["op_name"] = op.GetName().c_str();
+      err_map["description"] = "in_channels should be divisible by kernel_channels when groups = 1.";
+      std::string report_error_code = "E50060";
+      ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+      return GRAPH_FAILED;
+    }
+  }
   if ((!unknown_rank) && (ic != kc * groups)) {
     OP_LOGE(op.GetName().c_str(),
             "x channel should be equal to filter channel*groups. "
