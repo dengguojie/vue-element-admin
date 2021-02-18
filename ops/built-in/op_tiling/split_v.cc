@@ -107,6 +107,40 @@ void InitSplitVRunningParams(SplitVTilingParams& params) {
   params.lastSegLastCore = 0;
 }
 
+static bool GetConstValue(const TeOpParas& paras, const std::string& name, const std::string& dtype,
+                          std::vector<int64_t>& values) {
+  values.clear();
+  if (paras.const_inputs.count(name) == 0) {
+    OP_LOGE("op[SplitVTiling] : GetConstValue, name is invalid");
+    return false;
+  }
+
+  auto size = std::get<1>(paras.const_inputs.at(name));
+  if (dtype == "int64") {
+    int count = size / sizeof(int64_t);
+    values.resize(count);
+    if (EOK != memcpy_s(values.data(), count * sizeof(int64_t), std::get<0>(paras.const_inputs.at(name)),
+                        std::get<1>(paras.const_inputs.at(name)))) {
+      OP_LOGE("op[SplitVTiling]: GetConstValue, int64, memcpy_s failed");
+      return false;
+    }
+  } else if (dtype == "int32") {
+    int count = size / sizeof(int32_t);
+    std::vector<int32_t> tmp(count, 0);
+    if (EOK != memcpy_s(tmp.data(), count * sizeof(int32_t), std::get<0>(paras.const_inputs.at(name)),
+                        std::get<1>(paras.const_inputs.at(name)))) {
+      OP_LOGE("op[SplitVTiling]: GetConstValue, int32, memcpy_s failed");
+      return false;
+    }
+    values.insert(values.end(), tmp.begin(), tmp.end());
+  } else {
+    OP_LOGE("op[SplitVTiling]: GetConstValue, data type is invalid");
+    return false;
+  }
+
+  return true;
+}
+
 int64_t CeilDivCal(const int64_t& uValue, const int64_t& dValue) {
   int64_t resValue = 0;
   if (dValue == 0) {
@@ -130,6 +164,17 @@ int64_t GetDataBlockElems(const std::string& dtype) {
     dataBlock = 4;
   }
   return dataBlock;
+}
+
+bool CheckSizeSplitsSmall(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t shapeAfterDim) {
+  bool ret = true;
+  for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
+    if (sizeSplitsVec[i] * shapeAfterDim >= dataBlock) {
+      ret = false;
+      break;
+    }
+  }
+  return ret;
 }
 
 bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> inputShape,
@@ -165,51 +210,6 @@ bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> in
     }
   }
   return true;
-}
-
-bool CheckSizeSplitsSmall(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t shapeAfterDim) {
-  bool ret = true;
-  for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
-    if (sizeSplitsVec[i] * shapeAfterDim >= dataBlock) {
-      ret = false;
-      break;
-    }
-  }
-  return ret;
-}
-
-void GetFrontLoopParams(SplitVTilingParams& runParams, int64_t ubElems, int64_t dataNum, int64_t dataBlock) {
-  if (dataNum < ubElems) {
-    runParams.oneLoopElems = dataNum;
-    runParams.loopNum = 0;
-    runParams.lastNum = dataNum;
-  } else {
-    runParams.oneLoopElems = ubElems;
-    runParams.loopNum = dataNum / ubElems;
-    runParams.lastNum = dataNum % ubElems;
-    if ((runParams.lastNum > 0) && (runParams.lastNum < dataBlock)) {
-      runParams.oneLoopElems = ubElems - dataBlock;
-      runParams.loopNum = dataNum / runParams.oneLoopElems;
-      runParams.lastNum = dataNum % runParams.oneLoopElems;
-    }
-  }
-}
-
-void GetLastLoopParams(SplitVTilingParams& runParams, int64_t ubElems, int64_t dataBlock) {
-  if (runParams.dataLastCore < ubElems) {
-    runParams.oneLoopElemsLast = runParams.dataLastCore;
-    runParams.loopNumLast = 0;
-    runParams.lastNumLast = runParams.dataLastCore;
-  } else {
-    runParams.oneLoopElemsLast = ubElems;
-    runParams.loopNumLast = runParams.dataLastCore / ubElems;
-    runParams.lastNumLast = runParams.dataLastCore % ubElems;
-    if ((runParams.lastNumLast > 0) && (runParams.lastNumLast < dataBlock)) {
-      runParams.oneLoopElemsLast = ubElems - dataBlock;
-      runParams.loopNumLast = runParams.dataLastCore / runParams.oneLoopElemsLast;
-      runParams.lastNumLast = runParams.dataLastCore % runParams.oneLoopElemsLast;
-    }
-  }
 }
 
 bool CheckMode6(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t shapeAfterDim, int64_t shapeAfter) {
@@ -258,6 +258,57 @@ bool CheckMode7(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t s
   return ret;
 }
 
+void GetFrontLoopParams(SplitVTilingParams& runParams, int64_t ubElems, int64_t dataNum, int64_t dataBlock) {
+  if (dataNum < ubElems) {
+    runParams.oneLoopElems = dataNum;
+    runParams.loopNum = 0;
+    runParams.lastNum = dataNum;
+  } else {
+    runParams.oneLoopElems = ubElems;
+    runParams.loopNum = dataNum / ubElems;
+    runParams.lastNum = dataNum % ubElems;
+    if ((runParams.lastNum > 0) && (runParams.lastNum < dataBlock)) {
+      runParams.oneLoopElems = ubElems - dataBlock;
+      runParams.loopNum = dataNum / runParams.oneLoopElems;
+      runParams.lastNum = dataNum % runParams.oneLoopElems;
+    }
+  }
+}
+
+void GetLastLoopParams(SplitVTilingParams& runParams, int64_t ubElems, int64_t dataBlock) {
+  if (runParams.dataLastCore < ubElems) {
+    runParams.oneLoopElemsLast = runParams.dataLastCore;
+    runParams.loopNumLast = 0;
+    runParams.lastNumLast = runParams.dataLastCore;
+  } else {
+    runParams.oneLoopElemsLast = ubElems;
+    runParams.loopNumLast = runParams.dataLastCore / ubElems;
+    runParams.lastNumLast = runParams.dataLastCore % ubElems;
+    if ((runParams.lastNumLast > 0) && (runParams.lastNumLast < dataBlock)) {
+      runParams.oneLoopElemsLast = ubElems - dataBlock;
+      runParams.loopNumLast = runParams.dataLastCore / runParams.oneLoopElemsLast;
+      runParams.lastNumLast = runParams.dataLastCore % runParams.oneLoopElemsLast;
+    }
+  }
+}
+
+bool CheckShapeDim(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t coreNum, int64_t shapeAfterDim,
+                   int64_t shapeDim) {
+  if (shapeDim < coreNum || shapeAfterDim / coreNum > 4*dataBlock) {
+    return false;
+  }
+
+  bool ret = true;
+  int64_t splitSize0 = sizeSplitsVec[0];
+  for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
+    if (sizeSplitsVec[i] != splitSize0) {
+      ret = false;
+      break;
+    }
+  }
+  return ret;
+}
+
 void CalSpecialParams(SplitVTilingParams& runParams, int64_t coreNum, int64_t dataBlock, int64_t shapeBefore) {
   int64_t unit = dataBlock;
   int64_t maxRows = 8 * unit;
@@ -281,23 +332,6 @@ void CalSpecialParams(SplitVTilingParams& runParams, int64_t coreNum, int64_t da
   runParams.oneLoopElemsLast = maxRows;
   runParams.loopNumLast = rowsLastCore / maxRows;
   runParams.lastNumLast = rowsLastCore - runParams.loopNumLast * maxRows;
-}
-
-bool CheckShapeDim(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t coreNum, int64_t shapeAfterDim,
-                   int64_t shapeDim) {
-  if (shapeDim < coreNum || shapeAfterDim / coreNum > 4*dataBlock) {
-    return false;
-  }
-
-  bool ret = true;
-  int64_t splitSize0 = sizeSplitsVec[0];
-  for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
-    if (sizeSplitsVec[i] != splitSize0) {
-      ret = false;
-      break;
-    }
-  }
-  return ret;
 }
 
 bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, std::vector<int64_t> inputShape,
@@ -518,40 +552,6 @@ void PrintSplitVTilingParams(const SplitVTilingParams& params) {
   GELOGD("op [SplitVTiling] : lastCoreSeg=%d.", params.lastCoreSeg);
   GELOGD("op [SplitVTiling] : segLoopNumLastCore=%d.", params.segLoopNumLastCore);
   GELOGD("op [SplitVTiling] : lastSegLastCore=%d.", params.lastSegLastCore);
-}
-
-static bool GetConstValue(const TeOpParas& paras, const std::string& name, const std::string& dtype,
-                          std::vector<int64_t>& values) {
-  values.clear();
-  if (paras.const_inputs.count(name) == 0) {
-    OP_LOGE("op[SplitVTiling] : GetConstValue, name is invalid");
-    return false;
-  }
-
-  auto size = std::get<1>(paras.const_inputs.at(name));
-  if (dtype == "int64") {
-    int count = size / sizeof(int64_t);
-    values.resize(count);
-    if (EOK != memcpy_s(values.data(), count * sizeof(int64_t), std::get<0>(paras.const_inputs.at(name)),
-                        std::get<1>(paras.const_inputs.at(name)))) {
-      OP_LOGE("op[SplitVTiling]: GetConstValue, int64, memcpy_s failed");
-      return false;
-    }
-  } else if (dtype == "int32") {
-    int count = size / sizeof(int32_t);
-    std::vector<int32_t> tmp(count, 0);
-    if (EOK != memcpy_s(tmp.data(), count * sizeof(int32_t), std::get<0>(paras.const_inputs.at(name)),
-                        std::get<1>(paras.const_inputs.at(name)))) {
-      OP_LOGE("op[SplitVTiling]: GetConstValue, int32, memcpy_s failed");
-      return false;
-    }
-    values.insert(values.end(), tmp.begin(), tmp.end());
-  } else {
-    OP_LOGE("op[SplitVTiling]: GetConstValue, data type is invalid");
-    return false;
-  }
-
-  return true;
 }
 
 bool GetSplitVCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int64_t& ubElems,
