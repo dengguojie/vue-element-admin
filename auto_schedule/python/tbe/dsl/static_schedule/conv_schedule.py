@@ -2082,7 +2082,7 @@ class CceConvOp:
                         sch[tensor_map["bias_l0c"]].set_scope(cce.scope_cc)
                         sch[tensor_map["c_col_bias"]].set_scope(cce.scope_cc)
                         sch[tensor_map["bias_l0c"]].reused_by(tensor_map["c_col_bias"], c_col)
-                        sch[tensor_map["c_col_bias"]].emit_insn(tensor_map["c_col_bias"].op.axis, "phony_insn")
+                        sch[tensor_map["c_col_bias"]].emit_insn(tensor_map["c_col_bias"].op.axis[0], "phony_insn")
                         sch[tensor_map["bias_l0c"]].emit_insn(tensor_map["bias_l0c"].op.axis[1], "dma_copy")
 
                         sch[tensor_map["bias_ub"]].emit_insn(tensor_map["bias_ub"].op.axis[0], 'dma_copy')
