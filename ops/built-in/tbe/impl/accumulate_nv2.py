@@ -40,22 +40,21 @@ def _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num):
     ----------
     """
 
-    result = tbe.broadcast(tensor_list[0], out_shape)
+    result = tbe.broadcast(0, out_shape)
     # in order to improve the accuracy, convert float16 to float32
-    if out_dtype == 'float16' and num > 1:
-
+    if out_dtype == 'float16':
         result = tbe.cast_to(result, 'float32')
-        for i in range(1, num):
+        for i in range(0, num):
             tmp = tbe.broadcast(tensor_list[i], out_shape)
             tmp = tbe.cast_to(tmp, 'float32')
             result = tbe.vadd(result, tmp)
     else:
-        for i in range(1, num):
+        for i in range(0, num):
             tmp = tbe.broadcast(tensor_list[i], out_shape)
             result = tbe.vadd(result, tmp)
 
     # in order to improve the accuracy, convert float32 back to float16
-    if out_dtype == 'float16' and num > 1:
+    if out_dtype == 'float16':
         result = tbe.cast_to(result, 'float16')
 
     return result
