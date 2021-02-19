@@ -1274,6 +1274,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
         // known dim, shape size as range_max
         range_max = input_shape_size;
       }
+      range_max = (range_max > INT32_MAX) ? INT32_MAX : range_max;
       std::vector<std::pair<int64_t, int64_t>> y_range(rank, {1, range_max});
       td->SetShapeRange(y_range);
       return GRAPH_SUCCESS;
