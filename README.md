@@ -32,7 +32,7 @@
     ```
     git clone --recursive https://gitee.com/ascend/canndev.git
     cd canndev
-    git checkout development
+    git checkout master
     git submodule init
     git submodule update
     ```

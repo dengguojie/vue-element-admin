@@ -69,7 +69,7 @@ run_ut() {
     if [[ -f "$coverage_file" ]]; then
       coverage_dir="$(dirname $coverage_file)"
       cd $coverage_dir && coverage xml -o ${OPS_UT_COV_REPORT}/coverage.xml >/dev/null 2>&1
-      diff-cover --compare-branch=origin/development ${OPS_UT_COV_REPORT}/coverage.xml --html-report ${OPS_UT_COV_REPORT}/report.html
+      diff-cover --compare-branch=origin/master ${OPS_UT_COV_REPORT}/coverage.xml --html-report ${OPS_UT_COV_REPORT}/report.html
       echo "diff-cover generated."
     else
       echo "coverage data is not exist, do not need generate inc report."
