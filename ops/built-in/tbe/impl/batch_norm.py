@@ -24,6 +24,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+import functools
 
 NONETYPE = type(None)
 
@@ -115,9 +116,9 @@ def _format_check(arg_input, data_format):
     None
     """
     format_data = arg_input.get("format")
-    if format_data not in ("NHWC", "NCHW", "NC1HWC0", "NDC1HWC0"):
+    if format_data not in ("NHWC", "NCHW", "NC1HWC0", "NDC1HWC0", "ND"):
         error_manager_vector.raise_err_input_format_invalid("batch_norm", "arg_input", \
-                                                            ["NHWC", "NCHW", "NC1HWC0", "NDC1HWC0"], format_data)
+                                                            ["NHWC", "NCHW", "NC1HWC0", "NDC1HWC0", "ND"], format_data)
     if data_format not in ("NHWC", "NCHW", "NCDHW", "NDHWC"):
         error_manager_vector.raise_err_input_format_invalid("batch_norm", "data_format", \
                                                             ["NHWC", "NCHW", "NCDHW", "NDHWC"], data_format)
@@ -552,8 +553,17 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
     """
 
     shape_x = x.get("shape")
+    format_data = x.get("format")
     if len(shape_x) == 2:
         shape_x = list(shape_x) + [1, 1]
+        format_data = "NCHW"
+    elif len(shape_x) == 3:
+        shape_x = list(shape_x) + [1]
+        format_data = "NCHW"
+    elif format_data == "ND":
+        rest_num = functools.reduce(lambda x, y: x * y, shape_x[3:])
+        shape_x = list(shape_x[:3]) + [rest_num]
+        format_data = "NCHW"
     shape_scale = scale.get("shape")
     shape_offset = offset.get("shape")
     if not is_training:
@@ -570,7 +580,6 @@ def batch_norm(x, scale, offset, mean, variance, y, batch_mean,
         para_check.check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
 
     _format_check(x, data_format)
-    format_data = x.get("format")
 
     _shape_check(shape_x, shape_scale, shape_offset, mean,
                  variance, is_training, format_data)
