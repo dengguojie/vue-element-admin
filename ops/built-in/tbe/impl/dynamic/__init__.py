@@ -195,3 +195,4 @@ from .bn_infer import bn_infer
 from .bn_infer_grad import bn_infer_grad
 from .selu import selu
 from .binary_cross_entropy import binary_cross_entropy
+from .binary_cross_entropy_grad import binary_cross_entropy_grad

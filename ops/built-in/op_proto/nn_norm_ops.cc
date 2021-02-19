@@ -204,13 +204,10 @@ COMMON_INFER_FUNC_REG(BinaryCrossEntropy, BinaryCrossEntropyInferShape);
 
 // --------------------------BinaryCrossEntropyGrad-------------------------
 IMPLEMT_COMMON_INFERFUNC(BinaryCrossEntropyGradInferShape) {
-  TensorDesc outputTensordesc = op.GetOutputDesc("output");
-
-  outputTensordesc.SetShape(op.GetInputDesc("x").GetShape());
-  outputTensordesc.SetDataType(op.GetInputDesc("x").GetDataType());
-  (void)op.UpdateOutputDesc("output", outputTensordesc);
-
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"output"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(BinaryCrossEntropyGrad, BinaryCrossEntropyGradInferShape);
