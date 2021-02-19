@@ -74,7 +74,7 @@ class OperatorContext:
         """
         :return:
         """
-        op_infos = operation.get_op_context().get_all_op_info()
+        op_infos = operation.get_op_context().get_op_info()
         if len(op_infos) == 1:
             return op_infos[0].op_type
 

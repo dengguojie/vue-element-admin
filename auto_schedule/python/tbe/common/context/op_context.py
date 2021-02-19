@@ -22,6 +22,7 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 from .op_info import OpInfo
 
@@ -53,6 +54,15 @@ class OpContext:
 
         self._buffer_manager = None  # type: Any
 
+        # enum: initially_build, fuzzily_build, accurately_build
+        self._build_type = None  # type: Optional[str]
+
+        # json format string, used in initially/fuzzily build
+        self._missing_support_info = None  # type: Optional[str]
+
+        # used in initially/fuzzily build
+        self._build_json_result = {}  # type: Dict[str, Any]
+
         self._additional_params = {}  # type: Dict[str, Any]
 
         self._custom_context = {}  # type: Dict[str, Callable[[], Any]]
@@ -83,25 +93,20 @@ class OpContext:
         """
         self._op_info.append(op_info)
 
-    def get_op_info(self, name):
-        # type: (str) -> Optional[OpInfo]
+    def get_op_info(self, name=None):
+        # type: (Optional[str]) -> Union[List[OpInfo], Optional[OpInfo]]
         """
 
-        :param name:
+        :param name: If none, return all op info.
         :return:
         """
+        if name is None:
+            return self._op_info
+
         for x in self._op_info:
             if x.op_name == name:
                 return x
         return None
-
-    def get_all_op_info(self):
-        # type: () -> List[OpInfo]
-        """
-
-        :return:
-        """
-        return self._op_info
 
     def add_compile_info(self, k, v):
         # type: (str, Any) -> None
@@ -113,22 +118,17 @@ class OpContext:
         """
         self._compile_info[k] = v
 
-    def get_compile_info(self, k):
-        # type: (str) -> Any
+    def get_compile_info(self, k=None):
+        # type: (Optional[str]) -> Union[Dict[str, Any], Any]
         """
 
-        :param k:
+        :param k: If none, return all compile info.
         :return:
         """
+        if k is None:
+            return self._compile_info
+
         return self._compile_info.get(k)
-
-    def get_all_compile_info(self):
-        # type: () -> Dict[str, Any]
-        """
-
-        :return:
-        """
-        return self._compile_info
 
     def add_build_res(self, k, v):
         # type: (str, Any) -> None
@@ -140,22 +140,17 @@ class OpContext:
         """
         self._build_res[k] = v
 
-    def get_build_res(self, k):
-        # type: (str) -> Any
+    def get_build_res(self, k=None):
+        # type: (Optional[str]) -> Union[Dict[str, Any], Any]
         """
 
-        :param k:
+        :param k: If none, return all build res.
         :return:
         """
+        if k is None:
+            return self._build_res
+
         return self._build_res.get(k)
-
-    def get_all_build_res(self):
-        # type: () -> Dict[str, Any]
-        """
-
-        :return:
-        """
-        return self._build_res
 
     def get_buffer_manager(self):
         # type: () -> Any
@@ -182,6 +177,62 @@ class OpContext:
         :return:
         """
         return self._custom_context.get(k)
+
+    def get_build_type(self):
+        # type: () -> Optional[str]
+        """
+
+        :return:
+        """
+        return self._build_type
+
+    def set_build_type(self, build_type):
+        # type: (str) -> None
+        """
+
+        :param build_type:
+        :return:
+        """
+        self._build_type = build_type
+
+    def get_missing_support_info(self):
+        # type: () -> Optional[str]
+        """
+
+        :return:
+        """
+        return self._missing_support_info
+
+    def set_missing_support_info(self, missing_support_info):
+        # type: (str) -> None
+        """
+
+        :param missing_support_info:
+        :return:
+        """
+        self._missing_support_info = missing_support_info
+
+    def add_build_json_result(self, k, v):
+        # type: (str, Any) -> None
+        """
+
+        :param k:
+        :param v:
+        :return:
+        """
+        self._build_json_result[k] = v
+
+    def get_build_json_result(self, k=None):
+        # type: (Optional[str]) -> Union[Dict[str, Any], Any]
+        """
+
+        :param k: If none, return all build json result.
+        :return:
+        """
+        if k is None:
+            return self._build_json_result
+
+        return self._build_json_result.get(k)
 
     def add_addition(self, key, value):
         # type: (str, Any) -> None

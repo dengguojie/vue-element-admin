@@ -455,7 +455,7 @@ def get_compile_info() -> dict:
     if _in_compatible_mode():
         return get_context().get("compile_info")
 
-    return get_op_context().get_all_compile_info()
+    return get_op_context().get_compile_info()
 
 
 def add_build_arg(key, value):
