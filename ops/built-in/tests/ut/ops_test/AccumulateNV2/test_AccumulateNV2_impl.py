@@ -35,7 +35,7 @@ case3 = {"params": [[{"shape": (2, 1, 6, 10), "dtype": "float16", "format": "NCH
 
 ut_case.add_case(["Ascend310"], case1)
 ut_case.add_case(["Ascend310"], case2)
-# ut_case.add_case(["Ascend310"], case3)
+ut_case.add_case(["Ascend310"], case3)
 
 def get_broad_cast_shape(input_dic_list):
     input_shape_num = len(input_dic_list)
@@ -100,15 +100,15 @@ ut_case.add_precision_case("Ascend310",
                             "case_name": "accumulate_nv2_prec_2",
                             "calc_expect_func": calc_expect_func,
                             "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
-# ut_case.add_precision_case("Ascend310", 
-#                            {"params": [[{"shape": (2, 1, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 1, 1, 1),"ori_format": "NCHW", "param_type": "input"},
-#                                         {"shape": (2, 4, 1, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 4, 1, 8),"ori_format": "NCHW", "param_type": "input"},
-#                                         {"shape": (2, 1, 6, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 1, 6, 8),"ori_format": "NCHW", "param_type": "input"}],
-#                                        {"shape": (2, 4, 6, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 4, 6, 8),"ori_format": "NCHW", "param_type": "output"},
-#                                        3],
-#                             "case_name": "accumulate_nv2_prec_3",
-#                             "calc_expect_func": calc_expect_func,
-#                             "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
+ut_case.add_precision_case("Ascend310", 
+                           {"params": [[{"shape": (2, 1, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 1, 1, 1),"ori_format": "NCHW", "param_type": "input"},
+                                        {"shape": (2, 4, 1, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 4, 1, 8),"ori_format": "NCHW", "param_type": "input"},
+                                        {"shape": (2, 1, 6, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 1, 6, 8),"ori_format": "NCHW", "param_type": "input"}],
+                                       {"shape": (2, 4, 6, 8), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 4, 6, 8),"ori_format": "NCHW", "param_type": "output"},
+                                       3],
+                            "case_name": "accumulate_nv2_prec_3",
+                            "calc_expect_func": calc_expect_func,
+                            "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path="/usr/local/Ascend/toolkit/tools/simulator")
