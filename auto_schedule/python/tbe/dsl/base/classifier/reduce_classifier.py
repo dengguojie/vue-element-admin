@@ -60,7 +60,11 @@ def _check_all_unknown_shape(ins: list):
             elif tuple(single_input.get("shape")) != (-1, ):
                 is_axis_not_negative_one = True
         else:
-            if tuple(single_input.get("shape")) == (-2, ):
+            if -2 in single_input.get("shape"):
+                if len(single_input) != 1:
+                    dict_args = dict()
+                    dict_args["errCode"] = "E90001"
+                    dict_args["detailed_cause"] = "if the shape contains -2, it must be [-2] or (-2, )"
                 has_all_unknown_shape = True
 
     if has_all_unknown_shape and (is_known_classify or is_axis_not_negative_one):
