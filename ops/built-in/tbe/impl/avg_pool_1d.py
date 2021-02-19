@@ -213,9 +213,11 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list):
 
         if nc1_limit > 1:
             fused_factor, wo_factor = min(fused_axis_block_factor, nc1_limit), w_block_factor
-        else:
+        elif nc1wo_limit >= 8:
             # To align 8 blocks, round down to a multiple of 8.
             fused_factor, wo_factor = 1, nc1wo_limit // 8 * 8
+        else:
+            fused_factor, wo_factor = 1, 1
         return [fused_axis_block_factor, w_block_factor], [fused_factor, wo_factor]
 
     x_shape = [i.value for i in tensor_x.shape]

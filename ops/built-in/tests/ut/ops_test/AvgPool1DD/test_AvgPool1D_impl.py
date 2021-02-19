@@ -219,5 +219,19 @@ ut_case.add_precision_case("all", {
     "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
 })
 
+
+ut_case.add_precision_case("all", {
+    "params": [{'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+                'ori_shape': (1, 1, 1, 2000, 16), 'shape': (1, 1, 1, 2000, 16), "param_type": "input"},
+               {'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+                "value": avgpool_1d_matrix((1, 1, 1, 2000, 16), 5, 1, [0, 0], False, False).astype("float16"),
+                'ori_shape': (1, 1, 1, 1996, 16), 'shape': (1, 1, 1, 1996, 16), "param_type": "input"},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+                "ori_shape": (1, 1, 1, 1996, 16), "shape": (1, 1, 1, 1996, 16), "param_type": "output"},
+               5, 1, [0, 0], False, False],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+})
+
 if __name__ == '__main__':
     ut_case.run("Ascend910")
