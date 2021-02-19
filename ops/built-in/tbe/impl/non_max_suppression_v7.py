@@ -68,7 +68,12 @@ class NonMaxSuppression(object):
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
         self.input_gm_list = []
         self.output_gm_list = []
-
+        # for soc
+        soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
+        if soc_version in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+            self.is_lhisi = True
+        else:
+            self.is_lhisi = False
         boxes_shape = list(boxes.get("shape"))
         self.box_type = boxes.get("dtype")
         scores_shape = list(scores.get("shape"))
@@ -211,17 +216,27 @@ class NonMaxSuppression(object):
         # iou_threshold = iou_thres_gm[0]/(iou_thres_gm[0] + 1)
         iou_thres_gm = self.input_gm_list[3]
         with self.tik_instance.new_stmt_scope():
-            iou_threshold_um = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_um",
-                                                        scope=tik.scope_ubuf)
-            self.tik_instance.data_move(iou_threshold_um[0], iou_thres_gm[0], 0, 1, 1, 0, 0)
-            iou_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_temp",
-                                                          scope=tik.scope_ubuf)
+            if self.is_lhisi:
+                iou_threshold_um = self.tik_instance.Tensor("float16", (16,), name="iou_threshold_um",
+                                                            scope=tik.scope_ubuf)
+                self.tik_instance.data_move(iou_threshold_um[0], iou_thres_gm[0], 0, 1, 1, 0, 0)
+                iou_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="iou_threshold_ub",
+                                                            scope=tik.scope_ubuf)
+                self.tik_instance.vector_dup(16, iou_threshold_ub, 1.0, 1, 1, 1)
+                iou_threshold_ub[0].set_as(iou_threshold_um[0])
+            else:
+                iou_threshold_um = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_um",
+                                                            scope=tik.scope_ubuf)
+                self.tik_instance.data_move(iou_threshold_um[0], iou_thres_gm[0], 0, 1, 1, 0, 0)
+                iou_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="iou_threshold_temp",
+                                                            scope=tik.scope_ubuf)
 
-            self.tik_instance.vector_dup(16, iou_threshold_temp, 1.0, 1, 1, 1)
-            iou_threshold_temp[0].set_as(iou_threshold_um[0])
+                self.tik_instance.vector_dup(16, iou_threshold_temp, 1.0, 1, 1, 1)
+                iou_threshold_temp[0].set_as(iou_threshold_um[0])
 
-            iou_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="iou_threshold_ub", scope=tik.scope_ubuf)
-            self.tik_instance.vec_conv(16, "none", iou_threshold_ub, iou_threshold_temp, 1, 1, 2)
+                iou_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="iou_threshold_ub",
+                                                            scope=tik.scope_ubuf)
+                self.tik_instance.vec_conv(16, "none", iou_threshold_ub, iou_threshold_temp, 1, 1, 2)
 
             ub_one = self.tik_instance.Tensor("float16", (16,), name="ub_one", scope=tik.scope_ubuf)
             self.tik_instance.vector_dup(16, ub_one, 1.0, 1, 1, 1)
@@ -242,13 +257,19 @@ class NonMaxSuppression(object):
         """
         scores_thres_gm = self.input_gm_list[4]
         with self.tik_instance.new_stmt_scope():
-            score_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="score_threshold_temp",
-                                                            scope=tik.scope_ubuf)
-            self.tik_instance.data_move(score_threshold_temp[0], scores_thres_gm[0], 0, 1, 1, 0, 0)
-            score_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="score_threshold_ub",
-                                                          scope=tik.scope_ubuf)
-            self.tik_instance.vec_conv(16, "none", score_threshold_ub, score_threshold_temp, 1, 1, 2)
-            self.score_thresh.set_as(score_threshold_ub[0])
+            if self.is_lhisi:
+                score_threshold_temp = self.tik_instance.Tensor("float16", (16,), name="score_threshold_temp",
+                                                                scope=tik.scope_ubuf)
+                self.tik_instance.data_move(score_threshold_temp[0], scores_thres_gm[0], 0, 1, 1, 0, 0)
+                self.score_thresh.set_as(score_threshold_temp[0])
+            else:
+                score_threshold_temp = self.tik_instance.Tensor("float32", (16,), name="score_threshold_temp",
+                                                                scope=tik.scope_ubuf)
+                self.tik_instance.data_move(score_threshold_temp[0], scores_thres_gm[0], 0, 1, 1, 0, 0)
+                score_threshold_ub = self.tik_instance.Tensor("float16", (16,), name="score_threshold_ub",
+                                                              scope=tik.scope_ubuf)
+                self.tik_instance.vec_conv(16, "none", score_threshold_ub, score_threshold_temp, 1, 1, 2)
+                self.score_thresh.set_as(score_threshold_ub[0])
             return self.score_thresh
 
     def init_tik_input_mem(self):
@@ -267,12 +288,23 @@ class NonMaxSuppression(object):
                                                           name="max_output_size_gm",
                                                           scope=tik.scope_gm)
         if self.has_iou_thresh:
-            iou_threshold_gm = self.tik_instance.Tensor("float32", self.iou_threshold_shape, name="iou_threshold_gm",
-                                                        scope=tik.scope_gm)
+            if self.is_lhisi:
+                iou_threshold_gm = self.tik_instance.Tensor("float16", self.iou_threshold_shape,
+                                                            name="iou_threshold_gm",
+                                                            scope=tik.scope_gm)
+            else:
+                iou_threshold_gm = self.tik_instance.Tensor("float32", self.iou_threshold_shape,
+                                                            name="iou_threshold_gm",
+                                                            scope=tik.scope_gm)
         if self.has_score_thresh:
-            score_threshold_gm = self.tik_instance.Tensor("float32", self.score_threshold_shape,
-                                                          name="score_threshold_gm",
-                                                          scope=tik.scope_gm)
+            if self.is_lhisi:
+                score_threshold_gm = self.tik_instance.Tensor("float16", self.score_threshold_shape,
+                                                              name="score_threshold_gm",
+                                                              scope=tik.scope_gm)
+            else:
+                score_threshold_gm = self.tik_instance.Tensor("float32", self.score_threshold_shape,
+                                                              name="score_threshold_gm",
+                                                              scope=tik.scope_gm)
             self.input_gm_list = [boxes_gm, scores_gm, max_output_size_gm, iou_threshold_gm,
                                   score_threshold_gm, index_id_gm]
         else:
