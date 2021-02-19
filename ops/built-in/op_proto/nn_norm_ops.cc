@@ -1221,6 +1221,75 @@ COMMON_INFER_FUNC_REG(MseLoss, InferMseLossShape);
 VERIFY_FUNC_REG(MseLoss, MseLossVerify);
 // ----------------MseLoss END---------------------
 
+// ----------------SoftMarginLoss Begin-------------------
+bool InferShapeAndTypeSoftMarginLoss(Operator& op, const string& input_name1, const string& input_name2,
+                                     const string& output_name, const string& reduction) {
+    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+    DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+    Format input_format = op.GetInputDesc(input_name1).GetFormat();
+    ge::Shape output_shape;
+    std::string attr_value = "none";
+    graphStatus attr = op.GetAttr("reduction", attr_value);
+
+    if(attr_value == "none") {
+        ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+        ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+        std::vector<int64_t> dims_x = shape_x.GetDims();
+        std::vector<int64_t> dims_y = shape_y.GetDims();
+        if (dims_x.size() < dims_y.size()) {
+            std::vector<int64_t> dims_tmp = dims_x;
+            dims_x = dims_y;
+            dims_y = dims_tmp;
+        }
+
+        if (dims_x.size() != dims_y.size()) {
+            int dec = dims_x.size() - dims_y.size();
+            for (int i = 0; i < dec; i++) {
+                dims_y.insert(dims_y.begin(), (int64_t)1);
+            }
+        }
+
+        std::vector<int64_t> dim_vec;
+        for (size_t i = 0; i < dims_x.size(); i++) {
+            if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
+                OP_LOGE(op.GetName().c_str(), "The shape of input_x input_y must be broadcastable");
+                return false;
+            }
+            int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
+            dim_vec.push_back(dims);
+        }
+        output_shape = ge::Shape(dim_vec);
+    } else {
+        std::vector<int64_t> dim_vec;
+        dim_vec.push_back(1);
+        output_shape = ge::Shape(dim_vec);
+    }
+    v_output_desc.SetShape(output_shape);
+    v_output_desc.SetDataType(input_dtype);
+    v_output_desc.SetFormat(input_format);
+    op.UpdateOutputDesc(output_name, v_output_desc);
+    return true;
+}
+
+IMPLEMT_VERIFIER(SoftMarginLoss, SoftMarginLossVerify) {
+    if (op.GetInputDesc("input_x").GetDataType() != op.GetInputDesc("input_y").GetDataType()) {
+        OP_LOGE(op.GetName().c_str(), "The dtype of input_x input_y should be same.");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(SoftMarginLossInferShape) {
+    if(InferShapeAndTypeSoftMarginLoss(op, "input_x", "input_y", "output_z", "reduction")) {
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(SoftMarginLoss, SoftMarginLossInferShape);
+VERIFY_FUNC_REG(SoftMarginLoss, SoftMarginLossVerify);
+// ----------------SoftMarginLoss End-------------------
+
 // ----------------SigmoidCrossEntropyWithLogitsGradV2 Begin-------------------
 IMPLEMT_VERIFIER(SigmoidCrossEntropyWithLogitsGradV2,
                  SigmoidCrossEntropyWithLogitsGradV2Verity) {
