@@ -24,7 +24,6 @@ from functools import reduce as functools_reduce
 
 from te import platform as cce
 from te import tvm
-from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 import te.platform.cce_params as cce_params
 from topi.cce import util
@@ -1598,28 +1597,33 @@ def _get_param_more_dim_fp16(tvm_ib, src_shape, dst_shape, dtype,
     """
     float_size = cce.cce_intrin.get_bit_len(dtype) // 8
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
-    ub_bytes = UB_SIZE_B - (cp_align_len*32)
+    ub_bytes = UB_SIZE_B - (cp_align_len * 32)
     device_core_num = AICORE_NUM
-    if shape_all > 380000000:
+    src_shape_list = [int(x) for x in src_shape]
+    dst_shape_list = [int(x) for x in dst_shape]
+    if shape_all > 380000000 and \
+        not (cce.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32") and
+             not cce.cce_conf.intrinsic_check_support("Intrinsic_vbi", "float16") and
+             src_shape_list == [3200, 25, 1, 304, 16] and dst_shape_list == [3200, 400, 1, 304]):
         device_core_num = 1
-        ub_bytes = UB_SIZE_B // 2 - (cp_align_len*32)
+        ub_bytes = UB_SIZE_B // 2 - (cp_align_len * 32)
     elif device_core_num == 32 and (max_dim > 800000 or shape_all > 320000000):
         device_core_num = 16
     ub_half = ub_bytes // 2
     c_0 = 16
     _, _, h_i, w_i = dst_shape
-    src_dim_space = _ceil_fill(h_i*w_i, c_0)*c_0
-    src_dim_space_bytes = src_dim_space*float_size
+    src_dim_space = _ceil_fill(h_i * w_i, c_0) * c_0
+    src_dim_space_bytes = src_dim_space * float_size
 
     if is_zn2nchw:
-        num_dim_in_data = shape_all // functools_reduce(lambda x, y: x*y, src_shape[2:])
+        num_dim_in_data = shape_all // functools_reduce(lambda x, y: x * y, src_shape[2:])
     else:
-        num_dim_in_data = functools_reduce(lambda x, y: x*y, src_shape[0:2])
+        num_dim_in_data = functools_reduce(lambda x, y: x * y, src_shape[0:2])
     num_dim_one_core = ub_half // src_dim_space_bytes
-    num_dim_one_group = num_dim_one_core*device_core_num
+    num_dim_one_group = num_dim_one_core * device_core_num
     num_group_index = num_dim_in_data // num_dim_one_group
-    num_group_mod = num_dim_in_data - num_dim_one_group*num_group_index
-    src_dim_gm = h_i*w_i*c_0
+    num_group_mod = num_dim_in_data - num_dim_one_group * num_group_index
+    src_dim_gm = h_i * w_i * c_0
 
     block_index = tvm.thread_axis("blockIdx.x")
     tvm_ib.scope_attr(block_index, "thread_extent", device_core_num)
@@ -9910,7 +9914,7 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
 
     # Notes: vaddrelu support float32 @ 1951
     if dst_format.lower() == "nchw" and \
-            tbe_platform.cce_conf.api_check_support( \
+            cce.cce_conf.api_check_support( \
                     "te.lang.cce.vaddrelu", "float32") and \
             dtype == "float32":
         five_2_four_v200_fp32fp16(src, dst, src_format, dst_format, kernel_name)
@@ -9920,8 +9924,8 @@ def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     # Notes: vbi only supported by 1951
     elif dst_format.lower() == "nchw" and \
-            not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32") and \
-            not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vbi", "float16") and \
+            not cce.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32") and \
+            not cce.cce_conf.intrinsic_check_support("Intrinsic_vbi", "float16") and \
             dtype == "float16" and \
             src_shape in [[1, 4, 65, 65, 16], [1, 8, 33, 33, 16], [1, 15, 17, 17, 16], [1, 1, 65, 65, 16],
                           [2, 4, 65, 65, 16], [2, 8, 33, 33, 16], [2, 15, 17, 17, 16], [2, 1, 65, 65, 16],
