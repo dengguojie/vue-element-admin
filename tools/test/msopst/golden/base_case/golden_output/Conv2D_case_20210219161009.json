@@ -1,0 +1,85 @@
+[
+    {
+        "case_name": "Test_Conv2D_001",
+        "op": "Conv2D",
+        "input_desc": [
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "filter"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [],
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "strides",
+                "type": "list_int",
+                "value": [
+                    1,
+                    1,
+                    1,
+                    1
+                ]
+            },
+            {
+                "name": "pads",
+                "type": "list_int",
+                "value": [
+                    1,
+                    1,
+                    1,
+                    1
+                ]
+            },
+            {
+                "name": "dilations",
+                "type": "list_int",
+                "value": null
+            }
+        ]
+    }
+]

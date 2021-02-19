@@ -1,0 +1,23 @@
+
+syntax = "proto2";
+package domi.caffe;
+message NetParameter {
+  optional string name = 1; // consider giving the network a name
+  // The layers that make up the net.  Each of their configurations, including
+  // connectivity and behavior, is specified as a LayerParameter.
+  repeated LayerParameter layer = 100;  // ID 100 so layers are printed last.
+
+}
+message LayerParameter {
+  optional string name = 1;  // the layer name
+  optional string type = 2;  // the layer type
+
+  // Add new LayerParameter here.
+  optional CustomTestParameter custom_test_param = 1000;
+}
+
+// Add the definition of LayerParameter here.
+message CustomTestParameter {
+    optional bool adj_x1 = 1 [default = false];
+    optional bool adj_x2 = 2 [default = false];
+}
