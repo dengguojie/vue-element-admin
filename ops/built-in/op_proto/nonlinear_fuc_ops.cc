@@ -719,6 +719,56 @@ COMMON_INFER_FUNC_REG(HardShrink, HardShrinkInferShape);
 VERIFY_FUNC_REG(HardShrink, HardShrinkVerify);
 // ----------------HardShrink END---------------------
 
+// ----------------HardShrinkGrad Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(HardShrinkGradInferShape)
+{
+    TensorDesc output_desc = op.GetOutputDesc("backprops");
+    DataType dtype_x = op.GetInputDesc("features").GetDataType();
+    Format format_x = op.GetInputDesc("features").GetFormat();
+    ge::Shape shape_x = op.GetInputDesc("features").GetShape();
+    ge::Shape shape_grad = op.GetInputDesc("gradients").GetShape();
+    std::vector<int64_t> dims_x = shape_x.GetDims();
+    std::vector<int64_t> dims_grad = shape_grad.GetDims();
+    if (dims_x.size() < dims_grad.size()) {
+        std::vector<int64_t> dims_tmp = dims_x;
+        dims_x = dims_grad;
+        dims_grad = dims_tmp;
+    }
+    if (dims_x.size() != dims_grad.size()) {
+        int dec = dims_x.size() - dims_grad.size();
+        for (int i = 0; i < dec; i++) {
+            dims_grad.insert(dims_grad.begin(), (int64_t)1);
+        }
+    }
+    std::vector<int64_t> dim_vec;
+    for (size_t i = 0; i < dims_x.size(); i++) {
+        if ((dims_x[i] != dims_grad[i]) && (dims_x[i] != 1) && (dims_grad[i] != 1)) {
+            OP_LOGE("HardShrinkGrad", "Input's dim must be same and dim not equal 1");
+            return GRAPH_FAILED;
+        }
+        int64_t dims = dims_x[i] > dims_grad[i] ? dims_x[i] : dims_grad[i];
+        dim_vec.push_back(dims);
+    }
+    ge::Shape output_shape = ge::Shape(dim_vec);
+    output_desc.SetDataType(dtype_x);
+    output_desc.SetFormat(format_x);
+    output_desc.SetShape(output_shape);
+    (void)op.UpdateOutputDesc("backprops", output_desc);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(HardShrinkGrad, HardShrinkGradVerify)
+{
+    if (op.GetInputDesc("features").GetDataType() != op.GetInputDesc("gradients").GetDataType()) {
+        OP_LOGE(op.GetName().c_str(), "Input two tensor's dtype must be same.");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(HardShrinkGrad, HardShrinkGradInferShape);
+VERIFY_FUNC_REG(HardShrinkGrad, HardShrinkGradVerify);
+// ----------------HardShrinkGrad END---------------------
+
 // ----------------HardSigmoid Begin-------------------
 IMPLEMT_INFERFUNC(HardSigmoid,HardSigmoidInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("output_y");

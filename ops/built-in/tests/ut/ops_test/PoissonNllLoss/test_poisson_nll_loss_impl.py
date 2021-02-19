@@ -53,34 +53,24 @@ def calc_expect_func_b(input_x, input_y, output_z, log_input, full, eps, reducti
     return retvalue.astype(np.float16)
 
 #[TODO] coding cases here
-ut_case.add_precision_case("Ascend310", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "output"}, False, True, 1e-8, "mean"],
-    "calc_expect_func": calc_expect_func_b
-})
-
-ut_case.add_precision_case("Ascend310", {
-    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "output"}, False, True, 1e-8, "mean"],
-    "calc_expect_func": calc_expect_func_b
-})
-
 ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
                 "param_type": "input"},
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "output"}, False, True, 1e-8, "mean"],
+                "param_type": "output"}, False, True, 1e-8, "sum"],
     "calc_expect_func": calc_expect_func
+})
+
+ut_case.add_precision_case("Ascend910A", {
+   "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
+               "param_type": "input"},
+              {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
+               "param_type": "input"},
+              {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
+               "param_type": "output"}, False, True, 1e-8, "mean"],
+   "calc_expect_func": calc_expect_func
 })
 
 ut_case.add_precision_case("Ascend910A", {

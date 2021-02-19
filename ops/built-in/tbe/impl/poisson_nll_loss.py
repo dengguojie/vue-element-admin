@@ -22,6 +22,7 @@ from te import tvm
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from te.utils.shape_util import broadcast_shapes, shape_to_list
+import te.utils.shape_util as tsu
 
 
 @fusion_manager.register("poisson_nll_loss")
@@ -133,7 +134,8 @@ def poisson_nll_loss(input_x,
     para_check.check_shape_rule(shape_target)
     if not operator.eq(shape_input, shape_target):
         raise RuntimeError("All input shape must be equal.")
-
+    shape_input, _ = tsu.refine_shape_axes(shape_input, [])
+    shape_target, _ = tsu.refine_shape_axes(shape_target, [])
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_input.lower(), check_list)
     para_check.check_dtype(dtype_target.lower(), check_list)
