@@ -82,6 +82,7 @@ set(_optiling_files
   unsorted_segment_sum.cc
   gemm.cc
   bias_add_grad.cc
+  reduce_mean.cc
 )
 
 set(_op_tiling_include

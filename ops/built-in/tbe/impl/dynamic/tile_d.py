@@ -181,4 +181,4 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
 
     tbe.build(sch, config)
 
-    tbe_base.add_compile_info("_tiling_info", tiling_info)
+    tbe_base.add_compile_info("tiling_info", tiling_info)

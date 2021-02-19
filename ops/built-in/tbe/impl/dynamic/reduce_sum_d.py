@@ -21,7 +21,6 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
-from te.lang.base.operation import add_compile_info
 from impl.util.platform_adapter import register_operator
 
 NONETYPE = type(None)
@@ -96,8 +95,6 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_lower, check_list, param_name="x")
     x["rel_pos_to_reduce"] = "before"
-
-    add_compile_info("_ori_axis", axis)
 
     shape = x["shape"]
     shape_len = len(shape)

@@ -24,6 +24,14 @@
 
 namespace optiling {
 
+std::vector<int64_t> Reduce::GetInputShape() {
+  return input_shape;
+}
+
+std::vector<int32_t> Reduce::GetReduceAxis() {
+  return reduce_axis;
+}
+
 bool Reduce::IsInVector(std::vector<int32_t>& input, int32_t value) {
   for (uint32_t i = 0; i < input.size(); i++) {
     if (input[i] == value) {
@@ -281,9 +289,9 @@ bool Reduce::GetCompileInfo() {
   std::vector<int32_t> ub_info;
 
   try {
-    common_info = op_info.at("common_info").get<std::vector<int32_t>>();
-    pattern_info = op_info.at("pattern_info").get<std::vector<int32_t>>();
-    ub_info = op_info.at("ub_info").get<std::vector<int32_t>>();
+    common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
+    pattern_info = op_info.at("_pattern_info").get<std::vector<int32_t>>();
+    ub_info = op_info.at("_ub_info").get<std::vector<int32_t>>();
 
     const int32_t common_info_size = 5;
     V_CHECK_EQ(common_info.size(), common_info_size,
@@ -326,31 +334,6 @@ bool Reduce::GetCompileInfo() {
                       return false);
     is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
 
-    // special process(reduce_mean_d)
-    set_reduce_mean_cof_flag = 0;
-    // reduce_mean_cof is not required when handling pure dma_copy case
-    if (input_shape[0] == 1 && reduce_axis[0] == 0) {
-      return true;
-    }
-    reduce_mean_cof = 1.0;
-    if (op_info.count("reduce_mean_cof_dtype") > 0) {
-      const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
-      if (reduce_mean_cof_dtype == "float32") {
-        set_reduce_mean_cof_flag = REDUCE_MEAN_COF_FP32;
-        for (uint32_t i = 0; i < input_shape.size(); i++) {
-          if (IsInVector(reduce_axis, i)) {
-            reduce_mean_cof = reduce_mean_cof / input_shape[i];
-          }
-        }
-      } else if (reduce_mean_cof_dtype == "float16") {
-        set_reduce_mean_cof_flag = REDUCE_MEAN_COF_FP16;
-        for (uint32_t i = 0; i < input_shape.size(); i++) {
-          if (IsInVector(reduce_axis, i)) {
-            reduce_mean_cof = reduce_mean_cof / input_shape[i];
-          }
-        }
-      }
-    }
   } catch (const std::exception &e) {
     OP_LOGE(op_type.c_str(), "Func: GetCompileInfo error. Error message: %s", e.what());
     return false;
@@ -761,8 +744,8 @@ bool Reduce::SpecialUBTiling() {
 
 bool Reduce::Init() {
   try {
-    int idx = op_info.count("idx_before_reduce") > 0 ?
-              op_info.at("idx_before_reduce").get<int>() : 0;
+    int idx = op_info.count("_idx_before_reduce") > 0 ?
+              op_info.at("_idx_before_reduce").get<int>() : 0;
     // CHECK INPUT
     V_OP_TILING_CHECK(!op_paras.inputs.empty(),
                       OP_LOGE(op_type.c_str(), "inputs cannot be empty"),
@@ -829,8 +812,8 @@ bool Reduce::Init() {
 
     // Discard "1" and default sorted
     EliminateOne();
-    compileInfo.is_const = op_info.count("reduce_shape_known") > 0 &&
-                           op_info.at("reduce_shape_known").get<bool>();
+    compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 &&
+                           op_info.at("_reduce_shape_known").get<bool>();
   } catch (const std::exception &e) {
     OP_LOGE(op_type.c_str(), "Func of Init error. Error message: %s", e.what());
     return false;
@@ -897,17 +880,6 @@ bool Reduce::WriteTilingData() {
     OP_LOGD(op_type.c_str(), "input shape:%d", input_shape[i]);
   }
 
-  if (set_reduce_mean_cof_flag == REDUCE_MEAN_COF_FP32) {
-    ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
-    OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
-  } else if (set_reduce_mean_cof_flag == REDUCE_MEAN_COF_FP16) {
-    fe::fp16_t reduce_mean_cof_fp16;
-    reduce_mean_cof_fp16 = reduce_mean_cof;
-    ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
-    ByteBufferPut(run_info.tiling_data, (uint16_t)0);
-    OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
-  }
-
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
   OP_LOGD(op_type.c_str(), "block/res_ub tilling axis:%d", tilingInfo.block_tiling_axis);
@@ -952,7 +924,7 @@ bool Reduce::DoTiling() {
     } else {
       try {
         zero_tiling_key = 10;
-        tilingInfo.ub_tiling_factor = op_info.at("zero_ub_factor").get<std::int64_t>();
+        tilingInfo.ub_tiling_factor = op_info.at("_zero_ub_factor").get<std::int64_t>();
       } catch (const std::exception &e) {
         OP_LOGE(op_type.c_str(), "get zero_ub_factor error. Error message: %s", e.what());
         return false;
@@ -967,13 +939,13 @@ bool Reduce::DoTiling() {
     // invoking the tiling interface during runtime
     // is_const_post: "true"->runtime, "false"->compile
     try {
-      compileInfo.is_const_post = op_info.count("const_shape_post") > 0 &&
-              op_info.at("const_shape_post").get<bool>();
+      compileInfo.is_const_post = op_info.count("_const_shape_post") > 0 &&
+              op_info.at("_const_shape_post").get<bool>();
       if (compileInfo.is_const_post) {
         pattern = CalcConstPattern(reduce_axis_ori);
         return ret;
       } else {
-        pattern = op_info.at("compile_pattern").get<std::int32_t>();
+        pattern = op_info.at("_compile_pattern").get<std::int32_t>();
         reduce_axis = reduce_axis_ori;
         input_shape = input_shape_ori;
       }

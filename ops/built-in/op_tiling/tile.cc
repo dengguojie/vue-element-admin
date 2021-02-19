@@ -28,13 +28,13 @@
 namespace optiling {
 bool TileTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                  OpRunInfo& run_info) {
-    CHECK((op_info.count("_compile_shape") > 0),
-        "op [%s] : compile info not contain [_compile_shape]", op_type.c_str());
+    CHECK((op_info.count("compile_shape") > 0),
+        "op [%s] : compile info not contain [compile_shape]", op_type.c_str());
     CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
     CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
 
     std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
-    std::vector<int64_t> compile_shape = op_info["_compile_shape"].get<std::vector<int64_t>>();
+    std::vector<int64_t> compile_shape = op_info["compile_shape"].get<std::vector<int64_t>>();
     std::vector<int64_t> multiples_value;
 
     CHECK(op_paras.inputs.size() >= 2 , "op [%s] : op_paras.inputs's size should be >= 2", op_type.c_str());

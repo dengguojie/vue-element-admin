@@ -26,12 +26,9 @@
 #include <vector>
 
 #include "vector_tiling.h"
-#include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {
 
-const int32_t REDUCE_MEAN_COF_FP32 = 1;
-const int32_t REDUCE_MEAN_COF_FP16 = 2;
 const int32_t SMALL_SHAPE_THRESHOLD = 1024;
 const int32_t FUSED_NON_REDUCE_AXIS = 0;
 const int32_t FUSED_REDUCE_AXIS = 1;
@@ -91,6 +88,8 @@ class Reduce {
   bool GetBlockTilingInfo();
   void GetNotMulCoreBlockTiling();
   int32_t CalcTilingKey();
+  std::vector<int64_t> GetInputShape();
+  std::vector<int32_t> GetReduceAxis();
 
  private:
   int32_t CalcPattern(std::vector<int64_t>& input, std::vector<int32_t>& axis);
@@ -133,9 +132,7 @@ class Reduce {
   int64_t total_output_count;
   int64_t total_reduce_count;
   int32_t pattern;
-  int32_t set_reduce_mean_cof_flag;
   int32_t block_size;
-  float reduce_mean_cof;
 
   int32_t ubSizeA;
   int32_t ubSizeB;

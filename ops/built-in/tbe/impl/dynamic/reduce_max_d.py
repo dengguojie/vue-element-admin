@@ -18,7 +18,6 @@ import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
-from te.lang.base.operation import add_compile_info
 from impl.util.platform_adapter import register_operator
 
 NONETYPE = type(None)
@@ -92,8 +91,6 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
     check_list = ("float16", "float32", "int8", "uint8", "int32")
     para_check.check_dtype(dtype_lower, check_list)
     x["rel_pos_to_reduce"] = "before"
-
-    add_compile_info("_ori_axis", axes)
 
     shape = x["shape"]
     shape_len = len(shape)

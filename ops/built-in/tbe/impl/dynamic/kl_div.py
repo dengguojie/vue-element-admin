@@ -183,7 +183,6 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
 
     input_x["rel_pos_to_reduce"] = "before"
     input_target["rel_pos_to_reduce"] = "before"
-    tbe_base.add_compile_info("_ori_axis", 0)
 
     input_axis = {"shape": [1, ], "value": [0, ], "rel_pos_to_reduce": "axis"}
 

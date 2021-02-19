@@ -20,7 +20,7 @@ from __future__ import absolute_import
 from te.tvm import tensor
 from te.tvm import expr
 from te.tvm import api as tvm
-from te.lang.base import operation
+from tbe.dsl.base import operation
 from te.platform.cce_emitinsn_params import cceEmitParamsIns
 
 
@@ -65,7 +65,7 @@ def normalize_shape(inputs: list):
             dim_i = _input["shape"][_i]
             range_i = _input["range"][_i]
             if dim_i == -1:
-                return operation.var("dim_" + str(_i), range_i)
+                return operation.var_inner("_dim_" + str(_i), range_i)
 
     shapes, ranges = [], []
     for input_i in inputs:

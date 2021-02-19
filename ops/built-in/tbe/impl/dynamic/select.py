@@ -151,7 +151,7 @@ def select(condition, x1, x2, y, kernel_name="select"):
             error_detail = "dims of tensor condition and x1 must be equal!"
             error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", "x1", error_detail)
 
-    tbe_base.add_compile_info("_boardcast_condition_fill", fill_shape)
+    tbe_base.add_compile_info("boardcast_condition_fill", fill_shape)
 
     x_target = x1
     x_target["shape"] = list(x_target["shape"])

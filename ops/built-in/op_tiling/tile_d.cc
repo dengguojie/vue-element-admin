@@ -27,10 +27,10 @@ namespace optiling {
 
 bool TileDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                  OpRunInfo& run_info) {
-  V_OP_TILING_CHECK((op_info.find("_tiling_info") != op_info.end()),
-                    OP_LOGE(op_type.c_str(), "compile info not contain [_tiling_info]"),
+  V_OP_TILING_CHECK((op_info.find("tiling_info") != op_info.end()),
+                    OP_LOGE(op_type.c_str(), "compile info not contain [tiling_info]"),
                     return false);
-  const std::vector<int64_t>& tiling_info = op_info["_tiling_info"];
+  const std::vector<int64_t>& tiling_info = op_info["tiling_info"];
 
   V_OP_TILING_CHECK(!op_paras.inputs.empty(),
                     OP_LOGE(op_type.c_str(), "op_paras.inputs cannot be empty"),

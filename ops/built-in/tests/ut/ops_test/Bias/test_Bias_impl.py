@@ -32,7 +32,7 @@ case3 = {"params": [{"shape": (3, 3, 3), "dtype": "float32", "format": "NCHW", "
          "support_expect": True}
 
 case4 = {"params": [{"shape": (3, 3, 3, 3), "dtype": "float16", "format": "NCHW", "ori_shape": (3, 3, 3, 3),"ori_format": "NCHW"},
-                    {"shape": (3,), "dtype": "float16", "format": "NCHW", "ori_shape": (3,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
                     {"shape": (3, 3, 3, 3), "dtype": "float16", "format": "NCHW", "ori_shape": (3, 3, 3, 3),"ori_format": "NCHW"},
                     1, 1],
          "case_name": "bias_4",

@@ -24,10 +24,10 @@ bool BNInferenceDTiling(const std::string& op_type, const TeOpParas& op_paras, c
                    OpRunInfo& run_info) {
     GELOGD("op [%s] Enter BNInferenceDTiling inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
-    CHECK((op_info.count("_broadcast_mean_shape") > 0),
-          "op [%s] : compile info not contain [_broadcast_mean_shape]", op_type.c_str());
+    CHECK((op_info.count("broadcast_mean_shape") > 0),
+          "op [%s] : compile info not contain [broadcast_mean_shape]", op_type.c_str());
 
-    std::vector<int64_t> broadcast_mean_shape = op_info["_broadcast_mean_shape"];
+    std::vector<int64_t> broadcast_mean_shape = op_info["broadcast_mean_shape"];
 
     if (op_paras.inputs.empty() || op_paras.inputs.size() < 3 ||
         op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {

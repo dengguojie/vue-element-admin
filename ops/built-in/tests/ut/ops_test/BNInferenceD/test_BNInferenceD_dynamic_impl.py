@@ -7,14 +7,14 @@ ut_case = OpUT("BNInferenceD", "impl.dynamic.bninference_d", "bninference_d")
 
 case1 = {
     "params": [
-        {"shape": (-1,-1,-1,-1),"dtype":"float16","format":"NCHW","ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,1),
+        {"shape": (-1,-1,-1,-1),"dtype":"float16","format":"NCHW","ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,None),
         (16,16),(10,10),(10,10)]},
-        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(16, 16)]},
-        {"shape": (-1,),"dtype": "float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(16, 16)]},
+        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-1,),"dtype": "float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
         None,
         None,
-        {"shape":(-1,-1,-1,-1),"dtype":"float16", "format":"NCHW", "ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,1),
-        (16,16),(10,10),(10,10)]},
+        {"shape":(-1,-1,-1,-1),"dtype":"float16", "format":"NCHW", "ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,None),
+        (1,None),(1,None),(1,None)]},
         0.999,
         0.001,
         True,
@@ -28,12 +28,12 @@ case1 = {
 
 case2 = {
     "params": [
-        {"shape": (-1,-1,-1,-1),"dtype":"float16","format":"NCHW","ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,1), (16,16),(10,10),(10,10)]},
-        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(16, 16)]},
-        {"shape": (-1,),"dtype": "float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(16, 16)]},
-        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(16, 16)]},
-        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(16, 16)]},
-        {"shape":(-1,-1,-1,-1),"dtype":"float16", "format":"NCHW", "ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,1), (16,16),(10,10),(10,10)]},
+        {"shape": (-1,-1,-1,-1),"dtype":"float16","format":"NCHW","ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,None), (1,None),(1,None),(1,None)]},
+        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-1,),"dtype": "float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape": (-1,),"dtype":"float16","format":"ND","ori_shape":(16,),"ori_format":"ND","range":[(1,None)]},
+        {"shape":(-1,-1,-1,-1),"dtype":"float16", "format":"NCHW", "ori_shape":(1,16,10,10),"ori_format":"NCHW","range":[(1,None), (1,None),(1,None),(1,None)]},
         0.999,
         0.001,
         True,

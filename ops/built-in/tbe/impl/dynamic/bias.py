@@ -354,7 +354,7 @@ def bias(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
     bias["shape"] = shape_bias_new
     bias["range"] = range_bias_new
     bias["ori_shape"] = shape_bias_new
-    tbe_base.add_compile_info("_boardcast_bias_shape", shape_bias_new)
+    tbe_base.add_compile_info("boardcast_bias_shape", shape_bias_new)
 
     ins = classify([x, bias], Mode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []

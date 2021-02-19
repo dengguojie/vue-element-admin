@@ -67,11 +67,11 @@ def calc(outs, option=None):
     # use int32, max value 2147483647
     # 0~1: dim len
 
-    mode = operation.get_context().get("mode")
+    mode = operation.get_context().get("_mode")
 
     def calc_base_key():
         if mode == SPECIAL:
-            pattern = operation.get_context().get_current_compute().get("pattern")
+            pattern = operation.get_context().get_current_compute().get("_pattern")
             _base_key = 200000000
             base = 10000000
             for axis in pattern:
@@ -81,14 +81,14 @@ def calc(outs, option=None):
                     _base_key += (base * 2)
                 base //= 10
         elif mode == CONST:
-            _base_key = operation.get_context().get("const_base_key")
+            _base_key = operation.get_context().get("_const_base_key")
             if _base_key is None:
                 _base_key = 100000000
             else:
                 _base_key += 1
-            operation.get_context().add("const_base_key", _base_key)
+            operation.get_context().add("_const_base_key", _base_key)
         elif mode == SPECIAL_SCALAR:
-            pattern = operation.get_context().get_current_compute().get("pattern")
+            pattern = operation.get_context().get_current_compute().get("_pattern")
             _base_key = 200000000
             base = 10000000
             for axis in pattern:
@@ -110,7 +110,7 @@ def calc(outs, option=None):
     # db handle
     enable_db_func = _default_db_func
     if mode == SPECIAL:
-        pattern = operation.get_context().get_current_compute().get("pattern")
+        pattern = operation.get_context().get_current_compute().get("_pattern")
 
         pattern = tuple(pattern) if pattern else None
 
@@ -237,7 +237,7 @@ def _pre_build(schedules_list):
 
     def _name_to_int(_var_names):
         for index, name in enumerate(_var_names):
-            names = name.split("_")
+            names = name[1:].split("_")
             if names[0] == "dim":
                 _var_names[index] = 10000 + int(names[1]) * 100 + int(names[2])
             elif names[0] == "block":
@@ -261,34 +261,34 @@ def _pre_build(schedules_list):
         return str(_pattern_key).ljust(3, '0')
 
     only_const_tiling = False
-    support_broadcast = operation.get_context().get("support_broadcast")
+    support_broadcast = operation.get_context().get("_support_broadcast")
     unknown_rank = operation.get_context().get("_unknown_rank")
     unknown_rank = False if unknown_rank is None else unknown_rank
     cpt_computes = operation.get_context().get_computes()
     use_special_pattern = False
     support_absorbable_broadcast = False
     for compute in cpt_computes:
-        if compute.get("mode") != ORIGINAL:
+        if compute.get("_mode") != ORIGINAL:
             use_special_pattern = True
-        if compute.get("mode") == SPECIAL_SCALAR:
+        if compute.get("_mode") == SPECIAL_SCALAR:
             support_absorbable_broadcast = True
-    if operation.get_context().get("mode") == CONST:
+    if operation.get_context().get("_mode") == CONST:
         const_shapes, const_block_dims = [], []
         for compute in cpt_computes:
-            const_shapes.append(compute.get("const_shape"))
-            const_block_dims.append(compute.get("const_block_dim"))
+            const_shapes.append(compute.get("_const_shape"))
+            const_block_dims.append(compute.get("_const_block_dim"))
         is_const_shapes = True
-        operation.add_compile_info(CompileInfo.CONST_SHAPES, const_shapes)
-        operation.add_compile_info(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
+        operation.add_compile_info_inner(CompileInfo.CONST_SHAPES, const_shapes)
+        operation.add_compile_info_inner(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
         flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
                      use_special_pattern, support_absorbable_broadcast, unknown_rank]
-        operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
+        operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
         return
     else:
         is_const_shapes = False
     flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
                  use_special_pattern, support_absorbable_broadcast, unknown_rank]
-    operation.add_compile_info(CompileInfo.FLAG_INFO, flag_info)
+    operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
 
     schedules = []
     _flatten_sch(schedules)
@@ -297,7 +297,7 @@ def _pre_build(schedules_list):
     op_vars = operation.get_context().get_vars()
     base_info = {}
     for i, cpt in enumerate(cpt_computes):
-        if cpt.get("mode") == EMPTY:
+        if cpt.get("_mode") == EMPTY:
             continue
         cpt_vars = cpt.get_vars()
         cpt_ub_sizes, cpt_max_dtypes, cpt_coexisting_quantitys, cores = [], [], [], []
@@ -308,9 +308,9 @@ def _pre_build(schedules_list):
             cpt_coexisting_quantitys.append(sch_context.get(CompileInfo.COEXISTING_QUANTITY))
             cores.append(sch_context.get(CompileInfo.CORE_NUM))
             te_vars_list.append(op_vars + cpt_vars + sch_vars)
-        pattern_key = _get_pattern_key(cpt.get("mode"), cpt.get("pattern"))
+        pattern_key = _get_pattern_key(cpt.get("_mode"), cpt.get("_pattern"))
         base_info[pattern_key] = [min(cpt_ub_sizes), max(cpt_max_dtypes), max(cpt_coexisting_quantitys), max(cores)]
-    operation.add_compile_info(CompileInfo.BASE_INFO, base_info)
+    operation.add_compile_info_inner(CompileInfo.BASE_INFO, base_info)
 
     compile_vars = {}
     for sch, te_vars in zip(schedules, te_vars_list):
@@ -318,7 +318,7 @@ def _pre_build(schedules_list):
             continue
         var_names = [x.get_name() for x in te_vars]
         compile_vars[sch.tiling_key] = _name_to_int(var_names)
-    operation.add_compile_info(CompileInfo.ELEWISE_VARS, compile_vars)
+    operation.add_compile_info_inner(CompileInfo.ELEWISE_VARS, compile_vars)
 
     # add build config
     operation.add_build_arg("double_buffer_non_reuse", True)

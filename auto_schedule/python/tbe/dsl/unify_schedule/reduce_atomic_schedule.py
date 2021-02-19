@@ -1271,13 +1271,13 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         if block_factor is None:
 
-            block_inner = operation.var("block_factor", (1, None))
+            block_inner = operation.var_inner("_block_factor", (1, None))
             self._tiling_factor_vars.append(block_inner)
         else:
             block_inner = block_factor
 
         if ub_factor is None:
-            ub_inner = operation.var("ub_factor", (1, None))
+            ub_inner = operation.var_inner("_ub_factor", (1, None))
             self._tiling_factor_vars.append(ub_inner)
         else:
             ub_inner = ub_factor
@@ -1469,7 +1469,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
         """
         :return:
         """
-        if operation.get_context().get("mode") == CONST:
+        if operation.get_context().get("_mode") == CONST:
             return
         ub_tiling_para_list = self._reduce_tiling_para["ub_tiling"]
         ub_tiling_para = ub_tiling_para_list[0]

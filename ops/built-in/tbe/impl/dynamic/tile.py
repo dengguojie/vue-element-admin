@@ -174,4 +174,4 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
 
     tbe.build(sch, config)
 
-    tbe_base.add_compile_info("_compile_shape", compile_shape)
+    tbe_base.add_compile_info("compile_shape", compile_shape)

@@ -22,6 +22,7 @@ from decorator import decorator
 from te import tvm
 from te.platform import get_soc_spec
 from te.tvm.dsl_source_info import source_info_decorator
+from tbe.common.utils.errormgr import get_error_message
 
 from .cast import _cast
 from .math import vmuls

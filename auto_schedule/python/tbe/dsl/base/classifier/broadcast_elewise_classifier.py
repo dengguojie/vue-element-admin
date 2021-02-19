@@ -64,7 +64,7 @@ class BroadcastElewiseClassifier:
         self.maybe_empty_tensor = False
         self._update_shape_range()
         self.f_shapes, self.f_ranges, fusion_index = _simplify_shape(self.completed_shapes, self.completed_ranges)
-        operation.add_compile_info("_fusion_index", fusion_index)
+        operation.add_compile_info_inner("_fusion_index", fusion_index)
 
         self.normalize_shapes = self._normalize()
 

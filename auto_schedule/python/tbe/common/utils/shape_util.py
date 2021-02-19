@@ -395,11 +395,11 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
             else:
                 const_shape = inputs[0]["shape"]
             operation.get_context().get_current_compute(). \
-                add("const_shape", const_shape)
+                add("_const_shape", const_shape)
         elif mode == para_check.SPECIAL and inputs[0].get("pattern"):
             pattern = inputs[0].get("pattern")
             operation.get_context().\
-                get_current_compute().add("pattern", pattern)
+                get_current_compute().add("_pattern", pattern)
             for i, _pattern in enumerate(pattern):
                 if _pattern == para_check.COMMON:
                     for j in range(len(shapes)):
@@ -408,18 +408,18 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
         elif mode == para_check.SPECIAL_SCALAR:
             pattern = inputs[0].get("pattern")
             operation.get_context(). \
-                get_current_compute().add("pattern", pattern)
+                get_current_compute().add("_pattern", pattern)
 
     if len(inputs) < 1:
         return []
     mode = inputs[0].get("mode")
     if mode is None:
         mode = para_check.ORIGINAL
-    operation.get_context().add("mode", mode)
+    operation.get_context().add("_mode", mode)
     current_compute = operation.get_context().get_current_compute()
     if current_compute:
-        current_compute.add("mode", mode)
-    operation.get_context().add("support_broadcast", support_broadcast)
+        current_compute.add("_mode", mode)
+    operation.get_context().add("_support_broadcast", support_broadcast)
 
     shapes, ranges = _fill(inputs)
     _mode_process()
@@ -434,13 +434,13 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
-                                         _range[i])
+                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix),
+                                               _range[i])
                 d_shape.append(_var)
             elif shape[i] == -77:
                 if _var is None:
-                    _var = operation.var("dim_" + str(i) + "_" + str(_suffix),
-                                         _range[i])
+                    _var = operation.var_inner("_dim_" + str(i) + "_" + str(_suffix),
+                                               _range[i])
                 d_shape.append(_var)
             else:
                 d_shape.append(shape[i])
@@ -470,17 +470,17 @@ def _reduce_variable_shape(inputs: list):
     mode = inputs_before_reduce[0].get("mode")
     if mode is None:
         mode = para_check.ORIGINAL
-    operation.get_context().add("mode", mode)
+    operation.get_context().add("_mode", mode)
     current_compute = operation.get_context().get_current_compute()
     if current_compute:
-        current_compute.add("mode", mode)
-        current_compute.add("shape", inputs_before_reduce[0]["shape"])
+        current_compute.add("_mode", mode)
+        current_compute.add("_shape", inputs_before_reduce[0]["shape"])
         ori_axis = input_axis[0].get("ori_axis")
         if ori_axis is not None:
-            current_compute.add("ori_axis", ori_axis)
+            current_compute.add("_ori_axis", ori_axis)
         axis_dtype = input_axis[0].get("axis_dtype")
         if axis_dtype is not None:
-            current_compute.add("axis_dtype", axis_dtype)
+            current_compute.add("_axis_dtype", axis_dtype)
 
     shape_local = [x["shape"] for x in inputs_before_reduce]
     range_local = [x.get("range") if x.get("range") else [(1, None)]*len(shape_local[0]) for x in inputs_before_reduce]
@@ -488,7 +488,7 @@ def _reduce_variable_shape(inputs: list):
     for index in range(len(shape_local[0])):
         _var = None
         if shape_local[0][index] == -1:
-            _var = operation.var("dim_" + str(index), range_local[0][index])
+            _var = operation.var_inner("_dim_" + str(index), range_local[0][index])
             shape_before_reduce.append(_var)
         else:
             shape_before_reduce.append(shape_local[0][index])

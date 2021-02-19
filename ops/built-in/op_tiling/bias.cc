@@ -19,11 +19,11 @@ namespace optiling {
 
 bool BiasTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                    OpRunInfo& run_info) {
-    CHECK((op_info.count("_boardcast_bias_shape") > 0),
-          "op [%s] : compile info not contain [_boardcast_bias_shape]", op_type.c_str());
+    CHECK((op_info.count("boardcast_bias_shape") > 0),
+          "op [%s] : compile info not contain [boardcast_bias_shape]", op_type.c_str());
     GELOGD("op [%s] Enter BIASTILING inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
-    std::vector<int64_t> boardcast_bias_shape = op_info["_boardcast_bias_shape"];
+    std::vector<int64_t> boardcast_bias_shape = op_info["boardcast_bias_shape"];
 
     CHECK(!op_paras.inputs.empty(), "op [%s] : op_paras.inputs cannot be empty", op_type.c_str());
     CHECK(op_paras.inputs.size() > 1, "op [%s] : op_paras.inputs size need more than 1", op_type.c_str());

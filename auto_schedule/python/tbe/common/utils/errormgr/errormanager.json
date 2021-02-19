@@ -852,7 +852,7 @@
     {
       "errCode": "E80000",
       "errMessage": "In op[%s], the parameter[%s] should be [%s], but actually is [%s].",
-      "argList": "op_name,param_name,excepted_value,real_value"
+      "argList": "op_name,param_name,expected_value,real_value"
     },
     {
       "errCode": "E80001",

@@ -344,10 +344,10 @@ class VectorSchedule(VectorScheduleBase, ABC):
             real_stage.reorder(*real_reorder_target)
 
     def _do_constraint(self):
-        if operation.get_context().get("mode") == CONST:
+        if operation.get_context().get("_mode") == CONST:
             return
 
-        if operation.get_context().get_current_compute().get("mode") == "zero":
+        if operation.get_context().get_current_compute().get("_mode") == "zero":
             return
 
         for constraint_func_pair in self.constraint_func_pair_list:
@@ -446,7 +446,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
         self._data_flow_control.clear()
 
         compute = operation.get_context().get_current_compute()
-        if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+        if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):
             out_tensor = list(self.graph_info.real_output_tensor_set)[0]
             self.cache_write(out_tensor, self.compute_scope)
             for tensor in self.graph_info.tensor_list:
@@ -627,9 +627,9 @@ class VectorSchedule(VectorScheduleBase, ABC):
                                       tensor: Union[Placeholder, Tensor], axis_index: int) -> IterVar:
         real_tensor: Tensor = self.solve_placeholder(tensor)
         compute = operation.get_context().get_current_compute()
-        if compute.get("mode") != "zero" and tensor not in self.tensor_reduced_axis_indices:
+        if compute.get("_mode") != "zero" and tensor not in self.tensor_reduced_axis_indices:
             raise NotImplementedError("Please maintain reduce_axis_indices info for tensor %s" % (str(real_tensor)))
-        if compute.get("mode") == "zero":
+        if compute.get("_mode") == "zero":
             reduce_tensors = list(self.graph_info.reduce_tensor_set)
             if real_tensor in reduce_tensors or is_keepdims(reduce_tensors[0]):
                 reduced_indices = []

@@ -24,7 +24,7 @@ from typing import Union
 
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import register_schedule
-from tbe.dsl.base.operation import var
+from tbe.dsl.base.operation import var_inner
 from tbe.dsl.unify_schedule import Pattern
 # Third-party Packages
 from te.tvm.tensor import Tensor
@@ -48,8 +48,8 @@ CONST = "const"
 def schedule(outs, tiling_case: ReduceTilingCase):
     [outs].clear()
     # Get Compute Graph Info
-    graph_info = get_context().get_current_compute().get("compute_graph_info")
-    single_reduce_info: SingleReduceInfo = get_context().get_current_compute().get("single_reduce_info")
+    graph_info = get_context().get_current_compute().get("_compute_graph_info")
+    single_reduce_info: SingleReduceInfo = get_context().get_current_compute().get("_single_reduce_info")
     if tiling_case.is_atomic:
         reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule()
         reduce_sch.init(outs, [])
@@ -161,9 +161,9 @@ class ReduceSchedule(VectorSchedule):
 
         # Get tiling params
         block_factor = case.block_factor
-        block_inner = block_factor if block_factor is not None else var("block_factor", (1, None))
+        block_inner = block_factor if block_factor is not None else var_inner("_block_factor", (1, None))
         ub_factor = case.ub_factor
-        ub_inner = ub_factor if ub_factor is not None else var("ub_factor", (1, None))
+        ub_inner = ub_factor if ub_factor is not None else var_inner("_ub_factor", (1, None))
         self._need_multi_core = case.multi_core
 
         # block tiling
@@ -197,7 +197,7 @@ class ReduceSchedule(VectorSchedule):
 
     def _calc_reorder(self):
         compute = get_context().get_current_compute()
-        if compute.get("mode") == "zero":
+        if compute.get("_mode") == "zero":
             return
 
         is_nlast_reduce = self.reduce_info.is_reduce_not_last_axis()
@@ -454,7 +454,7 @@ class ReduceSchedule(VectorSchedule):
                 emit_insn_axis = self.reduce_info.reduce_axis_indices[0]
         elif ub_split_axis_index not in self.reduce_info.reduce_axis_indices:
             compute = get_context().get_current_compute()
-            if compute.get("mode") == "zero":
+            if compute.get("_mode") == "zero":
                 pass
             else:
                 first_reduce_axis = self.reduce_info.reduce_tensor.op.reduce_axis[0]
@@ -492,7 +492,7 @@ class ReduceSchedule(VectorSchedule):
         before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
         after_reduce_tensors = self.get_all_consumer_stages(reduce_ub_tensor)
         remaining_tensors = before_reduce_tensors | after_reduce_tensors
-        if get_context().get_current_compute().get("mode") != "zero":
+        if get_context().get_current_compute().get("_mode") != "zero":
             # traversing all tensors and their buffers
             remaining_tensors = _traverse()
         for tensor in remaining_tensors:
@@ -520,12 +520,12 @@ class ReduceSchedule(VectorSchedule):
     @staticmethod
     def _contains_zero_axis():
         compute = get_context().get_current_compute()
-        return compute.get("mode") == "zero"
+        return compute.get("_mode") == "zero"
 
     def _emit_zero_reduce_insn(self, reduce_ub_tensor, emit_insn_axis):
         compute = get_context().get_current_compute()
         insn = "phony_insn"
-        if compute.get("shape") == (1, -1, 0):
+        if compute.get("_shape") == (1, -1, 0):
             insn = "vector_dup"
 
         self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(reduce_ub_tensor, emit_insn_axis, insn))

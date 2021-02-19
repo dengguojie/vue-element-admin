@@ -20,10 +20,10 @@ namespace optiling {
 
 bool BiasAddTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                    OpRunInfo& run_info) {
-    CHECK((op_info.count("_boardcast_bias_shape") > 0),
-          "op [%s] : compile info not contain [_boardcast_bias_shape]", op_type.c_str());
+    CHECK((op_info.count("boardcast_bias_shape") > 0),
+          "op [%s] : compile info not contain [boardcast_bias_shape]", op_type.c_str());
 
-    std::vector<int64_t> boardcast_bias_shape = op_info["_boardcast_bias_shape"];
+    std::vector<int64_t> boardcast_bias_shape = op_info["boardcast_bias_shape"];
 
     if (op_paras.inputs.size() != 2 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty()) {
         OP_LOGE(op_type.c_str(), "inputs size is not 2 or some input are empty");

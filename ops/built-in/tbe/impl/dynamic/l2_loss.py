@@ -27,7 +27,6 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import KERNEL_NAME
-from te.lang.base.operation import add_compile_info
 from impl.util.platform_adapter import register_operator
 
 NONETYPE = type(None)
@@ -94,7 +93,6 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     axes = []
     for i in range(len(shape)):
         axes.append(i)
-    add_compile_info("_ori_axis", axes)
     input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []

@@ -84,7 +84,7 @@ class ElewiseSchedule:
         self._tiling_strategy = self._tiling_case.get("tiling_strategy")
         self._is_db = self._tiling_case.get("is_need_db", False)
         self._is_pure_eletwise = self._tiling_case.get("is_pure_eletwise", False)
-        self._mode = operation.get_context().get("mode")
+        self._mode = operation.get_context().get("_mode")
 
         self._scope = "local.UB"
 
@@ -301,8 +301,8 @@ class ElewiseSchedule:
         res = self._out
         for _i, _x in enumerate(res.shape):
             bound = (1, util.get_bound(_x)[1])
-            self._block_tiling_vars[_i] = operation.var("block_factor_" + str(_i), bound)
-            self._ub_tiling_vars[_i] = operation.var("ub_factor_" + str(_i), bound)
+            self._block_tiling_vars[_i] = operation.var_inner("_block_factor_" + str(_i), bound)
+            self._ub_tiling_vars[_i] = operation.var_inner("_ub_factor_" + str(_i), bound)
 
     def _calc_tiling_none_cut(self):
         pass
@@ -319,8 +319,8 @@ class ElewiseSchedule:
             u_bound = self._tiling_case.get("ub_factor_bound")
         if u_bound is None:
             u_bound = (1, util.get_bound(shape[u_i])[1])
-        self._block_tiling_vars[b_i] = operation.var("block_factor_" + str(b_i), b_bound)
-        self._ub_tiling_vars[u_i] = operation.var("ub_factor_" + str(u_i), u_bound)
+        self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
+        self._ub_tiling_vars[u_i] = operation.var_inner("_ub_factor_" + str(u_i), u_bound)
 
     def _calc_tiling_static(self):
         res = self._out
@@ -328,7 +328,7 @@ class ElewiseSchedule:
         b_i = self._tiling_case["block_tiling_axis"]
         u_i = self._tiling_case["ub_tiling_axis"]
         b_bound = (1, util.get_bound(shape[b_i])[1])
-        self._block_tiling_vars[b_i] = operation.var("block_factor_" + str(b_i), b_bound)
+        self._block_tiling_vars[b_i] = operation.var_inner("_block_factor_" + str(b_i), b_bound)
         self._ub_tiling_vars[u_i] = self._tiling_case["ub_tiling_factor"]
 
     def _calc_tiling_const(self):
@@ -827,7 +827,7 @@ class ElewiseSchedule:
         cpt_schedule = cpt_compute.get_current_schedule()
         if self._mode == CONST:
             # const shape: one compute, one schedule
-            cpt_compute.add("const_block_dim", self._block_dims)
+            cpt_compute.add("_const_block_dim", self._block_dims)
         else:
             cpt_schedule.add(CompileInfo.MAX_DTYPE, self._max_dtype_bytes)
             cpt_schedule.add(CompileInfo.COEXISTING_QUANTITY, self._coexisting_quantity)

@@ -38,7 +38,7 @@ TEST_F(ReduceTiling, ReduceTiling1) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
 
-  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"common_info": [32, 1, 8, 1, 1], "pattern_info": [5], "ub_info": [16256], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
+  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   std::vector<int64_t> input{1};
   std::vector<int64_t> output{1};
@@ -76,7 +76,7 @@ TEST_F(ReduceTiling, ReduceTiling2) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
 
-  std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "CommReduce", "push_status": 0, "zero_ub_factor": 25600, "_vars": {"10": ["dim_1", "ub_factor"]}})";
+  std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 25600, "_vars": {"10": ["_dim_1", "_ub_factor"]}})";
 
   std::vector<int64_t> input{2, 39, 0};
   std::vector<int64_t> output{2, 39, 1};
@@ -114,7 +114,7 @@ TEST_F(ReduceTiling, ReduceTiling3) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
 
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "zero_ub_factor": 32128, "_vars": {"110": ["dim_2", "ub_factor"]}})";
+  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32128, "_vars": {"110": ["_dim_2", "_ub_factor"]}})";
 
   std::vector<int64_t> input{2, 39, 0};
   std::vector<int64_t> output{};
@@ -151,7 +151,7 @@ TEST_F(ReduceTiling, ReduceTiling4) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0, "zero_ub_factor": 32512, "common_info": [32,1,8,1,1], "pattern_info": [1], "ub_info":[32512], "reduce_shape_known": true, "const_shape_post": true, "compile_pattern": 1, "_block_dims":{"1":32},
+  std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": 1, "_block_dims":{"1":32},
       "_atomic_flags":{"1": true},
       "_vars": {"1": []}})";
   std::vector<int64_t> input{64,64};

@@ -19,10 +19,10 @@ namespace optiling {
 
 bool SelectTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                   OpRunInfo& run_info) {
-    CHECK((op_info.count("_boardcast_condition_fill") > 0),
-          "op [%s] : compile info not contain [_boardcast_condition_fill]", op_type.c_str());
+    CHECK((op_info.count("boardcast_condition_fill") > 0),
+          "op [%s] : compile info not contain [boardcast_condition_fill]", op_type.c_str());
 
-    const std::vector<int64_t> boardcast_condition_fill = op_info["_boardcast_condition_fill"];
+    const std::vector<int64_t> boardcast_condition_fill = op_info["boardcast_condition_fill"];
 
     TeOpParas op_paras_tmp = op_paras;
 

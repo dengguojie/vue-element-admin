@@ -30,7 +30,6 @@ from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import REQUIRED_ATTR_STR
-from te.lang.base.operation import add_compile_info
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 from topi.cce import util as cce_util
@@ -174,7 +173,6 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     x["rel_pos_to_reduce"] = "before"
 
     g_shape_list = _infer_axes(input_data_format, data_format, shape)
-    add_compile_info("_ori_axis", g_shape_list)
     input_axis = {"shape": [len(g_shape_list), ], "value": g_shape_list, "rel_pos_to_reduce": "axis"}
     global REDUCE_LIST
     ins = classify([x, input_axis], Mode.REDUCE, {"keepdims": False})

@@ -26,7 +26,7 @@ from typing import Tuple
 from typing import Union
 
 from tbe.dsl.base import operation
-from tbe.dsl.base.operation import add_compile_info
+from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import register_build_pointcut
@@ -83,10 +83,10 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
     common_info = [core_num, keep_dims, min_block_size, atomic, graph_info.coef]
 
     # Diff_Info
-    if get_context().get("mode") == CONST:
+    if get_context().get("_mode") == CONST:
         # Compile Status: pattern must as same as tiling_key of const
         # that should be uniqueness.
-        compile_axis = get_context().get_current_compute().get("ori_axis")
+        compile_axis = get_context().get_current_compute().get("_ori_axis")
         pattern = _gen_const_tiling_key(compile_axis)
     else:
         pattern = _get_pattern_key(reduce_info.shape_before_reduce,
@@ -97,16 +97,16 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
 
     pre_compile_info = get_compile_info()
     if pre_compile_info:
-        info_map = {"common_info": common_info, "pattern_info": pattern_info,
-                    "ub_info": ub_info}
+        info_map = {"_common_info": common_info, "_pattern_info": pattern_info,
+                    "_ub_info": ub_info}
         for key in info_map.keys():
             if key not in pre_compile_info.keys():
-                add_compile_info(key, info_map.get(key))
+                add_compile_info_inner(key, info_map.get(key))
             else:
-                if key != "common_info":
+                if key != "_common_info":
                     key_info = pre_compile_info.get(key)
                     key_info += info_map.get(key)
-                    add_compile_info(key, key_info)
+                    add_compile_info_inner(key, key_info)
     else:
         raise RuntimeError("pre_compile_info is Null")
 
@@ -120,10 +120,10 @@ def _calc_tiling_key(reduce_info, tiling):
     atomic = tiling.is_atomic
     shape_type, db = 0, 0
 
-    if get_context().get("mode") == CONST:
-        ori_axis = get_context().get_current_compute().get("ori_axis")
+    if get_context().get("_mode") == CONST:
+        ori_axis = get_context().get_current_compute().get("_ori_axis")
         tiling_key = _gen_const_tiling_key(ori_axis)
-    elif get_context().get("mode") == ZERO:
+    elif get_context().get("_mode") == ZERO:
         # TODO
         pass
     else:
@@ -135,22 +135,22 @@ def _calc_tiling_key(reduce_info, tiling):
 
 
 def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
-    add_compile_info("reduce_shape_known", True)
+    add_compile_info_inner("_reduce_shape_known", True)
     const_tiling_case = ReduceTilingCase()
     shape_before_reduce = shape_to_list(single_reduce_info.shape_before_reduce)
     shape_after_reduce = shape_to_list(single_reduce_info.shape_after_reduce)
     reduce_axis_index = single_reduce_info.reduce_axis_indices
     input_dtype = tuple(compute_graph_info.input_tensor_set)[0].dtype
     output_dtype = tuple(compute_graph_info.output_tensor_set)[0].dtype
-    axes_dtype = get_context().get_current_compute().get("axis_dtype")
+    axes_dtype = get_context().get_current_compute().get("_axis_dtype")
     # staging axis info in ops
     # _ori_axis: original axes from func_enter of ReduceD, maybe None while op is ReduceSum
     # ori_axis: axes from classify, always existed
     ori_reduce_axis = get_compile_info().get("_ori_axis")
-    compile_axis = get_context().get_current_compute().get("ori_axis")
+    compile_axis = get_context().get_current_compute().get("_ori_axis")
     if axes_dtype is None:
         # invoking op_tiling interface during compilation need axis info in sch
-        add_compile_info("_ori_axis", reduce_axis_index)
+        add_compile_info_inner("_ori_axis", reduce_axis_index)
         inputs = [{"shape": shape_before_reduce, "dtype": input_dtype}]
     else:
         inputs = [{"shape": shape_before_reduce, "dtype": input_dtype},
@@ -158,8 +158,8 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
                    "const_value": reduce_axis_index}]
     outputs = [{"shape": shape_after_reduce, "dtype": output_dtype}]
     # the flag of invoking op_tiling interface during compilation
-    add_compile_info("const_shape_post", False)
-    add_compile_info("compile_pattern", _gen_const_tiling_key(compile_axis))
+    add_compile_info_inner("_const_shape_post", False)
+    add_compile_info_inner("_compile_pattern", _gen_const_tiling_key(compile_axis))
     run_info = op_tiling.do_op_tiling(get_context().get_op_type(), get_compile_info(), inputs, outputs)
     tiling_format = {"block_axis": "int", "block_factor": "int", "ub_axis": "int", "ub_factor": "int"}
     tiling_data = op_tiling.decode(run_info["tiling_data"], tiling_format)
@@ -171,20 +171,20 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
     _calc_tiling_key(single_reduce_info, const_tiling_case)
     # the flag of invoking op_tiling interface during running
-    add_compile_info("const_shape_post", True)
+    add_compile_info_inner("_const_shape_post", True)
     # invoking op_tiling interface during running need axis info in ops
     if ori_reduce_axis is not None:
-        add_compile_info("_ori_axis", ori_reduce_axis)
+        add_compile_info_inner("_ori_axis", ori_reduce_axis)
 
     block_dims = get_compile_info().get(CompileInfo.BLOCK_DIMS)
     if block_dims is None:
         block_dims = {}
-        add_compile_info(CompileInfo.BLOCK_DIMS, block_dims)
+        add_compile_info_inner(CompileInfo.BLOCK_DIMS, block_dims)
     block_dims[str(const_tiling_case.tiling_key)] = run_info["block_dim"]
     atomic_flags = get_compile_info().get(CompileInfo.ATOMIC_FLAGS)
     if atomic_flags is None:
         atomic_flags = {}
-        add_compile_info(CompileInfo.ATOMIC_FLAGS, atomic_flags)
+        add_compile_info_inner(CompileInfo.ATOMIC_FLAGS, atomic_flags)
     atomic_flags[str(const_tiling_case.tiling_key)] = run_info["clear_atomic"]
 
     return [const_tiling_case]
@@ -200,12 +200,12 @@ def calc_tiling_case(outs, options=None):
     # construct information of graph
     compute_graph_info = ComputeGraphInfo(outs)
     single_reduce_info = SingleReduceInfo(compute_graph_info)
-    current_compute.add("compute_graph_info", compute_graph_info)
-    current_compute.add("single_reduce_info", single_reduce_info)
+    current_compute.add("_compute_graph_info", compute_graph_info)
+    current_compute.add("_single_reduce_info", single_reduce_info)
     if not compute_graph_info.reduce_tensor_set:
         raise RuntimeError("Couldn't find reduce node for ReduceSchedule")
 
-    if current_compute.get("mode") == ZERO:
+    if current_compute.get("_mode") == ZERO:
         return [_gen_zero_tiling_case()]
 
     tiling_case_list = []
@@ -217,7 +217,7 @@ def calc_tiling_case(outs, options=None):
     # calc_tiling_key
     for tiling_case in tiling_case_list:
         _calc_tiling_key(single_reduce_info, tiling_case)
-    if get_context().get("mode") == CONST:
+    if get_context().get("_mode") == CONST:
         return _gen_const_tiling_case(single_reduce_info, compute_graph_info)
 
     return tiling_case_list
@@ -230,7 +230,7 @@ def _gen_zero_tiling_case():
     zero_tiling_case.block_split_axis_index = 0
     zero_tiling_case.block_factor = 1
     zero_tiling_case.ub_split_axis_index = 1
-    zero_tiling_case.ub_factor = operation.var("ub_factor")
+    zero_tiling_case.ub_factor = operation.var_inner("_ub_factor")
     zero_tiling_case.multi_core = True
     zero_tiling_case.tiling_key = _gen_zero_tiling_key()
 
@@ -245,8 +245,8 @@ def _find_idx_in_tensor_list(args: Union[Tuple, List]):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     tensor_list = args[1].get("tensor_list")
-    _before_reduce = operation.get_context().get("placeholder_before_reduce")
-    _after_reduce = operation.get_context().get("placeholder_after_reduce")
+    _before_reduce = operation.get_context().get("_placeholder_before_reduce")
+    _after_reduce = operation.get_context().get("_placeholder_after_reduce")
 
     if not _before_reduce and not _after_reduce:
         return
@@ -254,11 +254,11 @@ def _find_idx_in_tensor_list(args: Union[Tuple, List]):
     for tensors in tensor_list:
         for _idx, _tensor in enumerate(tensors):
             if _tensor in _before_reduce:
-                operation.add_compile_info("idx_before_reduce", _idx)
+                operation.add_compile_info_inner("_idx_before_reduce", _idx)
                 return
         for _idx, _tensor in enumerate(tensors):
             if _tensor in _after_reduce:
-                operation.add_compile_info("idx_before_reduce", _idx)
+                operation.add_compile_info_inner("_idx_before_reduce", _idx)
                 return
 
     dict_args = dict()
@@ -291,7 +291,7 @@ class SingleReduceInfo:
         self.reduce_axes: List[Var] = get_reduce_axes(self.reduce_tensor)
 
         compute = operation.get_context().get_current_compute()
-        if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+        if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):
             self.shape_before_reduce = list(self.reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
         else:
             self.shape_before_reduce: List[Union[Var, IntImm]] = list(self.reduce_tensor.op.input_tensors[0].shape)
@@ -302,7 +302,7 @@ class SingleReduceInfo:
 
     def is_reduce_not_last_axis(self) -> bool:
         compute = operation.get_context().get_current_compute()
-        if compute.get("mode") == "zero":
+        if compute.get("_mode") == "zero":
             return False
 
         is_not_last_axis = self.all_axes[-1] not in self.reduce_axes
@@ -732,7 +732,7 @@ def _gen_const_tiling_key(reduce_axis):
 
 def _gen_zero_tiling_key():
     compute = get_context().get_current_compute()
-    shape = compute.get("shape")
+    shape = compute.get("_shape")
     if shape == (1, -1, 0):
         return 10
     elif shape == (1, 0, -1):

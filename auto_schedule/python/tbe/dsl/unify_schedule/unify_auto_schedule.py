@@ -57,7 +57,7 @@ def schedule_cce(outs, option=None):
 
     original_outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     pattern = pattern_parser.get_pattern(outs)
-    operation.add_compile_info("_pattern", pattern)
+    operation.add_compile_info_inner("_pattern", pattern)
     operation.get_context().set_pattern(pattern)
 
     if util.get_build_cfg() == "disable":
@@ -313,12 +313,12 @@ class Builder:
         def add_vars():
             # key: tiling_key, value: [var_name]
             value = {k: [x.get_name() for x in v] for k, v in self.compile_vars.items()}
-            operation.add_compile_info(CompileInfo.VARS, value)
+            operation.add_compile_info_inner(CompileInfo.VARS, value)
 
         def add_normal_vars():
             # key: tiling_key, value: [var_name]
             value = {k: [x.get_name() for x in v] for k, v in self.compile_normal_vars.items()}
-            operation.add_compile_info(CompileInfo.NORMAL_VARS, value)
+            operation.add_compile_info_inner(CompileInfo.NORMAL_VARS, value)
 
         def add_attr_vars():
             def convert(attr_var):
@@ -336,12 +336,12 @@ class Builder:
 
             # key: tiling_key, value: [@see convert_attr_var()]
             value = {k: [convert(x) for x in v] for k, v in self.compile_attr_vars.items()}
-            operation.add_compile_info(CompileInfo.ATTR_VARS, value)
+            operation.add_compile_info_inner(CompileInfo.ATTR_VARS, value)
 
         def add_custom_vars():
             # key: tiling_key, value: [var_name]
             value = {k: [x.get_name() for x in v] for k, v in self.compile_custom_vars.items()}
-            operation.add_compile_info(CompileInfo.CUSTOM_VARS, value)
+            operation.add_compile_info_inner(CompileInfo.CUSTOM_VARS, value)
 
         add_vars()
         add_normal_vars()

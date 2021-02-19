@@ -16,6 +16,7 @@
 classifier of shape in reduce
 """
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base.operation import add_compile_info_inner
 
 from .known_reduce_classifier import KnownReduceClassifier
 from .unknown_reduce_classifier import UnknownReduceClassifier
@@ -36,6 +37,7 @@ def classify(ins: list, keepdims: bool):
     for single_input in ins:
         if single_input.get("rel_pos_to_reduce") == AXIS:
             if single_input.get("value"):
+                add_compile_info_inner("_ori_axis", single_input.get("value"))
                 return KnownReduceClassifier(ins, keepdims).classify()
             else:
                 return UnknownReduceClassifier(ins, keepdims).classify()

@@ -258,7 +258,7 @@ class ComputeGraphInfo:
         reduce_tensor = list(self.reduce_tensor_set)[0]
         shape_after_reduce = list(reduce_tensor.shape)
         compute = operation.get_context().get_current_compute()
-        if compute.get("mode") == "zero" and compute.get("shape") == (1, -1, 0):
+        if compute.get("_mode") == "zero" and compute.get("_shape") == (1, -1, 0):
             shape_before_reduce = list(reduce_tensor.shape) + [tvm.expr.IntImm("int32", 0)]
         else:
             shape_before_reduce = list(reduce_tensor.op.input_tensors[0].shape)
@@ -426,12 +426,12 @@ class ComputeGraphInfo:
 
         # [Common Reduce] Find maximum sub_graph
         self.get_all_tensors_before_reduce()
-        if not operation.get_context().get("placeholder_before_reduce") and \
-                not operation.get_context().get("placeholder_after_reduce"):
+        if not operation.get_context().get("_placeholder_before_reduce") and \
+                not operation.get_context().get("_placeholder_after_reduce"):
             placeholder_before_reduce = [x for x in self.tensors_before_reduce if is_placeholder(x)]
-            operation.get_context().add("placeholder_before_reduce", placeholder_before_reduce)
+            operation.get_context().add("_placeholder_before_reduce", placeholder_before_reduce)
             placeholder_after_reduce = [x for x in self.tensors_after_reduce if is_placeholder(x)]
-            operation.get_context().add("placeholder_after_reduce", placeholder_after_reduce)
+            operation.get_context().add("_placeholder_after_reduce", placeholder_after_reduce)
         coexisting_quantities, dependent_map = [], {}
         _out = list(self.output_tensor_set)[0]
 
@@ -480,7 +480,7 @@ class ComputeGraphInfo:
         small_ub_size = self.soc_ub_size // total_num // 128 * 128
         self.tensor_ub_size_before_reduce = self.coef * small_ub_size
         self.tensor_ub_size_after_reduce = small_ub_size
-        operation.add_compile_info("zero_ub_factor", self.tensor_ub_size_after_reduce)
+        operation.add_compile_info_inner("_zero_ub_factor", self.tensor_ub_size_after_reduce)
 
     @staticmethod
     def set_map_deepcopy(_map: Dict[Tensor, Set[Tensor]]) -> Dict[Tensor, Set[Tensor]]:
