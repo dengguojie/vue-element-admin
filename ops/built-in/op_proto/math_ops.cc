@@ -1004,4 +1004,95 @@ IMPLEMT_INFERFUNC(Angle, AngleInfer)
 
 INFER_FUNC_REG(Angle, AngleInfer);
 
+// ----------------SoftMarginLossGrad Begin------------------------
+bool infer_shape_and_type_soft_margin_loss_grad(Operator& op,
+                                                const string& input_name1,
+                                                const string& input_name2,
+                                                const string& input_name3,
+                                                const string& output_name) {
+    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+    DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+    Format input_format = op.GetInputDesc(input_name1).GetFormat();
+
+    ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+    ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+    ge::Shape shape_z = op.GetInputDesc(input_name3).GetShape();
+    std::vector<int64_t> dims_x = shape_x.GetDims();
+    std::vector<int64_t> dims_y = shape_y.GetDims();
+    std::vector<int64_t> dims_z = shape_z.GetDims();
+
+    if (dims_y.size() > dims_z.size() && dims_y.size() > dims_x.size()) {
+        std::vector<int64_t> dims_tmp = dims_y;
+        dims_y = dims_x;
+        dims_x = dims_tmp;
+    }else if (dims_z.size() > dims_x.size() && dims_z.size() > dims_y.size()) {
+        std::vector<int64_t> dims_tmp = dims_z;
+        dims_z = dims_x;
+        dims_x = dims_tmp;
+    }
+
+    if (dims_x.size() != dims_y.size()) {
+        int dec = dims_x.size() - dims_y.size();
+        for (int i = 0; i < dec; i++) {
+            dims_y.insert(dims_y.begin(), (int64_t)1);
+        }
+    }else if (dims_x.size() != dims_z.size()) {
+        int dec = dims_x.size() - dims_z.size();
+        for (int i = 0; i < dec; i++) {
+            dims_z.insert(dims_z.begin(), (int64_t)1);
+        }
+    }
+
+    std::vector<int64_t> dim_vec;
+    for (size_t i = 0; i < dims_x.size(); i++) {
+        if ((dims_x[i] != dims_y[i]) && (dims_x[i] != dims_z[i])
+        && (dims_x[i] != 1) && (dims_y[i] != 1) && (dims_z[i] != 1)) {
+            OP_LOGE(op.GetName().c_str(), "three input can broatcast \n");
+            return false;
+        }
+        int64_t dims = dims_x[i];
+        if((dims_x[i] > dims_y[i]) && dims_x[i] > dims_z[i]){
+            dims = dims_x[i];
+        }else if((dims_y[i] > dims_x[i]) && dims_y[i] > dims_z[i]){
+            dims = dims_y[i];
+        }else if((dims_z[i] > dims_x[i]) && dims_z[i] > dims_y[i]){
+            dims = dims_z[i];
+        }
+        dim_vec.push_back(dims);
+    }
+    ge::Shape output_shape = ge::Shape(dim_vec);
+
+    v_output_desc.SetShape(output_shape);
+    v_output_desc.SetDataType(input_dtype);
+    v_output_desc.SetFormat(input_format);
+    op.UpdateOutputDesc(output_name, v_output_desc);
+
+    return true;
+}
+
+IMPLEMT_VERIFIER(SoftMarginLossGrad, SoftMarginLossGradVerify)
+{
+    if (op.GetInputDesc("predict").GetDataType() != op.GetInputDesc("label").GetDataType() ||
+        op.GetInputDesc("predict").GetDataType() != op.GetInputDesc("dout").GetDataType()) {
+        OP_LOGE(op.GetName().c_str(), "three input datatype must equal!\n");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(SoftMarginLossGradInferShape)
+{
+    if(infer_shape_and_type_soft_margin_loss_grad(op, "dout", "predict", "label", "gradient")) {
+        return GRAPH_SUCCESS;
+    }else{
+        return GRAPH_FAILED;
+    }
+}
+
+COMMON_INFER_FUNC_REG(SoftMarginLossGrad, SoftMarginLossGradInferShape);
+VERIFY_FUNC_REG(SoftMarginLossGrad, SoftMarginLossGradVerify);
+//---------------SoftMarginLossGrad-------------------
+
 }  // namespace ge

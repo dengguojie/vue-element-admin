@@ -4684,4 +4684,69 @@ INFER_FUNC_REG(ArgMaxGradD, ArgMaxGradDInferShape);
 VERIFY_FUNC_REG(ArgMaxGradD, ArgMaxGradDVerify);
 // ------------------ArgMaxGradD END---------------------
 
+// ------------------CosineSimilarity---------------------
+bool InferShapeAndTypeCosineSimilarity(Operator &op,
+                                       const string &input_name,
+                                       const string &attr_name,
+                                       const string &output_name)
+{
+    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+    DataType input_dtype = op.GetInputDesc(input_name).GetDataType();
+    Format input_format = op.GetInputDesc(input_name).GetFormat();
+    ge::Shape shape_x = op.GetInputDesc(input_name).GetShape();
+    std::vector<int64_t> dims_x = shape_x.GetDims();
+    std::vector<int64_t> dim_vec;
+    int64_t attr_dim;
+    op.GetAttr(attr_name, attr_dim);
+    //Valid dim value [-shape_x, shape_x - 1] in Python,
+    //which needs to be converted to [0, shape_x - 1] here in C++.
+    if (attr_dim < 0)
+    {
+        attr_dim += dims_x.size();
+    }
+    //Shape of output Tensor is the same as input except for
+    //the axis that dim points to.
+    //Example.
+    //Shape of input [2,3,4,5], dim = 0, then shape of output is [3,4,5]
+    for (size_t i = 0; i < dims_x.size(); i++)
+    {
+        if (i != attr_dim)
+        {
+            dim_vec.push_back(dims_x[i]);
+        }
+    }
+    ge::Shape output_shape = ge::Shape(dim_vec);
+    v_output_desc.SetShape(output_shape);
+    v_output_desc.SetDataType(input_dtype);
+    v_output_desc.SetFormat(input_format);
+    op.UpdateOutputDesc(output_name, v_output_desc);
+    return true;
+}
+
+IMPLEMT_VERIFIER(CosineSimilarity, CosineSimilarityVerify)
+{
+
+    if (op.GetInputDesc("input_x1").GetDataType() != op.GetInputDesc("input_x2").GetDataType())
+    {
+        OP_LOGE(op.GetName().c_str(), "the op two inputs dtype need equal!\n");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(CosineSimilarityInferShape)
+{
+    if (InferShapeAndTypeCosineSimilarity(op, "input_x1", "dim", "output_y"))
+    {
+        return GRAPH_SUCCESS;
+    }
+    OP_LOGE(op.GetName().c_str(), "Obtains the processing function of the output tensor fail!\n");
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(CosineSimilarity, CosineSimilarityInferShape);
+VERIFY_FUNC_REG(CosineSimilarity, CosineSimilarityVerify);
+// ------------------CosineSimilarity END---------------------
+
 }  // namespace ge
