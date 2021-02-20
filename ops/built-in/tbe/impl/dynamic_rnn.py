@@ -578,7 +578,7 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
     # seq_length
     if seq_length is not None and (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
         error_manager_vector.raise_err_check_params_rules("DynamicRNN",
-                                                          "seq_length.shape[0] == output_h.shape[2] * 16",
+                                                          "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
                                                           "seq_length.shape[0]", output_h["shape"][2])
 
     # check init

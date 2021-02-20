@@ -213,7 +213,7 @@ def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_le
 
     if seq_length is not None and (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
         error_manager_vector.raise_err_check_params_rules("DynamicGRUV2",
-                                                          "seq_length.shape[0] == output_h.shape[2] * 16",
+                                                          "(seq_length.shape[0] + 15)/16 != output_h.shape[2]",
                                                           "seq_length.shape[0]", output_h["shape"][2])
 
     # k_size
