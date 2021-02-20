@@ -70,7 +70,6 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::And, LogicalAnd, AndV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::PRelu, PRelu, PReluV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Sign, Sign, SignV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Det, MatrixDeterminant, DetV11);
-REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::LSTM, DynamicRNN, LstmV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::LessOrEqual, LessEqual, LessEqualV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Identity, Identity, IdentityV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Where, SelectV2, WhereV11);
