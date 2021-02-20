@@ -256,7 +256,8 @@ def _set_buffer_emit_insn(sch, res, tensor_map, axis_inner):
             if cceconf.get_soc_spec("SOC_VERSION") in ("Ascend710",
                                                        "Ascend610",
                                                        "Ascend615",
-                                                       "Hi3796CV300CS"):
+                                                       "Hi3796CV300CS",
+                                                       "SD3403"):
                 if res.op.attrs['is_scalar'].value == 1:
                     sch[value].emit_insn(sch[value].op.axis[0], 'dma_copy')
                 else:

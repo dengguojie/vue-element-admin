@@ -507,24 +507,37 @@ class QuantSchedule(ElewiseSchedule):
                                             "vector_add": "vector_add",
                                             "vector_sub": "vector_sub"
                                             }
+        self._quant_output_tensor = None
+        self._double_out_tensor = False
+
+    def _get_quant_tensor(self):
+        for one_tensor in self._mid_tensors:
+            if one_tensor.op.tag in ("quant", "res_out_fp16"):
+                self._mid_output_tensors.append(one_tensor)
+                self._mid_output_tensors_dst_tensor_map[one_tensor] = self._last_output_tensor
+                if one_tensor.op.tag == "quant":
+                    self._quant_output_tensor = one_tensor
+                    self._double_out_tensor = True
+        if not self._double_out_tensor:
+            self._quant_output_tensor = self._last_output_tensor
 
     def _get_res_attrs(self):
         """
         get the attrs carried by the tensor
         """
-        self.attrs["scale"] = self._last_output_tensor.op.attrs['scale']
-        self.attrs["sqrt_mode"] = self._last_output_tensor.op.attrs[
+        self.attrs["scale"] = self._quant_output_tensor.op.attrs['scale']
+        self.attrs["sqrt_mode"] = self._quant_output_tensor.op.attrs[
             'sqrt_mode']
-        self.attrs["offset"] = self._last_output_tensor.op.attrs['offset']
-        self.attrs["round_mode"] = self._last_output_tensor.op.attrs[
+        self.attrs["offset"] = self._quant_output_tensor.op.attrs['offset']
+        self.attrs["round_mode"] = self._quant_output_tensor.op.attrs[
             'round_mode']
-        self.attrs["input_format"] = self._last_output_tensor.op.attrs[
+        self.attrs["input_format"] = self._quant_output_tensor.op.attrs[
             'input_format']
-        self.attrs["c1_dim"] = self._last_output_tensor.op.attrs[
+        self.attrs["c1_dim"] = self._quant_output_tensor.op.attrs[
             'c1_dim'].value
-        self.attrs["addr_type"] = self._last_output_tensor.op.attrs[
+        self.attrs["addr_type"] = self._quant_output_tensor.op.attrs[
             'addr_type']
-        self.attrs["HWC0"] = self._last_output_tensor.op.attrs['HWC0']
+        self.attrs["HWC0"] = self._quant_output_tensor.op.attrs['HWC0']
 
     def _calculate_emit_insn_map(self, tensor):
         """
@@ -558,9 +571,32 @@ class QuantSchedule(ElewiseSchedule):
                 elif tensor.op.name == "input_ub" and \
                         self.attrs["c1_dim"] % 2 != 0:
                     insn = "dma_padding"
+                elif tensor.op.tag == "res_out_fp16":
+                    insn = "dma_copy"
+                elif tensor.op.tag == "conv_virtual_res":
+                    insn = "phony_insn"
                 else:
                     insn = "vector_auto"
         return insn
+
+    def _calculate_emit_insn(self):
+
+        ElewiseSchedule._calculate_emit_insn(self)
+        if self._double_out_tensor:
+            res = self._last_output_tensor
+            ub_tiling_result = self._tiling_result["ub_tiling"]
+            ub_split_axis = ub_tiling_result["axis"]
+            res_ub_inner = ub_tiling_result["inner_itervar"]
+
+            # eliminate mid out tensor from gm to ub by fake node
+            for tensor in self._mid_output_tensors:
+                para = {"scope": tensor.op.axis[ub_split_axis],
+                        "instruction": 'dma_copy'}
+                self._emit_insn_map[tensor] = para
+
+            self._emit_insn_map[res] = {"scope": res_ub_inner,
+                                        "instruction": 'phony_insn'}
+            self._schedule[res].set_scope("")
 
     def _calculate_cache_write(self):
         """
@@ -577,7 +613,10 @@ class QuantSchedule(ElewiseSchedule):
         for i in self._mid_tensors:
             if i.op.name == "input_ub" and self.attrs["c1_dim"] % 2 == 0:
                 self._cache_write_exclude_tensors.append(i)
-            if i not in self._cache_write_exclude_tensors:
+
+        exclude_tensors = self._cache_write_exclude_tensors + self._mid_output_tensors
+        for i in self._mid_tensors:
+            if i not in exclude_tensors:
                 self._cache_write_tensors.append(i)
 
         if self._last_output_tensor not in self._cache_write_exclude_tensors:
@@ -618,6 +657,22 @@ class QuantSchedule(ElewiseSchedule):
                         out_tensor = self._temp_out_tensors[j]
                     self._schedule[i].reused_by(out_tensor)
 
+    def _calculate_cache_read(self):
+        """
+        cache read operations
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        list : read buffers
+        """
+        for i in self._input_tensors:
+            self._map_apend(self._cache_read_tensors_and_readers_map, i,
+                            self._input_tensor_dst_tensor_map[i])
+
     def _do_cache_read(self):
         """
         cache read operations
@@ -657,6 +712,8 @@ class QuantSchedule(ElewiseSchedule):
         is_success = self._construct_compute_graph(out_tensors, [])
         if not is_success:
             return False
+
+        self._get_quant_tensor()
 
         self._get_res_attrs()
 
