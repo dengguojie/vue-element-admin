@@ -83,7 +83,7 @@ fi
 installKernel()
 {
     AICPU_KERNEL_INSTALL_PATH="$1/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/Ascend910"
-    AICPU_KERNEL_PATH="$2/build/install/opp/op_impl/built-in/aicpu/aicpu_kernel/lib"
+    AICPU_KERNEL_PATH="$2/build/install/aicpu"
     if [[ -d  "$AICPU_KERNEL_PATH" ]]; then
       cp -f $AICPU_KERNEL_INSTALL_PATH/libcpu_kernels_v*.so $FILE_BACKUP_PATH/backup_dir
       if [[ $? -ne 0 ]]; then
