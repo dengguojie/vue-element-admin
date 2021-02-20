@@ -306,7 +306,7 @@ def var(name, bound=None, dtype="int32", addition=None):
     if name.startswith("_"):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "the name of var must not start with '_' when calling the var interface"
+        dict_args["detailed_cause"] = "the name of var must not start with '_'."
         raise RuntimeError(dict_args, get_error_message(dict_args))
     return _var(name, bound, dtype, Category.CUSTOM, addition)
 
@@ -365,7 +365,7 @@ def var_inner(name, bound=None, dtype="int32", addition=None):
     if not name.startswith("_"):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "the name of var must start with '_' when calling the var_inner interface"
+        dict_args["detailed_cause"] = "the name of var must start with '_' in internal use scenarios."
         raise RuntimeError(dict_args, get_error_message(dict_args))
     return _var(name, bound, dtype, Category.NORMAL, addition)
 
@@ -437,8 +437,7 @@ def add_compile_info(key, value):
     if key.startswith("_"):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "the key of compile_info must not start with '_' " \
-                                      "when calling the add_compile_info_inner interface"
+        dict_args["detailed_cause"] = "the key of compile_info must not start with '_'."
         raise RuntimeError(dict_args, get_error_message(dict_args))
     _add_compile_info(key, value)
 
@@ -454,7 +453,7 @@ def add_compile_info_inner(key, value):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "the key of compile_info must start with '_' " \
-                                      "when calling the add_compile_info_inner interface"
+                                      "in internal use scenarios."
         raise RuntimeError(dict_args, get_error_message(dict_args))
     _add_compile_info(key, value)
 
