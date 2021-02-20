@@ -123,7 +123,7 @@ def sigmoid_grad(x,
     schedules, tensors = [], []
     for (sig, dx) in ins:
         with tbe_base.compute():
-            shape_sig, shape_dx = shape_util.variable_shape([sig, dx], support_broadcast=False)
+            shape_sig, shape_dx = shape_util.variable_shape([sig, dx])
             shape_sig = [reduceIns(lambda x, y: x * y, shape_sig)]
             shape_dx = [reduceIns(lambda x, y: x * y, shape_dx)]
             tensor_sig = tvm.placeholder(shape_sig, x_dtype, "tensor_x")

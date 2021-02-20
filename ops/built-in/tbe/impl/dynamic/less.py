@@ -180,7 +180,7 @@ def less(input_x, input_y, output_z, kernel_name="less"):
     for (input_x, input_y) in ins:
         with tbe_base.compute():
             # shape
-            x_shape, y_shape = shape_util.variable_shape([input_x, input_y], support_broadcast=True)
+            x_shape, y_shape = shape_util.variable_shape([input_x, input_y])
 
             # less compute
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")

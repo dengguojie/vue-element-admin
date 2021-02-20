@@ -113,7 +113,7 @@ def mul(input1, input2, output, kernel_name="mul"):
     for (input1, input2) in ins:
         with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([input1, input2], support_broadcast=True)
+            shape_x1, shape_x2 = shape_util.variable_shape([input1, input2])
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=dtype_x1, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=dtype_x2, name="data_x2")

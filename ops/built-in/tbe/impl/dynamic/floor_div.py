@@ -125,8 +125,7 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
     for (input_x, input_y) in ins:
         with tbe_base.compute():
             x_shape, y_shape = \
-                shape_util.variable_shape([input_x, input_y],
-                                          support_broadcast=True)
+                shape_util.variable_shape([input_x, input_y])
             tensor_x = tvm.placeholder(x_shape, input_dtype_x, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, input_dtype_y, "tensor_y")
             res = floor_div_compute(tensor_x, tensor_y, output_z, kernel_name)

@@ -123,7 +123,7 @@ def truncate_mod(input_x, input_y, output_z, kernel_name="truncate_mod"):
     for (_input_x, _input_y) in ins:
         with tbe_base.compute():
             x_shape, y_shape = \
-                shape_util.variable_shape([_input_x, _input_y], support_broadcast=True)
+                shape_util.variable_shape([_input_x, _input_y])
             data1 = tvm.placeholder(x_shape, dtype=dtype_x, name="data1")
             data2 = tvm.placeholder(y_shape, dtype=dtype_y, name="data2")
             res = truncate_mod_compute(data1, data2, output_z, kernel_name)

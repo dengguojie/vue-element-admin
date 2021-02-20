@@ -114,8 +114,7 @@ def maximum(x1, x2, y, kernel_name="maximum"):
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with tbe_base.compute():
-            shape_x1, shape_x2 = shape_util.variable_shape([x1, x2],
-                                                support_broadcast=True)
+            shape_x1, shape_x2 = shape_util.variable_shape([x1, x2])
             data1 = tvm.placeholder(shape_x1, dtype=dtype_x1, name="data1")
             data2 = tvm.placeholder(shape_x2, dtype=dtype_x2, name="data2")
             res = maximum_compute(data1, data2, y, kernel_name)

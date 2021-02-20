@@ -362,7 +362,7 @@ def bias(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
     for (_x, _bias) in ins:
         with tbe_base.compute():
             x_shape, bias_shape = \
-                shape_util.variable_shape([_x, _bias], support_broadcast=True)
+                shape_util.variable_shape([_x, _bias])
             x_input = tvm.placeholder(x_shape, name="x_input", dtype=dtype_x)
             bias_input = tvm.placeholder(bias_shape, name="bias_input", dtype=dtype_bias)
 

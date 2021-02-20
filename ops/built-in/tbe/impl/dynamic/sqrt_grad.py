@@ -102,7 +102,7 @@ def sqrt_grad(x, dx, out, kernel_name="sqrt_grad"):
     schedules, tensors = [], []
     for (x, dx) in ins:
         with tbe_base.compute():
-            x_shape, dx_shape = shape_util.variable_shape([x, dx], support_broadcast=False)
+            x_shape, dx_shape = shape_util.variable_shape([x, dx])
             x_shape = [reduceIns(lambda x, y: x * y, x_shape)]
             dx_shape = [reduceIns(lambda x, y: x * y, dx_shape)]
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")

@@ -1032,7 +1032,7 @@ def _parse_mul(expr, elements: dict):
     return shape_util._parse_mul(expr, elements)
 
 
-def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
+def variable_shape(inputs: list, op_mode="elewise"):
     """
     :param inputs: all inputs
     :param support_broadcast: whether to support broadcast
@@ -1040,4 +1040,4 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
     """
     warnings.warn("variable_shape is deprecated, replace it with the same func in shape_util",
                   DeprecationWarning)
-    return shape_util.variable_shape(inputs, op_mode, support_broadcast)
+    return shape_util.variable_shape(inputs, op_mode)

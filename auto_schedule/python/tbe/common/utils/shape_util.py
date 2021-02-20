@@ -287,7 +287,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
     return fused_shape1, fused_shape2
 
 
-def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
+def variable_shape(inputs: list, op_mode="elewise"):
     """
     :param inputs: all inputs
     :param op_mode: elewise or reduce
@@ -417,9 +417,10 @@ def variable_shape(inputs: list, op_mode="elewise", support_broadcast=False):
         mode = para_check.ORIGINAL
     operation.get_context().add("_mode", mode)
     current_compute = operation.get_context().get_current_compute()
-    if current_compute:
-        current_compute.add("_mode", mode)
-    operation.get_context().add("_support_broadcast", support_broadcast)
+    current_compute.add("_mode", mode)
+    support_broadcast = operation.get_context().get("_support_broadcast")
+    if support_broadcast is None:
+        support_broadcast = False
 
     shapes, ranges = _fill(inputs)
     _mode_process()

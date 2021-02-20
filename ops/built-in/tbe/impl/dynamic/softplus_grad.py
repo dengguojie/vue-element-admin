@@ -135,7 +135,7 @@ def softplus_grad(input_gradients, input_features, output_backprops,
     schedules, tensors = [], []
     for (input_g, input_x) in ins:
         with tbe_base.compute():
-            g_shape, x_shape = shape_util.variable_shape([input_g, input_x], support_broadcast=True)
+            g_shape, x_shape = shape_util.variable_shape([input_g, input_x])
             g_shape, x_shape = shape_util.refine_shapes_for_broadcast(g_shape, x_shape)
             tensor_g = tvm.placeholder(g_shape, dtype_dy, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, dtype_x, "tensor_x")

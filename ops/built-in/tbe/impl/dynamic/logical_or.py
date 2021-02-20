@@ -102,7 +102,7 @@ def logical_or(x1, x2, y, kernel_name="logical_or"):
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with tbe_base.compute():
-            shape_x1, shape_x2 = shape_util.variable_shape([x1, x2], support_broadcast=True)
+            shape_x1, shape_x2 = shape_util.variable_shape([x1, x2])
             data_x1 = tvm.placeholder(shape_x1, name="data_x1", dtype=dtype_x1)
             data_x2 = tvm.placeholder(shape_x2, name="data_x2", dtype=dtype_x2)
             res = logical_or_compute(data_x1, data_x2, y, kernel_name)

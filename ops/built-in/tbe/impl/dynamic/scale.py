@@ -566,7 +566,7 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_na
     schedules, tensors = [], []
     for (x_, scale_) in ins:
         with tbe_base.compute():
-            shape_x, shape_scale = shape_util.variable_shape([x_, scale_], support_broadcast=True)
+            shape_x, shape_scale = shape_util.variable_shape([x_, scale_])
             shape_x, shape_scale = shape_util.refine_shapes_for_broadcast(shape_x, shape_scale)
 
             tensor_x = tvm.placeholder(shape_x, dtype_x, "tensor_x")

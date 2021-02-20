@@ -52,7 +52,8 @@ class BroadcastElewiseClassifier:
         :param ins:
         """
         self.ins = ins
-        self.extra_params = {} if extra_params is None else extra_params
+        extra_params = {} if extra_params is None else extra_params
+        self.disable_optimization = extra_params.get("disable_optimization", False)
         self.is_unknown_rank = self._check_update_unknown_rank()
         shapes = [x["shape"] for x in self.ins]
         self.dim_length = max([len(s) for s in shapes])
@@ -63,7 +64,8 @@ class BroadcastElewiseClassifier:
         self.completed_ranges = [x["range"] for x in self.completed_ins]
         self.maybe_empty_tensor = False
         self._update_shape_range()
-        self.f_shapes, self.f_ranges, fusion_index = _simplify_shape(self.completed_shapes, self.completed_ranges)
+        self.f_shapes, self.f_ranges, fusion_index = _simplify_shape(self.completed_shapes,
+                                                                     self.completed_ranges, self.disable_optimization)
         operation.add_compile_info_inner("_fusion_index", fusion_index)
 
         self.normalize_shapes = self._normalize()
@@ -236,7 +238,7 @@ class BroadcastElewiseClassifier:
         ret = []
         for shapes in divide(0, [[] for _ in self.completed_ins]):
             const_range = gen_const_range(shapes)
-            fused_shape, _, _ = _simplify_shape(shapes, const_range)
+            fused_shape, _, _ = _simplify_shape(shapes, const_range, self.disable_optimization)
             fused_shape = list(map(list, zip(*fused_shape)))
             ret.append([ConstMode.gen_in(fused_shape[0], shapes[0]), ConstMode.gen_in(fused_shape[1], shapes[1])])
 
@@ -434,7 +436,7 @@ class BroadcastElewiseClassifier:
             return ins_list
 
         def add_original():
-            if _get_broadcast_axis_size(self.normalize_shapes) <= 1 and not disable_optimization:
+            if _get_broadcast_axis_size(self.normalize_shapes) <= 1 and not self.disable_optimization:
                 return []
 
             t_shapes = list(map(list, zip(*self.f_shapes)))
@@ -493,8 +495,7 @@ class BroadcastElewiseClassifier:
             get_known_broadcast_and_const(self.normalize_shapes)
         left_no_one, right_no_one = get_no_one_index()
         ret = []
-        disable_optimization = self.extra_params.get("disable_optimization", False)
-        if len(known_broadcast_pattern) <= 1 and not disable_optimization:
+        if len(known_broadcast_pattern) <= 1 and not self.disable_optimization:
             input_length = len(self.completed_shapes)
             dim_length = len(self.f_shapes)
             ret.extend(add_special())
@@ -504,10 +505,14 @@ class BroadcastElewiseClassifier:
         return ret
 
 
-def _simplify_shape(completed_shapes, completed_ranges):
+def _simplify_shape(completed_shapes, completed_ranges, disable_optimization):
     input_length = len(completed_shapes)
-    transpose_shapes = list(zip(*completed_shapes))
-    transpose_ranges = list(zip(*completed_ranges))
+    transpose_shapes = list(map(list, zip(*completed_shapes)))
+    transpose_ranges = list(map(list, zip(*completed_ranges)))
+
+    if disable_optimization:
+        fusion_index = [[i] for i in range(len(transpose_shapes))]
+        return transpose_shapes, transpose_ranges, fusion_index
 
     f_shapes = [[1] * input_length]
     f_ranges = [[(1, 1)] * input_length]

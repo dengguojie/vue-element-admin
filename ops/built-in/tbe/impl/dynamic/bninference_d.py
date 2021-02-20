@@ -506,7 +506,7 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
         # op compute
         with tbe_base.compute():
             # get all dynamic tensor shape
-            shape_x, shape_mean = shape_util.variable_shape([x_input, mean_input], support_broadcast=True)
+            shape_x, shape_mean = shape_util.variable_shape([x_input, mean_input])
 
             # new all input data place holder
             data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x)

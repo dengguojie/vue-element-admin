@@ -19,6 +19,8 @@ import te.lang.cce as tbe
 import te.lang.base as tbe_base
 from te.utils import para_check
 from te.utils import shape_util
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
 from te import tvm
 from impl.util.platform_adapter import register_operator
 
@@ -169,16 +171,22 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     input_x["shape"] = input_x["ori_shape"] = shape_adapt
     input_x["range"] = range_adapt
 
-    with tbe_base.compute():
-        shape = shape_util.variable_shape([input_x], support_broadcast=True)[0]
-        data = tvm.placeholder(shape, name="data", dtype=input_dtype)
-        res = tile_d_compute(data, output_x, multiples_adapt, kernel_name)
+    extra_params = {"disable_optimization": True}
+    ins = tbe_base.classify([input_x], tbe_base.Mode.ELEWISE_WITH_BROADCAST, extra_params)
+    schedules, tensors = [], []
+    for (_input_x, ) in ins:
+        with tbe_base.compute():
+            shape = shape_util.variable_shape([_input_x])[0]
+            data = tvm.placeholder(shape, name="data", dtype=input_dtype)
+            res = tile_d_compute(data, output_x, multiples_adapt, kernel_name)
+            tensors.append([data, res])
 
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
 
-    config = {"print_ir": False, "name": kernel_name, "tensor_list": [data, res]}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
 
-    tbe.build(sch, config)
+    tbe.build(schedules, config)
 
     tbe_base.add_compile_info("tiling_info", tiling_info)

@@ -130,7 +130,7 @@ def mod(input_x, input_y, output_z, kernel_name="mod"):
 
     for (input_x, input_y) in ins:
         with tbe_base.compute():
-            shape_x, shape_y = shape_util.variable_shape([input_x, input_y], support_broadcast=True)
+            shape_x, shape_y = shape_util.variable_shape([input_x, input_y])
             reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
             data_x = tvm.placeholder(reshape_x, dtype=input_dtype, name="data_x")
             data_y = tvm.placeholder(reshape_y, dtype=input_dtype, name="data_y")

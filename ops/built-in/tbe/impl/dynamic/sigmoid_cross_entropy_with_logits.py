@@ -178,7 +178,7 @@ def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoi
     schedules, tensors = [], []
     for (x1, x2) in ins:
         with tbe_base.compute():
-            shape_predict, shape_target = variable_shape([x1, x2], support_broadcast=False)
+            shape_predict, shape_target = variable_shape([x1, x2])
             data_predict = tvm.placeholder(shape_predict,
                                            name="data_predict",
                                            dtype=input_dtype_predict)

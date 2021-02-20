@@ -129,7 +129,7 @@ def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     schedules, tensors = [], []
     for (input_grad, input_x) in ins:
         with tbe_base.compute():
-            g_shape, x_shape = variable_shape([input_grad, input_x], support_broadcast=True)
+            g_shape, x_shape = variable_shape([input_grad, input_x])
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             res = relu6_grad_compute(tensor_g, tensor_x, output_y, kernel_name)

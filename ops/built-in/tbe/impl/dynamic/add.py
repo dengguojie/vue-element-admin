@@ -132,7 +132,7 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     for (_input_x, _input_y) in ins:
         with tbe_base.compute():
             shape_x, shape_y = \
-                shape_util.variable_shape([_input_x, _input_y], support_broadcast=True)
+                shape_util.variable_shape([_input_x, _input_y])
             data_x = tvm.placeholder(shape_x, name="data_1", dtype=x_dtype)
             data_y = tvm.placeholder(shape_y, name="data_2", dtype=y_dtype)
             res = add_compute(data_x, data_y, output_z, kernel_name)

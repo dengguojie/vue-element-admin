@@ -120,7 +120,7 @@ def reciprocal_grad(input_y, input_dy, output_data,
     ins = classify([input_y, input_dy], Mode.ELEWISE)
     for (_input_y, _input_dy) in ins:
         with tbe_base.compute():
-            shape_y, shape_dy = shape_util.variable_shape([_input_y, _input_dy], support_broadcast=False)
+            shape_y, shape_dy = shape_util.variable_shape([_input_y, _input_dy])
             data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
             data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_dy)
             res = reciprocal_grad_compute(data_y, data_dy, output_data, kernel_name)

@@ -166,8 +166,7 @@ def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):
     for (_input_x, _input_y) in ins:
         with tbe_base.compute():
             # shape
-            shape_x1, shape_x2 = shape_util.variable_shape([_input_x, _input_y],
-                                                           support_broadcast=True)
+            shape_x1, shape_x2 = shape_util.variable_shape([_input_x, _input_y])
             # mul_compute
             data_x1 = tvm.placeholder(shape_x1, dtype=input_dtype_x, name="data_x1")
             data_x2 = tvm.placeholder(shape_x2, dtype=input_dtype_y, name="data_x2")

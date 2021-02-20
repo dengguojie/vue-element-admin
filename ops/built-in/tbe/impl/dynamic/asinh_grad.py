@@ -220,7 +220,7 @@ def asinh_grad(y, dy, z, kernel_name="cce_asinh_grad"):
 
     for (input_y, input_dy) in ins:
         with tbe_base.compute():
-            shape_y, shape_dy = shape_util.variable_shape([input_y, input_dy], support_broadcast=False)
+            shape_y, shape_dy = shape_util.variable_shape([input_y, input_dy])
             data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
             data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_dy)
             res = asinh_grad_compute(data_y, data_dy, z, kernel_name)

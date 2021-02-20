@@ -290,7 +290,7 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
     for (_input_x1, _input_x2) in ins:
         with tbe_base.compute():
             shape_x1, shape_x2 = \
-                shape_util.variable_shape([_input_x1, _input_x2], support_broadcast=True)
+                shape_util.variable_shape([_input_x1, _input_x2])
             shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
 
             data_input_x1 = tvm.placeholder(shape_x1, name="data_input_x1", dtype=dtype_x1)

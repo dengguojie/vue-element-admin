@@ -347,7 +347,7 @@ def adam_apply_one_assign(input0, input1, input2, input3, input4,
 
     for _dinputs in ins:
         with tbe_base.compute():
-            shape_dinputs = shape_util.variable_shape(_dinputs, support_broadcast=False)
+            shape_dinputs = shape_util.variable_shape(_dinputs)
             idx = NUM_ZERO
             for shape_dinput in shape_dinputs:
                 while idx < NUM_TEN and (data_inputs[idx] is not None):

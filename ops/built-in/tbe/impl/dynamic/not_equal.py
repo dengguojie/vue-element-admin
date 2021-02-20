@@ -148,8 +148,7 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
     schedules, tensors = [], []
     for (input_x_, input_y_) in ins:
         with tbe_base.compute():
-            x_shape, y_shape = shape_util.variable_shape([input_x_, input_y_],
-                                                         support_broadcast=True)
+            x_shape, y_shape = shape_util.variable_shape([input_x_, input_y_])
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")
             res = not_equal_compute(tensor_x, tensor_y, output_z, kernel_name)

@@ -226,7 +226,7 @@ def apply_ftrl_v2_d(var, accum, linear, grad, lr, l1, l2, l2_shrinkage, lr_power
     for (_var, _accum, _linear, _grad) in ins:
         with tbe_base.compute():
             shape_var, shape_accum, shape_linear, shape_grad = \
-                shape_util.variable_shape([_var, _accum, _linear, _grad], support_broadcast=False)
+                shape_util.variable_shape([_var, _accum, _linear, _grad])
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_dtype)
             data_accum = tvm.placeholder(shape_accum, name="data_accum", dtype=compute_dtype)
             data_linear = tvm.placeholder(shape_linear, name="data_linear", dtype=compute_dtype)

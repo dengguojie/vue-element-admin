@@ -138,7 +138,7 @@ def truncate_div(input_x, input_y, output_x, kernel_name="truncate_div"):
     for (_input_x, _input_y) in ins:
         with tbe_base.compute():
             x_shape, y_shape = \
-                shape_util.variable_shape([_input_x, _input_y], support_broadcast=True)
+                shape_util.variable_shape([_input_x, _input_y])
             data1 = tvm.placeholder(x_shape, dtype=x_dtype, name="data1")
             data2 = tvm.placeholder(y_shape, dtype=y_dtype, name="data2")
             res = truncate_div_compute(data1, data2, output_x, kernel_name)

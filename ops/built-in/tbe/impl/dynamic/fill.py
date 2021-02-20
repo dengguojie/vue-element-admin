@@ -85,7 +85,7 @@ def fill(dims, value, y, kernel_name="fill"):
     schedules, tensors = [], []
     for (_dims, _value) in ins:
         with tbe_base.compute():
-            shape_dim, shape = shape_util.variable_shape([_dims, _value], support_broadcast=True)
+            shape_dim, shape = shape_util.variable_shape([_dims, _value])
             x_input = tvm.placeholder(shape, name="x_input", dtype=dtype)
             dim_input = tvm.placeholder(shape_dim, name="dim_input", dtype=dtype_dims)
 

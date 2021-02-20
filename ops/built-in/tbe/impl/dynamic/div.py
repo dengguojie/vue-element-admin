@@ -128,7 +128,7 @@ def div(input_x, input_y, output_z, kernel_name="div"):
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
         with tbe_base.compute():
-            x_shape, y_shape = shape_util.variable_shape([input_x, input_y], support_broadcast=True)
+            x_shape, y_shape = shape_util.variable_shape([input_x, input_y])
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")
             res = div_compute(tensor_x, tensor_y, output_z, kernel_name)

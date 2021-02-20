@@ -359,8 +359,7 @@ def apply_adam_d(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon,
 
     for(_var, _m, _v, _grad) in ins:
         with tbe_base.compute():
-            shape_var, shape_m, shape_v, shape_grad = shape_util.variable_shape([_var, _m, _v, _grad],
-                                                                                support_broadcast=False)
+            shape_var, shape_m, shape_v, shape_grad = shape_util.variable_shape([_var, _m, _v, _grad])
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_type)
             data_m = tvm.placeholder(shape_m, name="data_m", dtype=compute_type)
             data_v = tvm.placeholder(shape_v, name="data_v", dtype=compute_type)
