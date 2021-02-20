@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
-
+from impl.depthwise_conv2d import get_op_support_info
 ut_case = OpUT("DepthwiseConv2d", "impl.depthwise_conv2d", "depthwise_conv2d")
 
 dp_conv2d_op_testcase = [
@@ -57,7 +57,11 @@ dp_conv2d_op_testcase = [
     #  (2, 2, 2, 2), "NHWC", 0, "int8", "success"),
 ]
 
-
+get_op_support_info_case=[
+    ((32, 960, 7, 7), (3, 3, 960, 1), None, (32, 960, 7, 7), 1, 1, (1, 1, 1, 1), "NCHW", 0, "float16", "success"),
+    ((32, 960, 7, 7), (3, 3, 960, 1), (1, 960, 1, 1), (32, 960, 7, 7), 1, 1, (1, 1, 1, 1), "NCHW", 0, "float16",
+     "success"),
+]
 def _get_kernel_name(x_shape, filter_shape, bias_shape, stride, dilation, pads, dtype, offset_x):
     bias_shape = bias_shape if bias_shape else []
     kernel_name = 'dp_conv2d_' + '_'.join(map(str, x_shape)) + '_' + '_'.join(map(str, filter_shape)) + '_' + '_'.join(
@@ -160,6 +164,11 @@ def _test_other_api():
         _ = depthwise_compute(x, weights, bias, offset_w, outputs, strides, dilations, pads, data_format, offset_x,
                               kernel_name)
 
+def _test_get_op_support_info(test_arg):
+    for test_case in get_op_support_info_case:
+        formatted_case = _gen_trans_data_case(test_case)
+        params = formatted_case["params"]
+        get_op_support_info(*params)
 
 # ============ auto gen ["Ascend310"] test cases start ===============
 for case in dp_conv2d_op_testcase:
@@ -170,6 +179,8 @@ for case in dp_conv2d_op_testcase:
 for case in dp_conv2d_op_testcase:
     ut_case.add_case(["Ascend910"], _gen_trans_data_case(case))
 # ============ auto gen ["Ascend910"] test cases end =================
+print("run depthwiseconv2d get_op_support_info test_case")
+ut_case.add_cust_test_func(test_func=_test_get_op_support_info)
 
 if __name__ == '__main__':
     # ut_case.run("Ascend910")

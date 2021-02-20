@@ -29,6 +29,10 @@
 #include "op_log.h"
 #include "strided_slice_infer_shape.h"
 #include "graph/utils/op_desc_utils.h"
+#include "register/infer_data_slice_registry.h"
+#include "graph/common_error_codes.h"
+#include "graph/debug/ge_attr_define.h"
+#include "axis_util.h"
 
 #define ELLIPSIS_MASK_UPDATE(mask, new_mask, bit_ellipsis, i, pow_table, \
                              right_mov)                                  \
@@ -3522,6 +3526,46 @@ IMPLEMT_COMMON_INFERFUNC(StridedWriteInferShape) {
 IMPLEMT_VERIFIER(StridedWrite, StridedWriteVerify) {
   return GRAPH_SUCCESS;
 }
+
+IMPLEMT_INFER_DATA_SLICE(StridedWrite, StridedWriteInferDataSlice) {
+  // strided write can cut n axis now
+  OP_LOGD(op.GetName().c_str(), "Enter StridedWrite InferDataSlice");
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return GRAPH_FAILED;
+  }
+
+  int32_t stride = 1;
+  if (GRAPH_SUCCESS != op.GetAttr("stride", stride)) {
+    OP_LOGE(op.GetName().c_str(), "can not get attr of stride");
+    return GRAPH_FAILED;
+  }
+  bool have_slice = false;
+  for (int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 0) {
+      have_slice = true;
+      // c1 axis split tensor, ignore stride
+      x_data_slice[i] = y_data_slice[i];
+      OP_LOGD(op.GetName().c_str(), "Set y_data_slice is on No %d axis", i + 1);
+    }
+  }
+  if (have_slice == false) {
+    return GRAPH_FAILED;
+  }
+  if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    OP_LOGD(op.GetName().c_str(), "Set x_data slice failed!");
+    return GRAPH_FAILED;
+  }
+  OP_LOGD(op.GetName().c_str(), "Calc StridedWrite InferDataSlice end!");
+  return GRAPH_SUCCESS;
+}
+
+INFER_DATA_SLICE_FUNC_REG(StridedWrite, StridedWriteInferDataSlice);
 
 COMMON_INFER_FUNC_REG(StridedWrite, StridedWriteInferShape);
 

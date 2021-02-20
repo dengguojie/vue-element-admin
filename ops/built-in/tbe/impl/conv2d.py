@@ -487,31 +487,19 @@ def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads,
     None
     """
     slice_info = {"_op_slice_info":
-                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}],
+                  {"splitMaps": [{"inputList": [{"idx": 0, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [0]}]},
                                  {"inputList": [{"idx": 0, "axis": [2], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [2]}]},
                                  {"inputList": [{"idx": 0, "axis": [3], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [3]}]},
-                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [-1], "tailOverLap": [-1]}],
+                                 {"inputList": [{"idx": 1, "axis": [1], "headOverLap": [0], "tailOverLap": [0]}],
                                   "outputList": [{"idx": 0, "axis": [1]}]}],
                    "reduceMaps": [],
                    "l1FusionEnable": 2,
                    "minTbeL1Space": 0}}
     if bias:
-        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
+        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
-
-    # special scene: dilations is 1 and kernel is 1 and strides is 1, overlap is -1
-    _, shape_filter, _, _, strideh, stridew, dlt_h, dlt_w, _, _ = util_conv2d.calc_para_from_dict(
-        inputs, weights, strides, pads, dilations, outputs, data_format)
-    weight_h = shape_filter[2]
-    weight_w = shape_filter[3]
-    if strideh == 1 and dlt_h == 1 and weight_h == 1:
-        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["headOverLap"] = [-1]
-        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["tailOverLap"] = [-1]
-    if stridew == 1 and dlt_w == 1 and weight_w == 1:
-        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["headOverLap"] = [-1]
-        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["tailOverLap"] = [-1]
 
     return json.dumps(slice_info)

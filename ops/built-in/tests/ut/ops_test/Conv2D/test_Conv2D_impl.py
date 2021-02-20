@@ -5,6 +5,7 @@ from te import tvm
 from op_test_frame.ut import OpUT
 import conv2D_ut_testcase as tc
 from impl.conv2d import conv2d_compute
+from impl.conv2d import get_op_support_info
 
 ut_case = OpUT("Conv2D", "impl.conv2d", "conv2d")
 
@@ -53,9 +54,18 @@ def gen_trans_data_case(inputs, weights, bias, offset_w, outputs, strides, pads,
             "format_expect": [],
             "support_expect": True}
 
+def _test_get_op_support_info(test_arg):
+    for test_case  in tc.op_support_info_testcase:
+        formatted_case = gen_trans_data_case(*test_case[1:])
+        params = formatted_case["params"]
+        get_op_support_info(*params)
+
 print("adding Conv2D op testcases")
 for test_case  in tc.conv2D_ut_testcase:
     ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:]))
+
+print("adding Connv2D op support info of slice testcase")
+ut_case.add_cust_test_func(test_func=_test_get_op_support_info)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])

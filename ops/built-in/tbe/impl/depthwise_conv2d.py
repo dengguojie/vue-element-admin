@@ -480,8 +480,8 @@ def get_op_support_info(x,
                 "inputList": [{
                     "idx": 0,
                     "axis": [0],
-                    "headOverLap": [-1],
-                    "tailOverLap": [-1]
+                    "headOverLap": [0],
+                    "tailOverLap": [0]
                 }],
                 "outputList": [{
                     "idx": 0,
@@ -513,8 +513,8 @@ def get_op_support_info(x,
                 "inputList": [{
                     "idx": 1,
                     "axis": [1],
-                    "headOverLap": [-1],
-                    "tailOverLap": [-1]
+                    "headOverLap": [0],
+                    "tailOverLap": [0]
                 }],
                 "outputList": [{
                     "idx": 0,
@@ -529,25 +529,7 @@ def get_op_support_info(x,
         }
     }
     if bias:
-        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [-1], "tailOverLap": [-1]}]
+        bias_input = [{"idx": 2, "axis": [0], "headOverLap": [0], "tailOverLap": [0]}]
         slice_info['_op_slice_info']["splitMaps"][3]["inputList"].extend(bias_input)
-
-    # special scene: dilations is 1 and kernel is 1 and strides is 1, overlap is -1
-    shape_w = weights.get("shape")
-    weight_h = shape_w[1]
-    weight_w = shape_w[2]
-    _, _, dim_h, dim_w = 0, 1, 2, 3  # NCHW
-    if data_format == 'NHWC':
-        _, dim_h, dim_w, _ = 0, 1, 2, 3
-    strideh = strides[dim_h]
-    stridew = strides[dim_w]
-    dlt_h = dilations[dim_h]
-    dlt_w = dilations[dim_w]
-    if strideh == 1 and dlt_h == 1 and weight_h == 1:
-        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["headOverLap"] = [-1]
-        slice_info.get("_op_slice_info").get("splitMaps")[1].get("inputList")[0]["tailOverLap"] = [-1]
-    if stridew == 1 and dlt_w == 1 and weight_w == 1:
-        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["headOverLap"] = [-1]
-        slice_info.get("_op_slice_info").get("splitMaps")[2].get("inputList")[0]["tailOverLap"] = [-1]
 
     return json.dumps(slice_info)

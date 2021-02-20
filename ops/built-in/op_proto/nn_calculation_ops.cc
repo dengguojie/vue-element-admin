@@ -140,16 +140,19 @@ VERIFY_FUNC_REG(LSTM, LSTMVerify);
 // Obtains the value of the constant tensor.
 
 static void InferHWDepthwiseConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
-                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice) {
+                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
+                          bool& start_add_pad, bool& end_add_pad) {
   // calc start rule: (i_start + pad_h)/stride_h = output_start
   int64_t i_start = output_slice[0] * stride - pad;
   if (i_start < 0) {
+    start_add_pad = true;
     i_start = 0;
   }
   // calc end rule: (iend_start + pad_h)/stride_h = output_end
   // iend_end = iend_start + dilation*(kernel_h-1)
   int64_t i_end = output_slice[1] * stride - pad + dilation * (kernel - 1);
   if (i_end >= input) {
+    end_add_pad = true;
     i_end = input - 1;
   }
   data_slice = {i_start, i_end};
@@ -166,11 +169,11 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
   auto x_tensor = op.GetInputDesc("x");
   auto w_tensor = op.GetInputDesc("filter");
 
-  auto x_shape = x_tensor.GetShape().GetDims();
-  auto w_shape = w_tensor.GetShape().GetDims();
+  auto x_shape = x_tensor.GetOriginShape().GetDims();
+  auto w_shape = w_tensor.GetOriginShape().GetDims();
 
-  auto x_format = x_tensor.GetFormat();
-  auto w_format = w_tensor.GetFormat();
+  auto x_format = x_tensor.GetOriginFormat();
+  auto w_format = w_tensor.GetOriginFormat();
 
   std::vector<int32_t> stride_list;
   std::vector<int32_t> dilation_list;
@@ -230,40 +233,58 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
     OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
     return GRAPH_FAILED;
   }
-  bool need_infer = false;
   bool have_slice = false;
+  vector<int> new_pad_lists;
+  if (GRAPH_SUCCESS != op.GetAttr("pads", new_pad_lists)) {
+    return GRAPH_FAILED;
+  }
   for(int i=0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
-        need_infer = true;
         vector<int64_t> ih_slice;
-        InferHWDepthwiseConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice);
+        bool top_add_pad = false;
+        bool bom_add_pad = false;
+        InferHWDepthwiseConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
         OP_LOGD(op.GetName().c_str(), "DepthwiseConv2D h axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        if (!top_add_pad) {
+          new_pad_lists[0] = 0;
+        }
+        if (!bom_add_pad) {
+          new_pad_lists[1] = 0;
+        }
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
-        need_infer = true;
         vector<int64_t> iw_slice;
-        InferHWDepthwiseConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice);
+        bool left_add_pad = false;
+        bool right_add_pad = false;
+        InferHWDepthwiseConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
         OP_LOGD(op.GetName().c_str(), "DepthwiseConv2D w axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
+        if (!left_add_pad) {
+          new_pad_lists[2] = 0;
+        }
+        if (!right_add_pad) {
+          new_pad_lists[3] = 0;
+        }
         x_data_slice[i] = iw_slice;
+      } else {
+        x_data_slice[i] = y_data_slice[i];
       }
     }
   }
+  op.SetAttr("pads", new_pad_lists);
+  OP_LOGD(op.GetName().c_str(), "DepthwiseConv2D new pad lists is [%d,%d,%d,%d]", new_pad_lists[0],
+          new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
   if (have_slice == false) {
     return GRAPH_FAILED;
-  }
-  if (need_infer == false) {
-    return NO_OVERLAP_DIM;
-  } else{
-    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
-      return GRAPH_FAILED;
-    }
-    return GRAPH_SUCCESS;
+  } 
+  if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    return GRAPH_FAILED;
   }
   OP_LOGD(op.GetName().c_str(), "Calc DepthwiseConv2D InferDataSlice end!");
+  return GRAPH_SUCCESS;
 }
 
 INFER_DATA_SLICE_FUNC_REG(DepthwiseConv2D, DepthwiseConv2DInferDataSlice);
@@ -3736,6 +3757,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
     strw = stride_list[2];
     dilh = dilation_list[1];
     dilw = dilation_list[2];
+  } else {
+    OP_LOGE(op.GetName().c_str(), "x format is valid, the error x format is: %d", x_format);
+    return GRAPH_FAILED;
   }
 
   if (w_format == FORMAT_NCHW) {
@@ -3747,6 +3771,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   } else if (w_format == FORMAT_HWCN) {
     kh = w_shape[0];
     kw = w_shape[1];
+  } else {
+    OP_LOGE(op.GetName().c_str(), "weight format is valid, the error w format is: %d", w_format);
+    return GRAPH_FAILED;
   }
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
@@ -3758,42 +3785,44 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
     OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
     return GRAPH_FAILED;
   }
-  bool need_infer = false;
   bool have_slice = false;
-  vector<int> new_pad_lists(4, 0);
+  vector<int> new_pad_lists;
+  if (GRAPH_SUCCESS != op.GetAttr("pads", new_pad_lists)) {
+    return GRAPH_FAILED;
+  }
   for(int i=0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       have_slice = true;
       if (i == 2) {
-        need_infer = true;
         vector<int64_t> ih_slice;
         bool top_add_pad = false;
         bool bom_add_pad = false;
         InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
         OP_LOGD(op.GetName().c_str(), "conv2d h axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (top_add_pad) {
-          new_pad_lists[0] = padt;
+        if (!top_add_pad) {
+          new_pad_lists[0] = 0;
         }
-        if (bom_add_pad) {
-          new_pad_lists[1] = padb;
+        if (!bom_add_pad) {
+          new_pad_lists[1] = 0;
         }
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
-        need_infer = true;
         vector<int64_t> iw_slice;
         bool left_add_pad = false;
         bool right_add_pad = false;
         InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
         OP_LOGD(op.GetName().c_str(), "conv2d w axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (left_add_pad) {
-          new_pad_lists[2] = padl;
+        if (!left_add_pad) {
+          new_pad_lists[2] = 0;
         }
-        if (right_add_pad) {
-          new_pad_lists[3] = padr;
+        if (!right_add_pad) {
+          new_pad_lists[3] = 0;
         }
         x_data_slice[i] = iw_slice;
+      } else {
+        x_data_slice[i] = y_data_slice[i];
       }
     }
   }
@@ -3804,15 +3833,12 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   if (have_slice == false) {
     return GRAPH_FAILED;
   }
-  if (need_infer == false) {
-    return NO_OVERLAP_DIM;
-  } else{
-    if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
-      return GRAPH_FAILED;
-    }
-    return GRAPH_SUCCESS;
+  if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+    return GRAPH_FAILED;
   }
   OP_LOGD(op.GetName().c_str(), "Calc Conv2D InferDataSlice end!");
+  return GRAPH_SUCCESS;
+  
 }
 
 INFER_DATA_SLICE_FUNC_REG(Conv2D, Conv2DInferDataSlice);
