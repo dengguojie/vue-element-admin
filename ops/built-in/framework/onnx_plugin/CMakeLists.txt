@@ -86,7 +86,7 @@ set(_onnx_plugins
   slice_plugin.cc
   threshold_relu_plugin.cc
   transpose_plugin.cc
-  common_lstm_plugin.cc
+  lstm_plugin.cc
   hardmax_plugin.cc
   non_max_suppression_plugin.cc
   roi_extractor_plugin.cc
