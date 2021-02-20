@@ -306,7 +306,7 @@ TEST_F(DeconvProtoTest, deconvSplicDataTest0) {
     ge::op::Deconvolution deconv;
     deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 10, 10}, ge::FORMAT_NCHW));
     deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
-    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 12, 12},ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({4, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 12, 12},ge::FORMAT_NCHW));
     deconv.SetAttr("strides", {1, 1});
     deconv.SetAttr("pads", {0, 0, 0, 0});
     deconv.SetAttr("dilations", {1, 1, 1, 1});
@@ -328,11 +328,11 @@ TEST_F(DeconvProtoTest, deconvSplicDataTest1) {
     ge::op::Deconvolution deconv;
     deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 10, 10}, ge::FORMAT_NCHW));
     deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
-    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 12, 12},ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({4, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 12, 12},ge::FORMAT_NCHW));
     deconv.SetAttr("strides", {1, 1});
     deconv.SetAttr("pads", {0, 0, 0, 0});
     deconv.SetAttr("dilations", {1, 1, 1, 1});
-    std::vector<std::vector<int64_t>> y_data_slice ={{6, 20}, {}, {}, {}, {}};
+    std::vector<std::vector<int64_t>> y_data_slice ={{1, 3}, {}, {}, {}, {}};
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(deconv);
     ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
     ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
@@ -341,7 +341,7 @@ TEST_F(DeconvProtoTest, deconvSplicDataTest1) {
     std::vector<std::vector<int64_t>> x_data_slice;
     ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
 
-    std::vector<std::vector<int64_t>> expect_x_data_slice = {};
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{1, 3}, {}, {}, {}, {}};
     EXPECT_EQ(expect_x_data_slice, x_data_slice);
 }
 
@@ -350,7 +350,7 @@ TEST_F(DeconvProtoTest, deconvSplicDataTest2) {
     ge::op::Deconvolution deconv;
     deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 10, 10}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 10, 10}, ge::FORMAT_NCHW));
     deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
-    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 12, 12},ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({4, 64, 12, 12}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 12, 12},ge::FORMAT_NCHW));
     deconv.SetAttr("strides", {1, 1});
     deconv.SetAttr("pads", {0, 0, 0, 0});
     deconv.SetAttr("dilations", {1, 1, 1, 1});
@@ -375,7 +375,7 @@ TEST_F(DeconvProtoTest, deconvSplicDataTest3) {
     ge::op::Deconvolution deconv;
     deconv.UpdateInputDesc("x", create_desc_with_ori({4, 64, 5, 5}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 5, 5}, ge::FORMAT_NCHW));
     deconv.UpdateInputDesc("filter", create_desc_with_ori({64, 64, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 3, 3}, ge::FORMAT_NCHW));
-    deconv.UpdateOutputDesc("y", create_desc_with_ori({64, 64, 13, 13}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{64, 64, 13, 13},ge::FORMAT_NCHW));
+    deconv.UpdateOutputDesc("y", create_desc_with_ori({4, 64, 13, 13}, ge::DT_FLOAT16, ge::FORMAT_NCHW,{4, 64, 13, 13},ge::FORMAT_NCHW));
     deconv.SetAttr("strides", {3, 3});
     deconv.SetAttr("pads", {1, 1, 1, 1});
     deconv.SetAttr("dilations", {1, 1, 1, 1});

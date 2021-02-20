@@ -18,7 +18,9 @@ conv2d_transpose_d
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from impl.util import util_deconv_comm
+from impl.util import util_select_op_base
 from te import tvm
+from te.platform import cce_params
 from te.utils import error_manager
 from tbe.common.utils import para_check
 
@@ -38,6 +40,9 @@ STRIDE_HW_MAX = 63
 DILATION_HW_MIN = 1
 DILATION_HW_MAX = 255
 CONV1D_W_MAX = 2147483647
+
+# 2 means L1 enable
+L1FUSION_INPUT_CTR = 2
 
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
@@ -181,6 +186,103 @@ def check_supported(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
     except Exception as e:
         print(e)
         return False
+
+
+def _cal_min_l1space(x,  # pylint: disable=invalid-name
+                     weight, y, strides, dilations, pads):
+    """
+    cal the mini l1space using in lxfusion
+    """
+    def _cal_al1_size():
+        w_value = shape_x[3] * strides[1]
+        if shape_res[3] > c0_size:
+            h_value_max = filter_h_dilation + 1
+        elif c0_size % shape_res[3] == 0:
+            h_value_max = filter_h_dilation + c0_size // shape_res[3] - 1
+        else:
+            h_value_max = filter_h_dilation + c0_size // shape_res[3] + 1
+        a_l1_size = h_value_max * w_value * c0_size_k * \
+                    util_deconv_comm.BIT_RATIO_DICT.get(filters_dtype)
+        return a_l1_size
+
+    shape_filters = util_deconv_comm.get_filter_shape(
+        weight.get("ori_format"), weight.get("ori_shape")
+    )
+    shape_x = util_deconv_comm.get_shape_out_backprop(
+        x.get("ori_format"), x.get("ori_shape"))
+    shape_res = util_deconv_comm.get_shape_res(
+        y.get("ori_format"), y.get("ori_shape"))
+    filters_dtype = weight.get("dtype")
+
+    c0_size = cce_params.C0_SIZE
+    c0_size_k = cce_params.CUBE_MKN[filters_dtype]['mac'][1]
+    filter_h_dilation = (shape_filters[2] - 1) * dilations[0] + 1
+
+    bl1_size = shape_filters[2] * shape_filters[3] * c0_size * c0_size_k * \
+               util_deconv_comm.BIT_RATIO_DICT.get(filters_dtype)
+    al1_size = 0
+    if (list(pads) != [0, 0, 0, 0] or list(shape_filters[2:]) != [1, 1]) \
+            and list(strides) != [1, 1]:
+        al1_size = _cal_al1_size()
+    return al1_size + bl1_size
+
+
+def get_op_support_info(x,  # pylint: disable=invalid-name,R0913,R0914,W0613
+                        filter,
+                        bias,
+                        offset_w,
+                        y,
+                        input_size,
+                        strides,
+                        pads,
+                        dilations=(1, 1, 1, 1),
+                        group=1,
+                        data_format="NHWC",
+                        offset_x=0,
+                        kernel_name="conv2d_transpose_d"):
+    """
+    get the conv2d_transpose_d split
+    """
+    format_x = x.get("format")
+    dtype_x = x.get("dtype")
+
+    # input/output Serial， axis Serial, （split enable(0:enable, -1：unable), split enable）
+    if format_x == "NC1HWC0":
+        axis_split_matrix = [
+            # cut N
+            [util_select_op_base.SplitInput([0, [0], [0], [0]]),
+             util_select_op_base.SplitOutput([0, [0]])],
+            # cut H
+            [util_select_op_base.SplitInput([0, [2], [0], [0]]),
+             util_select_op_base.SplitOutput([0, [2]])],
+            # cut W
+            [util_select_op_base.SplitInput([0, [3], [0], [0]]),
+             util_select_op_base.SplitOutput([0, [3]])],
+        ]
+        # cut Cin
+        c_axis = 0 if dtype_x == "float16" else 1
+        if bias:
+            axis_split_matrix_bias = [
+                [util_select_op_base.SplitInput([1, [c_axis], [0], [0]],
+                                                [2, [0], [0], [0]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+        else:
+            axis_split_matrix_bias = [
+                [util_select_op_base.SplitInput([1, [c_axis], [0], [0]]),
+                 util_select_op_base.SplitOutput([0, [1]])],
+            ]
+        axis_split_matrix += axis_split_matrix_bias
+        axis_reduce_list = None
+    else:
+        axis_split_matrix = None
+        axis_reduce_list = None
+
+    min_l1space = _cal_min_l1space(x, filter, y, strides, dilations, pads)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
 
 
 @para_check.check_op_params(

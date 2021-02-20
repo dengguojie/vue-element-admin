@@ -8,6 +8,7 @@ import sys
 import conv2d_transpose_ut_testcase
 import util_for_conv2d_transpose as util
 from op_test_frame.ut import OpUT
+from impl.conv2d_transpose_d import get_op_support_info
 
 ut_case = OpUT("Conv2DTransposeD", "impl.conv2d_transpose_d", "conv2d_transpose_d")
 
@@ -125,8 +126,19 @@ def test_op_check_supported(test_arg):
                     dilations=(1, 1, 1, 1), groups=1, data_format="NCHW", output_padding=(0, 0, 0, 0),
                     offset_x=0, kernel_name="deconvolution")
 
+
+def test_split_transposed(test_arg):
+    x = {"format": "NC1HWC0","ori_format": "NCHW", "dtype": "float16", "shape": (1, 1, 3, 3, 16), "ori_shape": (1, 16, 3, 3)}
+    filter = {"format": "FRACTAL_NZ","ori_format": "NCHW", "dtype": "float16", "shape": (1, 1, 16, 16), "ori_shape": (16, 16, 1, 1)}
+    y = {"format": "NC1HWC0","ori_format": "NCHW", "dtype": "float16", "shape": (1, 1, 3, 3, 16), "ori_shape": (1, 16, 3, 3)}
+    get_op_support_info(x, filter, None, None, y, (1, 16, 3, 3), (1, 1, 1, 1), (0, 0, 0, 0), data_format="NCHW")
+
 _gen_conv2d_transpose_op_case()
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+ut_case.add_cust_test_func(test_func=test_split_transposed)
+
+
+
 
 if __name__ == "__main__":
     ut_case.run(["Ascend310", "Ascend710", "Ascend910"])

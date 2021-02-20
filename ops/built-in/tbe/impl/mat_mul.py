@@ -15,6 +15,8 @@
 """
 matmul
 """
+from impl.util import util_deconv_comm
+from impl.util import util_select_op_base
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
@@ -27,6 +29,9 @@ from impl.matmul_vector import matmul_vector_cce
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 NoneType = type(None)
+
+# 2 means L1 enable
+L1FUSION_INPUT_CTR = 2
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-branches, too-many-statements, too-many-locals,
@@ -225,6 +230,92 @@ def _get_input_shape_b(shape_y, transpose):
     else:
         res.append(dim_b)
     return res
+
+
+def _cal_min_l1space(dtype_b):
+    block_reduce = tbe_platform.CUBE_MKN[dtype_b]["mac"][1]
+    block_out = tbe_platform.CUBE_MKN[dtype_b]["mac"][2]
+    mini_l1space = block_out * block_reduce * \
+                   util_deconv_comm.BIT_RATIO_DICT.get(dtype_b)
+    return mini_l1space
+
+
+def get_op_support_info(input_x1, # pylint: R0913,R0914,W0613
+                        input_x2,
+                        bias,
+                        offset_w={},
+                        output_y={},
+                        trans_a=False,
+                        trans_b=False,
+                        offset_x=0,
+                        kernel_name="matmul"):
+    """
+    get the matmul split, which only split the m and n, cannot cut k with bias
+
+    """
+
+
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
+    dtype_b = input_x2.get("dtype")
+    if format_a == 'FRACTAL_NZ':
+        trans_a = not trans_a
+    if format_b == 'FRACTAL_NZ':
+        trans_b = not trans_b
+
+    # input/output Serial， axis Serial, （split enable(0:enable, -1：unable), split enable）
+    # cut m
+    if not trans_a:
+        m_split_list = [0, [0], [0], [0]]
+        mk_split_list = [0, [1]]
+    else:
+        m_split_list = [0, [1], [0], [0]]
+        mk_split_list = [0, [0]]
+    # cut n
+    if not trans_b:
+        n_split_list = [[1, [1], [0], [0]]]
+        nk_split_list = [1, [0]]
+    else:
+        n_split_list = [[1, [0], [0], [0]]]
+        nk_split_list = [1, [1]]
+
+    if bias:
+        axis_reduce_list = None
+        n_split_list.append([2, [0], [0], [0]])
+    else:
+        # cut k_dim which is reduce dim
+        axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
+                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+
+    if format_a == "FRACTAL_NZ":
+        axis_split_matrix_a = [
+            [util_select_op_base.SplitInput(m_split_list),
+             util_select_op_base.SplitOutput([0, [1]])],
+        ]
+    else:
+        axis_split_matrix_a = [
+            [util_select_op_base.SplitInput(m_split_list),
+             util_select_op_base.SplitOutput([0, [0]])],
+        ]
+
+    # cut n
+    if format_b in ("FRACTAL_NZ", "FRACTAL_Z"):
+        axis_split_matrix_b = [
+            [util_select_op_base.SplitInput(*n_split_list),
+             util_select_op_base.SplitOutput([0, [0]])],
+        ]
+    else:
+        axis_split_matrix_b = [
+            [util_select_op_base.SplitInput(*n_split_list),
+             util_select_op_base.SplitOutput([0, [1]])],
+        ]
+
+    axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b
+    min_l1space = _cal_min_l1space(dtype_b)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments

@@ -31,6 +31,13 @@
 #include "util/array_ops_shape_fns.h"
 #include "util/error_util.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/type_utils.h"
+#include "graph/common_error_codes.h"
+#include "graph/debug/ge_attr_define.h"
+#include "common/util/error_manager/error_manager.h"
+#include "op_log.h"
+#include "register/infer_data_slice_registry.h"
+
 
 namespace ge {
 // ----------------FullyConnection-------------------
@@ -855,6 +862,136 @@ graphStatus GetMatMulOutputShape(const Operator &op,
   return GRAPH_SUCCESS;
 }
 
+
+bool InferMatmulInputNZ(const Operator &op,
+                        vector<vector<int64_t>> &output,
+                        bool trans_a, bool trans_b) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  vector<vector<int64_t>> x1_data_slice = {{}, {}, {}, {}};
+  vector<vector<int64_t>> x2_data_slice = {{}, {}, {}, {}};
+  for(int i = 0; i < output.size(); i++) {
+    if (output[i].size() > 1) {
+      if (i == 0) {
+        if (!trans_b) {
+          x2_data_slice[1] = output[i];
+        } else {
+          x2_data_slice[0] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        return true;
+      } else if (i == 1) {
+        if (!trans_a) {
+          x1_data_slice[0] = output[i];
+        } else {
+          x1_data_slice[1] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        return true;
+      } else {
+        OP_LOGI(op.GetName().c_str(), "cannot support cut in block_n and block_m");
+        return false;
+      }
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  return false;
+}
+
+bool InferMatmulInputND(const Operator &op,
+                        vector<vector<int64_t>> &output,
+                        bool trans_a, bool trans_b) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  vector<vector<int64_t>> x1_data_slice = {{}, {}};
+  vector<vector<int64_t>> x2_data_slice = {{}, {}};
+  for(int i = 0; i < output.size(); i++) {
+    if (output[i].size() > 1) {
+      if (i == 0) {
+        if (!trans_a) {
+          x1_data_slice[0] = output[i];
+        } else {
+          x1_data_slice[1] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        return true;
+      } else if (i == 1) {
+        if (!trans_b) {
+          x2_data_slice[1] = output[i];
+        } else {
+          x2_data_slice[0] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        return true;
+      }
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  return false;
+}
+
+bool InferMatmul(const Operator &op) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+
+  bool trans_a = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x1", trans_a)) {
+    OpsGetAttrErrReport(op.GetName(), "transpose_x1");
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transpose_x1 failed!",
+            op.GetName().c_str());
+    return false;
+  }
+  bool trans_b = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("transpose_x2", trans_b)) {
+    OpsGetAttrErrReport(op.GetName(), "transpose_x2");
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transpose_x2 failed!",
+            op.GetName().c_str());
+    return false;
+  }
+
+  Format x1_format = op.GetInputDesc("x1").GetFormat();
+  Format x2_format = op.GetInputDesc("x2").GetFormat();
+  if (x1_format == FORMAT_FRACTAL_NZ) {
+    trans_a = !trans_a;
+  }
+  if (x2_format == FORMAT_FRACTAL_NZ) {
+    trans_b = !trans_b;
+  }
+
+  vector<vector<int64_t>> y_data_slice;
+
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return false;
+  }
+
+  if (x1_format == FORMAT_FRACTAL_NZ) {
+    if(!InferMatmulInputNZ(op, y_data_slice, trans_a, trans_b)) {
+      return false;
+    }
+    return true;
+  } else {
+    if(!InferMatmulInputND(op, y_data_slice, trans_a, trans_b)) {
+      return false;
+    }
+    return true;
+  }
+}
+
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
   std::vector<DataType> support_list;
@@ -900,11 +1037,23 @@ IMPLEMT_COMMON_INFERFUNC(MatMulInferShape) {
   return GRAPH_SUCCESS;
 }
 
+// the slice infer
+IMPLEMT_INFER_DATA_SLICE(MatMul, MatMulInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Matmul InferDataSlice.");
+  if (!InferMatmul(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(MatMul, MatMulInferShape);
 
 // Registered verify function
 VERIFY_FUNC_REG(MatMul, MatMulVerify);
+
+// Registered slice function
+INFER_DATA_SLICE_FUNC_REG(MatMul, MatMulInferDataSlice);
 // ----------------Matmul-------------------
 // ----------------Matmul-------------------
 // Check the dtype and attr of the input tensor description.
@@ -980,6 +1129,14 @@ IMPLEMT_INFERFORMAT_FUNC(MatMulV2, MatMulV2InferFormat) {
 
   return GRAPH_SUCCESS;
 }
+// the slice infer
+IMPLEMT_INFER_DATA_SLICE(MatMulV2, MatMulV2InferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter MatmulV2 InferDataSlice.");
+  if (!InferMatmul(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
 
 INFER_FORMAT_FUNC_REG(MatMulV2, MatMulV2InferFormat);
 // Registered inferfunction
@@ -987,6 +1144,9 @@ COMMON_INFER_FUNC_REG(MatMulV2, MatMulV2InferShape);
 
 // Registered verify function
 VERIFY_FUNC_REG(MatMulV2, MatMulV2Verify);
+
+// Registered slice function
+INFER_DATA_SLICE_FUNC_REG(MatMulV2, MatMulV2InferDataSlice);
 // ----------------Matmul-------------------
 // ----------------GEMM-------------------
 // Check the dtype and attr of the input tensor description.

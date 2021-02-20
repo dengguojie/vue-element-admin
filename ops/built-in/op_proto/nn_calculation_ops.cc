@@ -1810,9 +1810,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   }
   // get dedy shape, stride and dilation
   auto dedy_desc = op.GetInputDesc("out_backprop");
-  auto dedy_shape = dedy_desc.GetShape().GetDims();
+  auto dedy_shape = dedy_desc.GetOriginShape().GetDims();
   auto dedy_dtype = dedy_desc.GetDataType();
-  auto dedy_format = dedy_desc.GetFormat();
+  auto dedy_format = dedy_desc.GetOriginFormat();
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   std::vector<int32_t> dilation_list;
@@ -1870,8 +1870,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
 
   // get filter shape
   auto filter_desc = op.GetInputDesc("filter");
-  auto filter_shape = filter_desc.GetShape().GetDims();
-  auto filter_format = filter_desc.GetFormat();
+  auto filter_shape = filter_desc.GetOriginShape().GetDims();
+  auto filter_format = filter_desc.GetOriginFormat();
   int32_t kh = 0;
   int32_t kw = 0;
   if (filter_format == FORMAT_NCHW) {
@@ -1909,12 +1909,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
     return GRAPH_FAILED;
   }
 
-  bool need_infer = false;
-  bool have_slice = false;
-
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 0) {
-      have_slice = true;
+    if (y_data_slice[i].size() > 1) {
       if (i == 1) {
         int64_t cin_start = y_data_slice[i][0] * kh * kw;
         int64_t cin_end = (y_data_slice[i][1] + 1) * kh * kw - 1;
@@ -1947,17 +1943,18 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
       } else if (i == 4) {
         OP_LOGI(op.GetName().c_str(), "cannot support cut in block_C");
         return NOT_SUPPORT_SLICE;
+      } else {
+        dedy_data_slice[i] = y_data_slice[i];
+        if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
+          return GRAPH_FAILED;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in N/H/W without overlap success");
+        return GRAPH_SUCCESS;
       }
     }
   }
 
-  if (have_slice == false) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
-    return GRAPH_FAILED;
-  } else {
-    OP_LOGI(op.GetName().c_str(), "data slice without overlap, not need infer input");
-    return NO_OVERLAP_DIM;
-  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
   return GRAPH_FAILED;
 }
 
@@ -2351,9 +2348,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
 
   // get dedy shape, stride and dilation
   auto dedy_desc = op.GetInputDesc("out_backprop");
-  auto dedy_shape = dedy_desc.GetShape().GetDims();
+  auto dedy_shape = dedy_desc.GetOriginShape().GetDims();
   auto dedy_dtype = dedy_desc.GetDataType();
-  auto dedy_format = dedy_desc.GetFormat();
+  auto dedy_format = dedy_desc.GetOriginFormat();
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   std::vector<int32_t> dilation_list;
@@ -2410,8 +2407,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
   }
   // get filter shape
   auto filter_desc = op.GetInputDesc("filter");
-  auto filter_shape = filter_desc.GetShape().GetDims();
-  auto filter_format = filter_desc.GetFormat();
+  auto filter_shape = filter_desc.GetOriginShape().GetDims();
+  auto filter_format = filter_desc.GetOriginFormat();
   int32_t kh = 0;
   int32_t kw = 0;
   if (filter_format == FORMAT_NCHW) {
@@ -2449,12 +2446,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
     return GRAPH_FAILED;
   }
 
-  bool need_infer = false;
-  bool have_slice = false;
-
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 0) {
-      have_slice = true;
+    if (y_data_slice[i].size() > 1) {
       if (i == 1) {
         int64_t cin_start = y_data_slice[i][0] * kh * kw;
         int64_t cin_end = (y_data_slice[i][1] + 1) * kh * kw - 1;
@@ -2487,17 +2480,18 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
       } else if (i == 4) {
         OP_LOGI(op.GetName().c_str(), "cannot support cut in block_C");
         return NOT_SUPPORT_SLICE;
+      } else {
+        dedy_data_slice[i] = y_data_slice[i];
+        if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
+          return GRAPH_FAILED;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in N/H/W without overlap success");
+        return GRAPH_SUCCESS;
       }
     }
   }
 
-  if (have_slice == false) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
-    return GRAPH_FAILED;
-  } else {
-    OP_LOGI(op.GetName().c_str(), "data slice without overlap, not need infer input");
-    return NO_OVERLAP_DIM;
-  }
+  OP_LOGI(op.GetName().c_str(), "data slice without overlap, not need infer input");
   return GRAPH_FAILED;
 }
 
@@ -4663,9 +4657,9 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
 
   auto x_tensor = op.get_input_desc_x();
   auto w_tensor = op.get_input_desc_filter();
-  auto x_format = x_tensor.GetFormat();
-  auto x_shape = x_tensor.GetShape().GetDims();
-  auto w_shape = w_tensor.GetShape().GetDims();
+  auto x_format = x_tensor.GetOriginFormat();
+  auto x_shape = x_tensor.GetOriginShape().GetDims();
+  auto w_shape = w_tensor.GetOriginShape().GetDims();
   auto x_dtype = x_tensor.GetDataType();
   int32_t ih = x_shape[2];
   int32_t iw = x_shape[3];
@@ -4716,16 +4710,16 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
     return GRAPH_FAILED;
   }
 
-  bool need_infer = false;
-  bool have_slice = false;
-
   for(int i = 0; i < y_data_slice.size(); i++) {
-    if (y_data_slice[i].size() > 0) {
-      have_slice = true;
-      if (i == 1 && x_dtype != DT_INT8) {
-        int64_t cin_start = y_data_slice[i][0] * kh * kw;
-        int64_t cin_end = (y_data_slice[i][1] + 1)*kh*kw - 1;
-        w_data_slice[0] = {cin_start, cin_end};
+    if (y_data_slice[i].size() > 1) {
+      if (i == 1) {
+        if (x_dtype != DT_INT8) {
+          int64_t cin_start = y_data_slice[i][0] * kh * kw;
+          int64_t cin_end = (y_data_slice[i][1] + 1)*kh*kw - 1;
+          w_data_slice[0] = {cin_start, cin_end};
+        } else {
+          w_data_slice[1] = y_data_slice[i];
+        }
         if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
           return GRAPH_FAILED;
         }
@@ -4754,17 +4748,18 @@ IMPLEMT_INFER_DATA_SLICE(Deconvolution, DeconvolutionInferDataSlice) {
       } else if (i == 4) {
         OP_LOGI(op.GetName().c_str(), "cannot support cut in block_C");
         return NOT_SUPPORT_SLICE;
+      } else {
+        x_data_slice[i] = y_data_slice[i];
+        if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+          return GRAPH_FAILED;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in N/H/W without overlap success");
+        return GRAPH_SUCCESS;
       }
     }
   }
 
-  if (have_slice == false) {
-    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
-    return GRAPH_FAILED;
-  } else {
-    OP_LOGI(op.GetName().c_str(), "data slice without overlap, not need infer input");
-    return NO_OVERLAP_DIM;
-  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
   return GRAPH_FAILED;
 }
 
@@ -7741,6 +7736,135 @@ static graphStatus VerifyConv2DTransposeInput(const ge::Operator& op) {
 
   return GRAPH_SUCCESS;
 }
+
+bool InferConv2DTransposeDataSlice(ge::Operator& op) {
+  auto x_tensor = op.GetInputDesc("x");
+  auto w_tensor = op.GetInputDesc("filter");
+  auto x_format = x_tensor.GetOriginFormat();
+  auto w_format = w_tensor.GetOriginFormat();
+  auto x_shape = x_tensor.GetOriginShape().GetDims();
+  auto w_shape = w_tensor.GetOriginShape().GetDims();
+  auto x_dtype = x_tensor.GetDataType();
+
+  vector<int32_t> stride_list;
+  if (op.GetAttr("strides", stride_list) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "op get strides failed.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = "Conv2DTransposeD";
+    err_map["param_name"] = "strides";
+    std::string report_error_code = "E50030";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+  vector<int32_t> dilations_list;
+  if (op.GetAttr("dilations", dilations_list) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "op get dilation failed.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = "Conv2DTransposeD";
+    err_map["param_name"] = "dilations";
+    std::string report_error_code = "E50030";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+  std::string x_format_str = format2str[x_format];
+  std::string w_format_str = format2str[w_format];
+  int32_t h_input_position = x_format_str.find("H");
+  int32_t w_input_position = x_format_str.find("W");
+  int32_t h_filter_position = w_format_str.find("H");
+  int32_t w_filter_position = w_format_str.find("W");
+
+  int32_t ih = x_shape[h_input_position];
+  int32_t iw = x_shape[w_input_position];
+  int32_t strh = stride_list[h_input_position];
+  int32_t strw= stride_list[h_input_position];
+  int32_t dilh = dilations_list[h_input_position];
+  int32_t dilw = dilations_list[w_input_position];
+  int32_t kh = w_shape[h_filter_position];
+  int32_t kw = w_shape[w_filter_position];
+
+  if ((strh <= 0) || (strw <= 0)) {
+    OP_LOGE(op.GetName().c_str(), "stride can not less than zero");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50029",
+                                                    {"op_name", "param_name", "expected_value", "input_value"},
+                                                    {op.GetName().c_str(), "strides", "positive",
+                                                    std::to_string(strh) + ", " + std::to_string(strw)});
+    return false;
+  }
+  vector<int32_t> pad_list;
+  op.GetAttr("pads", pad_list);
+  if (pad_list.empty() || (pad_list.size() != 4)) {
+    OP_LOGE(op.GetName().c_str(), "pad is invalid");
+    ErrorManager::GetInstance().ATCReportErrMessage("E50058",
+                                                    {"op_name", "description"},
+                                                    {op.GetName().c_str(), "pad is invalid"});
+    return false;
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_desc_w = op_desc->MutableInputDesc("filter");
+
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
+  vector<vector<int64_t>> w_data_slice = {{}, {}, {}, {}};
+
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return false;
+  }
+  for(int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 1) {
+      if (i == 1) {
+        if (x_dtype != DT_INT8) {
+          int64_t cin_start = y_data_slice[i][0] * kh * kw;
+          int64_t cin_end = (y_data_slice[i][1] + 1)*kh*kw - 1;
+          w_data_slice[0] = {cin_start, cin_end};
+        } else {
+          w_data_slice[1] = y_data_slice[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
+        return true;
+      } else if(i == 2 && (kh != 1 || strh != 1)) {
+        vector<int64_t> input_h;
+        InferHWConv2DbpInput(kh, dilh, strh, pad_list, y_data_slice[i], input_h, 0, ih);
+        x_data_slice[i] = input_h;
+        if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+          return false;
+        }
+        op.SetAttr("pads", pad_list);
+        OP_LOGI(op.GetName().c_str(), "infer input in H success");
+        return true;
+      } else if(i == 3 && (kw != 1 || strw != 1)) {
+        vector<int64_t> input_w;
+        InferHWConv2DbpInput(kw, dilw, strw, pad_list, y_data_slice[i], input_w, 2, iw);
+        x_data_slice[i] = input_w;
+        if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+          return false;
+        }
+        op.SetAttr("pads", pad_list);
+        OP_LOGI(op.GetName().c_str(), "infer input in W success");
+        return true;
+      } else if (i == 4) {
+        OP_LOGI(op.GetName().c_str(), "cannot support cut in block_C");
+        return false;
+      } else {
+         x_data_slice[i] = y_data_slice[i];
+         if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+           return false;
+         }
+         OP_LOGI(op.GetName().c_str(), "infer input in N/H/W without overlap success");
+         return true;
+      }
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  return false;
+}
+
 // ----------------Conv2DTranspose-------------------
 IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   OP_LOGI(op.GetName().c_str(),"Enter Conv2DTranspose inferfunction!");
@@ -7899,6 +8023,15 @@ IMPLEMT_VERIFIER(Conv2DTranspose, Conv2DTransposeVerify) {
   }
 }
 
+IMPLEMT_INFER_DATA_SLICE(Conv2DTranspose, Conv2DTransposeInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DTranspose InferDataSlice.");
+  if (!InferConv2DTransposeDataSlice(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_DATA_SLICE_FUNC_REG(Conv2DTranspose, Conv2DTransposeInferDataSlice);
 INFER_FUNC_REG(Conv2DTranspose, Conv2DTransposeInfer);
 VERIFY_FUNC_REG(Conv2DTranspose, Conv2DTransposeVerify);
 // ----------------Conv2DTransposeD-------------------
@@ -8011,6 +8144,15 @@ IMPLEMT_VERIFIER(Conv2DTransposeD, Conv2DTransposeDVerify) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(Conv2DTransposeD, Conv2DTransposeDInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DTransposeD InferDataSlice.");
+  if (!InferConv2DTransposeDataSlice(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_DATA_SLICE_FUNC_REG(Conv2DTransposeD, Conv2DTransposeDInferDataSlice);
 INFER_FUNC_REG(Conv2DTransposeD, Conv2DTransposeDInfer);
 VERIFY_FUNC_REG(Conv2DTransposeD, Conv2DTransposeDVerify);
 

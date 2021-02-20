@@ -30,7 +30,7 @@ CONV_BACKPROP_SHAPE_DIM = 4
 # each axis of shape must less than 1000000
 DEFAULT_MAX_SHAPE_NUM = 1000000
 
-# memory type
+# 2 means L1 enable
 L1FUSION_INPUT_CTR = 2
 
 # dilation must be in [1,255]
@@ -165,29 +165,24 @@ def get_op_support_info( # pylint: disable=invalid-name,R0913,R0914,W0613
     """
     h_pos = data_format.find("H")
     w_pos = data_format.find("W")
-    shape_filters = util_deconv_comm.get_filter_shape(filter.get("ori_format"),
-                                                      filter.get("ori_shape"))
-    head_overlap_h = -1 if (shape_filters[2] == 1 and strides[h_pos] == 1) else 0
-    tail_overlap_h = head_overlap_h
-    head_overlap_w = -1 if (shape_filters[3] == 1 and strides[w_pos] == 1) else 0
-    tail_overlap_w = head_overlap_w
 
     format_out_backprop = out_backprop.get("format")
+    # input/output Serial， axis Serial, （split enable(0:enable, -1：unable), split enable）
     if format_out_backprop == "NC1HWC0":
         axis_split_matrix = [
             # cut N
             [
-                util_select_op_base.SplitInput([1, [0], [-1], [-1]]),
+                util_select_op_base.SplitInput([1, [0], [0], [0]]),
                 util_select_op_base.SplitOutput([0, [0]])
             ],
             # cut H
             [
-                util_select_op_base.SplitInput([1, [2], [head_overlap_h], [tail_overlap_h]]),
+                util_select_op_base.SplitInput([1, [2], [0], [0]]),
                 util_select_op_base.SplitOutput([0, [2]])
             ],
             # cut W
             [
-                util_select_op_base.SplitInput([1, [3], [head_overlap_w], [tail_overlap_w]]),
+                util_select_op_base.SplitInput([1, [3], [0], [0]]),
                 util_select_op_base.SplitOutput([0, [3]])
             ],
         ]

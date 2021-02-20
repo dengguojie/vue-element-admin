@@ -3,6 +3,7 @@
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
+from impl.mat_mul import get_op_support_info
 ut_case = OpUT("MatMul", None, None)
 
 case1 = {"params": [{"shape": (6, 2,16,16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (32, 96),"ori_format": "ND"},
@@ -171,3 +172,8 @@ ut_case.add_precision_case("Ascend910", {"params": [{"shape": (6, 2,16,16), "dty
                                          "calc_expect_func": calc_expect_func,
                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
 
+def test_split_matmul(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (1, 2, 16, 16), "ori_shape": (32, 16)}
+    get_op_support_info(x1, x2, None)
+ut_case.add_cust_test_func(test_func=test_split_matmul)
