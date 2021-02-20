@@ -109,17 +109,13 @@ VERIFY_FUNC_REG(FastGeluGrad, FastGeluGradVerify);
 
 // ----------------------FastGelu----------------------
 IMPLEMT_COMMON_INFERFUNC(FastGeluInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
-
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(FastGelu, FastGeluInferShape);
-// ----------------------Gelu END----------------------
+// ----------------------FastGelu END------------------
 
 // ----------------TanhGrad Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(TanhGradInferShape) {
