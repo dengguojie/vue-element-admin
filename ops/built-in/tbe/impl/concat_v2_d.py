@@ -49,12 +49,17 @@ def get_op_support_info(input_values,
     value_len = len(input_values)
     shape_value_len = len(input_values[0].get("shape"))
     format_value = input_values[0].get("format").upper()
+    ori_shape = input_values[0].get("ori_shape")
     if axis < 0:
-        axis += shape_value_len
+        axis += len(ori_shape)
+    ori_format = input_values[0].get("ori_format")
+    axis = util_common.update_axis_for_other_format(ori_shape, axis, format_value, ori_format, True)
+    if isinstance(axis, int):
+        axis = [axis]
     if format_value in ("ND", "NC1HWC0", "NCHW", "NHWC"):
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for i in range(0, shape_value_len - 1):
-            if i != axis:
+            if i not in axis:
                 input_list = []
                 for j in range(0, value_len):
                     input_0 = [j, [i], [-1], [-1]]

@@ -179,6 +179,10 @@ bool GetScalerValue(const Operator& op, const Tensor& const_tensor, const DataTy
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name);
 
+std::vector<int64_t> GetNewAxis4NewFormat(std::size_t ori_shape_len, int64_t axis, const std::string& ori_format,
+                                          const std::string& new_format, bool reduce_mode = false);
+std::string ToFormatString(ge::Format format);
+
 /*
  * Check input dtype and format is supported in supportList from inputNumBeg to inputNumEnd
  * param[in] op  op desc supply by ge

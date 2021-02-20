@@ -24,13 +24,14 @@
 #include <map>
 #include <functional>
 #include <algorithm>
+#include <set>
 #include "./error_util.h"
 #include "op_common_util.h"
 #include "graph/utils/type_utils.h"
 #include "axis_util.h"
 
 namespace ge {
-
+using namespace std;
 bool GetInputDataType(const ge::DataType& data_type, const std::vector<ge::DataType>& supportList) {
   std::vector<ge::DataType>::const_iterator supportIter = find(supportList.begin(), supportList.end(), data_type);
   if (supportIter == supportList.end()) {
@@ -365,6 +366,164 @@ bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_nam
   return true;
 }
 
+static std::vector<int64_t> GetNewAxis4NDC1HWC0(std::size_t ori_shape_len, int64_t axis, const std::string& ori_format,
+                                                bool reduce_mode) {
+  string ori_format_upper = ori_format;
+  transform(ori_format_upper.begin(), ori_format_upper.end(), ori_format_upper.begin(), ::toupper);
+
+  if (ori_format_upper == "NDC1HWC0") {
+    return {axis};
+  }
+
+  const int64_t n_axis = 0;
+  const int64_t d_axis = 1;
+  const int64_t c1_axis = 2;
+  const int64_t h_axis = 3;
+  const int64_t w_axis = 4;
+  const int64_t c0_axis = 5;
+
+  vector<int64_t> new_c_axis = {c1_axis};
+  if (reduce_mode) {
+    new_c_axis.push_back(c0_axis);
+  }
+
+  map<char, vector<int64_t>> new_format_axis_map = {
+      {'N', {n_axis}},
+      {'C', new_c_axis},
+      {'H', {h_axis}},
+      {'W', {w_axis}},
+      {'D', {d_axis}},
+  };
+
+  int64_t non_negative_axis = axis;
+  if (non_negative_axis < 0) {
+    non_negative_axis += ori_shape_len;
+  }
+
+  if (static_cast<size_t>(non_negative_axis) < ori_format_upper.length()) {
+    const char axis_dim_name = ori_format_upper[non_negative_axis];
+    auto found = new_format_axis_map.find(axis_dim_name);
+    if (found != new_format_axis_map.end()) {
+      return found->second;
+    }
+  }
+
+  return {};
+}
+
+static std::vector<int64_t> GetNewAxis4NC1HWC0(std::size_t ori_shape_len, int64_t axis, const std::string& ori_format,
+                                               bool reduce_mode) {
+  string ori_format_upper = ori_format;
+  transform(ori_format_upper.begin(), ori_format_upper.end(), ori_format_upper.begin(), ::toupper);
+
+  if (ori_format_upper == "NC1HWC0") {
+    return {axis};
+  }
+
+  const int64_t n_axis = 0;
+  const int64_t c1_axis = 1;
+  const int64_t h_axis = 2;
+  const int64_t w_axis = 3;
+  const int64_t c0_axis = 4;
+
+  vector<int64_t> new_c_axis = {c1_axis};
+  if (reduce_mode) {
+    new_c_axis.push_back(c0_axis);
+  }
+
+  map<char, vector<int64_t>> new_format_axis_map = {
+      {'N', {n_axis}},
+      {'C', new_c_axis},
+      {'H', {h_axis}},
+      {'W', {w_axis}},
+  };
+
+  int64_t non_negative_axis = axis;
+  if (non_negative_axis < 0) {
+    non_negative_axis += ori_shape_len;
+  }
+
+  if (static_cast<size_t>(non_negative_axis) < ori_format_upper.length()) {
+    const char axis_dim_name = ori_format_upper[non_negative_axis];
+    auto found = new_format_axis_map.find(axis_dim_name);
+    if (found != new_format_axis_map.end()) {
+      return found->second;
+    }
+  }
+
+  return {};
+}
+
+// FRACTAL_NZ means: [A, B, ..., C, D] -> [A, B, ..., ceil(D//16), ceil(C//16), 16, 16]
+static std::vector<int64_t> GetNewAxis4FRACTAL_NZ(std::size_t ori_shape_len, int64_t axis,
+                                                  const std::string& ori_format,
+                                                  bool reduce_mode) {
+  string ori_format_upper = ori_format;
+  transform(ori_format_upper.begin(), ori_format_upper.end(), ori_format_upper.begin(), ::toupper);
+
+  if (ori_format_upper == "FRACTAL_NZ") {
+    return {axis};
+  }
+
+  int64_t non_negative_axis = axis;
+  if (non_negative_axis < 0) {
+    non_negative_axis += ori_shape_len;
+  }
+
+  if (static_cast<size_t>(non_negative_axis) >= ori_shape_len) {
+    return {};
+  }
+
+  int64_t new_shape_len = max<int64_t>(static_cast<int64_t>(ori_shape_len), 2) + 2;
+  if (static_cast<size_t>(non_negative_axis) == ori_shape_len - 1) {
+    if (!reduce_mode) {
+      return {new_shape_len - 4};
+    }
+
+    return {new_shape_len - 4, new_shape_len - 1};
+  }
+
+  if (static_cast<size_t>(non_negative_axis) == ori_shape_len - 2) {
+    if (!reduce_mode) {
+      return {new_shape_len - 3};
+    }
+
+    return {new_shape_len - 3, new_shape_len - 2};
+  }
+
+  return {non_negative_axis};
+}
+
+std::vector<int64_t> GetNewAxis4NewFormat(std::size_t ori_shape_len, int64_t axis, const std::string& ori_format,
+                                          const std::string& new_format, bool reduce_mode) {
+  string ori_format_upper = ori_format;
+  string new_format_upper = new_format;
+  transform(ori_format_upper.begin(), ori_format_upper.end(), ori_format_upper.begin(), ::toupper);
+  transform(new_format_upper.begin(), new_format_upper.end(), new_format_upper.begin(), ::toupper);
+  if (ori_format_upper == new_format_upper) {
+    return {axis};
+  }
+  using transform_func = std::function<std::vector<int64_t>(std::size_t, int64_t, const std::string&, bool)>;
+
+  // FRACTAL_NZ means: [A, B, ..., C, D] -> [A, B, ..., ceil(D//16), ceil(C//16), 16, 16]
+  const map<string, transform_func> format_transform_func = {
+      {"NDC1HWC0", GetNewAxis4NDC1HWC0},
+      {"NC1HWC0", GetNewAxis4NC1HWC0},
+      {"FRACTAL_NZ", GetNewAxis4FRACTAL_NZ}
+  };
+
+  auto found = format_transform_func.find(new_format_upper);
+  if (found != format_transform_func.end()) {
+    return found->second(ori_shape_len, axis, ori_format, reduce_mode);
+  }
+
+  return {};
+}
+
+std::string ToFormatString(ge::Format format) {
+  return ge::TypeUtils::FormatToSerialString(format);
+}
+
 bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1, const string& input_name2,
                                          const string& output_name) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -623,7 +782,7 @@ bool DynamicShapeInfer::CatchFormatAndShape() {
 
   // get and save current input shape&format, and assign origin ones to them
   std::string input_name;
-  for (map<std::string, uint32_t>::iterator it = inputs.begin(); it != inputs.end(); it++) {
+  for (map<std::string, uint32_t>::iterator it = inputs.begin(); it != inputs.end(); ++it) {
     input_name = it->first;
     tensor_desc_input = op_desc->MutableInputDesc(input_name);
     if (tensor_desc_input == nullptr) {
@@ -643,7 +802,7 @@ bool DynamicShapeInfer::CatchFormatAndShape() {
 
   // get and save current output shape&format, and assign origin ones to them
   std::string output_name;
-  for (map<std::string, uint32_t>::iterator it = outputs.begin(); it != outputs.end(); it++) {
+  for (map<std::string, uint32_t>::iterator it = outputs.begin(); it != outputs.end(); ++it) {
     output_name = it->first;
     tensor_desc_output = op_desc->MutableOutputDesc(output_name);
     if (tensor_desc_output == nullptr) {
@@ -667,7 +826,7 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
   const int64_t opImplType = EN_IMPL_CUSTOM_TBE;
   GeTensorDescPtr tensor_desc_input, tensor_desc_output;
   // assign output's after infershape to origin shape
-  for (map<std::string, uint32_t>::iterator it = outputs.begin(); it != outputs.end(); it++) {
+  for (map<std::string, uint32_t>::iterator it = outputs.begin(); it != outputs.end(); ++it) {
     tensor_desc_output = op_desc->MutableOutputDesc(it->first);
     if (tensor_desc_output == nullptr) {
       continue;
@@ -679,7 +838,7 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
   Format ori_input_format, cur_input_format;
   GeShape ori_infer_shape, current_shape;
   std::string input_name;
-  for (map<std::string, uint32_t>::iterator it = inputs.begin(); it != inputs.end(); it++) {
+  for (map<std::string, uint32_t>::iterator it = inputs.begin(); it != inputs.end(); ++it) {
     input_name = it->first;
     tensor_desc_input = op_desc->MutableInputDesc(input_name);
     if (tensor_desc_input == nullptr) {
@@ -718,7 +877,7 @@ bool DynamicShapeInfer::UpdateFormatAndShape() {
   Format ori_output_format, cur_output_format;
   GeShape ori_infer_out_shape, current_out_shape;
   std::string output_name;
-  for (map<std::string, uint32_t>::iterator it = outputs.begin(); it != outputs.end(); it++) {
+  for (map<std::string, uint32_t>::iterator it = outputs.begin(); it != outputs.end(); ++it) {
     output_name = it->first;
     tensor_desc_output = op_desc->MutableOutputDesc(output_name);
     if (tensor_desc_output == nullptr) {

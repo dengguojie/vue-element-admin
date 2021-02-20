@@ -31,6 +31,8 @@
 #include "util/error_util.h"
 #include "op_log.h"
 #include "graph/utils/node_utils.h"
+#include "register/infer_data_slice_registry.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 // ----------------Split OP Begin-------------------
@@ -802,6 +804,93 @@ IMPLEMT_COMMON_INFERFUNC(ConcatV2DInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ConcatV2D, ConcatV2DInferShape);
+
+static graphStatus ConcatInferDataSliceCommon(Operator& op, int64_t num_concat, int64_t axis) {
+  if (num_concat <= 0) {
+    OP_LOGE(op.GetName().c_str(), "Check N > 0 failed, N is %lld.", num_concat);
+    OpsAttrValueErrReport(op.GetName(), "N", ">0", std::to_string(num_concat));
+    return GRAPH_FAILED;
+  }
+
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  OP_LOGE_IF(!op_info, GRAPH_FAILED, op.GetName(), "GetOpDescFromOperator failed.");
+  std::vector<GeTensorDescPtr> input_x_desc;
+  const string input_name = "x";
+  string input_name_i = "x63";
+  for (int64_t input_idx = 0; input_idx < num_concat; input_idx++) {
+    input_name_i = input_name + std::to_string(input_idx);
+    auto input_desc = op_info->MutableInputDesc(input_name_i);
+    if (!input_desc) {
+      OpsMissInputErrReport(op.GetName(), input_name_i);
+      OP_LOGE(op.GetName().c_str(), "Get input desc %s failed.", input_name_i.c_str());
+      return GRAPH_FAILED;
+    }
+    input_x_desc.emplace_back(op_info->MutableInputDesc(input_name_i));
+  }
+
+  auto output_desc = op_info->MutableOutputDesc(0);
+  OP_LOGE_IF(!output_desc, GRAPH_FAILED, op.GetName(), "Get output desc failed.");
+  vector<vector<int64_t>> output_data_slice;
+  OP_LOGE_IF(!AttrUtils::GetListListInt(output_desc, ge::ATTR_NAME_DATA_SLICE, output_data_slice), GRAPH_FAILED,
+             op.GetName(), "Output no data slice, not need infer input");
+
+  size_t dim_num = output_desc->GetOriginShape().GetDimNum();
+
+  if ((axis < -static_cast<int64_t>(dim_num)) || (axis >= static_cast<int64_t>(dim_num))) {
+    OpsInputShapeDimErrReport(op.GetName(), "axis", ConcatString(dim_num), ConcatString(-dim_num), ConcatString(axis));
+    OP_LOGE(op.GetName().c_str(), "Axis[%lld] value out of range[%lld, %lld).", axis, -dim_num, dim_num);
+    return GRAPH_FAILED;
+  }
+
+  int64_t non_negative_axis = axis;
+  if (non_negative_axis < 0) {
+    non_negative_axis += dim_num;
+  }
+
+  std::string origin_format = ToFormatString(output_desc->GetOriginFormat());
+  std::string new_format = ToFormatString(output_desc->GetFormat());
+  std::set<string> supported_formats = {"ND", "NC1HWC0", "NCHW", "NHWC"};
+  if (supported_formats.count(new_format) != 0 && !output_data_slice.empty()) {
+    auto new_non_negative_axis = GetNewAxis4NewFormat(output_desc->GetOriginShape().GetDimNum(), non_negative_axis,
+                                                      origin_format, new_format, false);
+    OP_LOGE_IF(new_non_negative_axis.empty(), GRAPH_FAILED, op.GetName(),
+               "Get new axis from %s to %s failed, origin_shape len is %llu.",
+               origin_format.c_str(), new_format.c_str(), output_desc->GetOriginShape().GetDimNum());
+    non_negative_axis = new_non_negative_axis[0];
+    vector<vector<int64_t>> input_data_slice = output_data_slice;
+    for (const auto& desc : input_x_desc) {
+      size_t axis_index = static_cast<size_t>(non_negative_axis);
+      auto dim_value = desc->MutableShape().GetDim(axis_index);
+      input_data_slice[non_negative_axis] = {0, dim_value};
+      OP_LOGE_IF(!AttrUtils::SetListListInt(desc, ge::ATTR_NAME_DATA_SLICE, input_data_slice), GRAPH_FAILED,
+                 op.GetName(), "Set input(%s) data slice failed", desc->GetName().c_str());
+    }
+
+    return GRAPH_SUCCESS;
+  }
+
+  return GRAPH_FAILED;
+}
+
+IMPLEMT_INFER_DATA_SLICE(ConcatV2D, ConcatV2DInferDataSlice) {
+  int64_t num_concat;
+  if (op.GetAttr("N", num_concat) == GRAPH_FAILED) {
+    OpsGetAttrErrReport(op.GetName(), "N");
+    OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    return GRAPH_FAILED;
+  }
+
+  int64_t axis;
+  if (op.GetAttr("concat_dim", axis) == GRAPH_FAILED) {
+    OpsGetAttrErrReport(op.GetName(), "axis");
+    OP_LOGE(op.GetName().c_str(), "get attr axis failed");
+    return GRAPH_FAILED;
+  }
+
+  return ConcatInferDataSliceCommon(op, num_concat, axis);
+}
+
+INFER_DATA_SLICE_FUNC_REG(ConcatV2D, ConcatV2DInferDataSlice);
 // ----------------ConcatV2D OP End-------------------
 
 // ----------------ParallelConcat OP Begin-------------------
@@ -913,6 +1002,26 @@ IMPLEMT_COMMON_INFERFUNC(ConcatDInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ConcatD, ConcatDInferShape);
+
+IMPLEMT_INFER_DATA_SLICE(ConcatD, ConcatDInferDataSlice) {
+  int64_t num_concat;
+  if (op.GetAttr("N", num_concat) == GRAPH_FAILED) {
+    OpsGetAttrErrReport(op.GetName(), "N");
+    OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    return GRAPH_FAILED;
+  }
+
+  int64_t concat_dim;
+  if (op.GetAttr("concat_dim", concat_dim) == GRAPH_FAILED) {
+    OpsGetAttrErrReport(op.GetName(), "concat_dim");
+    OP_LOGE(op.GetName().c_str(), "get attr concat_dim failed");
+    return GRAPH_FAILED;
+  }
+
+  return ConcatInferDataSliceCommon(op, num_concat, concat_dim);
+}
+
+INFER_DATA_SLICE_FUNC_REG(ConcatD, ConcatDInferDataSlice);
 // ----------------ConcatD OP End-------------------
 
 // ----------------Concat OP Begin-------------------

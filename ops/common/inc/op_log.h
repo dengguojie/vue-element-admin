@@ -21,6 +21,9 @@
 #ifndef GE_OP_LOG_H
 #define GE_OP_LOG_H
 
+#include <string>
+#include <type_traits>
+
 #if !defined( __ANDROID__) && !defined(ANDROID)
 #include "toolchain/slog.h"
 #else
@@ -29,11 +32,29 @@
 
 #define OPPROTO_SUBMOD_NAME "OP_PROTO"
 
+template <class T>
+typename std::enable_if<std::is_same<std::string, typename std::decay<T>::type>::value, const char*>::type
+get_op_name(const T& name) {
+  return name.c_str();
+}
+
+template <class T>
+typename std::enable_if<std::is_same<const char*, typename std::decay<T>::type>::value, const char*>::type
+get_op_name(T name) {
+  return name;
+}
+
+template <class T>
+typename std::enable_if<std::is_same<char*, typename std::decay<T>::type>::value, const char*>::type
+get_op_name(T name) {
+  return name;
+}
+
 #if !defined( __ANDROID__) && !defined(ANDROID)
-#define OP_LOGI(opname, ...) D_OP_LOGI(opname, __VA_ARGS__)
-#define OP_LOGW(opname, ...) D_OP_LOGW(opname, __VA_ARGS__)
-#define OP_LOGE(opname, ...) D_OP_LOGE(opname, __VA_ARGS__)
-#define OP_LOGD(opname, ...) D_OP_LOGD(opname, __VA_ARGS__)
+#define OP_LOGI(opname, ...) D_OP_LOGI(get_op_name(opname), __VA_ARGS__)
+#define OP_LOGW(opname, ...) D_OP_LOGW(get_op_name(opname), __VA_ARGS__)
+#define OP_LOGE(opname, ...) D_OP_LOGE(get_op_name(opname), __VA_ARGS__)
+#define OP_LOGD(opname, ...) D_OP_LOGD(get_op_name(opname), __VA_ARGS__)
 #define GE_OP_LOGI(opname, ...) GE_D_OP_LOGI(opname, __VA_ARGS__)
 #define GE_OP_LOGW(opname, ...) GE_D_OP_LOGW(opname, __VA_ARGS__)
 #define GE_OP_LOGE(opname, ...) GE_D_OP_LOGE(opname, __VA_ARGS__)
@@ -77,12 +98,20 @@
 #define D_FUSION_PASS_LOGD(fmt, ...)
 #endif
 
-#define OP_CHECK(condition, log_func, do_expr)                                                                 \
+#define OP_LOGE_IF(condition, return_value, op_name, fmt, ...)                                                 \
   static_assert(std::is_same<bool, std::decay<decltype(condition)>::type>::value, "condition should be bool"); \
   do {                                                                                                         \
     if (condition) {                                                                                           \
-      log_func;                                                                                                \
-      do_expr;                                                                                                 \
+      OP_LOGE(get_op_name(op_name), fmt, ##__VA_ARGS__);                                                       \
+      return return_value;                                                                                     \
+    }                                                                                                          \
+  } while (0)
+
+#define OP_LOGW_IF(condition, op_name, fmt, ...)                                                               \
+  static_assert(std::is_same<bool, std::decay<decltype(condition)>::type>::value, "condition should be bool"); \
+  do {                                                                                                         \
+    if (condition) {                                                                                           \
+      OP_LOGE(get_op_name(op_name), fmt, ##__VA_ARGS__);                                                       \
     }                                                                                                          \
   } while (0)
 
