@@ -49,8 +49,13 @@ Status ParseParamsReduceProd(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("axes", tensor);
   op_dest.SetAttr("keep_dims", keep_dims);
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  if (op_desc == nullptr) {
+    OP_LOGE("ReduceProd", "Get OpDesc from operator failed.");
+    return FAILED;
+  }
   op_desc->AddDynamicInputDesc("x", 2);
   op_desc->AddDynamicOutputDesc("y", 1);
+  op_dest.SetAttr("original_type", "ai.onnx::11::ReduceProd");
 
   return SUCCESS;
 }

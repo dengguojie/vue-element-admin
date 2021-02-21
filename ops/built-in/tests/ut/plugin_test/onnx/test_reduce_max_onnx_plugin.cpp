@@ -32,5 +32,5 @@ TEST_F(reduce_max_onnx_plugin_test, test_reduce_max_case_1) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 2);
+  EXPECT_EQ(nodes.size(), 3);
 }
