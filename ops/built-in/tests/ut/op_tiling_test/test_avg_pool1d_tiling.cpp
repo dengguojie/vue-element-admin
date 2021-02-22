@@ -36,7 +36,7 @@ TEST_F(AvgPool1DTiling, avgpool1d_tiling_0) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AvgPool1DD");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
-  std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":2730}";
+  std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":2730, \"ksize\":3, \"strides\":1,\"pad_l\":0,\"pad_r\":0,\"ceil_mode\":true}";
 
   std::vector<int64_t> inputA{1,1,1,3,16};
   std::vector<int64_t> inputB{1,1,1,1,16};

@@ -167,7 +167,7 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_blo
             sch[tensor_ub_mul].set_storage_bound(wo_ub_factor_max * C0)
             for i in range(ksize - 1):
                 sch[reduce_tensor_list[i]].set_storage_bound(wo_ub_factor_max * C0)
-            sch[tensor_zero].set_storage_bound((wo_ub_factor_max * strides + ksize) * C0)
+            sch[tensor_zero].set_storage_bound(wo_ub_factor_max * C0 * (strides + ksize))
         elif cut_wo:
             wo_factor = tvm.var("wo_factor")
             sch.set_var_range(wo_factor, 1, wo_ub_factor_max)
@@ -180,7 +180,7 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_blo
             sch[tensor_ub_mul].set_storage_bound(wo_ub_factor_max * C0)
             for i in range(ksize - 1):
                 sch[reduce_tensor_list[i]].set_storage_bound(wo_ub_factor_max * C0)
-            sch[tensor_zero].set_storage_bound((wo_ub_factor_max * strides + ksize) * C0)
+            sch[tensor_zero].set_storage_bound(wo_ub_factor_max * C0 * (strides + ksize))
             compute_at_axis = nc1h_out
             emit_insn_axis = nc1h_in
     else:
@@ -275,17 +275,15 @@ def avg_pool_1d(x_dict,
 
     fmap_nc1h_var = tvm.var("fmap_nc1h_var")
     fmap_wi_var = tvm.var("fmap_wi_var")
+    fmap_wo_var = tvm.var("fmap_wo_var")
     pad_l, pad_r = pads
     if ceil_mode:
-        fmap_wo_expr = (fmap_wi_var + pad_l + pad_r - ksize + strides - 1) // strides + 1
-    else:
-        fmap_wo_expr = ((fmap_wi_var + pad_l + pad_r) - ksize) // strides + 1
-    pad_r = (fmap_wo_expr - 1) * strides + ksize - fmap_wi_var - pad_l
+        pad_r = (fmap_wo_var - 1) * strides + ksize - fmap_wi_var - pad_l
 
     x_n, x_c1, x_h, x_w, x_c0 = shape
     _, _, _, div_x_w, div_x_c0 = div_shape
     shape = [fmap_nc1h_var, fmap_wi_var, x_c0]
-    div_shape = [1, fmap_wo_expr, div_x_c0]
+    div_shape = [1, fmap_wo_var, div_x_c0]
 
     tensor_a = tvm.placeholder(shape, name="tensor_a", dtype=dtype)
     tensor_div = tvm.placeholder(div_shape, name="tensor_div", dtype=dtype_div)
@@ -293,7 +291,7 @@ def avg_pool_1d(x_dict,
     res, reduce_tensor_list, tensor_list = avg_pool_1d_compute(tensor_a, tensor_div, out_dict, ksize, [pad_l, pad_r],
                                                                strides, ceil_mode, count_include_pad, kernel_name)
 
-    shape_vars = [fmap_nc1h_var, fmap_wi_var]
+    shape_vars = [fmap_nc1h_var, fmap_wi_var, fmap_wo_var]
 
     core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     """
@@ -325,7 +323,7 @@ def avg_pool_1d(x_dict,
     ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
     total_ele = ub_size_bytes // dtype_bytes_size
-    wo_ub_factor_max = (total_ele // C0 - ksize) // (ksize + strides)
+    wo_ub_factor_max = total_ele // C0 // (strides + 2 * ksize + 1)
     for idx, case in enumerate(tiling_case):
         key = idx
         sch, factor_vars = _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list,
@@ -351,3 +349,8 @@ def avg_pool_1d(x_dict,
         tvm.build(sch_list, var_list, rules=rules, target="cce", name=kernel_name)
     tbe_base.add_compile_info("core_num", core_num)
     tbe_base.add_compile_info("max_w_in_ub", wo_ub_factor_max)
+    tbe_base.add_compile_info("ksize", ksize)
+    tbe_base.add_compile_info("strides", strides)
+    tbe_base.add_compile_info("pad_l", pads[0])
+    tbe_base.add_compile_info("pad_r", pads[1])
+    tbe_base.add_compile_info("ceil_mode", ceil_mode)

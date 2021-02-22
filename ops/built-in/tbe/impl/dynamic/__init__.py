@@ -17,7 +17,7 @@ dynamic operator
 """
 # pylint: disable=W0622
 from __future__ import absolute_import as _abs
-
+from .avg_pool_1d import avg_pool_1d
 from .broadcast_to import broadcast_to
 from .softsign import softsign
 from .softplus_grad import softplus_grad

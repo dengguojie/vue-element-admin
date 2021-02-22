@@ -87,6 +87,21 @@ bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, cons
   int32_t fmap_nc1h = fmap_n * fmap_c1 * fmap_h;
   int32_t core_num = op_compile_info_json["core_num"].get<int32_t>();
   int32_t max_w_in_ub = op_compile_info_json["max_w_in_ub"].get<int32_t>();
+  int32_t ksize = op_compile_info_json["ksize"].get<int32_t>();
+  int32_t strides = op_compile_info_json["strides"].get<int32_t>();
+  int32_t pad_l = op_compile_info_json["pad_l"].get<int32_t>();
+  int32_t pad_r = op_compile_info_json["pad_r"].get<int32_t>();
+  bool ceil_mode = op_compile_info_json["ceil_mode"].get<bool>();
+  int32_t fmap_wo;
+  if (ceil_mode) {
+      fmap_wo = (fmap_w + pad_l + pad_r - ksize + strides - 1) / strides + 1;
+      if ((fmap_wo - 1) * strides >= fmap_w + pad_l) {
+          fmap_wo -= 1;
+      }
+  } else {
+      fmap_wo = (fmap_w + pad_l + pad_r - ksize) / strides + 1;
+  }
+
 
   int32_t block_dim;
   vector<int32_t> tiling_data = GetTilingData(fmap_nc1h, wo, max_w_in_ub, core_num, block_dim);
@@ -94,6 +109,7 @@ bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, cons
   ByteBufferPut(run_info.tiling_data, tiling_data[0]);
   ByteBufferPut(run_info.tiling_data, fmap_nc1h);
   ByteBufferPut(run_info.tiling_data, fmap_w);
+  ByteBufferPut(run_info.tiling_data, fmap_wo);
   for (size_t i = 1; i < tiling_data.size(); i++) {
     ByteBufferPut(run_info.tiling_data, tiling_data[i]);
   }
