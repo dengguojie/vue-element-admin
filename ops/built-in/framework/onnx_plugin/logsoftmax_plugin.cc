@@ -28,7 +28,7 @@ Status ParseParamsLogSoftmax(const Message* op_src, ge::Operator& op_dest) {
   }
   int axis = -1;
   for (auto attr : node->attribute()) {
-    if (attr.name() == "axis") {
+    if (attr.name() == "axis" && attr.type() == ge::onnx::AttributeProto::INT) {
       axis = attr.i();
     }
   }
@@ -40,24 +40,9 @@ Status ParseParamsLogSoftmax(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("LogSoftmaxV2")
   .FrameworkType(ONNX)
   .OriginOpType("ai.onnx::11::LogSoftmax")
-  .ParseParamsFn(ParseParamsLogSoftmax)
-  .ImplyType(ImplyType::TVM);
-
-REGISTER_CUSTOM_OP("LogSoftmaxV2")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::9::LogSoftmax")
-  .ParseParamsFn(ParseParamsLogSoftmax)
-  .ImplyType(ImplyType::TVM);
-
-REGISTER_CUSTOM_OP("LogSoftmaxV2")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::12::LogSoftmax")
-  .ParseParamsFn(ParseParamsLogSoftmax)
-  .ImplyType(ImplyType::TVM);
-
-REGISTER_CUSTOM_OP("LogSoftmaxV2")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::13::LogSoftmax")
+  .OriginOpType({"ai.onnx::9::LogSoftmax",
+                 "ai.onnx::12::LogSoftmax",
+                 "ai.onnx::13::LogSoftmax"})
   .ParseParamsFn(ParseParamsLogSoftmax)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
