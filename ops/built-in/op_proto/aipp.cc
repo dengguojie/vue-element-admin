@@ -28,6 +28,9 @@
 #include "graph/utils/graph_utils.h"
 #include "./util/error_util.h"
 #include "graph/utils/type_utils.h"
+#include "register/infer_data_slice_registry.h"
+#include "graph/common_error_codes.h"
+#include "graph/debug/ge_attr_define.h"
 
 namespace ge {
 
@@ -741,8 +744,60 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
+  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice start");
+  auto images_desc = op.GetInputDesc("images");
+  auto input_format = images_desc.GetFormat();
+
+  if (input_format != FORMAT_NCHW && input_format != FORMAT_NHWC && input_format != FORMAT_NC1HWC0_C04) {
+    OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
+    OpsInputFormatErrReport(op.GetName(), "images", "NCHW, NHWC or NC1HWC0_C04", ConcatString(input_format));
+    return GRAPH_FAILED;
+  }
+
+  vector<vector<int64_t>> output_data_slice = {{}, {}, {}, {}, {}};
+  vector<vector<int64_t>> images_data_slice = {{}, {}, {}, {}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("features");
+  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("images");
+
+  if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, output_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
+    return GRAPH_FAILED;
+  }
+
+  for (unsigned i = 0; i < output_data_slice.size(); i++) {
+    if (output_data_slice[i].size() > 0) {
+      if (output_data_slice[i].size() != 2) {
+        OP_LOGE(op.GetName().c_str(), "data slice format input size should be 2.");
+        return GRAPH_FAILED;
+      }
+      if (i == 0) {
+        int64_t n_start = output_data_slice[i][0];
+        int64_t n_end = output_data_slice[i][1];
+        images_data_slice[i] = {n_start, n_end};
+
+        if (input_format == FORMAT_NC1HWC0_C04) {
+          images_data_slice.push_back({});
+        }
+        if (!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, images_data_slice)) {
+          OP_LOGE(op.GetName().c_str(), "images data_slice set failed.");
+          return GRAPH_FAILED;
+        }
+      } else {
+        OP_LOGI(op.GetName().c_str(), "only support cut in n");
+        return NOT_SUPPORT_SLICE;
+      }
+    }
+  }
+
+  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice success");
+  return GRAPH_SUCCESS;
+}
+
 INFER_FUNC_REG(Aipp, AippInfer);
 VERIFY_FUNC_REG(Aipp, AippVerify);
+INFER_DATA_SLICE_FUNC_REG(Aipp, AippInferDataSlice);
 
 COMMON_INFER_FUNC_REG(AippData, ELMTWISE_INFER_SHAPEANDTYPE("data", "out"));
 }  // namespace ge

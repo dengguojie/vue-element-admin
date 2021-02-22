@@ -38,10 +38,22 @@ def get_op_support_info(input_data, input_dync_param, output_data, aipp_config_j
     """
     LxFusion interface
     """
+    if aipp_config_json in ("{}", ""):
+        error_manager_vector.raise_err_miss_mandatory_parameter(aipp, 'aipp_config_json')
+
+    aipp_config = json.loads(aipp_config_json)
+
+    if 'aipp_mode' not in aipp_config:
+        error_manager_vector.raise_err_miss_mandatory_parameter(aipp, 'aipp_mode')
+
+    aipp_mode = aipp_config.get('aipp_mode')
+    if aipp_mode not in ['static', 'dynamic']:
+        error_manager_vector.raise_err_input_value_invalid('aipp', 'aipp_mode', "static, dynamic", aipp_mode)
+
     format_images = input_data.get("format")
-    if format_images in ("NCHW", "NHWC", "NC1HWC0_C04"):
+    if aipp_mode in ['static'] and format_images in ("NCHW", "NHWC", "NC1HWC0_C04"):
         axis_split_list = []
-        split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]),
+        split_0 = [util_select_op_base.SplitInput([0, [0], [0], [0]]),
                    util_select_op_base.SplitOutput([0, [0]])]
         axis_split_list.append(split_0)
         axis_reduce_list = None

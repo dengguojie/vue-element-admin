@@ -65,12 +65,23 @@ def gen_static_aipp_case(input_shape, output_shape,
             "support_expect": True}
 
 
+def test_aipp_get_op_support_info(test_arg):
+    from impl.aipp import get_op_support_info
+    get_op_support_info({"shape": (1,3,418,416), "dtype": "uint8", "format": "NCHW", "ori_shape": (1,3,418,416),"ori_format": "NCHW"}, 
+                        None,
+                        {"shape": (1,1,418,416,32), "dtype": "uint8", "format": "NC1HWC0", "ori_shape": (1,3,418,416),"ori_format": "NCHW"},
+                        aipp_config)
+
+
+ut_case.add_cust_test_func(test_func=test_aipp_get_op_support_info)
+
 ut_case.add_case(["Ascend310", "Ascend710"],
                  gen_static_aipp_case((1,3,418,416), (1,1,418,416,32),
                                       "uint8", "NCHW", "aipp_1", "success"))
 ut_case.add_case(["Ascend910"],
                  gen_static_aipp_case((1,3,418,416), (1,1,418,416,32),
                                       "uint8", "NCHW", "aipp_1", RuntimeError))
+
 
 if __name__ == '__main__':
     # ut_case.run("Ascend710")
