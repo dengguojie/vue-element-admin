@@ -99,7 +99,7 @@ ut_case.add_case(["Ascend910"],
 #                            gen_trans_data_precision_case((2, 64, 11, 252, 252), (3, 2, 16, 16),
 #                                                          "float16", "ncdhw_2_ndc1hwc0_002",
 #                                                          "success"))
-ut_case.add_precision_case(["Ascend910"],
+ut_case.add_precision_case(["Ascend910A"],
                            gen_trans_data_precision_case((35, 35, 5, 3, 5), (3, 2, 16, 16),
                                                          "float16", "ncdhw_2_ndc1hwc0_003",
                                                          "success"))

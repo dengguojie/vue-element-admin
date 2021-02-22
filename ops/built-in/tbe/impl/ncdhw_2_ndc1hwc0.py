@@ -129,7 +129,7 @@ def _check_input_params(input_params):
 
     para_check.check_dtype_rule(in_dtype, check_list)
     para_check.check_shape_rule(in_shape, 5, 5)
-    para_check.check_shape_size(dst_shape)
+    para_check.check_tensor_shape_size(dst_shape)
 
 
 # pylint: disable=too-many-locals,too-many-statements
