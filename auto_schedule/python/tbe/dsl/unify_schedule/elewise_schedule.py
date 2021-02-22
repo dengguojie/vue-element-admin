@@ -84,6 +84,7 @@ class ElewiseSchedule:
         self._tiling_strategy = self._tiling_case.get("tiling_strategy")
         self._is_db = self._tiling_case.get("is_need_db", False)
         self._is_pure_eletwise = self._tiling_case.get("is_pure_eletwise", False)
+        self._redundant_coe = self._tiling_case.get("redundant_coe", 0)
         self._mode = operation.get_context().get("_mode")
 
         self._scope = "local.UB"
@@ -791,6 +792,8 @@ class ElewiseSchedule:
             coexisting_quantities.append(current_space)
 
         self._coexisting_quantity = max(coexisting_quantities)
+        self._coexisting_quantity += self._redundant_coe
+
         if self._coexisting_quantity == 1:
             self._ub_size -= self._correct_factor * BLOCK_SIZE_BYTE
         if len(self._broadcast_tensors - self._compute_inline_tensors - self._compute_inline_broadcast) > 0:

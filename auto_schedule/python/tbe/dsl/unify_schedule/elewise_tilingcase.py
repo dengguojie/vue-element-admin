@@ -17,6 +17,9 @@ elewise tiling case
 """
 from enum import Enum  # pylint: disable=E0611
 from enum import auto
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
@@ -61,8 +64,6 @@ def calc(outs, option=None):
     :param option:
     :return:
     """
-    # avoid pylint
-    len([option])
     # ###############TILING KEY RULE################
     # use int32, max value 2147483647
     # 0~1: dim len
@@ -125,9 +126,21 @@ def calc(outs, option=None):
     dim_len = len(shape)
 
     if dim_len == 1:
-        return _calc_one_dim(outs, base_key, enable_db_func)
+        cases = _calc_one_dim(outs, base_key, enable_db_func)
+    else:
+        cases = _calc_general(outs, base_key, enable_db_func)
 
-    return _calc_general(outs, base_key, enable_db_func)
+    redundant_coe = _get_option_v(option, "redundant_coe", 0)
+    for case in cases:
+        case["redundant_coe"] = redundant_coe
+
+    return cases
+
+
+def _get_option_v(option, k, default_v=None):
+    # type: (Optional[Dict[str, Any]], str, Any) -> Any
+
+    return option.get(k, default_v) if option else default_v
 
 
 def _default_db_func(db_params=None):
@@ -176,13 +189,13 @@ def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
 
     if enable_db_func():
         cases.append({"key": base_key + DB_KEY,
-              "block_tiling_axis": 0,
-              "ub_tiling_axis": 0,
-              "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
-              "tiling_strategy": TilingStrategy.ONE_CUT,
-              "is_need_db": True,
-              "is_pure_eletwise": True
-              })
+                      "block_tiling_axis": 0,
+                      "ub_tiling_axis": 0,
+                      "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
+                      "tiling_strategy": TilingStrategy.ONE_CUT,
+                      "is_need_db": True,
+                      "is_pure_eletwise": True
+                      })
 
     return cases
 

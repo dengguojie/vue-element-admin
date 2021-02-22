@@ -148,6 +148,9 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
                                    error_info['param1_dtype'],
                                    error_info['param2_dtype']))
 
+    # help pipeline by adding concurrence node
+    redundant_coe = 1 if input_num > 2 else 0
+
     ins = tbe_base.classify(inputs, tbe_base.Mode.ELEWISE)
     schedules, tensors = [], []
     for inputs in ins:
@@ -166,7 +169,7 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
 
             tensors.append(datas)
         with tvm.target.cce():
-            sch = tbe.auto_schedule(res)
+            sch = tbe.auto_schedule(res, {"redundant_coe": redundant_coe})
         schedules.append(sch)
 
     # build
