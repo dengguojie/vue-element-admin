@@ -19,6 +19,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from impl.util import util_select_op_base
 from te import tvm
+from te.platform.cce_conf import CceProductParams
 from tbe.common.utils import errormgr
 from tbe.common.utils import para_check
 
@@ -34,9 +35,9 @@ C0 = 16
 FMAP_HW_MAX = 4096
 FMAP_HW_MIN = 1
 
-# DeDy H,W must be in [2,4096]
+# DeDy H,W must be in [1,4096]
 DEDY_HW_MAX = 4096
-DEDY_HW_MIN = 2
+DEDY_HW_MIN = 1
 
 # filterH, filterW must be in [1,255]
 FILTER_HW_MAX = 255
@@ -741,12 +742,12 @@ def check_conv2dbp_filter_params(
         # Ascend910
         # load3d not support when only fmap w after padding equals to filter w
         if (
-            tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910"
-            and fmap_h_padding != filter_h
-            and fmap_w_padding == filter_w
+            CceProductParams().is_cloud_version()
+            and dedy_h != 1
+            and dedy_w == 1
         ):
-            return False
-        return True
+            return True
+        return False
 
     def _need_change_hw():
         return fmap_w == 1 and filter_w == 1 and dedy_w == 1 and pad_left == 0 and pad_right == 0
@@ -879,17 +880,8 @@ def check_conv2dbp_filter_params(
         pad_left, pad_right, pad_up, pad_down = pads
         pads = pad_up, pad_down, pad_left, pad_right
 
-    # limitation by chip:
-    # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
-    # load3d support h,w is 1
-    if _is_load3d_special():
-        fmap_hw_min = 1
-        dedy_hw_min = 1
-
     # if conv1d situation, make sure w is in [1,2**31-1]
     if _is_conv1d_situation():
-        dedy_hw_min = 1
-        fmap_hw_min = 1
         dedy_hw_max = CONV1D_MAX_W
         fmap_hw_max = CONV1D_MAX_W
 
@@ -904,6 +896,12 @@ def check_conv2dbp_filter_params(
     # Fmap value limit
     _check_attr_range_dw("x's H", fmap_h, fmap_hw_min, fmap_hw_max)
     _check_attr_range_dw("x's W", fmap_w, fmap_hw_min, fmap_hw_max)
+    # limitation by chip:
+    # if only fmap w after padding equals to filter w after dilation
+    # and soc_version is Ascend910
+    # then only support fmap w not larger than STRIDE_HW_MAX now
+    if _is_load3d_special():
+        _check_attr_range_dw("x's W", fmap_w, fmap_hw_min, STRIDE_HW_MAX)
 
     # stride value limit
     _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)

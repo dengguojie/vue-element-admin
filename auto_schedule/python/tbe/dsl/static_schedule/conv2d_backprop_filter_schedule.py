@@ -712,7 +712,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 setfmatrix_dict_0["conv_dilation_w"] = dilation_width
 
             # move grads from ddr to L1
-            sch[grads_matrix].emit_insn(grads_matrix.op.axis[0], 'dma_copy')
+            # when load3d special case, emit insn after H to avoid floor_div IR
+            grads_ub2L1_idx = 3 if flag_w_one_case else 0
+            sch[grads_matrix].emit_insn(grads_matrix.op.axis[grads_ub2L1_idx], 'dma_copy')
             # move grads from L1 to L0A
             sch[grads_fractal].emit_insn(grads_fractal.op.axis[0], 'dma_copy')
 
@@ -1013,6 +1015,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # (2) strides is [1,1]
             flag_all_one_case = False
             flag_conv1d_case = False
+            flag_w_one_case = False
 
             height_all_one = False
             width_all_one = False
@@ -1029,11 +1032,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                           " using special branch")
             if height_all_one and not width_all_one:
                 flag_conv1d_case = True
+            if height_grads != 1 and width_grads == 1:
+                flag_w_one_case = True
             if self.dynamic_mode == "dynamic_hw":
                 dynamic_hw_tiling = dynamic_para.get("tiling")
                 flag_conv1d_case = dynamic_hw_tiling.get("flag_conv1d_case")
-            return flag_all_one_case, flag_conv1d_case
-        flag_all_one_case, flag_conv1d_case = _flag_all_one()
+            return flag_all_one_case, flag_conv1d_case, flag_w_one_case
+        flag_all_one_case, flag_conv1d_case, flag_w_one_case = _flag_all_one()
         tiling = _get_tiling()
 
         if DEBUG_MODE:

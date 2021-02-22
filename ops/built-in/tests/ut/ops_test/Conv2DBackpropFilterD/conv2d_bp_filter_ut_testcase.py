@@ -416,6 +416,23 @@ conv2d_bp_filter_op_testcase = [
         16,
         RuntimeError,
     ),
+        (
+        "float16",
+        "float16",
+        "float32",
+        (16, 32, 38, 38),
+        (16, 32, 2, 1),
+        (32, 32, 37, 37),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (32, 32, 37, 37),
+        (1, 1, 1, 2),
+        'VALID',
+        (1, 1, 1, 1),
+        1,
+        "success",
+    ),
 ]
 
 op_support_info_testcase = [
