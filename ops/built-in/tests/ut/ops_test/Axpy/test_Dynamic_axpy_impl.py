@@ -34,6 +34,11 @@ ut_case.add_case("all",
                                        ((1, 1),(2,2),(3,3),(4,4)),
                                        "float32", 2.1, "NCHW", "dynamic_axpy_fp32_NCHW",
                                        "success"))
+ut_case.add_case("all",
+                 gen_dynamic_axpy_case((-1,2,3,1), (1,2,3,11), ((2, 16),(2,2),(3,3),(1,1)),
+                                       ((1, 1),(2,2),(3,3),(11,11)),
+                                       "int32", 2.1, "NCHW", "dynamic_axpy_int32_NCHW",
+                                       "success"))
 
 if __name__ == '__main__':
     with te.op.dynamic():

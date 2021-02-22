@@ -207,8 +207,8 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
                 input_y_cast = te.lang.cce.cast_to(x2, to_type)
 
                 if neg_1_axis_flag:
-                    res_muls = te.lang.cce.vmuls(x2, alpha)
-                    res_tmp = te.lang.cce.vadd(x1, res_muls)
+                    res_muls = te.lang.cce.vmuls(input_y_cast, alpha)
+                    res_tmp = te.lang.cce.vadd(input_x_cast, res_muls)
                 else:
                     res_tmp = te.lang.cce.vaxpy(input_y_cast, input_x_cast,
                                                 tvm.const(alpha, dtype=to_type))
@@ -291,7 +291,6 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
         with tbe_base.compute():
             shape_x1, shape_x2 = \
                 shape_util.variable_shape([_input_x1, _input_x2])
-            shape_x1, shape_x2 = shape_util.refine_shapes_for_broadcast(shape_x1, shape_x2)
 
             data_input_x1 = tvm.placeholder(shape_x1, name="data_input_x1", dtype=dtype_x1)
             data_input_x2 = tvm.placeholder(shape_x2, name="data_input_x2", dtype=dtype_x2)
