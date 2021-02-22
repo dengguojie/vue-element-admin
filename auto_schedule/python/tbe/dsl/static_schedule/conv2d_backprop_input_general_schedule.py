@@ -1904,7 +1904,7 @@ def general_schedule(
 
             sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
             sch[dy_vn].emit_insn(dy_vn.op.axis[0], "phony_insn")
-            sch_agent[a_filling].emit_insn(afill_n, "vector_mul")
+            sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
             sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
             sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)

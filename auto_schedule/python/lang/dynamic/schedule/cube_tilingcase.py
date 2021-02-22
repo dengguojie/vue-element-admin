@@ -474,7 +474,7 @@ class TilingSelection:
             repo_selections[seed_cnt] = [seed['tiling'], (lower_bound, min(next_batch - 1, batch_range[1]))]
             lower_bound = next_batch
             repo_seeds[seed_cnt] = cur_batch
-            if lower_bound >= batch_range[1]:
+            if lower_bound > batch_range[1]:
                 break
         else:
             seed_cnt = next(self.seed_cnt)
