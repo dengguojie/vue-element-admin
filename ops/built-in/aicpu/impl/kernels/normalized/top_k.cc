@@ -337,7 +337,7 @@ void TopKCpuKernel::TopKForNVector(T *input, T *value, int32_t *indices,
   std::vector<int32_t> shape_end(input_rank_ - dim_);
   shape_end[input_rank_ - dim_ - 1] = 1;
   for (int32_t i = input_rank_ - dim_ - 2; i >= 0; i--) {
-    shape_end[i] = shape_end[i + 1] * input_shape->GetDimSize(i + dim_);
+    shape_end[i] = shape_end[i + 1] * input_shape->GetDimSize(i + dim_ + 1);
   }
   for (int i = 0; i < n; i++) {
     TopK::GetValueAndSelect(input + i * col_, value + i * k_, indices + i * k_ * (input_rank_ - dim_), k_);
@@ -390,9 +390,7 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   }
   input_rank_ = input_rank;
   AttrValue *dim = ctx.GetAttr("dim");
-  KERNEL_CHECK_NULLPTR(dim, KERNEL_STATUS_PARAM_INVALID,
-                       "Get attr[dim] failed.");
-  dim_ = dim->GetInt();
+  dim_ = (dim == nullptr) ? -1 : (dim->GetInt());
   dim_ = dim_ < 0 ? (input_rank + dim_) : dim_;
   KERNEL_CHECK_FALSE(((dim_ >= 0) && (dim_ < input_rank)),
                      KERNEL_STATUS_PARAM_INVALID,
@@ -437,15 +435,11 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
 
   // get attr: sorted
   AttrValue *sorted = ctx.GetAttr("sorted");
-  KERNEL_CHECK_NULLPTR(sorted, KERNEL_STATUS_PARAM_INVALID,
-                       "Get attr[sorted] failed.");
-  sorted_ = sorted->GetBool();
+  sorted_ = (sorted == nullptr) ? true : (sorted->GetBool());
 
   // get attr: largest
   AttrValue *largest = ctx.GetAttr("largest");
-  KERNEL_CHECK_NULLPTR(largest, KERNEL_STATUS_PARAM_INVALID,
-                       "Get attr[largest] failed.");
-  largest_ = largest->GetBool();
+  largest_ = (largest == nullptr) ? true : (largest->GetBool());
 
   // get values
   output_values_ = ctx.Output(0);
