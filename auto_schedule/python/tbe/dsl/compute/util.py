@@ -20,7 +20,6 @@ from decorator import decorator
 from functools import wraps
 from te import tvm
 from tbe.dsl.base import operation
-from te.platform import intrinsic_check_support
 from te.platform.cce_conf import VERSION_CLOUD
 from te.platform.cce_conf import VERSION_MINI
 from te.platform.cce_conf import VERSION_SHISI
@@ -46,7 +45,8 @@ DTYPE_MAP = {
 
 DSL_SAME_API_MAP = {
     "sum": "reduce_sum",
-    "round_to": "clip"
+    "round_to": "clip",
+    "round_d": "round_half_up"
 }
 
 DSL_CHECK_SUPPORT_MAP = {
@@ -180,7 +180,7 @@ DSL_CHECK_SUPPORT_MAP = {
         VERSION_MINI_NG1PG2: ("float16", "float32"),
         VERSION_SHISI: ("float16",),
     },
-    "round_d": {
+    "round_half_up": {
         "AllSoc": ("float16",),
         VERSION_MINI: (),
         VERSION_CLOUD: ("float16", "float32"),
@@ -758,6 +758,7 @@ def is_cast_support(src_type, dst_type):
     """
     is_cast_support
     """
+    from te.platform import intrinsic_check_support
     if src_type == dst_type:
         return True
 
@@ -901,6 +902,7 @@ def auto_cast_tensor(tensor, intr, supported_types=None, is_auto_cast=True):
     """
     auto_cast_tensor
     """
+    from te.platform import intrinsic_check_support
     from .cast import _cast
     if isinstance(tensor, tvm.tensor.Tensor):
         dtype = tensor.dtype

@@ -19,7 +19,6 @@ from decorator import decorator
 
 import tbe.dsl
 from te import tvm
-from te.platform import intrinsic_check_support
 from tbe.dsl.base import operation as operation_context
 from tbe.dsl.base.expr_compare import expr_equal as equal
 from te.platform.cce_conf import CceProductParams as pver
@@ -52,6 +51,7 @@ def _auto_cast_of_elewise(func, *args, **kwargs):
     (On condition that the cast type is supported.
     If the cast type is not supported,raising a RuntimeError).
     """
+    from te.platform import intrinsic_check_support
     # dynamic not support auto_cast
     if in_dynamic_and_static_unify():
         return func(*args, **kwargs)
@@ -238,6 +238,8 @@ def _auto_cast_of_elewise(func, *args, **kwargs):
 
 def _cast_tensors_for_instr(instr, input_tensors):
 
+    from te.platform import intrinsic_check_support
+
     def _process_scalar():
         """
         process when second input is not a tensor
@@ -308,6 +310,7 @@ def _cast_tensors_for_instr(instr, input_tensors):
 
 
 def _intrinsic_check(intr):
+    from te.platform import intrinsic_check_support
     ret_intr = intr
     if not intrinsic_check_support("Intrinsic_" + intr):
         if intr == "vdiv":
@@ -653,7 +656,7 @@ def vlog(raw_tensor, impl_mode="high_performance"):
     -------
     wrapped_tensor : log(raw_tensor)
     """
-
+    from te.platform import intrinsic_check_support
     if not intrinsic_check_support("Intrinsic_vln", "float32") \
             and impl_mode == "high_precision":
         return __vlog_calculate_by_taylor(raw_tensor)
@@ -828,7 +831,7 @@ def vsqrt(raw_tensor, impl_mode="high_performance"):
     -------
     wrapped_tensor : vsqrt(raw_tensor)
     """
-
+    from te.platform import intrinsic_check_support
     if not intrinsic_check_support("Intrinsic_vsqrt"):
         if impl_mode == "high_precision":
             return __vsqrt_calculate_by_newton(raw_tensor)
@@ -885,7 +888,7 @@ def vrsqrt(raw_tensor, impl_mode="high_performance"):
     -------
     wrapped_tensor : vrsqrt(raw_tensor)
     """
-
+    from te.platform import intrinsic_check_support
     if not intrinsic_check_support("Intrinsic_vsqrt") \
             and impl_mode == "high_precision":
         return __vrsqrt_calculate_by_newton(raw_tensor)
@@ -1060,6 +1063,7 @@ def vdiv(lhs, rhs):
     -----
     wrapped_tensor: lhs / rhs
     """
+    from te.platform import intrinsic_check_support
     if not isinstance(rhs, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -1168,6 +1172,7 @@ def vmod(lhs, rhs):
     -----
     wrapped_tensor : lhs - floor(lhs/rhs) * rhs
     """
+    from te.platform import intrinsic_check_support
     if not isinstance(lhs, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -1743,6 +1748,7 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
     """
     factory method of binary elewise operations
     """
+    from te.platform import intrinsic_check_support
     _check_elewise_binary_shape(tensor_l, tensor_r)
     if tensor_l.dtype != tensor_r.dtype and op_name != "elewise_binary_scalar_axpy":
         dict_args = dict()
@@ -2014,6 +2020,7 @@ def __multiple_elewise_op(tensor_0, tensor_1, tensor_2, op_name):
     """
     factory method of binary multiple operations
     """
+    from te.platform import intrinsic_check_support
     intr = "v" + op_name.split("_")[-1]
     is_support_dtype = intrinsic_check_support("Intrinsic_"+intr,
                                                tensor_0.dtype)

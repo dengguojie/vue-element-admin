@@ -22,7 +22,6 @@ from decorator import decorator
 import tbe.dsl
 from te import tvm
 from te import platform as cceconf
-from te.platform import intrinsic_check_support
 from tbe.common.utils.errormgr import get_error_message
 from te.tvm.dsl_source_info import source_info_decorator
 
@@ -87,6 +86,7 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
     -------
     wrapped_tensor : casted tensor
     """
+    from te.platform import intrinsic_check_support
     src_dtype = raw_tensor.dtype
     if dst_dtype.lower() == src_dtype.lower():
         return raw_tensor
@@ -194,6 +194,7 @@ def trunc(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
+    from te.platform import intrinsic_check_support
     src_dtype = raw_tensor.dtype.lower()
     cast_type = DTYPE_MAP[src_dtype] + "2s32z"
     is_support = intrinsic_check_support("Intrinsic_vconv", cast_type)
@@ -221,6 +222,7 @@ def round_half_up(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
+    from te.platform import intrinsic_check_support
     src_dtype = raw_tensor.dtype.lower()
     cast_type = DTYPE_MAP[src_dtype] + "2s32a"
     is_support_round_d = intrinsic_check_support("Intrinsic_vconv", cast_type)
@@ -304,6 +306,7 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
     -------
     tensor : tvm.tensor
     """
+    from te.platform import intrinsic_check_support
     if isinstance(data, tvm.tensor.Tensor):
         data_dtype = getattr(data, 'dtype')
     else:
@@ -378,6 +381,7 @@ def cast_to_round(data, dtype):
     """
     warnings.warn("cast_to_round is expired, please replace it with the func round_half_up and cast_to",
                   DeprecationWarning)
+    from te.platform import intrinsic_check_support
     dtype = dtype.lower()
     if dtype != "int32":
         dict_args = dict()

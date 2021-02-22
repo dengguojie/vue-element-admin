@@ -19,7 +19,6 @@ import math
 import warnings
 
 from te import tvm
-from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver
 from te.platform.cce_policy import get_L1_info
@@ -1103,6 +1102,7 @@ def _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_p
     :setfmatrix_dict: set_fmatrix params, it is a dictionary
     :return: res
     """
+    from te.platform import intrinsic_check_support
     # Check for vadd, vmul fp32 ability
     vconv_ability = intrinsic_check_support("Intrinsic_vconv", "f162f32")
     vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")

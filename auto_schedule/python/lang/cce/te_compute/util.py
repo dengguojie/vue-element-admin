@@ -605,6 +605,8 @@ def dsl_support_dtype(dsl_name):
 
     if dsl_name in ("reduce_sum", "sum"):
         dsl_name = "reduce_sum"
+    if dsl_name in ("round_half_up", "round_d"):
+        dsl_name = "round_d"
 
     if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
         all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)
@@ -636,6 +638,8 @@ def dsl_check_support(dsl_api, dtype=None):
     dsl_name = dsl_api.split("te.lang.cce.")[-1]
     if dsl_name in ("reduce_sum", "sum"):
         dsl_name = "reduce_sum"
+    if dsl_name in ("round_half_up", "round_d"):
+        dsl_name = "round_d"
 
     if in_dynamic_and_static_unify() and dsl_name in UNIFY_DSL_CHECK_SUPPORT_MAP:
         all_support_dtype = UNIFY_DSL_CHECK_SUPPORT_MAP.get(dsl_name)

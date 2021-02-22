@@ -22,8 +22,8 @@ import warnings
 from enum import Enum
 from functools import reduce as _reduce
 from functools import wraps
-from tbe.dsl.base import operation
-import tbe.common.utils.errormgr as error_manager
+
+from .errormgr import error_manager_util as error_manager
 
 SHAPE_SIZE_LIMIT = 2 ** 31 - 1
 SHAPE_SIZE_ZERO = 0
@@ -150,6 +150,7 @@ def check_op_params(*type_args, **type_kwargs):
     """
     check op params
     """
+    from tbe.dsl.base import operation
     input_params = [REQUIRED_INPUT, OPTION_INPUT, DYNAMIC_INPUT]
     output_params = [REQUIRED_OUTPUT, OPTION_OUTPUT, DYNAMIC_OUTPUT]
     required_attr_params = [REQUIRED_ATTR_STR, REQUIRED_ATTR_FLOAT,
@@ -639,6 +640,7 @@ def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT, min_rank=0,
     """
     check shape size
     """
+    from tbe.dsl.base import operation
     if not isinstance(shape, (tuple, list)):
         error_info = {'errCode': OP_ERROR_CODE_003, 'op_name': OP_NAME,
                       'param_name': param_name,
@@ -775,6 +777,7 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
     :param inputs: list, all inputs of operator
     :return:
     """
+    from tbe.dsl.base import operation
     if not operation.in_dynamic():
         return
 

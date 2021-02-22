@@ -73,6 +73,8 @@ from .para_check import OP_ERROR_CODE_024
 from .para_check import OP_ERROR_CODE_025
 from .para_check import OP_ERROR_CODE_026
 from .para_check import OP_ERROR_CODE_027
+from .para_check import OpParamInfoKey
+from .para_check import TensorFormat
 from .para_check import ALL_DTYPE_LIST
 from .para_check import check_op_params
 from .para_check import check_shape
