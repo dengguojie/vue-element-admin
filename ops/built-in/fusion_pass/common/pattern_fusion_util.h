@@ -66,7 +66,17 @@ Status NnSet(const int32_t n, const Dtype alpha, Dtype& output1) {
   FUSION_PASS_CHECK(output == nullptr, OP_LOGE("NnSet", "output is null"), return FAILED);
 
   if (alpha == 0) {
-    auto ret = memset_s(output, sizeof(Dtype) * n, 0, sizeof(Dtype) * n);
+    const size_t total_size = sizeof(Dtype) * n;
+    const size_t step = SECUREC_MEM_MAX_LEN;
+    const size_t loop_times = total_size / step;
+    const size_t tail_count = total_size % step;
+    char* addr = reinterpret_cast<char*>(output);
+    for (size_t i = 0; i < loop_times; ++i) {
+      auto ret = memset_s(addr + i * step, step, 0, step);
+      FUSION_PASS_CHECK(ret != EOK, OP_LOGE("NnSet", "memset fail."), return FAILED);
+    }
+
+    auto ret = memset_s(addr + loop_times * step, tail_count, 0, tail_count);
     FUSION_PASS_CHECK(ret != EOK, OP_LOGE("NnSet", "memset fail."), return FAILED);
   }
 

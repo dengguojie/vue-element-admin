@@ -140,3 +140,44 @@ TEST_F(diag_fusion_test, diag_fusion_test_3) {
     EXPECT_EQ(findDiagD, true);
     EXPECT_EQ(shapeMatch, true);
 }
+
+TEST_F(diag_fusion_test, diag_fusion_test_4) {
+  ge::Graph graph("diag_fusion_test_4");
+  auto diag_input_data = op::Data("diag_input_data");
+  std::vector<int64_t> dims{1, 21, 34, 34};
+  ge::Shape shape(dims);
+  ge::TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_FLOAT);
+  diag_input_data.update_input_desc_x(tensorDesc);
+  diag_input_data.update_output_desc_y(tensorDesc);
+  auto diag_op = op::Diag("diag_0");
+  diag_op.set_input_x(diag_input_data);
+  auto end_op = op::Square("end_op_0");
+  end_op.set_input_x(diag_op);
+  std::vector<Operator> inputs{diag_input_data};
+  std::vector<Operator> outputs{end_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  GE_DUMP(compute_graph_ptr, "diag_fusion_test_1_before");
+  fe::FusionPassTestUtils::RunGraphFusionPass("DiagFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  GE_DUMP(compute_graph_ptr, "diag_fusion_test_1_after");
+
+  bool findDiagD = false;
+  bool shapeMatch = false;
+  vector<int64_t> expectShape{1, 21, 34, 34, 1, 21, 34, 34};
+  for (auto node: compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "DiagD") {
+      findDiagD = true;
+      auto inputDesc = node->GetOpDesc()->GetInputDesc(1);
+      std::vector<int64_t> dims = inputDesc.GetShape().GetDims();
+      if (dims == expectShape) {
+        shapeMatch = true;
+      }
+    }
+  }
+//        assert(findDiagD == true);
+//        assert(shapeMatch == true);
+  EXPECT_EQ(findDiagD, true);
+  EXPECT_EQ(shapeMatch, true);
+}
