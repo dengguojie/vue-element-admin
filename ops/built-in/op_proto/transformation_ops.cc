@@ -2832,4 +2832,64 @@ IMPLEMT_INFERFUNC(Col2im, Col2imInferShape) {
 INFER_FUNC_REG(Col2im, Col2imInferShape);
 VERIFY_FUNC_REG(Col2im, Col2imVerify);
 // -----------------Col2im END-------------------------
+// ----------------AffineGrid-------------------
+IMPLEMT_COMMON_INFERFUNC(AffineGridInferShape) {
+    OP_LOGI(op.GetName().c_str(), " AffineGrid inferShape begin!");
+    // get theta last dim
+    int64_t theta_last_dim = op.GetInputDesc(0).GetShape().GetDim(2);
+    // D,H,W size
+    int dim_lens = 2;
+    // output last dim size
+    int64_t output_last_dim = 2;
+    if (theta_last_dim == 4) {
+        dim_lens = 3;
+        output_last_dim = 3;
+    }
+    // get output infer shape
+    vector<int64_t> affine_output_shape;
+    int64_t batch_dim = op.GetInputDesc(0).GetShape().GetDim(0);
+    affine_output_shape.push_back(batch_dim);
+    // get const data value
+    Tensor output_size_tensor;
+    if (op.GetInputConstData("output_size", output_size_tensor) ==
+        GRAPH_SUCCESS) {
+        auto size_data =
+            reinterpret_cast<const int32_t *>(output_size_tensor.GetData());
+        int64_t temp = 1;
+        for (int i = 0; i < dim_lens; i++) {
+            temp = temp * static_cast<int64_t>(size_data[i + 2]);
+        }
+        affine_output_shape.push_back(temp);
+    } else {
+        return GRAPH_FAILED;
+    }
+    affine_output_shape.push_back(output_last_dim);
+    // get input data type
+    auto theta_dtype = op.GetInputDesc(0).GetDataType();
+
+    TensorDesc theta_desc = op.GetInputDesc("theta");
+    theta_desc.SetFormat(ge::FORMAT_ND);
+    theta_desc.SetFormat(ge::FORMAT_ND);
+    (void)op.UpdateInputDesc("theta", theta_desc);
+
+    TensorDesc outsize_desc = op.GetInputDesc("output_size");
+    outsize_desc.SetFormat(ge::FORMAT_ND);
+    outsize_desc.SetFormat(ge::FORMAT_ND);
+    (void)op.UpdateInputDesc("output_size", outsize_desc);
+
+    // update output shape and dtype
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(affine_output_shape));
+    output_desc.SetDataType(theta_dtype);
+    output_desc.SetOriginFormat(ge::FORMAT_ND);
+    output_desc.SetFormat(ge::FORMAT_ND);
+    (void)op.UpdateOutputDesc("y", output_desc);
+
+    OP_LOGI(op.GetName().c_str(), " AffineGrid inferShape end!");
+    return GRAPH_SUCCESS;
+}
+IMPLEMT_VERIFIER(AffineGrid, AffineGridVerify) { return GRAPH_SUCCESS; }
+COMMON_INFER_FUNC_REG(AffineGrid, AffineGridInferShape);
+VERIFY_FUNC_REG(AffineGrid, AffineGridVerify);
+// ----------------AffineGrid-------------------
 }  // namespace ge
