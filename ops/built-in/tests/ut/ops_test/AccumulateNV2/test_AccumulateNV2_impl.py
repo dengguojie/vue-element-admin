@@ -32,11 +32,25 @@ case3 = {"params": [[{"shape": (2, 1, 6, 10), "dtype": "float16", "format": "NCH
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
+case4 = {"params": [[{"shape": (2, 1, 6, 10), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 1, 6, 10),"ori_format": "NCHW"}],
+                    {"shape": (2, 1, 6, 10), "dtype": "float16", "format": "NCHW", "ori_shape": (2, 1, 6, 10),"ori_format": "NCHW"},
+                    1],
+         "case_name": "accumulate_nv2_comp_4",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case5 = {"params": [[{"shape": (2, 1, 6, 10), "dtype": "uint8", "format": "NCHW", "ori_shape": (2, 1, 6, 10),"ori_format": "NCHW"}],
+                    {"shape": (2, 1, 6, 10), "dtype": "uint8", "format": "NCHW", "ori_shape": (2, 1, 6, 10),"ori_format": "NCHW"},
+                    1],
+         "case_name": "accumulate_nv2_comp_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 ut_case.add_case(["Ascend310"], case1)
 ut_case.add_case(["Ascend310"], case2)
 ut_case.add_case(["Ascend310"], case3)
-
+ut_case.add_case(["Ascend310"], case4)
+ut_case.add_case(["Ascend310"], case5)
 def get_broad_cast_shape(input_dic_list):
     input_shape_num = len(input_dic_list)
     input_shape_list = []

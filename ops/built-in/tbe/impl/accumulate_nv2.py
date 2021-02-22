@@ -39,18 +39,30 @@ def _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num):
     num : the size of input.
     ----------
     """
+    if num > 1:
+        result = tbe.broadcast(tensor_list[0], out_shape)
+        # in order to improve the accuracy, convert float16 to float32
+        if out_dtype == 'float16':
+            result = tbe.cast_to(result, 'float32')
+            for i in range(1, num):
+                tmp = tbe.broadcast(tensor_list[i], out_shape)
+                tmp = tbe.cast_to(tmp, 'float32')
+                result = tbe.vadd(result, tmp)
+        else:
+            for i in range(1, num):
+                tmp = tbe.broadcast(tensor_list[i], out_shape)
+                result = tbe.vadd(result, tmp)
 
-    result = tbe.broadcast(0, out_shape)
-    # in order to improve the accuracy, convert float16 to float32
-    if out_dtype == 'float16':
-        result = tbe.cast_to(result, 'float32')
-        for i in range(0, num):
-            tmp = tbe.broadcast(tensor_list[i], out_shape)
+    else:
+        result = tbe.broadcast(0, out_shape)
+        # in order to improve the accuracy, convert float16 to float32
+        if out_dtype == 'float16':
+            result = tbe.cast_to(result, 'float32')
+            tmp = tbe.broadcast(tensor_list[0], out_shape)
             tmp = tbe.cast_to(tmp, 'float32')
             result = tbe.vadd(result, tmp)
-    else:
-        for i in range(0, num):
-            tmp = tbe.broadcast(tensor_list[i], out_shape)
+        else:
+            tmp = tbe.broadcast(tensor_list[0], out_shape)
             result = tbe.vadd(result, tmp)
 
     # in order to improve the accuracy, convert float32 back to float16
@@ -82,14 +94,12 @@ def _check_all_shape_and_dtype_same(x, num):
         shape = x[i].get('shape') 
         para_check.check_shape(shape)
 
-        
         dtype = x[i].get('dtype').lower()
         para_check.check_dtype(dtype, check_list)
-        
+
         shape_list.append(shape)
         dtype_list.append(dtype)
-        
-    
+
     out_shape = shape_list[0]
     out_dtype = dtype_list[0]
 
