@@ -17,6 +17,9 @@ Reduce Schedule Remake stage 1 - Tilingcase
 """
 
 # Standard Package
+from enum import Enum
+from enum import auto
+from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -73,7 +76,7 @@ def apply_compile_info(reduce_info, graph_info, tiling_list):
     # Common_Info
     atomic = 0
     for item in tiling_list:
-        if item.is_atomic:
+        if item.type == item.Type.ATOMIC_REDUCE:
             atomic = 1
             break
 
@@ -117,7 +120,7 @@ def _calc_tiling_key(reduce_info, tiling):
     reduce_axis_idx = reduce_info.reduce_axis_indices
     block_split_axis = tiling.block_split_axis_index
     ub_split_axis = tiling.ub_split_axis_index
-    atomic = tiling.is_atomic
+    atomic = tiling.type == tiling.Type.ATOMIC_REDUCE
     shape_type, db = 0, 0
 
     if get_context().get("_mode") == CONST:
@@ -167,7 +170,8 @@ def _gen_const_tiling_case(single_reduce_info, compute_graph_info):
     const_tiling_case.block_factor = tiling_data["block_factor"]
     const_tiling_case.ub_split_axis_index = tiling_data["ub_axis"]
     const_tiling_case.ub_factor = tiling_data["ub_factor"]
-    const_tiling_case.is_atomic = run_info["clear_atomic"]
+    const_tiling_case.type = const_tiling_case.Type.ATOMIC_REDUCE if run_info["clear_atomic"] else \
+        const_tiling_case.Type.NORMAL_REDUCE
     const_tiling_case.multi_core = True if run_info["block_dim"] > 1 else False
     _calc_tiling_key(single_reduce_info, const_tiling_case)
     # the flag of invoking op_tiling interface during running
@@ -208,7 +212,8 @@ def calc_tiling_case(outs, options=None):
     if current_compute.get("_mode") == ZERO:
         return [_gen_zero_tiling_case()]
 
-    tiling_case_list = []
+    # Empty schedule will always be there in the tiling_case_list
+    tiling_case_list: List[ReduceTilingCase] = [ReduceTilingCase()]
     # Normal reduce tiling cases
     tiling_case_list += _calculate_tiling_cases(single_reduce_info)
     # Atomic reduce tiling cases
@@ -226,7 +231,7 @@ def calc_tiling_case(outs, options=None):
 def _gen_zero_tiling_case():
     zero_tiling_case = ReduceTilingCase()
 
-    zero_tiling_case.is_atomic = False
+    zero_tiling_case.type = zero_tiling_case.Type.NORMAL_REDUCE
     zero_tiling_case.block_split_axis_index = 0
     zero_tiling_case.block_factor = 1
     zero_tiling_case.ub_split_axis_index = 1
@@ -374,8 +379,13 @@ class SingleReduceInfo:
 
 
 class ReduceTilingCase(TilingCaseBase):
+    class Type(Enum):
+        NORMAL_REDUCE = "NORMAL"
+        ATOMIC_REDUCE = "ATOMIC"
+        EMPTY = "EMPTY"
+
     def __init__(self):
-        self.is_atomic = False
+        self.type: Optional[ReduceTilingCase.Type] = ReduceTilingCase.Type.EMPTY
         self.block_split_axis_index = None
         self.block_factor = None
         self.ub_split_axis_index = None
@@ -384,18 +394,18 @@ class ReduceTilingCase(TilingCaseBase):
         self.tiling_key = None
 
     def __repr__(self):
-        segment0 = "ATOMIC" if self.is_atomic else "NORMAL"
+        segment0 = self.type.value
         segment1 = "ENABLED" if self.multi_core else "DISABLED"
         return "%s REDUCE: (%d, %d) with multicore %s" % (segment0,
                                                           self.block_split_axis_index, self.ub_split_axis_index,
                                                           segment1)
 
     def __hash__(self):
-        return hash((self.is_atomic, self.block_split_axis_index, self.block_factor,
+        return hash((self.type.value, self.block_split_axis_index, self.block_factor,
                      self.ub_split_axis_index, self.ub_factor, self.multi_core))
 
     def __eq__(self, other) -> bool:
-        condition0 = other.self.is_atomic == self.is_atomic
+        condition0 = other.self.type == self.type
         condition1 = other.block_split_axis == self.block_split_axis_index
         condition2 = other.block_factor == self.block_factor
         condition3 = other.ub_split_axis == self.ub_split_axis_index
@@ -405,7 +415,7 @@ class ReduceTilingCase(TilingCaseBase):
                 and condition0 and condition1 and condition2 and condition3 and condition4 and condition5)
 
     def __ne__(self, other) -> bool:
-        condition0 = other.self.is_atomic != self.is_atomic
+        condition0 = other.self.type != self.type
         condition1 = other.block_split_axis != self.block_split_axis_index
         condition2 = other.block_factor != self.block_factor
         condition3 = other.ub_split_axis != self.ub_split_axis_index
@@ -540,7 +550,7 @@ def _gen_atomic_tiling_case_not_last_axis(shape_before_reduce, reduce_axis_index
                     continue
                 ub_split_axis = reorder_to_orignal_axis_map[j]
                 tiling_case = ReduceTilingCase()
-                tiling_case.is_atomic = True
+                tiling_case.type = tiling_case.Type.ATOMIC_REDUCE
                 tiling_case.block_split_axis_index = block_split_axis
                 tiling_case.ub_split_axis_index = ub_split_axis
                 tiling_case.multi_core = True
@@ -567,7 +577,7 @@ def _gen_atomic_tiling_case_last_axis(shape_before_reduce, reduce_axis_index) ->
                     continue
                 ub_split_axis = reorder_to_orignal_axis_map[j]
                 tiling_case = ReduceTilingCase()
-                tiling_case.is_atomic = True
+                tiling_case.type = tiling_case.Type.ATOMIC_REDUCE
                 tiling_case.block_split_axis_index = block_split_axis
                 tiling_case.ub_split_axis_index = ub_split_axis
                 tiling_case.multi_core = True
@@ -582,7 +592,7 @@ def _gen_atomic_tiling_case_reduce_all(shape_before_reduce) -> List[ReduceTiling
         for j in range(i, len(shape_before_reduce)):
             ub_split_axis = j
             tiling_case = ReduceTilingCase()
-            tiling_case.is_atomic = True
+            tiling_case.type = tiling_case.Type.ATOMIC_REDUCE
             tiling_case.block_split_axis_index = block_split_axis
             tiling_case.ub_split_axis_index = ub_split_axis
             tiling_case.multi_core = True

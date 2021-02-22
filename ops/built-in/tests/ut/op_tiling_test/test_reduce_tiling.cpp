@@ -142,7 +142,7 @@ TEST_F(ReduceTiling, ReduceTiling3) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "110 2 128 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2147483647 2 128 ");
 }
 
 TEST_F(ReduceTiling, ReduceTiling4) {

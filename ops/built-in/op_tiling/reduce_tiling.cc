@@ -919,7 +919,7 @@ bool Reduce::DoTiling() {
 
   if (exit_zero_axis) {
     if (exit_non_reduce_zero_axis) {
-      zero_tiling_key = 110;
+      zero_tiling_key = 2147483647;  // EmptySchedule
       tilingInfo.ub_tiling_factor = 128;
     } else {
       try {

@@ -40,8 +40,10 @@ from .util import is_keepdims
 from .util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
 from .vector_schedule import VectorSchedule
+from .empty_schedule import EmptySchedule
 
 CONST = "const"
+INT32_MAX = 2**31 - 1
 
 
 @register_schedule(pattern=Pattern.REDUCE)
@@ -50,7 +52,11 @@ def schedule(outs, tiling_case: ReduceTilingCase):
     # Get Compute Graph Info
     graph_info = get_context().get_current_compute().get("_compute_graph_info")
     single_reduce_info: SingleReduceInfo = get_context().get_current_compute().get("_single_reduce_info")
-    if tiling_case.is_atomic:
+    if tiling_case.type == tiling_case.Type.EMPTY:
+        reduce_sch: EmptySchedule = EmptySchedule(graph_info)
+        real_schedule = reduce_sch.do_schedule(None)
+        real_schedule.tiling_key = INT32_MAX
+    elif tiling_case.type == tiling_case.Type.ATOMIC_REDUCE:
         reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule()
         reduce_sch.init(outs, [])
         if single_reduce_info.is_reduce_all_axes():
@@ -61,10 +67,12 @@ def schedule(outs, tiling_case: ReduceTilingCase):
             reduce_sch._reduce_case = 3
         real_schedule = reduce_sch.do_schedule(outs, tiling_case, graph_info, single_reduce_info)
         real_schedule.tiling_key = tiling_case.tiling_key
-    else:
+    elif tiling_case.type == tiling_case.Type.NORMAL_REDUCE:
         reduce_sch: ReduceSchedule = ReduceSchedule(graph_info, single_reduce_info)
         real_schedule = reduce_sch.do_schedule(tiling_case)
         real_schedule.tiling_key = tiling_case.tiling_key
+    else:
+        raise NotImplementedError("Reduce schedule received invalid type: %s" % str(tiling_case.type))
     return real_schedule
 
 
@@ -147,6 +155,7 @@ class ReduceSchedule(VectorSchedule):
         reduce_buffeer: cache_write_buffer[reduce_tensor]
         return: init tiling_info
         """
+        # noinspection PyTypeChecker
         case: ReduceTilingCase = self.tiling_case
         if not isinstance(case, ReduceTilingCase):
             raise RuntimeError("ReduceTilingCase required for ReduceSchedule!")

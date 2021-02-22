@@ -32,7 +32,7 @@ class VectorScheduleBase(ABC):
         self.schedule: Optional[Schedule] = None
         self.tiling_case: Optional[TilingCaseBase] = None
 
-    def do_schedule(self, tiling_case: TilingCaseBase) -> Schedule:
+    def do_schedule(self, tiling_case: Optional[TilingCaseBase]) -> Schedule:
         self.tiling_case: TilingCaseBase = tiling_case
         self._do_create_schedule()
         self._calc_schedule_generation_strategy()
