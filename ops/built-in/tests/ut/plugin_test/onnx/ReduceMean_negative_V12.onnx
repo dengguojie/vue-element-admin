@@ -1,0 +1,17 @@
+zyw-ReduceMean-onnx:‹
+B
+inputoutput"
+ReduceMean*
+axes@þÿÿÿÿÿÿÿÿ *
+keepdims 
+test-modelZ
+input
+
+
+
+b
+output
+
+
+
+B
