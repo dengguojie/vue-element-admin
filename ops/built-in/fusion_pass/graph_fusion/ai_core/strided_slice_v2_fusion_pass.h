@@ -33,6 +33,7 @@ class ConstToAttrStridedSliceV2Pass : public PatternFusionBasePass {
                        const int64_t index);
   bool GetConstValue(const Operator &op, const Tensor &const_tensor,
                      const DataType &dtype, std::vector<int64_t> &const_data);
+  void UpdateShape(ge::NodePtr &fused_node, ge::OpDescPtr fuse_desc);
   void MakeConstNode(ge::NodePtr &fuse_node, ge::OpDescPtr fuse_desc);
   Status SetConstDesc(vector<int64_t> &tensor_shape,
                       ge::GeTensorDesc &tensor_desc,

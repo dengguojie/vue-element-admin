@@ -230,7 +230,7 @@ Status ConstToAttrStridedSliceV2Pass::GetReverseState(
     }
   } else {
     // set new axis in case that it is negtive
-    for (int32_t i = 0; i < axes_list.size(); i++) {
+    for (size_t i = 0; i < axes_list.size(); i++) {
       indice = axes_list[i] < 0 ? axes_list[i] + dim_num : axes_list[i];
       if (indice < 0) {
         indice = 0;
@@ -251,6 +251,50 @@ Status ConstToAttrStridedSliceV2Pass::GetReverseState(
     }
   }
   return SUCCESS;
+}
+
+void ConstToAttrStridedSliceV2Pass::UpdateShape(ge::NodePtr &fused_node, ge::OpDescPtr fuse_desc) {
+  std::vector<int64_t> begin;
+  ge::AttrUtils::GetListInt(fused_node->GetOpDesc(), "begin", begin);
+  int64_t dim_num = begin.size();
+  std::vector<int64_t> begin_dim = {dim_num};
+  ge::GeShape begin_shape(begin_dim);
+  begin_shape.SetDim(0, dim_num);
+
+  // update shape
+  size_t stride_idx = fuse_desc->GetInputIndexByName("strides");
+  auto stride_anchor = fused_node->GetInDataAnchor(stride_idx);
+  auto stride_out_anchor = stride_anchor->GetPeerOutAnchor();
+  auto stride_out_node = stride_out_anchor->GetOwnerNode();
+  ge::OpDescPtr stride_desc = stride_out_node->GetOpDesc();
+  ge::GeTensorDesc stride_desc_output = stride_desc->GetOutputDesc(0);
+  stride_desc_output.SetOriginShape(begin_shape);
+  stride_desc_output.SetShape(begin_shape);
+  stride_desc->UpdateOutputDesc(0, stride_desc_output);
+
+  size_t ends_idx = fuse_desc->GetInputIndexByName("end");
+  auto end_anchor = fused_node->GetInDataAnchor(ends_idx);
+  auto end_out_anchor = end_anchor->GetPeerOutAnchor();
+  auto end_out_node = end_out_anchor->GetOwnerNode();
+  ge::OpDescPtr end_desc = end_out_node->GetOpDesc();
+  ge::GeTensorDesc end_desc_output = end_desc->GetOutputDesc(0);
+  end_desc_output.SetOriginShape(begin_shape);
+  end_desc_output.SetShape(begin_shape);
+  end_desc->UpdateOutputDesc(0, end_desc_output);
+
+  size_t begin_idx = fuse_desc->GetInputIndexByName("begin");
+  auto begin_anchor = fused_node->GetInDataAnchor(begin_idx);
+  auto begin_out_anchor = begin_anchor->GetPeerOutAnchor();
+  auto begin_out_node = begin_out_anchor->GetOwnerNode();
+  ge::OpDescPtr begin_desc = begin_out_node->GetOpDesc();
+  ge::GeTensorDesc begin_desc_output = begin_desc->GetOutputDesc(0);
+  begin_desc_output.SetOriginShape(begin_shape);
+  begin_desc_output.SetShape(begin_shape);
+  begin_desc->UpdateOutputDesc(0, begin_desc_output);
+
+  fuse_desc->UpdateInputDesc(stride_idx, stride_desc->GetOutputDesc(0));
+  fuse_desc->UpdateInputDesc(ends_idx, end_desc->GetOutputDesc(0));
+  fuse_desc->UpdateInputDesc(begin_idx, begin_desc->GetOutputDesc(0));
 }
 
 void ConstToAttrStridedSliceV2Pass::MakeConstNode(ge::NodePtr &fused_node,
@@ -362,7 +406,7 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
     std::vector<string> need_del_attr = {
         "begin",    "end",           "strides",       "begin_mask",
         "end_mask", "ellipsis_mask", "new_axis_mask", "shrink_axis_mask"};
-    for (int32_t i = 0; i < need_del_attr.size(); i++) {
+    for (size_t i = 0; i < need_del_attr.size(); i++) {
       fuse_desc->DelAttr(need_del_attr[i]);
     }
     // update stride input desc of slice op
@@ -371,6 +415,7 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
   } else if (need_to_cpu) {
     // construct const tensor : begin, end, strides
     MakeConstNode(fused_node, fuse_desc);
+    UpdateShape(fused_node, fuse_desc);
     FUSION_PASS_CHECK(
         !AutoRemoveInput(graph, fused_node,
                          fuse_desc->GetInputIndexByName("axes")),
