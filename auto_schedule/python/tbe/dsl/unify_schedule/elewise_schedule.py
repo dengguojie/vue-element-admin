@@ -19,7 +19,7 @@ from typing import Optional
 from copy import deepcopy
 
 from te import tvm
-from tbe.dsl.base import op_tiling
+from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info

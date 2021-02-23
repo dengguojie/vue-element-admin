@@ -107,3 +107,6 @@ from .shape_util import compare_tensor_dict_key
 from .shape_util import get_shape_size
 from .shape_util import cast
 from .shape_util import shape_to_list
+
+from .op_tiling import do_op_tiling
+from .op_tiling import decode

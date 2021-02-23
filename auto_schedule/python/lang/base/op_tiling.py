@@ -21,11 +21,11 @@ def do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash=None, 
     """
     do op tilinng
     """
-    from tbe.dsl.base.op_tiling import do_op_tiling as tbe_do_op_tiling
+    from tbe.common.utils import do_op_tiling as tbe_do_op_tiling
     return tbe_do_op_tiling(optype, compile_info, inputs, outputs, compile_info_hash, timer)
 
 
 def decode(tiling_data, fmt):
     """decode tiling data"""
-    from tbe.dsl.base.op_tiling import decode as tbe_decode
+    from tbe.common.utils import decode as tbe_decode
     return tbe_decode(tiling_data, fmt)

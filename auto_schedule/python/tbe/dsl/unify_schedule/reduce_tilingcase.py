@@ -28,6 +28,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import add_compile_info_inner
 from tbe.dsl.base.operation import get_compile_info
@@ -51,7 +52,6 @@ from .util import is_reduce_tensor
 from .util import shape_to_list
 from .vector_info import ComputeGraphInfo
 from .vector_tilingcase import TilingCaseBase
-from ..base import op_tiling
 from ...common.utils.errormgr import get_error_message
 
 CONST = "const"
