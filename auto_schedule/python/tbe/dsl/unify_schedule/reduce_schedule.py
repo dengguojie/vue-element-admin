@@ -55,7 +55,7 @@ def schedule(outs, tiling_case: ReduceTilingCase):
     if tiling_case.type == tiling_case.Type.EMPTY:
         reduce_sch: EmptySchedule = EmptySchedule(graph_info)
         real_schedule = reduce_sch.do_schedule(None)
-        real_schedule.tiling_key = INT32_MAX
+        real_schedule.tiling_key = tiling_case.tiling_key
     elif tiling_case.type == tiling_case.Type.ATOMIC_REDUCE:
         reduce_sch: ReduceAtomicSchedule = ReduceAtomicSchedule()
         reduce_sch.init(outs, [])

@@ -628,7 +628,7 @@ class VectorSchedule(VectorScheduleBase, ABC):
         real_tensor: Tensor = self.solve_placeholder(tensor)
         compute = operation.get_context().get_current_compute()
         if compute.get("_mode") != "zero" and tensor not in self.tensor_reduced_axis_indices:
-            raise NotImplementedError("Please maintain reduce_axis_indices info for tensor %s" % (str(real_tensor)))
+            return self.schedule[real_tensor].all_iter_vars[axis_index]
         if compute.get("_mode") == "zero":
             reduce_tensors = list(self.graph_info.reduce_tensor_set)
             if real_tensor in reduce_tensors or is_keepdims(reduce_tensors[0]):

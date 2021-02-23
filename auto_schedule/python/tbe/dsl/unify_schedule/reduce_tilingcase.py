@@ -212,8 +212,7 @@ def calc_tiling_case(outs, options=None):
     if current_compute.get("_mode") == ZERO:
         return [_gen_zero_tiling_case()]
 
-    # Empty schedule will always be there in the tiling_case_list
-    tiling_case_list: List[ReduceTilingCase] = [ReduceTilingCase()]
+    tiling_case_list: List[ReduceTilingCase] = []
     # Normal reduce tiling cases
     tiling_case_list += _calculate_tiling_cases(single_reduce_info)
     # Atomic reduce tiling cases
@@ -224,7 +223,11 @@ def calc_tiling_case(outs, options=None):
         _calc_tiling_key(single_reduce_info, tiling_case)
     if get_context().get("_mode") == CONST:
         return _gen_const_tiling_case(single_reduce_info, compute_graph_info)
-
+    # Empty schedule will always be there in the tiling_case_list
+    # noinspection PyProtectedMember
+    if "_empty_schedule_flag" not in get_context()._addition:
+        tiling_case_list.append(ReduceTilingCase())
+        get_context().add("_empty_schedule_flag", True)
     return tiling_case_list
 
 
@@ -391,7 +394,7 @@ class ReduceTilingCase(TilingCaseBase):
         self.ub_split_axis_index = None
         self.ub_factor = None
         self.multi_core: Optional[bool] = None
-        self.tiling_key = None
+        self.tiling_key = 2**31 - 1
 
     def __repr__(self):
         segment0 = self.type.value

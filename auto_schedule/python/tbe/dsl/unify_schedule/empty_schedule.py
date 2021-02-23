@@ -24,8 +24,9 @@ class EmptySchedule(VectorSchedule):
 
     def _calc_emit_insn(self):
         for tensor in self.graph_info.tensor_list:
-            self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, 0,
-                                                                   "phony_insn"))
+            if tensor not in self.graph_info.input_tensor_set:
+                self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, 0,
+                                                                       "phony_insn"))
 
     def _calc_compute_at(self):
         pass
