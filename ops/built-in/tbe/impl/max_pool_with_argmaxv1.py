@@ -39,6 +39,7 @@ SRC1STRIDEM1 = 8
 MAX_ALLOW_UB = 253952
 DT_INT32 = 3
 DT_INT64 = 9
+SCALAR_255 = 255
 # get available ub size
 UB_SIZE = CceProductParams().getParams("Unified_Buffer")
 UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
@@ -49,6 +50,17 @@ L1_SIZE = CceProductParams().getParams("L1_Buffer")
 # pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
 # pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
 # pylint: disable=too-many-statements,no-self-use,too-few-public-methods
+def  check_supported(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
+                     ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
+    """
+    check whether ai_core is supported
+    """
+    if ksize[1] * ksize[2] > SCALAR_255:
+        return False
+    
+    return True
+
+
 def _ceil_div(value, factor):
     """
     caculate ceil value of div
