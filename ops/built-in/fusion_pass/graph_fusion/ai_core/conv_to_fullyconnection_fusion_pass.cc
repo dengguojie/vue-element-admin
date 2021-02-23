@@ -118,9 +118,6 @@ Status ConvToFullyConnectionFusionPass::CheckFusionParm(ge::NodePtr convNode) {
   ge::GeTensorDesc xInputDesc = convNode->GetOpDesc()->GetInputDesc(0);
   ge::GeTensorDesc filterInputDesc = convNode->GetOpDesc()->GetInputDesc(1);
 
-  FUSION_PASS_CHECK(convNode->GetOutAllNodes().size() != 1,
-                    OP_LOGD(FUSED_OP_TYPE.c_str(), "Conv out node num should be one."), return FAILED);
-
   ge::NodePtr convNextNode = convNode->GetOutAllNodes().at(0);
   string nextOpType = convNextNode->GetOpDesc()->GetType();
   FUSION_PASS_CHECK((nextOpType == QUANT) || (nextOpType == REQUANT),
