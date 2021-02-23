@@ -214,5 +214,5 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   return SUCCESS;
 }
 
-REGISTER_PASS("AConcatv2dFusionPass", BUILT_IN_GRAPH_PASS, Concatv2dFusionPass);
+REGISTER_PASS("ZConcatv2dFusionPass", BUILT_IN_GRAPH_PASS, Concatv2dFusionPass);
 }  // namespace fe
