@@ -95,6 +95,7 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::GeTensorDesc tensorDesc11(GeShape(), ge::FORMAT_ND, ge::DT_INT32);
   ge::GeTensorDesc tensorDesc0(GeShape(), ge::FORMAT_ND, ge::DT_INT32);
   tensorDesc11.SetShape(assitShape11);
+  tensorDesc11.SetOriginShape(assitShape11);
   tensorDesc0.SetShape(assitShape0);
   int32_t realDimCnt0 = assitShape0.GetDimNum();
   int32_t realDimCnt11 = assitShape11.GetDimNum();
