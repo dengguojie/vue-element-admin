@@ -96,10 +96,9 @@ IMPLEMT_VERIFIER(FastGeluGrad, FastGeluGradVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(FastGeluGradInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("z");
-  tensordesc_output.SetShape(op.GetInputDesc("x").GetShape());
-  tensordesc_output.SetDataType(op.GetInputDesc("dy").GetDataType());
-  (void)op.UpdateOutputDesc("z", tensordesc_output);
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "dy", "x", {"z"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

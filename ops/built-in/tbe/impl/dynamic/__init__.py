@@ -75,6 +75,7 @@ from .apply_gradient_descent import apply_gradient_descent
 from .less import less
 from .less_equal import less_equal
 from .floor_div import floor_div
+from .fast_gelu_grad import fast_gelu_grad
 from .gelu_grad import gelu_grad
 from .fused_mul_apply_momentum import fused_mul_apply_momentum
 from .tile_d import tile_d
