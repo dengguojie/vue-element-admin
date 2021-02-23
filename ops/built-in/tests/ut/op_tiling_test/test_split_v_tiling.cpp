@@ -83,7 +83,7 @@ TEST_F(SplitVTiling, SplitV_tiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "1 32 422240 1820 13195 13195 0 13195 13195 0 13195 13195 232 1 422240 0 0 0 0 0 0 0 0 ");
+            "1 32 422240 1820 13195 13195 0 13195 13195 0 13195 13195 232 1 422240 0 0 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(SplitVTiling, SplitV_tiling2) {
@@ -140,7 +140,7 @@ TEST_F(SplitVTiling, SplitV_tiling2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "2 32 422240 232 0 0 0 0 0 0 0 0 1820 1 422240 0 0 0 0 0 0 0 0 ");
+            "2 32 422240 232 0 0 0 0 0 0 0 0 1820 1 422240 0 0 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(SplitVTiling, SplitV_tiling3) {
@@ -199,7 +199,7 @@ TEST_F(SplitVTiling, SplitV_tiling3) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "3 32 422240 232 0 0 0 0 0 0 0 0 1 1820 232 0 0 0 0 0 0 0 0 ");
+            "3 32 422240 232 0 0 0 0 0 0 0 0 1 1820 232 0 0 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(SplitVTiling, SplitV_tiling4) {
@@ -252,7 +252,7 @@ TEST_F(SplitVTiling, SplitV_tiling4) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "8 32 24576 48 0 0 0 0 0 0 0 0 512 1 24576 0 0 0 0 0 0 0 0 ");
+            "8 32 24576 48 0 0 0 0 0 0 0 0 512 1 24576 0 0 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(SplitVTiling, SplitV_tiling5) {
@@ -309,7 +309,7 @@ TEST_F(SplitVTiling, SplitV_tiling5) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "4 25 56160 3 0 0 0 0 0 0 0 0 1 18720 3 0 224 3 0 3 1 0 1 ");
+            "4 25 56160 3 0 0 0 0 0 0 0 0 1 18720 3 0 224 3 0 3 1 0 1 0 ");
 }
 
 TEST_F(SplitVTiling, SplitV_tiling6) {
@@ -366,7 +366,7 @@ TEST_F(SplitVTiling, SplitV_tiling6) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "5 32 112350 6 592 373 0 592 592 0 373 373 1 18725 6 0 0 0 0 0 0 0 0 ");
+            "5 32 112350 6 592 373 0 592 592 0 373 373 1 18725 6 0 0 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(SplitVTiling, SplitV_tiling7) {
@@ -427,7 +427,7 @@ TEST_F(SplitVTiling, SplitV_tiling7) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "6 32 12288000 256 1504 1376 11 96 128 10 96 128 1 48000 256 0 0 0 0 0 0 0 0 ");
+            "6 32 12288000 256 1504 1376 11 96 128 10 96 128 1 48000 256 0 0 0 0 0 0 0 0 0 ");
 }
 
 TEST_F(SplitVTiling, SplitV_tiling8) {
@@ -485,5 +485,5 @@ TEST_F(SplitVTiling, SplitV_tiling8) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "7 32 3400000 85 1280 320 5 0 256 1 64 256 1 40000 85 0 0 0 0 0 0 0 0 ");
+            "7 32 3400000 85 1280 320 5 0 256 1 64 256 1 40000 85 0 0 0 0 0 0 0 0 0 ");
 }

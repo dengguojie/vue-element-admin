@@ -42,9 +42,9 @@ const int32_t TILING_MODE_3 = 3;
 const int32_t TILING_MODE_4 = 4;
 // size_splits[i] is smaller than 32B, e.g [187264,33], 33->[5,6,7,4,3,2,6]
 const int32_t TILING_MODE_5 = 5;
-// e.g int16,[48000,256], 256->[80,80,80,1,1,1,13]
+// only split_v, e.g int16,[48000,256], 256->[80,80,80,1,1,1,13]
 const int32_t TILING_MODE_6 = 6;
-// e.g only support fp16, [2028,85], 85->[2,2,1,80]
+// only split_v, only support fp16, e.g [2028,85], 85->[2,2,1,80]
 const int32_t TILING_MODE_7 = 7;
 
 const int32_t TRANSPOSE_SIZE = 256;
@@ -77,6 +77,9 @@ struct SplitVTilingParams {
   int64_t lastCoreSeg;
   int64_t segLoopNumLastCore;
   int64_t lastSegLastCore;
+
+  // use in split
+  int64_t sizeValueSplit;
 };
 
 void InitSplitVRunningParams(SplitVTilingParams& params) {
@@ -105,6 +108,8 @@ void InitSplitVRunningParams(SplitVTilingParams& params) {
   params.lastCoreSeg = 0;
   params.segLoopNumLastCore = 0;
   params.lastSegLastCore = 0;
+
+  params.sizeValueSplit = 0;
 }
 
 static bool GetConstValue(const TeOpParas& paras, const std::string& name, const std::string& dtype,
@@ -166,14 +171,22 @@ int64_t GetDataBlockElems(const std::string& dtype) {
   return dataBlock;
 }
 
-bool CheckSizeSplitsSmall(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t shapeAfterDim) {
+bool CheckSizeSplitsSmall(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t shapeAfterDim,
+                          bool isSplitV) {
   bool ret = true;
-  for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
-    if (sizeSplitsVec[i] * shapeAfterDim >= dataBlock) {
+  if (isSplitV) {
+    for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
+      if (sizeSplitsVec[i] * shapeAfterDim >= dataBlock) {
+        ret = false;
+        break;
+      }
+    }
+  } else {
+    if (sizeSplitsVec[0] * shapeAfterDim >= dataBlock) {
       ret = false;
-      break;
     }
   }
+
   return ret;
 }
 
@@ -293,19 +306,22 @@ void GetLastLoopParams(SplitVTilingParams& runParams, int64_t ubElems, int64_t d
 }
 
 bool CheckShapeDim(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t coreNum, int64_t shapeAfterDim,
-                   int64_t shapeDim) {
-  if (shapeDim < coreNum || shapeAfterDim / coreNum > 4*dataBlock) {
+                   int64_t shapeDim, bool isSplitV) {
+  if (shapeDim < coreNum || shapeAfterDim / coreNum > (4 * dataBlock)) {
     return false;
   }
 
   bool ret = true;
-  int64_t splitSize0 = sizeSplitsVec[0];
-  for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
-    if (sizeSplitsVec[i] != splitSize0) {
-      ret = false;
-      break;
+  if (isSplitV) {
+    int64_t splitSize0 = sizeSplitsVec[0];
+    for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
+      if (sizeSplitsVec[i] != splitSize0) {
+        ret = false;
+        break;
+      }
     }
   }
+
   return ret;
 }
 
@@ -336,7 +352,7 @@ void CalSpecialParams(SplitVTilingParams& runParams, int64_t coreNum, int64_t da
 
 bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, std::vector<int64_t> inputShape,
                             int64_t ubElems, int64_t coreNum, int64_t splitDim, int64_t numSplit, int64_t dataBlock,
-                            std::vector<int64_t> sizeSplitsVec, std::string inputDType) {
+                            std::vector<int64_t> sizeSplitsVec, std::string inputDType, bool isSplitV) {
   int64_t shapeBefore = 1;
   int64_t shapeAfter = 1;
   int64_t shapeAfterDim = 1;
@@ -386,7 +402,7 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
     }
   } else if (shapeBefore == 1 || splitDim == 0) {
     GELOGD("op [SplitVTiling] : mode 2");
-    if (CheckShapeDim(sizeSplitsVec, dataBlock, coreNum, shapeAfterDim, shapeDim)) {
+    if (CheckShapeDim(sizeSplitsVec, dataBlock, coreNum, shapeAfterDim, shapeDim, isSplitV)) {
       runParams.tilingMode = TILING_MODE_8;
     } else {
       runParams.tilingMode = TILING_MODE_2;
@@ -433,7 +449,7 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
       runParams.segLoopNumLastCore = segLoopNumLastCore;
       runParams.lastSegLastCore = lastSegLastCore;
 
-    } else if (CheckSizeSplitsSmall(sizeSplitsVec, dataBlock, shapeAfterDim)) {
+    } else if (CheckSizeSplitsSmall(sizeSplitsVec, dataBlock, shapeAfterDim, isSplitV)) {
       GELOGD("op [SplitVTiling] : mode 5");
       runParams.tilingMode = TILING_MODE_5;
 
@@ -466,13 +482,13 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
         GetLastLoopParams(runParams, maxOneLoopRows, dataBlock);
       }
 
-    } else if (CheckMode6(sizeSplitsVec, dataBlock, shapeAfterDim, shapeAfter)) {
+    } else if (isSplitV && CheckMode6(sizeSplitsVec, dataBlock, shapeAfterDim, shapeAfter)) {
       GELOGD("op [SplitVTiling] : mode 6");
       runParams.tilingMode = TILING_MODE_6;
 
       CalSpecialParams(runParams, coreNum, dataBlock, shapeBefore);
 
-    } else if (inputDType == "float16" && numSplit <= 16 &&
+    } else if (isSplitV && inputDType == "float16" && numSplit <= 16 &&
                CheckMode7(sizeSplitsVec, dataBlock, shapeAfterDim, shapeAfter, shapeBefore)) {
       // 16 is the max of numSplit, size_split[-1] is 32B align, sum of size_split[0:15] cannot exceed 32B
       GELOGD("op [SplitVTiling] : mode 7");
@@ -524,6 +540,8 @@ void SetSplitVRuningParams(const SplitVTilingParams& params, OpRunInfo& runInfo)
   ByteBufferPut(runInfo.tiling_data, params.lastCoreSeg);
   ByteBufferPut(runInfo.tiling_data, params.segLoopNumLastCore);
   ByteBufferPut(runInfo.tiling_data, params.lastSegLastCore);
+
+  ByteBufferPut(runInfo.tiling_data, params.sizeValueSplit);
 }
 
 void PrintSplitVTilingParams(const SplitVTilingParams& params) {
@@ -552,6 +570,8 @@ void PrintSplitVTilingParams(const SplitVTilingParams& params) {
   GELOGD("op [SplitVTiling] : lastCoreSeg=%d.", params.lastCoreSeg);
   GELOGD("op [SplitVTiling] : segLoopNumLastCore=%d.", params.segLoopNumLastCore);
   GELOGD("op [SplitVTiling] : lastSegLastCore=%d.", params.lastSegLastCore);
+
+  GELOGD("op [SplitVTiling] : sizeValueSplit=%d.", params.sizeValueSplit);
 }
 
 bool GetSplitVCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int64_t& ubElems,
@@ -584,17 +604,34 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   using namespace ge;
   using namespace std;
   GELOGI("op[%s] SplitVTiling running.", opType.c_str());
-  if (opParas.inputs.size() < 3 || opParas.inputs[0].tensor.size() == 0 ||
-      opParas.inputs[1].tensor.size() == 0 || opParas.inputs[2].tensor.size() == 0) {
-    OP_LOGE("op[%s] SplitVTiling : opParas.inputs error");
+  int64_t inputsSize = opParas.inputs.size();
+  if (inputsSize < 2) {
+    OP_LOGE("op[%s] SplitVTiling : opParas.inputs.size error", opType.c_str());
     return false;
   }
-  const std::vector<int64_t>& inputShape = opParas.inputs[0].tensor[0].shape;
-  int64_t shapeSize = inputShape.size();
-  for (int64_t i = 0; i < shapeSize; ++i) {
-    GELOGD("op [SplitVTiling] : inputShape[%d]=%d.", i, inputShape[i]);
+  bool isSplitV = false;  // split
+  int64_t xInputIndex = 1;
+  int64_t splitDimInputIndex = 0;
+  if (inputsSize == 3) {  // splitv
+    isSplitV = true;
+    xInputIndex = 0;
+    splitDimInputIndex = 2;
   }
-  std::string inputDType = opParas.inputs[0].tensor[0].dtype;
+
+  if (opParas.inputs[0].tensor.size() == 0 || opParas.inputs[1].tensor.size() == 0) {
+    OP_LOGE("op[%s] SplitVTiling : split, opParas.inputs error", opType.c_str());
+    return false;
+  }
+  if (isSplitV) {
+    if (opParas.inputs[2].tensor.size() == 0) {
+      OP_LOGE("op[%s] SplitVTiling : splitv, opParas.inputs error", opType.c_str());
+      return false;
+    }
+  }
+
+  const std::vector<int64_t>& inputShape = opParas.inputs[xInputIndex].tensor[0].shape;
+  int64_t shapeSize = inputShape.size();
+  std::string inputDType = opParas.inputs[xInputIndex].tensor[0].dtype;
   int64_t dataBlock = GetDataBlockElems(inputDType);
   if (dataBlock == 0) {
     OP_LOGE("op [SplitVTiling] : get data block elements error, dataBlock is zero");
@@ -611,14 +648,10 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     return false;
   }
 
-  // get size_splits and split_dim
-  std::vector<int64_t> sizeSplitsVec;
-  if (!GetConstValue(opParas, "size_splits", opParas.inputs[1].tensor[0].dtype, sizeSplitsVec)) {
-    OP_LOGE("op[%s] SiplitVTiling: Get size_splits value failed.", opType.c_str());
-    return false;
-  }
+  // get split_dim
   std::vector<int64_t> splitDimVec;
-  if (!GetConstValue(opParas, "split_dim", opParas.inputs[2].tensor[0].dtype, splitDimVec)) {
+  GELOGD("op SplitVTiling : splitDimInputIndex=%d.", splitDimInputIndex);
+  if (!GetConstValue(opParas, "split_dim", opParas.inputs[splitDimInputIndex].tensor[0].dtype, splitDimVec)) {
     OP_LOGE("op[%s] SplitVTiling: Get split_dim value failed.", opType.c_str());
     return false;
   }
@@ -629,37 +662,54 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
                               ConcatString("between ", -shapeSize, " and ", shapeSize - 1), std::to_string(splitDim));
     return false;
   }
-
   if (splitDim < 0) {
     splitDim = splitDim + shapeSize;
   }
-  bool ret = CheckSplitVAttr(splitDim, numSplit, inputShape, sizeSplitsVec);
-  if (!ret) {
-    OP_LOGE("op[%s] SplitVTiling: CheckSplitVAttr failed.", opType.c_str());
-    return false;
+
+  // get size_splits, int64
+  int64_t splitSizeValue = 0;
+  std::vector<int64_t> sizeSplitsVec;
+  if (isSplitV) {
+    if (!GetConstValue(opParas, "size_splits", opParas.inputs[1].tensor[0].dtype, sizeSplitsVec)) {
+      OP_LOGE("op[%s] SplitVTiling: Get size_splits value failed.", opType.c_str());
+      return false;
+    }
+
+    if (!CheckSplitVAttr(splitDim, numSplit, inputShape, sizeSplitsVec)) {
+      OP_LOGE("op[%s] SplitVTiling: CheckSplitVAttr failed.", opType.c_str());
+      return false;
+    }
+  } else {
+    int64_t dim = inputShape[splitDim];
+    if (dim % numSplit != 0) {
+      OP_LOGE("op[%s] SplitVTiling: The num_split must be divisible by the x.shape[split_dim]", opType.c_str());
+      ge::OpsInputShapeErrReport("SplitVTiling", "The num_split must be divisible by the x.shape[split_dim]",
+                                 "x", ConcatString(dim));
+      return false;
+    }
+    splitSizeValue = dim / numSplit;
+    sizeSplitsVec.insert(sizeSplitsVec.end(), numSplit, splitSizeValue);
   }
 
   SplitVTilingParams runParams;
   InitSplitVRunningParams(runParams);
+  runParams.sizeValueSplit = splitSizeValue;
 
   int64_t inputElems = std::accumulate(inputShape.begin(), inputShape.end(), 1, std::multiplies<int>());
   GELOGD("op [SplitVTiling] : inputElems=%d.", inputElems);
 
-  ret = CalSplitVRunningParams(runParams, inputElems, inputShape, ubElems, coreNum, splitDim, numSplit, dataBlock,
-                               sizeSplitsVec, inputDType);
-  if (!ret) {
+  if (!CalSplitVRunningParams(runParams, inputElems, inputShape, ubElems, coreNum, splitDim, numSplit, dataBlock,
+                              sizeSplitsVec, inputDType, isSplitV)) {
     OP_LOGE("op[%s] SplitVTiling: CalSplitVRunningParams failed.", opType.c_str());
     return false;
   }
 
   SetSplitVRuningParams(runParams, runInfo);
-
   PrintSplitVTilingParams(runParams);
 
   runInfo.block_dim = runParams.needCoreNum;
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
-
   GELOGI("op[%s] SplitVTiling run success.", opType.c_str());
 
   return true;
@@ -667,4 +717,6 @@ bool SplitVTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
 // register tiling interface of the SplitV op
 REGISTER_OP_TILING_FUNC_BUFFERED(SplitV, SplitVTiling);
+// register tiling interface of the Split op
+REGISTER_OP_TILING_FUNC_BUFFERED(Split, SplitVTiling);
 }  // namespace optiling
