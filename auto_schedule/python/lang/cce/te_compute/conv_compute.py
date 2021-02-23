@@ -380,14 +380,17 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if "fmap_w" in ConvParam.var_map and dynamic_para:
             fmap_w_upper = get_te_var("fmap_w").get_bound()[1]
             if fmap_w_upper:
+                #same as static conv2d
                 wo_upper = get_te_var("wo").get_bound()[1]
+                ho_upper = math.floor(config['mac'][0] / wo_upper) + 2
             else:
+                #caculate ho_num for dynamic range[low, None]
                 fmap_w_upper = DYNAMIC_FMAP_W_MAX
                 if isinstance(pad_left, tvm.expr.Expr):
                     wo_upper = int_ceil_div(fmap_w_upper, stridew)
                 else:
                     wo_upper = math.floor((fmap_w_upper - wk_dilation + pad_left + pad_right) / stridew) + 1
-            ho_upper = math.floor(config['mac'][0] / wo_upper) + 2
+                ho_upper = math.floor(config['mac'][0] / wo_upper) + 1
             l1_m = ((ho_upper - 1) * strideh + hk_dilation) * fmap_w_upper
             max_feature_map_l1 = ci0 * l1_m * m_bit_ratio[w_dtype]
             _l1_buffer_size_check(max_feature_map_l1, fusion_para, "dynamic")
