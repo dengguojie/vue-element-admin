@@ -920,7 +920,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
 
         def _handle_elewise_tensor():
             deq_ub_read = [fusion_tensor_map.get("c_ub")]
-            for elewise_tensor_mem in fusion_tensor_map.get("elewise_tensor"):
+            for elewise_tensor_mem in fusion_tensor_map.get("elewise_tensor", []):
                 if elewise_tensor_mem.op.tag != res.op.tag:
                     sch[elewise_tensor_mem].set_scope(cce_params.scope_ubuf)
                 if "dequant2" in elewise_tensor_mem.op.name:
@@ -931,7 +931,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             fusion_tensor_map["deq"] = deq_ub
 
             input_list = []
-            for input_tensor_mem in fusion_tensor_map.get("input_tensor"):
+            for input_tensor_mem in fusion_tensor_map.get("input_tensor", []):
                 if input_tensor_mem[1].op.tag != res.op.tag:
                     input_tensor_des = input_tensor_mem[1]
                 else:
