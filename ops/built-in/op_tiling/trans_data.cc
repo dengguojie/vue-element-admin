@@ -28,10 +28,6 @@
 
 namespace optiling {
 
-const int64_t C0_32 = 32;
-const int64_t C0_16 = 16;
-const int64_t CUBE_SIZE = 16;
-
 int64_t GetC0Len(std::string& opType) {
   if (opType == "int8" || opType == "uint8" || opType == "bool") {
     return C0_32;
@@ -244,6 +240,28 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew.push_back(inShape[2] * inShape[3]);
   }
 
+  if (srcFormat == "NCDHW" && dstFormat == "NDC1HWC0") {
+    realSrcFormat = "NCDH";
+    realDstFormat = "NDCHT";
+
+    if (inShape.size() != 5) {
+      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      return false;
+    }
+    inShapeNew.push_back(inShape[0]);
+    inShapeNew.push_back(inShape[1]);
+    inShapeNew.push_back(inShape[2]);
+    inShapeNew.push_back(inShape[3] * inShape[4]);
+    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
+    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
+    int64_t axisC0 = c0Len;
+    outShapeNew.push_back(inShape[0]);
+    outShapeNew.push_back(inShape[2]);
+    outShapeNew.push_back(axisC1);
+    outShapeNew.push_back(inShape[3] * inShape[4]);
+    outShapeNew.push_back(axisC0);
+  }
+
   return true;
 }
 
@@ -361,17 +379,13 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   headParams.shapeLoopCnt = 1;
 
   if (realSrcFormat[realSrcFormat.length() - 1] != 'C' && realDstFormat[realDstFormat.length() - 1] == 'T') {
-    int32_t axisPosC = std::strchr(realSrcFormat.c_str(), 'C') - realSrcFormat.c_str();
-    int32_t multiCoreAxisPosPart1 = GetMultiCoreAxis(inShapeNew, axisPosC, blockElemCnt, c0Len, blockDim);
     TransDataMode100Param runParamsPart1;
-    flag = TillingPositiveMode100(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, multiCoreAxisPosPart1,
-                                  axisPosC, blockDim, blockElemCnt, c0Len, ubSize, runParamsPart1);
+    flag = TillingPositiveMode100(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
+                                  blockDim, blockElemCnt, c0Len, ubSize, runParamsPart1);
     if (!flag) {
       OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode100Param tiling params error");
       return false;
     }
-    ByteBufferPut(runInfo.tiling_data, headParams.shapeLoopCnt);
-    OP_LOGD(opType.c_str(), "shapeLoopCnt=%d", headParams.shapeLoopCnt);
     SetRunningMode100Params(runParamsPart1, runInfo);
     OP_LOGD(opType.c_str(), "start print runParams");
     PrintTilingMode100Params(opType, runParamsPart1);

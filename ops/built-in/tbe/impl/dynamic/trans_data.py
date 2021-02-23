@@ -21,6 +21,7 @@ from te.utils import para_check
 from impl.dynamic.trans_data_rnn import trans_data_rnn
 from . import trans_data_negative_target_tc
 from . import trans_data_negative_target_ch
+from . import trans_data_positive_source_nct
 from impl.util.platform_adapter import register_operator
 
 # pylint: disable=unused-argument
@@ -39,5 +40,7 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     elif (src_format == "NC1HWC0" and dst_format == "NCHW"):
         trans_data_negative_target_ch.trans_data_negative_target_ch(src, dst, src_format, dst_format, kernel_name)
+    elif (src_format == "NCHW" and dst_format == "NC1HWC0") or (src_format == "NCDHW" and dst_format == "NDC1HWC0"):
+        trans_data_positive_source_nct.trans_data_positive_source_nct(src, dst, src_format, dst_format, kernel_name)
     else:
         return trans_data_rnn(src, dst, src_format, dst_format, 0, 0, kernel_name)

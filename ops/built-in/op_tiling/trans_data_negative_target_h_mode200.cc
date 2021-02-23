@@ -178,7 +178,7 @@ bool TillingPositiveMode200(vector<int64_t>& inShape, vector<int64_t>& outShape,
     char chr = tmpDstCrFormat[i];
     int32_t srcChrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
     params.crInIdx0Size = outShape[std::strchr(dstFormat.c_str(), chr) - dstFormat.c_str()];
-    params.crInIdx0dstRsize = GetShapeSize(tmpDstCrShape, -1 - i);
+    params.crInIdx0DstRsize = GetShapeSize(tmpDstCrShape, -1 - i);
     params.crInIdx0SrcAsize = GetShapeSize(inShape, srcChrPos + 1);
   }
 
@@ -186,7 +186,7 @@ bool TillingPositiveMode200(vector<int64_t>& inShape, vector<int64_t>& outShape,
 
   if (padAxisCnt != 0) {
     params.crInIdx1Size = 1;
-    params.crInIdx1dstRsize = 0;
+    params.crInIdx1DstRsize = 0;
     params.crInIdx1SrcAsize = 0;
   }
 
@@ -228,11 +228,11 @@ bool TillingPositiveMode200(vector<int64_t>& inShape, vector<int64_t>& outShape,
     int32_t srcChrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
     if (i == 0) {
       params.inIdx0Size = outShape[std::strchr(dstFormat.c_str(), chr) - dstFormat.c_str()];
-      params.inIdx0dstRsize = GetShapeSize(tmpCLeftShape, -1 - i);
+      params.inIdx0DstRsize = GetShapeSize(tmpCLeftShape, -1 - i);
       params.inIdx0SrcAsize = GetShapeSize(inShape, srcChrPos + 1);
     } else {
       params.inIdx1Size = outShape[std::strchr(dstFormat.c_str(), chr) - dstFormat.c_str()];
-      params.inIdx1dstRsize = GetShapeSize(tmpCLeftShape, -1 - i);
+      params.inIdx1DstRsize = GetShapeSize(tmpCLeftShape, -1 - i);
       params.inIdx1SrcAsize = GetShapeSize(inShape, srcChrPos + 1);
     }
   }
@@ -240,7 +240,7 @@ bool TillingPositiveMode200(vector<int64_t>& inShape, vector<int64_t>& outShape,
 
   if (padAxisCnt != 0) {
     params.inIdx1Size = 1;
-    params.inIdx1dstRsize = 0;
+    params.inIdx1DstRsize = 0;
     params.inIdx1SrcAsize = 0;
   }
   bool ret = GetMcInfoNegative200(srcCrLpCnt, axisSrcCrSize, params.srcCrLpUnit, srcCLpCnt, axisSrcCSize,
@@ -294,16 +294,16 @@ void SetRunningMode200Params(const TransDataMode200Param& runParams, OpRunInfo& 
   ByteBufferPut(runInfo.tiling_data, runParams.oneLineSize);
 
   ByteBufferPut(runInfo.tiling_data, runParams.inIdx0Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.inIdx0dstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx0DstRsize);
   ByteBufferPut(runInfo.tiling_data, runParams.inIdx0SrcAsize);
   ByteBufferPut(runInfo.tiling_data, runParams.inIdx1Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.inIdx1dstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx1DstRsize);
   ByteBufferPut(runInfo.tiling_data, runParams.inIdx1SrcAsize);
   ByteBufferPut(runInfo.tiling_data, runParams.crInIdx0Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx0dstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx0DstRsize);
   ByteBufferPut(runInfo.tiling_data, runParams.crInIdx0SrcAsize);
   ByteBufferPut(runInfo.tiling_data, runParams.crInIdx1Size);
-  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx1dstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.crInIdx1DstRsize);
   ByteBufferPut(runInfo.tiling_data, runParams.crInIdx1SrcAsize);
 }
 
@@ -343,16 +343,16 @@ void PrintTilingMode200Params(const std::string& opType, const TransDataMode200P
   OP_LOGD(opType.c_str(), "src2dstFlag=%d", params.src2dstFlag);
   OP_LOGD(opType.c_str(), "oneLineSize=%d", params.oneLineSize);
   OP_LOGD(opType.c_str(), "inIdx0Size=%d", params.inIdx0Size);
-  OP_LOGD(opType.c_str(), "inIdx0dstRsize=%d", params.inIdx0dstRsize);
+  OP_LOGD(opType.c_str(), "inIdx0DstRsize=%d", params.inIdx0DstRsize);
   OP_LOGD(opType.c_str(), "inIdx0SrcAsize=%d", params.inIdx0SrcAsize);
   OP_LOGD(opType.c_str(), "inIdx1Size=%d", params.inIdx1Size);
-  OP_LOGD(opType.c_str(), "inIdx1dstRsize=%d", params.inIdx1dstRsize);
+  OP_LOGD(opType.c_str(), "inIdx1DstRsize=%d", params.inIdx1DstRsize);
   OP_LOGD(opType.c_str(), "inIdx1SrcAsize=%d", params.inIdx1SrcAsize);
   OP_LOGD(opType.c_str(), "crInIdx0Size=%d", params.crInIdx0Size);
-  OP_LOGD(opType.c_str(), "crInIdx0dstRsize=%d", params.crInIdx0dstRsize);
+  OP_LOGD(opType.c_str(), "crInIdx0DstRsize=%d", params.crInIdx0DstRsize);
   OP_LOGD(opType.c_str(), "crInIdx0SrcAsize=%d", params.crInIdx0SrcAsize);
   OP_LOGD(opType.c_str(), "crInIdx1Size=%d", params.crInIdx1Size);
-  OP_LOGD(opType.c_str(), "crInIdx1dstRsize=%d", params.crInIdx1dstRsize);
+  OP_LOGD(opType.c_str(), "crInIdx1DstRsize=%d", params.crInIdx1DstRsize);
   OP_LOGD(opType.c_str(), "crInIdx1SrcAsize=%d", params.crInIdx1SrcAsize);
 }
 

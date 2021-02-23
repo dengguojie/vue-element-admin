@@ -70,7 +70,7 @@ TEST_F(TransDataTiling, TransData_tiling1) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "TransData";
-  std::string compileInfo1 = "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126976, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+  std::string compileInfo1 = "{\"vars\": {\"srcFormat\": \"NCHW\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo1;
   op_compile_info.key = "123456a";
@@ -78,7 +78,7 @@ TEST_F(TransDataTiling, TransData_tiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string_int64(runInfo.tiling_data),
-            "1 68 100 63488 1 784 784 3968 0 0 0 0 784 784 784 784 49 0 16 3968 49 1 3968 0 0 0 0 1 0 0 1 63488 0 0 1 0 1 0 1 0 1 0 1 49 0 1 49 1 1 1 784 1 0 1 0 1 0 1 0 1 49 0 1 49 1 1 1 784 784 784 ");
+            "100 63232 1 1 0 0 1 1 1 49 0 1 1 1 49 0 240 240 0 49 16 784 784 0 1 1 784 0 0 0 1 1 784 0 0 0 49 1 16 0 0 0 0 3952 ");
 }
 
 TEST_F(TransDataTiling, TransData_tiling2) {

@@ -29,411 +29,372 @@
 
 namespace optiling {
 
-const int32_t FRAME_LEVEL = 6;
+const int32_t FRAME_LEVEL = 2;
+
+bool GetMcInfoPositive100(int64_t& srcCrLpCnt, int64_t& srcCrSize,  int64_t& srcCLpCnt, int64_t& srcCSize,
+                          int64_t& leftLpCnt, int64_t& coreNum, TransDataMode100Param& params) {
+  int64_t tmpFullLoopCntCr;
+  if (GetFloorDiv(srcCrLpCnt, coreNum) > 0) {
+    tmpFullLoopCntCr = coreNum;
+  } else {
+    tmpFullLoopCntCr = 0;
+  }
+  int64_t reminderLoopCntCr = srcCrLpCnt % coreNum;
+  if (reminderLoopCntCr == 0) {
+    tmpFullLoopCntCr += coreNum;
+  }
+  int64_t fullLoopCntCr = tmpFullLoopCntCr + reminderLoopCntCr;
+
+  int64_t tmpFullLoopCntC;
+  if (GetFloorDiv(srcCLpCnt, coreNum) > 0) {
+    tmpFullLoopCntC = coreNum;
+  } else {
+    tmpFullLoopCntC = 0;
+  }
+  int64_t reminderLoopCntC = srcCLpCnt % coreNum;
+  if (reminderLoopCntC == 0) {
+    tmpFullLoopCntC += coreNum;
+  }
+  int64_t fullLoopCntC = tmpFullLoopCntC + reminderLoopCntC;
+
+  int64_t tmpFullLoopCntLeft;
+  if (GetFloorDiv(leftLpCnt, coreNum) > 0) {
+    tmpFullLoopCntLeft = coreNum;
+  } else {
+    tmpFullLoopCntLeft = 0;
+  }
+  int64_t reminderLoopCntLeft = leftLpCnt % coreNum;
+  if (reminderLoopCntLeft == 0) {
+    tmpFullLoopCntLeft += coreNum;
+  }
+  int64_t fullLoopCntLeft = tmpFullLoopCntLeft + reminderLoopCntLeft;
+
+  vector<int64_t> loopCntList = {fullLoopCntLeft, fullLoopCntC, fullLoopCntCr};
+  if (max_element(loopCntList.begin(), loopCntList.end()) - loopCntList.begin() == 0) {
+    params.mcFlag = 1;
+    params.usedCoreCnt = GetCeilDiv(leftLpCnt, GetCeilDiv(leftLpCnt, coreNum));
+    params.nlcLeftLpCnt = GetCeilDiv(leftLpCnt, params.usedCoreCnt);
+    params.lcLeftLpCnt = leftLpCnt - params.nlcLeftLpCnt * (params.usedCoreCnt - 1);
+    params.coreStepIn = 0;
+    params.coreStepOut = 0;
+    params.nlcCLpCnt = srcCLpCnt;
+    params.lcCLpCnt = srcCLpCnt;
+    params.nlcCLeft = srcCSize % params.srcCLpUnit;
+    params.lcCLeft = srcCSize % params.srcCLpUnit;
+    params.nlcCrLpCnt = srcCrLpCnt;
+    params.lcCrLpCnt = srcCrLpCnt;
+    params.nlcCrLeft = srcCrSize % params.srcCrLpUnit;
+    params.lcCrLeft = srcCrSize % params.srcCrLpUnit;
+  } else {
+    params.mcFlag = 0;
+    params.nlcLeftLpCnt = leftLpCnt;
+    params.lcLeftLpCnt = leftLpCnt;
+    if (max_element(loopCntList.begin(), loopCntList.end()) - loopCntList.begin() == 1) {
+      params.usedCoreCnt = GetCeilDiv(srcCLpCnt, GetCeilDiv(srcCLpCnt, coreNum));
+      params.nlcCLpCnt = GetCeilDiv(srcCLpCnt, params.usedCoreCnt);
+      params.lcCLpCnt = srcCLpCnt - params.nlcCLpCnt * (params.usedCoreCnt - 1);
+      params.nlcCLeft = 0;
+      params.lcCLeft = srcCSize % params.srcCLpUnit;
+      params.coreStepIn = params.nlcCLpCnt * params.srcCLpStepIn;
+      params.coreStepOut = params.nlcCLpCnt * params.srcCLpStepOut;
+      params.nlcCrLpCnt = srcCrLpCnt;
+      params.lcCrLpCnt = srcCrLpCnt;
+      params.nlcCrLeft = srcCrSize % params.srcCrLpUnit;
+      params.lcCrLeft = srcCrSize % params.srcCrLpUnit;
+    } else {
+      params.usedCoreCnt = GetCeilDiv(srcCrLpCnt, GetCeilDiv(srcCrLpCnt, coreNum));
+      params.nlcCrLpCnt = GetCeilDiv(srcCrLpCnt, params.usedCoreCnt);
+      params.lcCrLpCnt = srcCrLpCnt - params.nlcCrLpCnt * (params.usedCoreCnt - 1);
+      params.nlcCrLeft = 0;
+      params.lcCrLeft = srcCrSize % params.srcCrLpUnit;
+      params.coreStepIn = params.nlcCrLpCnt * params.srcCrLpUnit;
+      params.coreStepOut = 0;
+      params.nlcCLpCnt = srcCLpCnt;
+      params.lcCLpCnt = srcCLpCnt;
+      params.nlcCLeft = srcCSize % params.srcCLpUnit;
+      params.lcCLeft = srcCSize % params.srcCLpUnit;
+    }
+  }
+  return true;
+}
 
 bool TillingPositiveMode100(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int32_t& multiCoreAxisPos, int32_t& axisPosC, int64_t& coreNum,
-                            int64_t& blockElemCnt, int64_t& c0Len, int64_t& ubSize, TransDataMode100Param& params) {
-  if (srcFormat.length() < 1 || inShape.size() < 2 || outShape.size() < 2) {
+                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, int64_t& c0Len,
+                            int64_t& ubSize, TransDataMode100Param& params) {
+  if (srcFormat.length() != inShape.size()) {
     OP_LOGE("op TransDataTiling: TillingPositiveMode100 Failed.");
     return false;
   }
-  int32_t shapeLen = inShape.size();
-  inShape.push_back(1);
-  outShape.push_back(1);
 
   int64_t halfUbSize = ubSize / 2;
-  if (multiCoreAxisPos < 0 || multiCoreAxisPos > inShape.size() - 1) {
-    OP_LOGE("op TransDataTiling: TillingPositiveMode100 Failed.");
-    return false;
-  }
-  int64_t multiCoreAxisSize = inShape[multiCoreAxisPos];
+  params.tilingMode = 100;
+  params.oneLineSize = halfUbSize / VNC_LINES / blockElemCnt * blockElemCnt;
+  params.ubOffset = params.oneLineSize * VNC_LINES;
 
-  int64_t nlcAxisMcSize;
-  int64_t lcAxisMcSize;
-  bool ret = CalcMcTilingParams(multiCoreAxisPos, multiCoreAxisSize, shapeLen, axisPosC, c0Len, coreNum, outShape,
-                                dstFormat, srcFormat, blockElemCnt, inShape, params.usedCoreCnt, params.coreStepIn,
-                                params.coreStepOut, nlcAxisMcSize, lcAxisMcSize);
+  int32_t srcAxisPosC = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
+  int32_t dstAxisPosC = std::strchr(dstFormat.c_str(), 'C') - dstFormat.c_str();
+  int64_t axisSrcCrSize = GetShapeSize(inShape, srcAxisPosC + 1);
+  params.srcCrLpUnit = params.oneLineSize / C0_16 / blockElemCnt * blockElemCnt;
+  int64_t srcCrLpCnt = GetCeilDiv(axisSrcCrSize, params.srcCrLpUnit);
+  params.srcCrLpStepIn = params.srcCrLpUnit;
+  params.srcCrLpStepOut = 0;
+
+  string tmpSrcClFormat = srcFormat;
+  tmpSrcClFormat.replace(srcAxisPosC, srcFormat.length() - srcAxisPosC, "");
+  string tmpDstCrFormat = dstFormat.substr(0, dstFormat.length() - 1);
+  tmpDstCrFormat.replace(dstAxisPosC, 1, "");
+
+  for (int32_t i = 0; i < tmpSrcClFormat.length(); i++) {
+    char chr = tmpSrcClFormat[i];
+    int32_t chrPos = std::strchr(tmpDstCrFormat.c_str(), chr) - tmpDstCrFormat.c_str();
+    tmpDstCrFormat.replace(chrPos, 1, "");
+  }
+
+  vector<int64_t> tmpDstCrShape;
+  for (int32_t i = 0; i < tmpDstCrFormat.length(); i++) {
+    char chr = tmpDstCrFormat[i];
+    int32_t chrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
+    tmpDstCrShape.push_back(inShape[chrPos]);
+  }
+  tmpDstCrShape.push_back(1);
+  reverse(tmpDstCrFormat.begin(), tmpDstCrFormat.end());
+
+  for (size_t i = 0; i < tmpDstCrFormat.length(); i++) {
+    char chr = tmpDstCrFormat[i];
+    int32_t srcChrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
+    int32_t dstChrPos = std::strchr(dstFormat.c_str(), chr) - dstFormat.c_str();
+    if (i == 0) {
+      params.crOutIdx0Size = inShape[srcChrPos];
+      params.crOutIdx0DstRsize = GetShapeSize(tmpDstCrShape, -1 - i);
+      params.crOutIdx0DstAsize = GetShapeSize(outShape, dstChrPos + 1);
+    } else if (i == 1) {
+      params.crOutIdx1Size = inShape[srcChrPos];
+      params.crOutIdx1DstRsize = GetShapeSize(tmpDstCrShape, -1 - i);
+      params.crOutIdx1DstAsize = GetShapeSize(outShape, dstChrPos + 1);
+    }
+  }
+
+  int32_t padAxisCnt = FRAME_LEVEL - tmpDstCrFormat.length();
+  if (padAxisCnt != 0) {
+    if (tmpDstCrFormat.length() == 0) {
+      params.crOutIdx0Size = 0;
+      params.crOutIdx0DstRsize = 0;
+      params.crOutIdx0DstAsize = 0;
+      params.crOutIdx1Size = 0;
+      params.crOutIdx1DstRsize = 0;
+      params.crOutIdx1DstAsize = 0;
+    } else if (tmpDstCrFormat.length() == 1) {
+      params.crOutIdx1Size = 0;
+      params.crOutIdx1DstRsize = 0;
+      params.crOutIdx1DstAsize = 0;
+    }
+  }
+
+  int64_t axisSrcCSize = inShape[srcAxisPosC];
+  params.srcCLpUnit = c0Len;
+  int64_t srcCLpCnt = GetCeilDiv(axisSrcCSize, params.srcCLpUnit);
+  params.srcCLpStepIn = params.srcCLpUnit * GetShapeSize(inShape, srcAxisPosC + 1);
+  params.srcCLpStepOut = GetShapeSize(outShape, dstAxisPosC + 1);
+  params.srcCStepIn = GetShapeSize(inShape, srcAxisPosC + 1);
+  params.cModC0 = axisSrcCSize % c0Len;
+
+  string tmpLeftSrcFormat = srcFormat;
+  tmpLeftSrcFormat.replace(srcAxisPosC, srcFormat.length() - srcAxisPosC, "");
+  vector<int64_t> tmpLeftInShape;
+  int64_t axisSrcLeftAxisSize = 1;
+
+  for (size_t i = 0; i < tmpLeftSrcFormat.length(); i++) {
+    char chr = tmpLeftSrcFormat[i];
+    int32_t srcChrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
+    axisSrcLeftAxisSize *= inShape[srcChrPos];
+    tmpLeftInShape.push_back(inShape[srcChrPos]);
+  }
+
+  bool ret = GetMcInfoPositive100(srcCrLpCnt, axisSrcCrSize, srcCLpCnt, axisSrcCSize, axisSrcLeftAxisSize, coreNum,
+                                  params);
   if (!ret) {
-    OP_LOGE("op TransDataTiling: TillingPositiveMode100 CalcMcTilingParams Failed.");
+    OP_LOGE("op TransDataTiling: GetMcInfoPositive100 Failed.");
     return ret;
   }
 
-  params.tillingParamCount = 68;
-  params.tilingMode = 100;
-  params.ubOffset = GetCeilFill(halfUbSize, blockElemCnt);
-  params.oneLineSize = params.ubOffset / VNC_LINES / blockElemCnt * blockElemCnt;
+  string tmpSrcCrFormat = srcFormat;
+  tmpSrcCrFormat.replace(0, srcAxisPosC, "");
+  string tmpDstLeftFormat = dstFormat.substr(0, dstFormat.length() - 1);
+  tmpDstLeftFormat.replace(dstAxisPosC, 1, "");
+  vector<int64_t> tmpLeftOutShape;
 
-  vector<int64_t> nlcInShape(inShape), lcInShape(inShape);
-  nlcInShape[multiCoreAxisPos] = nlcAxisMcSize;
-  lcInShape[multiCoreAxisPos] = lcAxisMcSize;
-  int32_t gapCBtwLast = 0;
-
-  /*     input loop             */
-  /*  level2 tiling parameters      */
-  int64_t c1PerLpC0Cnt = c0Len;
-  params.inLevel2C1LpStepIn = GetShapeSize(inShape, axisPosC + 1) * c1PerLpC0Cnt;
-  params.inLevel2C1LpStepOut = GetShapeSize(outShape, std::strchr(dstFormat.c_str(), 'C') - dstFormat.c_str() + 1);
-  params.inLevel2NlcC1LpCnt = GetCeilDiv(nlcInShape[axisPosC], c1PerLpC0Cnt);
-  params.inLevel2NlcC1LeftLines = nlcInShape[axisPosC] % c1PerLpC0Cnt;
-  params.inLevel2LcC1LpCnt =  GetCeilDiv(lcInShape[axisPosC], c1PerLpC0Cnt);
-  params.inLevel2LcC1LeftLines = lcInShape[axisPosC] % c1PerLpC0Cnt;
-
-  int64_t cRightSize;
-  if (multiCoreAxisPos <= axisPosC) {
-    while (gapCBtwLast < shapeLen - (axisPosC + 1)) {
-      cRightSize = GetShapeSize(inShape, axisPosC + 1 + gapCBtwLast);
-      if (cRightSize > params.oneLineSize) {
-        gapCBtwLast += 1;
-      } else {
-        break;
-      }
-    }
-  } else {
-    cRightSize = 0;
-    gapCBtwLast = (shapeLen - 1) - (axisPosC + 1);
-  }
-
-  /*  level1 tiling parameters      */
-  int32_t srcLastInDstPos = std::strchr(dstFormat.c_str(), srcFormat[srcFormat.length() - 1]) - dstFormat.c_str();
-
-  if (cRightSize > 0 && cRightSize <= params.oneLineSize) {
-    params.inLevel1LastLpStepIn = cRightSize;
-    params.inLevel1LastLpStepOut = 0;
-    params.inLevel1NlcLastLpCnt = GetCeilDiv(cRightSize, params.oneLineSize);
-    params.inLevel1NlcLastLeftLines = cRightSize % params.oneLineSize;
-    params.inLevel1LcLastLpCnt = GetCeilDiv(cRightSize, params.oneLineSize);
-    params.inLevel1LcLastLeftLines = cRightSize % params.oneLineSize;
-  } else {
-    params.inLevel1LastLpStepIn = params.oneLineSize;
-    params.inLevel1LastLpStepOut = GetShapeSize(outShape, srcLastInDstPos + 1) * params.oneLineSize;
-    params.inLevel1NlcLastLpCnt = GetCeilDiv(nlcInShape[nlcInShape.size() - 2], params.oneLineSize);
-    params.inLevel1NlcLastLeftLines = nlcInShape[nlcInShape.size() - 2] % params.oneLineSize;
-    params.inLevel1LcLastLpCnt = GetCeilDiv(lcInShape[lcInShape.size() - 2], params.oneLineSize);
-    params.inLevel1LcLastLeftLines = lcInShape[lcInShape.size() - 2] % params.oneLineSize;
-  }
-
-  /*  level0 tiling parameters      */
-  if (cRightSize == params.oneLineSize && axisPosC + 1 == shapeLen - 1) {
-    params.inLevel0LpCnt = 1;
-    params.inLevel0C0LpStepUb = 0;
-    params.inLevel0LpStepIn = 0;
-    params.inLevel0RepeatCnt = 1;
-    params.inLevel0Nburst = params.oneLineSize * c0Len;
-    params.inLevel0SrcStride = 0;
-    params.inLevel0DstStride = 0;
-    params.inLevel0NlcLpCnt = 1;
-    params.inLevel0LcLpCnt = 1;
-    params.inLevel0NlcRepeatCnt = 1;
-    params.inLevel0LcRepeatCnt = 1;
-    params.inLevel0NlcNburst = params.oneLineSize * params.inLevel2NlcC1LeftLines;
-    params.inLevel0LcNburst = params.oneLineSize * params.inLevel2LcC1LeftLines;
-  } else {
-    params.inLevel0LpCnt = c0Len;
-    params.inLevel0C0LpStepUb = params.oneLineSize;
-    params.inLevel0LpStepIn = cRightSize > 0 ? cRightSize : inShape[inShape.size() - 2];
-    params.inLevel0RepeatCnt = 1;
-    params.inLevel0Nburst = params.oneLineSize;
-    params.inLevel0SrcStride = 0;
-    params.inLevel0DstStride = 0;
-    params.inLevel0NlcLpCnt = params.inLevel2NlcC1LeftLines;
-    params.inLevel0LcLpCnt = params.inLevel2LcC1LeftLines;
-    params.inLevel0NlcRepeatCnt = 1;
-    params.inLevel0LcRepeatCnt = 1;
-    params.inLevel0NlcNburst = params.inLevel1NlcLastLeftLines;
-    params.inLevel0LcNburst = params.inLevel1LcLastLeftLines;
-  }
-
-  /*         output loop            */
-  /*  level0 tiling parameters      */
-  if (srcLastInDstPos + 1 == outShape.size() - 2) {
-    params.outLevel0LpCnt = 1;
-    params.outLevel0LpStepUb = 0;
-    params.outLevel0LpStepOut = 0;
-    params.outLevel0RepeatCnt = 1;
-    params.outLevel0Nburst = params.oneLineSize * outShape[outShape.size() - 2];
-    params.outLevel0SrcStride = 0;
-    params.outLevel0DstStride = 0;
-    params.outLevel0NlcLpCnt = 1;
-    params.outLevel0LcLpCnt = 1;
-    params.outLevel0NlcRepeatCnt = 1;
-    params.outLevel0LcRepeatCnt = 1;
-
-    if (axisPosC + gapCBtwLast + 1 != shapeLen - 1) {
-      params.outLevel0NlcNburst = nlcInShape[nlcInShape.size() - 2] * outShape[outShape.size() - 2];
-      params.outLevel0LcNburst = lcInShape[lcInShape.size() - 2] * outShape[outShape.size() - 2];
-    } else {
-      params.outLevel0NlcNburst = params.inLevel1NlcLastLeftLines * outShape[outShape.size() - 2];
-      params.outLevel0LcNburst = params.inLevel1LcLastLeftLines * outShape[outShape.size() - 2];
-    }
-  } else {
-    char srcLastChar = srcFormat[srcFormat.length() - 1];
-    int32_t tempPos = std::strchr(dstFormat.c_str(), srcLastChar) - dstFormat.c_str() + 1;
-
-    vector<int64_t> tempOutShape(outShape.begin() + tempPos, outShape.end() - 2);
-    int64_t srcLastDstLastGap = GetShapeSize(tempOutShape, 0);
-    if (srcLastDstLastGap > STRIDE_LIMIT_MTE) {
-      params.outLevel0LpCnt = params.oneLineSize;
-      params.outLevel0LpStepUb = outShape[outShape.size() - 2];
-      params.outLevel0LpStepOut = GetShapeSize(outShape, tempPos);
-      params.outLevel0RepeatCnt = 1;
-      params.outLevel0Nburst = outShape[outShape.size() - 2];
-      params.outLevel0SrcStride = 0;
-      params.outLevel0DstStride = 0;
-      params.outLevel0NlcLpCnt = params.inLevel1NlcLastLeftLines;
-      params.outLevel0LcLpCnt = params.inLevel1LcLastLeftLines;
-      params.outLevel0NlcRepeatCnt = 1;
-      params.outLevel0LcRepeatCnt = 1;
-      params.outLevel0NlcNburst = outShape[outShape.size() - 2];
-      params.outLevel0LcNburst = outShape[outShape.size() - 2];
-    } else {
-      params.outLevel0LpCnt = 1;
-      params.outLevel0LpStepUb = 0;
-      params.outLevel0LpStepOut = 0;
-      params.outLevel0RepeatCnt = params.oneLineSize;
-      params.outLevel0Nburst = outShape[outShape.size() - 2];
-      params.outLevel0SrcStride = 0;
-      if (srcLastDstLastGap == 0) {
-        params.outLevel0DstStride = 0;
-      } else {
-        params.outLevel0DstStride = srcLastDstLastGap - 1;
-      }
-      params.outLevel0NlcLpCnt = 1;
-      params.outLevel0LcLpCnt = 1;
-      params.outLevel0NlcRepeatCnt = params.inLevel1NlcLastLeftLines;
-      params.outLevel0LcRepeatCnt = params.inLevel1LcLastLeftLines;
-      params.outLevel0NlcNburst = outShape[outShape.size() - 2];
-      params.outLevel0LcNburst = outShape[outShape.size() - 2];
+  for (int32_t i = 0; i < tmpSrcCrFormat.length(); i++) {
+    char chr = tmpSrcCrFormat[i];
+    int32_t chrPos = std::strchr(tmpDstLeftFormat.c_str(), chr) - tmpDstLeftFormat.c_str();
+    if (chrPos >= 0 && chrPos < tmpDstLeftFormat.length()) {
+      tmpDstLeftFormat.replace(chrPos, 1, "");
     }
   }
 
-  /*  level1 tiling parameters      */
-  if (axisPosC + 1 + gapCBtwLast == shapeLen - 1) {
-    params.outLevel1NlcLpCnt = 1;
-    params.outLevel1LcLpCnt = 1;
-    params.outLevel1LpStepUb = 0;
-    params.outLevel1LpStepOut = 0;
-  } else {
-    char cRightAxisChar = srcFormat[axisPosC + 1 + gapCBtwLast];
-    int32_t tempSrcPos = std::strchr(srcFormat.c_str(), cRightAxisChar) - srcFormat.c_str();
-    int32_t tempDstPos = std::strchr(dstFormat.c_str(), cRightAxisChar) - dstFormat.c_str();
-
-    params.outLevel1NlcLpCnt = nlcInShape[tempSrcPos];
-    params.outLevel1LcLpCnt = lcInShape[tempSrcPos];
-    params.outLevel1LpStepOut = GetShapeSize(outShape, tempDstPos + 1);
-    params.outLevel1LpStepUb = GetShapeSize(inShape, tempSrcPos + 1) * outShape[outShape.size() - 2];
-  }
-
-  string leftSrcFormat = srcFormat;
-  leftSrcFormat.replace(leftSrcFormat.find("C"), 1, "");
-  leftSrcFormat.replace(leftSrcFormat.find(srcFormat[axisPosC + 1 + gapCBtwLast]),
-                        srcFormat.length() - (axisPosC + 1 + gapCBtwLast), "");
-
-  int32_t noneLevelCnt = FRAME_LEVEL - (leftSrcFormat.length() + 3);
-  if (noneLevelCnt > 0) {
-    string noneLevelString(noneLevelCnt,'X');
-    leftSrcFormat.insert(0, noneLevelString);
-  }
-  vector<int> inLevelx;
-  for (int32_t i = 0; i < leftSrcFormat.length(); i++) {
-    if (leftSrcFormat[i] == 'X') {
-      inLevelx.push_back(0);
-      inLevelx.push_back(0);
-      inLevelx.push_back(1);
-      inLevelx.push_back(0);
-      inLevelx.push_back(1);
-      inLevelx.push_back(0);
-    } else {
-      int32_t curCharSrcPos = std::strchr(srcFormat.c_str(), leftSrcFormat[i]) - srcFormat.c_str();
-      int32_t curCharDstPos = std::strchr(dstFormat.c_str(), leftSrcFormat[i]) - dstFormat.c_str();
-      inLevelx.push_back(GetShapeSize(inShape, curCharSrcPos + 1));
-      inLevelx.push_back(GetShapeSize(outShape, curCharDstPos + 1));
-      inLevelx.push_back(nlcInShape[curCharSrcPos]);
-      inLevelx.push_back(0);
-      inLevelx.push_back(lcInShape[curCharSrcPos]);
-      inLevelx.push_back(0);
+  for (int32_t i = 0; i < tmpDstLeftFormat.length(); i++) {
+    char chr = tmpDstLeftFormat[i];
+    int32_t chrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
+    if (chrPos >= 0 && chrPos < srcFormat.length()) {
+      tmpLeftOutShape.push_back(inShape[chrPos]);
     }
   }
-  params.inLevelx1LpStepIn = inLevelx[0];
-  params.inLevelx1LpStepOut = inLevelx[1];
-  params.inLevelx1NlcLpCnt = inLevelx[2];
-  params.inLevelx1NlcLeftLines = inLevelx[3];
-  params.inLevelx1LcLpCnt = inLevelx[4];
-  params.inLevelx1LcLeftLines = inLevelx[5];
-  params.inLevelx2LpStepIn = inLevelx[6];
-  params.inLevelx2LpStepOut = inLevelx[7];
-  params.inLevelx2NlcLpCnt = inLevelx[8];
-  params.inLevelx2NlcLeftLines = inLevelx[9];
-  params.inLevelx2LcLpCnt = inLevelx[10];
-  params.inLevelx2LcLeftLines = inLevelx[11];
-  params.inLevelx3LpStepIn = inLevelx[12];
-  params.inLevelx3LpStepOut = inLevelx[13];
-  params.inLevelx3NlcLpCnt = inLevelx[14];
-  params.inLevelx3NlcLeftLines = inLevelx[15];
-  params.inLevelx3LcLpCnt = inLevelx[16];
-  params.inLevelx3LcLeftLines = inLevelx[17];
+  inShape.push_back(1);
+  tmpLeftOutShape.push_back(1);
+  reverse(tmpDstLeftFormat.begin(), tmpDstLeftFormat.end());
 
-  params.nextShapeLpOffsetOut = GetShapeSize(outShape, 0);
-  params.nextShapeLpOffsetIn = GetShapeSize(inShape, axisPosC);
+  for (size_t i = 0; i < tmpDstLeftFormat.length(); i++) {
+    char chr = tmpDstLeftFormat[i];
+    int32_t srcChrPos = std::strchr(srcFormat.c_str(), chr) - srcFormat.c_str();
+    int32_t dstChrPos = std::strchr(dstFormat.c_str(), chr) - dstFormat.c_str();
+    if (i == 0) {
+      params.inIdx0Size = inShape[srcChrPos];
+      params.inIdx0DstRsize = GetShapeSize(tmpLeftOutShape, -1 - i);
+      params.inIdx0SrcAsize = GetShapeSize(inShape, srcChrPos + 1);
+      params.outIdx0Size = inShape[srcChrPos];
+      params.outIdx0DstRsize = GetShapeSize(tmpLeftOutShape, -1 - i);
+      params.outIdx0DstAsize = GetShapeSize(outShape, dstChrPos + 1);
+    } else if (i == 1) {
+      params.inIdx1Size = inShape[srcChrPos];
+      params.inIdx1DstRsize = GetShapeSize(tmpLeftOutShape, -1 - i);
+      params.inIdx1SrcAsize = GetShapeSize(inShape, srcChrPos + 1);
+      params.outIdx1Size = inShape[srcChrPos];
+      params.outIdx1DstRsize = GetShapeSize(tmpLeftOutShape, -1 - i);
+      params.outIdx1DstAsize = GetShapeSize(outShape, dstChrPos + 1);
+    }
+  }
+  padAxisCnt = FRAME_LEVEL - tmpDstLeftFormat.length();
+  if (padAxisCnt != 0) {
+    if (tmpDstLeftFormat.length() == 0) {
+      params.inIdx0Size = 0;
+      params.inIdx0DstRsize = 0;
+      params.inIdx0SrcAsize = 0;
+      params.outIdx0Size = 0;
+      params.outIdx0DstRsize = 0;
+      params.outIdx0DstAsize = 0;
+      params.inIdx1Size = 0;
+      params.inIdx1DstRsize = 0;
+      params.inIdx1SrcAsize = 0;
+      params.outIdx1Size = 0;
+      params.outIdx1DstRsize = 0;
+      params.outIdx1DstAsize = 0;
+    } else if (tmpDstLeftFormat.length() == 1) {
+      params.inIdx1Size = 0;
+      params.inIdx1DstRsize = 0;
+      params.inIdx1SrcAsize = 0;
+      params.outIdx1Size = 0;
+      params.outIdx1DstRsize = 0;
+      params.outIdx1DstAsize = 0;
+    }
+  }
 
+  if (srcFormat[srcFormat.length() - 1] == dstFormat[dstFormat.length() - 2]) {
+    params.src2dstFlag = 0;
+  } else {
+    params.src2dstFlag = 1;
+  }
   return true;
 }
 
 void SetRunningMode100Params(const TransDataMode100Param& runParams, OpRunInfo& runInfo) {
-  /*   tiling_sub_head and tiling_core      */
-  ByteBufferPut(runInfo.tiling_data, runParams.tillingParamCount);
   ByteBufferPut(runInfo.tiling_data, runParams.tilingMode);
   ByteBufferPut(runInfo.tiling_data, runParams.ubOffset);
+  ByteBufferPut(runInfo.tiling_data, runParams.mcFlag);
   ByteBufferPut(runInfo.tiling_data, runParams.usedCoreCnt);
   ByteBufferPut(runInfo.tiling_data, runParams.coreStepIn);
   ByteBufferPut(runInfo.tiling_data, runParams.coreStepOut);
+
+  ByteBufferPut(runInfo.tiling_data, runParams.nlcCrLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.nlcCLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.nlcLeftLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.nlcCrLeft);
+  ByteBufferPut(runInfo.tiling_data, runParams.nlcCLeft);
+  ByteBufferPut(runInfo.tiling_data, runParams.lcCrLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.lcCLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.lcLeftLpCnt);
+  ByteBufferPut(runInfo.tiling_data, runParams.lcCrLeft);
+  ByteBufferPut(runInfo.tiling_data, runParams.lcCLeft);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcCrLpUnit);
+
+  ByteBufferPut(runInfo.tiling_data, runParams.srcCrLpStepIn);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcCrLpStepOut);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcCStepIn);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcCLpUnit);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcCLpStepIn);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcCLpStepOut);
+  ByteBufferPut(runInfo.tiling_data, runParams.cModC0);
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx0Size);
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx0DstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx0SrcAsize);
+
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx1Size);
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx1DstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.inIdx1SrcAsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.outIdx0Size);
+  ByteBufferPut(runInfo.tiling_data, runParams.outIdx0DstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.outIdx0DstAsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.outIdx1Size);
+  ByteBufferPut(runInfo.tiling_data, runParams.outIdx1DstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.outIdx1DstAsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.crOutIdx0Size);
+  ByteBufferPut(runInfo.tiling_data, runParams.crOutIdx0DstRsize);
+
+  ByteBufferPut(runInfo.tiling_data, runParams.crOutIdx0DstAsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.crOutIdx1Size);
+  ByteBufferPut(runInfo.tiling_data, runParams.crOutIdx1DstRsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.crOutIdx1DstAsize);
+  ByteBufferPut(runInfo.tiling_data, runParams.src2dstFlag);
   ByteBufferPut(runInfo.tiling_data, runParams.oneLineSize);
-
-  /*       com_sub_tiling_params     */
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx1LpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx1LpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx2LpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx2LpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx3LpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx3LpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel2C1LpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel2C1LpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel1LastLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel1LastLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0LpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0C0LpStepUb);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0LpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0RepeatCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0Nburst);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0SrcStride);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0DstStride);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel1LpStepUb);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel1LpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0LpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0LpStepUb);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0LpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0RepeatCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0Nburst);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0SrcStride);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0DstStride);
-
-  /*       nlc_sub_tiling_params     */
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx1NlcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx1NlcLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx2NlcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx2NlcLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx3NlcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx3NlcLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel2NlcC1LpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel2NlcC1LeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel1NlcLastLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel1NlcLastLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0NlcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0NlcRepeatCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0NlcNburst);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel1NlcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0NlcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0NlcRepeatCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0NlcNburst);
-
-  /*       lc_sub_tiling_params     */
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx1LcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx1LcLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx2LcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx2LcLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx3LcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevelx3LcLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel2LcC1LpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel2LcC1LeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel1LcLastLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel1LcLastLeftLines);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0LcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0LcRepeatCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.inLevel0LcNburst);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel1LcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0LcLpCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0LcRepeatCnt);
-  ByteBufferPut(runInfo.tiling_data, runParams.outLevel0LcNburst);
-
-  ByteBufferPut(runInfo.tiling_data, runParams.nextShapeLpOffsetIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.nextShapeLpOffsetOut);
 }
 
 void PrintTilingMode100Params(const std::string& opType, const TransDataMode100Param& params) {
-  OP_LOGD(opType.c_str(), "tillingParamCount=%d", params.tillingParamCount);
-
   OP_LOGD(opType.c_str(), "tilingMode=%d", params.tilingMode);
   OP_LOGD(opType.c_str(), "ubOffset=%d", params.ubOffset);
+  OP_LOGD(opType.c_str(), "mcFlag=%d", params.mcFlag);
   OP_LOGD(opType.c_str(), "usedCoreCnt=%d", params.usedCoreCnt);
   OP_LOGD(opType.c_str(), "coreStepIn=%d", params.coreStepIn);
   OP_LOGD(opType.c_str(), "coreStepOut=%d", params.coreStepOut);
+  OP_LOGD(opType.c_str(), "nlcCrLpCnt=%d", params.nlcCrLpCnt);
+  OP_LOGD(opType.c_str(), "nlcCLpCnt=%d", params.nlcCLpCnt);
+  OP_LOGD(opType.c_str(), "nlcLeftLpCnt=%d", params.nlcLeftLpCnt);
+  OP_LOGD(opType.c_str(), "nlcCrLeft=%d", params.nlcCrLeft);
+  OP_LOGD(opType.c_str(), "nlcCLeft=%d", params.nlcCLeft);
+  OP_LOGD(opType.c_str(), "lcCrLpCnt=%d", params.lcCrLpCnt);
+  OP_LOGD(opType.c_str(), "lcCLpCnt=%d", params.lcCLpCnt);
+  OP_LOGD(opType.c_str(), "lcLeftLpCnt=%d", params.lcLeftLpCnt);
+  OP_LOGD(opType.c_str(), "lcCrLeft=%d", params.lcCrLeft);
+  OP_LOGD(opType.c_str(), "lcCLeft=%d", params.lcCLeft);
+  OP_LOGD(opType.c_str(), "srcCrLpUnit=%d", params.srcCrLpUnit);
+
+  OP_LOGD(opType.c_str(), "srcCrLpStepIn=%d", params.srcCrLpStepIn);
+  OP_LOGD(opType.c_str(), "srcCrLpStepOut=%d", params.srcCrLpStepOut);
+  OP_LOGD(opType.c_str(), "srcCStepIn=%d", params.srcCStepIn);
+  OP_LOGD(opType.c_str(), "srcCLpUnit=%d", params.srcCLpUnit);
+  OP_LOGD(opType.c_str(), "srcCLpStepIn=%d", params.srcCLpStepIn);
+  OP_LOGD(opType.c_str(), "srcCLpStepOut=%d", params.srcCLpStepOut);
+  OP_LOGD(opType.c_str(), "cModC0=%d", params.cModC0);
+  OP_LOGD(opType.c_str(), "inIdx0Size=%d", params.inIdx0Size);
+
+  OP_LOGD(opType.c_str(), "inIdx0DstRsize=%d", params.inIdx0DstRsize);
+  OP_LOGD(opType.c_str(), "inIdx0SrcAsize=%d", params.inIdx0SrcAsize);
+  OP_LOGD(opType.c_str(), "inIdx1Size=%d", params.inIdx1Size);
+  OP_LOGD(opType.c_str(), "inIdx1DstRsize=%d", params.inIdx1DstRsize);
+  OP_LOGD(opType.c_str(), "inIdx1SrcAsize=%d", params.inIdx1SrcAsize);
+  OP_LOGD(opType.c_str(), "outIdx0Size=%d", params.outIdx0Size);
+  OP_LOGD(opType.c_str(), "outIdx0DstRsize=%d", params.outIdx0DstRsize);
+  OP_LOGD(opType.c_str(), "outIdx0DstAsize=%d", params.outIdx0DstAsize);
+  OP_LOGD(opType.c_str(), "outIdx1Size=%d", params.outIdx1Size);
+  OP_LOGD(opType.c_str(), "outIdx1DstRsize=%d", params.outIdx1DstRsize);
+  OP_LOGD(opType.c_str(), "outIdx1DstAsize=%d", params.outIdx1DstAsize);
+  OP_LOGD(opType.c_str(), "crOutIdx0Size=%d", params.crOutIdx0Size);
+  OP_LOGD(opType.c_str(), "crOutIdx0DstRsize=%d", params.crOutIdx0DstRsize);
+
+  OP_LOGD(opType.c_str(), "crOutIdx0DstAsize=%d", params.crOutIdx0DstAsize);
+  OP_LOGD(opType.c_str(), "crOutIdx1Size=%d", params.crOutIdx1Size);
+  OP_LOGD(opType.c_str(), "crOutIdx1DstRsize=%d", params.crOutIdx1DstRsize);
+  OP_LOGD(opType.c_str(), "crOutIdx1DstAsize=%d", params.crOutIdx1DstAsize);
+  OP_LOGD(opType.c_str(), "src2dstFlag=%d", params.src2dstFlag);
   OP_LOGD(opType.c_str(), "oneLineSize=%d", params.oneLineSize);
 
-  OP_LOGD(opType.c_str(), "inLevelx1LpStepIn=%d", params.inLevelx1LpStepIn);
-  OP_LOGD(opType.c_str(), "inLevelx1LpStepOut=%d", params.inLevelx1LpStepOut);
-  OP_LOGD(opType.c_str(), "inLevelx2LpStepIn=%d", params.inLevelx2LpStepIn);
-  OP_LOGD(opType.c_str(), "inLevelx2LpStepOut=%d", params.inLevelx2LpStepOut);
-  OP_LOGD(opType.c_str(), "inLevelx3LpStepIn=%d", params.inLevelx3LpStepIn);
-  OP_LOGD(opType.c_str(), "inLevelx3LpStepOut=%d", params.inLevelx3LpStepOut);
-  OP_LOGD(opType.c_str(), "inLevel2C1LpStepIn=%d", params.inLevel2C1LpStepIn);
-  OP_LOGD(opType.c_str(), "inLevel2C1LpStepOut=%d", params.inLevel2C1LpStepOut);
-  OP_LOGD(opType.c_str(), "inLevel1LastLpStepIn=%d", params.inLevel1LastLpStepIn);
-  OP_LOGD(opType.c_str(), "inLevel1LastLpStepOut=%d", params.inLevel1LastLpStepOut);
-  OP_LOGD(opType.c_str(), "inLevel0LpCnt=%d", params.inLevel0LpCnt);
-  OP_LOGD(opType.c_str(), "inLevel0C0LpStepUb=%d", params.inLevel0C0LpStepUb);
-  OP_LOGD(opType.c_str(), "inLevel0LpStepIn=%d", params.inLevel0LpStepIn);
-  OP_LOGD(opType.c_str(), "inLevel0RepeatCnt=%d", params.inLevel0RepeatCnt);
-  OP_LOGD(opType.c_str(), "inLevel0Nburst=%d", params.inLevel0Nburst);
-  OP_LOGD(opType.c_str(), "inLevel0SrcStride=%d", params.inLevel0SrcStride);
-  OP_LOGD(opType.c_str(), "inLevel0DstStride=%d", params.inLevel0DstStride);
-  OP_LOGD(opType.c_str(), "outLevel1LpStepUb=%d", params.outLevel1LpStepUb);
-  OP_LOGD(opType.c_str(), "outLevel1LpStepOut=%d", params.outLevel1LpStepOut);
-  OP_LOGD(opType.c_str(), "outLevel0LpCnt=%d", params.outLevel0LpCnt);
-  OP_LOGD(opType.c_str(), "outLevel0LpStepUb=%d", params.outLevel0LpStepUb);
-  OP_LOGD(opType.c_str(), "outLevel0LpStepOut=%d", params.outLevel0LpStepOut);
-  OP_LOGD(opType.c_str(), "outLevel0RepeatCnt=%d", params.outLevel0RepeatCnt);
-  OP_LOGD(opType.c_str(), "outLevel0Nburst=%d", params.outLevel0Nburst);
-  OP_LOGD(opType.c_str(), "outLevel0SrcStride=%d", params.outLevel0SrcStride);
-  OP_LOGD(opType.c_str(), "outLevel0DstStride=%d", params.outLevel0DstStride);
-
-  OP_LOGD(opType.c_str(), "inLevelx1NlcLpCnt=%d", params.inLevelx1NlcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevelx1NlcLeftLines=%d", params.inLevelx1NlcLeftLines);
-  OP_LOGD(opType.c_str(), "inLevelx2NlcLpCnt=%d", params.inLevelx2NlcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevelx2NlcLeftLines=%d", params.inLevelx2NlcLeftLines);
-  OP_LOGD(opType.c_str(), "inLevelx3NlcLpCnt=%d", params.inLevelx3NlcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevelx3NlcLeftLines=%d", params.inLevelx3NlcLeftLines);
-  OP_LOGD(opType.c_str(), "inLevel2NlcC1LpCnt=%d", params.inLevel2NlcC1LpCnt);
-  OP_LOGD(opType.c_str(), "inLevel2NlcC1LeftLines=%d", params.inLevel2NlcC1LeftLines);
-  OP_LOGD(opType.c_str(), "inLevel1NlcLastLpCnt=%d", params.inLevel1NlcLastLpCnt);
-  OP_LOGD(opType.c_str(), "inLevel1NlcLastLeftLines=%d", params.inLevel1NlcLastLeftLines);
-  OP_LOGD(opType.c_str(), "inLevel0NlcLpCnt=%d", params.inLevel0NlcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevel0NlcRepeatCnt=%d", params.inLevel0NlcRepeatCnt);
-  OP_LOGD(opType.c_str(), "inLevel0NlcNburst=%d", params.inLevel0NlcNburst);
-  OP_LOGD(opType.c_str(), "outLevel1NlcLpCnt=%d", params.outLevel1NlcLpCnt);
-  OP_LOGD(opType.c_str(), "outLevel0NlcLpCnt=%d", params.outLevel0NlcLpCnt);
-  OP_LOGD(opType.c_str(), "outLevel0NlcRepeatCnt=%d", params.outLevel0NlcRepeatCnt);
-  OP_LOGD(opType.c_str(), "outLevel0NlcNburst=%d", params.outLevel0NlcNburst);
-
-  OP_LOGD(opType.c_str(), "inLevelx1LcLpCnt=%d", params.inLevelx1LcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevelx1LcLeftLines=%d", params.inLevelx1LcLeftLines);
-  OP_LOGD(opType.c_str(), "inLevelx2LcLpCnt=%d", params.inLevelx2LcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevelx2LcLeftLines=%d", params.inLevelx2LcLeftLines);
-  OP_LOGD(opType.c_str(), "inLevelx3LcLpCnt=%d", params.inLevelx3LcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevelx3LcLeftLines=%d", params.inLevelx3LcLeftLines);
-  OP_LOGD(opType.c_str(), "inLevel2LcC1LpCnt=%d", params.inLevel2LcC1LpCnt);
-  OP_LOGD(opType.c_str(), "inLevel2LcC1LeftLines=%d", params.inLevel2LcC1LeftLines);
-  OP_LOGD(opType.c_str(), "inLevel1LcLastLpCnt=%d", params.inLevel1LcLastLpCnt);
-  OP_LOGD(opType.c_str(), "inLevel1LcLastLeftLines=%d", params.inLevel1LcLastLeftLines);
-  OP_LOGD(opType.c_str(), "inLevel0LcLpCnt=%d", params.inLevel0LcLpCnt);
-  OP_LOGD(opType.c_str(), "inLevel0LcRepeatCnt=%d", params.inLevel0LcRepeatCnt);
-  OP_LOGD(opType.c_str(), "inLevel0LcNburst=%d", params.inLevel0LcNburst);
-  OP_LOGD(opType.c_str(), "outLevel1LcLpCnt=%d", params.outLevel1LcLpCnt);
-  OP_LOGD(opType.c_str(), "outLevel0LcLpCnt=%d", params.outLevel0LcLpCnt);
-  OP_LOGD(opType.c_str(), "outLevel0LcRepeatCnt=%d", params.outLevel0LcRepeatCnt);
-  OP_LOGD(opType.c_str(), "outLevel0LcNburst=%d", params.outLevel0LcNburst);
-
-  OP_LOGD(opType.c_str(), "nextShapeLpOffsetIn=%d", params.nextShapeLpOffsetIn);
-  OP_LOGD(opType.c_str(), "nextShapeLpOffsetOut=%d", params.nextShapeLpOffsetOut);
 }
 
 }  // namespace optiling
