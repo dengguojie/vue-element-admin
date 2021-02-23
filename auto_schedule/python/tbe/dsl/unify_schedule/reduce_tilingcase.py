@@ -227,6 +227,7 @@ def calc_tiling_case(outs, options=None):
     # noinspection PyProtectedMember
     if "_empty_schedule_flag" not in get_context()._addition:
         tiling_case_list.append(ReduceTilingCase())
+        tiling_case_list[-1].type = ReduceTilingCase.Type.EMPTY
         get_context().add("_empty_schedule_flag", True)
     return tiling_case_list
 
@@ -388,7 +389,7 @@ class ReduceTilingCase(TilingCaseBase):
         EMPTY = "EMPTY"
 
     def __init__(self):
-        self.type: Optional[ReduceTilingCase.Type] = ReduceTilingCase.Type.EMPTY
+        self.type: Optional[ReduceTilingCase.Type] = ReduceTilingCase.Type.NORMAL_REDUCE
         self.block_split_axis_index = None
         self.block_factor = None
         self.ub_split_axis_index = None
@@ -496,6 +497,7 @@ def _gen_tiling_case_not_last_axis(info: SingleReduceInfo, tiling_case_list: Lis
                     continue
                 ub_split_axis = reorder_to_orignal_axis_map[j]
                 tiling_case = ReduceTilingCase()
+                tiling_case.type = tiling_case.Type.NORMAL_REDUCE
                 tiling_case.block_split_axis_index = block_split_axis
                 tiling_case.ub_split_axis_index = ub_split_axis
                 tiling_case.multi_core = True
@@ -517,6 +519,7 @@ def _gen_tiling_case_last_axis(info: SingleReduceInfo, tiling_case_list: List[Re
             for j in range(i, len(reordered_shape)):
                 ub_split_axis = reorder_to_orignal_axis_map[j]
                 tiling_case = ReduceTilingCase()
+                tiling_case.type = tiling_case.Type.NORMAL_REDUCE
                 tiling_case.block_split_axis_index = block_split_axis
                 tiling_case.ub_split_axis_index = ub_split_axis
                 tiling_case.multi_core = True
@@ -532,6 +535,7 @@ def _gen_tiling_case_reduce_all(info: SingleReduceInfo, tiling_case_list: List[R
     for i in range(0, len(reordered_shape)):
         ub_split_axis = reorder_to_orignal_axis_map[i]
         tiling_case = ReduceTilingCase()
+        tiling_case.type = tiling_case.Type.NORMAL_REDUCE
         tiling_case.block_split_axis_index = block_split_axis
         tiling_case.ub_split_axis_index = ub_split_axis
         tiling_case.multi_core = False
