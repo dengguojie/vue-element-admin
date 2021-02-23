@@ -885,4 +885,34 @@ IMPLEMT_COMMON_INFERFUNC(LogSigmoidInferShape) {
 
 COMMON_INFER_FUNC_REG(LogSigmoid, LogSigmoidInferShape);
 
+// ----------------HardSigmoidLossGrad--------------------
+IMPLEMT_COMMON_INFERFUNC(HardSigmoidGradInferShape) {
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    DataType dtype_x = op.GetInputDesc("input_x").GetDataType();
+    Format format_x = op.GetInputDesc("input_x").GetFormat();
+    ge::Shape shape_x = op.GetInputDesc("input_x").GetShape();
+    DataType dtype_grad = op.GetInputDesc("grads").GetDataType();
+    Format formatGrad = op.GetInputDesc("grads").GetFormat();
+    ge::Shape shape_grad = op.GetInputDesc("grads").GetShape();
+    std::vector<int64_t> dims_x = shape_x.GetDims();
+    std::vector<int64_t> dims_grad = shape_grad.GetDims();
+    if (dims_x.size() != dims_grad.size()) {
+        OP_LOGE(op.GetName().c_str(), "the two inputs size not equal!\n");
+        return GRAPH_FAILED;
+    }
+    output_desc.SetDataType(dtype_grad);
+    output_desc.SetFormat(formatGrad);
+    output_desc.SetShape(shape_grad);
+    (void)op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+}
+    
+IMPLEMT_VERIFIER (HardSigmoidGrad, HardSigmoidGradVerify){
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(HardSigmoidGrad, HardSigmoidGradInferShape);
+VERIFY_FUNC_REG(HardSigmoidGrad, HardSigmoidGradVerify);
+
+// ----------------HardSigmoidLossGrad END--------------------
 }  // namespace ge

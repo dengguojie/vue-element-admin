@@ -912,6 +912,36 @@ REG_OP(LogSigmoid)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT})) /* "input:x" */
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))  /* "output:y" */
     .OP_END_FACTORY_REG(LogSigmoid)
+
+/**
+*@brief Calculate the backward outputs of the function "hard_sigmoid" \n
+
+*@par Inputs:
+*One inputs, including:
+* @li grads: A tensor. Must be one of the following types:
+*       float16, float32. \n
+* @li input_x: A tensor. Must be one of the following types:
+*       float16, float32. \n
+
+*@par Outputs:
+*One outputs, including:
+* @li y: A tensor with the same type and shape of x's. \n
+
+* @par Attributes:
+* @li alpha: An optional float. Defaults to 0.16666666. \n
+* @li beta: An optional float. Defaults to 0.5. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator LogSigmoidGrad. \n
+*/
+REG_OP(HardSigmoidGrad)
+    .INPUT(grads, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(input_x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .ATTR(alpha, Float, 0.16666666)
+    .ATTR(beta, Float, 0.5)
+    .OP_END_FACTORY_REG(HardSigmoidGrad)
+
 } // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_
