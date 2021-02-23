@@ -36,12 +36,32 @@ do
     ;;
     --opp_install_path=*)
     opp_path=`echo "$1" | cut -d"=" -f2-`
-    ASCEND_OPP_INSTALL_PATH=${opp_path%/*}
+    opp_temp_path=$opp_path
+    opp_first_char=${opp_path:0:1}
+    if [[ "x$opp_first_char" == "x~" ]];then
+      opp_path=$HOME/${opp_temp_path:2}
+    fi
+    opp_last_char=${opp_path: -1}
+    if [ "$opp_last_char" == "/" ];then
+      ASCEND_OPP_INSTALL_PATH=${opp_path%/*}
+    else
+      ASCEND_OPP_INSTALL_PATH=$opp_path
+    fi
     shift
     ;;
     --file_backup_dir=*)
     file_back_path=`echo "$1" | cut -d"=" -f2-`
-    FILE_BACKUP_PATH=${file_back_path%/*}
+    temp_path=$file_back_path
+    first_char=${file_back_path:0:1}
+    if [[ "x$first_char" == "x~" ]];then
+      file_back_path=$HOME/${temp_path:2}
+    fi
+    last_char=${file_back_path: -1}
+    if [ "$last_char" == "/" ];then
+      FILE_BACKUP_PATH=${file_back_path%/*}
+    else
+      FILE_BACKUP_PATH=$file_back_path
+    fi
     shift
     ;;
     -*)
@@ -85,15 +105,21 @@ installKernel()
     AICPU_KERNEL_INSTALL_PATH="$1/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/Ascend910"
     AICPU_KERNEL_PATH="$2/build/install/aicpu"
     if [[ -d  "$AICPU_KERNEL_PATH" ]]; then
+      chmod 750 $AICPU_KERNEL_INSTALL_PATH
+      chmod 640 $AICPU_KERNEL_INSTALL_PATH/libcpu_kernels_v*.so
       cp -f $AICPU_KERNEL_INSTALL_PATH/libcpu_kernels_v*.so $FILE_BACKUP_PATH/backup_dir
       if [[ $? -ne 0 ]]; then
         echo "copy libcpu_kernels_v*.so to $FILE_BACKUP_PATH/backup_dir failed"
+        chmod 440 $AICPU_KERNEL_INSTALL_PATH/libcpu_kernels_v*.so
+        chmod 550 $AICPU_KERNEL_INSTALL_PATH
         return 1
       fi
 
       cp -f $AICPU_KERNEL_PATH/libcpu_kernels_v*.so $AICPU_KERNEL_INSTALL_PATH
       if [[ $? -ne 0 ]]; then
         echo "copy libcpu_kernels_v*.so to $AICPU_KERNEL_INSTALL_PATH failed"
+        chmod 440 $AICPU_KERNEL_INSTALL_PATH/libcpu_kernels_v*.so
+        chmod 550 $AICPU_KERNEL_INSTALL_PATH
         return 1
       fi
       echo "copy libcpu_kernels_v*.so to $AICPU_KERNEL_INSTALL_PATH success"
@@ -110,15 +136,21 @@ installJson()
     AICPU_JSON_INSTALL_PATH="$1/opp/op_impl/built-in/aicpu/aicpu_kernel/config"
     AICPU_JSON_PATH="$2/build/install/opp/op_impl/built-in/aicpu/aicpu_kernel/config"
     if [[ -d  "$AICPU_JSON_PATH" ]]; then
+      chmod 750 $AICPU_JSON_INSTALL_PATH
+      chmod 640 $AICPU_JSON_INSTALL_PATH/aicpu_kernel.json
       cp -f $AICPU_JSON_INSTALL_PATH/aicpu_kernel.json $FILE_BACKUP_PATH/backup_dir
       if [[ $? -ne 0 ]]; then
         echo "copy aicpu_kernel.json to $FILE_BACKUP_PATH/backup_dir failed"
+        chmod 550 $AICPU_JSON_INSTALL_PATH/aicpu_kernel.json
+        chmod 550 $AICPU_JSON_INSTALL_PATH
         return 1
       fi
 
       cp -f $AICPU_JSON_PATH/aicpu_kernel.json $AICPU_JSON_INSTALL_PATH
       if [[ $? -ne 0 ]]; then
         echo "copy aicpu_kernel.json to $AICPU_JSON_INSTALL_PATH failed"
+        chmod 550 $AICPU_JSON_INSTALL_PATH/aicpu_kernel.json
+        chmod 550 $AICPU_JSON_INSTALL_PATH
         return 1
       fi
       echo "copy aicpu_kernel.json to $AICPU_JSON_INSTALL_PATH success"
@@ -127,6 +159,35 @@ installJson()
       return 1
     fi
     return 0
+}
+
+modifyInitConfFile()
+{
+  INIT_CONF_PATH="$1/fwkacllib/lib64/plugin/opskernel/config"
+  if [[ ! -f "$INIT_CONF_PATH/init.conf" ]]; then
+    echo "can not find init.conf in $INIT_CONF_PATH, install failed"
+    return 1
+  fi
+  chmod 750 $INIT_CONF_PATH
+  chmod 640 $INIT_CONF_PATH/init.conf
+  sed -i "/LoadCpuKernelsInModel/s/0/1/g" $INIT_CONF_PATH/init.conf
+  if [[ $? -ne 0 ]]; then
+    echo "modify $INIT_CONF_PATH/init.conf failed"
+    chmod 440 $INIT_CONF_PATH/init.conf
+    chmod 550 $INIT_CONF_PATH
+    return 1
+  fi
+  chmod 440 $INIT_CONF_PATH/init.conf
+  chmod 550 $INIT_CONF_PATH
+  return 0
+}
+
+recoverKernelAndJsonMode()
+{
+  chmod 440 $AICPU_KERNEL_INSTALL_PATH/libcpu_kernels_v*.so
+  chmod 550 $AICPU_KERNEL_INSTALL_PATH
+  chmod 550 $AICPU_JSON_INSTALL_PATH/aicpu_kernel.json
+  chmod 550 $AICPU_JSON_INSTALL_PATH
 }
 
 installKernel $ASCEND_OPP_INSTALL_PATH $BASE_PATH
@@ -139,22 +200,19 @@ installJson $ASCEND_OPP_INSTALL_PATH $BASE_PATH
 if [[ $? -ne 0 ]]; then
   echo "install aicpu_kernel.json failed!"
   cp -f $FILE_BACKUP_PATH/backup_dir/libcpu_kernels_v*.so $AICPU_KERNEL_INSTALL_PATH
+  chmod 440 $AICPU_KERNEL_INSTALL_PATH/libcpu_kernels_v*.so
+  chmod 550 $AICPU_KERNEL_INSTALL_PATH
   exit 1
 fi
 
-INIT_CONF_PATH="$ASCEND_OPP_INSTALL_PATH/fwkacllib/lib64/plugin/opskernel/config"
+modifyInitConfFile $ASCEND_OPP_INSTALL_PATH
 if [[ ! -f "$INIT_CONF_PATH/init.conf" ]]; then
   echo "can not find init.conf in $INIT_CONF_PATH, install failed"
   cp -f $FILE_BACKUP_PATH/backup_dir/libcpu_kernels_v*.so $AICPU_KERNEL_INSTALL_PATH
   cp -f $FILE_BACKUP_PATH/backup_dir/aicpu_kernel.json $AICPU_JSON_INSTALL_PATH
+  recoverKernelAndJsonMode
   exit 1
 fi
 
-sed -i "/LoadCpuKernelsInModel/s/0/1/g" $INIT_CONF_PATH/init.conf
-if [[ $? -ne 0 ]]; then
-  echo "modify $INIT_CONF_PATH/init.conf failed"
-  cp -f $FILE_BACKUP_PATH/backup_dir/libcpu_kernels_v*.so $AICPU_KERNEL_INSTALL_PATH
-  cp -f $FILE_BACKUP_PATH/backup_dir/aicpu_kernel.json $AICPU_JSON_INSTALL_PATH
-  exit 1
-fi
+recoverKernelAndJsonMode
 exit 0
