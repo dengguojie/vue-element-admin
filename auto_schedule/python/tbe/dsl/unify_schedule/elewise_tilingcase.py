@@ -184,7 +184,7 @@ def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
               "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
               "tiling_strategy": TilingStrategy.ONE_CUT,
               "is_need_db": False,
-              "is_pure_eletwise": True
+              "is_one_dim": True
               }]
 
     if enable_db_func():
@@ -194,7 +194,7 @@ def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
                       "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
                       "tiling_strategy": TilingStrategy.ONE_CUT,
                       "is_need_db": True,
-                      "is_pure_eletwise": True
+                      "is_one_dim": True
                       })
 
     return cases
@@ -234,7 +234,7 @@ def _calc_general(outs, base_key, enable_db_func=_default_db_func):
                     "ub_tiling_axis": j,
                     "tiling_strategy": TilingStrategy.ONE_CUT,
                     "is_need_db": True,
-                    "is_pure_eletwise": False
+                    "is_one_dim": False
                 })
 
     return cases

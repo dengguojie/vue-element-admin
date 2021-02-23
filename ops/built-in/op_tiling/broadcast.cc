@@ -633,6 +633,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(block_factor));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_axis));
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(ub_factor));
+    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(0));
     return true;
   }
   try {
