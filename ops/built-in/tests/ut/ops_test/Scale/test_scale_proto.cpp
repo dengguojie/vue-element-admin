@@ -46,6 +46,38 @@ TEST_F(ScaleTest, scale_test_infershape_test_1) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(ScaleTest, scale_test_infershape_test_dts) {
+  ge::op::Scale op;
+  // set x input shape
+  ge::TensorDesc xTensorDesc;
+  ge::Shape xShape({1,64,7,7});
+  xTensorDesc.SetDataType(ge::DT_FLOAT16);
+  xTensorDesc.SetShape(xShape);
+
+  // set scale input shape
+  ge::TensorDesc scaleTensorDesc;
+  ge::Shape scaleShape({1,64,7,7});
+  scaleTensorDesc.SetDataType(ge::DT_FLOAT16);
+  scaleTensorDesc.SetShape(scaleShape);
+
+  // set bias input shape
+  ge::TensorDesc biasTensorDesc;
+  ge::Shape biasShape({1,64,7,7});
+  biasTensorDesc.SetDataType(ge::DT_FLOAT16);
+  biasTensorDesc.SetShape(biasShape);
+
+  op.UpdateInputDesc("x", xTensorDesc);
+  op.UpdateInputDesc("scale", scaleTensorDesc);
+  op.UpdateInputDesc("bias", biasTensorDesc);
+
+  op.SetAttr("scale_from_blob", true);
+  op.SetAttr("axis", 0);
+  op.SetAttr("num_axes", 1);
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 TEST_F(ScaleTest, scale_test_infershape_test_2) {
   ge::op::Scale op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 10},{3,10},{4,10}};
