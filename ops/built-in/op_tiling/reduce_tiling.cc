@@ -303,13 +303,13 @@ bool Reduce::GetCompileInfo() {
     compileInfo.atomic = (bool)common_info[3];
     compileInfo.coef = common_info[4];
     // CHECK VALUE
-    V_OP_TILING_CHECK(!compileInfo.coef <= 0,
+    V_OP_TILING_CHECK(!(compileInfo.coef <= 0),
                       OP_LOGE(op_type.c_str(), "coef is %d that is illegal", compileInfo.coef),
                       return false);
-    V_OP_TILING_CHECK(!compileInfo.min_block_size <= 0,
+    V_OP_TILING_CHECK(!(compileInfo.min_block_size <= 0),
                       OP_LOGE(op_type.c_str(), "min_block_size is %d that is illegal", compileInfo.min_block_size),
                       return false);
-    V_OP_TILING_CHECK(!compileInfo.core_num <= 0,
+    V_OP_TILING_CHECK(!(compileInfo.core_num <= 0),
                       OP_LOGE(op_type.c_str(), "core_num is %d that is illegal", compileInfo.core_num),
                       return false);
 
@@ -329,7 +329,7 @@ bool Reduce::GetCompileInfo() {
                OP_LOGE(op_type.c_str(), "pattern_info's size should be as same as ub_info"),
                return false);
     compileInfo.max_ub_count = ub_info[idx];
-    V_OP_TILING_CHECK(!compileInfo.max_ub_count <= 0,
+    V_OP_TILING_CHECK(!(compileInfo.max_ub_count <= 0),
                       OP_LOGE(op_type.c_str(), "max_ub_count is %d that is illegal", compileInfo.max_ub_count),
                       return false);
     is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
@@ -805,7 +805,7 @@ bool Reduce::Init() {
     }
 
     // CHECK AXIS DIMS
-    V_OP_TILING_CHECK(!reduce_axis_ori.size() > input_shape_ori.size(),
+    V_OP_TILING_CHECK(!(reduce_axis_ori.size() > input_shape_ori.size()),
                       OP_LOGE(op_type.c_str(), "axis.size is %d that should less than input.size which is %d",
                               reduce_axis_ori.size(), input_shape_ori.size()),
                       return false);

@@ -27,7 +27,7 @@ namespace optiling {
 
 #define V_OP_TILING_CHECK(cond, log_func, return_expr)   \
   do {                                                   \
-    if (!cond) {                                         \
+    if (!(cond)) {                                       \
       log_func;                                          \
       return_expr;                                       \
     }                                                    \
