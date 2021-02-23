@@ -361,36 +361,40 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     reduce_axis = to_frac_z_axis(ori_shape, reduce_axis)
     mean_cof = reduce_elts ** (-1)
     # DSL description of the mean calculation process
-    x_sum = tbe.sum(input_x, axis=reduce_axis, keepdims=True)
-    mean_muls = tbe.vmuls(x_sum, mean_cof)
+    mean_muls = tbe.vmuls(input_x, mean_cof)
+    mean = tbe.sum(mean_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the variance calculation process
-    mean_variance_broadcast = _broadcast_nz(mean_muls, shape_x)
+    mean_variance_broadcast = _broadcast_nz(mean, shape_x)
     variance_sub = tbe.vsub(input_x, mean_variance_broadcast)
     variance_mul = tbe.vmul(variance_sub, variance_sub)
-    variance_sum = tbe.sum(variance_mul, axis=reduce_axis, keepdims=True)
-    variance_muls = tbe.vmuls(variance_sum, mean_cof)
+    variance_muls = tbe.vmuls(variance_mul, mean_cof)
+    variance = tbe.sum(variance_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the normalize calculation process
     if impl_mode == "high_performance":
+        mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
-        normalize_add = tbe.vadds(variance_muls, epsilon)
+        variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
         normalize_log = tbe.vlog(normalize_add)
         normalize_log_mul = \
             tbe.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
         normalize_exp = tbe.vexp(normalize_log_mul)
-        variance_normalize_broadcast = _broadcast_nz(normalize_exp, shape_x)
-        normalize_mul = tbe.vmul(variance_sub, variance_normalize_broadcast)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_exp)
     else:
         tesor_one = tbe.broadcast(tvm.const
                                   (1, cast_dtype_precision),
                                   shape_x)
-        variance_normalize_broadcast = _broadcast_nz(variance_muls, shape_x)
+        mean_normalize_broadcast = _broadcast_nz(mean, shape_x)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
+        variance_normalize_broadcast = _broadcast_nz(variance, shape_x)
         epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
         normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
         normalize_sqrt = tbe.vsqrt(normalize_add, 0)
         normalize_rsqrt = tbe.vdiv(tesor_one, normalize_sqrt)
-        normalize_mul = tbe.vmul(variance_sub, normalize_rsqrt)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_rsqrt)
 
     # DSL description of the scale and translate calculation process
     if begin_params_axis == 0:
@@ -407,11 +411,11 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
                   ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
-        mean_muls = tbe.cast_to(mean_muls, "float16")
-        variance_muls = tbe.cast_to(variance_muls, "float16")
+        mean = tbe.cast_to(mean, "float16")
+        variance = tbe.cast_to(variance, "float16")
         res = tbe.cast_to(res, "float16")
 
-    return mean_muls, variance_muls, res
+    return mean, variance, res
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("layer_norm")
@@ -476,37 +480,40 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
     mean_cof = reduce_elts ** (-1)
 
     # DSL description of the mean calculation process
-    x_sum = tbe.sum(input_x, axis=reduce_axis, keepdims=True)
-    mean_muls = tbe.vmuls(x_sum, mean_cof)
+    mean_muls = tbe.vmuls(input_x, mean_cof)
+    mean = tbe.sum(mean_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the variance calculation process
-    mean_variance_broadcast = tbe.broadcast(mean_muls, shape_x)
+    mean_variance_broadcast = tbe.broadcast(mean, shape_x)
     variance_sub = tbe.vsub(input_x, mean_variance_broadcast)
     variance_mul = tbe.vmul(variance_sub, variance_sub)
-    variance_sum = tbe.sum(variance_mul, axis=reduce_axis, keepdims=True)
-    variance_muls = tbe.vmuls(variance_sum, mean_cof)
-
+    variance_muls = tbe.vmuls(variance_mul, mean_cof)
+    variance = tbe.sum(variance_muls, axis=reduce_axis, keepdims=True)
 
     # DSL description of the normalize calculation process
     if impl_mode == "high_performance":
+        mean_normalize_broadcast = tbe.broadcast(mean, shape_x)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
         epsilon = tvm.const(epsilon, dtype=cast_dtype)
-        normalize_add = tbe.vadds(variance_muls, epsilon)
+        variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
+        normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
         normalize_log = tbe.vlog(normalize_add)
         normalize_log_mul = \
             tbe.vmuls(normalize_log, tvm.const(-0.5, dtype=cast_dtype))
         normalize_exp = tbe.vexp(normalize_log_mul)
-        variance_normalize_broadcast = tbe.broadcast(normalize_exp, shape_x)
-        normalize_mul = tbe.vmul(variance_sub, variance_normalize_broadcast)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_exp)
     else:
         tesor_one = tbe.broadcast(tvm.const
                                   (1, cast_dtype_precision),
                                   shape_x)
-        variance_normalize_broadcast = tbe.broadcast(variance_muls, shape_x)
+        mean_normalize_broadcast = tbe.broadcast(mean, shape_x)
+        normalize_sub = tbe.vsub(input_x, mean_normalize_broadcast)
+        variance_normalize_broadcast = tbe.broadcast(variance, shape_x)
         epsilon = tvm.const(epsilon, dtype=cast_dtype_precision)
         normalize_add = tbe.vadds(variance_normalize_broadcast, epsilon)
         normalize_sqrt = tbe.vsqrt(normalize_add, 0)
         normalize_rsqrt = tbe.vdiv(tesor_one, normalize_sqrt)
-        normalize_mul = tbe.vmul(variance_sub, normalize_rsqrt)
+        normalize_mul = tbe.vmul(normalize_sub, normalize_rsqrt)
 
     # DSL description of the scale and translate calculation process
     if begin_params_axis == 0:
@@ -523,11 +530,11 @@ def layer_norm_compute(input_x, input_gamma, input_beta,
                   ("te.lang.cce.vexp", "float32") and
               impl_mode == "high_performance") or
              impl_mode == "high_precision"):
-        mean_muls = tbe.cast_to(mean_muls, "float16")
-        variance_muls = tbe.cast_to(variance_muls, "float16")
+        mean = tbe.cast_to(mean, "float16")
+        variance = tbe.cast_to(variance, "float16")
         res = tbe.cast_to(res, "float16")
 
-    return mean_muls, variance_muls, res
+    return mean, variance, res
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -692,4 +699,3 @@ def layer_norm(input_x, input_gamma, input_beta,
                               data_beta, res, mean, variance]}
 
     tbe.cce_build_code(sch, config)
-
