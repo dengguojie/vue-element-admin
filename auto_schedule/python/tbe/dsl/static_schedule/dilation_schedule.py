@@ -18,9 +18,9 @@ dilation schedule
 import te.platform as tbe_platform
 from te.platform import cce_params
 from te.utils.error_manager import error_manager_util
-from te.lang.cce.te_compute.dilation_compute import calc_minimum_ub
-from te.lang.cce.te_compute.dilation_compute import calc_space_of_ub
-from te.lang.cce.te_compute.dilation_compute import get_first_axis_need_dilate
+from tbe.dsl.compute.dilation_compute import calc_minimum_ub
+from tbe.dsl.compute.dilation_compute import calc_space_of_ub
+from tbe.dsl.compute.dilation_compute import get_first_axis_need_dilate
 
 
 def _get_tiling_factor(shape, dilations, dtype):

@@ -26,12 +26,11 @@ from te.platform.cce_params import scope_cc
 from te.platform.cce_params import scope_cbuf
 from te.platform.cce_conf import get_soc_spec
 from tbe.common.tiling.get_tiling import get_tiling
-from te.lang.cce.te_compute.cube_util import shape_to_list
+from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
 from tbe.common.utils.errormgr import error_manager_util
-from te.lang.cce.te_compute.conv2d_backprop_filter_compute \
-    import DynamicConv2dBpFilterParams
+from tbe.dsl.compute.conv2d_backprop_filter_compute import DynamicConv2dBpFilterParams
 # for debug, delete before publish
 DEBUG_MODE = False
 # disable double buffer, set True

@@ -20,9 +20,9 @@ from te import tvm
 from tbe.common.tiling.get_tiling import get_tiling
 from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
-from te.lang.cce.te_compute.conv2d_backprop_input_general_compute import DeConvPattern
-from te.lang.cce.te_compute.cube_util import shape_to_list
-from te.lang.cce.te_compute.cube_util import GroupDictKeys
+from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
+from tbe.dsl.compute.cube_util import shape_to_list
+from tbe.dsl.compute.cube_util import GroupDictKeys
 from tbe.dsl.static_schedule.util import L1CommonParam
 from te.platform import cce_conf
 from te.platform import cce_params

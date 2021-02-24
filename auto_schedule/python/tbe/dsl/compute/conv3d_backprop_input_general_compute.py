@@ -16,7 +16,7 @@
 conv3d backprop input general compute.
 """
 import te.platform as tbe_platform
-from te.lang.cce.te_compute import conv3d_backprop_input_cube_util as conv3d_dx_utils
+from tbe.dsl.compute import conv3d_backprop_input_cube_util as conv3d_dx_utils
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm

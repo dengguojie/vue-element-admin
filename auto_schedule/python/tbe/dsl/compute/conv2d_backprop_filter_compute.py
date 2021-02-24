@@ -33,12 +33,15 @@ from te.tvm.expr import Var
 from te.tvm.expr import IntImm
 from te.tvm.tensor import Tensor
 
+
 # fractal size, only support 16 for now
 BLOCK_SIZE = 16
 # maximum of int64 (2**63 - 1)
 DATA_SIZE_LIMIT_INT64 = 9223372036854775807
 # maximum of w in conv1d is (2**31 - 1)
 CONV1D_MAX_W = 2147483647
+# maximum of stride, limited by load3d
+STRIDE_HW_MAX = 63
 
 def _check_shape_rule(shape, dim, formats, name, allow_zero=False):
     """
@@ -371,7 +374,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         # special supporting for a unique case, there are 2 conditions:
         # (1) height & weight of x/output_backprop/filter are all 1
         # (2) strides is [1,1]
-        def _is_all_one_case():
+        def _set_all_one_case_flag():
             if self.stride == [1, 1] and self.shape_x_5hd[2:4] == [1, 1] \
                     and self.shape_grads_5hd[2:4] == [1, 1] \
                     and self.weight_shape[2:4] == [1, 1]:
@@ -379,28 +382,27 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             DynamicConv2dBpFilterParams.flag_all_one_case = \
                                                     self.flag_all_one_case
 
-        def _is_load3d_special_case():
+        def _set_load3d_special_case_flag():
             # limitation by chip:
             # Ascend910 load3d not support
             # when only fmap w after padding equals to filter w
             if CceProductParams().is_cloud_version() \
-                    and fmap_height_after_pad != kernel_height \
-                    and fmap_width_after_pad == kernel_width:
-                self.flag_load3d_special_case = False
-            else:
+                    and self.shape_grads_5hd[2] != 1 \
+                    and self.shape_grads_5hd[3] == 1:
                 self.flag_load3d_special_case = True
+            else:
+                self.flag_load3d_special_case = False
 
         # conv1d situation, all params in h is 1
-        # support w be in [1,16000]
-        def _is_conv1d_situation():
+        # support w be in [1,2**31 - 1]
+        def _set_conv1d_situation_flag():
             if fmap_height_after_pad == 1 and kernel_height == 1 \
                     and self.stride[0] == 1 and self.dilation[2] == 1:
                 self.conv1d_situation = True
 
-        _is_all_one_case()
-        _is_load3d_special_case()
-        _is_conv1d_situation()
-
+        _set_all_one_case_flag()
+        _set_load3d_special_case_flag()
+        _set_conv1d_situation_flag()
 
         _check_variable_range(kernel_height, 1, 255, "height of filter")
         _check_variable_range(kernel_width, 1, 255, "width of filter")
@@ -527,15 +529,12 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                         allow_zero=True)
 
         # individual range check
-        grads_hw_range = [2, 4096]
+        grads_hw_range = [1, 4096]
         fmap_hw_range = [1, 4096]
         _, _, grads_height, grads_width, _ \
             = self.shape_grads_5hd
 
-        if self.flag_load3d_special_case or self.flag_all_one_case:
-            grads_hw_range[0] = 1
         if self.conv1d_situation:
-            grads_hw_range[0] = 1
             grads_hw_range[1] = CONV1D_MAX_W
             fmap_hw_range[1] = CONV1D_MAX_W
 
@@ -551,6 +550,15 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         _check_variable_range(self.shape_x_5hd[3], fmap_hw_range[0],
                                 fmap_hw_range[1],
                                 "width of x")
+
+        # limitation by chip:
+        # if only fmap w after padding equals to filter w after dilation
+        # and soc_version is Ascend910
+        # then only support fmap w not larger than STRIDE_HW_MAX now
+        if self.flag_load3d_special_case:
+            _check_variable_range(self.shape_x_5hd[3], fmap_hw_range[0],
+                                  STRIDE_HW_MAX,
+                                  "width of x")
 
         if isinstance(self.pad[0], int):
             _check_attr_rule(self.pad, 4, [0, 255], \
@@ -701,12 +709,25 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                (indices, fmap_2_matrix),
                                name='famp_2_fractal',
                                tag='famp_2_fractal')
+
         fmap_dtype = self.fmap_dtype
 
         batch_size, grads_channel_1, grads_height, grads_width, grads_c0 \
             = self.shape_grads_5hd
         _, fmap_channel_1, fmap_height, fmap_width, fmap_c0 = self.shape_x_5hd
         _, _, kernel_height, kernel_width = self.weight_shape
+        _, _, _, dilation_w = self.dilation
+
+        if self.flag_load3d_special_case:
+            # in this situation, stride_w do no make sense
+            # set stride_w be fmap_w_after_pad
+            # add kernel_w_after_dilation to pad_right
+            # so that grads_w be 2
+            self.stride[1] = fmap_width + self.pad[2] + self.pad[3]
+            self.pad[3] += (kernel_width - 1) * dilation_w + 1
+            grads_width = grads_width * 2
+            self.shapelist['grads_5hd'][-2] = grads_width
+            self.shape_grads_5hd[-2] = grads_width
 
         # group dict
         group_dict = self.group_dict
@@ -870,6 +891,10 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             grads_height_index = (hw_mad_indices // grads_width)
             grads_width_index = (hw_mad_indices % grads_width)
             grads_c0_index = grads_c0_indices
+
+            if self.flag_load3d_special_case:
+                # make sure the index won't exceed real grads_w
+                grads_width_index = (hw_mad_indices % (grads_width // 2))
 
             return grads(batch_size_index, grads_c1_index,
                          grads_height_index, grads_width_index, grads_c0_index)

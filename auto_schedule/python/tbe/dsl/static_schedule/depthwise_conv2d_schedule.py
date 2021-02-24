@@ -26,7 +26,7 @@ from te.platform import cce_params
 from te.platform import cce_conf
 from te.platform import cce_policy
 from tbe.dsl.static_schedule.util import L1CommonParam
-from te.lang.cce.te_compute.depthwise_conv2d_compute import DepthwiseConv2dParam
+from tbe.dsl.compute.depthwise_conv2d_compute import DepthwiseConv2dParam
 
 TILING_HO_TIMES = 16
 
