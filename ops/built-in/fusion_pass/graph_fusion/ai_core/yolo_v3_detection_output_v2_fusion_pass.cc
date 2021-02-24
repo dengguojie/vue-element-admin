@@ -106,8 +106,17 @@ Status YoloV3DetectionOutputV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& map
   vector<ge::GeTensorPtr> weights(yolo_num * 2);
   for (uint32_t i = 0; i < yolo_num; i++) {
     ge::InDataAnchorPtr yolov3AnchorPtr = yolov3VNode->GetInDataAnchor(i);
+    FUSION_PASS_CHECK(yolov3AnchorPtr == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "InDataAnchor is null, fusion failed."),
+                      return PARAM_INVALID);
     ge::OutDataAnchorPtr constAnchorPtr = yolov3AnchorPtr->GetPeerOutAnchor();
+    FUSION_PASS_CHECK(constAnchorPtr == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "PeerOutAnchor is null, fusion failed."),
+                      return PARAM_INVALID);
     ge::NodePtr regionNode = constAnchorPtr->GetOwnerNode();
+    FUSION_PASS_CHECK(regionNode == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "regionNode is null, fusion failed."),
+                      return PARAM_INVALID);
 
     // get the input desc of entrance node to differentiate const and varj
     ge::GeTensorDesc regionAnchorPtr = regionNode->GetOpDesc()->GetInputDesc(0);

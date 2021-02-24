@@ -93,8 +93,17 @@ Status YoloV2DetectionOutputPass::Fusion(ge::ComputeGraph& graph, Mapping& mappi
 
   // find the parent node of yolov2
   ge::InDataAnchorPtr yolov2AnchorPtr0 = yolov2VNode->GetInDataAnchor(0);
+  FUSION_PASS_CHECK(yolov2AnchorPtr0 == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "InDataAnchor is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::OutDataAnchorPtr constAnchorPtr0 = yolov2AnchorPtr0->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(constAnchorPtr0 == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "PeerOutAnchor is null, fusion failed."),
+                    return PARAM_INVALID);
   ge::NodePtr regionNode = constAnchorPtr0->GetOwnerNode();
+  FUSION_PASS_CHECK(regionNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "regionNode is null, fusion failed."),
+                    return PARAM_INVALID);
 
   // get the input desc of entrance node to differentiate const and varj
   ge::GeTensorDesc region1AnchorPtr0 = regionNode->GetOpDesc()->GetInputDesc(0);
