@@ -26,8 +26,8 @@ from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var
 
 from te import tvm
-from te.lang.cce.te_compute.conv3d_compute import Conv3DParam
-from te.lang.cce.te_compute import util as te_util
+from tbe.dsl.compute.conv3d_compute import Conv3DParam
+from tbe.dsl.compute import util as te_util
 from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection
 from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils

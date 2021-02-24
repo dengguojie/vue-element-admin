@@ -24,7 +24,7 @@ from tbe.common.tiling.get_tiling import get_tiling
 from te.lang.base.operation_impl import add_compile_info
 from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var
-from te.lang.cce.te_compute.gemm_compute import GEMMComputeParam
+from tbe.dsl.compute.gemm_compute import GEMMComputeParam
 from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection
 from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.constants import Pattern

@@ -20,7 +20,7 @@ from collections import OrderedDict
 from functools import reduce
 
 from te import tvm
-from te.lang.cce.te_compute.conv2d_backprop_filter_compute import \
+from tbe.dsl.compute.conv2d_backprop_filter_compute import \
     DynamicConv2dBpFilterParams as DynamicParams
 
 from tbe.common.tiling.get_tiling import get_tiling

@@ -1,4 +1,4 @@
-# source file:../cann/auto_schedule/python/lang/cce/te_compute/conv3d_compute.py
+# source file:../cann/auto_schedule/python/tbe/dsl/compute/conv3d_compute.py
 
 class Conv3DParam(object):
 
