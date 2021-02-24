@@ -64,6 +64,10 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
   std::vector<Scope*> fusion_scopes_bn;
   std::vector<Scope*> fusion_scopes_m;
   for (auto& scope : scopes) {
+    // uwc can not do scope fusion
+    if (scope->Name().find("sequence_encoder_loop/while") != std::string::npos) {
+      return FAILED;
+    }
     // Class ScopeTree guarantees scope is not empty.
     if ((scope->SubType() == kScopeTypeBatchnorm)) {
       fusion_scopes_bn.push_back(scope);
