@@ -100,7 +100,7 @@ template<typename T> static string arr_to_string(const T * v, int64_t size, int 
         return s;
     }
 
-    for (int i = 0; i < size; i ++) {
+    for (int i = 0; i < size; i++) {
         if (first) {
             s += std::to_string(v[i]);
             first = false;
@@ -116,7 +116,9 @@ static bool IsSubset(vector<int64_t> a, vector<int64_t> b){
     int j = 0;
     int m = a.size();
     int n = b.size();
-    if (m < n) return false;
+    if (m < n) {
+        return false;
+    }
 
     sort(a.begin(), a.end());
     sort(b.begin(), b.end());
@@ -132,7 +134,9 @@ static bool IsSubset(vector<int64_t> a, vector<int64_t> b){
             return false;
         }
     }
-    if (i < n) return false;
+    if (i < n) {
+        return false;
+    }
     return true;
 }
 
@@ -194,8 +198,8 @@ static void BlockAlign(vector<int64_t> & vec) {
     int i = vec.size();
     int k = i % ELE_NUM_PER_BLOCK_INT64;
     int align = 0;
-    if (k != 0 )  {
-       align = ELE_NUM_PER_BLOCK_INT64 - k;
+    if (k != 0)  {
+        align = ELE_NUM_PER_BLOCK_INT64 - k;
     }
     for (int i = 0; i < align; i++) {
         vec.push_back(0);
@@ -324,7 +328,7 @@ static bool CheckTensorShape(const string & opType,
 static int64_t CalcTotalVolumeLogic(const std::vector<int64_t> & reducedInShape) {
     int64_t vol = 1;
     for (auto i : reducedInShape) {
-       vol = vol * i;
+        vol = vol * i;
     }
     //Last dim is stride, not in volume
     return vol / reducedInShape[reducedInShape.size()-1];
@@ -337,7 +341,7 @@ static int64_t CalcTotalVolumeLogic(const std::vector<int64_t> & reducedInShape)
 static int64_t CalcTotalVolumeActual(const std::vector<int64_t> & reducedInShape) {
     int64_t vol = 1;
     for (auto i : reducedInShape) {
-       vol = vol * i;
+        vol = vol * i;
     }
     return vol;
 }
@@ -357,24 +361,23 @@ static void CalcReducePermGrad(const vector<int64_t> & reducedPerm , vector<int6
         sortedList.push_back({i, reducedPerm[i]});
     }
 
-    sort(sortedList.begin(), sortedList.end(), [](pair<int32_t, int32_t> lhs, pair<int32_t, int32_t> rhs) -> bool {
+    sort(sortedList.begin(), sortedList.end(), [](pair<int32_t, int32_t> lhs, pair<int32_t, int32_t> rhs)->bool {
         return lhs.second < rhs.second;
     });
 
     for (size_t i = 0; i < sortedList.size(); i++) {
-         reducedPermGrad[i] = (sortedList[i].first);
+        reducedPermGrad[i] = (sortedList[i].first);
     }
 }
 
 static bool IsIdentical(const ShapeInfo & shapeInfo) {
     for(size_t i = 0; i < shapeInfo.reducedPerm.size(); i++) {
-        if(shapeInfo.reducedPerm[i] != i) {
+        if((size_t)shapeInfo.reducedPerm[i] != i) {
             return false;
         }
     }
     return true;
 }
-
 
 static bool IsSmallShape(const ShapeInfo & shapeInfo) {
     return shapeInfo.totalVolumeActual * shapeInfo.eleLenInBytes < SMALL_SHAPE_SIZE_THRESHOLD;
@@ -548,14 +551,17 @@ void ReduceAxis(const string & opType,
         shapeInfo.scenario = SCENARIO_7;
         shapeInfo.isLastAxisTranspose = true;
     } else {
-        if (shapeInfo.lastAxisLen % shapeInfo.elePerBlock == 0) {
-            if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes >= LAST_AXIS_BLOCK_ALIGN_HUGE_THRESHOLD) {
+        if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes >= LAST_AXIS_HUGE_THRESHOLD) {
+            shapeInfo.scenario = SCENARIO_3;
+        }
+        else if (shapeInfo.lastAxisLen % shapeInfo.elePerBlock == 0) {
+            if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes >= LAST_AXIS_BLOCK_ALIGN_LARGE_THRESHOLD) {
                 shapeInfo.scenario = SCENARIO_1;
             } else {
                 shapeInfo.scenario = SCENARIO_2;
             }
         } else {
-            if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes > LAST_AXIS_NOT_BLOCK_ALIGN_HUGE_THRESHOLD) {
+            if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes > LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD) {
                 shapeInfo.scenario = SCENARIO_1;
             } else {
                 shapeInfo.scenario = SCENARIO_2;
@@ -569,7 +575,7 @@ void ReduceAxis(const string & opType,
         shapeInfo.alignElement = shapeInfo.elePerBlock - (shapeInfo.lastAxisLen % shapeInfo.elePerBlock);
     }
 
-    if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes > LAST_AXIS_NOT_BLOCK_ALIGN_HUGE_THRESHOLD) {
+    if (shapeInfo.lastAxisLen * shapeInfo.eleLenInBytes > LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD) {
         shapeInfo.isLastAxisHuge = true;
     }
 
@@ -687,6 +693,7 @@ static string PrintTilingInfoScenario0(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
+    //cout<<logStr<<endl;
     return logStr;
 }
 
@@ -717,12 +724,13 @@ static string PrintTilingInfoScenario1(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
+    //cout<<logStr<<endl;
     return logStr;
 }
 
 static string PrintTilingInfoScenario2(const CompilerInfo & compilerInfo,
-                            const ShapeInfo & shapeInfo,
-                            const RuntimeInfo & runtimeInfo) {
+                                       const ShapeInfo & shapeInfo,
+                                       const RuntimeInfo & runtimeInfo) {
     string logStr;
     PrintShapeInfo(shapeInfo, logStr);
     PrintCompilerInfo(compilerInfo, logStr);
@@ -762,12 +770,48 @@ static string PrintTilingInfoScenario2(const CompilerInfo & compilerInfo,
         logStr += to_string(loopInfo.tailTailNum, 13);
         logStr += "\n";
     }
+    //cout<<logStr<<endl;
+    return logStr;
+}
+
+static string PrintTilingInfoScenario3(const CompilerInfo & compilerInfo,
+                                       const ShapeInfo & shapeInfo,
+                                       const RuntimeInfo & runtimeInfo) {
+    string logStr;
+    PrintShapeInfo(shapeInfo, logStr);
+    PrintCompilerInfo(compilerInfo, logStr);
+
+    logStr += "srcStrideLogic  srcJumpStride                 dstJumpStride                 ";
+    logStr += "dstJumpFactor                 majorLoopNum  majorBlocks  tailBlocks  ";
+    logStr += "backEle\n";
+    logStr += "------------------------------------------------------------------------------------------------------";
+    logStr += "-------------------------------------------------------\n";
+    logStr += to_string(runtimeInfo.srcStrideLogic, 16);
+    logStr += arr_to_string(runtimeInfo.srcJumpStride, shapeInfo.dim - 1, 30);
+    logStr += arr_to_string(runtimeInfo.dstJumpStride, shapeInfo.dim - 1, 30);
+    logStr += arr_to_string(runtimeInfo.dstJumpFactor, shapeInfo.dim - 1, 30);
+    logStr += to_string(runtimeInfo.hugeInfo.majorLoopNum, 14);
+    logStr += to_string(runtimeInfo.hugeInfo.majorBlocks, 13);
+    logStr += to_string(runtimeInfo.hugeInfo.tailBlocks, 12);
+    logStr += to_string(runtimeInfo.hugeInfo.backEle, 7);
+    logStr += "\n\n";
+
+    logStr += "base    num    initTuple\n";
+    logStr += "--------------------------\n";
+    for (int64_t i = 0; i < compilerInfo.coreNum; i++) {
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].base, 8);
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].num, 7);
+        logStr += arr_to_string(runtimeInfo.infoPerCoreLastAxisNT[i].initTuple, shapeInfo.dim - 1);
+        logStr += "\n";
+    }
+    logStr += "\n\n";
+    //cout<<logStr<<endl;
     return logStr;
 }
 
 static string PrintTilingInfoScenario6(const CompilerInfo & compilerInfo,
-                            const ShapeInfo & shapeInfo,
-                            const RuntimeInfo & runtimeInfo) {
+                                       const ShapeInfo & shapeInfo,
+                                       const RuntimeInfo & runtimeInfo) {
     return PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo);
 }
 
@@ -840,6 +884,7 @@ static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
+    //cout<<logStr<<endl;
     return logStr;
 }
 
@@ -891,6 +936,13 @@ static void CalcTuple(const CompilerInfo &compilerInfo, const ShapeInfo &shapeIn
         runtimeInfo.infoPerCoreLastAxisNT.push_back(infoPerCore);
     }
     ReverseArray(runtimeInfo.dstJumpFactorMod, dim - 1);
+}
+
+static void CalcHugeInfo(const ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
+    runtimeInfo.hugeInfo.majorBlocks =  HUGE_BLOCKS_UNIT;
+    runtimeInfo.hugeInfo.majorLoopNum = shapeInfo.lastAxisBurstLen / HUGE_BLOCKS_UNIT;
+    runtimeInfo.hugeInfo.tailBlocks = shapeInfo.lastAxisBurstLen - runtimeInfo.hugeInfo.majorLoopNum * HUGE_BLOCKS_UNIT;
+    runtimeInfo.hugeInfo.backEle = shapeInfo.alignElement; 
 }
 
 static void CalcLoopInfo(int64_t &majorLoop, int64_t &majorNum, int64_t &tailNum,
@@ -1064,37 +1116,6 @@ bool TilingDataScenario1(const CompilerInfo & compilerInfo,
     return true;
 }
 
-
-/*
-static bool IsShapeTooBig(const ShapeInfo & shapeInfo) {
-    return  (shapeInfo.totalVolumeLogic * shapeInfo.lastAxisBurstLen * BYTES_PER_BLOCK) > WORKSPACE_MAX_SIZE;
-}
-
-static int64_t AlignTo32BByWorkspace(const CompilerInfo & compilerInfo,
-                                     const ShapeInfo & shapeInfo,
-                                     const RuntimeInfo & runtimeInfo) {
-    if (Is32BAligned(compilerInfo, shapeInfo.reducedOutShape) == true) {
-        return 0;
-    }
-
-    if (shapeInfo.isLastAxisHuge) {
-        //If last axis is huge , no need to align to 32B because may result in poor perf
-        return 0;
-    }
-
-    if (IsStrideTooHuge(shapeInfo, runtimeInfo) == true) {
-        //Since stride is too huge, aligned to 32B is useless.
-        return 0;
-    }
-
-    if (IsShapeTooBig(shapeInfo)) {
-        return 0;
-    }
-
-    return 1;
-}
-*/
-
 static void CalcBackNum(const ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
     if (shapeInfo.lastAxisLen < shapeInfo.elePerBlock) {
         runtimeInfo.backNum = ceil((shapeInfo.elePerBlock - shapeInfo.lastAxisLen) * 1.0 / shapeInfo.lastAxisLen) + 1;
@@ -1112,6 +1133,39 @@ bool TilingDataScenario2(const CompilerInfo & compilerInfo,
     CalcBackNum(shapeInfo, runtimeInfo);
     CalcLoopInfo(compilerInfo, shapeInfo, runtimeInfo);
     CalcWorkspaceParams(compilerInfo, shapeInfo, runtimeInfo);
+    return true;
+}
+
+bool TilingDataScenario3(const CompilerInfo & compilerInfo,
+                         const ShapeInfo & shapeInfo,
+                         RuntimeInfo & runtimeInfo) {
+    int64_t dim = shapeInfo.dim;
+    int64_t index = 0;
+
+    //1. src stride
+    for (int64_t i = 0; i < dim; i++) {
+        runtimeInfo.srcJumpStride[i] = CalcStride(shapeInfo.reducedInShape, dim, i);
+    }
+    ReorderSrcStride(shapeInfo.reducedPerm, runtimeInfo.srcJumpStride, dim - 1);
+    runtimeInfo.srcStrideLogic = runtimeInfo.srcJumpStride[0] / shapeInfo.reducedInShape[dim - 1] - 1;
+
+    //2. dst stride
+    for (int64_t i = 0; i < dim; i++) {
+        runtimeInfo.dstJumpStride[i] = CalcStride(shapeInfo.reducedOutShape, dim, i);
+    }
+    ReverseArray(runtimeInfo.dstJumpStride, dim - 1);
+
+    //3. dst factor
+    for (int64_t i = dim - 2; i >= 0; i--) {
+        runtimeInfo.dstJumpFactor[index++] = shapeInfo.reducedOutShape[i];
+    }
+
+    //4. init tuple
+    CalcTuple(compilerInfo, shapeInfo, runtimeInfo);
+
+    //5. huge info
+    CalcHugeInfo(shapeInfo, runtimeInfo);
+
     return true;
 }
 
@@ -1236,7 +1290,8 @@ static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                 info[i].colBlockPerMC = info[i].colPerMC / elePerBlock;
                 info[i].loopOnMC = col / info[i].colPerMC;
                 info[i].backStepLeft = (k != 0) ? (elePerBlock - k) : 0;
-                info[i].colTC = runtimeInfo.colRange[i].second - info[i].loopOnMC * info[i].colPerMC + info[i].backStepLeft;
+                info[i].colTC = runtimeInfo.colRange[i].second - info[i].loopOnMC * info[i].colPerMC +\
+                                info[i].backStepLeft;
                 info[i].colBlockTC = info[i].colTC / elePerBlock;
                 info[i].colOffset = runtimeInfo.colRange[i].first;
             }
@@ -1253,7 +1308,8 @@ static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
         info[i].initDstTuple.resize(runtimeInfo.dstJumpAxisNum);
         info[i].tailDstTuple.resize(runtimeInfo.dstJumpAxisNum);
         for (int64_t j = 0; j < runtimeInfo.dstJumpAxisNum; j++) {
-            info[i].initDstTuple[j] = (info[i].colOffset / runtimeInfo.dstJumpFactorMod[j]) % runtimeInfo.dstJumpFactor[j];
+            info[i].initDstTuple[j] = (info[i].colOffset / runtimeInfo.dstJumpFactorMod[j]) %\
+                                      runtimeInfo.dstJumpFactor[j];
             if (info[i].colTC != 0) {
                 int64_t col = info[i].colOffset + info[i].colPerMC * info[i].loopOnMC - info[i].backStepLeft;
                 info[i].tailDstTuple[j] = (col / runtimeInfo.dstJumpFactorMod[j]) % runtimeInfo.dstJumpFactor[j];
@@ -1284,7 +1340,8 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                 info[i].rowBlockPerMR = info[i].rowPerMR / elePerBlock;
                 info[i].loopOnMR = row / info[i].rowPerMR;
                 info[i].backStepUp = (k != 0) ? (elePerBlock - k) : 0;
-                info[i].rowTR = runtimeInfo.rowRange[i].second - info[i].loopOnMR * info[i].rowPerMR + info[i].backStepUp;
+                info[i].rowTR = runtimeInfo.rowRange[i].second - info[i].loopOnMR * info[i].rowPerMR +\
+                                info[i].backStepUp;
                 info[i].rowBlockTR = info[i].rowTR / elePerBlock;
                 info[i].rowOffset = runtimeInfo.rowRange[i].first;
             }
@@ -1301,7 +1358,8 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
         info[i].initSrcTuple.resize(runtimeInfo.srcJumpAxisNum);
         info[i].tailSrcTuple.resize(runtimeInfo.srcJumpAxisNum);
         for (int64_t j = 0; j < runtimeInfo.srcJumpAxisNum; j++) {
-            info[i].initSrcTuple[j] = (info[i].rowOffset / runtimeInfo.srcJumpFactorMod[j]) % runtimeInfo.srcJumpFactor[j];
+            info[i].initSrcTuple[j] = (info[i].rowOffset / runtimeInfo.srcJumpFactorMod[j]) %\
+                                      runtimeInfo.srcJumpFactor[j];
             if (info[i].rowTR != 0) {
                 int64_t row = info[i].rowOffset + info[i].rowPerMR * info[i].loopOnMR - info[i].backStepUp;
                 info[i].tailSrcTuple[j] = (row / runtimeInfo.srcJumpFactorMod[j]) % runtimeInfo.srcJumpFactor[j];
@@ -1311,10 +1369,12 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
 }
 
 static int64_t GetPermIndex(const vector<int64_t> & perm, int p) {
-   for (size_t i = 0; i < perm.size(); i++)  {
-       if (perm[i] == p) return i;
-   }
-   return 0;
+    for (size_t i = 0; i < perm.size(); i++) {
+        if (perm[i] == p) {
+            return i;
+        }
+    }
+    return 0;
 }
 
 void CalcJumpInfo(RuntimeInfo & runtimeInfo,
@@ -1389,20 +1449,30 @@ static bool IsContiguousPerm(const vector<int64_t> & perm, vector<int64_t> parti
 static bool IsContainTailAxis(const vector<int64_t> & perm, const vector<int64_t> & col) {
     int lastAxis = perm.size() - 1;
     for(size_t i = 0; i < col.size(); i++) {
-        if (lastAxis == col[i]) return true;
+        if (lastAxis == col[i]) {
+            return true;
+        }
     }
     return false;
 }
 
 static bool IsCouldBeCol(const vector<int64_t> & perm, const vector<int64_t> & col, const vector<int64_t> & colPerm) {
-    if (!IsSubset(colPerm, col))  return false;
-    if (!IsContainTailAxis(perm, col)) return false;
-    if (!IsContiguousPerm(perm, col)) return false;
+    if (!IsSubset(colPerm, col)) {
+        return false;
+    }
+    if (!IsContainTailAxis(perm, col)) {
+        return false;
+    }
+    if (!IsContiguousPerm(perm, col)) {
+        return false;
+    }
     return true;
 }
 
 static bool IsCouldBeRow(const vector<int64_t> & row, const vector<int64_t> & rowPerm) {
-    if (IsSubset(rowPerm, row)) return true;
+    if (IsSubset(rowPerm, row)) {
+        return true;
+    }
     return false;
 }
 
@@ -1453,21 +1523,21 @@ static void FixNCRSeq(const vector<int64_t> & perm,
     rt.swap(row);
     for (size_t i = 0; i < perm.size(); i++) {
         for(size_t j = 0; j < nt.size(); j++) {
-           if (perm[i] == nt[j]) {
-               n.push_back(perm[i]);
-               continue;
-           }
+            if (perm[i] == nt[j]) {
+                n.push_back(perm[i]);
+                continue;
+            }
         }
-        for(size_t j = 0; j < ct.size(); j++) {
-           if (perm[i] == ct[j]) {
-               col.push_back(perm[i]);
-               continue;
-           }
+        for (size_t j = 0; j < ct.size(); j++) {
+            if (perm[i] == ct[j]) {
+                col.push_back(perm[i]);
+                continue;
+            }
         }
-        for(size_t j = 0; j < rt.size(); j++) {
-           if (perm[i] == rt[j]) {
-               row.push_back(perm[i]);
-           }
+        for (size_t j = 0; j < rt.size(); j++) {
+            if (perm[i] == rt[j]) {
+                row.push_back(perm[i]);
+            }
         }
     }
 }
@@ -1495,7 +1565,7 @@ static void DispatchNCR(const ShapeInfo & shapeInfo, RuntimeInfo & runtimeInfo) 
         }
         vector<int64_t> col;
         for (int64_t j = i - 1; j >= 0 ; j--) {
-            col.push_back(shapeInfo.reducedPerm[j]) ;
+            col.push_back(shapeInfo.reducedPerm[j]);
             if (IsCouldBeCol(shapeInfo.reducedPerm, col, runtimeInfo.colPerm)) {
                 vector<int64_t> n;
                 GetN(shapeInfo.reducedPerm, row, col, n);
@@ -1516,12 +1586,12 @@ static void DispatchNCR(const ShapeInfo & shapeInfo, RuntimeInfo & runtimeInfo) 
 class Model001 : public TilingModel {
 public:
     Model001() : TilingModel(1, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model001") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
         bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
         if (res) {
             sp.Set(coreNum, 1, 1);
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
         ncr = n;
     }
@@ -1530,12 +1600,12 @@ public:
 class Model002 : public TilingModel {
 public:
     Model002() : TilingModel(2, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model002") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
         if (res) {
             sp.Set(1, 1, coreNum);
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
         ncr = n;
     }
@@ -1544,12 +1614,12 @@ public:
 class Model003 : public TilingModel {
 public:
     Model003() : TilingModel(3, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model003") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
         if (res) {
             sp.Set(1, coreNum, 1);
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
         ncr = n;
     }
@@ -1558,16 +1628,16 @@ public:
 class Model004 : public TilingModel {
 public:
     Model004() : TilingModel(4, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model004") {}
-    void Decision(int64_t coreNum, const NCR & n) {
-        if (n.nVol >= coreNum ) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+        if (n.nVol >= coreNum) {
             if (n.cVol >= 8 && n.rVol >= 8) {
                 sp.Set(coreNum, 1, 1);
             } else {
-                priority =  INVALID_SPLIT;
+                priority = INVALID_SPLIT;
             }
         } else {
             if (n.cVol < 8 || n.rVol < 8) {
-                priority =  INVALID_SPLIT;
+                priority = INVALID_SPLIT;
             } else {
                 if (n.cVol > n.rVol) {
                     sp.Set(n.nVol, coreNum / n.nVol, 1);
@@ -1583,7 +1653,13 @@ public:
 class Model005 : public TilingModel {
 public:
     Model005() : TilingModel(5, 0, 0, LAST_AXIS_TR_F2T, "Model005_f2t") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.col.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+
         maxCol = Align16(UB_SIZE_1_16_FP16, n.rVol, UB_SIZE_1_16_FP16);
         if ((n.cVol >= 128 * coreNum) && (n.rVol <= 8)) {
             sp.Set(1, coreNum, 1);
@@ -1594,16 +1670,24 @@ public:
                 sp.Set(n.nVol, coreNum / n.nVol, 1);
             }
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
-        ncr = n;
     }
 };
 
 class Model006 : public TilingModel {
 public:
     Model006() : TilingModel(6, 0, 0, LAST_AXIS_TR_T2F, "Model006_t2f") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.row.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+        if (IsValid(ncr, dim) == false) {
+            priority = INVALID_SPLIT;
+            return;
+        }
         maxRow = Align16(UB_SIZE_1_16_FP16, n.cVol, UB_SIZE_1_16_FP16) / 2;
         if ((n.cVol < 8) && (n.rVol >= 128 * coreNum)) {
             sp.Set(1, 1, coreNum);
@@ -1614,21 +1698,28 @@ public:
                 sp.Set(n.nVol, 1, coreNum / n.nVol);
             }
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
-        ncr = n;
+    }
+private:
+    bool IsValid(const NCR & ncr, int64_t dim) {
+        int64_t rowIndex = ncr.row[0];
+        if (rowIndex + (int64_t)ncr.col.size() != dim - 1) {
+            return false;
+        }
+        return true;
     }
 };
 
 class Model001_b16 : public TilingModel {
 public:
     Model001_b16() : TilingModel(1, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model001_b16") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
         bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
         if (res) {
             sp.Set(coreNum, 1, 1);
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
         ncr = n;
     }
@@ -1637,12 +1728,12 @@ public:
 class Model002_b16 : public TilingModel {
 public:
     Model002_b16() : TilingModel(2, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model002_b16") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
         if (res) {
             sp.Set(1, 1, coreNum);
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
         ncr = n;
     }
@@ -1651,12 +1742,12 @@ public:
 class Model003_b16 : public TilingModel {
 public:
     Model003_b16() : TilingModel(3, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model003_b16") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
         if (res) {
             sp.Set(1, coreNum, 1);
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
         ncr = n;
     }
@@ -1665,16 +1756,16 @@ public:
 class Model004_b16 : public TilingModel {
 public:
     Model004_b16() : TilingModel(4, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model004_b16") {}
-    void Decision(int64_t coreNum, const NCR & n) {
-        if (n.nVol >= coreNum ) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+        if (n.nVol >= coreNum) {
             if (n.cVol >= 16 && n.rVol >= 16) {
                 sp.Set(coreNum, 1, 1);
             } else {
-                priority =  INVALID_SPLIT;
+                priority = INVALID_SPLIT;
             }
         } else {
             if (n.cVol < 16 || n.rVol < 16) {
-                priority =  INVALID_SPLIT;
+                priority = INVALID_SPLIT;
             } else {
                 if (n.cVol > n.rVol) {
                     sp.Set(n.nVol, coreNum / n.nVol, 1);
@@ -1689,18 +1780,21 @@ public:
 class Model005_b16 : public TilingModel {
 public:
     Model005_b16() : TilingModel(5, 0, 0, LAST_AXIS_TR_F2T, "Model005_b16_f2t") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
         maxCol = Align16(UB_SIZE_1_16_FP16, n.rVol, UB_SIZE_1_16_FP16);
         if ((n.cVol >= 256 * coreNum) && (n.rVol <= 16)) {
             sp.Set(1, coreNum, 1);
-        } else if ((n.cVol > 16) && (n.rVol <= 16)) {
+        } else if ((n.cVol >= 16) && (n.rVol < 16)) {
             if (n.nVol > coreNum) {
                 sp.Set(coreNum, 1, 1);
             } else {
                 sp.Set(n.nVol, coreNum / n.nVol, 1);
             }
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
+        }
+        if (n.col.size() > 1) {
+            priority = INVALID_SPLIT;
         }
         ncr = n;
     }
@@ -1709,7 +1803,16 @@ public:
 class Model006_b16 : public TilingModel {
 public:
     Model006_b16() : TilingModel(6, 0, 0, LAST_AXIS_TR_T2F, "Model006_b16_t2f") {}
-    void Decision(int64_t coreNum, const NCR & n) {
+    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.row.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+        if (IsValid(ncr, dim) == false) {
+            priority = INVALID_SPLIT;
+            return;
+        }
         maxRow = Align16(UB_SIZE_1_16_FP16, n.cVol, UB_SIZE_1_16_FP16);
         if ((n.cVol <= 16) && (n.rVol >= 256 * coreNum)) {
             sp.Set(1, 1, coreNum);
@@ -1720,9 +1823,16 @@ public:
                 sp.Set(n.nVol, 1, coreNum / n.nVol);
             }
         } else {
-            priority =  INVALID_SPLIT;
+            priority = INVALID_SPLIT;
         }
-        ncr = n;
+    }
+private:
+    bool IsValid(const NCR & ncr, int64_t dim) {
+        int64_t rowIndex = ncr.row[0];
+        if (rowIndex + (int64_t)ncr.col.size() != dim - 1) {
+            return false;
+        }
+        return true;
     }
 };
 
@@ -1730,10 +1840,10 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
                             const ShapeInfo & shapeInfo,
                             RuntimeInfo & runtimeInfo) {
 
-#define ADD_MODEL(SpecifalModel) \
+#define ADD_MODEL(SpecificModel) \
     {\
-        auto model = std::make_shared<SpecifalModel>();\
-        model->Decision(compilerInfo.coreNum, runtimeInfo.ncrs[i]);\
+        auto model = std::make_shared<SpecificModel>();\
+        model->Decision(compilerInfo.coreNum, runtimeInfo.ncrs[i], shapeInfo.dim);\
         runtimeInfo.pqtm.push(model);\
     }
 
@@ -1797,7 +1907,8 @@ static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
 
     MakeNCRDecision(compilerInfo, shapeInfo, runtimeInfo);
 
-    CalcJumpInfo(runtimeInfo, shapeInfo.dim, shapeInfo.reducedInShape, shapeInfo.reducedOutShape, shapeInfo.reducedPerm);
+    CalcJumpInfo(runtimeInfo, shapeInfo.dim, shapeInfo.reducedInShape,
+                 shapeInfo.reducedOutShape, shapeInfo.reducedPerm);
 
     SplitColRowForCores(compilerInfo, shapeInfo, runtimeInfo);
 
@@ -1813,11 +1924,11 @@ static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
 
 }
 
-static void ScenarioGuaranteed(const CompilerInfo &compilerInfo, ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
+static bool ScenarioGuaranteed(const CompilerInfo &compilerInfo, ShapeInfo &shapeInfo, RuntimeInfo &runtimeInfo) {
     Reshape(shapeInfo);
     shapeInfo.scenario = SCENARIO_2;
     shapeInfo.isLastAxisHuge = true;
-    TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
+    return TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
 }
 
 static bool IsSpecificShape(const ShapeInfo &shapeInfo) {
@@ -1830,38 +1941,36 @@ bool TransposeCalcTilingData(const string &opType,
                              RuntimeInfo &runtimeInfo) {
     bool res = true;
     if (IsSpecificShape(shapeInfo)) {
-        ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
-        return true;
+        return ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
     }
 
     switch (shapeInfo.scenario) {
         case SCENARIO_0:
             res = TilingDataScenario0(compilerInfo, shapeInfo, runtimeInfo);
-            PrintTilingInfoScenario0(compilerInfo, shapeInfo, runtimeInfo);
             OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario0(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_1:
             res = TilingDataScenario1(compilerInfo, shapeInfo, runtimeInfo);
-            PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo);
             OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario1(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_2:
             res = TilingDataScenario2(compilerInfo, shapeInfo, runtimeInfo);
-            PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo);
             OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
+            break;
+        case SCENARIO_3:
+            res = TilingDataScenario3(compilerInfo, shapeInfo, runtimeInfo);
+            OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario3(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_6:
             res = TilingDataScenario6(compilerInfo, shapeInfo, runtimeInfo);
-            PrintTilingInfoScenario6(compilerInfo, shapeInfo, runtimeInfo);
             OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario6(compilerInfo, shapeInfo, runtimeInfo).c_str());
             break;
         case SCENARIO_7:
             res = TilingDataScenario7(compilerInfo, shapeInfo, runtimeInfo);
             if (res == false) {
-                ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
+                res = ScenarioGuaranteed(compilerInfo, shapeInfo, runtimeInfo);
                 OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario2(compilerInfo, shapeInfo, runtimeInfo).c_str());
             } else {
-                PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo);
                 OP_LOGI(opType.c_str(), "%s", PrintTilingInfoScenario7(compilerInfo, shapeInfo, runtimeInfo).c_str());
             }
         default:
@@ -2118,6 +2227,76 @@ static void SerializeScenario2(OpRunInfo &runInfo,
     runInfo.workspaces = workspace;
 }
 
+static void SerializeScenario3(OpRunInfo &runInfo,
+                                         const CompilerInfo & compilerInfo,
+                                         const ShapeInfo & shapeInfo,
+                                         const RuntimeInfo & runtimeInfo) {
+    vector<int64_t> headVec;
+    vector<int64_t> fixedVec;
+    vector<int64_t> perCoreVec;
+
+    // part1: head
+    WRITE_DATA_H(shapeInfo.scenario);              //0 : scenario
+    WRITE_DATA_H(0);                               //1 : fixed_len
+    WRITE_DATA_H(0);                               //2 : percore_len
+    WRITE_DATA_H(0);                               //3 : subSceanrio
+
+    // part2: fixed
+    WRITE_DATA_F(compilerInfo.coreNum);
+    WRITE_DATA_F(compilerInfo.ubSize);
+    WRITE_DATA_F(shapeInfo.lastAxisLen);
+    WRITE_DATA_F(shapeInfo.lastAxisBurstLen);
+    WRITE_DATA_F(shapeInfo.alignElement);
+    WRITE_DATA_F(shapeInfo.dim - 1);
+    WRITE_DATA_F(runtimeInfo.hugeInfo.majorLoopNum);
+    WRITE_DATA_F(runtimeInfo.hugeInfo.majorBlocks);
+    WRITE_DATA_F(runtimeInfo.hugeInfo.tailBlocks);
+    WRITE_DATA_F(runtimeInfo.hugeInfo.backEle);
+
+    for (int i = 0; i < shapeInfo.dim - 1; i++) {
+        WRITE_DATA_F(runtimeInfo.srcJumpStride[i]);
+    }
+    for (int i = 0; i < shapeInfo.dim - 1; i++) {
+        WRITE_DATA_F(runtimeInfo.dstJumpStride[i]);
+    }
+    for (int i = 0; i < shapeInfo.dim - 1; i++) {
+        WRITE_DATA_F(runtimeInfo.dstJumpFactor[i]);
+    }
+
+    // part3: per core
+    int perCoreLen = 0;
+    for (int i = 0; i < compilerInfo.coreNum; i++) {
+        WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].num);
+        for (int j = 0; j < shapeInfo.dim - 1; j++) {
+            WRITE_DATA_P(runtimeInfo.infoPerCoreLastAxisNT[i].initTuple[j]);
+        }
+        if (perCoreLen == 0) {
+            perCoreLen = perCoreVec.size();
+        }
+    }
+
+    BlockAlign(fixedVec);
+    BlockAlign(perCoreVec);
+
+    headVec[1] = fixedVec.size();
+    headVec[2] = perCoreLen;
+
+    for (size_t i = 0; i < headVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, headVec[i]);
+    }
+    for (size_t i = 0; i < fixedVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, fixedVec[i]);
+    }
+    for (size_t i = 0; i < perCoreVec.size(); i++) {
+        ByteBufferPut(runInfo.tiling_data, perCoreVec[i]);
+    }
+
+    runInfo.block_dim = compilerInfo.coreNum;
+    std::vector<int64_t> workspace;
+    workspace.push_back(1024);
+    runInfo.workspaces = workspace;
+}
+
 static void SerializeScenario6(OpRunInfo &runInfo,
                                          const CompilerInfo & compilerInfo,
                                          const ShapeInfo & shapeInfo,
@@ -2241,6 +2420,9 @@ void SerializeTilingData(OpRunInfo &runInfo,
             break;
         case SCENARIO_2:
             SerializeScenario2(runInfo, compilerInfo, shapeInfo, runtimeInfo);
+            break;
+        case SCENARIO_3:
+            SerializeScenario3(runInfo, compilerInfo, shapeInfo, runtimeInfo);
             break;
         case SCENARIO_6:
             SerializeScenario6(runInfo, compilerInfo, shapeInfo, runtimeInfo);

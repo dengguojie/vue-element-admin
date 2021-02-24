@@ -236,7 +236,7 @@ TEST_F(TransposeTilingTest, stride_lt_65535) {
     shapeInfo.perm.push_back(2);
 
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
-    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
 
 TEST_F(TransposeTilingTest, identical_shape) {
@@ -296,7 +296,29 @@ TEST_F(TransposeTilingTest, stride_gt_65535) {
     shapeInfo.perm.push_back(2);
     
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
-    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
+}
+
+TEST_F(TransposeTilingTest, huge_last_axis) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(7000);
+    shapeInfo.inShape.push_back(32768);
+    shapeInfo.inShape.push_back(160000);
+    shapeInfo.outShape.push_back(32768);
+    shapeInfo.outShape.push_back(7000);
+    shapeInfo.outShape.push_back(160000);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(2);
+    
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
 
 TEST_F(TransposeTilingTest, last_axis_join_transpose_2d) {

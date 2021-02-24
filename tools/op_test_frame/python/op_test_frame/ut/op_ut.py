@@ -18,6 +18,7 @@ the op ut test main class: OpUT, BroadcaseOpUT, ElementwiseOpUT, ReduceOpUT
 """
 import os
 import sys
+import ast
 import stat
 import json
 import inspect
@@ -638,21 +639,115 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         from te.lang.base import op_tiling
         kernel_name = self._get_kernel_name(run_soc_version, case_info)
         compile_info = self._get_compile_info(kernel_name)
-        tiling_inputs = []
-        tiling_outputs = []
-        for input_info in input_info_list:
-            tiling_inputs.append({
-                "shape": input_info.get("run_shape"),
-                "dtype": input_info.get("dtype")
-            })
-        for output_info in output_info_list:
-            tiling_outputs.append({
-                "shape": output_info.get("run_shape"),
-                "dtype": input_info.get("dtype")
-            })
         tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
-                                             inputs=tiling_inputs, outputs=tiling_outputs)
+                                             inputs=input_info_list, outputs=output_info_list)
         return tiling_info.get("block_dim"), tiling_info.get("tiling_data")
+
+    @staticmethod
+    def _get_op_param_desc_info(op_func):
+        param_desc_list = []
+        param_name_list = []
+
+        def visit_function_def(node: ast.FunctionDef):
+            for d in node.decorator_list:
+                if isinstance(d, ast.Call):
+                    name = d.func.attr if isinstance(d.func, ast.Attribute) else d.func.id
+                else:
+                    name = d.attr if isinstance(d, ast.Attribute) else d.id
+                if name == "check_op_params":
+                    for param in d.args:
+                        param_desc_list.append(param.attr)
+            for p in node.args.args:
+                param_name_list.append(p.arg)
+
+        node_iter = ast.NodeVisitor()
+        node_iter.visit_FunctionDef = visit_function_def
+        node_iter.visit(ast.parse(inspect.getsource(op_func)))
+
+        return param_desc_list, param_name_list
+
+    def _check_and_fix_param_desc(self, param_desc_list, op_params):
+
+        def _check_input(param_idx, op_param_desc: str):
+            if len(op_params) <= param_idx:
+                raise RuntimeError("Op params in testcase not match the op interface check_op_params decorator.")
+            if op_param_desc.lower().startswith("required") and (
+                    not op_params[param_idx] or not isinstance(op_params[param_idx], dict)):
+                raise RuntimeError("Op params in testcase not match the op interface check_op_params decorator.")
+            if op_param_desc.lower().startswith("option") and not (
+                    op_params[param_idx] is None or isinstance(op_params[param_idx], dict)):
+                raise RuntimeError("Op params in testcase not match the op interface check_op_params decorator.")
+            if op_param_desc.lower().startswith("dynamic") and not (isinstance(op_params[param_idx], (tuple, list))):
+                raise RuntimeError("Op params in testcase not match the op interface check_op_params decorator.")
+
+        if param_desc_list:
+            for idx, param_desc in enumerate(param_desc_list):
+                if param_desc.lower().endswith("input") or param_desc.lower().endswith("output"):
+                    _check_input(idx, param_desc)
+        else:
+            param_desc_list = []
+            for idx, op_param in enumerate(op_params):
+                if op_param:
+                    if isinstance(op_param, dict) and op_param.get("param_type") == "input":
+                        param_desc_list.append("REQUIRED_INPUT")
+                    if isinstance(op_param, (tuple, list)) and op_param[0].get("param_type") == "input":
+                        param_desc_list.append("DYNAMIC_INPUT")
+                    if isinstance(op_param, dict) and op_param.get("param_type") == "output":
+                        param_desc_list.append("REQUIRED_OUTPUT")
+                    if isinstance(op_param, (tuple, list)) and op_param[0].get("param_type") == "output":
+                        param_desc_list.append("DYNAMIC_OUTPUT")
+                else:
+                    if idx == 0:
+                        param_desc_list.append("OPTION_INPUT")
+                    else:
+                        if isinstance(op_params[idx - 1], dict) and op_param[idx - 1].get("param_type") == "input":
+                            param_desc_list.append("OPTION_INPUT")
+                        else:
+                            param_desc_list.append("OPTION_OUTPUT")
+        return param_desc_list
+
+    def _build_tiling_args(self, op_params):
+
+        def _add_to_list(param, param_name, param_list):
+            if isinstance(param, (tuple, list)):
+                dynamic_params = []
+                for one in param:
+                    dynamic_param = {
+                        "shape": one.get("run_shape"),
+                        "dtype": one.get("dtype"),
+                    }
+                    if one.get("value_need_in_tiling"):
+                        name = one.get("name")
+                        param_name = name if name else param_name
+                        dynamic_param["name"] = param_name
+                        dynamic_param["const_value"] = one.get("value").tolist()
+                    dynamic_params.append(dynamic_param)
+                param_list.append(dynamic_params)
+            else:
+                one_param = {
+                    "shape": param.get("run_shape"),
+                    "dtype": param.get("dtype"),
+                }
+                if param.get("value_need_in_tiling"):
+                    name = param.get("name")
+                    param_name = name if name else param_name
+                    one_param["name"] = param_name
+                    one_param["const_value"] = param.get("value").tolist()
+                param_list.append(one_param)
+
+        input_list = []
+        output_list = []
+        op_func, _ = self._load_op_func()
+        param_desc_list, param_name_list = self._get_op_param_desc_info(op_func)
+        param_desc_list = self._check_and_fix_param_desc(param_desc_list, op_params)
+        if len(param_name_list) < len(param_desc_list):
+            raise RuntimeError("Op params in testcase not match the op interface check_op_params decorator.")
+        for idx, param_desc in enumerate(param_desc_list):
+            if param_desc.lower().endswith("input"):
+                _add_to_list(op_params[idx], param_name_list[idx], input_list)
+            elif param_desc.lower().endswith("output"):
+                _add_to_list(op_params[idx], param_name_list[idx], output_list)
+        return input_list, output_list
 
     def _run_kernel(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict[str, Any] = None):
         bin_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + "_" + run_soc_version.lower() + ".o")
@@ -673,10 +768,11 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                                   simulator_dump_path=simulator_dump_path) as runner:
             if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
                 op_kernel.set_compile_info({})
+                tiling_inputs, tiling_outputs = self._build_tiling_args(case_info.op_params)
                 block_dim, tiling_data = self._do_tiling(run_soc_version=run_soc_version,
                                                          case_info=case_info,
-                                                         input_info_list=input_info_list,
-                                                         output_info_list=output_info_list)
+                                                         input_info_list=tiling_inputs,
+                                                         output_info_list=tiling_outputs)
                 output_data_list = runner.run(op_kernel, inputs=input_data_list,
                                               tiling=tiling_data, block_dim=block_dim)
             else:
@@ -707,7 +803,6 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         return stage_status
 
     def _gen_expect_data(self, case_info: op_ut_case_info.OpUTCase):
-
         addition_params = {}
         if case_info.addition_params:
             addition_params = case_info.addition_params
@@ -753,7 +848,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if expect_tensor.shape != actual_tensor.shape:
                 compare_success = False
                 err_msg += "output %d 's shape is not same, expect: [%s], actual: [%s]\n" % (
-                    idx, ",".join([str(x) for x in expect_tensor.shape]), ",".join([str(x) for x in actual_tensor.shape]))
+                    idx, ",".join([str(x) for x in expect_tensor.shape]),
+                    ",".join([str(x) for x in actual_tensor.shape]))
                 continue
             cmp_res = precision_compare_util.compare_precision(output.get("value"),
                                                                output.get("expect_value"),

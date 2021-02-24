@@ -46,8 +46,10 @@ namespace optiling {
  * 4KB : reserved
  */
 #define UB_RESERVED_BLOCK_SIZE 4 * 32
-#define LAST_AXIS_BLOCK_ALIGN_HUGE_THRESHOLD 4096 //unit B
-#define LAST_AXIS_NOT_BLOCK_ALIGN_HUGE_THRESHOLD 128 //unit B
+#define LAST_AXIS_HUGE_THRESHOLD 100 * 1024 //unit B
+#define HUGE_BLOCKS_UNIT (LAST_AXIS_HUGE_THRESHOLD / 32) //unit blocks, 3200 blocks 
+#define LAST_AXIS_BLOCK_ALIGN_LARGE_THRESHOLD 4096 //unit B
+#define LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD 128 //unit B
 #define WORKSPACE_MAX_SIZE (int64_t)(16 * 1024 * 1024 * 1024) // 16GB
 #define UB_CAP_BLOCKS 7800 // for 310 256 - 8 = 248KB = 7936 Blocks
 
@@ -64,8 +66,9 @@ namespace optiling {
 
 enum TransposeScenario {
     SCENARIO_0 = 0,     //identical shape
-    SCENARIO_1 = 1,     //huge last axis and not transpose
-    SCENARIO_2 = 2,     //last axis not transpose
+    SCENARIO_1 = 1,     //large last axis and not transpose
+    SCENARIO_2 = 2,     //small last axis and not transpose
+    SCENARIO_3 = 3,     //huge  last axis and not transpose
     SCENARIO_6 = 6,     //small shape
     SCENARIO_7 = 7,     //last axis transpose
 };
@@ -110,7 +113,7 @@ public:
                                                                  maxRow(row),
                                                                  subScenario(scenario),
                                                                  modelName(name) {}
-    virtual void Decision(int64_t coreNum, const NCR & ncr) = 0;
+    virtual void Decision(int64_t coreNum, const NCR & ncr, int64_t dim) = 0;
     SplitParam sp;
     NCR ncr;
     int64_t priority;
@@ -208,6 +211,20 @@ struct LastAxisNTLoopInfo {
         tailMajorLoop = 0;
         tailMajorNum = 0;
         tailTailNum = 0;
+    }
+};
+
+struct LastAxisNTHugeInfo {
+    int64_t majorLoopNum;
+    int64_t majorBlocks;
+    int64_t tailBlocks;
+    int64_t backEle;
+
+    LastAxisNTHugeInfo() {
+        majorLoopNum = 0;
+        majorBlocks = 0;
+        tailBlocks = 0;
+        backEle = 0;
     }
 };
 
@@ -361,10 +378,14 @@ struct RuntimeInfo {
     std::vector<IdenticalInfo> infoPerCoreIdentical;
 
     /*
-     * scenario_1: last axis huge not transposed
+     * scenario_1: last axis large not transposed
      */
     std::vector<InfoPerCoreLastAxisNT> infoPerCoreLastAxisNT;
 
+    /*
+     * scenario_3: last axis huge not transposed
+     */
+    LastAxisNTHugeInfo hugeInfo;
 
     /*
      *
