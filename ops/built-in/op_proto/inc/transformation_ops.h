@@ -737,9 +737,9 @@ where ho/wo is do = (output_d + 2*padding_d - dilation_d*(kernel_d - 1) - 1)//st
 * Compatible with Pytorch col2im/im2col_backward operator.
 */
 REG_OP(Col2im)
-    .INPUT(x, TensorType({DT_FLOAT}))
-    .INPUT(output_size, TensorType({DT_INT32}))
-    .OUTPUT(y, TensorType({DT_FLOAT}))
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(output_size, TensorType({DT_INT32, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
     .REQUIRED_ATTR(kernel_size, ListInt)
     .REQUIRED_ATTR(dilation, ListInt)
     .REQUIRED_ATTR(padding, ListInt)

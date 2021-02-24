@@ -17,8 +17,7 @@ Col2im
 from te import tik
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-
-DTYPE_BYTE_NUM = 4  # only fp32
+from impl import constant_util as constant
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @fusion_manager.register("Col2im")
@@ -42,6 +41,13 @@ def col2im_compute(
     output_batch, output_c1, output_h, output_w, output_c0 = y_gm.shape
     input_batch, input_c1, input_w, input_h, input_c0 = x_gm.shape
 
+    input_dtype = x_gm.dtype
+    output_dtype = y_gm.dtype
+    if input_dtype == "float32":
+        dtype_byte_num = constant.DATA_SIZE_FOUR
+    else:
+        dtype_byte_num = constant.DATA_SIZE_TWO
+
     kernel_h, kernel_w = kernel_size
     kernel_num = kernel_h * kernel_w
 
@@ -61,25 +67,51 @@ def col2im_compute(
         n = nc // output_c1
         ci = nc % output_c1
         
+        with tik_instance.new_stmt_scope():
+            zeors_ub = tik_instance.Tensor(
+                output_dtype, (output_w, output_c0), tik.scope_ubuf, "zeors_ub"
+            )
+            if output_dtype == "float32":
+                rpt = (output_w * output_c0) // constant.MASK64  
+                rmd = (output_w * output_c0) % constant.MASK64
+
+                tik_instance.vec_dup(constant.MASK64, zeors_ub, 0, rpt, constant.REPEAT_STRIDE_EIGHT)
+                if (rmd):
+                    tik_instance.vec_dup(rmd, zeors_ub[rpt * constant.MASK64], 0, constant.REPEAT_TIME_ONCE, constant.REPEAT_STRIDE_EIGHT)
+
+                tik_instance.data_move(
+                    y_gm[n, ci, 0, 0, 0], zeors_ub, constant.SID, output_h, 
+                    (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                    constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                )
+            else:
+                rpt = (output_w * output_c0) // constant.MASK128  
+                rmd = (output_w * output_c0) % constant.MASK128
+
+                tik_instance.vec_dup(constant.MASK128, zeors_ub, 0, rpt, constant.REPEAT_STRIDE_EIGHT)
+                if (rmd):
+                    tik_instance.vec_dup(
+                        rmd, zeors_ub[rpt * constant.MASK128], 0, 
+                        constant.REPEAT_TIME_ONCE, constant.REPEAT_STRIDE_EIGHT
+                    )
+
+                tik_instance.data_move(
+                    y_gm[n, ci, 0, 0, 0], zeors_ub, constant.SID, output_h, 
+                    (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                    constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                )
+        output_w_max = ((output_w * output_c0 + 63) // constant.MASK64) * (constant.MASK64)
         output_ub = tik_instance.Tensor(
-            "float32", (output_w, output_c0), tik.scope_ubuf, "output_ub"
-        )
-        rpt = (output_w * output_c0) // 64  # fewer than 255
-        rmd = (output_w * output_c0) % 64
-
-        tik_instance.vec_dup(64, output_ub, 0, rpt, 8)
-        if (rmd):
-            tik_instance.vec_dup(rmd, output_ub[rpt * 64], 0, 1, 8)
-
-        tik_instance.data_move(
-            y_gm[n, ci, 0, 0, 0], output_ub, 0, output_h, 
-            (output_w * output_c0 * DTYPE_BYTE_NUM) // 32, 0, 0
+            "float32", (output_w_max, output_c0), tik.scope_ubuf, "output_ub"
         )
 
         input_ub = tik_instance.Tensor(
             "float32", (wo_num * wo_16, input_c0), tik.scope_ubuf, "input_ub"
         )
-        tik_instance.vec_dup(64, input_ub, 0, (wo_num * wo_16 * input_c0) // 64, 8)
+        tik_instance.vec_dup(
+            constant.MASK64, input_ub, 0, 
+            (wo_num * wo_16 * input_c0) // constant.MASK64, constant.REPEAT_STRIDE_EIGHT
+        )
         
         with tik_instance.for_range(0, kernel_num) as mask_id:
             width = mask_id % kernel_w
@@ -88,26 +120,101 @@ def col2im_compute(
                 # don't support to padding at current version
                 output_offset_h = height * dilation_h + h * stride_h 
                 
-                tik_instance.data_move(
-                    input_ub, x_gm[n, ci, mask_id, h * wo, 0], 
-                    0, 1, (wo * input_c0 * DTYPE_BYTE_NUM) // 32, 0, 0
-                )
+                if input_dtype == "float32":
+                    tik_instance.data_move(
+                        input_ub, x_gm[n, ci, mask_id, h * wo, 0], 
+                        constant.SID, constant.DEFAULT_NBURST, 
+                        (wo * input_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                        constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                    )
+                else:
+                    input_ub_fp16 = tik_instance.Tensor(
+                        "float16", (wo_num * wo_16, input_c0), tik.scope_ubuf, "input_ub_fp16"
+                    )
+                    tik_instance.vec_dup(
+                        constant.MASK128, input_ub_fp16, 0, 
+                        (wo_num * wo_16 * input_c0) // constant.MASK128, constant.REPEAT_STRIDE_EIGHT
+                    )
+                    tik_instance.data_move(
+                        input_ub_fp16, x_gm[n, ci, mask_id, h * wo, 0], 
+                        constant.SID, constant.DEFAULT_NBURST, 
+                        (wo * input_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                        constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                    )
+                    tik_instance.vconv(
+                        constant.MASK64, "none", input_ub, input_ub_fp16, 
+                        (wo_num * wo_16 * input_c0) // constant.MASK64, 
+                        constant.STRIDE_ONE, constant.STRIDE_ONE, 
+                        constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_FOUR
+                    )
 
-                tik_instance.data_move(
-                    output_ub, y_gm[n, ci, output_offset_h, 0, 0], 
-                    0, 1, (output_w * output_c0 * DTYPE_BYTE_NUM) // 32, 0, 0
-                )
-                
+                if output_dtype == "float32":
+                    tik_instance.data_move(
+                        output_ub, y_gm[n, ci, output_offset_h, 0, 0], 
+                        constant.SID, constant.DEFAULT_NBURST, 
+                        (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                        constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                    )
+                else:
+                    output_ub_fp16 = tik_instance.Tensor(
+                        "float16", (output_w_max, output_c0), tik.scope_ubuf, "output_ub_fp16"
+                    )
+                    tik_instance.data_move(
+                        output_ub_fp16, y_gm[n, ci, output_offset_h, 0, 0], 
+                        constant.SID, constant.DEFAULT_NBURST, 
+                        (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                        constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                    )
+                    tik_instance.vconv(
+                        constant.MASK64, "none", output_ub, output_ub_fp16, 
+                        (output_w * output_c0) // constant.MASK64, 
+                        constant.STRIDE_ONE, constant.STRIDE_ONE, 
+                        constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_FOUR
+                    )
+                    offset_fp16 = (output_w * output_c0) // constant.MASK64
+                    if (output_w * output_c0) % constant.MASK64:
+                        tik_instance.vconv(
+                            (output_w * output_c0) % constant.MASK64, "none", 
+                            output_ub[offset_fp16 * constant.MASK64], 
+                            output_ub_fp16[offset_fp16 * constant.MASK64], constant.REPEAT_TIME_ONCE, 
+                            constant.STRIDE_ONE, constant.STRIDE_ONE, 
+                            constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_FOUR
+                        )
                 tik_instance.col2img(
                     output_ub, input_ub, (0, 0, 0, 0), output_h, output_w, width, 
                     0, 0, 0, stride_w, stride_h, kernel_w, kernel_h, 
                     dilation_w, dilation_h, wo_num
                 )
 
-                tik_instance.data_move(
-                    y_gm[n, ci, output_offset_h, 0, 0], output_ub, 
-                    0, 1, (output_w * output_c0 * DTYPE_BYTE_NUM) // 32, 0, 0
-                )
+                if output_dtype == "float32":
+                    tik_instance.data_move(
+                        y_gm[n, ci, output_offset_h, 0, 0], output_ub, 
+                        constant.SID, constant.DEFAULT_NBURST, 
+                        (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                        constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                    )
+                else:
+                    tik_instance.vconv(
+                        constant.MASK64, "none", output_ub_fp16, output_ub, 
+                        (output_w * output_c0) // constant.MASK64, 
+                        constant.STRIDE_ONE, constant.STRIDE_ONE, 
+                        constant.REPEAT_STRIDE_FOUR, constant.REPEAT_STRIDE_EIGHT
+                    )                    
+                    offset_fp16 = (output_w * output_c0) // constant.MASK64
+                    if (output_w * output_c0) % constant.MASK64:
+                        tik_instance.vconv(
+                            (output_w * output_c0) % constant.MASK64, "none", 
+                            output_ub_fp16[offset_fp16 * constant.MASK64], 
+                            output_ub[offset_fp16 * constant.MASK64], constant.REPEAT_TIME_ONCE, 
+                            constant.STRIDE_ONE, constant.STRIDE_ONE, 
+                            constant.REPEAT_STRIDE_FOUR, constant.REPEAT_STRIDE_EIGHT
+                        )
+                    tik_instance.data_move(
+                        y_gm[n, ci, output_offset_h, 0, 0], output_ub_fp16, 
+                        constant.SID, constant.DEFAULT_NBURST, 
+                        (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                        constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                    )
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
@@ -137,31 +244,9 @@ def col2im(
     tik_dprofile = tik.Dprofile("v100", "cloud")
     tik_instance = tik.Tik(tik_dprofile)
 
-    output_shape = y["shape"]
-    output_batch, output_c1, output_h, output_w, output_c0 = output_shape
-
-    input_shape = x["shape"]
-    input_batch, input_c1, input_w, input_h, input_c0 = input_shape
-
-    kernel_h, kernel_w = kernel_size
-    stride_h, stride_w = stride
-    padding_h, padding_w = padding
-    dilation_h, dilation_w = dilation
-
-    ho = (output_h + 2 * padding_h - dilation_h * (kernel_h - 1) - 1) // stride_h + 1
-    wo = (output_w + 2 * padding_w - dilation_w * (kernel_w - 1) - 1) // stride_w + 1
-
-    assert output_batch == input_batch, "output_batch should equal to input_batch."
-    assert output_c1 == input_c1, "output_c1 should equal to input_c1."
-    assert output_c0 == 16, "output_c0 should equal to 0."
-    assert input_c0 == 16, "input_c0 should equal to 0."
-
-    assert input_h == ho * wo, "input_h should equal to ho*wo."
-    assert input_w == kernel_h * kernel_w, "input_w should equal to kernel_h*kernel_w."
-
-    y_gm = tik_instance.Tensor("float32", output_shape, tik.scope_gm, "y_gm")
-    x_gm = tik_instance.Tensor("float32", input_shape, tik.scope_gm, "x_gm")
-    output_size_gm = tik_instance.Tensor("int32", output_size["shape"], tik.scope_gm, "output_size_gm")
+    y_gm = tik_instance.Tensor(y["dtype"], y["shape"], tik.scope_gm, "y_gm")
+    x_gm = tik_instance.Tensor(x["dtype"], x["shape"], tik.scope_gm, "x_gm")
+    output_size_gm = tik_instance.Tensor(output_size["dtype"], output_size["shape"], tik.scope_gm, "output_size_gm")
 
     col2im_compute(x_gm, output_size_gm, y_gm, kernel_size, dilation, padding, stride, tik_instance)
 
