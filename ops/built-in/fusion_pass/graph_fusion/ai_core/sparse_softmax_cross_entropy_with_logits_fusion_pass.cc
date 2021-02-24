@@ -77,7 +77,9 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   std::string SparesSoftMaxName = fusedNode->GetOpDesc()->GetName();
 
   // Define node name----->SparseSoftmaxCrossEntropyWithLogits_OneHot
-  OneHot = std::make_shared<ge::OpDesc>(SparesSoftMaxName + "_OneHot", "OneHotD");
+  FUSION_PASS_MAKE_SHARED(
+      (OneHot = std::make_shared<ge::OpDesc>(SparesSoftMaxName + "_OneHot", "OneHotD")),
+      return FAILED);
 
   // Define input auxiliary matrix shape of OneHot node
   vector<int64_t> Onehot_input_shape;
@@ -129,8 +131,10 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   // Get original pointer
   int32_t* ptr1 = inputAssit1.get();
   *ptr1 = size_one;
-  assitPtr2 = std::make_shared<ge::GeTensor>(tensorDesc1, reinterpret_cast<uint8_t*>(inputAssit1.get()),
-                                             sizeof(int32_t) * size_one);
+  FUSION_PASS_MAKE_SHARED(
+      (assitPtr2 = std::make_shared<ge::GeTensor>(tensorDesc1, reinterpret_cast<uint8_t*>(inputAssit1.get()),
+                                             sizeof(int32_t) * size_one)),
+      return FAILED);
 
   // Construct pointer value(input3 of onehot--->Default value 0)
   ge::GeTensorPtr assitPtr3 = nullptr;
@@ -149,8 +153,10 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   // Get original pointer
   int32_t* ptr2 = inputAssit2.get();
   *ptr2 = size_zero;
-  assitPtr3 = std::make_shared<ge::GeTensor>(tensorDesc2, reinterpret_cast<uint8_t*>(inputAssit2.get()),
-                                             sizeof(int32_t) * size_zero);
+  FUSION_PASS_MAKE_SHARED(
+      (assitPtr3 = std::make_shared<ge::GeTensor>(tensorDesc2, reinterpret_cast<uint8_t*>(inputAssit2.get()),
+                                             sizeof(int32_t) * size_zero)),
+      return FAILED);
   // set weight
   vector<ge::GeTensorPtr> weights = {assitPtr2, assitPtr3};
   ge::OpDescUtils::SetWeights(OneHotNode, weights);

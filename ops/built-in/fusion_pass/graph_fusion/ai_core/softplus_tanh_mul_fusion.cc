@@ -111,7 +111,7 @@ namespace fe {
       OpDescPtr softPlusOpDescPtr = softPlusNode->GetOpDesc();
       std::shared_ptr<ge::OpDesc> mishOpDescPtr = nullptr;
       std::string newName = softPlusOpDescPtr->GetName() + tanhNode->GetName() + mulNode->GetName();
-      mishOpDescPtr = std::make_shared<ge::OpDesc>(newName, MISH);
+      FUSION_PASS_MAKE_SHARED(mishOpDescPtr = std::make_shared<ge::OpDesc>(newName, MISH), return NOT_CHANGED);
 
       // add input and output for mish node
       ge::GeTensorDesc inputTensorDesc = softPlusNode->GetOpDesc()->GetInputDesc(0);

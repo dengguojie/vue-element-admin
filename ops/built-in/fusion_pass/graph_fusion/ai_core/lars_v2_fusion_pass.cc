@@ -76,7 +76,10 @@ Status LarsV2FusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
   lars_v2_update_desc->SetType("LarsV2Update");
 
   // new the square_sum_all node
-  OpDescPtr square_sum_all_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "/SquareSumAll", "SquareSumAll");
+  OpDescPtr square_sum_all_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (square_sum_all_desc = std::make_shared<ge::OpDesc>(fused_desc->GetName() + "/SquareSumAll", "SquareSumAll")),
+      return PARAM_INVALID);
 
   CreateSquareSumAllOp(fused_desc, square_sum_all_desc);
 

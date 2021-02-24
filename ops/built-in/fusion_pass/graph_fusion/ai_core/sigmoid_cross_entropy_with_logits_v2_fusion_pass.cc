@@ -89,9 +89,13 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
   ge::OpDescPtr reduceDesc;
 
   if (reduction == "sum") {
-    reduceDesc = std::make_shared<ge::OpDesc>(sigmoidNode->GetName() + "ReduceSumD", "ReduceSumD");
+    FUSION_PASS_MAKE_SHARED(
+        (reduceDesc = std::make_shared<ge::OpDesc>(sigmoidNode->GetName() + "ReduceSumD", "ReduceSumD")),
+        failStatus = true; return nullptr);
   } else {
-    reduceDesc = std::make_shared<ge::OpDesc>(sigmoidNode->GetName() + "ReduceMeanD", "ReduceMeanD");
+    FUSION_PASS_MAKE_SHARED(
+        (reduceDesc = std::make_shared<ge::OpDesc>(sigmoidNode->GetName() + "ReduceMeanD", "ReduceMeanD")),
+        failStatus = true; return nullptr);
   }
 
   // input

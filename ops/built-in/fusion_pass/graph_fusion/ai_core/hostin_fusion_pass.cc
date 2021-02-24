@@ -117,10 +117,14 @@ Status HostINFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& inNodePt
     // create transpose opdesc
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Get Const node, do fusion pass.");
     std::shared_ptr<ge::OpDesc> inhostOpDescPtr = nullptr;
-    inhostOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_inhost", "InHost");
+    FUSION_PASS_MAKE_SHARED(
+        (inhostOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_inhost", "InHost")),
+        return FAILED);
 
     std::shared_ptr<ge::OpDesc> ininferOpDescPtr = nullptr;
-    ininferOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_v2D", "INInferV2D");
+    FUSION_PASS_MAKE_SHARED(
+        (ininferOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_v2D", "INInferV2D")),
+        return FAILED);
 
     FUSION_PASS_CHECK(SetAttrValueForNewNode(inOpDescPtr, inhostOpDescPtr) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Update output_dim and group_size failed."), return FAILED);

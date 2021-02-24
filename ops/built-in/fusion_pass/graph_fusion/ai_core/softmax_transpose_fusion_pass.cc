@@ -187,17 +187,23 @@ Status softmaxTransFusionPass::INFuison(ge::ComputeGraph& graph, ge::NodePtr& in
     OP_LOGI(FUSED_OP_TYPE.c_str(), "begin softmax transpose fusion pass");
     // create softmax opdesc
     std::shared_ptr<ge::OpDesc> SoftmaxV2OpDescPtr = nullptr;
-    SoftmaxV2OpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_new", "SoftmaxV2");
+    FUSION_PASS_MAKE_SHARED(
+        (SoftmaxV2OpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_new", "SoftmaxV2")),
+        return NOT_CHANGED);
 
     FUSION_PASS_CHECK(SetAttrValueForNewNode(inOpDescPtr, SoftmaxV2OpDescPtr, shapeSize) != SUCCESS,
                       OP_LOGW(FUSED_OP_TYPE.c_str(), "Update softmax attr failed."), return NOT_CHANGED);
 
     // create transpose opdesc
     std::shared_ptr<ge::OpDesc> transposeOpDescPtr = nullptr;
-    transposeOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_input", "TransposeD");
+    FUSION_PASS_MAKE_SHARED(
+        (transposeOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_input", "TransposeD")),
+        return NOT_CHANGED);
 
     std::shared_ptr<ge::OpDesc> transposeOutOpDescPtr = nullptr;
-    transposeOutOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_out", "TransposeD");
+    FUSION_PASS_MAKE_SHARED(
+        (transposeOutOpDescPtr = std::make_shared<ge::OpDesc>(inOpDescPtr->GetName() + "_out", "TransposeD")),
+        return NOT_CHANGED);
 
     FUSION_PASS_CHECK(SetAttrValue(transposeOpDescPtr, shapeSize, 1) != SUCCESS,
                       OP_LOGW(FUSED_OP_TYPE.c_str(), "set transpose perm failed."), return NOT_CHANGED);

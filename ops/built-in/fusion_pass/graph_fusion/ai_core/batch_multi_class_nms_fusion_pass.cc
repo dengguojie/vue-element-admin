@@ -215,7 +215,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       std::string add1DescName = fusedNode->GetOpDesc()->GetName();
 
       // Define node name----->BatchMultiClassNonMaxSuppression_Add1
-      Adds = std::make_shared<ge::OpDesc>(add1DescName + "_Add1", "Adds");
+      FUSION_PASS_MAKE_SHARED((Adds = std::make_shared<ge::OpDesc>(add1DescName + "_Add1", "Adds")),
+                              Adds = nullptr;
+                              return PARAM_INVALID);
 
       // Define out auxiliary matrix shape of Add1 node
       vector<int64_t> newnodeShapeVec;
@@ -260,7 +262,9 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
         std::string cast1DescName = fusedNode->GetOpDesc()->GetName();
 
         // Define node name----->BatchMultiClassNonMaxSuppression_Cast1
-        Cast = std::make_shared<ge::OpDesc>(cast1DescName + "_Cast1", "Cast");
+        FUSION_PASS_MAKE_SHARED((Cast = std::make_shared<ge::OpDesc>(cast1DescName + "_Cast1", "Cast")),
+                                Cast = nullptr;
+                                return PARAM_INVALID);
 
         // Define out auxiliary matrix shape of Cast1 node
         vector<int64_t> castnodeShapeVec;
@@ -316,7 +320,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       std::string mulDescName = fusedNode->GetOpDesc()->GetName();
 
       // Define node name----->BatchMultiClassNonMaxSuppression_Muls
-      Muls = std::make_shared<ge::OpDesc>(mulDescName + "_Muls", "Muls");
+      FUSION_PASS_MAKE_SHARED((Muls = std::make_shared<ge::OpDesc>(mulDescName + "_Muls", "Muls")),
+                              return FAILED);
 
       // Define out auxiliary matrix shape of Muls node
       ge::GeShape mulnewShape(newnodeShapeVec);
@@ -346,7 +351,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       std::string add_mulDescName = fusedNode->GetOpDesc()->GetName();
 
       // Define node name----->BatchMultiClassNonMaxSuppression_Add_mul
-      Adds_mul = std::make_shared<ge::OpDesc>(add_mulDescName + "_Add_mul", "Adds");
+      FUSION_PASS_MAKE_SHARED((Adds_mul = std::make_shared<ge::OpDesc>(add_mulDescName + "_Add_mul", "Adds")),
+                              return PARAM_INVALID);
 
       // Define out auxiliary matrix shape of Add1 node
       ge::GeShape add_mulnewShape(newnodeShapeVec);
@@ -377,7 +383,8 @@ Status BatchMultiClassNonMaxSuppressionFusionPass::Fusion(ge::ComputeGraph& grap
       std::string divDescName = fusedNode->GetOpDesc()->GetName();
 
       // Define node name----->BatchMultiClassNonMaxSuppression_Div
-      Div = std::make_shared<ge::OpDesc>(divDescName + "_Div", "Div");
+      FUSION_PASS_MAKE_SHARED((Div = std::make_shared<ge::OpDesc>(divDescName + "_Div", "Div")),
+                              return PARAM_INVALID);
 
       // Define out auxiliary matrix shape of Div node
       ge::GeShape divnewShape(newnodeShapeVec);

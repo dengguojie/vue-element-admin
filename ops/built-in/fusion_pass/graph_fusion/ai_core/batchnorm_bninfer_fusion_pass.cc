@@ -258,7 +258,10 @@ Status BatchNormBnInferFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
                           return PARAM_INVALID);
 
   // new the momentum node
-  auto newConstantOp = std::make_shared<ge::OpDesc>(newOpdesc->GetName() + "_momentum", "Constant");
+  std::shared_ptr<ge::OpDesc> newConstantOp = nullptr;
+  FUSION_PASS_MAKE_SHARED((newConstantOp = std::make_shared<ge::OpDesc>(newOpdesc->GetName() + "_momentum", "Constant")),
+                          newConstantOp = nullptr;
+                          return PARAM_INVALID);
   ge::AttrUtils::SetTensor(newConstantOp, "value", momentumPtr);
   (void)newConstantOp->AddOutputDesc(momentumPtr->GetTensorDesc());
   ge::NodePtr momentumNode = graph.AddNode(newConstantOp);

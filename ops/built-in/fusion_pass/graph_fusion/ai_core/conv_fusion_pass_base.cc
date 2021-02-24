@@ -120,7 +120,10 @@ Status ConvFusionPassBase::GetAllConstInput(const ge::NodePtr& node, vector<ge::
 
 Status ConvFusionPassBase::AddBiasNode(ge::ComputeGraph& graph, ge::NodePtr& convNode) {
   // if the former conv has no bias, newBiasData = transBias
-  ge::OpDescPtr constOpDesc = std::make_shared<ge::OpDesc>(convNode->GetName() + "_" + "bias", CONSTANT);
+  ge::OpDescPtr constOpDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((constOpDesc = std::make_shared<ge::OpDesc>(convNode->GetName() + "_" + "bias", CONSTANT)),
+                          constOpDesc = nullptr;
+                          return PARAM_INVALID);
   ge::GeTensorDesc constOutDesc;
   FUSION_PASS_CHECK(constOpDesc->AddOutputDesc(constOutDesc) != SUCCESS,
                     OP_LOGE("AddBiasNode", "AddOutputDesc failed!"), return FAILED);

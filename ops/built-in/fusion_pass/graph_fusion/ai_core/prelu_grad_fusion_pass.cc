@@ -93,7 +93,9 @@ ge::NodePtr PReluGradFusionPass::AddReduceNode(ge::NodePtr prelugradNode, ge::No
   // create reduce desc
   ge::OpDescPtr reduceDesc;
 
-  reduceDesc = std::make_shared<ge::OpDesc>(prelugradNode->GetName() + "ReduceSumD", "ReduceSumD");
+  FUSION_PASS_MAKE_SHARED(
+      (reduceDesc = std::make_shared<ge::OpDesc>(prelugradNode->GetName() + "ReduceSumD", "ReduceSumD")),
+      failStatus = true; return nullptr);
 
   // input
   ge::GeTensorDesc inputTensorDesc = prelugradNoneNode->GetOpDesc()->GetOutputDesc(1).Clone();

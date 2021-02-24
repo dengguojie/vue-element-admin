@@ -70,8 +70,10 @@ ge::GeTensorDesc RNNFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t num
   DataType dataType = inputTensorDesc.GetDataType();
 
   // add innerproduct desc
-  ge::OpDescPtr innerProductStaticDesc =
-      std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/W_xh_x_static", "FullyConnection");
+  ge::OpDescPtr innerProductStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (innerProductStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/W_xh_x_static", "FullyConnection")),
+      failStatus = true; return outputTensorDesc);
 
   // x_static [N,input_size]->[N,input_size,1,1]
   ge::GeShape outputShape = inputTensorDesc.GetShape();
@@ -266,8 +268,12 @@ vector<ge::NodePtr> RNNFusionPass::ProcessRnnCell(ge::NodePtr fusedNode, ge::Com
   int64_t tSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(0);
   int64_t tIndex = tSize - 1;
   for (int64_t i = 0; i < tSize; i++) {
-    ge::OpDescPtr basicRNNDesc2 =
-        std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/BasicRNNCell" + std::to_string(i), "BasicRNNCell");
+    ge::OpDescPtr basicRNNDesc2 = nullptr;
+    FUSION_PASS_MAKE_SHARED(
+        (basicRNNDesc2 =
+             std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/BasicRNNCell" + std::to_string(i), "BasicRNNCell")),
+        failStatus = true; return rnnCellNode);
+
     basicRNNDesc2->AddInputDesc("x", xInputTensorDesc);
     if (expose_hidden || (!expose_hidden && i > 0)) {
       basicRNNDesc2->AddInputDesc("cont", inputContTensorDesc);
@@ -386,7 +392,10 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   int32_t numSplitX = inputTensorDesc0.GetShape().GetDim(0);
   // nDim:N
   int32_t nDim = inputTensorDesc0.GetShape().GetDim(1);
-  ge::OpDescPtr spiltStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/X_SplitVD", "SplitVD");
+  ge::OpDescPtr spiltStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (spiltStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/X_SplitVD", "SplitVD")),
+      return PARAM_INVALID);
   ge::GeTensorDesc splitNodeXDesc =
       ge::GeTensorDesc(inputTensorDesc0.GetShape(), inputTensorDesc0.GetFormat(), ge::DT_FLOAT16);
   splitNodeXDesc.SetOriginShape(inputTensorDesc0.GetOriginShape());
@@ -415,7 +424,10 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   // add splitVd for cont
   ge::GeTensorDesc inputContTensorDesc = fusedDesc->GetInputDesc(1);
   int32_t numSplitCont = inputContTensorDesc.GetShape().GetDim(0);
-  ge::OpDescPtr spiltContStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/Cont_SplitVD", "SplitVD");
+  ge::OpDescPtr spiltContStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (spiltContStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/Cont_SplitVD", "SplitVD")),
+      return PARAM_INVALID);
   ge::GeTensorDesc splitNodeContDesc =
       ge::GeTensorDesc(inputContTensorDesc.GetShape(), inputContTensorDesc.GetFormat(), ge::DT_FLOAT16);
   splitNodeContDesc.SetOriginShape(inputContTensorDesc.GetOriginShape());
@@ -470,7 +482,10 @@ Status RNNFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   ge::OpDescPtr rnnCellNode0Desc = rnnCellNode[0]->GetOpDesc();
 
   // add concat
-  ge::OpDescPtr concatStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/O_ConcatD", "ConcatD");
+  ge::OpDescPtr concatStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (concatStaticDesc = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/O_ConcatD", "ConcatD")),
+      return PARAM_INVALID);
   for (int64_t i = 0; i < numSplitX; i++) {
     std::vector<int64_t> tempShape;
     tempShape.push_back(1);

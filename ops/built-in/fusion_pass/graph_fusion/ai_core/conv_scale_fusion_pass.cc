@@ -115,10 +115,16 @@ Status ConvScaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     AddBiasNode(graph, convNode);
     hasBias = false;
   }
-  std::shared_ptr<ge::OpDesc> filterHostOpdesc =
-      std::make_shared<ge::OpDesc>(convNode->GetName() + "_" + destNodeName + "_filter_host", FILTER_HOST_TYPE);
-  std::shared_ptr<ge::OpDesc> biasHostOpdesc =
-      std::make_shared<ge::OpDesc>(convNode->GetName() + "_" + destNodeName + "_bias_host", BIAS_HOST_TYPE);
+  std::shared_ptr<ge::OpDesc> filterHostOpdesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (filterHostOpdesc =
+           std::make_shared<ge::OpDesc>(convNode->GetName() + "_" + destNodeName + "_filter_host", FILTER_HOST_TYPE)),
+      return NOT_CHANGED);
+  std::shared_ptr<ge::OpDesc> biasHostOpdesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (biasHostOpdesc =
+           std::make_shared<ge::OpDesc>(convNode->GetName() + "_" + destNodeName + "_bias_host", BIAS_HOST_TYPE)),
+      return NOT_CHANGED);
   vector<ge::GeTensorDesc> conv2dInputs;
   vector<ge::InDataAnchorPtr> conv2dInputAncors;
   vector<ge::GeTensorDesc> conv2dConstOutputs;

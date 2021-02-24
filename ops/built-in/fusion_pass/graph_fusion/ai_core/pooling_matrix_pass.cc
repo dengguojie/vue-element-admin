@@ -444,7 +444,8 @@ Status PoolingFusionPass::DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr po
   OP_LOGD(FUSED_OP_TYPE.c_str(), "cube [%s] has no bias, create bias and set data", poolingNode->GetName().c_str());
   OP_LOGD(FUSED_OP_TYPE.c_str(), "the cube node have %ld in data Anchors", poolingNode->GetAllInDataAnchors().size());
   string constOpName = poolingNode->GetName() + "_bias";
-  ge::OpDescPtr constOpDesc = std::make_shared<ge::OpDesc>(constOpName, CONSTANTOPTAB);
+  ge::OpDescPtr constOpDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(constOpDesc = std::make_shared<ge::OpDesc>(constOpName, CONSTANTOPTAB), return FAILED);
   ge::GeTensorDesc constOutDesc;
   FUSION_PASS_CHECK(constOpDesc->AddOutputDesc(constOutDesc) != ge::GRAPH_SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "AddOutputDesc failed!"), return FAILED);

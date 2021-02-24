@@ -76,8 +76,11 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   DataType dataType = inputTensorDesc.GetDataType();
 
   // create the OpDescPtr for InnerProduct
-  ge::OpDescPtr innerProductStaticDesc =
-    std::make_shared<ge::OpDesc>(string("FullyConnection/") + fusedDesc->GetName(), "FullyConnection");
+  ge::OpDescPtr innerProductStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (innerProductStaticDesc =
+          std::make_shared<ge::OpDesc>(string("FullyConnection/") + fusedDesc->GetName(), "FullyConnection")),
+      failStatus = true; return inputTensorDesc);
 
   ge::GeShape outputShape = inputTensorDesc.GetShape();
   std::vector<int64_t> dimsInputXShape;
@@ -192,8 +195,10 @@ ge::GeTensorDesc ALSTMFusionPass::ProcessStatic(ge::NodePtr fusedNode, int32_t n
   newNodes.push_back(innerproductNode);
   if (dataType == ge::DT_INT8) {
     // create the OpDescPtr for AscendDequant
-    ge::OpDescPtr dequantStaticDesc1 =
-        std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/AscendDequant", "AscendDequant");
+    ge::OpDescPtr dequantStaticDesc1 = nullptr;
+    FUSION_PASS_MAKE_SHARED(
+        (dequantStaticDesc1 = std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/AscendDequant", "AscendDequant")),
+        failStatus = true; return outputTensorDesc);
     dequantStaticDesc1->AddInputDesc("x", outputTensorDesc);
     dequantStaticDesc1->AddInputDesc("deq_scale", fusedDesc->GetInputDesc(9));
     outputTensorDesc.SetDataType(ge::DT_INT32);
@@ -462,8 +467,12 @@ vector<ge::NodePtr> ALSTMFusionPass::ProcessLstmCellV2(ge::NodePtr fusedNode, ge
   int64_t tSize = fusedDesc->GetInputDesc(0).GetShape().GetDim(0) - 1;
   for (int64_t i = 0; i < fusedDesc->GetInputDesc(0).GetShape().GetDim(0); i++) {
     // create the OpDescPtr for BasicLSTMCellV2
-    ge::OpDescPtr basicLSTMDesc2 =
-        std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/BasicLSTMCellV2" + std::to_string(i), "BasicLSTMCellV2");
+    ge::OpDescPtr basicLSTMDesc2 = nullptr;
+    FUSION_PASS_MAKE_SHARED(
+        (basicLSTMDesc2 =
+             std::make_shared<ge::OpDesc>(fusedDesc->GetName() + "/BasicLSTMCellV2" + std::to_string(i),
+                                          "BasicLSTMCellV2")),
+        failStatus = true; return lstmCellV2Node);
 
     basicLSTMDesc2->AddInputDesc("x", xInputTensorDesc);
 
@@ -668,7 +677,10 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::GeTensorDesc splitNode1Desc =
       ge::GeTensorDesc(inputTensorDesc0.GetShape(), inputTensorDesc0.GetFormat(), startType);
   splitNode1Desc.SetOriginShape(inputTensorDesc0.GetOriginShape());
-  ge::OpDescPtr spiltStaticDesc = std::make_shared<ge::OpDesc>(string("SplitVD1/") + fusedDesc->GetName(), "SplitVD");
+  ge::OpDescPtr spiltStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (spiltStaticDesc = std::make_shared<ge::OpDesc>(string("SplitVD1/") + fusedDesc->GetName(), "SplitVD")),
+      return PARAM_INVALID);
   spiltStaticDesc->AddInputDesc("input_value", splitNode1Desc);
   ge::GeShape shape0 = inputTensorDesc0.GetShape();
   int64_t tSize = shape0.GetDim(0);
@@ -717,7 +729,10 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   // create the OpDescPtr for SplitVD cont
   ge::GeTensorDesc inputContTensorDesc = fusedDesc->GetInputDesc(1);
   int32_t numSplitCont = inputContTensorDesc.GetShape().GetDim(0);
-  ge::OpDescPtr spiltContStaticDesc = std::make_shared<ge::OpDesc>(string("SplitVD2/") + fusedDesc->GetName(), "SplitVD");
+  ge::OpDescPtr spiltContStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (spiltContStaticDesc = std::make_shared<ge::OpDesc>(string("SplitVD2/") + fusedDesc->GetName(), "SplitVD")),
+      return PARAM_INVALID);
   ge::GeTensorDesc splitInputDesc =
       ge::GeTensorDesc(inputContTensorDesc.GetShape(), inputContTensorDesc.GetFormat(), ge::DT_FLOAT16);
   splitInputDesc.SetOriginShape(inputContTensorDesc.GetShape());
@@ -770,7 +785,10 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
                         newNodes, failStatus, biasIndex, has_static);
 
   // create the OpDescPtr for concat
-  ge::OpDescPtr concatStaticDesc = std::make_shared<ge::OpDesc>(string("ConcatD/") + fusedDesc->GetName(), "ConcatD");
+  ge::OpDescPtr concatStaticDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (concatStaticDesc = std::make_shared<ge::OpDesc>(string("ConcatD/") + fusedDesc->GetName(), "ConcatD")),
+      return FAILED);
 
   for (int64_t i = 0; i < numSplitX; i++) {
     std::vector<int64_t> tempShape;

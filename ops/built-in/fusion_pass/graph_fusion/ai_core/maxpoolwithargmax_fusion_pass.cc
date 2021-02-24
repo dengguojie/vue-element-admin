@@ -313,7 +313,9 @@ Status MaxPoolWithArgmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
         /* Add new Opdesc of MaxPoolWithArgmax*/
         std::shared_ptr<ge::OpDesc> transDataOpdesc = nullptr;
         std::string transDataNodeName = fusedDesc->GetName() + "/TransData";
-        transDataOpdesc = std::make_shared<ge::OpDesc>(transDataNodeName, "TransData");
+        FUSION_PASS_MAKE_SHARED(
+            (transDataOpdesc = std::make_shared<ge::OpDesc>(transDataNodeName, "TransData")),
+            return PARAM_INVALID);
         GeTensorDesc outputTransDataDesc = Mask2ArgmaxDesc->GetOutputDesc(0);
         outputTransDataDesc.SetFormat(input_format);
         // set src shape

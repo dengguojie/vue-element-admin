@@ -178,7 +178,9 @@ Status FullyConnectionPowerPass::AddBiasNode(ge::ComputeGraph& graph, ge::NodePt
                                              int64_t num_output, vector<ge::NodePtr>& fusionNodes) {
   ge::OpDescPtr fcOp = fcNode->GetOpDesc();
   // if the former fc has no bias, newBiasData = transBias
-  ge::OpDescPtr constOpDesc = std::make_shared<ge::OpDesc>(fcNode->GetName() + "_bias", CONSTANTOPTAB);
+  ge::OpDescPtr constOpDesc = nullptr;
+  FUSION_PASS_MAKE_SHARED((constOpDesc = std::make_shared<ge::OpDesc>(fcNode->GetName() + "_bias", CONSTANTOPTAB)),
+                          return FAILED);
   ge::GeTensorDesc constOutDesc;
   ge::GeShape biasShape({num_output});
   constOutDesc.SetShape(biasShape);

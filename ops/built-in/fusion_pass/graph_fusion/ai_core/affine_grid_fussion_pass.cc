@@ -336,8 +336,10 @@ namespace fe {
         ge::NodePtr affine_node, ge::ComputeGraph &graph,
         vector<ge::NodePtr> &new_nodes, bool &fail_status) {
         // create matmul desc
-        ge::OpDescPtr matmul_op_desc = std::make_shared<ge::OpDesc>(
-            affine_node->GetName() + "affineBatchMatmul", "BatchMatMul");
+        ge::OpDescPtr matmul_op_desc = nullptr;
+        FUSION_PASS_MAKE_SHARED(
+            (matmul_op_desc = std::make_shared<ge::OpDesc>(affine_node->GetName() + "affineBatchMatmul", "BatchMatMul")),
+            return nullptr);
 
         ge::GeTensorDesc out_tensor_desc;
         this->set_node_tensor_desc(out_tensor_desc, this->bmm_output_shape,

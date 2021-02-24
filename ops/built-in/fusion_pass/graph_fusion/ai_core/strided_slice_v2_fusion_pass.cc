@@ -354,11 +354,15 @@ void ConstToAttrStridedSliceV2Pass::MakeConstNode(ge::NodePtr &fused_node,
     fuse_desc->UpdateInputDesc(stride_idx, strides_tensor_desc);
 
     // add const node and link to slice op
-    ge::OpDescPtr const_op_desc = std::make_shared<ge::OpDesc>(
-        fuse_desc->GetName() + "_strides", "Const");
-    ge::GeTensorPtr strides_tensor_ptr = std::make_shared<ge::GeTensor>(
-        strides_tensor_desc, reinterpret_cast<uint8_t *>(strides.data()),
-        dim_num * sizeof(int64_t));
+    ge::OpDescPtr const_op_desc = nullptr;
+    FUSION_PASS_MAKE_SHARED(
+        const_op_desc = std::make_shared<ge::OpDesc>(fuse_desc->GetName() + "_strides", "Const"), return);
+    ge::GeTensorPtr strides_tensor_ptr = nullptr;
+    FUSION_PASS_MAKE_SHARED(
+        (strides_tensor_ptr =
+             std::make_shared<ge::GeTensor>(strides_tensor_desc, reinterpret_cast<uint8_t *>(strides.data()),
+                                            dim_num * sizeof(int64_t))),
+        return);
     AttrUtils::SetTensor(const_op_desc, ATTR_NAME_WEIGHTS, strides_tensor_ptr);
     const_op_desc->AddOutputDesc(fuse_desc->GetInputDesc(stride_idx));
     auto owner_graph = fused_node->GetOwnerComputeGraph();

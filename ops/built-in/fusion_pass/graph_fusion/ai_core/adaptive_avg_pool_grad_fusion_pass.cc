@@ -278,8 +278,9 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddVectorMulNode(
     ge::NodePtr avgpool_grad_node, ge::ComputeGraph &graph,
     vector<ge::NodePtr> &new_nodes, bool &fail_status) const {
   // create matmul desc
-  ge::OpDescPtr mul_op_desc =
-      std::make_shared<ge::OpDesc>(avgpool_grad_node->GetName() + "Mul", "Mul");
+  ge::OpDescPtr mul_op_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (mul_op_desc = std::make_shared<ge::OpDesc>(avgpool_grad_node->GetName() + "Mul", "Mul")), return nullptr);
 
   // add input desc, input tensor of adaptive avgpool grad
   ge::GeTensorDesc x_desc =
@@ -318,8 +319,10 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddLeftMatmulNode(
     ge::ComputeGraph &graph, vector<ge::NodePtr> &new_nodes,
     bool &fail_status) const {
   // create matmul desc
-  ge::OpDescPtr matmul_op_desc = std::make_shared<ge::OpDesc>(
-      avgpool_grad_node->GetName() + "LeftBatchMatmul", "BatchMatMul");
+  ge::OpDescPtr matmul_op_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (matmul_op_desc = std::make_shared<ge::OpDesc>(avgpool_grad_node->GetName() + "LeftBatchMatmul", "BatchMatMul")),
+      return nullptr);
 
   // add input desc
   ge::GeTensorDesc x_desc = mul_node->GetOpDesc()->GetOutputDesc(0).Clone();
@@ -369,8 +372,10 @@ void AdaptiveAvgPoolGradFusionPass::AddRightMatmulNode(
     bool &fail_status) const {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add right matmul fusion begin.");
   // create matmul desc
-  ge::OpDescPtr matmul_op_desc = std::make_shared<ge::OpDesc>(
-      avgpool_grad_node->GetName() + "RightBatchMatmul", "BatchMatMul");
+  ge::OpDescPtr matmul_op_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (matmul_op_desc = std::make_shared<ge::OpDesc>(avgpool_grad_node->GetName() + "RightBatchMatmul", "BatchMatMul")),
+      return);
 
   // add input desc, output tensor of left batch matmul
   ge::GeTensorDesc yDesc =
