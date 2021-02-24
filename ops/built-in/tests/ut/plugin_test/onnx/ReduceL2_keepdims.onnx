@@ -1,0 +1,16 @@
+zyw-ReduceL2-onnx:€
+7
+inputoutput"ReduceL2*
+axes@ *
+keepdims 
+test-modelZ
+input
+
+
+
+b
+output
+
+
+
+B

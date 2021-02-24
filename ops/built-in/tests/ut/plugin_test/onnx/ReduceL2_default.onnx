@@ -1,0 +1,15 @@
+zyw-ReduceL2-onnx:s
+*
+inputoutput"ReduceL2*
+keepdims 
+test-modelZ
+input
+
+
+
+b
+output
+
+
+
+B
