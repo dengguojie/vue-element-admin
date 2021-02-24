@@ -156,6 +156,7 @@ def vsubrelu(lhs, rhs):
     -------
     wrapped_tensor : relu (lhs - rhs)
     """
+    from te.platform import intrinsic_check_support
     if not isinstance(lhs, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
