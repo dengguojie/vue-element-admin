@@ -67,6 +67,33 @@ TEST_F(STRIDED_SLICE_UT, ExpMasks)
   EXPECT_EQ(y, expectY);
 }
 
+TEST_F(STRIDED_SLICE_UT, ExpTurbo)
+{
+  auto node_def = CpuKernelUtils::CreateNodeDef();
+
+  vector<int32_t> x{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                     16, 17, 18 };
+  vector<int32_t> begin{ 0, 0, 0 };
+  vector<int32_t> end{ 0, 0, 1 };
+  vector<int32_t> strides{ 1, 1, 1 };
+  vector<int32_t> y(6);
+
+  NodeDefBuilder(node_def.get(), "StridedSlice", "StridedSlice")
+      .Input({"x", DT_INT32, { 3, 2, 3 }, x.data()})
+      .Input({"begin", DT_INT32, {3}, begin.data()})
+      .Input({"end", DT_INT32, {3}, end.data()})
+      .Input({"strides", DT_INT32, {3}, strides.data()})
+      .Output({"y", DT_INT32, { 3, 2, 1 }, y.data()})
+      .Attr("begin_mask", 3)
+      .Attr("end_mask", 3)
+      .Attr("shrink_axis_mask", 4);
+
+  RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+
+  vector<int32_t> expectY{ 1, 4, 7, 10, 13, 16 };
+  EXPECT_EQ(y, expectY);
+}
+
 TEST_F(STRIDED_SLICE_UT, ExpNegative1)
 {
   auto node_def = CpuKernelUtils::CreateNodeDef();

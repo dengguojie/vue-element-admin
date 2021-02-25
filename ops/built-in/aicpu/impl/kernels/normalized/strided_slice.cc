@@ -292,6 +292,10 @@ uint32_t StridedSliceCpuKernel::ParseKernelParams(CpuKernelContext &ctx) {
                       "[%s] parse index input failed.", kStridedSlice);
   KERNEL_HANDLE_ERROR(ParseIndexInput(ctx, 3, strides_),
                       "[%s] parse index input failed.", kStridedSlice);
+  for (size_t i = 0; i < strides_.size(); ++i) {
+    KERNEL_CHECK_FALSE((strides_[i] != 0), KERNEL_STATUS_PARAM_INVALID,
+        "[%s] strides[%zu] must be non-zero.", kStridedSlice, i);
+  }
 
   // get masks
   KERNEL_HANDLE_ERROR(GetMaskAttr(ctx, "begin_mask", begin_mask_),
@@ -329,7 +333,7 @@ uint32_t StridedSliceCpuKernel::ParseIndexInput(CpuKernelContext &ctx,
     default:
       KERNEL_LOG_ERROR("[%s] input[%u] data_tpye must be in {int32 int64}.",
                        kStridedSlice, index);
-      return KERNEL_STATUS_INNER_ERROR;
+      return KERNEL_STATUS_PARAM_INVALID;
   }
 
   KERNEL_LOG_INFO("[%s] get input[%u]: [%s].", kStridedSlice, index,

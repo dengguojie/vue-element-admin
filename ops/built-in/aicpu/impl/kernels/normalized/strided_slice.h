@@ -86,12 +86,85 @@ class StridedSliceCpuKernel : public CpuKernel {
     KERNEL_CHECK_NULLPTR(x_tensor_shape, KERNEL_STATUS_INNER_ERROR,
                         "[CalStridedSlice] check x_tensor_shape is [nullptr].");
     std::vector<int64_t> x_shape = x_tensor_shape->GetDimSizes();
-    KERNEL_LOG_INFO("[CalStridedSlice] x_shape: [%s]", VectorToString(x_shape).c_str());
+    KERNEL_LOG_INFO("[CalStridedSlice] x_shape: [%s]",
+                    VectorToString(x_shape).c_str());
 
     // convert negative idx to positive
     // calculate y_shape temp with [begin_tmp, end_tmp, strides]
     std::vector<int64_t> begin_tmp = begin;
     std::vector<int64_t> end_tmp = end;
+    std::vector<int64_t> y_shape_tmp = CalYShapeTmp(x_shape,
+                                                    strides,
+                                                    begin_tmp,
+                                                    end_tmp);
+    for (size_t i = 0; i < y_shape_tmp.size(); ++i) {
+      KERNEL_CHECK_FALSE((y_shape_tmp[i] != 0), KERNEL_STATUS_INNER_ERROR,
+          "[CalStridedSlice] y_shape_tmp[%zu] must be non-zero.", i);
+    }
+
+    auto turboShardCal = [&](int64_t start, int64_t end)->void {
+      int64_t factor = x_shape.back() / y_shape_tmp.back();
+      int64_t offest = begin_tmp.back();
+      for (int64_t y_idx = start; y_idx < end; ++y_idx) {
+        int64_t x_idx = y_idx * factor + offest;
+        KERNEL_CHECK_FALSE_VOID((x_idx < x_size),
+            "[CalStridedSlice] x_idx [%lld] overflow x_size [%lld].",
+            x_idx, x_size);
+        y_data[y_idx] = x_data[x_idx];
+      }
+    };
+
+    std::vector<int64_t> block = CalBlocks(x_shape);
+    auto shardCal = [&](int64_t start, int64_t end)->void {
+      for (int64_t y_idx = start; y_idx < end; ++y_idx) {
+        int64_t x_idx = 0;
+        int64_t y_idx_tmp = y_idx;
+        for (size_t i = x_shape.size() - 1; i > 0; --i) {
+          int64_t idx_in_dim = y_idx_tmp % y_shape_tmp[i];
+          x_idx += (begin_tmp[i] + idx_in_dim * strides[i]) * block[i];
+          y_idx_tmp = y_idx_tmp / y_shape_tmp[i];
+        }
+        x_idx += (begin_tmp[0] + y_idx_tmp * strides[0]) * block[0];
+        KERNEL_CHECK_FALSE_VOID((x_idx < x_size),
+            "[CalStridedSlice] x_idx [%lld] overflow x_size [%lld].",
+            x_idx, x_size);
+        y_data[y_idx] = x_data[x_idx];
+      }
+    };
+
+    if (IsTurbo(x_shape, y_shape_tmp)) {
+      return CpuKernelUtils::ParallelFor(ctx, y_size, 1, turboShardCal);
+    } else {
+      return CpuKernelUtils::ParallelFor(ctx, y_size, 1, shardCal);
+    }
+  }
+
+ private:
+  /**
+   * @brief parse kernel parms
+   * @param ctx op context
+   * @return status code
+   */
+  uint32_t ParseKernelParams(CpuKernelContext &ctx);
+
+  uint32_t ParseIndexInput(CpuKernelContext &ctx, uint32_t index,
+                           std::vector<int64_t> &vec);
+  uint32_t GetMaskAttr(CpuKernelContext &ctx, std::string attr, int64_t &mask);
+
+  /**
+   * @brief convert negative idx to positive
+   *        calculate y_shape temp with [begin_tmp, end_tmp, strides]
+   * @param x_shape StridedSlice input [x]'s shape
+   * @param strides StridedSlice param strides
+   * @param begin_tmp StridedSlice begin temp
+   * @param end_tmp StridedSlice end temp
+   * @return y_shape temp
+   */
+  static std::vector<int64_t> CalYShapeTmp(
+      const std::vector<int64_t> &x_shape,
+      const std::vector<int64_t> &strides,
+      std::vector<int64_t> &begin_tmp,
+      std::vector<int64_t> &end_tmp) {
     std::vector<int64_t> y_shape_tmp(x_shape.size());
     for (size_t i = 0; i < begin_tmp.size(); ++i) {
       if (begin_tmp[i] < 0) {
@@ -110,39 +183,43 @@ class StridedSliceCpuKernel : public CpuKernel {
         y_shape_tmp[i] += 1;
       }
     }
-
-    auto shardCal = [&](int64_t start, int64_t end)->void {
-      for (int64_t y_idx = start; y_idx < end; ++y_idx) {
-        int64_t x_idx = 0;
-        int64_t block = 1;
-        int64_t y_idx_tmp = y_idx;
-        for (int64_t i = x_shape.size() - 1; i > 0; --i) {
-          int64_t idx_in_dim = y_idx_tmp % y_shape_tmp[i];
-          x_idx += (begin_tmp[i] + idx_in_dim * strides[i]) * block;
-          y_idx_tmp = y_idx_tmp / y_shape_tmp[i];
-          block *= x_shape[i];
-        }
-        x_idx += (begin_tmp[0] + y_idx_tmp * strides[0]) * block;
-        KERNEL_CHECK_FALSE_VOID((x_idx < x_size),
-            "[CalStridedSlice] x_idx [%lld] overflow x_size [%lld].",
-            x_idx, x_size);
-        y_data[y_idx] = x_data[x_idx];
-      }
-    };
-    return CpuKernelUtils::ParallelFor(ctx, y_size, 1, shardCal);
+    return std::move(y_shape_tmp);
   }
 
- private:
   /**
-   * @brief parse kernel parms
-   * @param ctx op context
-   * @return status code
+   * @brief calculate blocks for x
+   * @param x_shape StridedSlice input [x]'s shape
+   * @return blocks for x
    */
-  uint32_t ParseKernelParams(CpuKernelContext &ctx);
+  static std::vector<int64_t> CalBlocks(const std::vector<int64_t> &x_shape) {
+    std::vector<int64_t> block(x_shape.size());
+    int64_t block_tmp = 1;
+    for (size_t i = x_shape.size() - 1; i > 0; --i) {
+      block[i] = block_tmp;
+      block_tmp *= x_shape[i];
+    }
+    block[0] = block_tmp;
+    return std::move(block);
+  }
 
-  uint32_t ParseIndexInput(CpuKernelContext &ctx, uint32_t index,
-                           std::vector<int64_t> &vec);
-  uint32_t GetMaskAttr(CpuKernelContext &ctx, std::string attr, int64_t &mask);
+  /**
+   * @brief check if StridedSlice can be accelerated
+   * @param x_shape StridedSlice input [x]'s shape
+   * @param y_shape_tmp StridedSlice input [x]'s shape
+   * @return it can be accelerated or not
+   */
+  static bool IsTurbo(const std::vector<int64_t> &x_shape,
+                      const std::vector<int64_t> &y_shape_tmp) {
+    for (size_t i = 0; i < y_shape_tmp.size(); ++i) {
+      if ((i == (y_shape_tmp.size() - 1)) && (y_shape_tmp[i] == 1)) {
+        return true;
+      }
+      if (y_shape_tmp[i] != x_shape[i]) {
+        break;
+      }
+    }
+    return false;
+  }
 
  private:
   std::vector<int64_t> begin_;
