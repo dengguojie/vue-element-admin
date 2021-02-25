@@ -119,9 +119,6 @@ class CubeParaProcess:
         check whether dynamic shape is supported for cube ops
         """
 
-        if self.groups != 1:
-            err_man.raise_err_specific_user(
-                self.op_type, "group != 1 is not supported yet in dynamic")
         if DYNAMIC_FLAG not in in_shape:
             err_man.raise_err_specific_user(
                 self.op_type, "need at least one dimension is a variable.")
@@ -450,6 +447,8 @@ class Conv2dParaProcess(CubeParaProcess):
             in_shape_nchw, in_range_nchw = self.get_input_nchw(in_shape, self.data_format, in_range)
             self.check_range_valid(in_shape_nchw, in_range_nchw, "fmap", self.data_format)
 
+        # filter channel should be equal input channel
+        w_shape_nchw[1] = in_shape_nchw[1]
         self.check_support_valid(in_shape_nchw, w_shape_nchw)
         self.get_attr_nchw(self.data_format)
         y_range = self.get_output_range(w_shape_nchw, in_range_nchw)

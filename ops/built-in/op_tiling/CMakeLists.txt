@@ -29,6 +29,7 @@ set(_optiling_files
   conv2d_backprop_input.cc
   conv2d.cc
   conv2d_transpose.cc
+  depthwise_conv2d.cc
   conv3d.cc
   conv_tiling.cc
   cube_tiling.cc
