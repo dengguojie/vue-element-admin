@@ -39,35 +39,19 @@ Status ParseParamsUnsqueeze(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
 
-  bool has_axes = false;
-  bool has_dims = false;
-
-  std::vector<int64_t> axes;
-  std::string attr_name = "axes";
-  for (auto it : node->attribute()) {
-    if (it.name() != attr_name) {
-      continue;
-    }
-
-    has_axes = true;
-    int dims_size = it.ints_size();
-    if (dims_size == 0) {
-      break;
-    }
-    has_dims = true;
-
-    for (int64_t dim : it.ints()) {
-      axes.push_back(dim);
-      OP_LOGI("Unsqueeze", "Dim: %ld", dim);
+  std::vector<int64_t> axes = {};
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      for (int i = 0; i < attr.ints_size(); i++) {
+        axes.push_back(attr.ints(i));
+      }
     }
   }
-
-  if (!has_axes || !has_dims) {
-    OP_LOGE("Unsqueeze", "axes is invalid!");
+  if (axes.size() == 0) {
+    OP_LOGE("Unsqueeze", "axes is a required argument, please check it!");
     return PARAM_INVALID;
   }
-
-  op_dest.SetAttr(attr_name, axes);
+  op_dest.SetAttr("axes", axes);
   return SUCCESS;
 }
 
