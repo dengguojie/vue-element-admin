@@ -29,11 +29,8 @@ Status ParseParamsTransposeD(const Message *op_src, ge::Operator &op_dest) {
     return FAILED;
   }
 
-  // set default value for attribute perm
-  std::vector<int32_t> perm_default = {3, 2, 1, 0};
-  op_dest.SetAttr("perm", perm_default);
-
   // update attribute perm if given
+  bool have_perm = false;
   for (auto attr : node->attribute()) {
     if (attr.name() == "perm") {
       std::vector<int32_t> perm_input;
@@ -43,7 +40,12 @@ Status ParseParamsTransposeD(const Message *op_src, ge::Operator &op_dest) {
       }
 
       op_dest.SetAttr("perm", perm_input);
+    have_perm = true;
     }
+  }
+  if (!have_perm) {
+    OP_LOGI("Transpose", "must input the attr of perm");
+    return FAILED;
   }
 
   return SUCCESS;

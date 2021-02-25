@@ -39,7 +39,7 @@ Status ParseParamsAscendAntiQuant(const Message* op_src, ge::Operator& op_dest) 
   float offset = 0.0;
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "offset" && attr.type() == ge::onnx::AttributeProto::FLOAT) {
-      offset = attr.f();
+      offset = attr.f()*(-1);
       break;
     }
   }
