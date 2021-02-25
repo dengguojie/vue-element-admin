@@ -262,6 +262,33 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew.push_back(axisC0);
   }
 
+  if ((srcFormat == "HWCN") && (dstFormat == "FRACTAL_Z" || dstFormat == "FRACTAL_ZN")) {
+    realSrcFormat = "HCN";
+    realDstFormat = "CHNT";
+
+    if (inShape.size() != 4) {
+      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      return false;
+    }
+    if (outShape.size() < 2) {
+      OP_LOGE("trans_data", "The output shape dimension size is not correct!");
+      return false;
+    }
+    inShapeNew.push_back(inShape[0] * inShape[1]);
+    inShapeNew.push_back(inShape[2]);
+    inShapeNew.push_back(inShape[3]);
+
+    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
+    int64_t axisC0 = outShape[outShape.size() - 1];
+    int64_t axisNi = outShape[outShape.size() - 2];
+    int64_t axisC1 = GetCeilDiv(inShape[cIdx], axisC0);
+    int64_t axisNo = GetCeilDiv(inShape[3], axisNi);
+    outShapeNew.push_back(axisC1);
+    outShapeNew.push_back(inShape[0] * inShape[1]);
+    outShapeNew.push_back(axisNi * axisNo);
+    outShapeNew.push_back(axisC0);
+  }
+
   return true;
 }
 
