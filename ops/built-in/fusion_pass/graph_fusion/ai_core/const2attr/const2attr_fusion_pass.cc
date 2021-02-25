@@ -159,7 +159,7 @@ REGISTER_CONST2ATTR("ApplyFtrlD").OriginOpType("ApplyFtrl");
 
 REGISTER_CONST2ATTR("ApplyCenteredRMSPropD").OriginOpType("ApplyCenteredRMSProp");
 
-REGISTER_CONST2ATTR("ApplyAdamD").NeedCheckSupported(false).OriginOpType("ApplyAdam");
+REGISTER_CONST2ATTR("ApplyAdamD").NeedCheckSupported(true).OriginOpType("ApplyAdam");
 
 REGISTER_CONST2ATTR("SparseApplyProximalAdagradD").OriginOpType("SparseApplyProximalAdagrad");
 
