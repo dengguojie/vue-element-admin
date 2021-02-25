@@ -19,6 +19,7 @@ set(_optiling_files
   ../fusion_pass/common/fp16_t.cc
   broadcast_to.cc
   assign.cc
+  avg_pool.cc
   avg_pool_1d.cc
   bias.cc
   bias_add.cc

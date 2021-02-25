@@ -437,6 +437,66 @@ static map<int, std::string> format2str = {
     {ge::FORMAT_NCHW, "NCHW"},   {ge::FORMAT_NHWC, "NHWC"},   {ge::FORMAT_HWCN, "HWCN"},  {ge::FORMAT_DHWNC, "DHWNC"},
     {ge::FORMAT_DHWCN, "DHWCN"}, {ge::FORMAT_NDHWC, "NDHWC"}, {ge::FORMAT_NCDHW, "NCDHW"}};
 
+static map<int, std::string> dtype2str = {
+    {ge::DT_FLOAT, "FLOAT"}, {ge::DT_FLOAT16, "FLOAT16"}, {ge::DT_INT8, "INT8"},
+    {ge::DT_INT16, "INT16"}, {ge::DT_UINT16, "UINT16"}, {ge::DT_UINT8, "UINT8"},
+    {ge::DT_INT32, "INT32"}, {ge::DT_INT64, "INT64"}, {ge::DT_UINT32, "UINT32"},
+    {ge::DT_UINT64, "UINT64"}};
+
+static void SerialShapeRange(const GeTensorDescPtr& desc, std::string& descStr) {
+  descStr += "[";
+  std::vector<std::pair<int64_t, int64_t>> shapeRange;
+  (void)desc->GetShapeRange(shapeRange);
+  for (const auto &pair : shapeRange) {
+    descStr += "{";
+    descStr += std::to_string(pair.first) + "," + std::to_string(pair.second);
+    descStr += "},";
+  }
+  descStr += "]";
+}
+
+static void PrintInOutTensorShape(ge::Operator& op) {
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  std::stringstream ss;
+  ss << "{";
+  int32_t inIdx = 0;
+  int32_t outIdx = 0;
+  for (const auto &inputDesc : opDesc->GetAllInputsDescPtr()) {
+    if (inputDesc == nullptr) {
+      inIdx++;
+      continue;
+    }
+    if (inIdx > 0) {
+      ss << " ";
+    }
+    ss << "input_" << inIdx << " " << "tensor: [";
+    ss << "(shape:[" << inputDesc->MutableShape().ToString() << "]),";
+    ss << "(format:" << format2str[inputDesc->GetFormat()] << "),";
+    ss << "(dtype:" << dtype2str[inputDesc->GetDataType()] << "),";
+    string rangeStr;
+    SerialShapeRange(inputDesc, rangeStr);
+    ss << "(shape_range:" << rangeStr << ")]";
+    inIdx++;
+  }
+  for (const auto &outputDesc : opDesc->GetAllOutputsDescPtr()) {
+    if (outputDesc == nullptr) {
+      outIdx++;
+      continue;
+    }
+    ss << " ";
+    ss << "output_" << outIdx << " " << "tensor: [";
+    ss << "(shape:[" << outputDesc->MutableShape().ToString() << "]),";
+    ss << "(format:" << format2str[outputDesc->GetFormat()] << "),";
+    ss << "(dtype:" << dtype2str[outputDesc->GetDataType()] << "),";
+    string rangeStr;
+    SerialShapeRange(outputDesc, rangeStr);
+    ss << "(shape_range:" << rangeStr << ")]";
+    outIdx++;
+  }
+  ss << "}";
+  OP_LOGD(op.GetName().c_str(), "%s", ss.str().c_str());
+}
+
 static bool GetDimInFormat(const std::string& opName, const std::string& formatStr, const std::string& dimName,
                            int64_t& dimPosition) {
   dimPosition = formatStr.find(dimName);
@@ -2186,7 +2246,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   CHECK_FORMAT_V2(filter_format);
   CHECK_FORMAT_V2(input_format);
   CHECK_FORMAT_V2(dy_format);
-  OP_LOGD(op.GetName().c_str(), "CHECK FORMAT SUCCESS");
   std::vector<int64_t> filter_sizes = filter_desc->MutableShape().GetDims();
   std::vector<int64_t> dy_sizes = x_desc->MutableShape().GetDims();
   for (size_t j = 0; j < dy_sizes.size(); j++) {
@@ -2201,7 +2260,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   if(!get_attrs_conv2d_backprop_input(op, dy_format, stride_h, stride_w, dilation_h, dilation_w)) {
     return GRAPH_FAILED;
   }
-  OP_LOGD(op.GetName().c_str(), "get attrs success");
   vector<int32_t> attr_params = {stride_h, stride_w, dilation_h, dilation_w};
   // set dtype of output desc
   auto out_backprop_dtype = x_desc->GetDataType();
@@ -2268,7 +2326,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
       } else {
         input_sizes.push_back(-1);
       }
-      OP_LOGD(op.GetName().c_str(), "dx Range[%u] is (%lld, %lld)", i, dx_range[i].first, dx_range[i].second);
     }
   }
 
@@ -2283,10 +2340,6 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   }
 
   auto dx_shape = y_desc->MutableShape().GetDims();
-  for (size_t i = 0; i < dx_shape.size(); i++) {
-    OP_LOGD(op.GetName().c_str(), "dx_shape [%u] is %d", i, (int32_t)dx_shape[i]);
-  }
-
   if (false == SetGroupsConv2dbp(op, input_sizes, input_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropInput failed.");
     map<string, string> err_map;
@@ -2310,6 +2363,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
       return GRAPH_FAILED;
     }
   }
+  PrintInOutTensorShape(op);
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropInput inferfunction!");
   return GRAPH_SUCCESS;
 }
@@ -2826,6 +2880,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
       OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
     }
   }
+  PrintInOutTensorShape(op);
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }
@@ -4940,15 +4995,12 @@ IMPLEMT_INFERFUNC(Deconvolution, DeconvolutionInfer) {
         vector<int32_t> attr_params_w = {strw, kwext, padl + padr};
         set_deconvolution_out_shape_range(idxW, attr_params_w, x_range, y_range);
       }
-      for (size_t i = 0; i < y_range.size(); i++) {
-        OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, y_range[i].first, y_range[i].second);
-      }
       yTensor->SetShapeRange(y_range);
     }
   }
   vector<int64_t> y_shape;
   auto yFormat = yTensor->GetFormat();
-CHECK_FORMAT_V2(yFormat);
+  CHECK_FORMAT_V2(yFormat);
   if (yFormat == FORMAT_NCHW) {
     y_shape.push_back(in);
     y_shape.push_back(kc * groups);
@@ -4968,9 +5020,6 @@ CHECK_FORMAT_V2(yFormat);
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return GRAPH_FAILED;
   }
-  for (size_t i = 0; i < y_shape.size(); i++) {
-    OP_LOGD(op.GetName().c_str(), "output shape[%u] is (%lld)", i, y_shape[i]);
-  }
   yTensor->SetShape(GeShape(y_shape));
   auto xDtype = xTensor->GetDataType();
   if (xDtype == DT_INT8) {
@@ -4978,7 +5027,7 @@ CHECK_FORMAT_V2(yFormat);
   } else {
     yTensor->SetDataType(xDtype);
   }
-
+  PrintInOutTensorShape(op);
   OP_LOGD(op.GetName().c_str(), "Leave DeconvolutionInfer.");
   return GRAPH_SUCCESS;
 }
@@ -8002,9 +8051,7 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   }
   std::vector<std::pair<int64_t, int64_t>> yRange;
   yDesc->GetShapeRange(yRange);
-  for (size_t i = 0; i < yRange.size(); i++) {
-    OP_LOGD(op.GetName().c_str(), "y_range[%u] is (%lld, %lld)", i, yRange[i].first, yRange[i].second);
-  }
+  PrintInOutTensorShape(op);
   OP_LOGD(op.GetName().c_str(), "Leave Conv2DTransposeInfer.");
   return GRAPH_SUCCESS;
 }

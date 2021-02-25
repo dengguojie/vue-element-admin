@@ -78,6 +78,26 @@ Status GenerateFilterFP16(const vector<int64_t> shape, const float areaFactor, u
   return SUCCESS;
 }
 
+Status GenerateFilterFP16Dynamic(const vector<int64_t> shape, const float areaFactor, uint16_t& output1) {
+  uint16_t* output = &output1;
+  fp16_t area_factor;
+  area_factor.val = 0;
+  area_factor = static_cast<float>(areaFactor);
+  for (int64_t i = 0; i < shape[0]; i++) {
+    for (int64_t j = 0; j < shape[1]; j++) {
+      for (int64_t k = 0; k < shape[2]; k++) {
+        for (int64_t l = 0; l < shape[3]; l++) {
+          if (k == l) {
+            output[i * (shape[1] * shape[2] * shape[3]) + j * (shape[2] * shape[3]) + k * shape[3] + l] =
+                                                                                                      area_factor.val;
+          }
+        }
+      }
+    }
+  }
+  return SUCCESS;
+}
+
 Status GenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, vector<int64_t> stride,
                          vector<int64_t> pad, const int64_t dimH, const int64_t dimW, uint16_t& output1) {
   uint16_t* output = &output1;
@@ -563,6 +583,11 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   int64_t inputH = 0;
   int64_t inputW = 0;
   int64_t output_w = 0;
+  bool isDynamic = false;
+  // when static op or dynamic op phase_running, is_dynamic = false
+  if (std::find(dimInfo.begin(),dimInfo.end(), -1) != dimInfo.end()) {
+    isDynamic = true;
+  }
   if (dimInfo.size() == 4) {
     if (inputOriginFormat == FORMAT_NHWC) {
       inputC = dimInfo[3];
@@ -575,10 +600,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
       inputW = dimInfo[3];
       output_w = out_dimInfo[3];
     }
-    if (PatternFusionUtil::IsUnknownShape(inputC) ||
-        PatternFusionUtil::IsUnknownShape(inputH) ||
-        PatternFusionUtil::IsUnknownShape(inputW) ||
-        PatternFusionUtil::IsUnknownShape(output_w)) {
+    if (PatternFusionUtil::IsUnknownShape(inputC)) {
       OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
       return NOT_CHANGED;
     }
@@ -631,7 +653,7 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   window = {ksizeH, ksizeW};
   stride = {stridesH, stridesW};
   // judge global pooling or out_put_w==1
-  if (((inputH == ksizeH) && (inputW == ksizeW)) || output_w == 1) {
+  if ((!isDynamic) && (((inputH == ksizeH) && (inputW == ksizeW)) || output_w == 1)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "avgpool is global or output_w=1, graph not changed.");
     return NOT_CHANGED;
   }
@@ -836,47 +858,60 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     Status ret = NnSet(matrixSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
     vector<int64_t> assitDimInfoOrigin = {COUT, CIN, inputC1 * ksizeH, ksizeW};
+    vector<int64_t> assitDimInfoDynamic = {inputC1 * ksizeH * ksizeW, 1, CIN, COUT};
+    vector<int64_t> assitDimInfoOriginDynamic = {inputC, 1, ksizeH, ksizeW};
     if (padding == "VALID") {
       float areaFactor = 1.0 / (ksizeH * ksizeW);
       // generate one matrix
-      ret = GenerateFilterFP16(assitDimInfoOrigin, areaFactor, *inputAssit.get());
+      if (!isDynamic) {
+        ret = GenerateFilterFP16(assitDimInfoOrigin, areaFactor, *inputAssit.get());
+      } else {
+        areaFactor = 1.0;
+        ret = GenerateFilterFP16Dynamic(assitDimInfoDynamic, areaFactor, *inputAssit.get());
+      }
     } else if (padding == "SAME") {
       float areaFactor = 1.0;
       // generate one matrix
-      ret = GenerateFilterFP16(assitDimInfoOrigin, areaFactor, *inputAssit.get());
-      // judge input dims for unknown shape
-      ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
-      ge::GeShape mulShape = input_desc.GetShape();
-      vector<int64_t> dimMul = mulShape.GetDims();
-      int64_t mulC = 0;
-      if (dimMul.size() != 0) {
-        if (inputOriginFormat == FORMAT_NHWC) {
-          mulC = dimMul[3];
-        }
-        else if (inputOriginFormat == FORMAT_NCHW) {
-          mulC = dimMul[1];
-        }
-        if (PatternFusionUtil::IsUnknownShape(mulC)) {
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
-          return NOT_CHANGED;
-        }
+      if (!isDynamic) {
+        ret = GenerateFilterFP16(assitDimInfoOrigin, areaFactor, *inputAssit.get());
+      } else {
+        ret = GenerateFilterFP16Dynamic(assitDimInfoDynamic, areaFactor, *inputAssit.get());
       }
-      ge::NodePtr mulNode = AddMul(graph, avgPoolNode, inputOriginFormat);
-      FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
-                        return PARAM_INVALID);
-      // judge input dims for unknown shape
-      ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
-      ge::GeShape outputShape = inputDesc0.GetOriginShape();
-      vector<int64_t> dimOut = outputShape.GetDims();
-      for (size_t i = 1; i <= 3; i++) {
-        auto dim = dimOut[i];
-        if (PatternFusionUtil::IsUnknownShape(dim)) {
-          OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
-          return NOT_CHANGED;
+      if (!isDynamic) {
+        // judge input dims for unknown shape
+        ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
+        ge::GeShape mulShape = input_desc.GetShape();
+        vector<int64_t> dimMul = mulShape.GetDims();
+        int64_t mulC = 0;
+        if (dimMul.size() != 0) {
+          if (inputOriginFormat == FORMAT_NHWC) {
+            mulC = dimMul[3];
+          }
+          else if (inputOriginFormat == FORMAT_NCHW) {
+            mulC = dimMul[1];
+          }
+          if (PatternFusionUtil::IsUnknownShape(mulC)) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+            return NOT_CHANGED;
+          }
         }
+        ge::NodePtr mulNode = AddMul(graph, avgPoolNode, inputOriginFormat);
+        FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+                          return PARAM_INVALID);
+        // judge input dims for unknown shape
+        ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
+        ge::GeShape outputShape = inputDesc0.GetOriginShape();
+        vector<int64_t> dimOut = outputShape.GetDims();
+        for (size_t i = 1; i <= 3; i++) {
+          auto dim = dimOut[i];
+          if (PatternFusionUtil::IsUnknownShape(dim)) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolFusionPass cannot be applied for unknown shape.");
+            return NOT_CHANGED;
+          }
+        }
+        FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
+                          OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
       }
-      FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
     } else {
       OP_LOGW(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
       return NOT_CHANGED;
@@ -890,12 +925,24 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     ge::GeTensorDesc tensorDesc;
     ge::GeShape assitShape(assitDimInfoOrigin);
     ge::GeShape assitShapeOrigin(assitDimInfoOrigin);
-    tensorDesc.SetShape(assitShape);
-    tensorDesc.SetDataType(ge::DT_FLOAT16);
-    tensorDesc.SetFormat(ge::FORMAT_NCHW);
-    tensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
-    tensorDesc.SetOriginShape(assitShapeOrigin);
-    tensorDesc.SetOriginDataType(ge::DT_FLOAT16);
+    ge::GeShape assitShapeDynamic(assitDimInfoDynamic);
+    ge::GeShape assitShapeOriginDynamic(assitDimInfoOriginDynamic);
+    if (!isDynamic) {
+      tensorDesc.SetShape(assitShape);
+      tensorDesc.SetDataType(ge::DT_FLOAT16);
+      tensorDesc.SetFormat(ge::FORMAT_NCHW);
+      tensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
+      tensorDesc.SetOriginShape(assitShapeOrigin);
+      tensorDesc.SetOriginDataType(ge::DT_FLOAT16);      
+    } else {
+      tensorDesc.SetShape(assitShapeDynamic);
+      tensorDesc.SetDataType(ge::DT_FLOAT16);
+      tensorDesc.SetFormat(ge::FORMAT_FRACTAL_Z);
+      tensorDesc.SetOriginFormat(ge::FORMAT_NCHW);
+      tensorDesc.SetOriginShape(assitShapeOriginDynamic);
+      tensorDesc.SetOriginDataType(ge::DT_FLOAT16);   
+    }
+
     FUSION_PASS_MAKE_SHARED(
         (assitPtr = std::make_shared<ge::GeTensor>(tensorDesc, reinterpret_cast<uint8_t*>(inputAssit.get()),
                                                    matrixSize * sizeof(uint16_t))),
