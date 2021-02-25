@@ -777,7 +777,12 @@ class CceConvOp:
                                "elewise_binary_subrelu": "vector_subrelu",
                                "elewise_multiple_sel": "vector_select_bool",
                                "elewise_single_rec": "vector_rec",
-                               "emit_insn_elewise_binary_cmp": "elewise_binary_cmp"}
+                               "emit_insn_elewise_binary_cmp": "elewise_binary_cmp",
+                               "elewise_single_VS_mul": "vector_auto",
+                               "elewise_single_VS_add": "vector_auto",
+                               "elewise_single_cast": "vector_auto",
+                               "elewise_single_exp": "vector_auto",
+                               "elewise_single_log": "vector_auto"}
         self._l1_size = cce_conf.get_soc_spec("L1_SIZE")
         self._corenum = cce_conf.get_soc_spec("CORE_NUM")
         self._ub_size = cce_conf.get_soc_spec("UB_SIZE")
@@ -796,8 +801,9 @@ class CceConvOp:
         self._compute_at_axis = None
         self._compile_para = None
         self._preload = 0
+        self._tiling_info_dict = {}
 
-    def schedule(self, res, spec_node_list, sch_list, convbn1_flag=False, tiling_case=None, var_range=None):
+    def schedule(self, res, spec_node_list, sch_list, convbn1_flag=False, tiling_case=None, var_range=None, tilingdict_flag=False):
         """
         auto_schedule for cce AI-CORE. For now, only one convolution operation
         is supported.
@@ -1222,7 +1228,9 @@ class CceConvOp:
                              "pooling_stride": pooling_stride,
                              "special_mode": special_mode_dict,
                              "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"])}
-
+                if tilingdict_flag:
+                    self._tiling_info_dict = info_dict
+                    return dict()
                 tiling_new = get_tiling(info_dict)
                 return tiling_new
 
@@ -1277,7 +1285,9 @@ class CceConvOp:
                              "pooling_stride": pooling_stride,
                              "special_mode": {},
                              "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"])}
-
+                if tilingdict_flag:
+                    self._tiling_info_dict = info_dict
+                    return dict()
                 tiling_new = get_tiling(info_dict)
                 return tiling_new
 
@@ -1547,8 +1557,9 @@ class CceConvOp:
             c_shape = get_c_shape()
             reserved_ub = get_reserved_ub()
             fused_ub_cl0 = get_fused_ub_cl0()
-
-            if is_support_v200() and ConvParam.res_dtype == "int32":
+            if self._var_map and (not tilingdict_flag):
+                tiling_new = self._tiling_case
+            elif is_support_v200() and ConvParam.res_dtype == "int32":
                 def calc_coeff_l0c_to_ub():
                     """
                     calculate l0c_to_ub coefficient
@@ -1634,6 +1645,9 @@ class CceConvOp:
                                  "kernel_name": ConvParam.kernel_name,
                                  "special_mode": special_mode_dict,
                                  "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"])}
+                    if tilingdict_flag:
+                        self._tiling_info_dict = info_dict
+                        return dict()
                     tiling_new = get_tiling(info_dict)
                     return tiling_new
 
@@ -1656,15 +1670,14 @@ class CceConvOp:
                 tiling_new = handle_v200_tiling(fused_coefficient,
                                                 fused_channel_wise,
                                                 reserved_ub)
-            elif self._var_map:
-                tiling_new = self._tiling_case
             elif is_support_v220():
                 tiling_new = handle_v220_tiling()
             else:
                 cub_channel_coefficient = get_cub_channel_wise()
                 fused_channel_wise = [0, 0, cub_channel_coefficient]
                 tiling_new = handle_v100_tiling(fused_channel_wise)
-
+            if tilingdict_flag:
+                return
             tiling_ok_flag = check_tiling(tiling_new, w_dtype,
                                           fmap_shape_nc1hwc0)
             tiling = {}
@@ -2016,22 +2029,6 @@ class CceConvOp:
 
             _l1_double_buffer()
             _l0_double_buffer()
-
-            if self._var_map and (self._fused_flag or "fp16_bias" in tensor_map):
-                ub_tensor_dynamic = self._res_tensor.op.input_tensors[0]
-                reuse_tensors = []
-                if self._fused_flag:
-                    res_ub_dynamic = self._op_graph.output_ops[0]["dst_buffer"]
-                    reuse_tensors.append(res_ub_dynamic)
-                while ub_tensor_dynamic.op.tag != "convolution_C_UB":
-                    reuse_tensors.append(ub_tensor_dynamic)
-                    ub_tensor_dynamic = ub_tensor_dynamic.op.input_tensors[0]
-
-                sch[c_ub].reused_by(*reuse_tensors)
-                if double_buffer_flag["CUB_pbuffer"] == 2 or double_buffer_flag["UBG_pbuffer"] == 2:
-                    for tensor in reuse_tensors:
-                        sch[tensor].double_buffer()
-                    sch[c_ub].double_buffer()
 
             if double_buffer_flag["CUB_pbuffer"] == 2:
                 sch[c_ub].double_buffer()
@@ -4200,29 +4197,35 @@ class CceConvOp:
                     sch[tensor_map["bias_ub"]].compute_at(sch[res_c], c_slice_axis)
                 else:
                     sch[tensor_map["bias_ub"]].compute_at(sch[res_c], bido)
+        def _handle_var_range():
+            """
+            set var_range for dynamic ops
+            """
+            if tilingdict_flag:
+                return
+            if "fmap_h" in self._var_map:
+                fmap_h_range = self._var_range['fmap_h']
+                ho_range = self._var_range['ho']
+                sch.set_var_range(self._var_map['fmap_h'], fmap_h_range[0],
+                                  fmap_h_range[1])
+                sch.set_var_range(self._var_map['ho'], ho_range[0], ho_range[1])
+
+            if "fmap_w" in self._var_map:
+                fmap_w_range = self._var_range['fmap_w']
+                wo_range = self._var_range['wo']
+                sch.set_var_range(self._var_map['fmap_w'], fmap_w_range[0],
+                                  fmap_w_range[1])
+                sch.set_var_range(self._var_map['wo'], wo_range[0], wo_range[1])
+
+            if "batch_n" in self._var_map:
+                batch_range = self._var_range['batch_n']
+                sch.set_var_range(self._var_map['batch_n'], batch_range[0],
+                                  batch_range[1])
 
         self_init()
         tensor_map = ConvParam.tensor_map
         sch = self._schedule
-
-        if "fmap_h" in self._var_map:
-            fmap_h_range = self._var_range['fmap_h']
-            ho_range = self._var_range['ho']
-            sch.set_var_range(self._var_map['fmap_h'], fmap_h_range[0],
-                              fmap_h_range[1])
-            sch.set_var_range(self._var_map['ho'], ho_range[0], ho_range[1])
-
-        if "fmap_w" in self._var_map:
-            fmap_w_range = self._var_range['fmap_w']
-            wo_range = self._var_range['wo']
-            sch.set_var_range(self._var_map['fmap_w'], fmap_w_range[0],
-                              fmap_w_range[1])
-            sch.set_var_range(self._var_map['wo'], wo_range[0], wo_range[1])
-
-        if "batch_n" in self._var_map:
-            batch_range = self._var_range['batch_n']
-            sch.set_var_range(self._var_map['batch_n'], batch_range[0],
-                              batch_range[1])
+        _handle_var_range()
 
         self._pre_relu_fused_flag = ConvParam.pre_relu_flag
         double_num, tensor_map = \
@@ -4480,6 +4483,8 @@ class CceConvOp:
 
         if tiling is None:
             tiling = tiling_fetch()
+            if tilingdict_flag:
+                return self._tiling_info_dict
 
         if self._v200_width_out_1_flag:
             tiling["CL0_matrix"][1] = tiling["CL0_matrix"][1]/2
@@ -5468,7 +5473,14 @@ class CceConvOp:
             sch.disable_allocate(cce.scope_ca)
             sch.disable_allocate(cce.scope_cb)
             sch.disable_allocate(cce.scope_cc)
-            sch.disable_allocate(cce.scope_ubuf)
+
+            ub_storage_bound_size = tiling["CUB_matrix"][0]*tiling["CUB_matrix"][1]*\
+                                    tiling["CUB_matrix"][2]*tiling["CUB_matrix"][3]
+            for lop in self._op_graph.body_ops:
+                if ("convolution" in lop["op"] or "mad" in lop["op"]) and \
+                    "convolution_C" not in lop["op"] or "convolution_CUB" not in lop["op"]:
+                    continue
+                sch[lop["dst_buffer"]].set_storage_bound(ub_storage_bound_size)
 
             # mem_unique
             sch[al1].mem_unique()
@@ -5477,9 +5489,6 @@ class CceConvOp:
                 sch[bl1].mem_unique()
             sch[bl0].mem_unique()
             sch[c_col].mem_unique()
-
-            if not self._fused_flag and "fp16_bias" not in tensor_map:
-                sch[c_ub].mem_unique()
 
             return True
 

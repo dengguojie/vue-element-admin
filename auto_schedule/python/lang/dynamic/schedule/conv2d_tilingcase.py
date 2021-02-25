@@ -21,6 +21,7 @@ from collections import OrderedDict
 
 import te
 from te.tvm.expr import Expr
+from te.tvm import schedule as tvm
 from te.platform import cce_conf
 from tbe.common.tiling.get_tiling import get_tiling
 
@@ -32,6 +33,8 @@ from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection
 from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils
 from te.lang.dynamic.schedule.constants import Pattern
+from tbe.dsl.static_schedule.conv_schedule import CceConvOp
+from tbe.dsl.static_schedule.cce_schedule import get_op_info
 
 
 # noinspection PyUnusedLocal
@@ -61,19 +64,14 @@ def calc_conv2d(outs, option=None):
         else:
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
 
-    # check fusion
-    if outs[-1].op.tag == "elewise_single_relu":
-        if outs[-1].op.input_tensors[0].op.input_tensors[0].op.tag == "conv_vector_bias_add":
-            conv_info['fusion_type'] = 4
-            conv_info['fused_coefficient'] = [0, 0, 3]
-        else:
-            conv_info['fusion_type'] = 1
-            conv_info['fused_coefficient'] = [0, 0, 1]
-    elif outs[-1].op.input_tensors[0].op.tag == "conv_vector_bias_add":
-        conv_info['fusion_type'] = 1
-        conv_info['fused_coefficient'] = [0, 0, 2]
+    cce_conv_op = CceConvOp()
+    op_info = get_op_info(outs)
+    schedule = tvm.create_schedule(
+                [res.op for res in outs if res not in op_info['tensor_map']])
+    tiling_dict = cce_conv_op.schedule(outs[0], outs, [schedule], tilingdict_flag=True)
+    tiling_dict["dynamic_shape_flag"] = True
 
-    tiling_op = Conv2dTiling(conv_info, ConvParam.dynamic_para)
+    tiling_op = Conv2dTiling(tiling_dict, ConvParam.dynamic_para)
     tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
     return tiling_cases
 

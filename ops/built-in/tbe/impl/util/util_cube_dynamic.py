@@ -119,6 +119,9 @@ class CubeParaProcess:
         check whether dynamic shape is supported for cube ops
         """
 
+        if self.groups != 1 and self.op_type != "conv2d":
+            err_man.raise_err_specific_user(
+                self.op_type, "group != 1 is not supported yet in dynamic")
         if DYNAMIC_FLAG not in in_shape:
             err_man.raise_err_specific_user(
                 self.op_type, "need at least one dimension is a variable.")
@@ -319,9 +322,8 @@ class CubeParaProcess:
         round up the channel dimension
         """
 
-        if (self.op_type == "conv2d" and in_shape[C_DIM] != w_shape[C_DIM]
-                or (self.op_type == "conv2d_backprop_input" and in_shape[C_DIM] != w_shape[N_DIM]
-                    and out_shape[C_DIM] != w_shape[C_DIM])):
+        if (self.op_type == "conv2d_backprop_input" and in_shape[C_DIM] != w_shape[N_DIM]
+                and out_shape[C_DIM] != w_shape[C_DIM]):
             err_man.raise_err_scene_equal_limitation(self.op_type, "input feature map channel", "filter channel")
 
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[dtype]['mac'][1:3]
@@ -380,13 +382,15 @@ class Conv2dParaProcess(CubeParaProcess):
             err_man.raise_err_specific_user(
                 self.op_type, "offset_w is not supported in dynamic shape yet.")
 
-    def _calc_shape(self, in_shape, w_shape, in_range, y_range):
+    def _calc_shape(self, in_shape, w_shape, in_range, y_range, group_para):
         """
         calculate shape for mmad
         """
 
         in_shape, w_shape, _ = self.round_channel(in_shape, w_shape, self.dtype)
         block_size_k, block_size_n = tbe_platform.CUBE_MKN[self.dtype]['mac'][1:3]
+        # filter channel should be equal input channel
+        w_shape[1] = in_shape[1]
 
         in_shape_nc1hwc0 = [in_shape[N_DIM], in_shape[C_DIM] // block_size_k,
                             in_shape[H_DIM], in_shape[W_DIM], block_size_k]
@@ -406,7 +410,7 @@ class Conv2dParaProcess(CubeParaProcess):
             w_shape_frac_z = (ceil_div(4 * w_shape[H_DIM] * w_shape[W_DIM], block_size_k),
                               w_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
         else:
-            w_shape_frac_z = (w_shape[C_DIM] * w_shape[H_DIM] * w_shape[W_DIM] // block_size_k,
+            w_shape_frac_z = (group_para.get("group_opt") * group_para.get("c1_opt") * w_shape[H_DIM] * w_shape[W_DIM],
                               w_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
         return in_shape, w_shape, in_shape_nc1hwc0, w_shape_frac_z
 
@@ -437,6 +441,7 @@ class Conv2dParaProcess(CubeParaProcess):
         self.check_para_dim(self.dilations, "dilations")
         self.check_para_dim(self.pads, "pads")
         w_shape_nchw = self.get_input_nchw(w_shape, self.weights.get("ori_format"))
+        out_shape_nchw = self.get_input_nchw(outputs_shape, self.outputs.get("ori_format"))
 
         if in_shape == [-2] and (outputs_shape == [DYNAMIC_FLAG, w_shape_nchw[N_DIM], DYNAMIC_FLAG, DYNAMIC_FLAG] or
                                  outputs_shape == [DYNAMIC_FLAG, DYNAMIC_FLAG, DYNAMIC_FLAG, w_shape_nchw[N_DIM]]):
@@ -447,15 +452,15 @@ class Conv2dParaProcess(CubeParaProcess):
             in_shape_nchw, in_range_nchw = self.get_input_nchw(in_shape, self.data_format, in_range)
             self.check_range_valid(in_shape_nchw, in_range_nchw, "fmap", self.data_format)
 
-        # filter channel should be equal input channel
-        w_shape_nchw[1] = in_shape_nchw[1]
         self.check_support_valid(in_shape_nchw, w_shape_nchw)
         self.get_attr_nchw(self.data_format)
         y_range = self.get_output_range(w_shape_nchw, in_range_nchw)
-        in_shape_nchw, w_shape_nchw, in_shape_nc1hwc0, w_shape_frac_z = self._calc_shape(
-            in_shape_nchw, w_shape_nchw, in_range_nchw, y_range)
-        self.calc_pads(in_shape_nc1hwc0, w_shape_nchw)
+        self.check_range_valid(out_shape_nchw, y_range, "output", self.data_format)
+
         group_para = self.set_group_para(in_shape_nchw, w_shape_nchw, self.dtype)
+        in_shape_nchw, w_shape_nchw, in_shape_nc1hwc0, w_shape_frac_z = self._calc_shape(
+            in_shape_nchw, w_shape_nchw, in_range_nchw, y_range, group_para)
+        self.calc_pads(in_shape_nc1hwc0, w_shape_nchw)
 
         return {"in_shape_nc1hwc0": in_shape_nc1hwc0, "w_shape_frac_z": w_shape_frac_z,
                 "w_shape": w_shape_nchw, "group_para": group_para}
