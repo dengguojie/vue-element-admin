@@ -367,6 +367,47 @@ class ReduceAtomicSchedule(VectorSchedule):
         if self._is_mix_reduce_nlast_and_nlast(shape_before_reduce, reduce_axis_index):
             return _do_mix_reduce_nlast_and_nlast()
 
+        def __get_ub_tiling_split_axis(split_axis, block_split_axis, block_split_inner):
+            """get ub_tiling_split_axis"""
+            # shape_before_reduce:(ak,rk,..,r2,a1,r1), find a1 position,
+            # a1 may contain continues axis
+            a1_start_index, a1_end_index = \
+                self._find_last_none_reduce_axis(shape_before_reduce, reduce_axis_index)
+
+            reorder_to_orignal_map = {}
+            to_do_ub_tiling_shape = []
+            count = 0
+            for i in range(0, split_axis):
+                axis_size = shape_before_reduce[reduce_axis_index[i]]
+                to_do_ub_tiling_shape.append(axis_size)
+                reorder_to_orignal_map[count] = reduce_axis_index[i]
+                count = count + 1
+
+            for i in range(block_split_axis, a1_start_index):
+                if i in reduce_axis_index:
+                    to_do_ub_tiling_shape.append(shape_before_reduce[i])
+                    reorder_to_orignal_map[count] = i
+                    count = count + 1
+
+            for i in range(a1_start_index, a1_end_index + 1):
+                to_do_ub_tiling_shape.append(shape_before_reduce[i])
+                reorder_to_orignal_map[count] = i
+                count = count + 1
+
+            for i in range(a1_end_index + 1, len(shape_before_reduce)):
+                if i in reduce_axis_index:
+                    to_do_ub_tiling_shape.append(shape_before_reduce[i])
+                    reorder_to_orignal_map[count] = i
+                    count = count + 1
+
+            max_ub_count = self._get_max_ub_count()
+            ub_split_temp_axis, ub_split_inner = self._get_ub_tiling(
+                to_do_ub_tiling_shape, split_axis, block_split_inner,
+                max_ub_count)
+
+            ub_split_axis = reorder_to_orignal_map[ub_split_temp_axis]
+            return ub_split_axis, a1_start_index
+
         def _do_mix_reduce_nlast_and_last():
             # block tiling do not split r1
             # (ak,rk,..,a2,r2,a1,r1)
@@ -375,14 +416,24 @@ class ReduceAtomicSchedule(VectorSchedule):
             for i in reduce_axis_index:
                 # pylint: disable=unsubscriptable-object
                 to_do_block_tiling_shape.append(shape_before_reduce[i])
-            split_axis, _, _ = self._get_block_tiling(
+            split_axis, block_split_inner, _ = self._get_block_tiling(
                 to_do_block_tiling_shape, dtype)
             block_split_axis = self._reduce_info["reduce_axis_index"][
                 split_axis]
             r1_start_index, r1_end_index = self._find_last_reduce_axis(
                 shape_before_reduce, reduce_axis_index)
+
+            # part scene of atomic:
+            # 1.shape in spec_shape_list
+            # 2.block_tiling_split before r1_start_index
+            # 3.block_tiling split at r1_start_index, and ub_tiling also split at r1_start_index
             if shape_before_reduce not in self._spec_shape_list:
-                if block_split_axis >= r1_start_index:
+                if block_split_axis > r1_start_index:
+                    return False
+                ub_split_axis, a1_start_index = __get_ub_tiling_split_axis(
+                    split_axis, block_split_axis, block_split_inner)
+                if block_split_axis == r1_start_index and \
+                        (ub_split_axis != r1_start_index or a1_start_index == 0):
                     return False
 
             # if ak*..*a2*a1/core_num > rk*..*r2*r2, do not need atomic
@@ -1122,8 +1173,9 @@ class ReduceAtomicSchedule(VectorSchedule):
         a1_start_index, a1_end_index = \
             self._find_last_none_reduce_axis(shape_before_reduce, reduce_axis_index)
 
-        # if block tiling do not spit r1
-        if block_split_axis < a1_start_index or shape_before_reduce in self._spec_shape_list:
+        block_split_condition = block_split_axis < a1_start_index or block_split_axis > a1_end_index
+        # block_tiling not split a1
+        if block_split_condition or shape_before_reduce in self._spec_shape_list:
             # block tiling split (rk,..,rb,..,r2,r1) to (rk,..,rbo,rbi,..,r2,r1)
             # use (rbi,..,r2,a1,r1) to do ub tiling
             reorder_to_orignal_map = {}
@@ -1693,7 +1745,9 @@ class ReduceAtomicSchedule(VectorSchedule):
         def __get_reorder_case_num():
             if block_split_axis < a1_start_index and ub_split_axis < a1_start_index:
                 return 1
-            if block_split_axis < a1_start_index and a1_end_index < ub_split_axis:
+            if block_split_axis < a1_start_index and ub_split_axis > a1_end_index:
+                return 2
+            if block_split_axis > a1_end_index and ub_split_axis == block_split_axis:
                 return 2
             if ub_split_axis in range(a1_start_index, a1_end_index + 1):
                 return 3
