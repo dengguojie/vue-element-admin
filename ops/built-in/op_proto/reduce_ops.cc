@@ -432,6 +432,18 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
   size_t input_length = input_shape.size();
   size_t axis_length = axis_shape.size();
 
+  if (input_length == 0) {
+    output_desc->SetShape({});
+    output_desc->SetDataType(input_type);
+    return true;
+  }
+  if (input_shape[0] == -2) {
+    std::vector<int64_t> output_shape(1, -2);
+    output_desc->SetShape(GeShape(output_shape));
+    output_desc->SetDataType(input_type);
+    return true;
+  }
+
   // Get const data
   GeTensorPtr axis_tensor;
   auto node = NodeUtils::GetNodeFromOperator(op);
@@ -471,19 +483,6 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
    * 3. UnKnown Branch
    * */
   // Special Branch
-  if (input_length == 0) {
-    OP_LOGD(op.GetName().c_str(), "[Special Branch]: input_shape size is 0.");
-    output_desc->SetShape({});
-    output_desc->SetDataType(input_type);
-    return true;
-  }
-  if (input_shape[0] == -2) {
-    OP_LOGD(op.GetName().c_str(), "[Special Branch]: input_shape is -2.");
-    std::vector<int64_t> output_shape(1, -2);
-    output_desc->SetShape(GeShape(output_shape));
-    output_desc->SetDataType(input_type);
-    return true;
-  }
   if (!axis_shape.empty() && (axis_shape[0] == -1 || axis_shape[0] == -2) && (!keep_dims)) {
     OP_LOGD(op.GetName().c_str(), "[Special Branch]: axis_shape[0] is -1 or -2.");
     std::vector<int64_t> output_shape;
