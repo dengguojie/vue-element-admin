@@ -27,6 +27,7 @@ from te.lang.base.shape_classifier import classify
 from te.lang.base.shape_classifier import Mode
 import te.lang.base as tbe_base
 import te.lang.cce as tbe
+from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
@@ -42,7 +43,7 @@ SCALAR_MUL_FP16 = 2 ** (12)
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@fusion_manager.register("not_equal")
+@register_operator_compute("NotEqual", op_mode="dynamic", support_fusion=False)
 def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     """
     compute for not_equal
@@ -71,7 +72,7 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
                                                                     param_name_input1="input_x",
                                                                     param_name_input2="input_y")
 
-    if dtype_x == "float32":
+    if dtype_x in ("float32", "int32"):
         tensor_min = tbe.broadcast(tvm.const(SCALAR_MIN_FP32, dtype="float32"), shape_broadcast)
         tensor_mul = tbe.broadcast(tvm.const(SCALAR_MUL_FP32, dtype="float32"), shape_broadcast)
         tensor_mul1 = tbe.broadcast(tvm.const(SCALAR_MUL2_FP32, dtype="float32"), shape_broadcast)
@@ -86,12 +87,18 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     input_x = tbe.broadcast(input_x, shape_broadcast)
     input_y = tbe.broadcast(input_y, shape_broadcast)
     res_vsub = tbe.vsub(input_x, input_y)
-    res_vabs = tbe.vabs(res_vsub)
+
+    if dtype_x in ("float32", "int32"):
+        res_vsub = tbe.cast_to(res_vsub, "float32")
+        res_vabs = tbe.vabs(res_vsub)
+    else:
+        res_vabs = tbe.vabs(res_vsub)
+
     res_min = tbe.vmin(res_vabs, tensor_min)
     res_vmul = tbe.vmul(res_min, tensor_mul)
     res_vmul1 = tbe.vmul(res_vmul, tensor_mul)
 
-    if dtype_x == "float32":
+    if dtype_x in ("float32", "int32"):
         res_vmul2 = tbe.vmul(res_vmul1, tensor_mul1)
         res = tbe.cast_to(res_vmul2, "int8", True)
     else:
