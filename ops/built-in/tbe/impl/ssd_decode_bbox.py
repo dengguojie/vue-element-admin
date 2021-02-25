@@ -796,7 +796,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
             self.compute_decode_bbox_coord_corner_size(batch, data_offset,
                                                        is_tail, decode_bbox_ori)
 
-        if self.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710):
+        if self.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615, tbe_platform.ASCEND_710):
             self.clip_bbox_v200(decode_bbox_ori, decode_bbox_clip)
         else:
             self.clip_bbox(decode_bbox_ori, decode_bbox_clip)

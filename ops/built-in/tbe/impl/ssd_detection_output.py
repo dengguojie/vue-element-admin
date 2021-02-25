@@ -86,7 +86,7 @@ def _check_product_info(input_dict):
         para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
     elif tik_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         para_check.check_dtype(conf_dtype.lower(), ["float16"], param_name="input_conf")
-    elif tik_name in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710):
+    elif tik_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615, tbe_platform.ASCEND_710):
         para_check.check_dtype(conf_dtype.lower(), ["float16", "float32"], param_name="input_conf")
 
 
@@ -142,8 +142,7 @@ def _check_input_attr_value(input_dict):
     -------
     None
     """
-    if not (input_dict.get("num_classes") >= 1 and
-            input_dict.get("num_classes") <= 1024):
+    if not (1 <= input_dict.get("num_classes") <= 1024):
         _check_param_range('num_classes', 1, 1024, input_dict.get("num_classes"))
 
     if not input_dict.get("share_location"):
@@ -164,8 +163,7 @@ def _check_input_attr_value(input_dict):
                            input_dict.get("num_classes")-1,
                            input_dict.get("background_label_id"))
 
-    if not (input_dict.get("nms_threshold") > 0 and
-            input_dict.get("nms_threshold") <= 1):
+    if not (0 < input_dict.get("nms_threshold") <= 1):
         _check_param_range('nms_threshold', 0, 1,
                            input_dict.get("nms_threshold"),
                            left_open_interval=True)
@@ -181,19 +179,12 @@ def _check_input_attr_value(input_dict):
                            % (error_info['op_name'], error_info['param_name'],
                               error_info['expected_value'], error_info['real_value']))
 
-    if not (input_dict.get("code_type") >= 1 and
-            input_dict.get("code_type") <= 3):
+    if not (1 <= input_dict.get("code_type") <= 3):
         _check_param_range('code_type', 1, 3, input_dict.get("code_type"))
 
-    if not ((input_dict.get("keep_top_k") <= 1024 and input_dict.get("keep_top_k") > 0)
-            or input_dict.get("keep_top_k") == -1):
-        error_info = {}
-        error_info['errCode'] = 'E80002'
-        error_info['op_name'] = 'ssd_detection_output'
-        error_info['param_name'] = 'keep_top_k'
-        error_info['min_value'] = '0'
-        error_info['max_value'] = '1024'
-        error_info['real_value'] = str(input_dict.get("keep_top_k"))
+    if not ((1024 >= input_dict.get("keep_top_k") > 0) or input_dict.get("keep_top_k") == -1):
+        error_info = {'errCode': 'E80002', 'op_name': 'ssd_detection_output', 'param_name': 'keep_top_k',
+                      'min_value': '0', 'max_value': '1024', 'real_value': str(input_dict.get("keep_top_k"))}
         raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be"
                                        " in the range of [%s, %s] or -1,"
                                        " but actually is [%s]."
@@ -201,8 +192,7 @@ def _check_input_attr_value(input_dict):
                               error_info['min_value'],
                               error_info['max_value'], error_info['real_value']))
 
-    if not (input_dict.get("confidence_threshold") >= 0 and
-            input_dict.get("confidence_threshold") <= 1):
+    if not (0 <= input_dict.get("confidence_threshold") <= 1):
         _check_param_range('confidence_threshold', 0, 1,
                            input_dict.get("confidence_threshold"))
 
@@ -343,10 +333,8 @@ def ssd_detection_output(bbox_delta, score, anchors,
         "mbox_loc": bbox_delta,
         "mbox_conf": score,
         "mbox_priorbox": anchors,
-
         "out_box_num": out_boxnum,
         "out_box": y,
-
         "num_classes": num_classes,
         "share_location": share_location,
         "background_label_id": background_label_id,
@@ -357,7 +345,6 @@ def ssd_detection_output(bbox_delta, score, anchors,
         "code_type": code_type,
         "keep_top_k": keep_top_k,
         "confidence_threshold": confidence_threshold,
-
         "kernel_name": kernel_name
     }
 
@@ -369,16 +356,15 @@ def ssd_detection_output(bbox_delta, score, anchors,
     decode_bbox_process = ssd_decode_bbox.SSDDecodeBBox(input_dict, tik_instance)
 
     detection_out_process = SSDDetectionOutput(
-        input_dict, tik_instance,
-        decode_bbox_process.decode_bbox_out_gm.shape[2]-decode_bbox_process.burnest_len)
+        input_dict, tik_instance, decode_bbox_process.decode_bbox_out_gm.shape[2]-decode_bbox_process.burnest_len)
 
     block_num, outer_loop, outer_tail = decode_bbox_process.get_block_param()
     with tik_instance.for_range(0, block_num, block_num=block_num) as block_i:
-
         batch = tik_instance.Scalar("int32", "batch", 0)
         with tik_instance.for_range(0, outer_loop) as outer_i:
             batch.set_as(block_i * outer_loop + outer_i)
-            if decode_bbox_process.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.ASCEND_710):
+            if decode_bbox_process.ascend_name in (tbe_platform.ASCEND_610, tbe_platform.cce_params.ASCEND_615,
+                                                   tbe_platform.ASCEND_710):
                 decode_bbox_process.parser_loc_data_v200(batch)
                 decode_bbox_process.parser_priorbox_data_v200(batch)
             else:
