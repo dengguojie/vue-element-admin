@@ -22,7 +22,7 @@ from functools import reduce
 
 from te.platform import cce_params
 from te.platform.cce_conf import intrinsic_check_support
-from te.platform.cce_conf import CceProductParams
+from te.platform.cce_conf import get_soc_spec
 from te.lang.base.operation_impl import get_te_var
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.common.utils import para_check
@@ -384,9 +384,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
         def _set_load3d_special_case_flag():
             # limitation by chip:
-            # Ascend910 load3d not support
-            # when only fmap w after padding equals to filter w
-            if CceProductParams().is_cloud_version() \
+            # load3d instruction not support out_w = 1
+            # only Ascend310 and Hi3796CS can support
+            if get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS"] \
                     and self.shape_grads_5hd[2] != 1 \
                     and self.shape_grads_5hd[3] == 1:
                 self.flag_load3d_special_case = True
