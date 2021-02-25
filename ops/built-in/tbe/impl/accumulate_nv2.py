@@ -27,7 +27,7 @@ MAX_TENSOR_NUM = 40
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("accumulate_nv2")
-def _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num):
+def _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num, shape_list):
     """
     Process accumulate_nv2 operator.
 
@@ -40,39 +40,46 @@ def _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num):
     ----------
     """
     if num > 1:
-        result = tbe.broadcast(tensor_list[0], out_shape)
+        if shape_list[0] != out_shape:
+            result = tbe.broadcast(tensor_list[0], out_shape)
+        else:
+            result = tensor_list[0]
         # in order to improve the accuracy, convert float16 to float32
-        if out_dtype == 'float16':
+        if out_dtype == 'float16' and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
             result = tbe.cast_to(result, 'float32')
             for i in range(1, num):
-                tmp = tbe.broadcast(tensor_list[i], out_shape)
+                if shape_list[i] != out_shape:
+                    tmp = tbe.broadcast(tensor_list[i], out_shape)
+                else:
+                    tmp = tensor_list[i]
                 tmp = tbe.cast_to(tmp, 'float32')
                 result = tbe.vadd(result, tmp)
         else:
             for i in range(1, num):
-                tmp = tbe.broadcast(tensor_list[i], out_shape)
+                if shape_list[i] != out_shape:
+                    tmp = tbe.broadcast(tensor_list[i], out_shape)
+                else:
+                    tmp = tensor_list[i]
                 result = tbe.vadd(result, tmp)
 
     else:
         result = tbe.broadcast(0, out_shape)
         # in order to improve the accuracy, convert float16 to float32
-        if out_dtype == 'float16':
+        if out_dtype == 'float16' and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
             result = tbe.cast_to(result, 'float32')
-            tmp = tbe.broadcast(tensor_list[0], out_shape)
-            tmp = tbe.cast_to(tmp, 'float32')
+            tmp = tbe.cast_to(tensor_list[0], 'float32')
             result = tbe.vadd(result, tmp)
         else:
-            tmp = tbe.broadcast(tensor_list[0], out_shape)
-            result = tbe.vadd(result, tmp)
+            result = tbe.vadd(result, tensor_list[0])
 
     # in order to improve the accuracy, convert float32 back to float16
-    if out_dtype == 'float16':
+    if out_dtype == 'float16' and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
         result = tbe.cast_to(result, 'float16')
 
     return result
- 
 
-def _check_all_shape_and_dtype_same(x, num):
+
+def _check_all_shape_and_dtype_same(x, y, num):
     """
     Check shape and data type of inputs are all same, and return shape and dtype.
 
@@ -89,23 +96,24 @@ def _check_all_shape_and_dtype_same(x, num):
     
     check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
     shape_list = []
-    dtype_list = []
+    out_dtype = y.get('dtype').lower()
+    para_check.check_dtype(out_dtype, check_list)
+    
     for i in range(num):
         shape = x[i].get('shape') 
         para_check.check_shape(shape)
-
-        dtype = x[i].get('dtype').lower()
-        para_check.check_dtype(dtype, check_list)
-
         shape_list.append(shape)
-        dtype_list.append(dtype)
+        
+        dtype = x[i].get('dtype').lower()
+        if dtype != out_dtype:
+            raise RuntimeError('The input and output data types should be the same.')
 
     out_shape = shape_list[0]
-    out_dtype = dtype_list[0]
 
     for i in range(1, num):
-        _, _, out_shape = broadcast_shapes(out_shape, shape_list[i])
-        
+        if out_shape != shape_list[i]:
+            _, _, out_shape = broadcast_shapes(out_shape, shape_list[i])
+
     return shape_list, out_shape, out_dtype
 
 
@@ -127,7 +135,7 @@ def accumulate_nv2(x, y, num, kernel_name="accumulate_nv2"):
         raise RuntimeError(
             'The size of input and num must be same.'
         )
-    shape_list, out_shape, out_dtype = _check_all_shape_and_dtype_same(x, num)
+    shape_list, out_shape, out_dtype = _check_all_shape_and_dtype_same(x, y, num)
     para_check.check_kernel_name(kernel_name)
 
     tensor_list = []
@@ -136,7 +144,7 @@ def accumulate_nv2(x, y, num, kernel_name="accumulate_nv2"):
         data = tvm.placeholder(shape_list[i], name=data_name, dtype=out_dtype)
         tensor_list.append(data)
         
-    res = _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num)
+    res = _accumulate_nv2_compute(tensor_list, out_shape, out_dtype, num, shape_list)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
