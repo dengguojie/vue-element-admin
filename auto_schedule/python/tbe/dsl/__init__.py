@@ -79,3 +79,10 @@ from .api import auto_schedule
 from .api import build
 
 from .api import classify
+
+from .api import var
+from .api import var_attr
+from .api import add_build_arg
+from .api import add_exclude_bound_var
+from .api import compute
+from .api import schedule

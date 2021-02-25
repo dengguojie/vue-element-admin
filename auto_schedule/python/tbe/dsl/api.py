@@ -33,6 +33,7 @@ from .compute import pooling3d_max_grad_grad as pooling3d_max_grad_grad_compute
 from .unify_schedule import auto_schedule as tbe_auto_schedule
 from .unify_schedule.build import build as tbe_build
 from .base import shape_classifier
+from .base import operation
 
 
 def ceil(raw_tensor):
@@ -994,3 +995,64 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
     :return:
     """
     return shape_classifier.classify(ins, mode, extra_params)
+
+
+def var(name, bound=None, dtype="int32", addition=None):
+    """
+    add var for external
+    :param name:
+    :param bound:
+    :param dtype: such as int32, float16...
+    :param addition:
+    :return:
+    """
+    return operation.var(name, bound, dtype, addition)
+
+
+def var_attr(name, bound=None, dtype="int32", addition=None):
+    """
+    var attribute
+    :param name:
+    :param bound:
+    :param dtype: such as int32, float16, int32[4]
+    :param addition:
+    :return:
+    """
+    return operation.var_attr(name, bound, dtype, addition)
+
+
+def add_build_arg(key, value):
+    """
+    add build arg
+    :param key:
+    :param value:
+    :return:
+    """
+    return operation.add_build_arg(key, value)
+
+
+def add_exclude_bound_var(var_):
+    """
+    add exclude bound var
+    :param var_:
+    :return:
+    """
+    return operation.add_exclude_bound_var(var_)
+
+
+def compute(_operator=None):
+    """
+    generate a ComputeContext instance
+    :param _operator:
+    :return:
+    """
+    return operation.compute(_operator)
+
+
+def schedule(_compute=None):
+    """
+    generate a ScheduleContext instance
+    :param _compute:
+    :return:
+    """
+    return operation.schedule(_compute)

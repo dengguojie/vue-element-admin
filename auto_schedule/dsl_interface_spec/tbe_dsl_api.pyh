@@ -109,3 +109,15 @@ def auto_schedule(outs, option=None):
 def build(sch, config_map=None):
 
 def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
+
+def var(name, bound=None, dtype="int32", addition=None):
+
+def var_attr(name, bound=None, dtype="int32", addition=None):
+
+def add_build_arg(key, value):
+
+def add_exclude_bound_var(var_):
+
+def compute(_operator=None):
+
+def schedule(_compute=None):
