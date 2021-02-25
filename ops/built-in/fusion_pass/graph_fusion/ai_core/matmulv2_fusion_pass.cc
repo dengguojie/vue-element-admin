@@ -100,8 +100,10 @@ Status MatMulV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
 
   ge::NodePtr constNode = matMulV2Node->GetInDataAnchor(CONST_INDEX)->GetPeerOutAnchor()->GetOwnerNode();
 
-  std::shared_ptr<ge::OpDesc> transposeOpdesc =
-      std::make_shared<ge::OpDesc>(constNode->GetName() + "_transpose_b", TRANSPOSED_TYPE);
+  std::shared_ptr<ge::OpDesc> transposeOpdesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (transposeOpdesc = std::make_shared<ge::OpDesc>(constNode->GetName() + "_transpose_b", TRANSPOSED_TYPE)),
+      return FAILED);
 
   vector<int64_t> perm;
   perm.push_back(1);
