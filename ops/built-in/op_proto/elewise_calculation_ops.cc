@@ -667,7 +667,13 @@ VERIFY_FUNC_REG(LogicalOr, LogicalOrVerify);
 // ----------------LogicalOr END--------------------
 
 // ----------------Rsqrt-------------------
-COMMON_INFER_FUNC_REG(Rsqrt, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(RsqrtInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Rsqrt, RsqrtInferShape);
 // ----------------Rsqrt-------------------
 
 // ----------------Acos-------------------

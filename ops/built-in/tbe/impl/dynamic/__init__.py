@@ -71,6 +71,7 @@ from .minimum import minimum
 from .accumulate_nv2 import accumulate_nv2
 from .adam_apply_one import adam_apply_one
 from .add_n import add_n
+from .rsqrt import rsqrt
 from .greater_equal import greater_equal
 from .apply_gradient_descent import apply_gradient_descent
 from .less import less
