@@ -138,6 +138,19 @@ Status PadFusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& p
 Status PadFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // get pad node and node-desc
   ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PAD, mapping);
+
+  ge::InDataAnchorPtr DataAnchorPtr0 = pad_node->GetInDataAnchor(0);
+  ge::OutDataAnchorPtr constAnchorPtr0 = DataAnchorPtr0->GetPeerOutAnchor();
+  ge::NodePtr constNode0 = constAnchorPtr0->GetOwnerNode();
+  ge::GeTensorDesc InputTensor = constNode0->GetOpDesc()->GetOutputDesc(0);
+  DataType dataType = InputTensor.GetDataType();
+  if (dataType != ge::DT_FLOAT16 && dataType != ge::DT_FLOAT &&
+      dataType != ge::DT_INT32 && dataType != ge::DT_INT8 &&
+      dataType != ge::DT_UINT8) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Dtype of input is not supported in PadD.");
+    return NOT_CHANGED;
+  }
+
   FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_node is null, fusion failed."),
                     return PARAM_INVALID);
 
