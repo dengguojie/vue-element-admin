@@ -55,9 +55,19 @@ def inv_compute(input_x, output_y, kernel_name="inv"):
     shape = shape_util.shape_to_list(input_x.shape)
 
     temp_const = tvm.const(SCALAR_ONE, dtype=dtype)
-    temp_tensor = tbe.broadcast(temp_const, shape, dtype)
+    
+    if dtype == "int32":
+        input_x = tbe.cast_to(input_x, "float32")
+        temp_tensor = tbe.broadcast(temp_const, shape, "float32")
+        res = tbe.vdiv(temp_tensor, input_x)
+    else:
+        temp_tensor = tbe.broadcast(temp_const, shape, dtype)
+        
     res = tbe.vdiv(temp_tensor, input_x)
-
+    
+    if dtype == "int32":
+        res = tbe.cast_to(res, "int32")
+        
     return res
 
 
