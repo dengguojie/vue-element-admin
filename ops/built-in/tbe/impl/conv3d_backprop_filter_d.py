@@ -767,6 +767,6 @@ def _conv3d_backprop_filter_cce(shape_x,
     real_outs = sch.cce_special["real_out_tensor"]
     tensor_list = tensor_list_input + real_outs
 
-    config = {"name": kernel_name, "tensor_list": tensor_list}
+    config = {"name": kernel_name, "tensor_list": tensor_list, "dummy_placeholder": True}
 
     tbe.cce_build_code(sch, config)

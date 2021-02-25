@@ -750,7 +750,8 @@ def _conv3d_backprop_input_cce(shape_filter, # pylint: disable=R0913,R0914
 
         config = {
             "name": kernel_name,
-            "tensor_list": tensor_list
+            "tensor_list": tensor_list,
+            "dummy_placeholder": True
         }
         tbe.cce_build_code(sch, config)
 

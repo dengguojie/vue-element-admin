@@ -992,7 +992,7 @@ def conv3d(fmap,
     with tvm.target.cce():
         sch = tbe.auto_schedule(tensor_list[-1])
 
-    config = {"name": kernel_name, "tensor_list": tensor_list}
+    config = {"name": kernel_name, "tensor_list": tensor_list, "dummy_placeholder": True}
     tbe.cce_build_code(sch, config)
 
 
