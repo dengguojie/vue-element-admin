@@ -344,11 +344,44 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         available_free_axis *= ub_available_axis
         return available_free_axis, ideal_factor
 
+    def is_multi_core_trample(self):
+        """ to prevent multi-core trampling"""
+        # for example :[1,2,17,12] ub _nparts = 5, 17 split to 4*4 and 1
+        # blockdim is 10, the 5th core will trample the 6th core data
+        ub_nparts = self.broadcast_target_shape[self.ub_tiling_axis] // self.ub_tiling_factor
+        main_block = math.ceil(self.broadcast_target_shape[self.ub_tiling_axis] / ub_nparts)
+        tile_block = self.broadcast_target_shape[self.ub_tiling_axis] % main_block
+
+        if self.ub_tiling_axis < len(self.broadcast_target_shape) - 1:
+            calculattion_unit_target_shape = self.broadcast_target_shape[self.ub_tiling_axis+1:]
+            unit_size = 1
+            for axis_size in calculattion_unit_target_shape:
+                unit_size *= axis_size
+            tile_block_data_size = tile_block * unit_size * self.dtype_byte_size
+        else:
+            tile_block_data_size = tile_block * self.dtype_byte_size
+
+        calculattion_src_target_shape = self.broadcast_target_shape[0:self.ub_tiling_axis]
+        src_size = 1
+        for axis_size in calculattion_src_target_shape:
+            src_size *= axis_size
+        
+        if (src_size > 1) and (tile_block_data_size < self.block_byte_size):
+            return True
+        
+        return False
+
     def calculate_block_tiling(self):
         """"Get core num by calculating block tiling strategy"""
         available_axis = list(range(0, self.ub_tiling_axis))
         ub_available_size = math.ceil(self.broadcast_target_shape[self.ub_tiling_axis] /
                                       self.ub_tiling_factor)
+        # ub tiling leads to multi core trample or not
+        if self.is_multi_core_trample():
+            self.block_tiling_axis = 0
+            self.block_tiling_nparts = 1
+            return
+        
         core_num = 1
         block_split_nparts = None
         block_split_axis = None
