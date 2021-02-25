@@ -25,18 +25,11 @@ Status ParseParamsLeakyRelu(const Message *op_src, ge::Operator &op_dst) {
     return FAILED;
   }
 
-  float negative_slope = 0.0f;
-  bool bfind_alpha = false;
+  float negative_slope = 0.01f;
   for (auto attr : node->attribute()) {
-    if (attr.name() == "alpha") {
-      bfind_alpha = true;
+    if (attr.name() == "alpha"&& attr.type() == ge::onnx::AttributeProto::FLOAT) {
       negative_slope = attr.f();
-      break;
     }
-  }
-
-  if (!bfind_alpha) {
-    negative_slope = 0.01f;
   }
   op_dst.SetAttr("negative_slope", negative_slope);
   return SUCCESS;
