@@ -240,6 +240,30 @@ REG_OP(GatherV2D)
     .OP_END_FACTORY_REG(GatherV2D)
 
 /**
+*@Gathers values along an axis specified by dim . \n
+
+*@par Inputs:
+*@li x: A Tensor. Must be one of the following types: float16, float32, int32, int64.
+*@li index: A Tensor. Must be one of the following types: int64 . \n
+
+*@par Attributes:
+* dim: the axis along which to index . \n
+
+*@par Outputs:
+* y: A Tensor. Has the same type as "x" . \n
+
+*@par Third-party framework compatibility
+*Compatible with the PyTorch operator Gather.
+*/
+
+REG_OP(GatherElements)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
+    .INPUT(index, TensorType({DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64}))
+    .ATTR(dim, Int, 0)
+    .OP_END_FACTORY_REG(GatherElements)
+
+/**
 *@brief Extracts a strided slice of a tensor. Roughly speaking, this op
     extracts a slice of size (end-begin)/stride from the given input tensor.
     Starting at the location specified by begin the slice continues by

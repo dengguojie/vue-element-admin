@@ -1161,6 +1161,19 @@ IMPLEMT_COMMON_INFERFUNC(GatherInferShape) {
 COMMON_INFER_FUNC_REG(Gather, GatherInferShape);
 // ----------------Gather END-------------------
 
+// --------------------------GatherElements-------------------------
+IMPLEMT_COMMON_INFERFUNC(GatherElementsInferShape) {
+    TensorDesc tensordesc_output = op.GetOutputDesc("y");
+
+    tensordesc_output.SetShape(op.GetInputDesc("index").GetShape());
+    tensordesc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+    (void)op.UpdateOutputDesc("y", tensordesc_output);
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(GatherElements, GatherElementsInferShape);
+// --------------------------GatherElements END---------------------
+
 // ----------------UnsortedSegmentSum-------------------
 static void GetUnsortedSegmentSumConstValue(const Tensor& const_tensor, const DataType& dtype, int64_t& const_data) {
   if (dtype == ge::DT_INT32) {
