@@ -902,8 +902,8 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
 INFER_FUNC_REG(ExpandDims, ExpandDimsInfer);
 
 template <typename T>
-static graphStatus ValidateShape(const GeTensorPtr& tenosr, int64_t& product, int& unknow_index, GeShape& output,
-                                 Operator& op) {
+static graphStatus ValidateShape(const std::vector<int64_t> &x_shape, const GeTensorPtr& tenosr, int64_t& product,
+                                 int& unknow_index, GeShape& output, Operator& op) {
   int64_t dim_num = tenosr->MutableTensorDesc().MutableShape().GetDim(0);
   T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr->GetData().GetData()));
   std::vector<int64_t> out_dims = output.GetDims();
@@ -911,6 +911,10 @@ static graphStatus ValidateShape(const GeTensorPtr& tenosr, int64_t& product, in
     GE_OP_LOGE(op.GetName().c_str(), "truth shape data is invalid");
     return GRAPH_PARAM_INVALID;
   }
+
+  // attr 'allowzero' will be set in onnx reshape op parser.
+  int32_t allow_zero = 1;
+  (void)op.GetAttr("allowzero", allow_zero);
 
   for (int64_t i = 0; i < dim_num; i++) {
     if (shape_data[i] == -1) {
@@ -929,6 +933,9 @@ static graphStatus ValidateShape(const GeTensorPtr& tenosr, int64_t& product, in
       GE_OP_LOGE(op.GetName().c_str(), "Size[%lld] must be non-negative", i);
       return GRAPH_PARAM_INVALID;
     } else {
+      if ((allow_zero == 0) && (shape_data[i] == 0)) {
+        shape_data[i] = x_shape[i];
+      }
       if (shape_data[i] != 0 && product > (INT64_MAX / shape_data[i])) {
         string reason = "Mul overflow of int64, product[" + std::to_string(product) + "] shape_data[" +
                         std::to_string((int64_t)shape_data[i]) + "]";
@@ -1211,6 +1218,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   op_desc->SetOpInferDepends(dep_inputs);
   auto x_desc = op_desc->MutableInputDesc("x");
   auto y_desc = op_desc->MutableOutputDesc("y");
+  auto x_shape = x_desc->GetShape().GetDims();
 
   int64_t attr_axis = 0;
   op.GetAttr("axis", attr_axis);
@@ -1301,9 +1309,9 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   int64_t shape_size = op_desc->MutableInputDesc("shape")->MutableShape().GetShapeSize();
   graphStatus ret = GRAPH_SUCCESS;
   if (shape_type == DT_INT32) {
-    ret = ValidateShape<int32_t>(tensor, product, unknow_index, output_shape, op);
+    ret = ValidateShape<int32_t>(x_shape, tensor, product, unknow_index, output_shape, op);
   } else if (shape_type == DT_INT64) {
-    ret = ValidateShape<int64_t>(tensor, product, unknow_index, output_shape, op);
+    ret = ValidateShape<int64_t>(x_shape, tensor, product, unknow_index, output_shape, op);
   } else if (shape_size > 0) {
     GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShapeDtype, "Dim type must be DT_INT32 or DT_INT64.");
     GE_OP_LOGE(op.GetName().c_str(), "Dim type must be DT_INT32 or DT_INT64.");

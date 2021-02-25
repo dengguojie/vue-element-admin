@@ -30,6 +30,14 @@
 namespace domi {
 
 Status ParseParamsReshape(const Message* op_src, ge::Operator& op_dest) {
+  const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
+  int32_t allow_zero = 0;
+  for (const auto& attr : node->attribute()) {
+    if (attr.name() == "allowzero" && attr.type() == ge::onnx::AttributeProto::INT) {
+      allow_zero = attr.i();
+    }
+  }
+  op_dest.SetAttr("allowzero", allow_zero);
   return SUCCESS;
 }
 
