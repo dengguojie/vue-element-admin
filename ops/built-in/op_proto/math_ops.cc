@@ -1095,4 +1095,67 @@ COMMON_INFER_FUNC_REG(SoftMarginLossGrad, SoftMarginLossGradInferShape);
 VERIFY_FUNC_REG(SoftMarginLossGrad, SoftMarginLossGradVerify);
 //---------------SoftMarginLossGrad-------------------
 
+// ----------------Cdist Begin------------------------
+bool infer_shape_cdist(Operator& op,
+                     const string& input_name1,
+                     const string& input_name2,
+                     const string& output_name) {
+
+    TensorDesc output_desc = op.GetOutputDesc(output_name);
+
+    DataType input1_dtype = op.GetInputDesc(input_name1).GetDataType();
+    Format input_format = op.GetInputDesc(input_name1).GetFormat();
+
+    ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+    ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+    std::vector<int64_t> dims_x = shape_x.GetDims();
+    std::vector<int64_t> dims_y = shape_y.GetDims();
+
+    if (dims_x.size() != dims_y.size()) {
+        OP_LOGE(op.GetName().c_str(), "the two inputs shape not equal!\n");
+        return false;
+    }
+    if ((dims_x.size() < 2) || (dims_y.size() < 2)) {
+        OP_LOGE(op.GetName().c_str(), "the two inputs shape size all less than 2!\n");
+        return false;
+    }
+
+    for (int index = 0; index < dims_x.size(); index++) {
+        if (dims_x[index] != dims_y[index]) {
+            OP_LOGE(op.GetName().c_str(), "the two inputs value not equal!\n");
+            return false;
+        }
+    }
+    
+    dims_x.pop_back();
+    ge::Shape output_shape = ge::Shape(dims_x);
+    output_desc.SetShape(output_shape);
+    output_desc.SetDataType(input1_dtype);
+    output_desc.SetFormat(input_format);
+    op.UpdateOutputDesc(output_name, output_desc);
+
+    return true;
+}
+
+IMPLEMT_VERIFIER(Cdist, CdistVerify)
+{
+    if (op.GetInputDesc("x1").GetDataType() != op.GetInputDesc("x2").GetDataType()) {
+        OP_LOGE(op.GetName().c_str(), "the two inputs datatype not equal!\n");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(CdistInferShape)
+{
+    if (infer_shape_cdist(op, "x1", "x2", "y")) {
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(Cdist, CdistInferShape);
+VERIFY_FUNC_REG(Cdist, CdistVerify);
+// ----------------Cdist ----------------------------
+
 }  // namespace ge

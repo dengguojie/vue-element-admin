@@ -982,6 +982,33 @@ REG_OP(SoftMarginLossGrad)
     .ATTR(reduction, String, "mean")
     .OP_END_FACTORY_REG(SoftMarginLossGrad)
 
+/**
+ *@brief Computes batched the p-norm distance between each pair of
+ *the two collections of row vectors. \n
+
+ *@par Inputs:
+ *Two inputs, including:
+ * @li x1: A tensor with shpae: BxPXM. Must be one of the following types:
+ *     float16, float32. \n
+ * @li x2: A tensor with shpae: BxRxM. Must be one of the following types:
+ *     float16, float32. \n
+
+ *@par Attributes:
+ * @li p: An optional float >= 0 or inf. Defaults to 2.0. \n
+
+ *@par Outputs:
+ * y: A Tensor with the same type of x1's and with shape BxPxR. \n
+
+ *@par Third-party framework compatibility
+ *Compatible with the Pytorch operator Cdist. \n
+ */
+REG_OP(Cdist)
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(p, Float, 2.0)
+    .OP_END_FACTORY_REG(Cdist)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATH_OPS_H_
