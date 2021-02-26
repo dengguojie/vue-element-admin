@@ -804,12 +804,6 @@ bool Reduce::Init() {
       }
     }
 
-    // CHECK AXIS DIMS
-    V_OP_TILING_CHECK(!(reduce_axis_ori.size() > input_shape_ori.size()),
-                      OP_LOGE(op_type.c_str(), "axis.size is %d that should less than input.size which is %d",
-                              reduce_axis_ori.size(), input_shape_ori.size()),
-                      return false);
-
     // Discard "1" and default sorted
     EliminateOne();
     compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 &&
