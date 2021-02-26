@@ -196,7 +196,7 @@ class TilingSelection:
 
         if self.op.op_type in ("conv2d", "conv2d_bp_input"):
             tiling_cases = _handle_dynamic_nhw()
-        elif self.op.op_type in ("conv3d_backprop_input"):
+        elif self.op.op_type in ("conv3d_backprop_input", "convolution_3d"):
             tiling_cases = _handle_dynamic_ndhw()
         else:
             add_compile_info("dynamic_mode", self.op.dynamic_mode)
@@ -211,14 +211,17 @@ class TilingSelection:
             elif self.op.dynamic_mode == "dynamic_dhw":
                 tiling_cases = self._calc_dhw(target_area)
             else:
-                raise RuntimeError("Only dynamic_dhw/dynamic_hw/dynamic_batch "
+                raise RuntimeError("Only dynamic_hw/dynamic_batch "
                                    "is supported")
 
         tiling_blockdim = {}
+        correct_range_flag = False
         for case in tiling_cases:
             tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case
                                             else int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
+            correct_range_flag = case["correct_range_flag"]
         add_compile_info("block_dim", tiling_blockdim)
+        add_compile_info("correct_range_flag", correct_range_flag)
         return tiling_cases
 
     def _modify_core_num(self, seed):
@@ -360,71 +363,6 @@ class TilingSelection:
 
         return tiling_cases
 
-    def _calc_dhw(self, tgt_area):
-        """
-        calculate tilings for dynamic dhw mode
-
-        Parameters
-        ----------
-        tgt_area: tuple, dhw range to be covered (d_min, d_max, h_min, h_max,
-                                                  w_min, w_max)
-
-        Returns
-        -------
-        tilings_cases: list, calculated tilings
-        """
-
-        def _correct_seed_range(seed_area):
-            funcs = (max, min, max, min, max, min)
-            return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area,
-                                                         seed_area)]
-        tgt_area = tuple(tgt_area[0] + tgt_area[1] + tgt_area[2])
-        candidates = {}
-
-        # for default tiling
-        tiling_cases = []
-        if None in tgt_area and self.op.op_type == "convolution_3d":
-            tgt_area = [i if i else MAX_RANGE for i in tgt_area]
-            cur_seed = next(self.seed_cnt)
-            default_tiling = self.op.get_default_tiling()
-            tiling_cases.append(
-                self.op.assembly_case(default_tiling, tgt_area, cur_seed))
-            add_compile_info("repo_range", {cur_seed: tgt_area})
-            add_compile_info("repo_seeds", {cur_seed: [tgt_area[0], tgt_area[2], tgt_area[4]]})
-            return tiling_cases
-
-        repo_seeds = self.op.get_repo_tiling()
-        seed_points = set()
-
-        for seed in repo_seeds:
-            seed_dhw = (seed[self.op.key][1], seed[self.op.key][3],
-                        seed[self.op.key][4])
-            seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
-            if seed_range[1] == -1:
-                seed_range[1] = tgt_area[1]
-            if seed_dhw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
-                continue
-            seed_points.add(seed_dhw)
-            seed_range = _correct_seed_range(seed_range)
-            candidates[next(self.seed_cnt)] = [seed_range, seed['tiling'],
-                                               seed_dhw]
-
-        cost_cases = self._select_tiling(tgt_area, candidates)
-        tiling_cases = [
-            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
-        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
-        repo_range = {k: v[0] for k, v in candidates.items()}
-
-        # call cost model
-        cost_tilings, cost_range = self._calc_costmodel(cost_cases)
-        tiling_cases += cost_tilings
-        if not tiling_cases:
-            raise RuntimeError("No tiling generated for this shape and range")
-
-        add_compile_info("repo_range", repo_range)
-        add_compile_info("cost_range", cost_range)
-        return tiling_cases
-
     def _calc_ndhw(self, tgt_area):
         """
         calculate tilings for dynamic ndhw mode
@@ -445,13 +383,16 @@ class TilingSelection:
                                                          seed_area)]
         tgt_area = reduce(lambda x, y: x + y, tgt_area)
         candidates = {}
-
         repo_seeds = self.op.get_repo_tiling()
         seed_points = set()
 
         for seed in repo_seeds:
             seed_ndhw = (seed[self.op.key][0], seed[self.op.key][1],
                         seed[self.op.key][2], seed[self.op.key][3])
+            if self.op.op_type in ("convolution_3d",):
+                # a shape format is ndc1hwc0
+                seed_ndhw = (seed[self.op.key][0], seed[self.op.key][1],
+                            seed[self.op.key][3], seed[self.op.key][4])
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
             if seed_range[1] == -1:
                 seed_range[1] = tgt_area[1]
@@ -730,14 +671,12 @@ class TilingSelection:
                 cut_range = cost_cases.popleft()
                 if self.op.op_type in ("conv2d", "conv2d_bp_input") and len(cut_range) == NHW_RANGE_LEN:
                     seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5]])
-                elif self.op.op_type in ("conv3d_backprop_input") and len(cut_range) == NDHW_RANGE_LEN:
+                elif self.op.op_type in ("conv3d_backprop_input", "convolution_3d") and len(cut_range) == NDHW_RANGE_LEN:
                     seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5], cut_range[7]])
                 else:
                     seed_shape = tuple(cut_range[1::2])
                 cost_seed = self.op.get_costmodel_tiling(seed_shape)
                 seed_range = self.op.get_tiling_range(cost_seed['tiling'], cost_seed[self.op.key])
-                if self.op.dynamic_mode == "dynamic_dhw" and seed_range[1] == -1:
-                    seed_range[1] = cut_range[1]
                 if seed_range[1] == -1:
                     seed_range[1] = cut_range[1]
                 if seed_range[3] == -1:

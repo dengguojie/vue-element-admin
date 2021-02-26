@@ -25,7 +25,6 @@
 namespace {
   constexpr int32_t kConv3dDimSizeLimit = 6;
   constexpr int32_t kConv3dVarDimSizeLimit = 4;
-
   const std::vector<int32_t> kConv3DDynamicShapeDims = {0, 1, 3, 4}; // format: NDC1HWC0
   const std::vector<int32_t> kConv3DDynamicRangeDims = {0, 1, 2, 3}; // foramt: NDHW
 
@@ -290,13 +289,21 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
 
       std::string tiling_id;
       bool is_dynamic_batch = (dynamic_batch == dynamic_mode);
-      if (is_dynamic_batch) {
+      if (op_type == "Conv3D" && compile_info["tiling_type"] == "default_tiling") {
+        tiling_id = compile_info["default_range"].begin().key();
+      } else if (is_dynamic_batch) {
         tiling_id = GetConv3DBatchTiling(op_type, input_shape, compile_info);
       } else {
         tiling_id = GetConv3DNDHWTiling(op_type, input_shape, compile_info);
       }
 
       if (tiling_id == "0") {
+        if (op_type == "Conv3D") {
+          if (compile_info["correct_range_flag"]) {
+            OP_LOGE(op_type.c_str(), "The original range does not meet requirements,"
+                                "new range is generated during op compile, but the shape is not covered by new range");
+          }
+        }
         OP_LOGE(op_type.c_str(), "This shape is not covered by any tiling, please modify range and recompile");
         return false;
       }

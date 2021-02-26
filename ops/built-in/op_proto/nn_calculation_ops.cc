@@ -5366,10 +5366,18 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
   // update pads if padding is SAME
   std::string padding;
   // when rank is unknown, or D/H/W is unknown, set SAME padding as -1
-  bool unknown_pad = (unknown_rank || (unknown_shape && (x_shape[idx_n] != -1)));
-  if ((op.GetAttr("padding", padding) == GRAPH_SUCCESS) && (padding == "SAME") && unknown_pad) {
-    op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
-    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+  std::vector<int64_t> x_shape_copy = x_shape;
+  x_shape_copy[0] = 1;
+  if (IsUnknownRankShape(x_shape) || IsUnKnownShape(x_shape_copy)) {
+    std::string pad_str;
+    if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
+      std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);
+      if (pad_str == "SAME") {
+        pads.assign(kConv3dPadsSizeLimit, -1);
+        OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+      }
+      op.SetAttr("pads", pads);
+    }
   }
 
   if (!unknown_shape) {

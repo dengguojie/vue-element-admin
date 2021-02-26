@@ -16,6 +16,7 @@
 conv3d compute
 """
 import copy
+import warnings
 import te.platform as tbe_platform
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
@@ -52,7 +53,6 @@ class Conv3DParam(object):
     """
     ConvParam
     """
-
     def __init__(self):
         pass
 
@@ -67,7 +67,6 @@ class Conv3DParam(object):
     tiling = None
     tiling_query_param = {}
     var_map = {}
-    dynamic_mode = None
     tiling_info_dict = {}
 
 
@@ -136,14 +135,18 @@ def _cube_3d_compute(fmap,
     dilation_d, dilation_h, dilation_w = dilation_dhw
 
     _TENSOR_MAP["filter_d"] = filter_d
-    if Conv3DParam.dynamic_mode == "dynamic_dhw":
-        height_out = Conv3DParam.var_map.get("h_out")
-        width_out = Conv3DParam.var_map.get("w_out")
+    if "d_out" in Conv3DParam.var_map:
         d_out = Conv3DParam.var_map.get("d_out")
     else:
-        height_out = (fmap_h + pad_top + pad_bottom - ((filter_h - 1) * dilation_h + 1)) // stride_h + 1
-        width_out = (fmap_w + pad_left + pad_right - ((filter_w - 1) * dilation_w + 1)) // stride_w + 1
         d_out = (fmap_d + pad_head + pad_tail - ((filter_d - 1) * dilation_d + 1)) // stride_d + 1
+    if "h_out" in Conv3DParam.var_map:
+        height_out = Conv3DParam.var_map.get("h_out")
+    else:
+        height_out = (fmap_h + pad_top + pad_bottom - ((filter_h - 1) * dilation_h + 1)) // stride_h + 1
+    if "w_out" in Conv3DParam.var_map:
+        width_out = Conv3DParam.var_map.get("w_out")
+    else:
+        width_out = (fmap_w + pad_left + pad_right - ((filter_w - 1) * dilation_w + 1)) // stride_w + 1
 
     config = tbe_platform.CUBE_MKN[in_dtype]
     block_size_k = config['mac'][1]
@@ -179,7 +182,7 @@ def _cube_3d_compute(fmap,
                 1) // block_size_m * block_size_m
     pad_hw = pads[2:]
 
-    if Conv3DParam.dynamic_mode:
+    if Conv3DParam.var_map:
         # new data layout (N, C1, H, W, C0) -> (N, loop_m, loop_k, cube_m, cube_k)
         howo_mad_1 = (height_out * width_out + block_size_m -
                     1) // block_size_m
@@ -353,7 +356,7 @@ def _get_fuse_fmap_tensor(fmap_fuse_shape, fmap, d_out, kernel_d, stride_d,
                   n_index % d_out * (kernel_d - stride_d) * cyclebuffer_flag) % \
                   kernel_d - pad_head
         c1_index = dc_index % fmap_c1
-        if Conv3DParam.dynamic_mode:
+        if Conv3DParam.var_map:
             # Only the conditions for pad are retained in the dynamic shape compute
             fuse_tensor_condition = tvm.all(d_index >= 0, d_index < fmap_d)
         else:
@@ -699,48 +702,50 @@ def _handle_res_c(res, conv_shape):
     return res_c
 
 
-def _get_dynamic_para():
+def _get_dynamic_para(data, para_dict):
     """
     Get dynamic para.
     """
-    if Conv3DParam.dynamic_mode == "dynamic_batch":
-        fmap_range = [get_te_var("batch_n").get_bound()]
-    elif Conv3DParam.dynamic_mode == "dynamic_dhw":
-        fmap_range = [get_te_var("fmap_d").get_bound(),
-                      get_te_var("fmap_h").get_bound(),
-                      get_te_var("fmap_w").get_bound()]
+    #data shape is ndc1hwc0
+    n_dim = 0
+    d_dim = 1
+    h_dim = 3
+    w_dim = 4
+    fmap_range = []
+    var_map = {}
+    if isinstance(data.shape[n_dim], tvm.expr.Var):
+        fmap_range.append(get_te_var("batch_n").get_bound())
+        var_map["batch_n"] = get_te_var("batch_n").get_tvm_var()
     else:
-        return None
+        fmap_range.append((data.shape[n_dim], data.shape[n_dim]))
+
+    if isinstance(data.shape[d_dim], tvm.expr.Var):
+        fmap_range.append(get_te_var("fmap_d").get_bound())
+        var_map["fmap_d"] = get_te_var("fmap_d").get_tvm_var()
+        var_map["d_out"] = get_te_var("d_out").get_tvm_var()
+    else:
+        fmap_range.append((data.shape[d_dim], data.shape[d_dim]))
+
+    if isinstance(data.shape[h_dim], tvm.expr.Var):
+        fmap_range.append(get_te_var("fmap_h").get_bound())
+        var_map["fmap_h"] = get_te_var("fmap_h").get_tvm_var()
+        var_map["h_out"] = get_te_var("h_out").get_tvm_var()
+    else:
+        fmap_range.append((data.shape[h_dim], data.shape[h_dim]))
+
+    if isinstance(data.shape[w_dim], tvm.expr.Var):
+        fmap_range.append(get_te_var("fmap_w").get_bound())
+        var_map["fmap_w"] = get_te_var("fmap_w").get_tvm_var()
+        var_map["w_out"] = get_te_var("w_out").get_tvm_var()
+    else:
+        fmap_range.append((data.shape[w_dim], data.shape[w_dim]))
+
     dynamic_para = {
-        "dynamic_mode": Conv3DParam.dynamic_mode,
-        "fmap_range": fmap_range
+        "fmap_range": fmap_range,
+        "var_map": var_map,
+        "correct_range_flag": para_dict.get("correct_range_flag")
     }
     return dynamic_para
-
-
-def _get_dynamic_mode(data):
-    """
-    Return dynamic mode.
-    """
-    if isinstance(data.shape[0], tvm.expr.Var):
-        return "dynamic_batch"
-    if isinstance(data.shape[1], tvm.expr.Var) and \
-            isinstance(data.shape[3], tvm.expr.Var) \
-            and isinstance(data.shape[4], tvm.expr.Var):
-        return "dynamic_dhw"
-    return None
-
-
-def _get_var_map():
-    """
-    Get dynamic mode for Conv3DParam.
-    """
-    if Conv3DParam.dynamic_mode == "dynamic_batch":
-        return {"batch_n" : get_te_var("batch_n").get_tvm_var()}
-    if Conv3DParam.dynamic_mode == "dynamic_dhw":
-        return {v : get_te_var(v).get_tvm_var()
-                for v in ("fmap_h", "fmap_w", "fmap_d", "h_out", "w_out", "d_out")}
-    return None
 
 
 def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
@@ -978,8 +983,8 @@ def conv3d(x, filter, filter_size, para_dict):
     """
     in_dtype = x.dtype
     w_dtype = filter.dtype
-    Conv3DParam.dynamic_mode = _get_dynamic_mode(x)
-    Conv3DParam.var_map = _get_var_map()
+    Conv3DParam.dynamic_para = _get_dynamic_para(x, para_dict)
+    Conv3DParam.var_map = Conv3DParam.dynamic_para.get("var_map")
 
     bias_tensor = para_dict["bias_tensor"]
     bias_flag = (bias_tensor is not None)
@@ -993,7 +998,7 @@ def conv3d(x, filter, filter_size, para_dict):
 
     stride_dhw = para_dict["strides"]
     stride_d, stride_h, stride_w = stride_dhw
-    if Conv3DParam.dynamic_mode:
+    if Conv3DParam.var_map:
         dilation_dhw = para_dict["dilation_dhw"]
     else:
         dilation_dhw = para_dict["dilations"]
@@ -1018,7 +1023,7 @@ def conv3d(x, filter, filter_size, para_dict):
 
     # Parameter check
     shape_fmap_ncdhw = [fmap_n, fmap_c1 * fmap_c0, fmap_d, fmap_h, fmap_w]
-    if not Conv3DParam.dynamic_mode:
+    if not Conv3DParam.var_map:
         _check_conv3d_shape(shape_fmap_ncdhw, shape_filter_ncdhw, pads,
                             stride_dhw, dilation_dhw, in_dtype, w_dtype)
 
@@ -1047,7 +1052,7 @@ def conv3d(x, filter, filter_size, para_dict):
     _TENSOR_MAP["kernel_name"] = para_dict["kernel_name"]
     l0a_load2d_flag = _get_load2d_flag(stride_dhw, pads, shape_filter_ncdhw)
     cyclebuffer_flag = tvm.var(name='cyclebuffer_flag', dtype='int')
-    if Conv3DParam.dynamic_mode:
+    if Conv3DParam.var_map:
         Conv3DParam.tiling_info_dict = {
             "op_type": "convolution_3d",
             "a_shape": fmap_shape_ndc1hwc0,
@@ -1083,14 +1088,13 @@ def conv3d(x, filter, filter_size, para_dict):
     res = conv_res
     res_remove_pad_shape = list(res.shape)
     # UB fusion
-    if Conv3DParam.dynamic_mode == "dynamic_dhw":
-        res_remove_pad_shape[2] = conv_res.op.attrs['true_shape'][2]
-    else:
+    if 'value' in dir(conv_res.op.attrs['true_shape'][2]):
         res_remove_pad_shape[2] = conv_res.op.attrs['true_shape'][2].value
+    else:
+        res_remove_pad_shape[2] = conv_res.op.attrs['true_shape'][2]
     if dsl_flag:
         c_ub_remove_pad = _handle_res_c(res, res_remove_pad_shape)
         return c_ub_remove_pad
-
 
     # Remove H-aligned data in the output shape
     res_remove_pad = _remove_pad(res, res_remove_pad_shape)

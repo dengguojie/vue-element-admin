@@ -69,7 +69,6 @@ class CceConv3dOp:
         self._has_vector_flag = False
         self._in_quant_sqrt_flag = False
         self.dsl_flag = self._tensor_map["dsl_flag"]
-        self.dynamic_mode = conv3d_compute.Conv3DParam.dynamic_mode
         self.var_map = conv3d_compute.Conv3DParam.var_map
         self.tiling_case = {}
         self.var_range = {}
@@ -202,7 +201,7 @@ class CceConv3dOp:
         if not tiling["BL1_shape"]:
             reorder_flag = True
         elif double_buffer_flag["AL1_pbuffer"] == double_buffer_flag["BL1_pbuffer"] and \
-                not self.dynamic_mode == "dynamic_dhw":
+                isinstance(al1_factor[1], int):
             if bl1_factor[1] >= al1_factor[1]:
                 reorder_flag = True
         elif double_buffer_flag["BL1_pbuffer"] == 2:
@@ -602,7 +601,7 @@ class CceConv3dOp:
         fmap_shape_ndc1hwc0 = [fmap_n, fmap_d, cin1_g, fmap_h, fmap_w, fmap_c0]
         shape_w_ndc1hwc0 = [cout_g, kernel_d, cin1_g, kernel_h, kernel_w,
                             _TILING_FLOAT16_MKN]
-        if self.dynamic_mode:
+        if self.var_map:
             tiling_new = self.tiling_case
         else:
             info_dict = {
@@ -699,7 +698,7 @@ class CceConv3dOp:
             }
             input_data_type = in_dtype
             w_out = (in_size_w + padw[0] + padw[1] - ((kernel_w - 1) * dilationw + 1)) // stridew + 1
-            if self.dynamic_mode == "dynamic_dhw":
+            if "fmap_w" in self.var_map:
                 w_out = self.var_range.get('w_out')[1]
                 in_size_w = self.var_range.get('fmap_w')[1]
 
@@ -778,7 +777,7 @@ class CceConv3dOp:
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         # al1
         if double_buffer_flag["AL1_pbuffer"] == 2:
-            if cyclebuffer_flag and not self.dynamic_mode:
+            if cyclebuffer_flag and not self.var_map:
                 # cycle_double_buffer is not used in the dynamic shape
                 sch[buffer_dict["al1"]].cycle_double_buffer()
             else:
@@ -886,11 +885,11 @@ class CceConv3dOp:
         stride_d = c_col.op.attrs['stride_d']
         cyclebuffer_flag = self._tensor_map["cyclebuffer_flag"]
         kernel_d = c_ub.op.attrs['kernel_d']
-        if cyclebuffer_flag and not self.dynamic_mode:
+        if cyclebuffer_flag and not self.var_map:
             # Specifies AL1 memory
             sch[al1].mem_unique()
             sch[al1].emit_insn(al1.op.axis[1], 'dma_copy')
-        elif self.dynamic_mode and not l0a_load2d_flag:
+        elif self.var_map and not l0a_load2d_flag:
             self._condition_cycle_buffer_dynamic(cyclebuffer_flag, fmap, al1, c_col,
                                                  c_ub, tiling)
         else:
@@ -898,7 +897,7 @@ class CceConv3dOp:
 
         if l0a_load2d_flag:
             sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
-        elif self.dynamic_mode:
+        elif self.var_map:
             stride_update = 1 if self._tensor_map["opti_h_flag"] else c_ub.op.attrs['stride'][0]
             im2col_attr = {
                 'set_fmatrix': 1,
@@ -1068,7 +1067,7 @@ class CceConv3dOp:
         compute_stage = None
         allocate_stage = None
         al1 = buffer_dict["al1"]
-        if not l0a_load2d_flag and not self.dynamic_mode:
+        if not l0a_load2d_flag and not self.var_map:
             fmap_col_before = buffer_dict["fmap_col_before"]
         if te_util.get_and_res(l0a_load2d_flag, nbuffer_flag_al1):
             al1_compute_axis = compute_axis["k_outer_outer_inner_outer"]
@@ -1098,11 +1097,11 @@ class CceConv3dOp:
             sch[al1].compute_at(sch[compute_stage], al1_compute_axis)
         else:
             sch[al1].compute_at(sch[compute_stage], al1_compute_axis)
-            if not self.dynamic_mode:
+            if not self.var_map:
                 sch[fmap_col_before].compute_at(sch[compute_stage],
                                                 al1_compute_axis)
 
-        if not self.dynamic_mode:
+        if not self.var_map:
             do_num = al1.op.axis[0].dom.extent.value
             if te_util.get_and_res(cyclebuffer_flag, do_num != 1):
                 cyclebuffer_factor = self._tensor_map["d_out"] // self._tensor_map["d_dim"]
@@ -1237,7 +1236,7 @@ class CceConv3dOp:
             return fuse_op_num
 
         self._fused_op_num = _get_fused_op_num()
-        if self.dynamic_mode:
+        if self.var_map:
             self.tiling_case = dynamic_para.get("tiling")
             self.var_range = dynamic_para.get("var_range")
 
@@ -1258,17 +1257,21 @@ class CceConv3dOp:
         fmap_cin1_ori = fmap.shape[2] if fmap.op.input_tensors else fmap.op.shape[2]
         stride_w = c_ub.op.attrs['stride'][1]
         dilation_w = c_ub.op.attrs['dilation'][1]
-        if self.dynamic_mode == "dynamic_dhw":
-            w_out = self.var_map.get("w_out")
+
+        if "fmap_d" in self.var_map:
             sch.set_var_range(self.var_map.get("fmap_d"), *self.var_range.get('fmap_d'))
-            sch.set_var_range(self.var_map.get("fmap_h"), *self.var_range.get('fmap_h'))
-            sch.set_var_range(self.var_map.get("fmap_w"), *self.var_range.get('fmap_w'))
             sch.set_var_range(self.var_map.get("d_out"), *self.var_range.get('d_out'))
+        if "fmap_h" in self.var_map:
+            sch.set_var_range(self.var_map.get("fmap_h"), *self.var_range.get('fmap_h'))
             sch.set_var_range(self.var_map.get("h_out"), *self.var_range.get('h_out'))
+        if "fmap_w" in self.var_map:
+            sch.set_var_range(self.var_map.get("fmap_w"), *self.var_range.get('fmap_w'))
             sch.set_var_range(self.var_map.get("w_out"), *self.var_range.get('w_out'))
-        elif self.dynamic_mode == "dynamic_batch":
-            w_out = (fmap_w + pad_left + pad_right - kernel_w) // stride_w + 1
+        if "batch_n" in self.var_map:
             sch.set_var_range(self.var_map.get("batch_n"), *self.var_range.get('batch_n'))
+
+        if "fmap_w" in self.var_map:
+            w_out = self.var_map.get("w_out")
         else:
             w_out = (fmap_w + pad_left + pad_right - ((kernel_w - 1) * dilation_w + 1)) // stride_w + 1
 
@@ -1284,7 +1287,7 @@ class CceConv3dOp:
             else:
                 _fuse_fmap_tensor = tensor_map["fmap_do_tensor"]
                 _fmap_col_before = 0
-                if not self.dynamic_mode:
+                if not self.var_map:
                     _fmap_col_before = tensor_map["fmap_im2col_row_major_res"]
                     sch[_fmap_col_before].buffer_align(
                         (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
@@ -1444,7 +1447,7 @@ class CceConv3dOp:
         al1_at_c_axis = m_outer_outer_outer_inner
 
         if tensor_map["cyclebuffer_flag"]:
-            split_condition = self.dynamic_mode and \
+            split_condition = self.var_map and \
                               tiling["manual_pingpong_buffer"]['AL1_pbuffer'] == 2 and \
                               tiling["manual_pingpong_buffer"]['AL0_pbuffer'] == 2
             if split_condition:
@@ -1675,7 +1678,7 @@ class CceConv3dOp:
 
 
         def _k_buffer_tile():
-            if al1_factor[0] != 1 and not l0a_load2d_flag and not self.dynamic_mode:
+            if al1_factor[0] != 1 and not l0a_load2d_flag and not self.var_map:
                 factor_oooo = group_dict["cin1_g"] * kernel_d // min(al1_factor[0],
                                                                  bl1_factor[0])
                 factor_oooi = group_dict["cin1_g"] * kernel_d // max(al1_factor[0],
@@ -1810,7 +1813,7 @@ class CceConv3dOp:
                 al1_m_tiling = tiling["AL1_shape"][1] * c_tiling_factor[1]
                 if l0a_load2d_flag:
                     al1_m = al1_m_tiling
-                elif self.dynamic_mode == "dynamic_dhw":
+                elif "fmap_w" in self.var_map:
                     # dynamic_hw choose the value of additional_rows according to w_out
                     additional_rows = tvm.select(
                         tvm.floormod(al1_m_tiling, w_out) == 0,
@@ -1820,7 +1823,7 @@ class CceConv3dOp:
                     ho_len = tvm.floordiv(al1_m_tiling, self.var_map['w_out']) + additional_rows
                     hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1)*stride_update
                     al1_m = hi_max * self.var_map['fmap_w']
-                elif self.dynamic_mode == "dynamic_batch":
+                else:
                     if al1_m_tiling % int(w_out) == 0:
                         additional_rows = 0
                     elif al1_m_tiling * EXTEND_H_CALCULATE_FACTOR % int(w_out) == 0:
@@ -1835,9 +1838,11 @@ class CceConv3dOp:
                 if self._tensor_map["opti_h_flag"]:
                     fmap_hi = (fmap_hi - 1) // stride_h + 1
                 al1_m = fmap_hi * fmap_wi
+                align_util = 16
+                al1_m = te_util.align(al1_m, align_util)
                 return al1_m * fmap_c1 * fmap_c0 * kernel_d
 
-        if self.dynamic_mode:
+        if self.var_map:
             sch[al1].set_storage_bound(_get_al1_bound())
             # disable_allocate
             sch.disable_allocate(tbe_platform.scope_cbuf)
@@ -1854,7 +1859,7 @@ class CceConv3dOp:
             sch[bl0].mem_unique()
             sch[c_col].mem_unique()
             sch[c_ub].mem_unique()
-        if self.dynamic_mode:
+        if self.var_map:
             return True
         tensor_map.clear()
         dim_map.clear()

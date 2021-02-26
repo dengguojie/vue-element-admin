@@ -34,20 +34,20 @@ static string to_string(const std::stringstream &tiling_data)
   return result;
 }
 
-TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_dhw)
+TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_w)
 {
   using namespace optiling;
   std::string op_name = "Conv3D";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"dynamic_mode\": \"dynamic_dhw\", \"repo_seeds\": {\"10000\": [128, 128, 128], \"10001\": [48, 184, 256], \"10002\": [16, 120, 176], \"10003\": [208, 208, 208], \"10004\": [32, 256, 384]}, \"repo_range\": {\"10000\": [48, 78, 184, 214, 256, 286], \"10001\": [48, 78, 184, 214, 256, 286], \"10002\": [48, 78, 184, 214, 256, 286], \"10003\": [48, 78, 184, 214, 256, 286], \"10004\": [48, 78, 184, 214, 256, 286]}, \"cost_range\": {}, \"block_dim\": {\"10000\": 32, \"10001\": 32, \"10002\": 32, \"10003\": 32, \"10004\": 32}}";
+  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"tiling_type\": \"dynamic_tiling\", \"repo_seeds\": {\"10000\": [32, 16, 56, 56]}, \"repo_range\": {\"10000\": [32, 32, 16, 16, 56, 56, 24, 456]}, \"cost_range\": {}, \"block_dim\": {\"10000\": 32}, \"_vars\": {\"10000\": [\"fmap_w\", \"w_out\"]}}";
 
   std::vector<std::vector<int64_t>> inputs {
-    {1, 48, 1, 184, 256, 16},
+    {32, 16, 1, 56, 56, 16},
     {27, 2, 16, 16, 1, 49},
   };
-  std::vector<int64_t> output {1, 48, 2, 184, 256, 16};
+  std::vector<int64_t> output {32, 15, 1, 56, 56, 16};
   std::vector<std::string> input_types{"float16", "float16"};
   std::string output_dtype = "float16";
   std::vector<std::string> input_formats{"NDC1HWC0", "FRACTAL_Z_3D"};
@@ -82,12 +82,12 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_dhw)
 
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "Conv3d_tiling_dynamic_dhw";
+  op_compile_info.key = "Conv3d_tiling_dynamic_w";
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10001 48 184 256 48 184 256 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 56 56 ");
 }
 
 TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
@@ -97,13 +97,13 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"dynamic_mode\": \"dynamic_batch\", \"tiling_range\": {\"10000\": [1, 31]}, \"repo_seeds\": {\"10000\": 1}, \"block_dim\": {\"10000\": 32}}";
+  std::string compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"tiling_type\": \"dynamic_tiling\", \"repo_seeds\": {\"10000\": 32}, \"tiling_range\": {\"10000\": [1, 35]}, \"block_dim\": {\"10000\": 32}, \"_vars\": {\"10000\": [\"batch_n\"]}}";
 
   std::vector<std::vector<int64_t>> inputs {
-    {1, 24, 2, 92, 128, 16},
-    {54, 4, 16, 16, 32, 49},
+    {32, 16, 1, 56, 56, 16},
+    {27, 2, 16, 16, 1, 49},
   };
-  std::vector<int64_t> output {1, 24, 4, 92, 128, 16};
+  std::vector<int64_t> output {32, 15, 1, 56, 56, 16};
   std::vector<std::string> input_types{"float16", "float16"};
   std::string output_dtype = "float16";
   std::vector<std::string> input_formats{"NDC1HWC0", "FRACTAL_Z_3D"};
@@ -143,5 +143,5 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 1 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 32 ");
 }
