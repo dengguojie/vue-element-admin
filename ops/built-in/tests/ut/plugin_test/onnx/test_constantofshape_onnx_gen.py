@@ -1,7 +1,7 @@
 import onnx
 from onnx import helper
 
-def make_constantofshape_float_ones():
+def make_constantofshape_float_ones(version_num):
     tensor_value = helper.make_tensor("value", onnx.TensorProto.FLOAT,
                                        [1], [1])
     node = helper.make_node(
@@ -18,9 +18,11 @@ def make_constantofshape_float_ones():
     )
 
     model = helper.make_model(graph, producer_name="onnx-parser_test_1")
-    model.opset_import[0].version = 11
-    onnx.save(model, "./test_constantofshape_float_ones.onnx")
+    model.opset_import[0].version = version_num
+    onnx.save(model, "./test_constantofshape_V{}.onnx".format(version_num))
     onnx.checker.check_model(model)
 
 if __name__ == '__main__':
-    make_constantofshape_float_ones()
+    version_t = (9, 11, 12, 13)
+    for i in version_t:
+        make_constantofshape_float_ones(i)
