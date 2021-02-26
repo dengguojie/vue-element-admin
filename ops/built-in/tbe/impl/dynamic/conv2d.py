@@ -95,6 +95,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
         stride on H/W, format sensitive
     pads: tuple/list of 4 integers
         [pad_top, pad_bottom, pad_left, pad_right]
+        when string, it supports "SAME", "VALID"
     dilations: tuple/list of 4 integers
         dilation on H/W, format sensitive
     groups: int
@@ -142,7 +143,9 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                        "group_opt": paras.get("group_para").get("group_opt"),
                        "a_shape": paras.get("in_shape_nc1hwc0"),
                        "weight_fracz_shape": paras.get("w_shape_frac_z"),
-                       "weight_ori_shape_nchw": paras.get("w_shape")},
+                       "weight_ori_shape_nchw": paras.get("w_shape"),
+                       "padding_mode": paras.get("padding_mode"),
+                       "pooling_mode": paras.get("pooling_mode")},
                       optim_dict=default_para.get("optim_dict"),
                       dsl_flag=dsl_flag)
 
@@ -154,7 +157,7 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
 
 @tbe_base.register_operator("Conv2D")
 @para_check.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
-                             (tuple, list), (tuple, list), (tuple, list),
+                             (tuple, list), (tuple, list, str), (tuple, list),
                              int, str, int, str, str)
 def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
            groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d"):
@@ -181,6 +184,7 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
         stride on H/W, format sensitive
     pads: tuple/list of 4 integers
         [pad_top, pad_bottom, pad_left, pad_right]
+        when string, it supports "SAME", "VALID"
     dilations: tuple/list of 4 integers
         dilation on H/W, format sensitive
     groups: int

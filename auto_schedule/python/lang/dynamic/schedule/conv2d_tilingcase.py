@@ -120,7 +120,10 @@ class Conv2dTiling(CubeTilingOp):
             self.a_info[3] = shape[2]
             self.c_info[3] = self.get_output_w(self.a_info[3])
         if self.pad_mode == "VAR":
-            self.tiling_info["pad"] = self._calc_pads(shape[0], shape[1])
+            if self.op_type == "conv2d":
+                self.tiling_info["pad"] = self._calc_pads(shape[1], shape[2])
+            else:
+                self.tiling_info["pad"] = self._calc_pads(shape[0], shape[1])
         self.tiling_info["tiling_type"] = "cost_model_tiling"
         tiling = get_tiling(self.tiling_info)[0]
         return tiling

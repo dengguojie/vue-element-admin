@@ -2195,6 +2195,8 @@ class CceConvOp:
                         'conv_fm_c0': fmap.shape[4],
                         'group_flag': 1
                     }
+                    if ConvParam.para_dict["pooling_mode"] == "AVG":
+                        im2col_attr_0["l1_group_flag"] = 1
                     if l0a_load2d_flag:
                         sch[al1].emit_insn(al1.op.axis[0], 'dma_copy')
                         sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'dma_copy')
@@ -2606,6 +2608,15 @@ class CceConvOp:
                 """
                 if not self._v200_data_flow_type and self._lhisi_data_flow_type is None:
                     sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
+                    if "c_ub_avg" in tensor_map:
+                        sch[c_ub_avg].emit_insn(c_ub_avg.op.axis[0], "dma_copy")
+                        if "mean_matrix" in tensor_map:
+                            sch[mean_matrix].emit_insn(mean_matrix.op.axis[-1], "vector_dup")
+                            sch[mean_matrix].reused_by(c_ub_avg)
+                            if get_soc_spec("SOC_VERSION") == "Ascend310":
+                                sch[mean_matrix].reused_by([mean_matrix_fp16, mean_matrix_rec])
+                                sch[mean_matrix_fp16].emit_insn(mean_matrix_fp16.op.axis[0], "vector_conv")
+                                sch[mean_matrix_rec].emit_insn(mean_matrix_rec.op.axis[0], "vector_rec")
                 else:
                     # for v200 dequant, performance will be better
                     # when emit_insn on axis[2]
@@ -3198,7 +3209,8 @@ class CceConvOp:
                     sch[lop["dst_buffer"]].set_scope(cce.scope_cbuf_fusion)
 
             for lop in self._op_graph.input_ops:
-                if _cache_read_continue(lop):
+                # mean_matrix do not need to cache_read
+                if _cache_read_continue(lop) or lop["op"] == "mean_matrix":
                     continue
 
                 if "addr_type" in lop["dst_buffer"].op.attrs and \
@@ -4356,6 +4368,12 @@ class CceConvOp:
 
         if "c_ub" in tensor_map.keys():
             c_ub = tensor_map["c_ub"]
+        if "c_ub_avg" in tensor_map.keys():
+            c_ub_avg = tensor_map["c_ub_avg"]
+            if "mean_matrix" in tensor_map:
+                mean_matrix = tensor_map["mean_matrix"]
+                mean_matrix_fp16 = tensor_map["mean_matrix_fp16"]
+                mean_matrix_rec = tensor_map["mean_matrix_rec"]
 
         if len(spec_node_list) > 1:
             multi_out = spec_node_list[:-1]
@@ -4543,6 +4561,12 @@ class CceConvOp:
         sch[c_col].set_scope(cce.scope_cc)
         if not is_support_v220():
             sch[c_ub].set_scope(cce.scope_ubuf)
+        if "c_ub_avg" in tensor_map:
+            sch[c_ub_avg].set_scope(cce.scope_ubuf)
+            if "mean_matrix" in tensor_map:
+                sch[mean_matrix].set_scope(cce.scope_ubuf)
+                sch[mean_matrix_fp16].set_scope(cce.scope_ubuf)
+                sch[mean_matrix_rec].set_scope(cce.scope_ubuf)
 
         if l0a_load2d_flag:
             fmap_col = al0
@@ -4553,7 +4577,11 @@ class CceConvOp:
                     sch[fmap_l1].set_scope(cce.scope_cbuf)
                     al1 = fmap_l1
                 else:
-                    al1 = sch.cache_read(fmap, cce.scope_cbuf, [fmap_col])
+                    if "fmap_l1" in tensor_map:
+                        al1 = tensor_map["fmap_l1"]
+                        sch[al1].set_scope(cce.scope_cbuf)
+                    else:
+                        al1 = sch.cache_read(fmap, cce.scope_cbuf, [fmap_col])
             else:
                 # fmap DDR in  and read select
                 if self._input_memory_type[0] in (0, 2) and self._valid_shape and \
@@ -5087,6 +5115,15 @@ class CceConvOp:
                 sch[c_ub].reorder(c_ub.op.axis[1], c_ub.op.axis[0],
                                   c_ub.op.axis[2], c_ub.op.axis[3])
             sch[c_ub].compute_at(sch[res_c], m_outer_inner_outer)  # k.inner.outer
+            if "c_ub_avg" in tensor_map:
+                if self._v200_width_out_1_flag:
+                    remove_padded_column = tensor_map["remove_padded_column"]
+                    sch[remove_padded_column].compute_at(sch[res_c], m_outer_inner_outer)
+                sch[c_ub_avg].compute_at(sch[res_c], m_outer_inner_outer)
+                if "mean_matrix" in tensor_map:
+                    sch[mean_matrix].compute_at(sch[res_c], m_outer_inner_outer)   # k.inner.outer
+                    sch[mean_matrix_fp16].compute_at(sch[res_c], m_outer_inner_outer)   # k.inner.outer
+                    sch[mean_matrix_rec].compute_at(sch[res_c], m_outer_inner_outer)   # k.inner.outer
 
             if self._convbn1_flag:
                 d_pad = tensor_map["C"]

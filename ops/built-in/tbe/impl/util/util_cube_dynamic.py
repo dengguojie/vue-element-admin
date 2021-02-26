@@ -367,6 +367,7 @@ class Conv2dParaProcess(CubeParaProcess):
         self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
         self.dtype = paras.get("inputs").get("dtype")
+        self.pooling_mode = None
 
     def check_support_valid(self, in_shape, w_shape):
         """
@@ -409,6 +410,9 @@ class Conv2dParaProcess(CubeParaProcess):
         if self.paras.get("optim_dict").get("c0_optim_flg"):
             w_shape_frac_z = (ceil_div(4 * w_shape[H_DIM] * w_shape[W_DIM], block_size_k),
                               w_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
+        elif self.pooling_mode == "AVG":
+            w_shape_frac_z = (group_para["group_opt"] * group_para["c1_opt"] * w_shape[H_DIM] * w_shape[W_DIM],
+                              group_para["cout1_opt"], block_size_n, block_size_k)
         else:
             w_shape_frac_z = (group_para.get("group_opt") * group_para.get("c1_opt") * w_shape[H_DIM] * w_shape[W_DIM],
                               w_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
@@ -419,6 +423,14 @@ class Conv2dParaProcess(CubeParaProcess):
         check original paras
         """
 
+        padding_mode = None
+        if isinstance(self.pads, str):
+            self.pooling_mode = "AVG"
+            padding_mode = self.pads
+            if padding_mode == "VALID":
+                self.pads = [0, 0, 0, 0]
+            else:
+                self.pads = [DYNAMIC_FLAG] * 4
         self.check_input_dict(self.inputs, "inputs", True)
         self.check_input_dict(self.weights, "weights", False)
         para_check.check_dtype_rule(self.dtype, self.valid_paras.get("valid_dtype"))
@@ -463,7 +475,8 @@ class Conv2dParaProcess(CubeParaProcess):
         self.calc_pads(in_shape_nc1hwc0, w_shape_nchw)
 
         return {"in_shape_nc1hwc0": in_shape_nc1hwc0, "w_shape_frac_z": w_shape_frac_z,
-                "w_shape": w_shape_nchw, "group_para": group_para}
+                "w_shape": w_shape_nchw, "group_para": group_para, "padding_mode": padding_mode,
+                "pooling_mode": self.pooling_mode}
 
     def config_paras(self):
         """
@@ -480,7 +493,8 @@ class Conv2dParaProcess(CubeParaProcess):
 
         return {"input_tensor": input_tensor, "weight_tensor": weight_tensor, "bias_tensor": bias_tensor,
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
-                "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para")}
+                "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para"),
+                "padding_mode": param.get("padding_mode"), "pooling_mode": param.get("pooling_mode")}
 
 class Conv2dBackpropParaProcess(CubeParaProcess):
     """
