@@ -741,7 +741,7 @@ def check_conv2dbp_filter_params(
         # load3d instruction not support out_w = 1
         # only Ascend310 and Hi3796CS can support
         if (
-            tbe_platform.get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS"]
+            tbe_platform.get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"]
             and dedy_h != 1
             and dedy_w == 1
         ):

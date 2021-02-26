@@ -146,7 +146,7 @@ def _gen_conv2d_bp_filter_op_case():
 
 
 _gen_conv2d_bp_filter_op_case()
-_gen_conv2d_bp_filter_check_support_case
+_gen_conv2d_bp_filter_check_support_case()
 
 
 if __name__ == "__main__":

@@ -386,7 +386,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             # limitation by chip:
             # load3d instruction not support out_w = 1
             # only Ascend310 and Hi3796CS can support
-            if get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS"] \
+            if get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"] \
                     and self.shape_grads_5hd[2] != 1 \
                     and self.shape_grads_5hd[3] == 1:
                 self.flag_load3d_special_case = True
