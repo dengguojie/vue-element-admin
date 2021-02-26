@@ -1,3 +1,5 @@
 # source file:../cann/auto_schedule/python/tbe/dsl/compute/conv3d_backprop_input_compute.py
 
 def conv3d_dx(filter, out_backprop, filter_size, input_size, para_dict):
+
+class DynamicConv3dBpInputParams:

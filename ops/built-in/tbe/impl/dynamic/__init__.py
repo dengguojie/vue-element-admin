@@ -59,6 +59,9 @@ from .reduce_mean_d import reduce_mean_d
 from .resize_nearest_neighbor_v2 import resize_nearest_neighbor_v2
 from .conv2d import conv2d
 from .conv3d import conv3d
+from .conv3d_backprop_input import conv3d_backprop_input
+from .conv3d_backprop_input import check_and_config_para
+from .conv3d_transpose import conv3d_transpose
 from .dynamic_atomic_addr_clean import dynamic_atomic_addr_clean
 from .sparse_apply_ftrl_d import sparse_apply_ftrl_d
 from .div import div

@@ -83,6 +83,9 @@ MAT_MUL_COMPUTE = {
     "gemm"
 }
 
+CONV3D_BP_INPUT_COMPUTE = {
+    "conv3d_backprop_input_c_ub"
+}
 
 class ComputeType(Enum):
     """
@@ -98,6 +101,7 @@ class ComputeType(Enum):
     CONV2D = auto()
     CONV2D_BP_INPUT = auto()
     CONV2D_BP_FILTER = auto()
+    CONV3D_BP_INPUT = auto()
     CONV3D = auto()
     MAT_MUL = auto()
 
@@ -129,6 +133,8 @@ def _parse_pattern(outs):
         return Pattern.CONV2D_BACKPROP_INPUT
     if ComputeType.CONV2D_BP_FILTER in compute_type_size_map:
         return Pattern.CONV2D_BACKPROP_FILTER
+    if ComputeType.CONV3D_BP_INPUT in compute_type_size_map:
+        return Pattern.CONV3D_BACKPROP_INPUT
     if ComputeType.MAT_MUL in compute_type_size_map:
         return Pattern.MAT_MUL
     if _is_elewise(compute_type_size_map):
@@ -210,6 +216,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (CONV2D_COMPUTE, ComputeType.CONV2D),
         (CONV2D_BP_INPUT_COMPUTE, ComputeType.CONV2D_BP_INPUT),
         (CONV2D_BP_FILTER_COMPUTE, ComputeType.CONV2D_BP_FILTER),
+        (CONV3D_BP_INPUT_COMPUTE, ComputeType.CONV3D_BP_INPUT),
         (MAT_MUL_COMPUTE, ComputeType.MAT_MUL)
     ]
     for insns, compute_type in insn_compute_type_mapping:

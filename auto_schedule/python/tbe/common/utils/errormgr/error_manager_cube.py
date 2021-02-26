@@ -21,6 +21,7 @@ from .error_manager_util import raise_runtime_error_cube
 
 def raise_err_one_para(err_code, op_name, para1):
     """
+    E62006: "In op[%s],[%s]."
     E62301: "In op[%s], the second value of BL1_shape should be a factor of
             the block num, actual input is [%s]."
     E62302: "In op[%s], the second value of BL1_shape should be even number,

@@ -41,7 +41,7 @@ class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
         self._res_tensor = None
         self._spec_node_list = None
 
-    def schedule(self, res, spec_node_list, sch_list):
+    def schedule(self, res, spec_node_list, sch_list, tiling_case=None, var_range=None):
         """
         auto_schedule for cce AI-CORE.
 
@@ -53,6 +53,10 @@ class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
 
         sch_list: use sch_list[0] to return conv schedule
 
+        tiling_case: fix tiling for dynamic shape, None by default
+
+        var_range: var range for dynamic shape, None by default
+    
         Returns
         -------
         True for success, False for no schedule
@@ -60,5 +64,5 @@ class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
         self._res_tensor = res
         self._spec_node_list = spec_node_list
         tbe_platform.cce_params.jump_expand_flag = True
-        sch = conv3d_backprop_input_general_schedule.general_schedule(res, sch_list)
+        sch = conv3d_backprop_input_general_schedule.general_schedule(res, sch_list, tiling_case, var_range)
         return sch

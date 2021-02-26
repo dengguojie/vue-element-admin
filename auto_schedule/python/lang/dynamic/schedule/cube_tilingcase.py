@@ -36,6 +36,7 @@ H_LEN = 400
 W_LEN = 400
 NHW_RANGE_LEN = 6
 MAX_RANGE = 2**31 - 1
+NDHW_RANGE_LEN = 8
 
 class CubeTilingOp:
     def __init__(self, tiling_info, dynamic_mode, var_map=None):
@@ -173,8 +174,30 @@ class TilingSelection:
                     raise RuntimeError("Only dynamic N/H/W is supported")
             return tiling_cases
 
+        def _handle_dynamic_ndhw():
+            batch_name, d_name, h_name, w_name = var_names
+            tgt_area = [*target_area.get(batch_name), *target_area.get(d_name),
+                        *target_area.get(h_name), *target_area.get(w_name)]
+            if None in tgt_area:
+                seed_cnt = next(self.seed_cnt)
+                default_tiling = self.op.get_default_tiling()
+                tiling_cases = [self.op.assembly_case(default_tiling, tgt_area, seed_cnt)]
+                add_compile_info("tiling_type", "default_tiling")
+                add_compile_info("default_range", {str(seed_cnt): tgt_area})
+            else:
+                add_compile_info("tiling_type", "dynamic_tiling")
+                if h_name in self.op.var_map or w_name in self.op.var_map or d_name in self.op.var_map:
+                    tiling_cases = self._calc_ndhw([target_area.get(key) for key in target_area])
+                elif batch_name in self.op.var_map:
+                    tiling_cases = self._calc_batch([target_area.get("batch_n")])
+                else:
+                    raise RuntimeError("Only dynamic N/D/H/W is supported")
+            return tiling_cases
+
         if self.op.op_type in ("conv2d", "conv2d_bp_input"):
             tiling_cases = _handle_dynamic_nhw()
+        elif self.op.op_type in ("conv3d_backprop_input"):
+            tiling_cases = _handle_dynamic_ndhw()
         else:
             add_compile_info("dynamic_mode", self.op.dynamic_mode)
             if self.op.dynamic_mode == "dynamic_hw":
@@ -385,6 +408,61 @@ class TilingSelection:
             seed_range = _correct_seed_range(seed_range)
             candidates[next(self.seed_cnt)] = [seed_range, seed['tiling'],
                                                seed_dhw]
+
+        cost_cases = self._select_tiling(tgt_area, candidates)
+        tiling_cases = [
+            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
+        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
+        repo_range = {k: v[0] for k, v in candidates.items()}
+
+        # call cost model
+        cost_tilings, cost_range = self._calc_costmodel(cost_cases)
+        tiling_cases += cost_tilings
+        if not tiling_cases:
+            raise RuntimeError("No tiling generated for this shape and range")
+
+        add_compile_info("repo_range", repo_range)
+        add_compile_info("cost_range", cost_range)
+        return tiling_cases
+
+    def _calc_ndhw(self, tgt_area):
+        """
+        calculate tilings for dynamic ndhw mode
+
+        Parameters
+        ----------
+        tgt_area: tuple, dhw range to be covered (n_min, n_max, d_min, d_max, h_min, h_max,
+                                                  w_min, w_max)
+
+        Returns
+        -------
+        tilings_cases: list, calculated tilings
+        """
+
+        def _correct_seed_range(seed_area):
+            funcs = (max, min, max, min, max, min, max, min)
+            return [func(ta, sa) for func, ta, sa in zip(funcs, tgt_area,
+                                                         seed_area)]
+        tgt_area = reduce(lambda x, y: x + y, tgt_area)
+        candidates = {}
+
+        repo_seeds = self.op.get_repo_tiling()
+        seed_points = set()
+
+        for seed in repo_seeds:
+            seed_ndhw = (seed[self.op.key][0], seed[self.op.key][1],
+                        seed[self.op.key][2], seed[self.op.key][3])
+            seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
+            if seed_range[1] == -1:
+                seed_range[1] = tgt_area[1]
+            if seed_range[3] == -1:
+                seed_range[3] = tgt_area[3]
+            if seed_ndhw in seed_points or _cal_overlap(seed_range, tgt_area)[0] == 0:
+                continue
+            seed_points.add(seed_ndhw)
+            seed_range = _correct_seed_range(seed_range)
+            candidates[next(self.seed_cnt)] = [seed_range, seed['tiling'],
+                                               seed_ndhw]
 
         cost_cases = self._select_tiling(tgt_area, candidates)
         tiling_cases = [
@@ -652,12 +730,18 @@ class TilingSelection:
                 cut_range = cost_cases.popleft()
                 if self.op.op_type in ("conv2d", "conv2d_bp_input") and len(cut_range) == NHW_RANGE_LEN:
                     seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5]])
+                elif self.op.op_type in ("conv3d_backprop_input") and len(cut_range) == NDHW_RANGE_LEN:
+                    seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5], cut_range[7]])
                 else:
                     seed_shape = tuple(cut_range[1::2])
                 cost_seed = self.op.get_costmodel_tiling(seed_shape)
                 seed_range = self.op.get_tiling_range(cost_seed['tiling'], cost_seed[self.op.key])
                 if self.op.dynamic_mode == "dynamic_dhw" and seed_range[1] == -1:
                     seed_range[1] = cut_range[1]
+                if seed_range[1] == -1:
+                    seed_range[1] = cut_range[1]
+                if seed_range[3] == -1:
+                    seed_range[3] = cut_range[3]
                 if isinstance(seed_range[0], list):
                     is_overlap_other, covered_area_other = _cal_overlap(cut_range, seed_range[0])
                     _, covered_area_self = _cal_overlap(cut_range, seed_range[1])

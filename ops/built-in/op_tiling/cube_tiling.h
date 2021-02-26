@@ -38,6 +38,21 @@ namespace optiling {
  */
 int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curShape, const nlohmann::json& opInfo,
                    OpRunInfo& runInfo);
+
+/*
+* @brief: tiling function of conv3d forward and backprop
+* @param [in] op_type: op_type of the conv3d forward and backprop
+* @param [in] input_shape: input shape of the conv3d forward and backprop
+* @param [in] output_shape: output shape of the conv3d forward and backprop
+* @param [in] compile_info: compile time generated info of the conv3d forward and backprop
+* @param [out] run_info: result data
+* @return bool: success or not
+*/
+bool Conv3DCommonTiling(const std::string& op_type,
+                        const std::vector<int64_t>& input_shape,
+                        const std::vector<int64_t>& output_shape,
+                        const nlohmann::json& compile_info,
+                        OpRunInfo& run_info);
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_CUBE_TILING_H_

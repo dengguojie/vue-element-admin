@@ -306,7 +306,7 @@ def check_supported(filters, # pylint: disable=R0913,R0914
     para_check.KERNEL_NAME,
 )
 def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
-                            out_backprop, y_input, input_sizes, strides,
+                            out_backprop, y_input, input_size, strides,
                             pads, dilations=(1, 1, 1, 1, 1), groups=1,
                             data_format="NDHWC",
                             kernel_name="conv3d_backprop_input"):
@@ -324,7 +324,7 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
     y_input: A dict with keys(shape and dtype)
         Conv3d_backprop_input output tensor, dtype must be assigned
 
-    input_sizes: The shape of feature map
+    input_size: The shape of feature map
         5-D with shape [batch, depth, height, weight, channels]
 
     strides: A tuple/list of 5 integers
@@ -352,7 +352,7 @@ def conv3d_backprop_input_d(filters, # pylint: disable=R0913,R0914
     
     ori_shape_filters = filters.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
-    ori_shape_res = input_sizes
+    ori_shape_res = input_size
     ori_shape_strides = strides
     ori_shape_dilations = dilations
 

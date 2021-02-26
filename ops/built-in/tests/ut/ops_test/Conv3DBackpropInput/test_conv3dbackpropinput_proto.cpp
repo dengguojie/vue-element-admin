@@ -85,7 +85,7 @@ TEST_F(Conv3DBackpropInputProtoTest, No_Input_Size_Failed){
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
 }
 

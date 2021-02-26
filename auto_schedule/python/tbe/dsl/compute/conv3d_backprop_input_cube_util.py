@@ -15,6 +15,7 @@
 """
 cube util.
 """
+from tbe.dsl.compute import cube_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm
 
@@ -169,6 +170,68 @@ def _im2col_fractal(a_im2col_shape, tensor_a_row_major, tag=''):
                        tag=tag + 'im2col_fractal')
 
 
+def _im2col_fractal_v2(shape, img2col_para, tag=''):
+    """
+    calculate im2col_fractal tensor without tensor row_major
+    Parameters
+    ----------
+    shape : shape of a_im2col
+
+    img2col_para : tensor of fmap, kernel_h, kernel_w, padding, stride,
+                   width_out, dilation
+
+    tag : tag for different compute stage, '' by default
+    -------
+    Returns : a_im2col_fractal tensor
+    """
+
+    block_size = 16
+    fmap, kernel_h, kernel_w, padding, stride, width_out, dilation, cout1_g = img2col_para
+
+    def __im2col_idx(idx):
+        g_index, n_index, deep_index, m1_index, k1_index, m0_index, k0_index = idx
+
+        m_index = m1_index * block_size + m0_index
+        k_index = k1_index * block_size + k0_index
+
+        c1_index = k_index // block_size // kernel_w // kernel_h
+        dy_h_index = (m_index // width_out) * stride[0] + (k1_index // kernel_w % kernel_h)
+        dy_w_index = (m_index % width_out) * stride[1] + (k1_index % kernel_w)
+
+        return tvm.select(
+            tvm.any(
+                dy_h_index < padding[0],
+                dy_h_index > fmap.shape[2] + padding[0] - 1,
+                dy_w_index < padding[2],
+                dy_w_index > fmap.shape[3] + padding[2] - 1
+            ),
+            tvm.const(0, fmap.dtype),
+            fmap(
+                n_index,
+                deep_index,
+                c1_index + g_index * cout1_g,
+                dy_h_index - padding[0],
+                dy_w_index - padding[2],
+                k0_index
+            )
+        )
+
+    return tvm.compute(
+        shape,
+        lambda *idx: __im2col_idx(idx),
+        name="img2col_fractal_v2",
+        tag=tag + "im2col_fractal_v2",
+        attrs={
+            "fmap_shape": fmap.shape,
+            "kernel_h": kernel_h,
+            "kernel_w": kernel_w,
+            "padding": padding,
+            "stride": stride,
+            "dilation": dilation
+        }
+    )
+
+
 class CubeDslPattern:
     """
     cube mmad calculation
@@ -309,7 +372,7 @@ class CubeDslPattern:
                                axis=[axis_k1, axis_k0])
             return tensor_c
 
-        a_group, a_batch, a_deep, a_m1, a_k1, a_m0, a_k0 = list(i.value for i in tensor_a.shape)
+        a_group, a_batch, a_deep, a_m1, a_k1, a_m0, a_k0 = cube_util.shape_to_list(tensor_a.shape)
         axis_k0 = tvm.reduce_axis([0, a_k0], name='axis_k0')
         axis_k1 = tvm.reduce_axis([0, a_k1], name='axis_k1')
         b_group, b_kd, _, b_n1, b_n0, _ = list(i.value for i in tensor_b.shape)
@@ -371,9 +434,11 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
 
     kernel_w: width of filter
 
-    stride : list of strides, [strideh, stridew]
+    stride : list of strides, [strided, strideh, stridew]
 
     pad: list of padding, [pad_up, pad_down, pad_left, pad_right]
+
+    dilation: list of dilation, [dilationd, dilationh, dilationw]
 
     Returns
     -------
@@ -423,7 +488,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                 dilation))
         return height_out, width_out
 
-    def generate_a(self, feature_map, group_dict, tag=""):  # pylint: disable=R0914
+    def generate_a(self, feature_map, group_dict, var_map={}, tag=""):  # pylint: disable=R0914
         """
         calculate im2col_fractal tensor
 
@@ -431,25 +496,36 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         ----------
         feature_map : feature map tensor in the shape of NDC1HWC0
 
-        group_dict: the information needed for group convolution, None by default
+        group_dict : the information needed for group convolution
 
-        tag: the tag of tensor, None by default
+        var_map : the parameters for dynamic shape, {} by default
+
+        tag : the tag of tensor, None by default
 
         Returns
         -------
         a_col : a_im2col_fractal tensor
         """
-        a_batch, a_deep, a_c1, a_h, a_w, a_c0 = list(i.value for i in feature_map.shape)
+        a_batch, a_deep, a_c1, a_h, a_w, a_c0 = cube_util.shape_to_list(feature_map.shape)
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
 
         new_pad = [self._pad_up, self._pad_down,
                    self._pad_left, self._pad_right]
         stride = [self._stride_h, self._stride_w]
         dilation = [self._dilate_d, self._dilate_h, self._dilate_w]
-        height_out, width_out = self._cal_howo(a_h, a_w)
         a_group = group_dict["real_g"]
         cout_g = group_dict["cout_g"]
         a_c1 = cout_g // a_c0
+
+        if "dedy_w" not in var_map:
+            _, width_out = self._cal_howo(a_h, a_w)
+        else:
+            width_out = var_map.get("dedx_w")
+
+        if "dedy_h" not in var_map:
+            height_out, _ = self._cal_howo(a_h, a_w)
+        else:
+            height_out = var_map.get("dedx_h")
 
         a_im2col_row_major_shape = (a_group,
                                     a_batch,
@@ -460,16 +536,6 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                     kernel_w,
                                     a_c0)
 
-        a_row_major = _im2col_row_major(a_im2col_row_major_shape,
-                                        feature_map,
-                                        kernel_w,
-                                        cout_g,
-                                        padding=new_pad,
-                                        stride=stride,
-                                        compute_dtype=feature_map.dtype,
-                                        dilation=dilation,
-                                        tag=tag)
-
         a_im2col_fractal_shape = (a_group,
                                   a_batch,
                                   a_deep,
@@ -477,7 +543,32 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
                                   a_c1 * kernel_h * kernel_w,
                                   self._m0,
                                   a_c0)
-        a_col = _im2col_fractal(a_im2col_fractal_shape, a_row_major, tag=tag)
+        
+        if not var_map:
+            a_row_major = _im2col_row_major(a_im2col_row_major_shape,
+                                            feature_map,
+                                            kernel_w,
+                                            cout_g,
+                                            padding=new_pad,
+                                            stride=stride,
+                                            compute_dtype=feature_map.dtype,
+                                            dilation=dilation,
+                                            tag=tag)
+
+            a_col = _im2col_fractal(a_im2col_fractal_shape, a_row_major, tag=tag)
+        else:
+            img2col_para = (
+                feature_map,
+                kernel_h,
+                kernel_w,
+                new_pad,
+                stride,
+                width_out,
+                dilation,
+                a_c1
+            )
+            a_col = _im2col_fractal_v2(a_im2col_fractal_shape, img2col_para, tag=tag)
+        
         return a_col
 
     def generate_c(self, tensor_a, tensor_b, tag=""):  # pylint: disable=W0221
@@ -500,7 +591,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         m_0 = self._m0
         m_1 = c_m // m_0
         if not ((m_1 - 1)*m_0) < ho_wo <= c_m:
-            cube_err.raise_err_attr_range_invalid("conv3d",
+            cube_err.raise_err_attr_range_invalid("conv3d_backprop_input",
                 "[{},{}]".format(((m_1 - 1)*m_0), c_m),
                 "Hout*Wout",
                 str(ho_wo))

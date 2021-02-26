@@ -32,6 +32,7 @@ class Pattern:
     MAT_MUL = "Matmul"
     BATCH_MATMUL = "BatchMatmul"
     CONV3D = "conv3d"
+    CONV3D_BACKPROP_INPUT = "Conv3d_backprop_input"
 
 
 class CompileInfo:

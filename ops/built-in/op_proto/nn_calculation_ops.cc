@@ -5325,19 +5325,18 @@ static void SetConv3dOutShapeDimRange(const std::string& padding,
   int32_t kernel = attr_params["kernel"];
   int64_t low = fm_range[idx].first;
   int64_t high = fm_range[idx].second;
+  if (padding == "SAME") {
+    out_range[idx].first = (low + stride - 1) / stride;
+    out_range[idx].second = (high + stride - 1) / stride;
+  } else {
+    out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
+    out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
+  }
+
+  out_range[idx].first = std::max(out_range[idx].first, kDynamicRangeLowerBound);
   if (high == -1) {
-    out_range[idx].first = std::max(low, kDynamicRangeLowerBound);
     out_range[idx].second = high;
   } else {
-    if (padding == "SAME") {
-      out_range[idx].first = (low + stride - 1) / stride;
-      out_range[idx].second = (high + stride - 1) / stride;
-    } else {
-      out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
-      out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
-    }
-
-    out_range[idx].first = std::max(out_range[idx].first, kDynamicRangeLowerBound);
     out_range[idx].second = std::min(out_range[idx].second, kDynamicRangeUpperBound);
   }
 }
@@ -6101,7 +6100,9 @@ static bool SetPadListByPaddingConv3dbp(ge::Operator& op, const std::vector<T1>&
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
-    if (!CheckVectorAnyNegative(pads)) {
+
+    auto out_backprop_shape = op.GetInputDesc("out_backprop").GetShape().GetDims();
+    if (!IsUnknownRankShape(out_backprop_shape) && !CheckVectorAnyNegative(pads)) {
       OP_LOGE(op.GetName().c_str(), "op get pads is illegal");
       map<std::string, std::string> err_map;
       err_map["param_name"] = "pads";
@@ -6163,7 +6164,7 @@ static graphStatus VerifyConv3dbpInputCommon(const ge::Operator& op) {
   }
 
   auto out_backprop_shape = out_backprop_desc.GetShape().GetDims();
-  if (out_backprop_shape.size() != kConv3dDimSizeLimit) {
+  if (!IsUnknownRankShape(out_backprop_shape) && out_backprop_shape.size() != kConv3dDimSizeLimit) {
     OP_LOGE(op.GetName().c_str(), "outBackprop's shape should be 5d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "outBackpropShape_size";
@@ -6208,7 +6209,7 @@ static graphStatus VerifyConv3dbpInputCommon(const ge::Operator& op) {
   return GRAPH_SUCCESS;
 }
 
-static graphStatus VerifyConv3dbpPads(const ge::Operator& op) {
+static graphStatus VerifyConv3dbpPads(const ge::Operator& op, bool is_dynamic = false) {
   std::vector<int> pads;
   if (GRAPH_SUCCESS == op.GetAttr("pads", pads)) {
     if (pads.size() < kConv3dLengthPadsLimit) {
@@ -6223,7 +6224,7 @@ static graphStatus VerifyConv3dbpPads(const ge::Operator& op) {
       return GRAPH_FAILED;
     }
 
-    if (!CheckVectorAnyNegative(pads)) {
+    if (!is_dynamic && !CheckVectorAnyNegative(pads)) {
       OP_LOGE(op.GetName().c_str(), "op get pads is illegal");
       map<std::string, std::string> err_map;
       err_map["param_name"] = "pads";
@@ -6248,57 +6249,312 @@ static graphStatus VerifyConv3dbpPads(const ge::Operator& op) {
   return GRAPH_SUCCESS;
 }
 
+static void SetConv3dBpInputOutShapeDimRange(const std::string& pad_str,
+                                             size_t idx,
+                                             const vector<int32_t>& attrParams,
+                                             const std::vector<std::pair<int64_t, int64_t>>& dy_range,
+                                             std::vector<std::pair<int64_t, int64_t>>& dx_range) {
+  size_t attrIdx = 0;
+  int32_t stride = attrParams[attrIdx++];
+  int32_t kernel = attrParams[attrIdx++];
+  int32_t pad = attrParams[attrIdx++];
+  int64_t low = dy_range[idx].first;
+  int64_t high = dy_range[idx].second;
+
+  if (pad_str == "SAME") {
+    dx_range[idx].first = stride * (low - 1) + 1;
+    dx_range[idx].second = stride * high;
+  } else {
+    dx_range[idx].first = stride * (low - 1) + kernel - pad;
+    dx_range[idx].second = stride * (high - 1) + kernel - pad + stride - 1;
+  }
+
+  dx_range[idx].first = std::max(dx_range[idx].first, kDynamicRangeLowerBound);
+  if (high == -1) {
+    dx_range[idx].second = high;
+  } else {
+    dx_range[idx].second = std::min(dx_range[idx].second, kDynamicRangeUpperBound);
+  }
+}
+
+static bool SetConv3dBpInputOutShapeRange(ge::Operator& op, bool unknown_rank,
+                                          const std::vector<std::pair<int64_t, int64_t>>& dy_range,
+                                          std::vector<std::pair<int64_t, int64_t>>& dx_range) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto filter_desc = op_desc->MutableInputDesc("filter");
+  auto y_desc = op_desc->MutableOutputDesc("y");
+  std::vector<int64_t> filter_sizes = filter_desc->MutableShape().GetDims();
+  std::vector<int64_t> dx_sizes = y_desc->MutableShape().GetDims();
+  if (filter_sizes.size() < kConv3dInputSizeLimit || dx_sizes.size() < kConv3dInputSizeLimit) {
+    OP_LOGE(op.GetName().c_str(), "filter_sizes or dx_sizes is illegal");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "filter_size and dx_sizes";
+    err_map["op_name"] = "Conv3dbp";
+    err_map["excepted_value"] = std::to_string(kConv3dInputSizeLimit);
+    err_map["input_value"] = std::to_string(filter_sizes.size()) + " " + std::to_string(dx_sizes.size());
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  Format filter_format = filter_desc->GetFormat();
+  CHECK_FORMAT(filter_format);
+  std::string filter_format_str = format2str[filter_format];
+  int32_t d_filter_position = filter_format_str.find("D");
+  CHECK_POSITION(d_filter_position);
+  int32_t h_filter_position = filter_format_str.find("H");
+  CHECK_POSITION(h_filter_position);
+  int32_t w_filter_position = filter_format_str.find("W");
+  CHECK_POSITION(w_filter_position);
+  int32_t c_filter_position = filter_format_str.find("C");
+  CHECK_POSITION(c_filter_position);
+
+  int64_t filter_d = filter_sizes[d_filter_position];
+  int64_t filter_h = filter_sizes[h_filter_position];
+  int64_t filter_w = filter_sizes[w_filter_position];
+  int64_t filter_c = filter_sizes[c_filter_position];
+
+  Format input_format = y_desc->GetFormat();
+  CHECK_FORMAT(input_format);
+  std::string input_format_str = format2str[input_format];
+  int32_t n_input_position = input_format_str.find("N");
+  CHECK_POSITION(n_input_position);
+  int32_t d_input_position = input_format_str.find("D");
+  CHECK_POSITION(d_input_position);
+  int32_t h_input_position = input_format_str.find("H");
+  CHECK_POSITION(h_input_position);
+  int32_t w_input_position = input_format_str.find("W");
+  CHECK_POSITION(w_input_position);
+  int32_t c_input_position = input_format_str.find("C");
+  CHECK_POSITION(c_input_position);
+
+  int64_t groups = 1;
+  if (op.GetAttr("groups", groups) != GRAPH_SUCCESS) {
+    OP_LOGI(op.GetName().c_str(), "no groups setting, use groups as 1");
+  }
+
+  if (unknown_rank) {
+    vector<int64_t> dx_shape;
+    dx_shape.resize(kConv3dInputSizeLimit, -1);
+    dx_shape[c_input_position] = groups * filter_c;
+    y_desc->SetShape(GeShape(dx_shape));
+    return true;
+  }
+
+  std::vector<int32_t> stride_list;
+  if (op.GetAttr("strides", stride_list) == GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "op get strides failed.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = "Conv3dbp";
+    err_map["param_name"] = "strides";
+    std::string report_error_code = "E50030";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  if (stride_list.size() != kConv3dStridesSizeLimit) {
+    OP_LOGE(op.GetName().c_str(), "strides list should be 5d.");
+    map<std::string, std::string> err_map;
+    err_map["param_name"] = "strides";
+    err_map["op_name"] = "Conv3dbp";
+    err_map["excepted_value"] = std::to_string(kConv3dStridesSizeLimit);
+    err_map["input_value"] = std::to_string(stride_list.size());
+    std::string report_error_code = "E50029";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  std::vector<int32_t> dilations_list;
+  if (!VerifyConv3dDilations(op, dilations_list)) {
+    OP_LOGE(op.GetName().c_str(), "get dilation attrs failed.");
+    return false;
+  }
+
+  int64_t dx_d = dx_sizes[d_input_position];
+  int64_t dx_h = dx_sizes[h_input_position];
+  int64_t dx_w = dx_sizes[w_input_position];
+
+  int32_t stride_d = stride_list[d_input_position];
+  int32_t stride_h = stride_list[h_input_position];
+  int32_t stride_w = stride_list[w_input_position];
+
+  int32_t dilation_d = dilations_list[d_input_position];
+  int32_t dilation_h = dilations_list[h_input_position];
+  int32_t dilation_w = dilations_list[w_input_position];
+
+  std::vector<int32_t> pads_list;
+  op.GetAttr("pads", pads_list);
+  if (pads_list.size() < kConv3dLengthPadsLimit) {
+    pads_list.assign(kConv3dLengthPadsLimit, 0);
+  }
+
+  int32_t pad_front = pads_list[0];
+  int32_t pad_back = pads_list[1];
+  int32_t pad_up = pads_list[2];
+  int32_t pad_down = pads_list[3];
+  int32_t pad_left = pads_list[4];
+  int32_t pad_right = pads_list[5];
+
+  int64_t kdext = (filter_d - 1) * dilation_d + 1;
+  int64_t khext = (filter_h - 1) * dilation_h + 1;
+  int64_t kwext = (filter_w - 1) * dilation_w + 1;
+
+  int64_t dy_n = -1;
+  int32_t n_dy_position = -1;
+  if (op.GetOpType() == "Conv3DTranspose") {
+    auto x_desc = op_desc->MutableInputDesc("x");
+    Format x_format = x_desc->GetFormat();
+    CHECK_FORMAT(x_format);
+    std::string x_format_str = format2str[x_format];
+    n_dy_position = x_format_str.find("N");
+    CHECK_POSITION(n_dy_position);
+    int32_t d_x_position = x_format_str.find("D");
+    CHECK_POSITION(d_x_position);
+    int32_t h_x_position = x_format_str.find("H");
+    CHECK_POSITION(h_x_position);
+    int32_t w_x_position = x_format_str.find("W");
+    CHECK_POSITION(w_x_position);
+
+    std::vector<int32_t> output_padding_list;
+    op.GetAttr("output_padding", output_padding_list);
+    int32_t outputpadding_d = output_padding_list[d_x_position];
+    int32_t outputpadding_h = output_padding_list[h_x_position];
+    int32_t outputpadding_w = output_padding_list[w_x_position];
+    kdext = outputpadding_d + ((filter_d - 1) * dilation_d + 1);
+    khext = outputpadding_h + ((filter_h - 1) * dilation_h + 1);
+    kwext = outputpadding_w + ((filter_w - 1) * dilation_w + 1);
+    dy_n = x_desc->MutableShape().GetDims()[n_dy_position];
+  } else {
+    auto dy_desc = op_desc->MutableInputDesc("out_backprop");
+    Format dy_format = dy_desc->GetFormat();
+    CHECK_FORMAT(dy_format);
+    std::string dy_format_str = format2str[dy_format];
+    n_dy_position = dy_format_str.find("N");
+    CHECK_POSITION(n_dy_position);
+    dy_n = dy_desc->MutableShape().GetDims()[n_dy_position];
+  }
+
+  dx_range.resize(kConv3dInputSizeLimit);
+  dx_range[n_input_position] = std::make_pair(dy_n, dy_n);
+  dx_range[d_input_position] = std::make_pair(dx_d, dx_d);
+  dx_range[h_input_position] = std::make_pair(dx_h, dx_h);
+  dx_range[w_input_position] = std::make_pair(dx_w, dx_w);
+  dx_range[c_input_position] = std::make_pair(filter_c * groups, filter_c * groups);
+  if (dy_range.size() == kConv3dInputSizeLimit) {
+    dx_range[n_input_position] = dy_range[n_dy_position];
+    std::string pad_str;
+    op.GetAttr("padding", pad_str);
+    if (dx_d == -1) {
+      vector<int32_t> attr_params_d = {stride_d, kdext, pad_front + pad_back};
+      SetConv3dBpInputOutShapeDimRange(pad_str, d_input_position, attr_params_d, dy_range, dx_range);
+    }
+    if (dx_h == -1) {
+      vector<int32_t> attr_params_h = {stride_h, khext, pad_up + pad_down};
+      SetConv3dBpInputOutShapeDimRange(pad_str, h_input_position, attr_params_h, dy_range, dx_range);
+    }
+    if (dx_w == -1) {
+      vector<int32_t> attr_params_w = {stride_w, kwext, pad_left + pad_right};
+      SetConv3dBpInputOutShapeDimRange(pad_str, w_input_position, attr_params_w, dy_range, dx_range);
+    }
+    y_desc->SetShapeRange(dx_range);
+  }
+  return true;
+}
+
+static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& input_sizes_desc,
+                                            const GeTensorDescPtr& dy_desc, GeTensorDescPtr& y_desc,
+                                            std::vector<int64_t>& input_sizes) {
+  std::vector<std::pair<int64_t, int64_t>> dy_range;
+  dy_desc->GetShapeRange(dy_range);
+  std::vector<int64_t> pre_op_range;
+  ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
+  std::vector<std::pair<int64_t, int64_t>> dx_range(kConv3dDimSizeLimit);
+  if ((pre_op_range.size() == kConv3dDimSizeLimit * 2) && (dy_range.size() == kConv3dDimSizeLimit)) {
+    for (size_t i = 0; i < pre_op_range.size(); i += 2) {
+      dx_range[i / 2].first = pre_op_range[i];
+      dx_range[i / 2].second = pre_op_range[i + 1];
+    }
+
+    y_desc->SetShapeRange(dx_range);
+  } else {
+    bool unknown_rank = IsUnknownRankShape(dy_desc->MutableShape().GetDims());
+    if (!SetConv3dBpInputOutShapeRange(op, unknown_rank, dy_range, dx_range)) {
+      return false;
+    }
+  }
+
+  input_sizes.assign(dx_range.size(), -1);
+  for (size_t i = 0; i < dx_range.size(); i++) {
+    if (dx_range[i].first == dx_range[i].second) {
+      input_sizes[i] = dx_range[i].first;
+    }
+
+    OP_LOGD(op.GetName().c_str(), "dedx range[%u] is (%lld, %lld)", i, dx_range[i].first, dx_range[i].second);
+  }
+
+  return true;
+}
+
 IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DBackpropInput inferfunction!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  std::vector<std::string> input_infer_depends = {"input_size"};
+  op_desc->SetOpInferDepends(input_infer_depends);
+  auto dy_desc = op_desc->MutableInputDesc("out_backprop");
+  auto y_desc = op_desc->MutableOutputDesc("y");
 
-  Tensor input_sizes_tensor;
-  if (GRAPH_SUCCESS != op.GetInputConstData("input_size", input_sizes_tensor)) {
-    OP_LOGE(op.GetName().c_str(), "get input_size tensor failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dbpInput";
-    err_map["param_name"] = "inputSizesTensor";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+  std::vector<int64_t> dy_sizes = dy_desc->MutableShape().GetDims();
+  for (size_t j = 0; j < dy_sizes.size(); j++) {
+    OP_LOGD(op.GetName().c_str(), "dy_shape [%u] is %lld", j, dy_sizes[j]);
   }
 
-  // get shape for output from input_sizes
-  auto input_sizes_desc = op.GetInputDesc("input_size");
-  DataType dtype = input_sizes_desc.GetDataType();
+  bool is_input_size_const = false; // means dynamic shape mode if false
   std::vector<int64_t> input_sizes;
-  GetConstValue(input_sizes_tensor, dtype, input_sizes);
-  // std::vector<int64_t> inputSizes = op.GetInputDesc("input_sizes").GetShape().GetDims();
-
-  // set dtype of output desc
-  auto out_backprop_dtype = op.GetInputDesc("out_backprop").GetDataType();
-  auto y_desc = op.GetOutputDesc("y");
-  y_desc.SetDataType(out_backprop_dtype);
-  // set shape of output desc, input_sizes should match the format of y
-  std::vector<int64_t> y_shape;
-  for (auto i : input_sizes) {
-    y_shape.push_back(i);
+  Tensor input_sizes_tensor;
+  auto input_sizes_desc = op_desc->MutableInputDesc("input_size");
+  if (op.GetInputConstData("input_size", input_sizes_tensor) == GRAPH_SUCCESS) {
+    DataType dtype = input_sizes_desc->GetDataType();
+    GetConstValue(input_sizes_tensor, dtype, input_sizes);
+    is_input_size_const = true;
   }
-  y_desc.SetShape(ge::Shape(y_shape));
 
-  // update output desc
-  if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", y_desc)) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dbpInput";
-    err_map["param_name"] = "output y";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+  if (!is_input_size_const &&
+      !InferConv3dBpInputOutShapeRange(op, input_sizes_desc, dy_desc, y_desc, input_sizes)) {
     return GRAPH_FAILED;
   }
 
+  // set shape of output desc, input_size should match the format of y
+  if (input_sizes.size() == kConv3dDimSizeLimit) {
+    y_desc->SetShape(GeShape(input_sizes));
+  }
+
+  // update pads list by padding[SAME,VALID]
   std::vector<int64_t> filter_sizes = op.GetInputDesc("filter").GetShape().GetDims();
   Format filter_format = op.GetInputDesc("filter").GetFormat();
-  Format input_format = y_desc.GetFormat();
-  // update pads list by padding[SAME,VALID]
-  if (!SetPadListByPaddingConv3dbp(op, input_sizes, input_format, filter_sizes, filter_format)) {
+  Format input_format = y_desc->GetFormat();
+  std::vector<int64_t> dy_sizes_copy = dy_sizes;
+  dy_sizes_copy[0] = 1; // make sure batch not -1
+  // if only batch is -1, no need to set SAME padding as -1
+  if (IsUnknownRankShape(dy_sizes) || IsUnKnownShape(dy_sizes_copy)) {
+    std::string pad_str;
+    if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
+      std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);
+      if (pad_str == "SAME") {
+        pads.assign(kConv3dPadsSizeLimit, -1);
+        OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+      }
+
+      op.SetAttr("pads", pads);
+    }
+  } else if (!SetPadListByPaddingConv3dbp(op, y_desc->MutableShape().GetDims(),
+             input_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "update pads list by padding failed.");
     return GRAPH_FAILED;
   }
+
+  // set dtype of output desc
+  auto out_backprop_dtype = op.GetInputDesc("out_backprop").GetDataType();
+  y_desc->SetDataType(out_backprop_dtype);
 
   OP_LOGI(op.GetName().c_str(), "Leaving Conv3DBackpropInput inferfunction!");
   return GRAPH_SUCCESS;
@@ -6310,7 +6566,11 @@ IMPLEMT_VERIFIER(Conv3DBackpropInput, Conv3DBackpropInputVerify) {
     return GRAPH_FAILED;
   }
   // check padding value
-  if (GRAPH_SUCCESS == VerifyConvPadding(op) || GRAPH_SUCCESS == VerifyConv3dbpPads(op)) {
+  auto out_backprop_shape = op.GetInputDesc("out_backprop").GetShape().GetDims();
+  bool unknown_rank = IsUnknownRankShape(out_backprop_shape);
+  bool unknown_shape = IsUnKnownShape(out_backprop_shape);
+  bool is_dynamic = unknown_rank || unknown_shape;
+  if (GRAPH_SUCCESS == VerifyConvPadding(op) || GRAPH_SUCCESS == VerifyConv3dbpPads(op, is_dynamic)) {
     OP_LOGI(op.GetName().c_str(), "Leaving Conv3DBackpropInput verifyfunction!");
     return GRAPH_SUCCESS;
   } else {
@@ -6703,6 +6963,9 @@ template <typename T1, typename T2, typename T3>
 static bool SetInputsizeListConv3dtranspose(ge::Operator& op, const std::vector<T1>& x_sizes, Format x_format,
                                             const std::vector<T2>& filter_sizes, Format filter_format,
                                             const std::vector<T3>& input_sizes, Format input_format) {
+  CHECK_FORMAT(x_format);
+  CHECK_FORMAT(filter_format);
+  CHECK_FORMAT(input_format);
   if (x_sizes.size() != kConv3dInputSizeLimit) {
     OP_LOGE(op.GetName().c_str(), "x_sizes is illegal");
     map<std::string, std::string> err_map;
@@ -7084,61 +7347,72 @@ static graphStatus VerifyConv3dTransposeInput(const ge::Operator& op) {
 }
 // ----------------Conv3DTranspose-------------------
 IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
-  Tensor input_sizes_tensor;
-  if (op.GetInputConstData("input_size", input_sizes_tensor) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get input_size tensor failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dTranspose";
-    err_map["param_name"] = "inputSizesTensor";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+  OP_LOGI(op.GetName().c_str(), "Enter Conv3DTranspose inferfunction!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  std::vector<std::string> input_infer_depends = {"input_size"};
+  op_desc->SetOpInferDepends(input_infer_depends);
+  auto x_desc = op_desc->MutableInputDesc("x");
+  auto y_desc = op_desc->MutableOutputDesc("y");
+
+  std::vector<int64_t> x_sizes = x_desc->MutableShape().GetDims();
+  for (size_t j = 0; j < x_sizes.size(); j++) {
+    OP_LOGD(op.GetName().c_str(), "dy_sizes [%u] is %lld", j, x_sizes[j]);
   }
 
-  // get shape for output from input_sizes
-  auto input_sizes_desc = op.GetInputDesc("input_size");
-  DataType dtype = input_sizes_desc.GetDataType();
+  bool is_input_size_const = false;
+  bool unknown_rank = IsUnknownRankShape(x_sizes);
   std::vector<int64_t> input_sizes;
-  GetConstValue(input_sizes_tensor, dtype, input_sizes);
+  Tensor input_sizes_tensor;
+  auto input_sizes_desc = op_desc->MutableInputDesc("input_size");
+  if (op.GetInputConstData("input_size", input_sizes_tensor) == GRAPH_SUCCESS) {
+    DataType dtype = input_sizes_desc->GetDataType();
+    GetConstValue(input_sizes_tensor, dtype, input_sizes);
+    is_input_size_const = true;
+  }
 
-  Format filter_format = op.GetInputDesc("filter").GetFormat();
-  CHECK_FORMAT(filter_format);
+  // when static op or dynamic op phase running, is_dynamic == false
+  bool unknown_shape = IsUnKnownShape(x_sizes) && (!is_input_size_const);
+  if (unknown_shape || (!is_input_size_const && unknown_rank)) {
+    if (!InferConv3dBpInputOutShapeRange(op, input_sizes_desc, x_desc, y_desc, input_sizes)) {
+      return GRAPH_FAILED;
+    }
+  }
 
-  auto y_desc = op.GetOutputDesc("y");
-  Format input_format = y_desc.GetFormat();
-  CHECK_FORMAT(input_format);
+  // set shape of output desc, input_size should match the format of y
+  if (input_sizes.size() == kConv3dDimSizeLimit) {
+    y_desc->SetShape(GeShape(input_sizes));
+  }
 
-  Format x_format = op.GetInputDesc("x").GetFormat();
-  CHECK_FORMAT(x_format);
+  // update pads list by padding[SAME,VALID]
+  std::vector<int64_t> x_sizes_copy = x_sizes;
+  x_sizes_copy[0] = 1; // make sure batch not -1
+  // if only batch is -1, no need to set SAME padding as -1
+  if (unknown_rank || IsUnknownRankShape(x_sizes_copy)) {
+    std::string pad_str;
+    if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
+      std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);
+      if (pad_str == "SAME") {
+        pads.assign(kConv3dPadsSizeLimit, -1);
+        OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+      }
 
-  std::vector<int64_t> filter_sizes = op.GetInputDesc("filter").GetShape().GetDims();
-  std::vector<int64_t> x_sizes = op.GetInputDesc("x").GetShape().GetDims();
-  if (SetInputsizeListConv3dtranspose(op, x_sizes, x_format, filter_sizes, filter_format, input_sizes, input_format) ==
-      false) {
-    OP_LOGE(op.GetName().c_str(),
-            "Conv3DTranspose update pads list by padding failed or calculate input sizes failed.");
-    return GRAPH_FAILED;
+      op.SetAttr("pads", pads);
+    }
   }
 
   // set dtype of x
   auto x_dtype = op.GetInputDesc("x").GetDataType();
-  y_desc.SetDataType(x_dtype);
-  // set shape of output desc, input_sizes should match the format of y
-  std::vector<int64_t> y_shape;
-  for (auto i : input_sizes) {
-    y_shape.push_back(i);
-  }
-  y_desc.SetShape(ge::Shape(y_shape));
-
-  // update output desc
-  if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3DTranspose";
-    err_map["param_name"] = "output y";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+  y_desc->SetDataType(x_dtype);
+  if (!unknown_rank) {
+    std::vector<int64_t> filter_sizes = op.GetInputDesc("filter").GetShape().GetDims();
+    Format filter_format = op.GetInputDesc("filter").GetFormat();
+    Format input_format = y_desc->GetFormat();
+    Format x_format = x_desc->GetFormat();
+    if (!SetInputsizeListConv3dtranspose(op, x_sizes, x_format, filter_sizes, filter_format, input_sizes, input_format)) {
+      OP_LOGE(op.GetName().c_str(),
+              "Conv3DTranspose update pads list by padding failed or calculate input sizes failed.");
+      return GRAPH_FAILED;
+    }
   }
 
   return GRAPH_SUCCESS;
@@ -7185,14 +7459,9 @@ IMPLEMT_INFERFUNC(Conv3DTransposeD, Conv3DTransposeDInfer) {
   }
 
   Format filter_format = op.GetInputDesc("filter").GetFormat();
-  CHECK_FORMAT(filter_format);
-
   auto y_desc = op.GetOutputDesc("y");
   Format input_format = y_desc.GetFormat();
-  CHECK_FORMAT(input_format);
-
   Format x_format = op.GetInputDesc("x").GetFormat();
-  CHECK_FORMAT(x_format);
   // update pads list by padding[SAME,VALID] and calculate input_size
   std::vector<int64_t> filter_sizes = op.GetInputDesc("filter").GetShape().GetDims();
   std::vector<int64_t> x_sizes = op.GetInputDesc("x").GetShape().GetDims();

@@ -28,6 +28,8 @@ set(_optiling_files
   concat_offset.cc
   conv2d_backprop_filter.cc
   conv2d_backprop_input.cc
+  conv3d_backprop_input.cc
+  conv3d_transpose.cc
   conv2d.cc
   conv2d_transpose.cc
   depthwise_conv2d.cc
