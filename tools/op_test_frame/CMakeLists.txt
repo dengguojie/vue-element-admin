@@ -39,6 +39,7 @@ add_custom_command(TARGET OpTestFrameFiles
   COMMAND rm -rf ${op_test_frame_root}/python/build
   COMMAND rm -rf ${op_test_frame_root}/python/op_test_frame.egg-info
   COMMAND rm -rf ${op_test_frame_root}/python/dist
+  COMMAND rm -rf ${OP_TEST_FRAME_WHEEL_PACKAGE_REAL_NAME}
   COMMAND mv op_test_frame-0.1-*.whl ${OP_TEST_FRAME_WHEEL_PACKAGE_REAL_NAME}
 )
 
