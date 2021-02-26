@@ -69,6 +69,7 @@ def calc(outs, option=None):
     # 0~1: dim len
 
     mode = operation.get_context().get("_mode")
+    redundant_coe = _get_option_v(option, "redundant_coe", 0)
 
     def calc_base_key():
         if mode == SPECIAL:
@@ -106,7 +107,9 @@ def calc(outs, option=None):
 
     base_key = calc_base_key()
     if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
-        return _const_tiling(base_key)
+        cases =  _const_tiling(base_key)
+        cases[0]["redundant_coe"] = redundant_coe
+        return cases
 
     # db handle
     enable_db_func = _default_db_func
@@ -130,7 +133,6 @@ def calc(outs, option=None):
     else:
         cases = _calc_general(outs, base_key, enable_db_func)
 
-    redundant_coe = _get_option_v(option, "redundant_coe", 0)
     for case in cases:
         case["redundant_coe"] = redundant_coe
 
@@ -273,6 +275,9 @@ def _pre_build(schedules_list):
                     _pattern_key += (base*3)
         return str(_pattern_key).ljust(3, '0')
 
+    # add build config
+    operation.add_build_arg("double_buffer_non_reuse", True)
+
     only_const_tiling = False
     support_broadcast = operation.get_context().get("_support_broadcast")
     unknown_rank = operation.get_context().get("_unknown_rank")
@@ -332,9 +337,6 @@ def _pre_build(schedules_list):
         var_names = [x.get_name() for x in te_vars]
         compile_vars[sch.tiling_key] = _name_to_int(var_names)
     operation.add_compile_info_inner(CompileInfo.ELEWISE_VARS, compile_vars)
-
-    # add build config
-    operation.add_build_arg("double_buffer_non_reuse", True)
 
 
 @register_build_pointcut(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
