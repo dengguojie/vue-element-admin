@@ -375,13 +375,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         """"Get core num by calculating block tiling strategy"""
         available_axis = list(range(0, self.ub_tiling_axis))
         ub_available_size = math.ceil(self.broadcast_target_shape[self.ub_tiling_axis] /
-                                      self.ub_tiling_factor)
-        # ub tiling leads to multi core trample or not
-        if self.is_multi_core_trample():
-            self.block_tiling_axis = 0
-            self.block_tiling_nparts = 1
-            return
-        
+                                      self.ub_tiling_factor)        
         core_num = 1
         block_split_nparts = None
         block_split_axis = None
