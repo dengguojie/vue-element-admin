@@ -42,7 +42,7 @@ def _format_check(arg_input):
     None
     """
     format_data = arg_input.get("format")
-    excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC"]
+    excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC", "NC1HWC0_C04"]
     para_check.check_format(format_data, excepted_format_list, param_name="arg_input")
 
 
