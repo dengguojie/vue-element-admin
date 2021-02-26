@@ -2304,6 +2304,42 @@ IMPLEMT_COMMON_INFERFUNC(EltwiseInferShape) {
 COMMON_INFER_FUNC_REG(Eltwise, EltwiseInferShape);
 // ----------------Eltwise END-------------------
 
+// ----------------Erfinv-------------------
+bool InferShapeAndTypeErfinv(Operator& op, const string& input_name, const string& output_name) {
+    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+    DataType input_dtype = op.GetInputDesc(input_name).GetDataType();
+    Format input_format = op.GetInputDesc(input_name).GetFormat();
+    ge::Shape shape = op.GetInputDesc(input_name).GetShape();
+
+    v_output_desc.SetShape(shape);
+    v_output_desc.SetDataType(input_dtype);
+    v_output_desc.SetFormat(input_format);
+    op.UpdateOutputDesc(output_name, v_output_desc);
+
+    return true;
+}
+
+IMPLEMT_VERIFIER(Erfinv, ErfinvVerify) {
+    return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(ErfinvInferShape) {
+    if (InferShapeAndTypeErfinv(op, "input_x", "output_y")) {
+        return GRAPH_SUCCESS;
+    }
+    OP_LOGE("The InferShapeAndTypeErfinv is one input and one output.");
+    return GRAPH_FAILED;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(Erfinv, ErfinvInferShape);
+
+// Registered verify function
+VERIFY_FUNC_REG(Erfinv, ErfinvVerify);
+// ----------------Erfinv END-------------------
+
 // ------------PopulationCount----------------
 IMPLEMT_COMMON_INFERFUNC(PopulationCountInferShape) {
   Shape shape = op.GetInputDesc("x").GetShape();
