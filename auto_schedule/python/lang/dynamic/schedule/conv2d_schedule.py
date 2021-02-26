@@ -16,7 +16,7 @@
 conv2d schedule
 """
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
-from tbe.dsl.static_schedule.cce_schedule import get_op_info
+from tbe.dsl.static_schedule.util import gen_dfs_tensor_map
 from te.lang.dynamic.schedule.constants import Pattern
 
 from te.tvm import schedule as tvm
@@ -31,6 +31,14 @@ def schedule(outs, tiling_case):
 
     return Conv2dSchedule(outs, tiling_case).do_schedule()
 
+
+def get_op_tensor_map(outs):
+    """
+    get tensor_map
+    """
+    _, _, _, tensor_map = gen_dfs_tensor_map(outs)
+
+    return tensor_map
 
 class Conv2dSchedule:
     """
@@ -51,11 +59,11 @@ class Conv2dSchedule:
         do schedule
         """
 
-        op_info = get_op_info(self._outs)
+        op_info = get_op_tensor_map(self._outs)
         self._var_range = self._tiling_case['var_range']
 
         self._schedule = tvm.create_schedule(
-            [res.op for res in self._outs if res not in op_info['tensor_map']])
+            [res.op for res in self._outs if res not in op_info])
         self._schedule.tiling_key = self._tiling_case['key']
         self._tiling_strategy = self._tiling_case['tiling_strategy']
 

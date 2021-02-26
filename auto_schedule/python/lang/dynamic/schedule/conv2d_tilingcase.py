@@ -34,7 +34,7 @@ from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils
 from te.lang.dynamic.schedule.constants import Pattern
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
-from tbe.dsl.static_schedule.cce_schedule import get_op_info
+from .conv2d_schedule import get_op_tensor_map
 
 
 # noinspection PyUnusedLocal
@@ -65,9 +65,9 @@ def calc_conv2d(outs, option=None):
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
 
     cce_conv_op = CceConvOp()
-    op_info = get_op_info(outs)
+    op_info = get_op_tensor_map(outs)
     schedule = tvm.create_schedule(
-                [res.op for res in outs if res not in op_info['tensor_map']])
+                [res.op for res in outs if res not in op_info])
     tiling_dict = cce_conv_op.schedule(outs[0], outs, [schedule], tilingdict_flag=True)
     tiling_dict["dynamic_shape_flag"] = True
 
