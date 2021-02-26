@@ -28,7 +28,7 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-USED_BUFFER_LEN = 3072
+USED_BUFFER_LEN = 2974
 UINT64_ALL_ONE = 18446744073709551615
 
 
