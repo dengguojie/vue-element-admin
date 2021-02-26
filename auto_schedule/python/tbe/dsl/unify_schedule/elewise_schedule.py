@@ -15,6 +15,7 @@
 """
 elewise schedule
 """
+import copy
 from typing import Optional
 from copy import deepcopy
 
@@ -335,6 +336,18 @@ class ElewiseSchedule:
         self._ub_tiling_vars[u_i] = self._tiling_case["ub_tiling_factor"]
 
     def _calc_tiling_const(self):
+        def _get_original_inputs():
+            """
+            In const mode, some op(like bias) need original input.
+            Better solution: make const tiling process same as dynamic shape, and pass original input output to tiling.
+            :return:
+            """
+            const_origin_inputs = operation.get_context().get_current_compute().get("_const_origin_inputs")
+            origin_inputs = copy.deepcopy(const_origin_inputs)
+            for x in origin_inputs:
+                x["shape"] = x["const_shape"]
+            return origin_inputs
+
         res = self._out
         output_shape = util.shape_to_list(res.shape)
         if output_shape == [0]:
@@ -375,7 +388,7 @@ class ElewiseSchedule:
         const_compile_info.update(get_compile_info())
 
         op_type = operation.get_context().get_op_type()
-        run_info = op_tiling.do_op_tiling(op_type, const_compile_info, inputs, outputs)
+        run_info = op_tiling.do_op_tiling(op_type, const_compile_info, _get_original_inputs(), outputs)
         tiling_format = {
             "need_multi_core": "int",
             "block_axis": "int",
