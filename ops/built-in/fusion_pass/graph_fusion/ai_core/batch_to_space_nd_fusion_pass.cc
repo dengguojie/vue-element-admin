@@ -86,7 +86,7 @@ Status ConstToAttrBatchToSpaceNdPass::Fusion(ComputeGraph& graph, Mapping& mappi
 
   // build a fusion node op desc, only for static
   OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(batch_node, fusion_optype, attr_infos);
-  FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "fusion_desc is null."), return NOT_CHANGED);
+  FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "op_type not changed to BatchToSpaceNDD."), return NOT_CHANGED);
   // check op support
   FUSION_PASS_CHECK(!CheckOpSupported(fusion_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "BatchToSpaceNDD not supported."),
                     return NOT_CHANGED);

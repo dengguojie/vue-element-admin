@@ -96,8 +96,8 @@ Status DiagFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
   std::vector<PassAttrInfo> attrInfos;
   const std::string fusionOpType = "DiagD";
   ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(diagVNode, fusionOpType, attrInfos);
-  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "op_tyep not changed to DiagD."),
+                    return NOT_CHANGED);
 
   // input of diag
   ge::OpDescPtr diagDesc = diagVNode->GetOpDesc();

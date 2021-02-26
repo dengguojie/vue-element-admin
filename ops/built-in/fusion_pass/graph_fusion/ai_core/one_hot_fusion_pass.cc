@@ -80,11 +80,11 @@ Status OneHotFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vecto
   transposeAttrInfo.push_back(axis);
 
   ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(one_hot_node, fusionOpType, transposeAttrInfo);
-  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Fusion OP Desc is nullptr."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "op_type not changed to OneHotD."),
+                    return NOT_CHANGED);
 
   // check op support
-  FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op OneHot Not Supported."),
+  FUSION_PASS_CHECK(!CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op OneHotD Not Supported."),
                     return NOT_CHANGED);
 
   ge::NodePtr fusion_node = nullptr;
