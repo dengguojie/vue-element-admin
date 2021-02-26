@@ -93,8 +93,8 @@ Status UpdateAttrFromOnnx(const ge::onnx::NodeProto* node, MaxPoolAttr& node_att
       }
     } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.ints_size() == 4) {
-        // adjust padding order from NCHW to NHWC.
-        std::vector<int> rank = {0, 2, 3, 1};
+        // adjust padding order from top-left-bottom-right to top-bottom-left-right.
+        std::vector<int> rank = {0, 2, 1, 3};
         for (auto i : rank) {
           node_attr.v_pads.push_back(attr.ints(i));
         }
