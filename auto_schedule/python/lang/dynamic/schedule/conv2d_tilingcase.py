@@ -128,13 +128,13 @@ class Conv2dTiling(CubeTilingOp):
         tiling = get_tiling(self.tiling_info)[0]
         return tiling
 
-    def get_default_tiling(self):
+    def get_default_tiling(self, w_lower_bound=1):
         """
         get default tiling
 
         Parameters
         ----------
-        None
+        w_lower_bound: the min value of w when dynamic w
 
         Returns
         -------

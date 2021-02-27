@@ -349,9 +349,13 @@ class Conv2dBpInputTiling(CubeTilingOp):
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
 
-    def get_default_tiling(self):
+    def get_default_tiling(self, w_lower_bound=1):
         """
         get default tiling for unlimited range or special case
+
+        Parameters
+        ----------
+        w_lower_bound: the min value of w when dynamic w
 
         Returns
         -------
@@ -385,14 +389,18 @@ class Conv2dBpInputTiling(CubeTilingOp):
             k_bl0 = 32
 
         k_aub = m_al0 = m_cl0 = 1
+        if self.a_info[3] == -1:
+            w_value = w_lower_bound
+        else:
+            w_value = self.a_info[3]
         if self.tiling_info["strideH_expand"] > 1 or self.tiling_info["strideW_expand"] > 1:
             if self.k_h == 1 and self.k_w == 1 and (self.pad_mode == "VAR" or sum(self.cur_pads) == 0):
                 # when mmad, the min unit of M is a fmp's w
-                if self.a_info[3] % 16 == 0:
-                    m_al0 = m_cl0 = self.a_info[3] // utils.FP16_M
+                if w_value % 16 == 0:
+                    m_al0 = m_cl0 = w_value // utils.FP16_M
                 else:
                     # add one is needed by buffer_tile of ub
-                    m_al0 = m_cl0 = utils.icd(self.a_info[3], utils.FP16_M) + 1
+                    m_al0 = m_cl0 = utils.icd(w_value, utils.FP16_M) + 1
             else:
                 k_aub = k_w * k_h * 16
 

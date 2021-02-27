@@ -160,7 +160,7 @@ class TilingSelection:
             tgt_area = [*target_area.get(batch_name), *target_area.get(h_name), *target_area.get(w_name)]
             if None in tgt_area:
                 seed_cnt = next(self.seed_cnt)
-                default_tiling = self.op.get_default_tiling()
+                default_tiling = self.op.get_default_tiling(target_area.get(w_name)[0])
                 tiling_cases = [self.op.assembly_case(default_tiling, tgt_area, seed_cnt)]
                 add_compile_info("tiling_type", "default_tiling")
                 add_compile_info("default_range", {str(seed_cnt): tgt_area})
