@@ -3643,7 +3643,8 @@ IMPLEMT_VERIFIER(AxpyV2, AxpyV2Verify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(AxpyV2InferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+  bool is_dynamic_output = true;
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
