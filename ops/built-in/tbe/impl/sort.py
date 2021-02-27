@@ -420,7 +420,7 @@ def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     shape, dtype, num = cheak(x, y1, y2, axis, kernel_name)
     allnum = functools_reduce(lambda x, y: x * y, shape)
 
-    tik_instance = tik.Tik(tik.Dprofile('cloud'))
+    tik_instance = tik.Tik(tik.Dprofile())
 
     rounds = allnum // num
 
