@@ -153,11 +153,11 @@ def matrix_set_diag_d(input_matrix, input_diagonal, input_help, output_matrix,
     Parameters
     ----------
     input_matrix: dict with keys(shape and dtype)
-        dtype only support float16, float32, int32, int8，uint8.
+        dtype only support float16, float32, int32, int8, uint8.
     input_diagonal: dict with keys(shape and dtype)
-        dtype only support float16, float32, int32, int8，uint8.
+        dtype only support float16, float32, int32, int8, uint8.
     input_help: dict with keys(shape and dtype)
-        dtype only support float16, float32, int32, int8，uint8.
+        dtype only support float16, float32, int32, int8, uint8.
     output_matrix: dict
         dict of output
     kernel_name: str
