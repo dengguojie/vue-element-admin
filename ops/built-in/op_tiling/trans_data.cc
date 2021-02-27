@@ -39,9 +39,9 @@ int64_t GetDTypeLen(std::string& opType) {
   int64_t typeLen = 1;
   if (opType == "int8" || opType == "uint8") {
     typeLen = 1;
-  } else if (opType == "float16" || opType == "int16" || opType == "uint16") {
+  } else if (opType == "float16" || opType == "int16" || opType == "uint16" || opType == "bool") {
     typeLen = 2;
-  } else if (opType == "float32" || opType == "int32" || opType == "uint32") {
+  } else if (opType == "float32" || opType == "int32" || opType == "uint32" || opType == "float") {
     typeLen = 4;
   } else if (opType == "int64" || opType == "uint64") {
     typeLen = 8;

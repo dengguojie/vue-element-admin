@@ -253,9 +253,9 @@ def get_dtype_len(in_dtype):
 
     if temp_dtype in ("int8", "uint8"):
         byte_len = 1
-    elif temp_dtype in ("float16", "int16", "uint16"):
+    elif temp_dtype in ("float16", "int16", "uint16", "bool"):
         byte_len = 2
-    elif temp_dtype in ("float32", "int32", "uint32"):
+    elif temp_dtype in ("float32", "int32", "uint32", "float"):
         byte_len = 4
     elif temp_dtype in ("int64", "uint64"):
         byte_len = 8
