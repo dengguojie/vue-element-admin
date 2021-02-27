@@ -294,7 +294,7 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   const_mul_input_index = 1 - non_const_mul_input_index;
 
   // get mul_const_node
-  NodePtr mul_const_node = mul_const_nodes[0];
+  NodePtr mul_const_node = mul_node->GetInDataNodes().at(const_mul_input_index);
   FUSION_PASS_CHECK(mul_const_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "mul's const node is null"),
                     return FAILED);
   OutDataAnchorPtr const_mul_anchor = mul_const_node->GetOutDataAnchor(0);
