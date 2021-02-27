@@ -279,7 +279,7 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
           new_pad_lists[1], new_pad_lists[2], new_pad_lists[3]);
   if (have_slice == false) {
     return GRAPH_FAILED;
-  } 
+  }
   if (!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
     return GRAPH_FAILED;
   }
@@ -377,8 +377,13 @@ IMPLEMT_VERIFIER(DepthwiseConv2D, DepthwiseConv2DVerify) {
   auto xShape = xTensor.GetShape().GetDims();
   auto wShape = wTensor.GetShape().GetDims();
 
-  if (xShape.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "input x shape should be 4d. input x shape size is %d", (int)xShape.size());
+  bool unknown_rank = IsUnknownRankShape(xShape);
+  if ((!unknown_rank) && (xShape.size() != 4)) {
+    if (xShape.size() == 0) {
+      OP_LOGE(op.GetName().c_str(), "input x shape is empty.");
+    } else {
+      OP_LOGE(op.GetName().c_str(), "input x shape should be 4d. input x shape size if %d", (int)xShape.size());
+    }
     return GRAPH_FAILED;
   }
 
@@ -508,6 +513,108 @@ static bool GetDimInFormat(const std::string& opName, const std::string& formatS
   return true;
 }
 
+static void SetDepthwiseConv2dOutShapeRange(const std::string& pad_str,
+                                            size_t idx,
+                                            const vector<int64_t>& attr_params,
+                                            const std::vector<std::pair<int64_t, int64_t>>& fm_range,
+                                            std::vector<std::pair<int64_t, int64_t>>& out_range) {
+  size_t attr_idx = 0;
+  int64_t stride = attr_params[attr_idx++];
+  int64_t dilation = attr_params[attr_idx++];
+  int64_t pad = attr_params[attr_idx++];
+  int64_t kernel = attr_params[attr_idx++];
+  int64_t low = fm_range[idx].first;
+  int64_t high = fm_range[idx].second;
+  if (pad_str == "SAME") {
+    out_range[idx].first = (low + stride -1) / stride;
+    out_range[idx].second = (high + stride -1) / stride;
+  } else {
+    out_range[idx].first = (low + pad - dilation * (kernel - 1) - 1) / stride + 1;
+    out_range[idx].second = (high + pad - dilation * (kernel - 1) - 1) / stride + 1;
+  }
+  out_range[idx].first = std::max(out_range[idx].first, kDynamicRangeLowerBound);
+  out_range[idx].second = std::min(out_range[idx].second, kDynamicRangeUpperBound);
+  if(high == -1) {
+    out_range[idx].second = high;
+  }
+}
+
+static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
+                                            const vector<int64_t>& attr_params,
+                                            vector<int64_t>& y_shape,
+                                            ge::TensorDesc& x_tensor,
+                                            ge::TensorDesc& y_tensor) {
+  auto x_shape = x_tensor.GetShape().GetDims();
+  auto x_format = x_tensor.GetFormat();
+
+  size_t idx = 0;
+  int64_t strh = attr_params[idx++];
+  int64_t strw = attr_params[idx++];
+  int64_t dilh = attr_params[idx++];
+  int64_t dilw = attr_params[idx++];
+  int64_t padt = attr_params[idx++];
+  int64_t padb = attr_params[idx++];
+  int64_t padl = attr_params[idx++];
+  int64_t padr = attr_params[idx++];
+  int64_t inc = attr_params[idx++];
+  int64_t kh = attr_params[idx++];
+  int64_t kw = attr_params[idx++];
+
+  size_t idx_n = 0;
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  size_t idx_c = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+    idx_c = 3;
+  } else if (x_format == FORMAT_NCHW) {
+    idx_c = 1;
+    idx_h = 2;
+    idx_w = 3;
+  }
+
+  // update pads if padding is SAME
+  std::string pad_str;
+  if (!x_shape.empty() && GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" &&
+      (x_shape[idx_h] == -1 or x_shape[idx_w] == -1)) {
+    op.SetAttr("pads", {-1, -1, -1, -1});
+    OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
+  }
+
+  OP_LOGD(op.GetName().c_str(), "dynamic shape set range");
+  std::vector<std::pair<int64_t, int64_t>> fm_range;
+  x_tensor.GetShapeRange(fm_range);
+  if (x_shape[idx_h] == -1) {
+    y_shape[idx_h] = -1;
+  }
+  if (x_shape[idx_w] == -1) {
+    y_shape[idx_w] = -1;
+  }
+  if (!fm_range.empty()) {
+    for (size_t i = 0; i < fm_range.size(); i++) {
+      OP_LOGD(op.GetName().c_str(), "fmap Range[%u] is (%lld, %lld)", i, fm_range[i].first, fm_range[i].second);
+    }
+
+    std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
+    out_range[idx_c] = std::make_pair((int64_t)inc, (int64_t)inc);
+    if (x_shape[idx_h] == -1) {
+      vector<int64_t> attr_params_h = {strh, dilh, padt + padb, kh};
+      SetDepthwiseConv2dOutShapeRange(pad_str, idx_h, attr_params_h, fm_range, out_range);
+    }
+    if (x_shape[idx_w] == -1) {
+      vector<int64_t> attr_params_w = {strw, dilw, padl + padr, kw};
+      SetDepthwiseConv2dOutShapeRange(pad_str, idx_w, attr_params_w, fm_range, out_range);
+    }
+    y_tensor.SetShapeRange(out_range);
+    for (size_t i = 0; i < out_range.size(); i++) {
+      OP_LOGD(op.GetName().c_str(), "output Range[%u] is (%lld, %lld)", i, out_range[i].first, out_range[i].second);
+    }
+  }
+  y_tensor.SetShape(Shape(y_shape));
+  return true;
+}
+
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter op_proto inferfunction!");
@@ -516,10 +623,10 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   int64_t cPosition = 0;
   int64_t hPosition = 0;
   int64_t wPosition = 0;
-  int64_t inN = 0;
-  int64_t inC = 0;
-  int64_t inH = 0;
-  int64_t inW = 0;
+  int64_t inN = -1;
+  int64_t inC = -1;
+  int64_t inH = -1;
+  int64_t inW = -1;
   int64_t outH = 0;
   int64_t outW = 0;
   int64_t filterH = 0;
@@ -561,6 +668,9 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   auto shapeIn = tensorDescIn.GetShape();
   auto shapeW = tensorDescW.GetShape();
 
+  auto x_shape = shapeIn.GetDims();
+  bool unknown_rank = IsUnknownRankShape(x_shape);
+
   auto dataTypeIn = tensorDescIn.GetDataType();
 
   if (!GetDimInFormat(op.GetName(), dataFormat, "N", nPosition)) {
@@ -578,11 +688,21 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
     return GRAPH_FAILED;
   }
 
-  // NC1HWC0(NCHW)
-  inN = shapeIn.GetDim(nPosition);
-  inC = shapeIn.GetDim(cPosition);
-  inH = shapeIn.GetDim(hPosition);
-  inW = shapeIn.GetDim(wPosition);
+  if (!unknown_rank) {
+    // NC1HWC0(NCHW)
+    inN = shapeIn.GetDim(nPosition);
+    inC = shapeIn.GetDim(cPosition);
+    inH = shapeIn.GetDim(hPosition);
+    inW = shapeIn.GetDim(wPosition);
+  }
+
+  if ((!unknown_rank) && (inC < 1)) {
+    OP_LOGE(op.GetName().c_str(),
+            "x channel should be greater than or equal to 1."
+            " actual is: %d",
+            (int)inC);
+    return GRAPH_FAILED;
+  }
 
   Format filterFormat = tensorDescW.GetFormat();
   std::string filterFormatStr = format2str[filterFormat];
@@ -614,6 +734,10 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   CHECK(strideH == 0 || strideW == 0,  OP_LOGE(op.GetName().c_str(), "stride is 0."), return GRAPH_FAILED);
   outH = (inH + padtop + padbottom - effectiveFilterH) / strideH + 1;
   outW = (inW + padleft + padright - effectiveFilterW) / strideW + 1;
+  if (unknown_rank) {
+    outH = -1;
+    outW = -1;
+  }
 
   vector<int64_t> shapeOut;
   TensorDesc tensordesc_output = op.GetOutputDesc("y");
@@ -644,8 +768,23 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   } else {
     tensordesc_output.SetDataType(dataTypeIn);
   }
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
 
+  // set range
+  bool is_dynamic = false;
+  // when static op or dynamic op phase_running, is_dynamic == false
+  if (std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end()) {
+    is_dynamic = true;
+  }
+  if (is_dynamic) {
+    vector<int64_t> attr_params = {strideH, strideW, dilationH, dilationW,
+                                   padtop, padbottom, padleft, padright,
+                                   inC, filterH, filterW};
+    if (!SetDepthwiseConv2dOutShapeRange(op, attr_params, shapeOut, tensorDescIn, tensordesc_output)) {
+      return GRAPH_FAILED;
+    }
+  }
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  OP_LOGI(op.GetName(),c_str(), "leave op_proto inferfunction!");
   return GRAPH_SUCCESS;
 }
 
@@ -3494,15 +3633,15 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   int64_t groups = 1;
   op.GetAttr("groups", groups);
   if ((!unknown_rank) && (groups == 1)) {
-    if (ic % kc == 0) {
+    if ((ic > 0) && (ic % kc == 0)) {
       groups = ic / kc;
       op.SetAttr("groups", groups);
       OP_LOGD(op.GetName().c_str(), "parameter groups is implicitly changed.");
     } else {
-      OP_LOGE(op.GetName().c_str(), "in_channels should be divisible by kernel_channels when groups = 1.");
+      OP_LOGE(op.GetName().c_str(), "in_channels(>0) should be divisible by kernel_channels when groups = 1.");
       map<string, string> err_map;
       err_map["op_name"] = op.GetName().c_str();
-      err_map["description"] = "in_channels should be divisible by kernel_channels when groups = 1.";
+      err_map["description"] = "in_channels(>0) should be divisible by kernel_channels when groups = 1.";
       std::string report_error_code = "E50060";
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return GRAPH_FAILED;
@@ -3887,7 +4026,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
   }
   OP_LOGD(op.GetName().c_str(), "Calc Conv2D InferDataSlice end!");
   return GRAPH_SUCCESS;
-  
+
 }
 
 INFER_DATA_SLICE_FUNC_REG(Conv2D, Conv2DInferDataSlice);
