@@ -338,7 +338,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                                          constant.STRIDE_ONE,
                                                          constant.REPEAT_STRIDE_EIGHT)
                     else:
-                        with self.tik_instance.if_scope((looph + 1) * strideh > pad_top):
+                        with self.tik_instance.if_scope(tik.any((looph + 1) * strideh > pad_top, looph == dyh - 1)):
                             src_address.set_as(pad_left * channel)
                             dst_address.set_as(block_num * dxh * dxw * channel +
                                                dxh_address_offset)

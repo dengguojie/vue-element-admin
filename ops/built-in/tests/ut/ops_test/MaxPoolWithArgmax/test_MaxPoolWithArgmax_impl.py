@@ -105,6 +105,42 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_cust_test_func(test_func=test_max_pool_with_argmax_resnet50)
+
+from impl.max_pool_with_argmax import check_supported
+
+# pylint: disable=unused-argument,unused-variable
+def test_check_support(test_arg):
+    # input_x, output_y, output_argmax, ksize, strides, padding
+    res = check_supported(
+                    {"shape": (2,2,96,144,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,96,144,16),"ori_format": "NHWC"},
+                    {"shape": (2,2,6,9,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,6,9,16),"ori_format": "NHWC"},
+                    {"shape": (2,2,6,9,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (2,2,6,9,16),"ori_format": "NHWC"},
+                    [1, 16, 16, 1],
+                    [1, 16, 16, 1],
+                    "VALID",
+                    "max_pool_with_argmax_check_support_case_001")
+    assert not res
+    res = check_supported(
+                    {"shape": (2,2,16,8,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,16,8,16),"ori_format": "NHWC"},
+                    {"shape": (2,2,2,1,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,2,1,16),"ori_format": "NHWC"},
+                    {"shape": (2,2,2,1,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (2,2,2,1,16),"ori_format": "NHWC"},
+                    [1, 8, 8, 1],
+                    [1, 8, 8, 1],
+                    "VALID",
+                    "max_pool_with_argmax_check_support_case_002")
+    assert not res
+    res = check_supported(
+                    {"shape": (2,2,16,16,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,16,16,16),"ori_format": "NHWC"},
+                    {"shape": (2,2,2,2,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,2,2,16),"ori_format": "NHWC"},
+                    {"shape": (2,2,2,2,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (2,2,2,2,16),"ori_format": "NHWC"},
+                    [1, 8, 8, 1],
+                    [1, 8, 8, 1],
+                    "SAME",
+                    "max_pool_with_argmax_check_support_case_003")
+    assert res
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+
 if __name__ == '__main__':
     ut_case.run()
     # ut_case.run("Ascend910")
