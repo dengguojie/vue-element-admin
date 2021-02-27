@@ -73,8 +73,13 @@ def data_compare_compute(input_x, input_y, output_num, atol, rtol, kernel_name="
     one_scaler = tvm.const(NUM_ONE, "float16")
     res_sel = tbe.vsel(res_cmp, one_scaler, zero_scaler)
 
-    res_sel = tbe.cast_to(res_sel, "float32")
+    if tbe_platform.cce_conf.api_check_support("tbe.sum", "float32"):
+        res_sel = tbe.cast_to(res_sel, "float32")
+    else:
+        res_sel = tbe.cast_to(res_sel, "float16")
+
     res_num = tbe.sum(res_sel, axis = shape_list)
+    res_num = tbe.cast_to(res_num, "float32")
 
     return res_num
 
