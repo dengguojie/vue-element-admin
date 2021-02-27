@@ -131,8 +131,8 @@ Status TransdataTransdataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     return SUCCESS;
   }
   ge::GeTensorDesc secondTransDataOutputTensor = transData_2->GetOpDesc()->GetOutputDesc(0);
-  if (secondTransDataOutputTensor.GetFormat() != ge::FORMAT_FRACTAL_Z &&
-      secondTransDataOutputTensor.GetFormat() != ge::FORMAT_FRACTAL_NZ) {
+  if (static_cast<ge::Format>(ge::GetPrimaryFormat(secondTransDataOutputTensor.GetFormat())) != ge::FORMAT_FRACTAL_Z &&
+      static_cast<ge::Format>(ge::GetPrimaryFormat(secondTransDataOutputTensor.GetFormat())) != ge::FORMAT_FRACTAL_NZ) {
     OP_LOGI(FUSED_OP_TYPE.c_str(),
             "node[FullyConnection]'s input format is not FRACTAL_Z , not support fusion, TransdataTransdataPass fusion "
             "end");

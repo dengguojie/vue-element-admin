@@ -135,7 +135,7 @@ Status FCTransdataMergePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   FUSION_PASS_CHECK(firstTransDataOpDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "transData_1 opdesc is null"),
                     return PARAM_INVALID);
   ge::GeTensorDesc firstTransDataInputTensor = firstTransDataOpDesc->GetInputDesc(0);
-  if (firstTransDataInputTensor.GetFormat() != ge::FORMAT_FRACTAL_NZ) {
+  if (static_cast<ge::Format>(ge::GetPrimaryFormat(firstTransDataInputTensor.GetFormat())) != ge::FORMAT_FRACTAL_NZ) {
     OP_LOGI(FUSED_OP_TYPE.c_str(),
             "firstTransDataInputTensor format is not FRACTAL_NZ, FCTransdataMergePass fusion end");
     return SUCCESS;
