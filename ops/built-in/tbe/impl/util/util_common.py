@@ -19,13 +19,21 @@ import os
 import json
 import itertools
 import math
+import te.lang.cce as tbe
 from te.utils.error_manager import error_manager_util
 from te import platform as tbe_platform
+from te import tvm
 
 PAD_MIN = 0
 # the dim of most parameters in conv3d is 5
 CONV3D_SHAPE_COMMON_DIM = 5
-
+# The constant be used to modulus an uint8 data
+UINT8_MOD_VAL = 256
+# The constant be used to modulus a int8 data
+INT8_MOD_VAL = 128
+MININUM_NUM_FLOAT = 2 ** (-126)
+SCALAR_MUL1_FP32 = 2 ** (50)
+SCALAR_MUL2_FP32 = 2 ** (26)
 
 def ceil(x_1, x_2):
     """
@@ -51,13 +59,16 @@ def ceil(x_1, x_2):
 
 
 def check_pads_value_3d(pads):
+    """
+    check_pads_value_3d
+    """
     pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
     if pad_head < PAD_MIN or pad_tail < PAD_MIN:
         dict_args = {
             'errCode': 'E60000',
-        'param_name': 'pad D',
-        'expected_value': 'non_negative vlaue',
-        'input_value': 'pad_d[0] = {}, pad_d[1] = {}'.format(pad_head, pad_tail)
+            'param_name': 'pad D',
+            'expected_value': 'non_negative vlaue',
+            'input_value': 'pad_d[0] = {}, pad_d[1] = {}'.format(pad_head, pad_tail)
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
@@ -70,7 +81,7 @@ def check_pads_value_3d(pads):
             'input_value': 'pad_h[0] = {}, pad_h[1] = {}'.format(pad_up, pad_down)
         }
         raise RuntimeError(dict_args,
-                            error_manager_util.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
     if pad_left < PAD_MIN or pad_right < PAD_MIN:
         dict_args = {
             'errCode': 'E60000',
@@ -79,7 +90,7 @@ def check_pads_value_3d(pads):
             'input_value': 'pad_w[0] = {}, pad_w[1] = {}'.format(pad_left, pad_right)
         }
         raise RuntimeError(dict_args,
-                            error_manager_util.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def align(x_1, x_2):
@@ -336,6 +347,7 @@ def get_fused_format_str(format_char_list):
     return format_str_list
 
 
+# pylint: disable=invalid-name
 def is_dynamic_input(_inputs):
     """
     is_dynamic_input: check whether the shape contain -1
@@ -357,3 +369,81 @@ def is_dynamic_input(_inputs):
             return True
 
     return False
+
+
+def high_precision_floor(x_float, is_high_precision=True):
+    """
+    Calculate the maximum integer less than x_float
+    Parameters
+    ----------
+    x_float: a float tensor
+    is_high_precision: a bool value
+    Returns
+    ----------
+    a tensor
+    """
+    x_floor = tbe.floor(x_float)
+    if x_float == "float16":
+        is_high_precision = False
+    if is_high_precision:
+        cast_flag = tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32")
+        if not cast_flag:
+            # when the product not support f322s32, will cast to fp16 and to int32, will get error
+            # ex: f32 value is 1.99998, cast int32 is 2, this step will reduce the error
+            # step 1 int32 cast to fp32_new   2.0
+            # step 2 int32_sub_fp32_value = f32_old - fp32_new
+            # step 3 int32_sub_fp32_value = 0 when int32_sub_fp32_value >= 0
+            #        int32_sub_fp32_value = 1 when int32_sub_fp32_value < 0
+            # step 4 int32 - int32_sub_fp32_value
+            x_floor_fp32 = tbe.cast_to(x_floor, "float32")
+            error_fp32 = tbe.vsub(x_floor_fp32, x_float)
+            error_fp32 = tbe.vmaxs(error_fp32, 0)
+            error_fp32 = tbe.vmins(error_fp32, MININUM_NUM_FLOAT)
+            error_fp32 = tbe.vmuls(error_fp32, SCALAR_MUL1_FP32)
+            error_fp32 = tbe.vmuls(error_fp32, SCALAR_MUL1_FP32)
+            error_fp32 = tbe.vmuls(error_fp32, SCALAR_MUL2_FP32)
+            error_fp16 = tbe.cast_to(error_fp32, "float16")
+            error_int32 = tbe.cast_to(error_fp16, "int32")
+            x_floor = tbe.vsub(x_floor, error_int32)
+    return x_floor
+
+
+def tensor_mod_int(x, y):
+    """
+    Calculate x mod y
+    Parameters
+    ----------
+    x: a tensor
+    y: a interger number
+    Returns
+    ----------
+    x mod y
+    """
+    y_rec = tvm.const(1 / float(y), dtype=x.dtype.lower())
+    x_float = tbe.vmuls(x, y_rec)
+    x_floor = high_precision_floor(x_float)
+    x_int = tbe.vmuls(x_floor, y)
+    x = tbe.vsub(x, x_int)
+    return x
+
+
+def uint8_int8_overflow_proc(x, x_dtype):
+    """
+    Calculate the right result when input is overflow and its dtype is uint8 or int8
+    Parameters
+    ----------
+    x: a tensor
+    x_dtype: a string, dtype of the x
+    Returns
+    ----------
+    a tensor after process
+    """
+    if x_dtype == "uint8":
+        x = tensor_mod_int(x, UINT8_MOD_VAL)
+    elif x_dtype == "int8":
+        x = tbe.vadds(x, INT8_MOD_VAL)
+        x = tensor_mod_int(x, UINT8_MOD_VAL)
+        neg_int8_mod_val = -1 * INT8_MOD_VAL
+        x = tbe.vadds(x, neg_int8_mod_val)
+    x = tbe.cast_to(x, x_dtype)
+    return x

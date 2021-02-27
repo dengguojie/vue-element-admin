@@ -22,6 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
+from impl.util import util_common
 
 # constant, value is 16
 SIZE_SIXTEEN = 16
@@ -52,6 +53,7 @@ def _can_division_sixteen(shape):
     return False
 
 
+# pylint: disable=invalid-name
 def _can_broadcast(shape1, shape2):
     """
     check whether can broadcast or no.
@@ -117,9 +119,9 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-        dtype_list = ["float16", "int32"]
+        dtype_list = ["float16", "int32", "int8", "uint8"]
     else:
-        dtype_list = ["float16", "float32", "int32"]
+        dtype_list = ["float16", "float32", "int32", "int8", "uint8"]
 
     format_x = input_x.get("ori_format")
     format_y = input_y.get("ori_format")
@@ -133,7 +135,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     if (len(shape_x) == 2 and (len(shape_y) == 3 or len(shape_y) == 4)) \
             or (len(shape_y) == 2 and (len(shape_x) == 3 or len(shape_x) == 4)):
         format_5hd = []
-    
+
     len_format_list = len(dtype_list)
     add_nd_nz = False
     add_nz_nd = False
@@ -548,9 +550,18 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
 
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
                                                               param_name_input2="input_y")
+
+    x_dtype = input_x.dtype.lower()
+    if x_dtype in ("uint8", "int8"):
+        input_x = tbe.cast_to(input_x, "float16")
+        input_y = tbe.cast_to(input_y, "float16")
+
     input_x = tbe.broadcast(input_x, shape_max)
     input_y = tbe.broadcast(input_y, shape_max)
     res = tbe.vadd(input_x, input_y)
+
+    if x_dtype in ("uint8", "int8"):
+        res = util_common.uint8_int8_overflow_proc(res, x_dtype)
 
     return res
 
@@ -565,9 +576,9 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     Parameters
     ----------
     input_x : dict
-        shape and dtype of first input, only support float16, float32, int32
+        shape and dtype of first input, only support float16, float32, int32, int8, uint8
     input_y : dict
-        shape and dtype of second input, only support float16, float32, int32
+        shape and dtype of second input, only support float16, float32, int32, int8, uint8
     output_z: dict
         shape and dtype of output, should be broadcast shape and type as input
     kernel_name : str
@@ -587,7 +598,7 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_y, param_name="input_y")
 
-    check_tuple = ("float16", "float32", "int32")
+    check_tuple = ("float16", "float32", "int32", "int8", "uint8")
     input_data_type = input_x.get("dtype").lower()
     para_check.check_dtype(input_data_type, check_tuple, param_name="input_x")
 

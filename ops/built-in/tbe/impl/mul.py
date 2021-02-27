@@ -22,6 +22,7 @@ from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
+from impl.util import util_common
 
 
 # Determine whether the 16 bit alignment
@@ -31,7 +32,9 @@ SIZE_SIXTEEN = 16
 # pylint: disable=too-many-statements,too-many-branches,too-many-nested-blocks,too-many-boolean-expressions
 # pylint: disable=too-many-locals
 def _can_division_sixteen(shape):
-
+    """
+    _can_division_sixteen
+    """
     if len(shape) < 2:
         if shape[-1] == 0:
             expected_value = "equal to 0"
@@ -51,7 +54,9 @@ def _can_division_sixteen(shape):
 
 # pylint: disable=too-many-locals
 def _broadcast_zn_rule(shape0, shape1, format0, format1):
-
+    """
+    _broadcast_zn_rule
+    """
     if format1 != format0:
         format_rule = "format should be same"
         error_manager_vector.raise_err_check_params_rules("mul", format_rule, "x", format0)
@@ -344,7 +349,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
     > y's Tensor(shape=(16, 1, 1, 1, 16), "NC1HWC0")
 
     23.when first dim of x != 1, the lengths of x's shape == 1, the lengths of y's shape == 4, x's format == y's
-    format, and the format of y is one of ("NHWC", ): support ND, NC1HWC0 format.
+    format, and the format of y is one of ("NHWC",): support ND, NC1HWC0 format.
     > example:
     > original:
     > x's Tensor(shape=(2), "NHWC")
@@ -365,7 +370,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
     > y's Tensor(shape=(2, 1, 4, 5, 16), "NC1HWC0")
 
     25.when first dim of y != 1, the lengths of x's shape == 4, the lengths of y's shape == 1, x's format == y's
-    format, and the format of x is one of ("NHWC", ): support ND, NC1HWC0 format.
+    format, and the format of x is one of ("NHWC",): support ND, NC1HWC0 format.
     > example:
     > original:
     > x's Tensor(shape=(2, 3, 4, 5), "NHWC")
@@ -393,13 +398,17 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
     format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
-    dtype_list = ["float16", "float", "int32", "int16"]
+    dtype_list = ["float16", "float", "int32", "int16", "uint8", "int8"]
     vmul_support_s16 = tbe_platform.api_check_support("te.lang.cce.vmul", "int16")
     vmul_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
     if not vmul_support_s16:
         dtype_list.remove("int16")
     if not vmul_support_fp32:
         dtype_list.remove("float")
+        # If the platform does not support float32 data type,
+        # neither of uint8 and int8 is supported at the same time
+        dtype_list.remove("uint8")
+        dtype_list.remove("int8")
 
     format_x = x.get("ori_format")
     format_y = y.get("ori_format")
@@ -683,13 +692,13 @@ def op_select_format(x, y, output, kernel_name="mul"):
         if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
             format_list.append("NC1HWC0")
         if len(shape_x) == 1 and len(shape_y) == 4:
-            if format_x == format_y and format_y in ("NHWC", ):
+            if format_x == format_y and format_y in ("NHWC",):
                 format_list.append("NC1HWC0")
             if format_x == format_y and format_y in ("NCHW", "HWCN"):
                 if y_cdim == shape_x[0] or y_cdim == 1 or shape_x[0] == 1 or shape_x[0] // 16 == 1:
                     format_list.append("NC1HWC0")
         if len(shape_y) == 1 and len(shape_x) == 4:
-            if format_x == format_y and format_x in ("NHWC", ):
+            if format_x == format_y and format_x in ("NHWC",):
                 format_list.append("NC1HWC0")
             if format_x == format_y and format_x in ("NCHW", "HWCN"):
                 if x_cdim == shape_y[0] or x_cdim == 1 or shape_y[0] == 1 or x_cdim // 16 == 1 or shape_y[0] // 16 == 1:
@@ -772,6 +781,9 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
 
 def _mul_check_format(x, y):
+    """
+    _mul_check_format
+    """
     format_pattern = 0
     shape1 = x.get("shape")
     shape2 = y.get("shape")
@@ -798,6 +810,9 @@ def _mul_check_format(x, y):
 
 # pylint: disable=unused-variable,invalid-name
 def _infer_shape(format_pattern, x, y):
+    """
+    _infer_shape
+    """
     shape_x = x.get("shape")
     shape_y = y.get("shape")
     ori_shape_x = x.get("ori_shape")
@@ -890,15 +905,27 @@ def mul_compute(input_x, input_y, output_data, kernel_name="mul"):
         res = _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max)
         if res is not None:
             return res
+
+    x_dtype = input_x.dtype.lower()
+    if x_dtype in ("uint8", "int8"):
+        input_x = tbe.cast_to(input_x, "float32")
+        input_y = tbe.cast_to(input_y, "float32")
+
     input_x = tbe.broadcast(input_x, shape_max)
     input_y = tbe.broadcast(input_y, shape_max)
     res = tbe.vmul(input_x, input_y)
 
+    if x_dtype in ("uint8", "int8"):
+        res = util_common.uint8_int8_overflow_proc(res, x_dtype)
+
     return res
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# pylint: disable=too-many-arguments,unused-argument,bad-continuation
 def _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max):
+    """
+    _mul_compute_ex
+    """
     if shape_x == shape_max:
         small_input = input_y
         large_input = input_x
@@ -990,7 +1017,7 @@ def mul(x, y, output, kernel_name="mul"):
 
     if dtype_x != dtype_y:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, 'x', 'y', dtype_x, dtype_y)
-    check_list = ("int32", "float16", "float32", "int16")
+    check_list = ("int32", "float16", "float32", "int16", "uint8", "int8")
     para_check.check_dtype(dtype_x, check_list, param_name="x")
 
     vmul_support = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
