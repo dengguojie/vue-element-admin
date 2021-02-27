@@ -15,7 +15,6 @@
 """
 util_tik_comm_func
 """
-import math
 from te import tik
 from te import platform as tbe_platform
 from impl import common_util
@@ -176,6 +175,48 @@ def tik_func_vmuls(tik_instance, dst_ub, src_ub, value, do_len):
     if repeat_tail > 0:
         tik_instance.vmuls(repeat_tail, dst_ub[dst_offset], src_ub[src_offset], value,
                            1, 1, 1, 8, 8)
+
+
+def tik_func_vadds(tik_instance, dst_ub, src_ub, value, do_len):
+    """
+    tik_func_vadds
+    """
+    do_type = dst_ub.dtype
+    byte_num_one = common_util.get_data_size(do_type)
+    block_num = constant_util.BLOCK_SIZE // byte_num_one
+    vector_num = block_num*constant_util.REPEAT_STRIDE_EIGHT
+    repeat = do_len // vector_num
+    repeat_tail = do_len % vector_num
+    dst_offset = ub_offset(dst_ub)
+    src_offset = ub_offset(src_ub)
+    while repeat > MAX_REPEAT_NUM:
+        tik_instance.vadds(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
+                           MAX_REPEAT_NUM, 1, 1, 8, 8)
+        repeat = repeat - MAX_REPEAT_NUM
+        dst_offset = dst_offset + vector_num * MAX_REPEAT_NUM
+        src_offset = src_offset + vector_num * MAX_REPEAT_NUM
+    if repeat > 0:
+        tik_instance.vadds(vector_num, dst_ub[dst_offset], src_ub[src_offset], value,
+                           repeat, 1, 1, 8, 8)
+        dst_offset = dst_offset + vector_num * repeat
+        src_offset = src_offset + vector_num * repeat
+    if repeat_tail > 0:
+        tik_instance.vadds(repeat_tail, dst_ub[dst_offset], src_ub[src_offset], value,
+                           1, 1, 1, 8, 8)
+
+
+def tik_func_vconcat(tik_instance, proposals_ub, _ub, trans_repeat, mode):
+    """
+    tik_func_vconcat
+    """
+    tik_instance.vconcat(proposals_ub, _ub, trans_repeat, mode)
+
+
+def tik_func_vextract(tik_instance, proposals_ub, _ub, trans_repeat, mode):
+    """
+    tik_func_vextract
+    """
+    tik_instance.vextract(_ub, proposals_ub, trans_repeat, mode)
 
 
 def tik_func_vconv(tik_instance, dst_ub, src_ub, do_len, mode="", mini_mid_ub=None):
@@ -374,4 +415,3 @@ def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     if burst is None:
         burst = ceil_div(count, block_element)
     tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
-

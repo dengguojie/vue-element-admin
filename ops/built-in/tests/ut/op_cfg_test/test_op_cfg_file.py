@@ -1,7 +1,26 @@
-# -*- coding:utf-8 -*-
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+op_cfg_file ut test
+"""
 import unittest
 import os
 
+
+# pylint: disable=invalid-name,bad-classmethod-argument,too-many-locals,too-many-branches,unused-variable
+# pylint: disable=too-many-statements,consider-using-sys-exit
 cur_file_path = __file__
 ini_path = os.path.dirname(cur_file_path)  # llt/ops/llt_new/ut/cfg_format_check
 ini_path = os.path.dirname(ini_path)  # llt/ops/llt_new/ut
@@ -13,6 +32,7 @@ ini_path = os.path.join(ini_path, "ops/built-in/tbe/op_info_cfg/ai_core")  #
 
 
 class Test_OpConfig(unittest.TestCase):
+    """Test_OpConfig"""
     def setUp(self):
         # 每个测试用例执行之前做操作
         pass
@@ -33,24 +53,34 @@ class Test_OpConfig(unittest.TestCase):
         print("---------------------------------------------------")
 
     def test_op_config(self):
-        allow_types = set(["int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "float16", "float32",
-                       "float", "bool", "double"])
-        allow_input_info_keys = set(["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType",
-                                 "unknownshape_format"])
+        """test_op_config"""
+        allow_types = set(["int8", "uint8", "int16", "uint16", "int32", "uint32",
+                           "int64", "uint64", "float16", "float32",
+                           "float", "bool", "double"])
+        allow_input_info_keys = set(["name", "dtype", "format", "shape", "reshapeType",
+                                     "needCompile", "shapesType", "valueDepend",
+                                     "unknownshape_format"])
         allow_reshape_types = set(["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW", "NWC"])
-        allow_output_info_keys = set(["name", "dtype", "format", "shape", "reshapeType", "needCompile", "shapesType", "unknownshape_format"])
+        allow_output_info_keys = set(["name", "dtype", "format", "shape", "reshapeType",
+                                      "needCompile", "shapesType", "unknownshape_format"])
         allow_param_types = set(["required", "optional", "dynamic"])
         allow_op_pattern = set(["reduce", "broadcast", "formatAgnostic"])
-        allow_attr_type = set(["bool", "int", "listInt", "float", "str", "listFloat", "listListInt", "type", "listBool"])
+        allow_attr_type = set(["bool", "int", "listInt", "float", "str", "listFloat",
+                               "listListInt", "type", "listBool"])
         allow_op_key = set(["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
-                        "binfile.name", "kernel.name",
-                        "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
-                        "needCheckSupport.flag","dynamicShapeSupport.flag", "slicePattern.value"])
+                            "binfile.name", "kernel.name",
+                            "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
+                            "needCheckSupport.flag", "dynamicShapeSupport.flag", "slicePattern.value"])
         allow_attr_info_key = set(["type", "value", "paramType", "defaultValue"])
-        allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM', 'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',
-                             'NDC1HWC0', 'FRACTAL_Z_3D', 'NC1HWC0_C04', 'HWCN', 'CHWN', 'NDHWC', 'DHWCN', 'NCDHW', 'NULL', 'FRACTAL_Z_C04'])
+        allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM',
+                             'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',
+                             'NDC1HWC0', 'FRACTAL_Z_3D', 'NC1HWC0_C04', 'HWCN', 'CHWN',
+                             'NDHWC', 'DHWCN', 'NCDHW', 'NULL', 'FRACTAL_Z_C04'])
 
         def check_op_key_info(file_name, op_type, op_key_infos):
+            """
+            check_op_key_info
+            """
             attr_list = []
             attr_info_map = {}
             check_error_msg = []
@@ -215,7 +245,6 @@ class Test_OpConfig(unittest.TestCase):
                         if op_type not in op_types:
                             op_types.append(op_type)
                         else:
-                            error_msg = ["%s is not unique" % op_type, ]
                             raise AssertionError("check op cfg failed! error file: %s msg: %s is not unique" % (
                                 c_f_file_path, op_type))
                         if not check_op_key_info(c_f_file_path, op_type, op_key_info):

@@ -71,6 +71,13 @@ class TbeFusionPassUtil {
    * @return true:success, false:failed.
    */
   static bool GetConstIntData(const ge::Operator& op, const std::string& name, std::vector<int64_t>& values);
+
+  /**
+   * update the attr is_input_const for one op node
+   * @param [in] fuse_node which node will be update the attr is_input_const
+   * @return true:success, false:failed.
+   */
+  static bool UpdateAttrIsInputConst(const ge::NodePtr& fuse_node);
 };
 
 }  // namespace fe

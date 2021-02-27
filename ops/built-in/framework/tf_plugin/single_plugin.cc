@@ -1077,7 +1077,7 @@ REGISTER_CUSTOM_OP("CombinedNonMaxSuppression")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("CombinedNonMaxSuppression")
     .ParseParamsFn(AutoMappingFn)
-    .ImplyType(ImplyType::AI_CPU);
+    .ImplyType(ImplyType::TVM);
 
 // register Fingerprint op to GE
 REGISTER_CUSTOM_OP("Fingerprint")

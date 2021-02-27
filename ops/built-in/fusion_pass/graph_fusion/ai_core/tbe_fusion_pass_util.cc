@@ -44,13 +44,13 @@ Status AddTransposeBeforeNode(const ge::NodePtr& fusedNode, const int64_t& input
                               ge::ComputeGraph& graph) {
   string fuseNodeType = fusedNode->GetType();
   OP_LOGI(fuseNodeType.c_str(), "begin to insert Transpose before %s.", fusedNode->GetName().c_str());
-  ge::GeTensorDesc inputDesc = fusedNode->GetOpDesc()->GetInputDesc(inputIndex);
 
   std::shared_ptr<ge::OpDesc> beforeTransposeDesc = nullptr;
   std::string beforeTransposeName = fusedNode->GetName() + "_Input" + to_string(inputIndex) + "_TransposeBefore";
   beforeTransposeDesc = std::make_shared<ge::OpDesc>(beforeTransposeName, FUSED_TRANSPOSE_NODE);
   FUSION_PASS_CHECK(beforeTransposeDesc == nullptr,
                     OP_LOGE(fuseNodeType.c_str(), "beforeTransposeDesc is null, fusion failed."), return FAILED);
+  ge::GeTensorDesc inputDesc = fusedNode->GetOpDesc()->GetInputDesc(inputIndex);
   FUSION_PASS_CHECK(beforeTransposeDesc->AddInputDesc("x", inputDesc) != SUCCESS,
                     OP_LOGE(fuseNodeType.c_str(), "add before transpose of %s failed.", fusedNode->GetName().c_str()),
                     return FAILED);
@@ -98,13 +98,13 @@ Status AddTransposeAfterNode(const ge::NodePtr& fusedNode, const int64_t& output
                              ge::ComputeGraph& graph) {
   string fuseNodeType = fusedNode->GetType();
   OP_LOGI(fuseNodeType.c_str(), "begin to insert Transpose after %s.", fusedNode->GetName().c_str());
-  ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(outputIndex);
 
   std::shared_ptr<ge::OpDesc> afterTransposeDesc = nullptr;
   std::string TransposeName = fusedNode->GetName() + "_Output" + to_string(outputIndex) + "TransposeAfter";
   afterTransposeDesc = std::make_shared<ge::OpDesc>(TransposeName, FUSED_TRANSPOSE_NODE);
   FUSION_PASS_CHECK(afterTransposeDesc == nullptr,
                     OP_LOGE(fuseNodeType.c_str(), "afterTransposeDesc is null, fusion failed."), return FAILED);
+  ge::GeTensorDesc outputDesc = fusedNode->GetOpDesc()->GetOutputDesc(outputIndex);
   FUSION_PASS_CHECK(afterTransposeDesc->AddInputDesc("x", outputDesc) != SUCCESS,
                     OP_LOGE(fuseNodeType.c_str(), "add after transpose of %s failed.", fusedNode->GetName().c_str()),
                     return FAILED);
@@ -195,4 +195,37 @@ bool TbeFusionPassUtil::GetConstIntData(const ge::Operator& op, const std::strin
 
   return true;
 }
+
+bool TbeFusionPassUtil::UpdateAttrIsInputConst(const ge::NodePtr& fuse_node) {
+  Operator fuse_op = ge::OpDescUtils::CreateOperatorFromNode(fuse_node);
+  ge::OpDescPtr fuse_desc = fuse_node->GetOpDesc();
+  std::vector<bool> is_input_const = fuse_desc->GetIsInputConst();
+
+  FUSION_PASS_CHECK(!is_input_const.empty(),
+                    OP_LOGI("UpdateAttrIsInputConst",
+                            "The node(%s) have attr is_input_const, will not update again.",
+                            fuse_op.GetName().c_str()),
+                    return true);
+  OP_LOGI("UpdateAttrIsInputConst", "will update the node(%s) attr(is_input_const).", fuse_op.GetName().c_str());
+  auto input_size = fuse_desc->GetInputsSize();
+  FUSION_PASS_CHECK(input_size < 1,
+                    OP_LOGI("UpdateAttrIsInputConst",
+                            "The node(%s) have no input desc, will not update is_input_const.",
+                            fuse_op.GetName().c_str()),
+                    return true);
+  for (auto i = 0; i < input_size; i++) {
+    auto peer_node = fuse_node->GetInDataAnchor(i)->GetPeerOutAnchor()->GetOwnerNode();
+    auto peer_op_type = peer_node->GetType();
+    bool is_const = false;
+    if (peer_op_type == "Const" || peer_op_type == "Constant") {
+      is_const = true;
+      OP_LOGI("UpdateAttrIsInputConst", "the %d input is const node.", i);
+    }
+    is_input_const.push_back(is_const);
+  }
+  fuse_desc->SetIsInputConst(is_input_const);
+  OP_LOGI("UpdateAttrIsInputConst", "update the node(%s) attr(is_input_const) end.", fuse_op.GetName().c_str());
+  return true;
+}
 }  // namespace fe
+
