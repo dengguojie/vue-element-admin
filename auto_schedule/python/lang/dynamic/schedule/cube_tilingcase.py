@@ -219,7 +219,7 @@ class TilingSelection:
         for case in tiling_cases:
             tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case
                                             else int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
-            correct_range_flag = case["correct_range_flag"]
+            correct_range_flag = case.get("correct_range_flag")
         add_compile_info("block_dim", tiling_blockdim)
         add_compile_info("correct_range_flag", correct_range_flag)
         return tiling_cases

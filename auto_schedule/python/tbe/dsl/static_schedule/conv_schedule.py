@@ -2612,10 +2612,10 @@ class CceConvOp:
                         sch[c_ub_avg].emit_insn(c_ub_avg.op.axis[0], "dma_copy")
                         if "mean_matrix" in tensor_map:
                             sch[mean_matrix].emit_insn(mean_matrix.op.axis[-1], "vector_dup")
+                            sch[mean_matrix_fp16].emit_insn(mean_matrix_fp16.op.axis[0], "vector_conv")
                             sch[mean_matrix].reused_by(c_ub_avg)
                             if get_soc_spec("SOC_VERSION") == "Ascend310":
-                                sch[mean_matrix].reused_by([mean_matrix_fp16, mean_matrix_rec])
-                                sch[mean_matrix_fp16].emit_insn(mean_matrix_fp16.op.axis[0], "vector_conv")
+                                sch[mean_matrix].reused_by(mean_matrix_fp16, mean_matrix_rec)
                                 sch[mean_matrix_rec].emit_insn(mean_matrix_rec.op.axis[0], "vector_rec")
                 else:
                     # for v200 dequant, performance will be better

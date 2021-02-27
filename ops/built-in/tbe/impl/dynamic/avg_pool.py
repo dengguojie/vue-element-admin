@@ -152,8 +152,8 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['max_value'] = '4'
         error_info['real_value'] = len(ksize)
         raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s]"
-                           "should be in the range of [%s, %s],"
+                           "In op[%s], the num of dimensions of input[%s] "
+                           "should be in the range of [%s, %s], "
                            "but actually is [%s]." %
                            (error_info['op_name'], error_info['param_name'],
                             error_info['min_value'], error_info['max_value'],
@@ -168,8 +168,8 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['max_value'] = '4'
         error_info['real_value'] = len(strides)
         raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s]"
-                           "should be in the range of [%s, %s],"
+                           "In op[%s], the num of dimensions of input[%s] "
+                           "should be in the range of [%s, %s], "
                            "but actually is [%s]." %
                            (error_info['op_name'], error_info['param_name'],
                             error_info['min_value'], error_info['max_value'],
@@ -198,7 +198,7 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['param_name'] = ",".join(("strides[1]", "strodes[3]"))
         error_info['expected_value'] = '1'
         error_info['real_value'] = ",".join((str(strides[1]), str(strides[3])))
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s],"
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], "
                            "but actually is [%s]." % (error_info['op_name'],
                                                       error_info['param_name'],
                                                       error_info['expected_value'],
@@ -211,7 +211,7 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['param_name'] = 'padding'
         error_info['expected_value_list'] = ",".join(("SAME", "VALID"))
         error_info['real_value'] = padding
-        raise RuntimeError(error_info, "In op[%s], parameter[%s] should be one of [%s],"
+        raise RuntimeError(error_info, "In op[%s], parameter[%s] should be one of [%s], "
                             "but actually is [%s]." % (error_info['op_name'],
                                                        error_info['param_name'],
                                                        error_info['expected_value_list'],
@@ -225,8 +225,8 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['excepted_format_list'] = ",".join(("NC1HWC0",
                                                        "NCHW", "NHWC"))
         error_info['format'] = data_format
-        raise RuntimeError(error_info, "In op[%s], the format[%s] of input"
-                                       "should be one of [%s],"
+        raise RuntimeError(error_info, "In op[%s], the format[%s] of input "
+                                       "should be one of [%s], "
                                        "but actuall"
                                        "y is [%s]."
                            % (error_info['op_name'],
@@ -241,7 +241,7 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
         error_info['param_name'] = 'offset_x'
         error_info['expected_value'] = '0'
         error_info['real_value'] = str(offset_x)
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s],"
+        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], "
                                        "but actually is [%s]."
                            % (error_info['op_name'],
                               error_info['param_name'],
