@@ -80,24 +80,24 @@ def apply_momentum_compute_d(var,
 
     compute_shape = shape_util.shape_to_list(var.shape)
 
-    beta1_momentum = tbe.broadcast(momentum, compute_shape)
-    beta1_lr = tbe.broadcast(lr, compute_shape)
+    beta1_momentum = momentum[0]
+    beta1_lr = lr[0]
 
     # accum_delta = accum * momentum
-    accum_delta = tbe.vmul(accum, beta1_momentum)
+    accum_delta = tbe.vmuls(accum, beta1_momentum)
 
     # accum_t =  accum_delta + grad
     accum_t = tbe.vadd(accum_delta, grad)
 
     # update var
     if use_nesterov:
-        var_delta = tbe.vmul(grad, beta1_lr)
-        var_delta_2 = tbe.vmul(accum_t, beta1_momentum)
-        var_delta_2 = tbe.vmul(var_delta_2, beta1_lr)
+        var_delta = tbe.vmuls(grad, beta1_lr)
+        var_delta_2 = tbe.vmuls(accum_t, beta1_momentum)
+        var_delta_2 = tbe.vmuls(var_delta_2, beta1_lr)
         var_delta = tbe.vadd(var_delta, var_delta_2)
         var_t = tbe.vsub(var, var_delta)
     else:
-        var_delta = tbe.vmul(accum_t, beta1_lr)
+        var_delta = tbe.vmuls(accum_t, beta1_lr)
         var_t = tbe.vsub(var, var_delta)
 
     if dtype == "float16":
