@@ -51,7 +51,7 @@ Status ParseParamsArgMax(const Message* op_src, ge::Operator& op_dest) {
       keep_dims = attr.i();
     }
     if (attr.name() == "select_last_index" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
-      OP_LOGW("ArgMax", "Only support select_last_index=1, but 1 is obtained now");
+      OP_LOGW("ArgMax", "Only support select_last_index=0, but 1 is obtained now");
     }
   }
   op_dest.SetAttr("dimension", axis);
@@ -98,6 +98,9 @@ static Status ParseOpToGraphArgMax(const Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType("ai.onnx::11::ArgMax")
+    .OriginOpType({"ai.onnx::9::ArgMax",
+                  "ai.onnx::12::ArgMax",
+                  "ai.onnx::13::ArgMax"})
     .ParseParamsFn(ParseParamsArgMax)
     .ParseOpToGraphFn(ParseOpToGraphArgMax)
     .ImplyType(ImplyType::TVM);
