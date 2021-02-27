@@ -61,6 +61,9 @@ Status ParseParamsRoiAlign(const Message *op_src, ge::Operator &op_dest) {
 REGISTER_CUSTOM_OP("ROIAlign")
   .FrameworkType(ONNX)
   .OriginOpType("ai.onnx::11::RoiAlign")
+  .OriginOpType({"ai.onnx::10::RoiAlign",
+                "ai.onnx::12::RoiAlign",
+                "ai.onnx::13::RoiAlign"})
   .ParseParamsFn(ParseParamsRoiAlign)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
