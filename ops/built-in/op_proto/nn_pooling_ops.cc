@@ -1055,24 +1055,24 @@ static void SetAvgPoolOutRange(const std::string padStr, const vector<int32_t>& 
   int32_t low = inputRange[InputPosition].first;
   int32_t high = inputRange[InputPosition].second;
   if (padStr == "SAME") {
-    outputRange[OutputPosition].first = (low + stride - 1) / stride;
-    outputRange[OutputPosition].second = (high + stride - 1) / stride;;
+    outputRange[InputPosition].first = (low + stride - 1) / stride;
+    outputRange[InputPosition].second = (high + stride - 1) / stride;;
   } else if (padStr == "VALID") {
-    outputRange[OutputPosition].first = (low - kernel + 1 + (stride - 1) + pad) / stride;
-    outputRange[OutputPosition].second = (high - kernel + 1 + (stride - 1) + pad) / stride;
+    outputRange[InputPosition].first = (low - kernel + 1 + (stride - 1) + pad) / stride;
+    outputRange[InputPosition].second = (high - kernel + 1 + (stride - 1) + pad) / stride;
   } else {
     if (ceilMode) {
-      outputRange[OutputPosition].first = (low - kernel + pad + stride - 1) / stride + 1;
-      outputRange[OutputPosition].second = (high - kernel + pad + stride - 1) / stride + 1;
+      outputRange[InputPosition].first = (low - kernel + pad + stride - 1) / stride + 1;
+      outputRange[InputPosition].second = (high - kernel + pad + stride - 1) / stride + 1;
     } else {
-      outputRange[OutputPosition].first = (low - kernel + pad) / stride + 1;
-      outputRange[OutputPosition].second = (high - kernel + pad) / stride + 1;
+      outputRange[InputPosition].first = (low - kernel + pad) / stride + 1;
+      outputRange[InputPosition].second = (high - kernel + pad) / stride + 1;
     }
   }
-  outputRange[OutputPosition].first = std::max(outputRange[OutputPosition].first, kDynamicRangeLowerBound);
-  outputRange[OutputPosition].second = std::min(outputRange[OutputPosition].second, kDynamicRangeUpperBound);
+  outputRange[InputPosition].first = std::max(outputRange[InputPosition].first, kDynamicRangeLowerBound);
+  outputRange[InputPosition].second = std::min(outputRange[InputPosition].second, kDynamicRangeUpperBound);
   if (high == -1) {
-    outputRange[OutputPosition].second = high;
+    outputRange[InputPosition].second = high;
   }
 }
 
@@ -1083,6 +1083,9 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
                                     std::vector<int64_t> dimVector, const bool& ceilMode, const bool& globalPooling,
                                     const std::string& paddingMode) {
   std::string inputFormatStr = format2str[inputFormat];
+  if (inputFormatStr != "NHWC") {
+    inputFormatStr = "NCHW";
+  }
   int32_t hInputPosition = inputFormatStr.find("H");
   int32_t wInputPosition = inputFormatStr.find("W");
   int32_t cInputPosition = inputFormatStr.find("C");
@@ -1120,9 +1123,9 @@ static bool SetAvgPoolOutShapeRange(ge::Operator& op, ge::GeTensorDescPtr& input
   }
   if (!InputRange.empty() && dimsInput.size() == InputRange.size()) {
     std::vector<std::pair<int64_t, int64_t>> outputRange(InputRange);
-    outputRange[cOutputPosition] = InputRange[cInputPosition];
-    outputRange[hOutputPosition] = std::make_pair(dimVector[hOutputPosition], dimVector[hOutputPosition]);
-    outputRange[wOutputPosition] = std::make_pair(dimVector[wOutputPosition], dimVector[wOutputPosition]);    
+    outputRange[cInputPosition] = InputRange[cInputPosition];
+    outputRange[hInputPosition] = std::make_pair(dimVector[hInputPosition], dimVector[hInputPosition]);
+    outputRange[wInputPosition] = std::make_pair(dimVector[wInputPosition], dimVector[wInputPosition]);    
     if (inputH == -1 && !globalPooling) {
       vector<int32_t> attrParamsH = {strH, padT + padB, kH, hInputPosition, hOutputPosition};
       SetAvgPoolOutRange(paddingMode, attrParamsH, ceilMode, InputRange, outputRange);
@@ -1227,37 +1230,40 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   int32_t cOutputPosition = dataFormat.find("C");
   int32_t wOutputPosition = dataFormat.find("W");
   int32_t hOutputPosition = dataFormat.find("H");
+  std::string inputFormatStr = format2str[inputFormat];
+  if (inputFormatStr != "NHWC") {
+    inputFormatStr = "NCHW";
+  }
+  int32_t nInputPosition = inputFormatStr.find("N");
+  int32_t cInputPosition = inputFormatStr.find("C");
+  int32_t wInputPosition = inputFormatStr.find("W");
+  int32_t hInputPosition = inputFormatStr.find("H");
   if (!unknownRank) {
-    std::string inputFormatStr = format2str[inputFormat];
-    int32_t nInputPosition = inputFormatStr.find("N");
-    int32_t cInputPosition = inputFormatStr.find("C");
-    int32_t wInputPosition = inputFormatStr.find("W");
-    int32_t hInputPosition = inputFormatStr.find("H");
     int64_t inputW = dimsInput[wInputPosition];
     int64_t inputH = dimsInput[hInputPosition];
 
     // set for global avg pool
     if (ksizeList[hOutputPosition] == -1 && ksizeList[wOutputPosition] == -1) {
-      ksizeList[hOutputPosition] = inputH;
-      ksizeList[wOutputPosition] = inputW;
-      op.SetAttr("ksize", ksizeList);  
+      ksizeList[hOutputPosition] = dimsInput[hOutputPosition];
+      ksizeList[wOutputPosition] = dimsInput[wOutputPosition];
     }
-    outputShape[nOutputPosition] = dimsInput[nInputPosition];
-    outputShape[cOutputPosition] = dimsInput[cInputPosition];
+    op.SetAttr("ksize", ksizeList);  
+    outputShape[nInputPosition] = dimsInput[nInputPosition];
+    outputShape[cInputPosition] = dimsInput[cInputPosition];
     if (paddingMode == "SAME") {
-      outputShape[hOutputPosition] = (inputH + stridesList[hOutputPosition] - 1) / stridesList[hOutputPosition];
-      outputShape[wOutputPosition] = (inputW + stridesList[wOutputPosition] - 1) / stridesList[wOutputPosition];
+      outputShape[hInputPosition] = (inputH + stridesList[hOutputPosition] - 1) / stridesList[hOutputPosition];
+      outputShape[wInputPosition] = (inputW + stridesList[wOutputPosition] - 1) / stridesList[wOutputPosition];
     } else {
-      outputShape[hOutputPosition] =
+      outputShape[hInputPosition] =
         (inputH - ksizeList[hOutputPosition] + 1 + (stridesList[hOutputPosition] - 1)) / stridesList[hOutputPosition];
-      outputShape[wOutputPosition] =
+      outputShape[wInputPosition] =
         (inputW - ksizeList[wOutputPosition] + 1 + (stridesList[wOutputPosition] - 1)) / stridesList[wOutputPosition];
     }
   } else {
-    outputShape[nOutputPosition] = -1;
-    outputShape[hOutputPosition] = -1;
-    outputShape[wOutputPosition] = -1;
-    outputShape[cOutputPosition] = -1;
+    outputShape[nInputPosition] = -1;
+    outputShape[hInputPosition] = -1;
+    outputShape[wInputPosition] = -1;
+    outputShape[cInputPosition] = -1;
   }
   auto td = opDesc->MutableOutputDesc("y");
   DataType inputDtype = inputTensorDesc->GetDataType();
