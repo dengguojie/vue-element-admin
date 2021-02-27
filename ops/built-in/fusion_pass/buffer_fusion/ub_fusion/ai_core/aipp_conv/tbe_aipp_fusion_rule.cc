@@ -301,7 +301,7 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
     OP_LOGW(conv_node->GetName().c_str(), "conv nodes is empty");
     return;
   }
-  (void)ge::AttrUtils::GetStr(conv_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+  (void)ge::AttrUtils::GetStr(conv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
 
   OP_LOGD(conv_node->GetName().c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
   if (op_slice_info_str.empty()) {
@@ -320,11 +320,11 @@ void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::
 
   op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
   op_calc_info.SetAxisSplitMaps(split_maps);
-  SetOpSliceInfoToJson(op_calc_info, op_slice_info_str);
+  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusion_nodes) {
-    (void)ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+    (void)ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
   }
-  OP_LOGD(conv_node->GetName().c_str(), "set _op_slice_info is %s", op_slice_info_str.c_str());
+  OP_LOGD(conv_node->GetName().c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
 }
 
 }  // namespace fe

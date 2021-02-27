@@ -27,5 +27,6 @@ namespace fe {
 
     enum OpL1FusionType { L1FUSION_DISABLE = 0, L1FUSION_BASIC, L1FUSION_INPUT_CTR};
     static const std::string OP_SLICE_INFO = "_op_slice_info";
+    static const std::string FUSION_OP_SLICE_INFO = "_fusion_op_slice_info";
 }
 #endif // FUSION_ENGINE_INC_COMMON_AICORE_UTIL_TYPES_H_

@@ -138,7 +138,7 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
   int inpos = 0;
   string op_slice_info_str = "";
   for (auto conv_node : conv_nodes) {
-    ge::AttrUtils::GetStr(conv_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+    ge::AttrUtils::GetStr(conv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
     inpos = conv_node->GetInDataNodes().size() - 1;
   }
   OP_LOGD(fused_op_type_.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
@@ -182,11 +182,11 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
 
   op_calc_info.SetL1FusionEnable(L1FUSION_DISABLE);
   op_calc_info.SetAxisSplitMaps(split_maps);
-  SetOpSliceInfoToJson(op_calc_info, op_slice_info_str);
+  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
   for (auto fusion_node : fusion_nodes) {
-    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), "_op_slice_info", op_slice_info_str);
+    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
   }
-  OP_LOGD(fused_op_type_.c_str(), "set _op_slice_info is %s", op_slice_info_str.c_str());
+  OP_LOGD(fused_op_type_.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
 }
 
 /*

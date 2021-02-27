@@ -157,4 +157,10 @@ namespace fe {
         op_calc_info_json.at(fe::OP_SLICE_INFO).get_to(op_calc_info);
         CM_LOGD("get op_slice_info is %s", op_calc_info_str.c_str());
     }
+
+    void SetFusionOpSliceInfoToJson(fe::OpCalcInfo& op_calc_info, std::string & op_calc_info_str) {
+        nlohmann::json l1_info_json = nlohmann::json{{fe::FUSION_OP_SLICE_INFO, op_calc_info}};
+        op_calc_info_str = l1_info_json.dump();
+        CM_LOGD("set op_slice_info is %s", op_calc_info_str.c_str());
+    }
 }   

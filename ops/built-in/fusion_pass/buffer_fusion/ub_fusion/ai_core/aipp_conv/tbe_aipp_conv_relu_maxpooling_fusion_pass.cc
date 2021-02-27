@@ -398,7 +398,7 @@ Status TbeAippConvReluMaxpoolingFusionPass::GetFusionNodes(const BufferFusionMap
   }
 
   fusion_nodes = GetMatchedNodes(mapping);
-  TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, false);
+  TbeAippFusionRule::SetSplitInfo(conv_nodes, fusion_nodes, true);
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeAippConvReluMaxpoolingFusionPass!");
   return SUCCESS;
 }

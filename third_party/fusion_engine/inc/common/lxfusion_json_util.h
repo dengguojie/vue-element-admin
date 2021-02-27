@@ -24,5 +24,7 @@ namespace fe {
     void SetOpSliceInfoToJson(fe::OpCalcInfo &op_calc_info, std::string &op_calc_info_s);
 
     void GetOpSliceInfoFromJson(fe::OpCalcInfo &op_calc_info, std::string &op_calc_info_str);
+
+    void SetFusionOpSliceInfoToJson(fe::OpCalcInfo &op_calc_info, std::string &op_calc_info_s);
 } // namespace fe
 #endif // FUSION_ENGINE_INC_COMMON_LXFUSION_JSON_UTIL_H
