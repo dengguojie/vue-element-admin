@@ -16,6 +16,7 @@
 div compute
 """
 import warnings
+import math
 
 from te import tvm
 from te.platform import cce_intrin as intrin
@@ -41,18 +42,18 @@ def compute_four2five(input_tensor, raw_shape_4D):
     '''
     warnings.warn("compute_four2five is expired, please replace it with the same func in ops",
                   DeprecationWarning)
-    if not isinstance(input_tensor, tvm.tensor.Tensor):
-        raise RuntimeError("The input type must be tvm.tensor")
+    _check_input_para(input_tensor, raw_shape_4D)
+    from tbe.common.testing.testing import is_debug_mode
+    if is_debug_mode():
+        return convert_4d_to_5d_for_protogenes(input_tensor, raw_shape_4D)
+    else:
+        return convert_4d_to_5d_for_davinci(input_tensor, raw_shape_4D)
 
-    if not isinstance(raw_shape_4D, (list, tuple)):
-        raise RuntimeError("The raw_shape_4D type must be list or tuple")
 
-    if len(raw_shape_4D) != 4:
-        raise RuntimeError("The length of raw_shape_4D must be 4")
-
-    if input_tensor.dtype != "float16":
-        raise RuntimeError("The data type of input_tensor must be float16")
-
+def convert_4d_to_5d_for_davinci(input_tensor, raw_shape_4D):
+    """
+    convert 4d to 5d for DaVinci
+    """
     shape_n, shape_c, shape_h, shape_w = raw_shape_4D
     shape_c1 = (shape_c + 16 - 1) // 16
     OUTPUT_NAME_SUFFIX[0] += 1
@@ -62,6 +63,35 @@ def compute_four2five(input_tensor, raw_shape_4D):
                                                       outs[0]),
                       dtype=[input_tensor.dtype],
                       name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+
+
+def convert_4d_to_5d_for_protogenes(input_tensor, raw_shape_4D):
+    """
+    convert 4d to 5d for protogenes. use tvm.* for instead
+    """
+    shape_n, shape_c, shape_h, shape_w = raw_shape_4D
+    out_shape = (shape_n, int(math.ceil(shape_c / 16)), shape_h, shape_w, 16)
+
+    def _select(indices):
+        i_n, i_c1, i_c0 = indices[0], indices[1], indices[4]
+        i_h, i_w = indices[2], indices[3]
+        return tvm.select((i_c0 + i_c1 * 16 < shape_c), input_tensor[i_n, i_c0 + i_c1 * 16, i_h, i_w], 0)
+
+    return tvm.compute(out_shape, lambda *i: _select(i), name="compute_four2five")
+
+
+def _check_input_para(input_tensor, raw_shape_4D):
+    """
+    Check input para
+    """
+    if not isinstance(input_tensor, tvm.tensor.Tensor):
+        raise RuntimeError("The input type must be tvm.tensor")
+    if not isinstance(raw_shape_4D, (list, tuple)):
+        raise RuntimeError("The raw_shape_4D type must be list or tuple")
+    if len(raw_shape_4D) != 4:
+        raise RuntimeError("The length of raw_shape_4D must be 4")
+    if input_tensor.dtype != "float16":
+        raise RuntimeError("The data type of input_tensor must be float16")
 
 
 def compute_five2four(input_tensor, raw_shape_4D):
@@ -78,18 +108,18 @@ def compute_five2four(input_tensor, raw_shape_4D):
     '''
     warnings.warn("compute_five2four is expired, please replace it with the same func in ops",
                   DeprecationWarning)
-    if not isinstance(input_tensor, tvm.tensor.Tensor):
-        raise RuntimeError("The input type must be tvm.tensor")
+    _check_input_para(input_tensor, raw_shape_4D)
+    from tbe.common.testing.testing import is_debug_mode
+    if is_debug_mode():
+        return convert_5d_to_4d_for_protogenes(input_tensor, raw_shape_4D)
+    else:
+        return convert_5d_to_4d_for_davinci(input_tensor, raw_shape_4D)
 
-    if not isinstance(raw_shape_4D, (list, tuple)):
-        raise RuntimeError("The raw_shape_4D type must be list or tuple")
 
-    if len(raw_shape_4D) != 4:
-        raise RuntimeError("The length of raw_shape_4D must be 4")
-
-    if input_tensor.dtype != "float16":
-        raise RuntimeError("The data type of input_tensor must be float16")
-
+def convert_5d_to_4d_for_davinci(input_tensor, raw_shape_4D):
+    """
+    convert 5d to 4d for DaVinci
+    """
     shape_n, shape_c, shape_h, shape_w = raw_shape_4D
     OUTPUT_NAME_SUFFIX[0] += 1
     return tvm.extern([(shape_n, shape_c, shape_h, shape_w)], [input_tensor],
@@ -97,6 +127,18 @@ def compute_five2four(input_tensor, raw_shape_4D):
                                                       outs[0]),
                       dtype=[input_tensor.dtype],
                       name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+
+
+def convert_5d_to_4d_for_protogenes(input_tensor, raw_shape_4D):
+    """
+    convert 5d to 4d for protogenes. use tvm.* for instead
+    """
+    def _select(indices):
+        i_n, i_c, i_h, i_w = indices[0], indices[1], indices[2], indices[3]
+        return tvm.select((i_c < raw_shape_4D[1]),
+                          input_tensor[i_n, tvm.floordiv(i_c, 16), i_h, i_w, tvm.floormod(i_c, 16)], 0)
+
+    return tvm.compute(raw_shape_4D, lambda *i: _select(i), name="compute_five2four")
 
 
 def _decl_memory(buffer_scope):

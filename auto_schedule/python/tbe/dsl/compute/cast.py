@@ -24,6 +24,7 @@ from te import tvm
 from te import platform as cceconf
 from tbe.common.utils.errormgr import get_error_message
 from te.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.testing import is_debug_mode
 
 from .util import shape_to_list
 from .util import auto_cast_tensor
@@ -250,10 +251,22 @@ def round_d(raw_tensor):
 def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
     """
     factory method of single elewise operations
+    Owning to the previous compute of cast Only for DaVinci,  there are use
+    tvm.* for proving correctness for dsl operator
     """
     tensor = input_tensor
     shape = shape_to_list(tensor.shape)
     check_input_tensor_shape(shape)
+    if is_debug_mode():
+        return _cast_op_for_protogenes(tensor, op_type, shape)
+    else:
+        return _cast_op_for_davinci(tensor, is_auto_cast, op_type, shape, output_dtype)
+
+
+def _cast_op_for_davinci(tensor, is_auto_cast, op_type, shape, output_dtype):
+    """
+    cast operate for DaVinci
+    """
     if op_type == "elewise_single_cast":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     elif op_type == "elewise_single_round":
@@ -271,17 +284,35 @@ def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
         dict_args["errCode"] = "E90003"
         dict_args["detailed_cause"] = "operation %s not support yet." % op_type
         raise RuntimeError(dict_args, get_error_message(dict_args))
-
     name = op_type.split("_")[-1] + "_" + str(NAME_INDEX[0])
     NAME_INDEX[0] += 1
-
     if not is_auto_cast:
         op_type = op_type + "|not_auto_cast"
-
     with tvm.tag_scope(op_type):
         tmp = tvm.compute(shape, lambda_func, name=name)
-
     return tmp
+
+
+def _cast_op_for_protogenes(tensor, op_type, shape):
+    """
+    cast operate for protogenes
+    In this situation, use tvm.* for cast
+    """
+    if op_type == "elewise_single_round":
+        lambda_func = lambda *indice: tvm.round(tensor(*indice))
+    elif op_type == "elewise_single_ceil":
+        lambda_func = lambda *indice: tvm.ceil(tensor(*indice))
+    elif op_type == "elewise_single_floor":
+        lambda_func = lambda *indice: tvm.floor(tensor(*indice))
+    elif op_type == "elewise_single_trunc":
+        lambda_func = lambda *indice: tvm.trunc(tensor(*indice))
+    else:
+        dict_args = dict()
+        dict_args["errCode"] = "E90003"
+        dict_args["detailed_cause"] = "operation %s not support yet." % op_type
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+    name = op_type.split("_")[-1] + "_" + str(NAME_INDEX[0])
+    return tvm.compute(shape, lambda_func, name=name)
 
 
 # pylint: disable=too-many-locals, invalid-name

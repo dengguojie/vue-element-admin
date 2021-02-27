@@ -17,6 +17,7 @@ max_pool2d
 """
 from te import tvm
 from tbe.common.utils.errormgr import get_error_message
+from tbe.common.testing.testing import is_debug_mode
 
 _POOL2D_TAG = "pooling2d_"
 _MAX_KERNEL_SIZE_H_MUL_W = 255  # kernel_h * kernel_w
@@ -60,14 +61,14 @@ def max_pool2d(t_x, pooling_params, fusion_params):
         h_p, w_p = pooling_params["in_size_h"] + p_t + p_b, \
             pooling_params["in_size_w"] + p_l + p_r
 
-    def _select(indices):
+    def _select(indices, false_value):
         i_n, i_c1, i_c0 = indices[0], indices[1], indices[4]
         i_h, i_w = indices[2], indices[3]
         conds = [i_h >= p_t, i_h < h_p - p_b, i_w >= p_l, i_w < w_p - p_r]
-        t_b = tvm.select(conds[3], t_x[i_n, i_c1, i_h - p_t, i_w - p_l, i_c0])
-        t_b = tvm.select(conds[2], t_b)
-        t_b = tvm.select(conds[1], t_b)
-        return tvm.select(conds[0], t_b)
+        t_b = tvm.select(conds[3], t_x[i_n, i_c1, i_h - p_t, i_w - p_l, i_c0], false_value)
+        t_b = tvm.select(conds[2], t_b, false_value)
+        t_b = tvm.select(conds[1], t_b, false_value)
+        return tvm.select(conds[0], t_b, false_value)
 
     def _pad(cond):
         return tvm.select(cond, fp16_min)
@@ -75,17 +76,18 @@ def max_pool2d(t_x, pooling_params, fusion_params):
     def _fake(i):
         return tx_ub_c[i] + tx_ub_t[i] + tx_ub_b[i] + tx_ub_l[i] + tx_ub_r[i]
 
-    # copy gm to ub with padding
     shape = (x_n, x_c1, h_p, w_p, x_c0)
     fp16_min = tvm.const(-65504.0, dtype=dtype)
-    tx_ub_c = tvm.compute(shape, lambda *i: _select(i), name="tx_ub_c")
-    tx_ub_t = tvm.compute(shape, lambda *i: _pad(i[2] < p_t), name="tx_ub_t")
-    tx_ub_b = tvm.compute(shape, lambda *i: _pad(i[2] >= h_p - p_b),
-                          name="tx_ub_b")
-    tx_ub_l = tvm.compute(shape, lambda *i: _pad(i[3] < p_l), name="tx_ub_l")
-    tx_ub_r = tvm.compute(shape, lambda *i: _pad(i[3] >= w_p - p_r),
-                          name="tx_ub_r")
-    tx_ub = tvm.compute(shape, lambda *i: _fake(i), name="tx_ub")
+    if is_debug_mode():
+        tx_ub = tvm.compute(shape, lambda *i: _select(i, fp16_min), name="tx_ub")
+    else:
+        # copy gm to ub with padding
+        tx_ub_c = tvm.compute(shape, lambda *i: _select(i, None), name="tx_ub_c")
+        tx_ub_t = tvm.compute(shape, lambda *i: _pad(i[2] < p_t), name="tx_ub_t")
+        tx_ub_b = tvm.compute(shape, lambda *i: _pad(i[2] >= h_p - p_b), name="tx_ub_b")
+        tx_ub_l = tvm.compute(shape, lambda *i: _pad(i[3] < p_l), name="tx_ub_l")
+        tx_ub_r = tvm.compute(shape, lambda *i: _pad(i[3] >= w_p - p_r), name="tx_ub_r")
+        tx_ub = tvm.compute(shape, lambda *i: _fake(i), name="tx_ub")
 
     # reduce w
     shape = (x_n, x_c1, h_p, o_w, x_c0)
