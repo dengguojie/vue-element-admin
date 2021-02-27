@@ -192,3 +192,234 @@ TEST_F(TENSOR_LIST_UT, SetItemInferShape) {
   auto y_desc = op.GetOutputDesc("output_handle");
   EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
 }
+
+TEST_F(TENSOR_LIST_UT, PushBackBatchInferShape) {
+  ge::op::TensorListPushBackBatch op;
+  op.UpdateInputDesc("input_handles", create_desc({2}, ge::DT_VARIANT));
+  op.UpdateInputDesc("tensor", create_desc({2, 2}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("output_handles");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+}
+
+TEST_F(TENSOR_LIST_UT, StackInferShape) {
+  ge::op::TensorListStack op;
+  op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("element_shape", create_desc({2, 2}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("tensor");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_INT32);
+}
+
+TEST_F(TENSOR_LIST_UT, ConcatV2InferShape) {
+  ge::op::TensorListConcatV2 op;
+  op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("element_shape", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("leading_dims", create_desc({}, ge::DT_INT64));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("tensor");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_INT32);
+
+  auto length_desc = op.GetOutputDesc("lengths");
+  EXPECT_EQ(length_desc.GetDataType(), ge::DT_INT64);
+}
+
+TEST_F(TENSOR_LIST_UT, SplitInferShape) {
+  ge::op::TensorListSplit op;
+  op.UpdateInputDesc("tensor", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("element_shape", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("lengths", create_desc({1}, ge::DT_INT64));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("output_handle");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+}
+
+TEST_F(TENSOR_LIST_UT, FromTensorInferShape) {
+  ge::op::TensorListFromTensor op;
+  op.UpdateInputDesc("tensor", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("element_shape", create_desc({2,2}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("output_handle");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+}
+
+TEST_F(TENSOR_LIST_UT, ResizeInferShape) {
+  ge::op::TensorListResize op;
+  op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("size", create_desc({}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("output_handle");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+}
+
+TEST_F(TENSOR_LIST_UT, GatherInferShape) {
+  ge::op::TensorListGather op;
+  op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("indices", create_desc({}, ge::DT_INT32));
+  op.UpdateInputDesc("element_shape", create_desc({2,2}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("values");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_INT32);
+}
+
+TEST_F(TENSOR_LIST_UT, ScatterV2InferShape) {
+  ge::op::TensorListScatterV2 op;
+  op.UpdateInputDesc("tensor", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("indices", create_desc({}, ge::DT_INT32));
+  op.UpdateInputDesc("element_shape", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("num_elements", create_desc({}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("output_handle");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+}
+
+TEST_F(TENSOR_LIST_UT, ScatterIntoExistingListInferShape) {
+  ge::op::TensorListScatterIntoExistingList op;
+  op.UpdateInputDesc("input_handle", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("tensor", create_desc({2,2}, ge::DT_INT32));
+  op.UpdateInputDesc("indices", create_desc({1}, ge::DT_INT32));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("output_handle");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+}
+
+TEST_F(TENSOR_LIST_UT, ConcatListsInferShape) {
+  ge::op::TensorListConcatLists op;
+  op.UpdateInputDesc("input_a", create_desc({}, ge::DT_VARIANT));
+  op.UpdateInputDesc("input_b", create_desc({}, ge::DT_VARIANT));
+  op.SetAttr("element_dtype", ge::DT_INT32);
+  ge::InferenceContextPtr inferCtxPtr = std::shared_ptr<ge::InferenceContext>(ge::InferenceContext::Create());
+  std::vector<std::vector<ge::ShapeAndType>> key_value_vec;
+  std::vector<ge::ShapeAndType> key_value;
+  ge::DataType dataType = ge::DT_INT32;
+  ge::Shape shape({2, 2});
+  ge::ShapeAndType key(shape, dataType);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  key_value.emplace_back(key);
+  key_value_vec.emplace_back(key_value);
+  inferCtxPtr->SetInputHandleShapesAndTypes(std::move(key_value_vec));
+  op.SetInferenceContext(inferCtxPtr);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.GetOutputDesc("output");
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_VARIANT);
+}

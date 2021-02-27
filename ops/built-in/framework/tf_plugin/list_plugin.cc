@@ -78,4 +78,74 @@ REGISTER_CUSTOM_OP("TensorListSetItem")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register TensorListPushBackBatch op to GE
+REGISTER_CUSTOM_OP("TensorListPushBackBatch")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListPushBackBatch")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListStack op to GE
+REGISTER_CUSTOM_OP("TensorListStack")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListStack")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListConcatV2 op to GE
+REGISTER_CUSTOM_OP("TensorListConcatV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListConcatV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListSplit op to GE
+REGISTER_CUSTOM_OP("TensorListSplit")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListSplit")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListFromTensor op to GE
+REGISTER_CUSTOM_OP("TensorListFromTensor")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListFromTensor")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListResize op to GE
+REGISTER_CUSTOM_OP("TensorListResize")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListResize")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListGather op to GE
+REGISTER_CUSTOM_OP("TensorListGather")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListGather")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListScatterV2 op to GE
+REGISTER_CUSTOM_OP("TensorListScatterV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListScatterV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListScatterIntoExistingList op to GE
+REGISTER_CUSTOM_OP("TensorListScatterIntoExistingList")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListScatterIntoExistingList")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register TensorListConcatLists op to GE
+REGISTER_CUSTOM_OP("TensorListConcatLists")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("TensorListConcatLists")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 }  // namespace domi

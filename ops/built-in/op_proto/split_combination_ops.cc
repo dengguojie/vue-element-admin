@@ -1219,6 +1219,14 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
     OP_LOGD(op.GetName().c_str(), "output shape range:%s.", to_string(y_range).c_str());
   }
 
+  auto p_context = op.GetInferenceContext();
+  if (p_context != nullptr) {
+    const auto& shapes_and_types = p_context->GetInputHandleShapesAndTypes();
+    if (!shapes_and_types.empty()) {
+      p_context->SetOutputHandleShapesAndTypes(shapes_and_types);
+    }
+  }
+
   OP_LOGD(op.GetName().c_str(), "N:%lld, axis:%lld, output shape:%s.", pack_num, axis,
           to_string(y_desc->MutableShape()).c_str());
   return GRAPH_SUCCESS;

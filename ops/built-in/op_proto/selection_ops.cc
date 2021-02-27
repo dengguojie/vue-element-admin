@@ -1597,6 +1597,14 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceInferShape) {
   OP_LOGD(op.GetName().c_str(), "output_shape:%s", to_string(tensor_desc_output.GetShape()).c_str());
   (void) op.UpdateOutputDesc("y", tensor_desc_output);
 
+  auto p_context = op.GetInferenceContext();
+  if (p_context != nullptr) {
+    const auto& shapes_and_types = p_context->GetInputHandleShapesAndTypes();
+    if (!shapes_and_types.empty()) {
+      p_context->SetOutputHandleShapesAndTypes(shapes_and_types);
+    }
+  }
+
   return GRAPH_SUCCESS;
 }
 
@@ -2179,15 +2187,15 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     return GRAPH_FAILED;
   }
 
-  auto node = NodeUtils::GetNodeFromOperator(op); 
+  auto node = NodeUtils::GetNodeFromOperator(op);
   // get all Desc info
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
-  
+
   auto value_desc = op_info->MutableInputDesc("on_value");
   DataType value_dtype = value_desc->GetDataType();
-  
+
   // output desc and set dtype
   auto output_desc = op_info->MutableOutputDesc("y");
   output_desc->SetDataType(value_dtype);
@@ -4509,6 +4517,6 @@ COMMON_INFER_FUNC_REG(IndexFillD, IndexFillDInferShape);
 
 //Registered verify function
 VERIFY_FUNC_REG(IndexFillD, IndexFillDVerify);
-//----------------IndexFillD END-------------------  
+//----------------IndexFillD END-------------------
 
 }  // namespace ge
