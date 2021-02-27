@@ -273,6 +273,7 @@ def strided_slice_assign_compute(data_ref, data_value, slice_params):
 
     return input_value_ub, out
 
+
 # pylint: disable=too-many-locals
 def _strided_slice_assign_schedule(schedule_list, out, input_value_shape, input_shape, data_dtype):
     """
@@ -435,7 +436,7 @@ def strided_slice_assign_d(ref_dict,
     # a bitmask in new_axis_mask where bit `i` being 1, then the same bit 'i'
     # being 1 in shrink_axis_mask is not take effect
     shrink_axis_mask = (new_axis_mask ^ shrink_axis_mask) & shrink_axis_mask
-
+    begin_mask = (shrink_axis_mask ^ begin_mask) & begin_mask
     _update_begin_end_by_begin_end_mask(input_shape, begin, end, begin_mask, end_mask)
     _update_begin_end_strides_by_ellipsis_mask(input_shape, begin, end, strides, ellipsis_mask)
     slice_shape = _update_slice_params(input_shape, begin, end, strides, new_axis_mask, shrink_axis_mask)
