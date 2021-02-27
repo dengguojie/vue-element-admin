@@ -1,0 +1,42 @@
+[
+    {
+        "case_name": "Test_Bucketize_001",
+        "op": "Bucketize",
+        "input_desc": [
+            {
+                "format": [],
+                "type": [
+                    "int32"
+                ],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "input"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [],
+                "type": [
+                    "int32"
+                ],
+                "shape": [],
+                "name": "output"
+            }
+        ],
+        "attr": [
+            {
+                "name": "boundaries",
+                "type": "list_float",
+                "value": null
+            }
+        ]
+    }
+]
