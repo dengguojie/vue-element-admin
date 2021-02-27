@@ -42,15 +42,20 @@ const char* const kPreOpInputShapeRange = "_pre_op_in_range";
 const int64_t kMaxDimNum = 8;
 
 IMPLEMT_INFERFUNC(MatrixBandPart, MatrixBandPartInfer) {
-  if (UnchangedShape(op, "x", "y") != GRAPH_SUCCESS) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+
+  DataType type = x_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (x_desc->GetShapeRange(range) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
-  DataType type = op.GetInputDesc("x").GetDataType();
-  TensorDesc desc = op.GetOutputDesc("y");
-  desc.SetDataType(type);
-  if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
+
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(x_desc->GetShape());
+  y_desc->SetShapeRange(range);
+  y_desc->SetDataType(type);
+
   return GRAPH_SUCCESS;
 }
 

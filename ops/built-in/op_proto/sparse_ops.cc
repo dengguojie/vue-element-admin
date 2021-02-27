@@ -381,44 +381,34 @@ IMPLEMT_INFERFUNC(SparseToDense, SparseToDenseInfer) {
 INFER_FUNC_REG(SparseToDense, SparseToDenseInfer);
 
 IMPLEMT_INFERFUNC(SparseAdd, SparseAddInfer) {
-  Shape x1_shape;
-  if (WithRank(op.GetInputDesc(2), 1, x1_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input x1_shape must be 1-D");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  GeShape x1_shape;
+  if (WithRank(op_desc->MutableInputDesc(2), 1, x1_shape) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input x1_shape must be 1-D");
     return GRAPH_FAILED;
   }
 
   DataType x1_indices_type = DT_INT64;
-  DataType x1_values_type = op.GetInputDesc("x1_values").GetDataType();
+  DataType x1_values_type = op_desc->MutableInputDesc(1)->GetDataType();
   DataType x1_shape_type = DT_INT64;
 
-  TensorDesc sum_indices_desc = op.GetOutputDesc("sum_indices");
+  auto sum_indices_desc = op_desc->MutableOutputDesc(0);
   std::vector<int64_t> new_dims;
   new_dims.push_back(ge::UNKNOWN_DIM);
   new_dims.push_back(x1_shape.GetDim(0));
-  sum_indices_desc.SetShape(Shape(new_dims));
-  sum_indices_desc.SetDataType(x1_indices_type);
-  if (op.UpdateOutputDesc("sum_indices", sum_indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output sum_indices error");
-    return GRAPH_FAILED;
-  }
+  sum_indices_desc->SetShape(GeShape(new_dims));
+  sum_indices_desc->SetDataType(x1_indices_type);
 
-  TensorDesc sum_value_desc = op.GetOutputDesc("sum_values");
+  auto sum_value_desc = op_desc->MutableOutputDesc(1);
   new_dims.clear();
   new_dims.push_back(ge::UNKNOWN_DIM);
-  sum_value_desc.SetShape(Shape(new_dims));
-  sum_value_desc.SetDataType(x1_values_type);
-  if (op.UpdateOutputDesc("sum_values", sum_value_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output sum_values error");
-    return GRAPH_FAILED;
-  }
+  sum_value_desc->SetShape(GeShape(new_dims));
+  sum_value_desc->SetDataType(x1_values_type);
 
-  TensorDesc sum_shape_desc = op.GetOutputDesc("sum_shape");
-  sum_shape_desc.SetShape(x1_shape);
-  sum_shape_desc.SetDataType(x1_shape_type);
-  if (op.UpdateOutputDesc("sum_shape", sum_shape_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "output sum_shape error");
-    return GRAPH_FAILED;
-  }
+  auto sum_shape_desc = op_desc->MutableOutputDesc(2);
+  sum_shape_desc->SetShape(x1_shape);
+  sum_shape_desc->SetDataType(x1_shape_type);
 
   return GRAPH_SUCCESS;
 }
