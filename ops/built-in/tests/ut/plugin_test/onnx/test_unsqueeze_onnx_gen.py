@@ -2,7 +2,7 @@ import onnx
 from onnx import helper
 
 
-def unsqueeze_negative_axes():
+def unsqueeze_negative_axes(version_num):
     node = helper.make_node('Unsqueeze',
                             inputs=['x'],
                             outputs=['y'],
@@ -18,9 +18,11 @@ def unsqueeze_negative_axes():
     )
 
     model = helper.make_model(graph, producer_name="onnx-parser_test_1")
-    model.opset_import[0].version = 11
-    onnx.save(model, "./test_unsqueeze_case_1.onnx")
+    model.opset_import[0].version = version_num
+    onnx.save(model, "./test_unsqueeze_case_V{}.onnx".format(version_num))
 
 
 if __name__ == '__main__':
-    unsqueeze_negative_axes()
+    version_t = (9, 11, 12)
+    for i in version_t:
+        unsqueeze_negative_axes(i)
