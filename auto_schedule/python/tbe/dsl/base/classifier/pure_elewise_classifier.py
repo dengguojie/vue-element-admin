@@ -76,9 +76,14 @@ class PureElewiseClassifier:
         def get_dim(i):
             return max([s[i] for s in self.shapes])
 
-        shape = [get_dim(i) for i in range(self.dim_length)]
-        shape = [reduceIns(lambda x, y: x * y, shape)]
-        return [[ConstMode.gen_in(shape) for _ in self.ins]]
+        const_shape = [get_dim(i) for i in range(self.dim_length)]
+        shape = [reduceIns(lambda x, y: x * y, const_shape)]
+
+        inputs = [ConstMode.gen_in(shape) for _ in self.ins]
+        for input_x in inputs:
+            input_x["const_shape"] = const_shape
+
+        return [inputs]
 
     def _classify_var(self):
         maybe_empty_tensor = False
