@@ -111,6 +111,7 @@ set(_op_proto_srcs
   transformation_ops.cc
   warp_perspective_ops.cc
   wts_arq.cc
+  avg_pool_1d_ops.cc
 )
 
 set(_op_proto_include

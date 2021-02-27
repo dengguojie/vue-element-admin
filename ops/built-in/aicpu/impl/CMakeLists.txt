@@ -34,6 +34,7 @@ set(local_host_kernels_src_files
 )
 set(local_device_kernels_src_files
     kernels/device/where.cc
+    kernels/device/avg_pool1d_avg_matrix.cc
 )
 
 if(BUILD_OPEN_PROJECT)

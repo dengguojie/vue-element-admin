@@ -86,6 +86,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
   ${CPU_KERNELS_DIR}/kernels/device/where.cc
+  ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
 )
 
 set(cpu_kernels_llt_src
@@ -169,6 +170,7 @@ set(_cpu_kernels_ut_files
   testcase/fill_utest.cpp
   testcase/euqal_utest.cpp
   testcase/where_utest.cpp
+  testcase/avg_pool1d_avg_matrix_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
