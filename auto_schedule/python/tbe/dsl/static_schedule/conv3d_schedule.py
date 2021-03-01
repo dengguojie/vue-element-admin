@@ -1838,8 +1838,9 @@ class CceConv3dOp:
                 if self._tensor_map["opti_h_flag"]:
                     fmap_hi = (fmap_hi - 1) // stride_h + 1
                 al1_m = fmap_hi * fmap_wi
-                align_util = 16
-                al1_m = te_util.align(al1_m, align_util)
+                if l0a_load2d_flag:
+                    align_util = 16
+                    al1_m = te_util.align(al1_m, align_util)
                 return al1_m * fmap_c1 * fmap_c0 * kernel_d
 
         if self.var_map:
