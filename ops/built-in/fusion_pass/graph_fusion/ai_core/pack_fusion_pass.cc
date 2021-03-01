@@ -81,18 +81,29 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     }
     size_t final_clear_node_num = inputs_num - (max_inputs * (nodes_num - 1));
 
-    ge::OpDescPtr packBaseDesc = AttrUtils::CopyOpDesc(fusedDesc);
-    packBaseDesc->SetName(packBaseDesc->GetName() + "/ConcatD" + "Base_node");
-    packBaseDesc->SetType("ConcatD");
+    // create Base_node concat node op description
+    std::string Base_nodeName = fusedNode->GetName() + "/ConcatD" + "Base_node";
+    std::shared_ptr<ge::OpDesc> concatBaseDesc = std::make_shared<ge::OpDesc>(Base_nodeName, "ConcatD");
+    FUSION_PASS_CHECK(concatBaseDesc == nullptr, 
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "concatBaseDesc is null, fusion failed."), 
+                      return PARAM_INVALID);
+
+    for (size_t c = 0; c < nodes_num; c++) {
+        ge::GeTensorDesc fusedDesc1 = fusedNode->GetOpDesc()->GetInputDesc(c);
+        FUSION_PASS_CHECK(concatBaseDesc->AddInputDesc(c, fusedDesc1) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add fusedDesc1  failed."), return FAILED);
+    }
+    ge::GeTensorDesc addOutputDesc0 = fusedNode->GetOpDesc()->GetOutputDesc(0);
+    FUSION_PASS_CHECK(concatBaseDesc->AddOutputDesc(addOutputDesc0) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add addOutputDesc0  output desc failed."), return FAILED);
+
+    concatBaseDesc->SetType("ConcatD");
 
     int64_t axis;
     ge::AttrUtils::GetInt(fusedDesc, "axis", axis);
-    ge::AttrUtils::SetInt(packBaseDesc, "concat_dim", axis);
+    ge::AttrUtils::SetInt(concatBaseDesc, "concat_dim", axis);
 
-    for (size_t c = inputs_num - 1; c >= nodes_num; c--) {
-      OpDescUtils::ClearInputDesc(packBaseDesc, c);
-    }
-    ge::NodePtr pack_base_node = graph.AddNode(packBaseDesc);
+    ge::NodePtr pack_base_node = graph.AddNode(concatBaseDesc);
     fusionNodes.push_back(pack_base_node);
     ge::AttrUtils::SetInt(pack_base_node->GetOpDesc(), "N", nodes_num);
     FUSION_PASS_CHECK(
@@ -106,15 +117,68 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
     }
 
+    // create pack node op description of max_inputs
+    std::string Pack_nodeName = fusedNode->GetName() + "/Pack" + "Base_node1";
+    std::shared_ptr<ge::OpDesc> packBaseDesc = std::make_shared<ge::OpDesc>(Pack_nodeName, "Pack");
+    FUSION_PASS_CHECK(packBaseDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "packBaseDesc is null, fusion failed."), 
+              return PARAM_INVALID);
+
+    for (size_t c = 0; c < 63; c++) {
+        ge::GeTensorDesc fusedDesc2 = fusedNode->GetOpDesc()->GetInputDesc(c);
+        FUSION_PASS_CHECK(packBaseDesc->AddInputDesc(c, fusedDesc2) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add packBaseDesc failed."), return FAILED);
+    }
+    ge::GeTensorDesc addOutputDesc1 = fusedNode->GetOpDesc()->GetOutputDesc(0);
+    FUSION_PASS_CHECK(packBaseDesc->AddOutputDesc(addOutputDesc1) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add addOutputDesc1  output desc failed."), return FAILED);
+
+    packBaseDesc->SetType("Pack");
+
+    int64_t axis2;
+    ge::AttrUtils::GetInt(fusedDesc, "axis", axis2);
+    ge::AttrUtils::SetInt(packBaseDesc, "axis", axis2);
+    ge::NodePtr pack_base_node1 = graph.AddNode(packBaseDesc);
+    fusionNodes.push_back(pack_base_node1);
+    ge::AttrUtils::SetInt(pack_base_node1->GetOpDesc(), "N", max_inputs);
+    FUSION_PASS_CHECK(
+        pack_base_node1 == nullptr,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.", pack_base_node1->GetName().c_str()),
+        return PARAM_INVALID);
+
+    // create pack node op description of max_inputs
+    std::string Pack_nodeName2 = fusedNode->GetName() + "/Pack" + "Base_node_last";
+    std::shared_ptr<ge::OpDesc> packLastDesc = std::make_shared<ge::OpDesc>(Pack_nodeName2, "Pack");
+    FUSION_PASS_CHECK(packLastDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "packLastDesc is null, fusion failed."), 
+              return PARAM_INVALID);
+
+    for (size_t c = 0; c < final_clear_node_num; c++) {
+        ge::GeTensorDesc fusedDesc3 = fusedNode->GetOpDesc()->GetInputDesc(c);
+        FUSION_PASS_CHECK(packLastDesc->AddInputDesc(c, fusedDesc3) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add fusedDesc3 failed."), return FAILED);
+    }
+    ge::GeTensorDesc addOutputDesc2 = fusedNode->GetOpDesc()->GetOutputDesc(0);
+    FUSION_PASS_CHECK(packLastDesc->AddOutputDesc(addOutputDesc2) != SUCCESS,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add addOutputDesc2 output desc failed."), return FAILED);
+
+    packLastDesc->SetType("Pack");
+
+    int64_t axis3;
+    ge::AttrUtils::GetInt(fusedDesc, "axis", axis3);
+    ge::AttrUtils::SetInt(packLastDesc, "axis", axis3);
+    ge::NodePtr pack_base_node3 = graph.AddNode(packLastDesc);
+    fusionNodes.push_back(pack_base_node3);
+    ge::AttrUtils::SetInt(pack_base_node3->GetOpDesc(), "N", final_clear_node_num);
+    FUSION_PASS_CHECK(
+        pack_base_node3 == nullptr,
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode:%s is null, fusion failed.", pack_base_node3->GetName().c_str()),
+        return PARAM_INVALID);
+
     for (size_t i = 0; i < nodes_num; i++) {
       if (i < nodes_num - 1) {
-        ge::OpDescPtr packDesc = AttrUtils::CopyOpDesc(fusedDesc);
+        ge::OpDescPtr packDesc = AttrUtils::CopyOpDesc(packBaseDesc);
         packDesc->SetName(fusedDesc->GetName() + "/Pack" + to_string(i));
         packDesc->SetType("Pack");
 
-        for (size_t a = inputs_num - 1; a >= max_inputs; a--) {
-          OpDescUtils::ClearInputDesc(packDesc, a);
-        }
         ge::NodePtr pack_node = graph.AddNode(packDesc);
         fusionNodes.push_back(pack_node);
         ge::AttrUtils::SetInt(pack_node->GetOpDesc(), "N", max_inputs);
@@ -146,9 +210,9 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         PackOutputTensor_1.SetShape(x_shape);
         packDesc->UpdateOutputDesc(0, PackOutputTensor_1);
 
-        ge::GeTensorDesc PackInputTensor_1 = packBaseDesc->GetInputDesc(i);
+        ge::GeTensorDesc PackInputTensor_1 = concatBaseDesc->GetInputDesc(i);
         ge::GeShape PackInputShape_1 = PackInputTensor_1.GetShape();
-        packBaseDesc->UpdateInputDesc(i, PackOutputTensor_1);
+        concatBaseDesc->UpdateInputDesc(i, PackOutputTensor_1);
 
         FUSION_PASS_CHECK(
             pack_node == nullptr,
@@ -172,13 +236,10 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
               return FAILED);
         }
       } else {
-        ge::OpDescPtr LastPackDesc = AttrUtils::CopyOpDesc(fusedDesc);
+        ge::OpDescPtr LastPackDesc = AttrUtils::CopyOpDesc(packLastDesc);
         LastPackDesc->SetName(fusedDesc->GetName() + "/Pack" + to_string(nodes_num - 1));
         LastPackDesc->SetType("Pack");
 
-        for (size_t b = inputs_num - 1; b >= final_clear_node_num; b--) {
-          OpDescUtils::ClearInputDesc(LastPackDesc, b);
-        }
         ge::NodePtr last_pack_node = graph.AddNode(LastPackDesc);
         fusionNodes.push_back(last_pack_node);
         ge::AttrUtils::SetInt(last_pack_node->GetOpDesc(), "N", final_clear_node_num);
@@ -206,7 +267,7 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
         ge::GeShape x_shape(dimVector);
         PackOutputTensor_2.SetShape(x_shape);
         LastPackDesc->UpdateOutputDesc(0, PackOutputTensor_2);
-        packBaseDesc->UpdateInputDesc(i, PackOutputTensor_2);
+        concatBaseDesc->UpdateInputDesc(i, PackOutputTensor_2);
 
         FUSION_PASS_CHECK(
             last_pack_node == nullptr,
