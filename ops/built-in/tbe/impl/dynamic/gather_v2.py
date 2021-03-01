@@ -1313,14 +1313,15 @@ class GatherV2():
             inner_indices_offset = inner_loop_i * self.row_num_once_ub
             output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row
 
-            with tik_instance.for_range(0, self.row_num_once_ub, thread_num=2) as row_i:
-                indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
-                indices_value.set_as(indices_ub[inner_indices_offset + row_i])
-                gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
+            with tik_instance.new_stmt_scope(disable_sync=True):
+                with tik_instance.for_range(0, self.row_num_once_ub, thread_num=2) as row_i:
+                    indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
+                    indices_value.set_as(indices_ub[inner_indices_offset + row_i])
+                    gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
 
-                # move params_row from gm or UB or L1 to res_ub
-                tik_instance.data_move(res_ub[row_i * self.params_row], x_src[gm_offset], 0,
-                                       1, burst_len_row, 0, 0)
+                    # move params_row from gm or UB or L1 to res_ub
+                    tik_instance.data_move(res_ub[row_i * self.params_row], x_src[gm_offset], 0,
+                                           1, burst_len_row, 0, 0)
 
             # copy result data from ub to gm
             tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
@@ -1349,13 +1350,14 @@ class GatherV2():
         burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row
 
-        with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
-            indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
-            indices_value.set_as(indices_ub[inner_indices_offset + row_i])
-            gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
+        with tik_instance.new_stmt_scope(disable_sync=True):
+            with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
+                indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
+                indices_value.set_as(indices_ub[inner_indices_offset + row_i])
+                gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
 
-            # move params_row data from gm or UB or L1 to res_ub
-            tik_instance.data_move(res_ub[row_i * self.params_row], x_src[gm_offset], 0, 1, burst_len_row, 0, 0)
+                # move params_row data from gm or UB or L1 to res_ub
+                tik_instance.data_move(res_ub[row_i * self.params_row], x_src[gm_offset], 0, 1, burst_len_row, 0, 0)
 
         # move result data from ub to gm
         tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
