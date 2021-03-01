@@ -526,9 +526,9 @@ class Conv3dBackpropFilter:
         if not self.flag_all_one_case:
             fmap_l1 = _tensor_to_al1()
             # shape of fmap_original_matrix, corresponding to set_fmatrix
-            fmap_shape_original_matrix = (batch_size * grads_depth,
+            fmap_shape_original_matrix = (real_g, batch_size * grads_depth,
                                           hw_ori,
-                                          kernel_depth * fmap_channel_1,
+                                          kernel_depth * fmap_channel1_g,
                                           kernel_height, kernel_width, fmap_c0)
 
             self.shape_list['fmap_original_matrix'] = fmap_shape_original_matrix
@@ -674,9 +674,9 @@ class Conv3dBackpropFilter:
 
             """
 
-            _, _, _, fmap_height, fmap_width, _ = self.shape_list['fmap_6hd']
+            _, _, fmap_c1, fmap_height, fmap_width, _ = self.shape_list['fmap_6hd']
 
-            (batch_indices, hw_fuse_indices, fmap_c1_indices, kernel_height_indices,
+            (g_indices, batch_indices, hw_fuse_indices, fmap_c1_indices, kernel_height_indices,
              kernel_width_indices, fmap_c0_indices) = indices
 
             dilation_kernel_width = kernel_width + (kernel_width - 1) * (dilationw - 1)
@@ -684,7 +684,10 @@ class Conv3dBackpropFilter:
             width_out = (fmap_width_after_pad - dilation_kernel_width) // stridew + 1
 
             n_index = batch_indices
-            c1_index = fmap_c1_indices
+            depth_index = fmap_c1_indices // self.group_dict['cin1_g']
+            cin_index = fmap_c1_indices % self.group_dict['cin1_g']
+            c1_index = (depth_index * fmap_c1 +
+                        g_indices * self.group_dict['cin1_g'] + cin_index)
             h_index = (hw_fuse_indices // width_out) * strideh + kernel_height_indices * dilationh
             w_index = (hw_fuse_indices % width_out) * stridew + kernel_width_indices * dilationw
             c0_index = fmap_c0_indices
@@ -701,7 +704,7 @@ class Conv3dBackpropFilter:
         _, strideh, stridew = self.stride
         _, _, _, dilationh, dilationw = self.dilation
 
-        kernel_width = fmap_shape_original_matrix[4]
+        kernel_width = fmap_shape_original_matrix[5]
         return tvm.compute(
             fmap_shape_original_matrix,
             lambda *indices: __fmap_2_matrix_compute(indices,
@@ -808,7 +811,7 @@ class Conv3dBackpropFilter:
 
             """
 
-            _, hw_fuse, _, kernel_height, kernel_width, _ = self.shape_list['fmap_original_matrix']
+            _, _, hw_fuse, _, kernel_height, kernel_width, _ = self.shape_list['fmap_original_matrix']
 
             group_index, n_vm_index, hw_mad_1_indices, fkk_indices, \
                 fmap_c0_indices, hw_mad_0_indices = indices
@@ -817,10 +820,6 @@ class Conv3dBackpropFilter:
             c1_vm_index = ((
                 (fkk_indices * _BLOCK_SIZE + fmap_c0_indices) // _BLOCK_SIZE) //
                 kernel_width) // kernel_height
-            depth_index = c1_vm_index // self.group_dict['cin1_g']
-            cin_index = c1_vm_index % self.group_dict['cin1_g']
-            c1_index = depth_index * self.shape_x_6hd[2] \
-                + group_index * self.group_dict['cin1_g'] + cin_index
             kh_vm_index = ((
                 (fkk_indices * _BLOCK_SIZE + fmap_c0_indices) // _BLOCK_SIZE) //
                 kernel_width) % kernel_height
@@ -832,7 +831,7 @@ class Conv3dBackpropFilter:
             return tvm.select(
                 tvm.any(hw_vm_index < 0, hw_vm_index > hw_fuse - 1),
                 tvm.const(0.0, fmap_dtype),
-                fmap_2_col_matrix(n_vm_index, hw_vm_index, c1_index,
+                fmap_2_col_matrix(group_index, n_vm_index, hw_vm_index, c1_vm_index,
                                   kh_vm_index, kw_vm_index, c0_vm_index))
 
         return tvm.compute(fmap_shape_fmap_matrix,

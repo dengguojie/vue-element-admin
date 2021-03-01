@@ -563,7 +563,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             # move fmap from ddr to L1
             if not load2d_flag:
                 sch[fmap_l1].emit_insn(fmap_l1.op.axis[0], 'dma_copy')
-                sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0],
+                sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[1],
                                            'set_fmatrix', setfmatrix_dict)
                 sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1], 'im2col')
             else:
@@ -741,7 +741,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
                                         (1, _CUBE_DIM), (1, _CUBE_DIM))
 
-        # fmap_shape_original_matrix is (batch_size*grads_depth,
+        # fmap_shape_original_matrix is (real_g, batch_size*grads_depth,
         #                               grads_height*grads_width,
         #                               kernel_depth*fmap_channel_1,
         #                               kernel_height,
@@ -750,7 +750,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         if not load2d_flag:
             sch[fmap_l1].set_scope(tbe_platform.scope_cbuf)
             sch[fmap_matrix].buffer_align(
-                (1, 1), (width_grads, width_grads), (1, 1),
+                (1, 1), (1, 1), (width_grads, width_grads), (1, 1),
                 (kernel_height, kernel_height), (kernel_width, kernel_width),
                 (1, _CUBE_DIM))
         else:
