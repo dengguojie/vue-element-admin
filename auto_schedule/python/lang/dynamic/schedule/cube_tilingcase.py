@@ -677,10 +677,6 @@ class TilingSelection:
                     seed_shape = tuple(cut_range[1::2])
                 cost_seed = self.op.get_costmodel_tiling(seed_shape)
                 seed_range = self.op.get_tiling_range(cost_seed['tiling'], cost_seed[self.op.key])
-                if seed_range[1] == -1:
-                    seed_range[1] = cut_range[1]
-                if seed_range[3] == -1:
-                    seed_range[3] = cut_range[3]
                 if isinstance(seed_range[0], list):
                     is_overlap_other, covered_area_other = _cal_overlap(cut_range, seed_range[0])
                     _, covered_area_self = _cal_overlap(cut_range, seed_range[1])
@@ -696,6 +692,11 @@ class TilingSelection:
                         self.op.assembly_case(cost_seed['tiling'], covered_area_self, cur_seed_cnt))
                     tiling_range[cur_seed_cnt] = covered_area_self
                 else:
+                    if seed_range[1] == -1:
+                        seed_range[1] = cut_range[1]
+                    if seed_range[3] == -1:
+                        seed_range[3] = cut_range[3]
+
                     is_overlap, covered_area = _cal_overlap(cut_range, seed_range)
                     if is_overlap:
                         gen_rects = _cut_rectangle(cut_range, seed_range)
