@@ -130,18 +130,22 @@ class BatchToSpaceND:
         """
         # move in and permute
         dst_stride_pt = (self.block_w - 1) * self.channel_zero // self.blk_ele
-        with self.tik_instance.for_range(0, self.block_w) as idx_bw:
-            # move in
-            offset_gm_in = (idx_bh * self.block_w + idx_bw) * self.output_b * self.channel_one * self.input_h * \
-                           self.input_w * self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * \
-                           self.input_h * self.input_w * self.channel_zero
-            offset_ub_in = idx_bw * self.input_h * self.input_w * self.channel_zero
-            self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
-                                        self.input_h * self.input_w * self.channel_zero // self.blk_ele, 0, 0)
-            # permute
-            offset_ub_pt = idx_bw * self.channel_zero
-            self.tik_instance.data_move(ub_b[offset_ub_pt], ub_a[offset_ub_in], 0, self.input_h * self.input_w,
-                                        self.channel_zero // self.blk_ele, 0, dst_stride_pt)
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # move in
+                offset_gm_in = (idx_bh * self.block_w + idx_bw) * self.output_b * self.channel_one * self.input_h * \
+                               self.input_w * self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * \
+                               self.input_h * self.input_w * self.channel_zero
+                offset_ub_in = idx_bw * self.input_h * self.input_w * self.channel_zero
+                self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
+                                            self.input_h * self.input_w * self.channel_zero // self.blk_ele, 0, 0)
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # permute
+                offset_ub_in = idx_bw * self.input_h * self.input_w * self.channel_zero
+                offset_ub_pt = idx_bw * self.channel_zero
+                self.tik_instance.data_move(ub_b[offset_ub_pt], ub_a[offset_ub_in], 0, self.input_h * self.input_w,
+                                            self.channel_zero // self.blk_ele, 0, dst_stride_pt)
 
         # move out
         start = (self.crops_t - idx_bh + self.block_h - 1) // self.block_h
@@ -161,10 +165,15 @@ class BatchToSpaceND:
         """
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.block_h) as idx_bh:
-                with self.tik_instance.for_range(0, core_ele, thread_num=2) as ele_idx:
-                    ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_a", scope=tik.scope_ubuf)
-                    ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_b", scope=tik.scope_ubuf)
-                    self.run_block_h(ub_a, ub_b, core_idx, idx_bh, ele_idx)
+                ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_a", scope=tik.scope_ubuf)
+                ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_b", scope=tik.scope_ubuf)
+                ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_c", scope=tik.scope_ubuf)
+                ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_d", scope=tik.scope_ubuf)
+                with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
+                    self.run_block_h(ub_a, ub_b, core_idx, idx_bh, ele_idx * 2)
+                    self.run_block_h(ub_c, ub_d, core_idx, idx_bh, ele_idx * 2 + 1)
+                with self.tik_instance.if_scope(core_ele % 2 == 1):
+                    self.run_block_h(ub_a, ub_b, core_idx, idx_bh, core_ele - 1)
 
     def run_block_h_close_db_5hd(self, core_idx, core_ele):
         """run block height for 5hd function, close double buffer.
@@ -176,26 +185,30 @@ class BatchToSpaceND:
                     ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_b", scope=tik.scope_ubuf)
                     self.run_block_h(ub_a, ub_b, core_idx, idx_bh, ele_idx)
 
-    def run_width(self, ub_a, ub_b, core_idx, idx_ih, idx_bh, ele_idx):
-        """run width function.
+    def run_input_h(self, ub_a, ub_b, core_idx, idx_ih, idx_bh, ele_idx):
+        """run input height function.
         """
         flag_h = idx_ih * self.block_h + idx_bh
         with self.tik_instance.if_scope(tik.all(flag_h >= self.crops_t, flag_h < self.crops_t + self.output_h)):
             # move in and permute
             dst_stride_pt = (self.block_w - 1) * self.channel_zero // self.blk_ele
-            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
-                # move in
-                offset_gm_in = (idx_bh * self.block_w + idx_bw) * self.output_b * self.channel_one * self.input_h * \
-                               self.input_w * self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * \
-                               self.input_h * self.input_w * self.channel_zero + idx_ih * self.input_w * \
-                               self.channel_zero
-                offset_ub_in = idx_bw * self.input_w * self.channel_zero
-                self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
-                                            self.input_w * self.channel_zero // self.blk_ele, 0, 0)
-                # permute
-                offset_ub_pt = idx_bw * self.channel_zero
-                self.tik_instance.data_move(ub_b[offset_ub_pt], ub_a[offset_ub_in], 0, self.input_w,
-                                            self.channel_zero // self.blk_ele, 0, dst_stride_pt)
+            with self.tik_instance.new_stmt_scope(disable_sync=True):
+                with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                    # move in
+                    offset_gm_in = (idx_bh * self.block_w + idx_bw) * self.output_b * self.channel_one * \
+                                   self.input_h * self.input_w * self.channel_zero + \
+                                   (core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * \
+                                   self.channel_zero + idx_ih * self.input_w * self.channel_zero
+                    offset_ub_in = idx_bw * self.input_w * self.channel_zero
+                    self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
+                                                self.input_w * self.channel_zero // self.blk_ele, 0, 0)
+            with self.tik_instance.new_stmt_scope(disable_sync=True):
+                with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                    # permute
+                    offset_ub_in = idx_bw * self.input_w * self.channel_zero
+                    offset_ub_pt = idx_bw * self.channel_zero
+                    self.tik_instance.data_move(ub_b[offset_ub_pt], ub_a[offset_ub_in], 0, self.input_w,
+                                                self.channel_zero // self.blk_ele, 0, dst_stride_pt)
 
             # move out
             offset_gm_out = (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * \
@@ -205,23 +218,24 @@ class BatchToSpaceND:
             self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_b[offset_ub_out], 0, 1,
                                         self.output_w * self.channel_zero // self.blk_ele, 0, 0)
 
-    def run_width_open_db_5hd(self, core_idx, core_ele):
-        """run width for 5hd function, open double buffer.
+    def run_input_h_open_db_5hd(self, core_idx, core_ele):
+        """run input height for 5hd function, open double buffer.
         """
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.input_h) as idx_ih:
                 with self.tik_instance.for_range(0, self.block_h) as idx_bh:
-                    with self.tik_instance.for_range(0, core_ele, thread_num=2) as ele_idx:
-                        ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
-                                                        name="ub_a",
-                                                        scope=tik.scope_ubuf)
-                        ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
-                                                        name="ub_b",
-                                                        scope=tik.scope_ubuf)
-                        self.run_width(ub_a, ub_b, core_idx, idx_ih, idx_bh, ele_idx)
+                    ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_a", scope=tik.scope_ubuf)
+                    ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_b", scope=tik.scope_ubuf)
+                    ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_c", scope=tik.scope_ubuf)
+                    ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_d", scope=tik.scope_ubuf)
+                    with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
+                        self.run_input_h(ub_a, ub_b, core_idx, idx_ih, idx_bh, ele_idx * 2)
+                        self.run_input_h(ub_c, ub_d, core_idx, idx_ih, idx_bh, ele_idx * 2 + 1)
+                    with self.tik_instance.if_scope(core_ele % 2 == 1):
+                        self.run_input_h(ub_a, ub_b, core_idx, idx_ih, idx_bh, core_ele - 1)
 
-    def run_width_close_db_5hd(self, core_idx, core_ele):
-        """run width for 5hd function, close double buffer.
+    def run_input_h_close_db_5hd(self, core_idx, core_ele):
+        """run input height for 5hd function, close double buffer.
         """
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.input_h) as idx_ih:
@@ -233,7 +247,7 @@ class BatchToSpaceND:
                         ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
                                                         name="ub_b",
                                                         scope=tik.scope_ubuf)
-                        self.run_width(ub_a, ub_b, core_idx, idx_ih, idx_bh, ele_idx)
+                        self.run_input_h(ub_a, ub_b, core_idx, idx_ih, idx_bh, ele_idx)
 
     def run_block_w(self, ub_a, core_idx, idx_ih, idx_bh, idx_bw, ele_idx):
         """run block width function.
@@ -271,8 +285,8 @@ class BatchToSpaceND:
                                                             scope=tik.scope_ubuf)
                             self.run_block_w(ub_a, core_idx, idx_ih, idx_bh, idx_bw, ele_idx)
 
-    def run_last(self, ub_a, core_idx, idx_ih, idx_bh, idx_iw, idx_bw, ele_idx):
-        """run last function.
+    def run_input_w(self, ub_a, core_idx, idx_ih, idx_bh, idx_iw, idx_bw, ele_idx):
+        """run input height function.
         """
         flag_h = idx_ih * self.block_h + idx_bh
         flag_w = idx_iw * self.block_w + idx_bw
@@ -294,8 +308,8 @@ class BatchToSpaceND:
             self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_a, 0, 1, self.channel_zero // self.blk_ele, 0,
                                         0)
 
-    def run_last_5hd(self, core_idx, core_ele):
-        """run last for 5hd function, close double buffer.
+    def run_input_w_5hd(self, core_idx, core_ele):
+        """run input height for 5hd function, close double buffer.
         """
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.input_h) as idx_ih:
@@ -306,7 +320,7 @@ class BatchToSpaceND:
                                 ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele,),
                                                                 name="ub_a",
                                                                 scope=tik.scope_ubuf)
-                                self.run_last(ub_a, core_idx, idx_ih, idx_bh, idx_iw, idx_bw, ele_idx)
+                                self.run_input_w(ub_a, core_idx, idx_ih, idx_bh, idx_iw, idx_bw, ele_idx)
 
     def batch_to_space_nd_compute_tiling(self):
         """BatchToSpaceND compute tiling
@@ -334,25 +348,27 @@ class BatchToSpaceND:
                     self.run_block_h_close_db_5hd(core_idx, core_ele)
                 # when format is NC1HWC0, can copy input_w * block_w * c0, open double buffer
                 with self.tik_instance.if_scope(self.tiling_mode == 2):
-                    self.run_width_open_db_5hd(core_idx, core_ele)
+                    self.run_input_h_open_db_5hd(core_idx, core_ele)
                 # when format is NC1HWC0, can copy input_w * block_w * c0, close double buffer
                 with self.tik_instance.if_scope(self.tiling_mode == 3):
-                    self.run_width_close_db_5hd(core_idx, core_ele)
+                    self.run_input_h_close_db_5hd(core_idx, core_ele)
                 # when format is NC1HWC0, can copy input_w * c0, close double buffer
                 with self.tik_instance.if_scope(self.tiling_mode == 4):
                     self.run_block_w_5hd(core_idx, core_ele)
                 # when format is NC1HWC0, can copy c0, close double buffer
                 with self.tik_instance.if_scope(self.tiling_mode == 5):
-                    self.run_last_5hd(core_idx, core_ele)
+                    self.run_input_w_5hd(core_idx, core_ele)
 
     def batch_to_space_nd_operator(self):
         """BatchToSpaceND operator
         """
         self.batch_to_space_nd_compute_tiling()
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=[self.input_gm, self.block_gm, self.crops_gm],
                                    outputs=[self.output_gm],
-                                   flowtable=[self.tiling_gm])
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
 
         tbe_context.get_context().add_compile_info("vars", {
             "ub_ele": self.ub_ele,

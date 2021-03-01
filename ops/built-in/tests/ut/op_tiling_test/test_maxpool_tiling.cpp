@@ -1,3 +1,23 @@
+/**
+ * Copyright 2021 Huawei Technologies Co., Ltd
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*!
+ * \file test_maxpool_tiling.cpp
+ * \brief dynamic tiling test of max_pool
+ */
 #include <iostream>
 #include <vector>
 
@@ -7,7 +27,7 @@
 using namespace std;
 
 class MaxPoolTiling : public testing::Test {
-  protected:
+ protected:
   static void SetUpTestCase() {
     std::cout << "MaxPoolTiling SetUp" << std::endl;
   }
@@ -17,7 +37,7 @@ class MaxPoolTiling : public testing::Test {
   }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int32_t tmp = 0;
@@ -36,10 +56,12 @@ TEST_F(MaxPoolTiling, maxpool_tiling_0) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 1, \"strides_w\": 1, \"padding\": 0}}";
+  std::string compileInfo =
+      "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 1, "
+      "\"strides_w\": 1, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16,13,79,69,16};
-  std::vector<int64_t> output{16,13,79,69,16};
+  std::vector<int64_t> input{16, 13, 79, 69, 16};
+  std::vector<int64_t> output{16, 13, 79, 69, 16};
 
   TeOpTensor tensor_input;
   tensor_input.shape = input;
@@ -68,7 +90,7 @@ TEST_F(MaxPoolTiling, maxpool_tiling_0) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 35432 35416 79 69 79 69 79 69 0 0 0 0 1 1 1 4 2792 4 2776 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 35432 35416 79 69 79 69 79 69 0 0 0 0 1 1 1 4 2792 4 2776 0 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_1) {
@@ -77,10 +99,12 @@ TEST_F(MaxPoolTiling, maxpool_tiling_1) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, \"strides_w\": 2, \"padding\": 0}}";
+  std::string compileInfo =
+      "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
+      "\"strides_w\": 2, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16,13,10,70,16};
-  std::vector<int64_t> output{16,13,5,35,16};
+  std::vector<int64_t> input{16, 13, 10, 70, 16};
+  std::vector<int64_t> output{16, 13, 5, 35, 16};
 
   TeOpTensor tensor_input;
   tensor_input.shape = input;
@@ -109,7 +133,7 @@ TEST_F(MaxPoolTiling, maxpool_tiling_1) {
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 3 1 1 2 1 1 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_2) {
@@ -118,10 +142,12 @@ TEST_F(MaxPoolTiling, maxpool_tiling_2) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, \"strides_w\": 2, \"padding\": 0}}";
+  std::string compileInfo =
+      "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
+      "\"strides_w\": 2, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16,13,62,250,16};
-  std::vector<int64_t> output{16,13,31,125,16};
+  std::vector<int64_t> input{16, 13, 62, 250, 16};
+  std::vector<int64_t> output{16, 13, 31, 125, 16};
 
   TeOpTensor tensor_input;
   tensor_input.shape = input;
@@ -150,7 +176,7 @@ TEST_F(MaxPoolTiling, maxpool_tiling_2) {
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 30 7 5 62 250 31 125 61 249 0 0 0 0 1 4 1 7 3 7 3 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 30 7 5 62 250 31 125 61 249 0 0 0 0 1 3 1 10 1 10 1 208 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_3) {
@@ -159,10 +185,12 @@ TEST_F(MaxPoolTiling, maxpool_tiling_3) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, \"strides_w\": 2, \"padding\": 0}}";
+  std::string compileInfo =
+      "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
+      "\"strides_w\": 2, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16,13,10,2500,16};
-  std::vector<int64_t> output{16,13,5,1250,16};
+  std::vector<int64_t> input{16, 13, 10, 2500, 16};
+  std::vector<int64_t> output{16, 13, 5, 1250, 16};
 
   TeOpTensor tensor_input;
   tensor_input.shape = input;
@@ -191,7 +219,7 @@ TEST_F(MaxPoolTiling, maxpool_tiling_3) {
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "3 30 7 5 10 2500 5 1250 9 2499 0 0 0 0 1 1 1020 1 230 1 230 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "3 30 7 5 10 2500 5 1250 9 2499 0 0 0 0 1 1 680 1 570 1 570 208 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_4) {
@@ -200,10 +228,12 @@ TEST_F(MaxPoolTiling, maxpool_tiling_4) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, \"strides_w\": 2, \"padding\": 1}}";
+  std::string compileInfo =
+      "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
+      "\"strides_w\": 2, \"padding\": 1}}";
 
-  std::vector<int64_t> input{16,13,10,70,16};
-  std::vector<int64_t> output{16,13,5,35,16};
+  std::vector<int64_t> input{16, 13, 10, 70, 16};
+  std::vector<int64_t> output{16, 13, 5, 35, 16};
 
   TeOpTensor tensor_input;
   tensor_input.shape = input;
@@ -232,5 +262,5 @@ TEST_F(MaxPoolTiling, maxpool_tiling_4) {
   op_compile_info.key = "1234564";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 3 1 1 2 1 1 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
 }

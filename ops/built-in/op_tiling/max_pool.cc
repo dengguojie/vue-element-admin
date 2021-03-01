@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright 2021 Huawei Technologies Co., Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,16 @@
  */
 
 /*!
- * \file max_pool.cpp
+ * \file max_pool.cc
  * \brief dynamic shape tiling of max_pool
  */
 #include <map>
 #include <nlohmann/json.hpp>
 
 #include "../op_proto/util/error_util.h"
+#include "error_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
-#include "error_log.h"
 
 namespace optiling {
 using namespace ge;
@@ -52,30 +52,18 @@ struct TilingParam {
   int32_t one_core_loop_left = 0;
   int32_t last_core_loop_num = 0;
   int32_t last_core_loop_left = 0;
+  int32_t n_c1 = 0;
 };
 
 static void PrintTilingParam(const TilingParam& param) {
-  OP_LOGD("MaxPoolTiling", "tiling_mode=%d.", param.tiling_mode);
-  OP_LOGD("MaxPoolTiling", "act_core_num=%d.", param.act_core_num);
-  OP_LOGD("MaxPoolTiling", "one_core_ele=%d.", param.one_core_ele);
-  OP_LOGD("MaxPoolTiling", "last_core_ele=%d.", param.last_core_ele);
-  OP_LOGD("MaxPoolTiling", "input_h=%d.", param.input_h);
-  OP_LOGD("MaxPoolTiling", "input_w=%d.", param.input_w);
-  OP_LOGD("MaxPoolTiling", "output_h=%d.", param.output_h);
-  OP_LOGD("MaxPoolTiling", "output_w=%d.", param.output_w);
-  OP_LOGD("MaxPoolTiling", "pad_h=%d.", param.pad_h);
-  OP_LOGD("MaxPoolTiling", "pad_w=%d.", param.pad_w);
-  OP_LOGD("MaxPoolTiling", "pad_t=%d.", param.pad_t);
-  OP_LOGD("MaxPoolTiling", "pad_b=%d.", param.pad_b);
-  OP_LOGD("MaxPoolTiling", "pad_l=%d.", param.pad_l);
-  OP_LOGD("MaxPoolTiling", "pad_r=%d.", param.pad_r);
-  OP_LOGD("MaxPoolTiling", "c_factor=%d.", param.c_factor);
-  OP_LOGD("MaxPoolTiling", "h_factor=%d.", param.h_factor);
-  OP_LOGD("MaxPoolTiling", "w_factor=%d.", param.w_factor);
-  OP_LOGD("MaxPoolTiling", "one_core_loop_num=%d.", param.one_core_loop_num);
-  OP_LOGD("MaxPoolTiling", "one_core_loop_left=%d.", param.one_core_loop_left);
-  OP_LOGD("MaxPoolTiling", "last_core_loop_num=%d.", param.last_core_loop_num);
-  OP_LOGD("MaxPoolTiling", "last_core_loop_left=%d.", param.last_core_loop_left);
+  OP_LOGD("MaxPoolTiling ",
+          "(tiling_mode,act_core_num,one_core_ele,last_core_ele,input_h,input_w,output_h,output_w,pad_h,pad_w,pad_t,"
+          "pad_b,pad_l,pad_r,c_factor,h_factor,w_factor,one_core_loop_num,one_core_loop_left,last_core_loop_num,"
+          "last_core_loop_left,n_c1):(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)",
+          param.tiling_mode, param.act_core_num, param.one_core_ele, param.last_core_ele, param.input_h, param.input_w,
+          param.output_h, param.output_w, param.pad_h, param.pad_w, param.pad_t, param.pad_b, param.pad_l, param.pad_r,
+          param.c_factor, param.h_factor, param.w_factor, param.one_core_loop_num, param.one_core_loop_left,
+          param.last_core_loop_num, param.last_core_loop_left, param.n_c1);
 }
 
 static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
@@ -100,6 +88,7 @@ static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, param.one_core_loop_left);
   ByteBufferPut(run_info.tiling_data, param.last_core_loop_num);
   ByteBufferPut(run_info.tiling_data, param.last_core_loop_left);
+  ByteBufferPut(run_info.tiling_data, param.n_c1);
 }
 
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
@@ -145,30 +134,47 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.last_core_loop_num = param.last_core_ele / max_ele;
     param.last_core_loop_left = param.last_core_ele % max_ele;
   } else {
-    int32_t one_fourth_ub_ele = ub_ele / 4;
-    int32_t total_ele = input_shape[0] * input_shape[1];
-    CalCoreNum(param, total_ele, core_num);
-    if (param.pad_h * param.pad_w * input_shape[4] <= one_fourth_ub_ele) {
+    int32_t one_sixth_ub_ele = ub_ele / 6;
+    param.n_c1 = input_shape[0] * input_shape[1];
+    if (param.pad_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
       param.tiling_mode = 1;
-      param.c_factor = one_fourth_ub_ele / (param.pad_h * param.pad_w * input_shape[4]);
+      CalCoreNum(param, param.n_c1, core_num);
+      param.c_factor = one_sixth_ub_ele / (param.pad_h * param.pad_w * input_shape[4]);
       param.one_core_loop_num = param.one_core_ele / param.c_factor;
       param.one_core_loop_left = param.one_core_ele % param.c_factor;
       param.last_core_loop_num = param.last_core_ele / param.c_factor;
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
-    } else if (ksize_h * param.pad_w * input_shape[4] <= one_fourth_ub_ele) {
-      param.tiling_mode = 2;
-      param.h_factor = (one_fourth_ub_ele / (param.pad_w * input_shape[4]) - ksize_h) / strides_h + 1;
-      param.one_core_loop_num = param.output_h / param.h_factor;
-      param.one_core_loop_left = param.output_h % param.h_factor;
-      param.last_core_loop_num = param.one_core_loop_num;
-      param.last_core_loop_left = param.one_core_loop_left;
+    } else if (ksize_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
+      param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape[4]) - ksize_h) / strides_h + 1;
+      int32_t h_loop = param.output_h / param.h_factor;
+      if (h_loop <= param.n_c1) {
+        param.tiling_mode = 2;
+        CalCoreNum(param, param.n_c1, core_num);
+        param.one_core_loop_num = param.output_h / param.h_factor;
+        param.one_core_loop_left = param.output_h % param.h_factor;
+        param.last_core_loop_num = param.one_core_loop_num;
+        param.last_core_loop_left = param.one_core_loop_left;
+      } else {
+        param.tiling_mode = 4;
+        CalCoreNum(param, param.output_h, core_num);
+        param.one_core_loop_num = param.one_core_ele / param.h_factor;
+        param.one_core_loop_left = param.one_core_ele % param.h_factor;
+        param.last_core_loop_num = param.last_core_ele / param.h_factor;
+        param.last_core_loop_left = param.last_core_ele % param.h_factor;
+      }
     } else {
-      param.tiling_mode = 3;
-      param.w_factor = (one_fourth_ub_ele / input_shape[4] / ksize_h - ksize_w) / strides_w + 1;
+      param.w_factor = (one_sixth_ub_ele / input_shape[4] / ksize_h - ksize_w) / strides_w + 1;
       param.one_core_loop_num = param.output_w / param.w_factor;
       param.one_core_loop_left = param.output_w % param.w_factor;
       param.last_core_loop_num = param.one_core_loop_num;
       param.last_core_loop_left = param.one_core_loop_left;
+      if (param.output_h <= param.n_c1) {
+        param.tiling_mode = 3;
+        CalCoreNum(param, param.n_c1, core_num);
+      } else {
+        param.tiling_mode = 5;
+        CalCoreNum(param, param.output_h, core_num);
+      }
     }
   }
 }
@@ -198,15 +204,15 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
                    OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "MaxPoolTiling running.");
 
-  // get and check input shape
-  vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
+  // get and check input format and shape
   string input_format = op_paras.inputs[0].tensor[0].format;
-  OP_TILING_CHECK(input_format != "NC1HWC0",
-        OP_LOGE(op_type.c_str(), "Get input format failed, only support NC1HWC0, but got %s.", input_format.c_str()),
-        return false);
+  OP_TILING_CHECK(
+      input_format != "NC1HWC0",
+      OP_LOGE(op_type.c_str(), "Get input format failed, only support NC1HWC0, but got %s.", input_format.c_str()),
+      return false);
+  vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   OP_TILING_CHECK(input_shape.size() != 5,
-                  OP_LOGE(op_type.c_str(),
-                          "Get input shape failed, the length of input shape must be 5, but got %d.",
+                  OP_LOGE(op_type.c_str(), "Get input shape failed, the length of input shape must be 5, but got %d.",
                           input_shape.size()),
                   return false);
 
@@ -217,7 +223,7 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
   int32_t ksize_w = 1;
   int32_t strides_h = 1;
   int32_t strides_w = 1;
-  int32_t padding = 0;
+  int32_t padding = 0;  // SAME
   const map<string, int32_t&> compile_params = {
       {"ub_ele", ub_ele},       {"core_num", core_num},   {"ksize_h", ksize_h}, {"ksize_w", ksize_w},
       {"strides_h", strides_h}, {"strides_w", strides_w}, {"padding", padding},
@@ -226,8 +232,7 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
     const auto& name = param.first;
     OP_LOGD(op_type.c_str(), "GetCompileInfo %s.", name.c_str());
     OP_TILING_CHECK(!GetCompileInfo<int32_t>(op_info, name, param.second),
-        OP_LOGE(op_type.c_str(), "GetCompileInfo %s failed.", name.c_str()),
-        return false);
+                    OP_LOGE(op_type.c_str(), "GetCompileInfo %s failed.", name.c_str()), return false);
     OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
   }
 
@@ -235,20 +240,13 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
   TilingParam param;
   param.input_h = input_shape[2];
   param.input_w = input_shape[3];
-  OP_TILING_CHECK(ksize_h < 0 || ksize_w < 0 || strides_h <= 0 || strides_w <= 0,
-                  OP_LOGE(op_type.c_str(),
-                          "The ksize and strides must be greater to 1, but got ksize:[%d,%d] and strides:[%d,%d].",
-                          ksize_h, ksize_w, strides_h, strides_w),
-                  return false);
-  OP_TILING_CHECK((padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w)),
-                  OP_LOGE(op_type.c_str(),
-                          "Input height or width must greater than or equal to ksize when "
-                          "padding mode is valid."),
-                  return false);
-  int32_t one_fourth_ub_ele = ub_ele / 4;
-  OP_TILING_CHECK(one_fourth_ub_ele / input_shape[4] / ksize_h < ksize_w,
-                  OP_LOGE(op_type.c_str(),
-                          "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
+  OP_TILING_CHECK(
+      (padding == 1) && ((ksize_h > param.input_h) || (ksize_w > param.input_w)),
+      OP_LOGE(op_type.c_str(), "Input height or width must greater than or equal to ksize when padding mode is valid."),
+      return false);
+  int32_t one_sixth_ub_ele = ub_ele / 6;
+  OP_TILING_CHECK(one_sixth_ub_ele / input_shape[4] / ksize_h < ksize_w,
+                  OP_LOGE(op_type.c_str(), "Get tiling failed, minimum processing unit must be ksize_h * ksize_w."),
                   return false);
 
   // calc tiling params, set tiling params, print tiling params

@@ -496,12 +496,12 @@ class SpaceToBatchNdSix(object):
                             repeat = self.input_h - 1
                             size_2 = (self.pads[2][1] + self.pads[2][0]) * self.c_0
                             dst_rep = self.pad_w * self.c_0 // self.block_ele
-                            _vector_dup_discrete(self.tik_instance, ub_tensor[offset_2], repeat, size_2, self.block_ele,
-                                                 1, dst_rep)
+                            _vector_dup_discrete(self.tik_instance, ub_tensor[offset_2:], repeat, size_2,
+                                                 self.block_ele, 1, dst_rep)
                             offset_3 = (self.pad_h -
                                         self.pads[1][1]) * self.pad_w * self.c_0 - self.pads[2][1] * self.c_0
                             size_3 = self.pads[1][1] * self.pad_w * self.c_0 + self.pads[2][1] * self.c_0
-                            _vector_dup_continuous(self.tik_instance, ub_tensor[offset_3], size_3)
+                            _vector_dup_continuous(self.tik_instance, ub_tensor[offset_3:], size_3)
                         # move out and open double buffer
                         thread = 2 if self.output_h > 1 else 1
                         with self.tik_instance.for_range(0, self.output_h, thread_num=thread) as idx_h:
@@ -574,7 +574,7 @@ class SpaceToBatchNdSix(object):
                                     _vector_dup_continuous(self.tik_instance, ub_tensor, size_1)
                                     offset_2 = (self.pad_w - self.pads[2][1]) * self.c_0
                                     size_2 = self.pads[2][1] * self.c_0
-                                    _vector_dup_continuous(self.tik_instance, ub_tensor[offset_2], size_2)
+                                    _vector_dup_continuous(self.tik_instance, ub_tensor[offset_2:], size_2)
 
                                 # move out
                                 with self.tik_instance.for_range(0, self.block_shape[2]) as idx_blk_2:
