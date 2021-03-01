@@ -15,14 +15,15 @@
 """
 dynamic axpy
 """
-import te.lang.cce
-import te.lang.base as tbe_base
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 # constant, value is 16
 SIZE_SIXTEEN = 16
@@ -169,8 +170,8 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     output tensor
     """
     # broadcast
-    shape_x = te.lang.cce.util.shape_to_list(x1.shape)
-    shape_y = te.lang.cce.util.shape_to_list(x2.shape)
+    shape_x = shape_util.shape_to_list(x1.shape)
+    shape_y = shape_util.shape_to_list(x2.shape)
     dtype = x1.dtype.lower()
 
     # neg_1_axis_flag
@@ -186,58 +187,58 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
             if shape_x[i] != shape_y[i]:
                 neg_1_axis_flag = 1
                 break
-        x1 = te.lang.cce.broadcast(x1, shape_max)
-        x2 = te.lang.cce.broadcast(x2, shape_max)
+        x1 = tbe.broadcast(x1, shape_max)
+        x2 = tbe.broadcast(x2, shape_max)
 
     # start the main logic
     if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
         if dtype in ("float16", "float32"):
             # fp16 or fp32
             if neg_1_axis_flag:
-                res_muls = te.lang.cce.vmuls(x2, alpha)
-                res = te.lang.cce.vadd(x1, res_muls)
+                res_muls = tbe.vmuls(x2, alpha)
+                res = tbe.vadd(x1, res_muls)
             else:
-                res = te.lang.cce.vaxpy(x2, x1, tvm.const(alpha, dtype=dtype))
+                res = tbe.vaxpy(x2, x1, tvm.const(alpha, dtype=dtype))
         else:
             # int32
             if alpha != 1:
                 # add+muls use fp32
                 to_type = "float32"
-                input_x_cast = te.lang.cce.cast_to(x1, to_type)
-                input_y_cast = te.lang.cce.cast_to(x2, to_type)
+                input_x_cast = tbe.cast_to(x1, to_type)
+                input_y_cast = tbe.cast_to(x2, to_type)
 
                 if neg_1_axis_flag:
-                    res_muls = te.lang.cce.vmuls(input_y_cast, alpha)
-                    res_tmp = te.lang.cce.vadd(input_x_cast, res_muls)
+                    res_muls = tbe.vmuls(input_y_cast, alpha)
+                    res_tmp = tbe.vadd(input_x_cast, res_muls)
                 else:
-                    res_tmp = te.lang.cce.vaxpy(input_y_cast, input_x_cast,
+                    res_tmp = tbe.vaxpy(input_y_cast, input_x_cast,
                                                 tvm.const(alpha, dtype=to_type))
 
-                res = te.lang.cce.cast_to(res_tmp, dtype)
+                res = tbe.cast_to(res_tmp, dtype)
 
             else:
                 # if alpha == 1
-                res = te.lang.cce.vadd(x2, x1)
+                res = tbe.vadd(x2, x1)
     else:
         if dtype in ("float16", "float32"):
             # fp16 or fp32
-            res_muls = te.lang.cce.vmuls(x2, alpha)
-            res = te.lang.cce.vadd(x1, res_muls)
+            res_muls = tbe.vmuls(x2, alpha)
+            res = tbe.vadd(x1, res_muls)
         else:
             # int32
             if alpha != 1:
                 # add+muls use fp32
                 to_type = "float32"
-                input_x1_cast = te.lang.cce.cast_to(x1, to_type)
-                input_x2_cast = te.lang.cce.cast_to(x2, to_type)
+                input_x1_cast = tbe.cast_to(x1, to_type)
+                input_x2_cast = tbe.cast_to(x2, to_type)
 
-                res_muls = te.lang.cce.vmuls(input_x2_cast, alpha)
-                res_tmp = te.lang.cce.vadd(input_x1_cast, res_muls)
+                res_muls = tbe.vmuls(input_x2_cast, alpha)
+                res_tmp = tbe.vadd(input_x1_cast, res_muls)
 
-                res = te.lang.cce.cast_to(res_tmp, dtype)
+                res = tbe.cast_to(res_tmp, dtype)
             else:
                 # if alpha == 1
-                res = te.lang.cce.vadd(x2, x1)
+                res = tbe.vadd(x2, x1)
 
     return res
 
@@ -285,10 +286,10 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
     para_check.check_dtype(dtype_x2, dtype_list)
 
     # produce shapes
-    ins = tbe_base.classify([x1, x2], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_input_x1, _input_x2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x1, shape_x2 = \
                 shape_util.variable_shape([_input_x1, _input_x2])
 
@@ -297,11 +298,11 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
             res = axpy_compute(data_input_x1, data_input_x2, y, alpha, kernel_name)
             tensors.append((data_input_x1, data_input_x2, res))
         with tvm.target.cce():
-            schedule = te.lang.cce.auto_schedule(res)
+            schedule = tbe.auto_schedule(res)
         schedules.append(schedule)
 
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": tensors}
 
-    te.lang.cce.build(schedules, config)
+    tbe.build(schedules, config)

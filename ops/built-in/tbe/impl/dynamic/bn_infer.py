@@ -15,15 +15,14 @@
 """
 bn_infer
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -200,10 +199,10 @@ def bn_infer(x, scale, offset, mean, variance, y,
         error_manager_vector.raise_err_check_params_rules("bn_infer", format_rule, "x", data_format)
     _check_dtype(dtype_x, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
 
-    ins = classify([x, scale, offset, mean, variance], Mode.ELEWISE)
+    ins = classify([x, scale, offset, mean, variance], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_x, _scale, _offset, _mean, _variance) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x, shape_scale, shape_offset, shape_mean, shape_variance = \
             shape_util.variable_shape([_x, _scale, _offset, _mean, _variance])
             x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())

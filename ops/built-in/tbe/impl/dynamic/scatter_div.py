@@ -15,7 +15,7 @@
 """
 scatter_div
 """
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from . import scatter_common
 

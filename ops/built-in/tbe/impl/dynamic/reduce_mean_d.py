@@ -17,13 +17,16 @@ dynamic reduce mean
 """
 import collections
 
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import OpImplMode
 
 
 # pylint: disable=too-many-branches,too-many-arguments,too-many-locals
@@ -33,7 +36,7 @@ def reduce_mean_d_compute(x,
                           axes,
                           keepdims=None,
                           kernel_name="reduce_mean_d",
-                          impl_mode="high_performance",
+                          impl_mode=OpImplMode.HIGH_PERFORMANCE,
                           is_5hdc=False):
     """reduce_mean_d compute
 
@@ -75,7 +78,7 @@ def reduce_mean_d_compute(x,
         if not tbe_platform.api_check_support("te.lang.cce.sum",
                                               "float32"):
             calc_dtype = "float16"
-        elif cce_product == "Ascend310" and impl_mode == "high_performance":
+        elif cce_product == "Ascend310" and impl_mode == OpImplMode.HIGH_PERFORMANCE:
             calc_dtype = "float16"
         else:
             calc_dtype = "float32"
@@ -87,10 +90,10 @@ def reduce_mean_d_compute(x,
         cof = reduce_elts ** (-1)
         cof = tvm.const(cof, dtype=calc_dtype)
     else:
-        cof = tbe_base.var("cof", dtype=calc_dtype)
+        cof = tbe.var("cof", dtype=calc_dtype)
         if calc_dtype == "float16":
-            tbe_base.var("cof_empty", dtype=calc_dtype)
-        tbe_base.add_compile_info("reduce_mean_cof_dtype", calc_dtype)
+            tbe.var("cof_empty", dtype=calc_dtype)
+        tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", calc_dtype)
 
     if dtype != calc_dtype:
         data_input_tmp = tbe.cast_to(x, calc_dtype)
@@ -98,7 +101,7 @@ def reduce_mean_d_compute(x,
         data_input_tmp = x
 
     data_input_tmp = tbe.vmuls(data_input_tmp, cof)
-    res = tbe.sum(data_input_tmp, axis=axes, keepdims=keepdims)
+    res = tbe.reduce_sum(data_input_tmp, axis=axes, keepdims=keepdims)
 
     if dtype != calc_dtype:
         if dtype in ("int8", "uint8"):
@@ -114,7 +117,7 @@ def reduce_mean_d_compute(x,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
                   keepdims=None, kernel_name="reduce_mean_d",
-                  impl_mode="high_performance"):
+                  impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     Reduce a tensor on a certa in axes based on mean.
 
@@ -154,10 +157,10 @@ def reduce_mean_d(input_x, output_y, axes,
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([input_x, input_axis], tbe_base.shape_classifier.Mode.REDUCE,
+    ins = classify([input_x, input_axis], OpPatternMode.REDUCE,
                                              {"keepdims": keepdims is True})
     for (_input_x, _axes) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # not support 5HD
             is_5hdc = False
             shape_var_new = shape_util.variable_shape([_input_x, _axes], op_mode="reduce")[0]

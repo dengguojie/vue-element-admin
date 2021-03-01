@@ -16,21 +16,14 @@
 relu6_grad
 """
 import te.platform as tbe_platform
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import broadcast_shapes
-from te.utils.error_manager import error_manager_vector
-from te.utils import shape_util
-from topi import generic
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
@@ -79,7 +72,7 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
 
     x0_shape = shape_util.shape_to_list(y_y_esp_min.shape)
     x1_shape = shape_util.shape_to_list(input_grad.shape)
-    _, _, y_shape = broadcast_shapes(x0_shape, x1_shape,
+    _, _, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape,
                                      param_name_input1="y_y_esp_min",
                                      param_name_input2="input_grad")
 
@@ -93,7 +86,7 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
 
 # pylint: disable=too-many-locals
 @register_operator("Relu6Grad")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """
     Parameters
@@ -115,8 +108,8 @@ def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     g_dtype = input_grad.get("dtype").lower()
     x_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32")
-    check_dtype(g_dtype, check_list, param_name="input_g")
-    check_dtype(x_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(g_dtype, check_list, param_name="input_g")
+    para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     if x_dtype == "float32" and not tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, "relu6_grad",
                                                                  "float16 while input dtype is float32", x_dtype)
@@ -125,17 +118,17 @@ def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_grad", "input_x",
                                                               g_dtype, x_dtype)
 
-    ins = classify([input_grad, input_x], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_grad, input_x], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_grad, input_x) in ins:
-        with tbe_base.compute():
-            g_shape, x_shape = variable_shape([input_grad, input_x])
+        with tbe.compute():
+            g_shape, x_shape = shape_util.variable_shape([input_grad, input_x])
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             res = relu6_grad_compute(tensor_g, tensor_x, output_y, kernel_name)
             tensors.append((tensor_g, tensor_x, res))
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

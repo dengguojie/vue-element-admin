@@ -17,13 +17,12 @@ zeros_like
 """
 from functools import reduce as functools_reduce
 
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -88,9 +87,9 @@ def zeros_like(x, y, kernel_name="zeros_like"):
     src_dtype = dtype_x.lower()
     para_check.check_dtype(src_dtype, check_list_src, param_name="x")
     schedules, tensors = [], []
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     for (input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x = shape_util.variable_shape([input_x])
             shape_x = (functools_reduce(lambda x, y: x * y, shape_x[0]),)
             x_input = tvm.placeholder(shape_x, name="x_input", dtype=src_dtype)

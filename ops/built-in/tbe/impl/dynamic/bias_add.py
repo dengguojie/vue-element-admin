@@ -15,21 +15,14 @@
 """
 bias_add
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_format
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_elewise_shape_range
-from te.utils.op_utils import REQUIRED_ATTR_STR
-from te.utils import shape_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=too-many-locals,unused-argument
@@ -85,8 +78,8 @@ def bias_add_compute(x, bias, y, data_format, kernel_name="bias_add"):
 
 
 @register_operator("BiasAdd")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 REQUIRED_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                 para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     """
     algorithm: bias_and
@@ -120,10 +113,10 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
 
     check_tuple = ("float16", "float32", "int32")
     data_format_tuple = ("NCHW", "NHWC", "NDHWC", "NCDHW")
-    check_dtype(dtype_x, check_tuple, param_name="x")
-    check_dtype(dtype_bias, check_tuple, param_name="bias")
-    check_dtype(dtype_y, check_tuple, param_name="y")
-    check_format(data_format, data_format_tuple, param_name='input_format')
+    para_check.check_dtype(dtype_x, check_tuple, param_name="x")
+    para_check.check_dtype(dtype_bias, check_tuple, param_name="bias")
+    para_check.check_dtype(dtype_y, check_tuple, param_name="y")
+    para_check.check_format(data_format, data_format_tuple, param_name='input_format')
 
     if dtype_x != dtype_bias:
         raise RuntimeError("The dtype of x and bias must be the same")
@@ -223,13 +216,13 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     bias["ori_shape"] = shape_bias
     bias["range"] = range_bias
 
-    check_elewise_shape_range([x, bias], support_broadcast=True)
+    para_check.check_elewise_shape_range([x, bias], support_broadcast=True)
 
-    ins = classify([x, bias], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x, bias], OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules, tensors = [], []
     for (_x, _bias) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, bias_shape = shape_util.variable_shape([_x, _bias])
             tensor_x = tvm.placeholder(x_shape, dtype_x, "tensor_x")
             tensor_bias = tvm.placeholder(bias_shape, dtype_bias, "tensor_bias")
@@ -242,4 +235,4 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
 
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-    tbe_base.add_compile_info("boardcast_bias_shape", shape_bias)
+    tbe_context.get_context().add_compile_info("boardcast_bias_shape", shape_bias)

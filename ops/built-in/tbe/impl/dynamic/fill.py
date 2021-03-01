@@ -16,13 +16,12 @@
 fill
 """
 
-import te.lang.cce as tbe
-from te import tvm
-import te.lang.base as tbe_base
-from te.utils import shape_util
-from te.utils import para_check
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -81,10 +80,10 @@ def fill(dims, value, y, kernel_name="fill"):
     para_check.check_dtype(dtype, check_list)
 
     extra_params = {"disable_optimization": True}
-    ins = tbe_base.classify([dims, value], tbe_base.Mode.ELEWISE_WITH_BROADCAST, extra_params)
+    ins = classify([dims, value], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
     for (_dims, _value) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_dim, shape = shape_util.variable_shape([_dims, _value])
             x_input = tvm.placeholder(shape, name="x_input", dtype=dtype)
             dim_input = tvm.placeholder(shape_dim, name="dim_input", dtype=dtype_dims)

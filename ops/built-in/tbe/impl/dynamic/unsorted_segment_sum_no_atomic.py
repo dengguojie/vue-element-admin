@@ -17,8 +17,9 @@ unsorted_segment_sum
 """
 # pylint: disable=too-many-lines
 import te.lang.dynamic
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform
+from impl.util.platform_adapter import tbe_context
 
 # int32 select key
 SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID = 9
@@ -3102,7 +3103,7 @@ def unsorted_segment_sum_no_atomic(x_dict, segment_ids_dict, num_segments_dict, 
     obj = UnsortedSegmentSum(x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name)
     obj.unsorted_segment_sum()
     # add compile info
-    te.op.add_compile_info("vars",
+    tbe_context.get_context().add_compile_info("vars",
                            {"ub_size": obj.ub_size, "core_num": obj.core_num,
                             "dtype": obj.obj_gm_tensor.input_gm.dtype,
                             "ub_tensor_num": obj.ub_tensor_num})

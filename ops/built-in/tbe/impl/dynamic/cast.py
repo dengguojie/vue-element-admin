@@ -17,15 +17,14 @@ cast_cce
 """
 # pylint: disable=too-many-locals
 from functools import reduce as reduce_ins
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
+from impl.util.platform_adapter import tvm
 from te.platform.cce_build import build_config
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
@@ -284,9 +283,9 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
         src_type = "int8"
 
     schedules, tensors = [], []
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     for (_input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
             dst_type = _cast_dsttype_conversion(dst_type)
             fuseshape = [1]

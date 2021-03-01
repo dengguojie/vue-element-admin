@@ -15,12 +15,13 @@
 """
 split_v
 """
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 MAX_SHAPE_SIZE = 2**32 - 1
 # tiling param num
@@ -1427,7 +1428,7 @@ def split_v(x, size_splits, split_dim, y, num_split, kernel_name="split_v"):
                       flowtable=(obj.tiling_gm,), enable_l2=True)
 
     # add compile info
-    te.op.add_compile_info("vars", {"core_num": obj.core_num,
+    tbe_context.get_context().add_compile_info("vars", {"core_num": obj.core_num,
                                     "ub_elems": obj.ub_elems,
                                     "num_split": obj.num_split
                                     })

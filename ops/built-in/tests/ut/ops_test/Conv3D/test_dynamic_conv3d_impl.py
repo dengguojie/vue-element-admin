@@ -172,85 +172,86 @@ case26 = _run_api_end_with_d(pads=pads)
 
 # Add test Cases
 # Params is the input params of the operator.
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case1, "success", "dynamic_case1", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case2, "success", "dynamic_case2", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case3, RuntimeError, "dynamic_case3", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case4, RuntimeError, "dynamic_case4", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case5, RuntimeError, "dynamic_case5", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case6, RuntimeError, "dynamic_case6", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case7, RuntimeError, "dynamic_case7", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case8, RuntimeError, "dynamic_case8", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case9, RuntimeError, "dynamic_case9", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case10, RuntimeError, "dynamic_case10", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case11, RuntimeError, "dynamic_case11", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case12, RuntimeError, "dynamic_case12", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case13, RuntimeError, "dynamic_case13", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case14, RuntimeError, "dynamic_case14", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case15, RuntimeError, "dynamic_case15", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case16, RuntimeError, "dynamic_case16", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case17, "success", "dynamic_case17", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case18, "success", "dynamic_case18", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case19, RuntimeError, "dynamic_case19", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case20, RuntimeError, "dynamic_case20", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case21, RuntimeError, "dynamic_case21", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case22, RuntimeError, "dynamic_case22", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case23, RuntimeError, "dynamic_case23", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case24, RuntimeError, "dynamic_case24", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case25, RuntimeError, "dynamic_case25", True))
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case26, RuntimeError, "dynamic_case26", True))
 
 if __name__ == '__main__':
-    with te.op.dynamic:
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run()
     exit(0)

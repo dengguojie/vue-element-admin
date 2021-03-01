@@ -16,14 +16,13 @@
 dynamic div
 """
 from functools import reduce as reduceIns
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.cce as tbe
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tbe
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
@@ -86,10 +85,10 @@ def sqrt(input_x, output_y, kernel_name="sqrt"):
     check_list = ("float16", "float32")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
 
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]

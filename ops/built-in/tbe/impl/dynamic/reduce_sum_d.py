@@ -15,13 +15,14 @@
 """
 dynamic reduce sum
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 NONETYPE = type(None)
 
@@ -59,7 +60,7 @@ def reduce_sum_d_compute(x,
     if cce_product not in ("Ascend310",) and dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         x = tbe.cast_to(x, "float32")
-    res_sum = tbe.sum(x, axis=axis, keepdims=keepdims)
+    res_sum = tbe.reduce_sum(x, axis=axis, keepdims=keepdims)
     res = tbe.cast_to(res_sum, dtype)
 
     return res
@@ -107,11 +108,11 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([x, input_axis], tbe_base.shape_classifier.Mode.REDUCE,
+    ins = classify([x, input_axis], OpPatternMode.REDUCE,
                                              {"keepdims": keepdims is True})
 
     for (x, axis) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var_new = shape_util.variable_shape([x, axis], op_mode="reduce")[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input",
                                          dtype=dtype_lower)

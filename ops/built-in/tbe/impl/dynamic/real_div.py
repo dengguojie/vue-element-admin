@@ -17,21 +17,21 @@ real_div
 """
 from __future__ import absolute_import
 
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import OpImplMode
 
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
 # pylint: disable=too-many-locals,redefined-argument-from-local
-def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode="high_performance"):
+def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     calculating data's realdiv, c = a / b
 
@@ -52,8 +52,8 @@ def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode="high_performa
     """
     dtype = x1.dtype
     has_improve_precision = False
-    if dtype == "float16" and impl_mode != "high_performance" and \
-            tbe_base.api_check_support("te.lang.cce.vdiv", "float32"):
+    if dtype == "float16" and impl_mode != OpImplMode.HIGH_PERFORMANCE and \
+            tbe.api_check_support("te.lang.cce.vdiv", "float32"):
         x1 = tbe.cast_to(x1, "float32")
         x2 = tbe.cast_to(x2, "float32")
         has_improve_precision = True
@@ -74,7 +74,7 @@ def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode="high_performa
 @register_operator("RealDiv")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
-def real_div(x1, x2, y, kernel_name="real_div", impl_mode="high_performance"):
+def real_div(x1, x2, y, kernel_name="real_div", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: real_div
     calculating data's real_div, c = a / b
@@ -104,10 +104,10 @@ def real_div(x1, x2, y, kernel_name="real_div", impl_mode="high_performance"):
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x1", "x2",
                                                               x_dtype, y_dtype)
-    ins = classify([x1, x2], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, y_shape = shape_util.variable_shape([x1, x2])
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")

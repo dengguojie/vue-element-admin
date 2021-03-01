@@ -19,10 +19,11 @@ top_k_d
 from enum import Enum
 from enum import unique
 
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te import tik
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 FP16_MINIMUM = -65504
 MAX_INT32 = 2**31 - 1
@@ -1341,7 +1342,7 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
     ub_size = profile.get_unified_buffer_size()
     # there are 54 batch*cols_padding
     batch_cols_padding = (ub_size - 1024) // 54
-    tbe_base.add_compile_info("vars", {
+    tbe_context.get_context().add_compile_info("vars", {
         "core_num": soc_core_num,
         "k_num": k,
         "ub_size": ub_size,

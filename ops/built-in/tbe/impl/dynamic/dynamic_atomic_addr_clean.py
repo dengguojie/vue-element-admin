@@ -15,11 +15,12 @@
 """
 atomic_addr_clean
 """
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 import te.lang.dynamic
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # max_int32
 MAX_INT32 = 2 ** 31 - 1
@@ -343,6 +344,6 @@ def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):
     obj_dynamic_atomic_addr_clean = DynamicAtomicAddrClean()
     obj_dynamic_atomic_addr_clean.addr_clean(kernel_name)
     # add compile info
-    te.op.add_compile_info("vars",
+    tbe_context.get_context().add_compile_info("vars",
                            {"ub_size": obj_dynamic_atomic_addr_clean.ub_size,
                             "core_num": obj_dynamic_atomic_addr_clean.core_num})

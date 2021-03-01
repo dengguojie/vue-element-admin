@@ -15,15 +15,14 @@
 """
 dynamic apply_ftrl_d
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util import util_compute
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -226,10 +225,10 @@ def apply_ftrl_d(var,
     data_l2 = tvm.placeholder(shape_scalar, name="data_l2", dtype=compute_dtype)
     data_lr_power = tvm.placeholder(shape_scalar, name="data_lr_power", dtype=compute_dtype)
 
-    ins = classify([var, accum, linear, grad], Mode.ELEWISE)
+    ins = classify([var, accum, linear, grad], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_var, _accum, _linear, _grad) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var, shape_accum, shape_linear, shape_grad = \
                 shape_util.variable_shape([_var, _accum, _linear, _grad])
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_dtype)

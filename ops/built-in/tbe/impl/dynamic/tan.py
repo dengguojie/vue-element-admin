@@ -17,14 +17,13 @@ dynamic tan
 """
 import functools
 
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te.utils import para_check
-from te import tvm
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 # define a string name of "float16"
@@ -157,10 +156,10 @@ def tan(input_x, output_y, kernel_name="tan"):
     dtype_input = input_x.get("dtype").lower()
     check_list = (FLOAT_16, FLOAT_32, INT_32)
     para_check.check_dtype(dtype_input, check_list, param_name="input_x")
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x = shape_util.variable_shape([_input_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, shape_x[0])

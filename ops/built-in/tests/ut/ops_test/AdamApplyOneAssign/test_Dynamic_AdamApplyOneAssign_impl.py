@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 AdamApplyOne ut case
 """
-import te
+import tbe
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 import numpy as np
@@ -83,5 +83,5 @@ ut_case.add_case(["Ascend910A","Ascend920"], case2)
 ut_case.add_case(["Ascend910A","Ascend920"], case3)
 
 if __name__ == '__main__':
-    with te.op.dynamic():
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend910A")

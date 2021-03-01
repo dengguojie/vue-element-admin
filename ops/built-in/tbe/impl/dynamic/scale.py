@@ -15,18 +15,18 @@
 """
 dynamic scale
 """
-from te import tvm
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-import te.lang.cce as tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_context
 
 NONETYPE = type(None)
 
@@ -356,7 +356,7 @@ def _fused_scale_compute(x, scale):
         if dtype_scale == "float16":
             scale = tbe.cast_to(scale, 'float32')
 
-    shape_x = tbe.util.shape_to_list(x.shape)
+    shape_x = shape_util.shape_to_list(x.shape)
     scale_broad = tbe.broadcast(scale, shape_x)
 
     res = tbe.vmul(x, scale_broad)
@@ -552,7 +552,7 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_na
             shape_bias_new = shape_scale_new
 
     shape_bias_new = shape_scale_new
-    tbe_base.add_compile_info("_boardcast_scale_shape", shape_scale_new)
+    tbe_context.get_context().add_compile_info("_boardcast_scale_shape", shape_scale_new)
     scale["shape"] = shape_scale_new
     bias["shape"] = shape_scale_new
     scale_range = []
@@ -561,11 +561,11 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True, kernel_na
         scale_range.append(_range)
     scale["range"] = tuple(scale_range)
 
-    ins = classify([x, scale], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x, scale], OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules, tensors = [], []
     for (x_, scale_) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x, shape_scale = shape_util.variable_shape([x_, scale_])
             shape_x, shape_scale = shape_util.refine_shapes_for_broadcast(shape_x, shape_scale)
 

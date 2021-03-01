@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Bias", "impl.dynamic.bias", "bias")
@@ -75,12 +75,13 @@ case6 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910"], case1)
-ut_case.add_case(["Ascend910"], case2)
-ut_case.add_case(["Ascend910"], case3)
-ut_case.add_case(["Ascend910"], case4)
-ut_case.add_case(["Ascend910"], case5)
-ut_case.add_case(["Ascend910"], case6)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A"], case6)
 
-with te.op.dynamic():
-    ut_case.run("Ascend910")
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")

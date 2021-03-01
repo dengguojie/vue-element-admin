@@ -16,19 +16,13 @@
 tanh
 """
 from functools import reduce as reduceIns
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from topi import generic
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -109,7 +103,7 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
 
 
 @register_operator("Tanh")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def tanh(input_x, output_y, kernel_name="tanh"):
     """
     algorithm: tanh
@@ -131,13 +125,13 @@ def tanh(input_x, output_y, kernel_name="tanh"):
     input_dtype = input_x.get("dtype").lower()
 
     check_list = ("float16", "float32")
-    check_dtype(input_dtype, check_list, param_name="input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
-        with tbe_base.compute():
-            shape_x = variable_shape([input_x])
+        with tbe.compute():
+            shape_x = shape_util.variable_shape([input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, shape_x[0])
             data_input = tvm.placeholder(fuseshape, name="data_input",
@@ -145,7 +139,7 @@ def tanh(input_x, output_y, kernel_name="tanh"):
             res = tanh_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
-            sch = generic.auto_schedule(res)
+            sch = tbe.auto_schedule(res)
         schedules.append(sch)
     config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

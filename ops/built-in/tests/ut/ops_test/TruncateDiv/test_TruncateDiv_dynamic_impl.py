@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("TruncateDiv", "impl.dynamic.truncate_div", "truncate_div")
@@ -19,12 +19,12 @@ def gen_dynamic_truncate_div_case(shape_x, shape_y, range_x, range_y, dtype_val,
         "support_expect": True}
 
 
-ut_case.add_case(["Ascend910", "Ascend310"],
+ut_case.add_case(["Ascend910A", "Ascend310"],
                  gen_dynamic_truncate_div_case((16,), (1,), ((16, 16),), ((1, 1),),
                                                "float16", "dynamic_truncate_div_fp16_ND",
                                                "success"))
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

@@ -17,13 +17,14 @@ dynamic add_n
 """
 import functools
 
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 
 # pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements
@@ -151,10 +152,10 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
     # help pipeline by adding concurrence node
     redundant_coe = 1 if input_num > 2 else 0
 
-    ins = tbe_base.classify(inputs, tbe_base.Mode.ELEWISE)
+    ins = classify(inputs, OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for inputs in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_normlize = shape_util.variable_shape(inputs)
             fuse_shape = [1]
             datas = []

@@ -17,7 +17,7 @@ trans_data
 """
 from __future__ import absolute_import
 import te.lang.dynamic
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from impl.dynamic.trans_data_rnn import trans_data_rnn
 from . import trans_data_negative_target_tc
 from . import trans_data_negative_target_ch

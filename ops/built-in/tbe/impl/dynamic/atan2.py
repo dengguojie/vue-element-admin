@@ -33,15 +33,14 @@ atan2
     [2] All : shape size limit is 2147483648.
 
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util import util_compute
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 CONST_POS_ONE = 1.0
@@ -212,8 +211,8 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     dtype_y = y.dtype
     shape_x = x.shape
 
-    shape_y = tbe.util.shape_to_list(shape_y)
-    shape_x = tbe.util.shape_to_list(shape_x)
+    shape_y = shape_util.shape_to_list(shape_y)
+    shape_x = shape_util.shape_to_list(shape_x)
     shape_y, shape_x, shape_broadcast = shape_util.broadcast_shapes(shape_y,
                                                                     shape_x,
                                                                     param_name_input1="x1",
@@ -280,10 +279,10 @@ def atan2(x1, x2, y, kernel_name="atan2"):
     para_check.check_dtype(y_dtype, check_list, param_name="x1")
     para_check.check_dtype(x_dtype, check_list, param_name="x2")
     para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
-    ins = classify([x1, x2], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_y, shape_x = shape_util.variable_shape([x1, x2])
             input_y = tvm.placeholder(shape_y, dtype=y_dtype, name="input_y")
             input_x = tvm.placeholder(shape_x, dtype=x_dtype, name="input_x")

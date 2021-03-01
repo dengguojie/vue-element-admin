@@ -15,12 +15,13 @@
 """
 dynamic minimum
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
@@ -109,10 +110,10 @@ def minimum(x1, x2, y, kernel_name="minimum"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = tbe_base.classify([x1, x2], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x1, shape_x2 = shape_util.variable_shape([x1, x2])
             data1 = tvm.placeholder(shape_x1, dtype=dtype_x1, name="data1")
             data2 = tvm.placeholder(shape_x2, dtype=dtype_x2, name="data2")

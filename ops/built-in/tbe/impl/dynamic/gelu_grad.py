@@ -18,14 +18,13 @@
 gelu_grad
 """
 
-import te.lang.cce as tbe
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
@@ -257,10 +256,10 @@ def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     para_check.check_dtype(dy_dtype, check_list, param_name="input_dy")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
-    ins = classify([input_dy, input_x, input_y], Mode.ELEWISE)
+    ins = classify([input_dy, input_x, input_y], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (g, x, y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             dy_shape, x_shape, y_shape = shape_util.variable_shape([g, x, y])
             data_dy = tvm.placeholder(dy_shape, dtype=dy_dtype, name="dy_dtype")
             data_x = tvm.placeholder(x_shape, dtype=x_dtype, name="x_dtype")

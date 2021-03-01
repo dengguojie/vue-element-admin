@@ -15,14 +15,13 @@
 """
 dynamic equal
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
@@ -159,10 +158,10 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, y_shape = shape_util.variable_shape([input_x, input_y])
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")

@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 import conv2D_ut_testcase as tc
+import tbe
 
 ut_case = OpUT("Conv2D", "impl.dynamic.conv2d",
                "conv2d")
@@ -17,6 +18,6 @@ for test_case  in tc.conv2D_dynamic_ut_testcase:
     ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:]))
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

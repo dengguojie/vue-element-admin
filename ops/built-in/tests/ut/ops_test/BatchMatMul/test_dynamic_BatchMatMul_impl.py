@@ -115,5 +115,6 @@ for case in matmul_case:
     ut_case.add_cust_test_func(test_func=test_op_check_supported)
 
 if __name__ == "__main__":
-    with te.op.dynamic():
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run()

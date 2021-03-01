@@ -16,15 +16,16 @@ transpose
 
 
 import te.lang.dynamic
-from te import tvm
+from impl.util.platform_adapter import tvm
 from te.tvm import make as _make
 from te.tvm import expr as _expr
 from te.tvm import stmt as _stmt
 from te.platform.cce_runtime import PIPELINES
 from te.platform import cce_params
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -1921,7 +1922,7 @@ class Transpose(object):
                           inputs=[self.data_in, self.data_perm],
                           outputs=[self.data_out],
                           flowtable=[self.data_tiling])
-        te.op.add_compile_info("vars", {"ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
         return {"compile_info": te.op.get_compile_info()}
 
 

@@ -18,14 +18,13 @@ expm1
 import functools
 from functools import reduce as reduceIns
 
-import te.lang.cce as tbe
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -218,10 +217,10 @@ def expm1(input_x, output_y, kernel_name="expm1"):
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     schedules, tensors = [], []
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
 
     for (input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])

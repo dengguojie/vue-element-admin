@@ -38,17 +38,17 @@ def gen_dynamic_floormod_case_int32(shape_x, shape_y, range_x, range_y, dtype_va
             "format_expect": [],
             "support_expect": True}
 
-ut_case.add_case("Ascend910",
+ut_case.add_case("Ascend910A",
                  gen_dynamic_floormod_case((-1,), (1,),
                                            ((1, None),), ((1, 1),),
                                            "float32", "dynamic_unsorted_segment_sum_case", "success"))
-ut_case.add_case("Ascend910",
+ut_case.add_case("Ascend910A",
                  gen_dynamic_floormod_case_int32((-1,), (1,),
                                            ((1, None),), ((1, 1),),
                                            "int32", "dynamic_unsorted_segment_sum_case", "success"))
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 if __name__ == '__main__':
-    import te
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

@@ -17,10 +17,12 @@ nms_with_mask
 """
 
 import te.platform as tbe_platform
-from te import tik
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # shape's dim of input must be 2
 INPUT_DIM = 2
@@ -441,7 +443,7 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
 
 
 # pylint: disable=unused-argument,too-many-locals,too-many-arguments
-@tbe_base.register_operator("NMSWithMask")
+@register_operator("NMSWithMask")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr, kernel_name="nms_with_mask"):
@@ -499,7 +501,7 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
     boxes_num_align16 = _cal_max_boxes_num()
 
     # add compile info
-    tbe_base.add_compile_info("vars", {"max_boxes_num": boxes_num_align16})
+    tbe_context.get_context().add_compile_info("vars", {"max_boxes_num": boxes_num_align16})
 
     iou_thr = iou_thr / (1 + iou_thr)
     _nms_with_mask_compute(tik_instance, tiling_gm, boxes_num_scalar, iou_thr, boxes_num_align16, kernel_name)

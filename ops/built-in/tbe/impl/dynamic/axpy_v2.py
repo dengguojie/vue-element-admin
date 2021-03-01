@@ -16,13 +16,12 @@
 axpy_v2_dynamic
 """
 
-import te.lang.cce as tbe
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from te.utils.para_check import check_dtype
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
@@ -50,8 +49,8 @@ def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
     output tensor
     """
     # broadcast
-    shape_x1 = tbe.util.shape_to_list(x1.shape)
-    shape_x2 = tbe.util.shape_to_list(x2.shape)
+    shape_x1 = shape_util.shape_to_list(x1.shape)
+    shape_x2 = shape_util.shape_to_list(x2.shape)
     dtype_alpha = alpha.dtype.lower()
     dtype = x1.dtype.lower()
     precision_dtype = "float32"
@@ -123,10 +122,10 @@ def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
     check_dtype(dtype_x2, dtype_list0)
     check_dtype(alpha_dtype, dtype_list1)
     para_check.check_elewise_shape_range([x1, x2])
-    ins = classify([x1, x2, alpha], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2, alpha], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for(x1, x2, alpha) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, y_shape, alpha_shape = shape_util.variable_shape([x1, x2, alpha])
             data1 = tvm.placeholder(x_shape, dtype=dtype_x1, name="data1")
             data2 = tvm.placeholder(y_shape, dtype=dtype_x2, name="data2")

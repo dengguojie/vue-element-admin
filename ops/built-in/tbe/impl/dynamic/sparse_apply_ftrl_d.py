@@ -16,11 +16,12 @@
 dynamic sparse_apply_ftrl_d
 """
 import te.lang.dynamic
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # data type of int32
@@ -932,7 +933,7 @@ class SparseApplyFtrl():
                                    flowtable=(self.tiling_gm,), enable_l2=True)
 
         # add compile info
-        te.op.add_compile_info("vars", {"core_num": self.core_num,
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
                                         "ub_size": self.ub_size,
                                         "indices_dsize": self.indices_dsize
                                         })

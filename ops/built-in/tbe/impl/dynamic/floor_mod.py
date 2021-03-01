@@ -15,14 +15,13 @@
 """
 dynamic floor_mod
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
@@ -151,10 +150,10 @@ def floor_mod(x1, x2, y, kernel_name="floor_mod"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = classify([x1, x2], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x, shape_y = shape_util.variable_shape([x1, x2])
             input_data_x = tvm.placeholder(shape_x, name="input_data_x",
                                            dtype=dtype_x)

@@ -15,14 +15,15 @@
 """
 dynamic add
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -127,10 +128,10 @@ def add(input_x, input_y, output_z, kernel_name="add"):
             error_info['op_name'], error_info['param_name1'], error_info['param_name2'], error_info['param1_dtype'],
             error_info['param2_dtype']))
 
-    ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_input_x, _input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x, shape_y = \
                 shape_util.variable_shape([_input_x, _input_y])
             data_x = tvm.placeholder(shape_x, name="data_1", dtype=x_dtype)

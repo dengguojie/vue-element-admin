@@ -32,14 +32,13 @@ dynamic apply_gradient_descent
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -130,11 +129,11 @@ def apply_gradient_descent(var,
     compute_dtype = var_dtype
     data_alpha = tvm.placeholder(shape_scalar, name="data_alpha", dtype=compute_dtype)
     
-    ins = classify([var, delta], Mode.ELEWISE)
+    ins = classify([var, delta], OpPatternMode.ELEWISE)
 
     schedules, tensors = [], []
     for (_var, _delta) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var, shape_delta = shape_util.variable_shape([_var, _delta])
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_dtype)
             data_delta = tvm.placeholder(shape_delta, name="data_delta", dtype=compute_dtype)

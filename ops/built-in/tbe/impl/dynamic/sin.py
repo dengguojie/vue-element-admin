@@ -16,14 +16,13 @@
 sin
 """
 import functools
-from te import tvm
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -179,11 +178,11 @@ def sin(x, y, kernel_name="sin"):
                                error_info['param2_dtype']))
 
     # op compute and schedule
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_x,) in ins:
         # op compute
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])

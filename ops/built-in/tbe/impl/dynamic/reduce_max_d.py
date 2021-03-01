@@ -13,12 +13,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic reduce_max_d
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 NONETYPE = type(None)
 
@@ -103,11 +104,11 @@ def reduce_max_d(x, y, axes=None, keepdims=None, kernel_name="reduce_max_d"):
 
     schedules = []
     tensors = []
-    ins = tbe_base.shape_classifier.classify([x, input_axis], tbe_base.shape_classifier.Mode.REDUCE,
+    ins = classify([x, input_axis], OpPatternMode.REDUCE,
                                              {"keepdims": keepdims is True})
 
     for (x, axes) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var_new = shape_util.variable_shape([x, axes], op_mode="reduce")[0]
             data_input = tvm.placeholder(shape_var_new, name="data_input",
                                          dtype=dtype_lower)

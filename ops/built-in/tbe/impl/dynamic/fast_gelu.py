@@ -17,16 +17,16 @@ fast_gelu
 """
 import functools
 
-import te.lang.cce as tbe
-from te import tvm
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
 
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import OpImplMode
 
 # const value
 CONST_1 = 1
@@ -35,7 +35,7 @@ CONST_1 = 1
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals,unused-variable
 @register_operator_compute("FastGelu", op_mode="dynamic", support_fusion=False)
-def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode="high_performance"):
+def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     mathematical formula of fast_gelu(x):
     fast_gelu(x) = xe^(0.851x)(x-|x|)/(1+e^(-1.702|x|))
@@ -69,10 +69,7 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode="hig
     exp_pn_x = tbe.vexp(mul_pn_x)
     div_up = tbe.vmul(input_x, exp_pn_x)
 
-    if impl_mode == "high_performance":
-        div_down_rec = tbe.vrec(div_down, priority_flag=0)
-    else:
-        div_down_rec = tbe.vrec(div_down, priority_flag=1)
+    div_down_rec = tbe.vrec(div_down, impl_mode)
     result = tbe.vmul(div_up, div_down_rec)
 
     return result
@@ -81,7 +78,7 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode="hig
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME,
                             para_check.OPTION_ATTR_STR)
 @register_operator("FastGelu")
-def fast_gelu(input_x, output_y, kernel_name="fast_gelu", impl_mode="high_performance"):
+def fast_gelu(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     mathematical formula of fast_gelu(x):
     Parameters
@@ -105,10 +102,10 @@ def fast_gelu(input_x, output_y, kernel_name="fast_gelu", impl_mode="high_perfor
     input_dtype = input_x.get("dtype").lower()
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape = shape_util.variable_shape([_input_x])
 
             fuseshape = [1]

@@ -17,12 +17,13 @@ dynamic square
 """
 import functools
 
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 
 # pylint: disable=unused-argument,redefined-argument-from-local
@@ -75,10 +76,10 @@ def square(input_x, output, kernel_name="square"):
     check_list = ("float16", "float32", "int32")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
 
-    ins = tbe_base.classify([input_x], tbe_base.Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]

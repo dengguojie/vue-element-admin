@@ -16,14 +16,14 @@ def gen_dynamic_atanh_case(shape_x, range_x, dtype_val, format, ori_shape_x, ker
             "format_expect": [],
             "support_expect": True}
             
-ut_case.add_case("Ascend910",
+ut_case.add_case("Ascend910A",
                  gen_dynamic_atanh_case((-1,),
                                        [(1,None)],
                                        "float16", "ND",
                                        (-1,),
                                        "dynamic_atanh_float16_ND",
                                        "success"))
-ut_case.add_case("Ascend910",
+ut_case.add_case("Ascend910A",
                  gen_dynamic_atanh_case((-1,),
                                        [(1,None)],
                                        "int8", "ND",
@@ -31,7 +31,7 @@ ut_case.add_case("Ascend910",
                                        "dynamic_atanh_int8_ND",
                                        "failed"))
 if __name__ == "__main__":
-    import te
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

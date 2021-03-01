@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Add", "impl.dynamic.add", "add")
@@ -23,12 +23,12 @@ ut_case.add_case("all",
                  gen_dynamic_add_case((-1,), (1,), ((2, 16),), ((1, 1),),
                                       "float16", "dynamic_add_fp16_ND",
                                       "success"))
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910A"],
                  gen_dynamic_add_case((-2,), (-1, -1), ((1, None),), ((2, 100), (2, 100)),
                                       "float16", "dynamic_add_fp16_ND_2",
                                       "success"))
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

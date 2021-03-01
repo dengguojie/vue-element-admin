@@ -19,12 +19,13 @@ strided slice
 from __future__ import absolute_import
 import math
 import te.lang.dynamic
-from te.utils import para_check
-from te import tik
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tik
 
 from impl import common_util
 from impl import constant_util as constant
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 MAX_SIZE = 2 ** 31 - 1
 
@@ -433,7 +434,7 @@ def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0
                   config=opt_config,
                   enable_l2=False)
 
-    te.op.add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num,
+    tbe_context.get_context().add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num,
                                     "begin_mask": strided_slice_instance.begin_mask,
                                     "end_mask": strided_slice_instance.end_mask,
                                     "ellipsis_mask": strided_slice_instance.ellipsis_mask,

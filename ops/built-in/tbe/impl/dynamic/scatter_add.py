@@ -15,12 +15,13 @@
 """
 scatter_add
 """
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # max int64 value
 MAX_INT64_VALUE = 2**64 - 1
@@ -1119,7 +1120,7 @@ class ScatterAdd():
             inputs=(self.var_gm, self.indices_gm, self.updates_gm),
             outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
 
-        te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
                                         "var_size": self.var_dtype_bytes_size,
                                         "indices_size": self.indices_dtype_bytes_size,
                                         "support_atomic": self.support_atomic})

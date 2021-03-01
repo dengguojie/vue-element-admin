@@ -15,13 +15,12 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 logical_or
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
@@ -98,10 +97,10 @@ def logical_or(x1, x2, y, kernel_name="logical_or"):
     para_check.check_dtype(dtype_x2, check_tuple, param_name="x2")
     para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
 
-    ins = classify([x1, x2], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (x1, x2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x1, shape_x2 = shape_util.variable_shape([x1, x2])
             data_x1 = tvm.placeholder(shape_x1, name="data_x1", dtype=dtype_x1)
             data_x2 = tvm.placeholder(shape_x2, name="data_x2", dtype=dtype_x2)

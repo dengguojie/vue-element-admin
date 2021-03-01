@@ -15,14 +15,13 @@
 """
 dynamic apply_momentum_d
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import shape_util
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 
@@ -190,11 +189,11 @@ def apply_momentum_d(var,
 
     # shape_size = reduce(lambda x, y: x * y, shape_var[:])
     # compute_type = [shape_size, ]
-    ins = classify([var, accum, grad], Mode.ELEWISE)
+    ins = classify([var, accum, grad], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for (_var, _accum, _grad) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var, shape_accum, shape_grad = shape_util.variable_shape([_var, _accum, _grad])
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_type)
             data_accum = tvm.placeholder(shape_accum, name="data_accum", dtype=compute_type)

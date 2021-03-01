@@ -18,13 +18,12 @@ neg
 from __future__ import absolute_import
 from functools import reduce as reduceIns
 
-import te.lang.cce as tbe
-from te import tvm
-import te.lang.base as tbe_base
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 # define a scaler, value = -1
@@ -92,10 +91,10 @@ def neg(input_x, output_y, kernel_name="neg"):
     check_list = ("float16", "float32", "int32", "int8")
     para_check.check_dtype(dtype_input, check_list, param_name="input_x")
 
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([input_x])
 
             fuse_shape = [1]

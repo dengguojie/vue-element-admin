@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ApplyCenteredRMSPropD", "impl.dynamic.apply_centered_rms_prop_d", "apply_centered_rms_prop_d")
@@ -27,6 +27,6 @@ ut_case.add_case("Ascend910A", case1)
 
 
 if __name__ == '__main__':
-    with te.op.dynamic():
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend910A")
     exit(0)

@@ -16,14 +16,13 @@
 inv_grad
 """
 import te.platform as tbe_platform
-from te import tvm
-import te.lang.cce as tbe
-from te.utils.error_manager import error_manager_vector
-from te.utils import shape_util
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -122,11 +121,11 @@ def inv_grad(input_y, input_dy, output_z, kernel_name="inv_grad"):
     para_check.check_dtype(dtype_input_y, check_list, param_name="y")
     para_check.check_dtype(dtype_input_dy, check_list, param_name="dy")
 
-    ins = classify([input_y, input_dy], Mode.ELEWISE)
+    ins = classify([input_y, input_dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for (data1, data2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_y, shape_dy = shape_util.variable_shape([data1, data2])
 
             date_y = tvm.placeholder(shape_y, dtype=dtype_input_y, name="date_y")

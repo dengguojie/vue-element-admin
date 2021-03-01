@@ -17,7 +17,7 @@ pack
 """
 
 import te.lang.dynamic
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from impl.dynamic.concat_v2_d import concat_v2_d
 from impl.util.platform_adapter import register_operator
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Log", "impl.dynamic.log", "log")
@@ -20,10 +20,10 @@ case1 = {"params": [{"shape": (-1,), "dtype": "float16", "format": "ND", "ori_sh
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend910", "Ascend310"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 # ut_case.add_case(["Ascend310"], case2)
 
 if __name__ == '__main__':
-    with te.op.dynamic():
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend310")
 

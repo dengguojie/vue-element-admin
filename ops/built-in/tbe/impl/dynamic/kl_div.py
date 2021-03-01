@@ -18,16 +18,17 @@ dynamic kl_div
 import functools
 
 import te.platform as tbe_platform
-from te import tvm
-from te.lang import cce as tbe
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import OpImplMode
 
 
 # pylint: disable=too-many-arguments,unused-argument,too-many-locals
@@ -60,7 +61,7 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
     log_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vlog", "float32")
 
     if log_support_fp32 and input_x_dtype == "float32":
-        log_target = tbe.vlog(input_target, priority_flag=1)
+        log_target = tbe.vlog(input_target, OpImplMode.HIGH_PRECISION)
     else:
         log_target = tbe.vlog(input_target)
 
@@ -97,16 +98,16 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
         batch_size = batch_size ** (-1)
         batch_size = tvm.const(batch_size, dtype=batch_size_dtype)
     else:
-        batch_size = tbe_base.var("cof", dtype=batch_size_dtype)
+        batch_size = tbe.var("cof", dtype=batch_size_dtype)
         if batch_size_dtype == "float16":
-            tbe_base.var("cof_empty", dtype=batch_size_dtype)
-        tbe_base.add_compile_info("reduce_mean_cof_dtype", batch_size_dtype)
+            tbe.var("cof_empty", dtype=batch_size_dtype)
+        tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", batch_size_dtype)
 
     if reduction == "batchmean":
         output_res = tbe.vmuls(output_res, batch_size)
-        final_res = tbe.sum(output_res, axis=axis["value"])
+        final_res = tbe.reduce_sum(output_res, axis=axis["value"])
     elif reduction == "sum":
-        final_res = tbe.sum(output_res, axis=axis["value"])
+        final_res = tbe.reduce_sum(output_res, axis=axis["value"])
     else:
         error_manager_vector.raise_err_input_value_invalid(kernel_name, 'reduction', ("batchmean", "sum"), reduction)
 
@@ -200,12 +201,12 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     input_target["ori_shape"] = shape_one_dim
     input_target["range"] = [(1, 10)]
 
-    ins = classify([input_x, input_target, input_axis], Mode.REDUCE, {"keepdims": False})
+    ins = classify([input_x, input_target, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
 
     schedules, tensors = [], []
 
     for (x, target, axis) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, target_shape = shape_util.variable_shape([x, target, axis], op_mode="reduce")[0:2]
 
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")

@@ -15,15 +15,14 @@
 """
 dynamic softplus_grad
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 
@@ -131,10 +130,10 @@ def softplus_grad(input_gradients, input_features, output_backprops,
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "input_gradients", \
                                                                "input_features", error_detail)
 
-    ins = classify([input_gradients, input_features], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_gradients, input_features], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_g, input_x) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             g_shape, x_shape = shape_util.variable_shape([input_g, input_x])
             g_shape, x_shape = shape_util.refine_shapes_for_broadcast(g_shape, x_shape)
             tensor_g = tvm.placeholder(g_shape, dtype_dy, "tensor_g")

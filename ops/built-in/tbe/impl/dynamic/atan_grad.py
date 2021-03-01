@@ -34,14 +34,13 @@ atan_grad
 """
 import operator
 
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -116,10 +115,10 @@ def atan_grad(y, dy, z, kernel_name="atan_grad"):
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="y")
     para_check.check_dtype(dtype_grad, check_list, param_name="dy")
-    ins = classify([y, dy], Mode.ELEWISE)
+    ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (y, dy) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_y, shape_dy = shape_util.variable_shape([y, dy])
             data_input = tvm.placeholder(shape_y, name="input_data", dtype=dtype)
             grad = tvm.placeholder(shape_dy, name="input_grad", dtype=dtype_grad)

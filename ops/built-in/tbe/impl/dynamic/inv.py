@@ -17,13 +17,12 @@ inv
 """
 
 import functools
-import te.lang.cce as tbe
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
@@ -97,9 +96,9 @@ def inv(input_x, output_y, kernel_name="inv"):
     para_check.check_dtype(input_dtype, check_list, param_name = "input_x")
 
     schedules, tensors = [], []
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     for (_input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])

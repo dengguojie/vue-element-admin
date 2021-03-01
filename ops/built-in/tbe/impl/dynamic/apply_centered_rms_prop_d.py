@@ -47,14 +47,13 @@ apply_centered_rms_prop_d
     [1] All : the input tensors must have the same shape and type.
     [2] All : shape size limit is 2147483648.
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.utils import para_check
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -237,10 +236,10 @@ def apply_centered_rms_prop_d(var,
     data_momentum = tvm.placeholder(shape_scalar, name="data_momentum", dtype=compute_type)
     data_epsilon = tvm.placeholder(shape_scalar, name="data_epsilon", dtype=compute_type)
 
-    ins = classify([var, mg, ms, mom, grad], Mode.ELEWISE)
+    ins = classify([var, mg, ms, mom, grad], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_var, _mg, _ms, _mom, _grad) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var, shape_mg, shape_ms, shape_mom, shape_grad = shape_util.variable_shape(
                 [_var, _mg, _ms, _mom, _grad])
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_type)

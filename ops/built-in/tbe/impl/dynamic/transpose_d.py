@@ -16,11 +16,12 @@ transpose
 
 
 import te.lang.dynamic
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # pylint: disable=too-many-lines
 # UB size in byte
@@ -1311,7 +1312,7 @@ def transpose_d(x, y, perm, kernel_name="transpose_d"):
 
     # send compile information to tiling module
     ub_size = _get_max_element_in_ub(data_in.dtype, 1)
-    te.op.add_compile_info("vars",
+    tbe_context.get_context().add_compile_info("vars",
                            {"ub_size": ub_size, "core_num": CORE_NUM,
                             "perm": pos_perm, "dtype": in_dtype})
     return {"compile_info": te.op.get_compile_info()}

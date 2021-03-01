@@ -16,8 +16,9 @@
 trans_data_positive_source_ntc
 """
 import te.lang.dynamic
-from te import tik
+from impl.util.platform_adapter import tik
 from impl import trans_data_common_func as tdc
+from impl.util.platform_adapter import tbe_context
 
 
 # used for scalar
@@ -309,7 +310,7 @@ def trans_data_positive_source_nct(src, dst, src_format, dst_format, kernel_name
     # build cce
     tik_inst.BuildCCE(kernel_name=kernel_name,
                       inputs=[src_in_gm], outputs=[dst_out_gm], flowtable=[tiling_gm], enable_l2=False)
-    te.op.add_compile_info("vars", {"srcFormat": src_format,
+    tbe_context.get_context().add_compile_info("vars", {"srcFormat": src_format,
                                     "dstFormat": dst_format,
                                     "dType": in_dtype,
                                     "ubSize": ub_size,

@@ -16,10 +16,11 @@
 dynamic batch_to_space
 """
 import te.lang.dynamic
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.dynamic.batch_to_space_nd import BatchToSpaceND
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -65,7 +66,7 @@ def batch_to_space(x, crops, y, block_size, kernel_name="batch_to_space"):
                               outputs=[obj.output_gm],
                               flowtable=[obj.tiling_gm])
 
-    te.op.add_compile_info("vars", {
+    tbe_context.get_context().add_compile_info("vars", {
         "ub_ele": obj.ub_ele,
         "core_num": obj.core_num,
         "block_size": obj.block_size,

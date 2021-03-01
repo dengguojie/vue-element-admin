@@ -16,7 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 pad_common
 """
 import math
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
 
 # maximum of gm

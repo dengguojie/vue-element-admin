@@ -17,10 +17,11 @@ gather_v2d
 """
 
 import te.lang.dynamic
-from te import tik
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 PARAMS_SIZE = 2 ** 31 - 1
 INDICES_NUM = 2 ** 31 - 1
@@ -1745,7 +1746,7 @@ class GatherV2():
         }
 
         # add compile info
-        te.op.add_compile_info("vars", {"core_num": self.core_num,
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
                                         "ub_size": self.ub_size,
                                         "l1_size": self.l1_size,
                                         "params_dsize": self.params_dsize,
@@ -1781,7 +1782,7 @@ class GatherV2():
         self.gather_v2_compute_tiling()
 
         # add compile info
-        te.op.add_compile_info("vars", {"core_num": self.core_num,
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
                                         "ub_size": self.ub_size,
                                         "l1_size": self.l1_size,
                                         "params_dsize": self.params_dsize,

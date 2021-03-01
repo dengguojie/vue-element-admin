@@ -185,12 +185,15 @@ class AscendOp:
         return kernel_input_list, kernel_output_list
 
     def compile(self, *args, **kwargs) -> AscendOpKernel:
-        import te
+        import tbe # pylint: disable=import-outside-toplevel
+        import tbe.common.context.op_info as operator_info # pylint: disable=import-outside-toplevel
         op_func = self._load_op_func()
         try:
-            with te.op.dynamic():
+            with tbe.common.context.op_context.OpContext("dynamic"):
+                op_info = operator_info.OpInfo(self.op_type, self.op_type)
+                tbe.common.context.op_context.get_context().add_op_info(op_info)
                 op_func(*args, **kwargs)
-                compile_info = te.op.get_compile_info()
+                compile_info = tbe.common.context.get_context().get_compile_info()
         except BaseException as compile_err:
             raise RuntimeError("Compile op failed.") from compile_err
 

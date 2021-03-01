@@ -15,13 +15,14 @@
 """
 dynamic floordiv
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,redefined-argument-from-local
@@ -120,10 +121,10 @@ def floor_div(input_x, input_y, output_z, kernel_name="floor_div"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, y_shape = \
                 shape_util.variable_shape([input_x, input_y])
             tensor_x = tvm.placeholder(x_shape, input_dtype_x, "tensor_x")

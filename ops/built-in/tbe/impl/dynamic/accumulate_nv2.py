@@ -17,14 +17,13 @@ dynamic accumulate_nv2
 """
 
 import functools
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -175,10 +174,10 @@ def accumulate_nv2(input_x, output_y, num, kernel_name="accumulate_nv2"):
             'The size of input and num must be same.'
         )
     dtype = _check_all_dtype_same(input_x)
-    ins = classify(input_x, Mode.ELEWISE)
+    ins = classify(input_x, OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for inputs in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_normlize = shape_util.variable_shape(inputs)
             fuse_shape = [1]
             datas = []

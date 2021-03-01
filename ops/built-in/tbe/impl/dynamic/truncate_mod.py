@@ -16,13 +16,12 @@
 truncate_mod
 """
 import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
-import te.lang.cce as tbe
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -118,10 +117,10 @@ def truncate_mod(input_x, input_y, output_z, kernel_name="truncate_mod"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_input_x, _input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, y_shape = \
                 shape_util.variable_shape([_input_x, _input_y])
             data1 = tvm.placeholder(x_shape, dtype=dtype_x, name="data1")

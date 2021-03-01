@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ApplyFtrlD ut case
 """
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ApplyFtrlD", "impl.dynamic.apply_ftrl_d", "apply_ftrl_d")
@@ -34,10 +34,10 @@ case1 = {"params": [{"shape": (-1, 16), "dtype": "float32", "format": "ND", "ori
          "support_expect": True}
 
 
-ut_case.add_case("Ascend910", case1)
+ut_case.add_case("Ascend910A", case1)
 
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

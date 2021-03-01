@@ -33,7 +33,7 @@ ut_case.add_case("all",
                                            "NC1HWC0","NHWC","float16","batchtospace_case",(2,),(2,2),"success"))
 
 if __name__ == '__main__':
-    import te
-    with te.op.dynamic():
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend910A")
     exit(0)

@@ -36,15 +36,13 @@ import operator
 
 import functools
 import math
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 SHAPE_SIZE_LIMIT = 2147483648
@@ -110,11 +108,11 @@ def abs_grad(y, dy, z, kernel_name="abs_grad"):
     para_check.check_dtype(dtype_y, check_list, param_name="y")
     para_check.check_dtype(dtype_dy, check_list, param_name="dy")
 
-    ins = classify([y, dy], Mode.ELEWISE)
+    ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for (input_y, input_dy) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_y, shape_dy = shape_util.variable_shape([input_y, input_dy])
             data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
             data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_dy)

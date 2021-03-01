@@ -17,14 +17,13 @@ tanh_grad
 """
 import functools
 
-import te.lang.cce as tbe
-from te.utils import para_check
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 # shape size limit for aicore is 2**31
@@ -95,10 +94,10 @@ def tanh_grad(y, dy, z, kernel_name="tanh_grad"):
     dtype = y.get("dtype").lower()
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="y")
-    ins = classify([y], Mode.ELEWISE)
+    ins = classify([y], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (y,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape = shape_util.variable_shape([y])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, shape[0])

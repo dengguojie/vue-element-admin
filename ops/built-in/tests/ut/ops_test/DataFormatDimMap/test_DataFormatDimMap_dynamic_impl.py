@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("DataFormatDimMap", "impl.dynamic.data_format_dim_map", "data_format_dim_map")
@@ -28,5 +28,6 @@ case2 = {
 ut_case.add_case(["Ascend910A", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A", "Ascend710"], case2)
 
-with te.op.dynamic():
-    ut_case.run(["Ascend910A", "Ascend710"])
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run(["Ascend910A", "Ascend710"])

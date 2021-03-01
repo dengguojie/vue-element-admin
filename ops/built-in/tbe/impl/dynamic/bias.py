@@ -15,17 +15,17 @@
 """
 bias
 """
-import te.lang.cce as tbe
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
 from te.platform.fusion_manager import fusion_manager
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 
@@ -354,13 +354,13 @@ def bias(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
     bias["shape"] = shape_bias_new
     bias["range"] = range_bias_new
     bias["ori_shape"] = shape_bias_new
-    tbe_base.add_compile_info("boardcast_bias_shape", shape_bias_new)
+    tbe_context.get_context().add_compile_info("boardcast_bias_shape", shape_bias_new)
 
-    ins = classify([x, bias], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x, bias], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
 
     for (_x, _bias) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, bias_shape = \
                 shape_util.variable_shape([_x, _bias])
             x_input = tvm.placeholder(x_shape, name="x_input", dtype=dtype_x)

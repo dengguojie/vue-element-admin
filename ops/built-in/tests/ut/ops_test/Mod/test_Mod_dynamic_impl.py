@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
-import te
+import tbe
 
 
 ut_case = OpUT("Mod", "impl.dynamic.mod", "mod")
@@ -19,7 +19,8 @@ case1 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910", "Ascend710", "Ascend610"], case1)
+ut_case.add_case(["Ascend910A", "Ascend710", "Ascend610"], case1)
 
-with te.op.dynamic():
-    ut_case.run("Ascend910")
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")

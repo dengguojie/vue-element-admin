@@ -16,10 +16,11 @@
 concat_offset.py
 """
 import te.lang.dynamic
-import te.lang.base as tbe_base
-from te import tik
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # Tiling Arg size for int64
@@ -141,7 +142,7 @@ class ConcatOffsetCompute(object):
                                    inputs=[self.concat_dim_gm] + self.gm_input_list,
                                    outputs=self.gm_output_list,
                                    flowtable=(self.tiling_gm,), config=opt_config)
-        te.op.add_compile_info("vars", {"core_num": 1})
+        tbe_context.get_context().add_compile_info("vars", {"core_num": 1})
 
 
 @register_operator("ConcatOffset")

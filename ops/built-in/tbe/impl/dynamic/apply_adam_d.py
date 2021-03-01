@@ -15,13 +15,12 @@
 """
 apply_adam_d
 """
-import te.lang.cce as tbe
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
@@ -354,11 +353,11 @@ def apply_adam_d(var, m, v, beta1_power, beta2_power, lr, beta1, beta2, epsilon,
     data_beta2 = tvm.placeholder(shape_scalar, name="data_beta2", dtype=compute_type)
     data_epsilon = tvm.placeholder(shape_scalar, name="data_epsilon", dtype=compute_type)
 
-    ins = classify([var, m, v, grad], Mode.ELEWISE)
+    ins = classify([var, m, v, grad], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for(_var, _m, _v, _grad) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var, shape_m, shape_v, shape_grad = shape_util.variable_shape([_var, _m, _v, _grad])
             data_var = tvm.placeholder(shape_var, name="data_var", dtype=compute_type)
             data_m = tvm.placeholder(shape_m, name="data_m", dtype=compute_type)

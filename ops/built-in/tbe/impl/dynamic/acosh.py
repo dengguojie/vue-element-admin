@@ -32,14 +32,13 @@ acosh
 """
 import functools
 
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -104,9 +103,9 @@ def acosh(input_data, output_res, kernel_name="acosh"):
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="input_data")
     schedules, tensors = [], []
-    ins = classify([input_data], Mode.ELEWISE)
+    ins = classify([input_data], OpPatternMode.ELEWISE)
     for (_input_data,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_input_data])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])

@@ -16,17 +16,12 @@
 l2_loss
 """
 import te
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 NONETYPE = type(None)
@@ -57,15 +52,15 @@ def l2_loss_compute(x, axes, y, kernel_name="l2_loss"):
     coeff_sqrt = tvm.const(1.0 / (2**0.5), dtype=dtype)
     data_mul = tbe.vmuls(x, coeff_sqrt)
     data_sqr = tbe.vmul(data_mul, data_mul)
-    res = tbe.sum(data_sqr, axis=axes)
+    res = tbe.reduce_sum(data_sqr, axis=axes)
 
     return res
 
 
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator("L2Loss")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                 para_check.KERNEL_NAME)
 def l2_loss(x, y, kernel_name="l2_loss"):
     """reduce a tensor on a certain axes.
 
@@ -87,7 +82,7 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     dtype_x = x["dtype"]
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32")
-    check_dtype(dtype_lower_x, check_list_x, param_name="x")
+    para_check.check_dtype(dtype_lower_x, check_list_x, param_name="x")
     x["rel_pos_to_reduce"] = "before"
 
     axes = []
@@ -96,11 +91,11 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []
-    ins = classify([x, input_axis], Mode.REDUCE, {"keepdims": False})
+    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
     tensors = []
 
     for (_x, axes) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
             data_input_x = tvm.placeholder(shape_x, name="data_input_x",
                                            dtype=dtype_lower_x)

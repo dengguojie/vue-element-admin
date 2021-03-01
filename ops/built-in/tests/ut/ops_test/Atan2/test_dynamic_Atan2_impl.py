@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
-import te
+import tbe
 
 ut_case = OpUT("Atan2", "impl.dynamic.atan2", "atan2")
 
@@ -26,12 +26,13 @@ def gen_dynamic_atan2_case(shape_x, shape_y,
             "support_expect": True}
 
 # (3,7,1,399), (1,9,1)
-ut_case.add_case("Ascend910",
+ut_case.add_case("Ascend910A",
                  gen_dynamic_atan2_case((-1,), (-1,),
                                         [(2, 10)], [(2, 10)],
                                         "float32", "ND", 
                                         (-1,), (-1,), 
                                         "dynamic_atan2_fp32_ND", "success"))
 
-with te.op.dynamic():
-    ut_case.run("Ascend910")
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")

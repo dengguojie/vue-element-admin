@@ -20,13 +20,14 @@ dynamic unpack
 from enum import Enum
 from enum import unique
 
-from te import tvm
+from impl.util.platform_adapter import tvm
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tbe
 from te.platform import cce_build
-from te.utils.error_manager import error_manager_vector
-from te.utils import para_check
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
 MIN_RIGHT_DIM = 8
@@ -515,7 +516,7 @@ class Unpack:
             tvm.build(self.sch_list, self.arg_list, rules=self.rules, target="cce", name=self.kernel_name)
 
         # Add compile info
-        tbe_base.add_compile_info(
+        tbe_context.get_context().add_compile_info(
             "compile_vars", {
                 "core_num": self.core_num,
                 "ub_size": self.ub_size,
@@ -523,7 +524,7 @@ class Unpack:
                 "axis": self.axis,
                 "is_special_tiling": self.special_tiling
             })
-        tbe_base.add_compile_info("vars", self.compile_vars)
+        tbe_context.get_context().add_compile_info("vars", self.compile_vars)
 
     def build_cce(self):
         """

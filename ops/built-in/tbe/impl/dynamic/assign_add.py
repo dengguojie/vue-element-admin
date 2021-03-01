@@ -15,13 +15,12 @@
 """
 dynamic assign_add
 """
-import te.lang.cce as tbe
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -82,11 +81,11 @@ def assign_add(ref, value, output, kernel_name="assign_add"):
     """
     compute_type = ref.get("dtype").lower()
 
-    ins = classify([ref, value], Mode.ELEWISE)
+    ins = classify([ref, value], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for (_ref, _value) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_ref, shape_value = shape_util.variable_shape([_ref, _value])
 
             data_ref = tvm.placeholder(shape_ref, name="data_ref", dtype=compute_type)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
-import te
+import tbe
 
 ut_case = OpUT("ReciprocalGrad", "impl.dynamic.reciprocal_grad", "reciprocal_grad")
 
@@ -33,5 +33,6 @@ ut_case.add_case("all",
                                                   (-1,), (-1,),
                                                   "dynamic_reciprocal_grad_fp32_ND", "success"))
 
-with te.op.dynamic():
-    ut_case.run("Ascend910")
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")

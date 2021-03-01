@@ -19,20 +19,21 @@ avg_pool
 """
 import math
 
-from te import tvm
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
 import te.lang.dynamic as dynamic
 from impl.dynamic.conv2d import conv2d
-from te.utils import para_check
-from te.utils import shape_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from te.platform.cce_policy import get_L1_info
 from te.utils.error_manager import error_manager_cube as err_man_cube
 from te.utils.error_manager import error_manager_util as err_man
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 from impl.util.util_cube_dynamic import Conv2dParaProcess
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVG_KERNEL_SIZE = 20 # maximum ksize
@@ -310,7 +311,7 @@ def _check_filter_window(fmap, filter, window, stride):
                            % ('avgpool'))
 
 
-@tbe_base.register_operator("AvgPool")
+@register_operator("AvgPool")
 @para_check.check_input_type(dict, (dict, NONETYPE), (dict, NONETYPE), dict,
                              (tuple, list), (tuple, list),
                              str, str, int, str)
@@ -369,8 +370,8 @@ def avg_pool(x, filter, bias, y, ksize, strides,
     _avg_pool_check_rule(input_shape, input_dtype, output_dtype, ksize, strides, padding,
                          data_format, offset_x, kernel_name)
 
-    tbe_base.add_compile_info("strideh", stride[0])
-    tbe_base.add_compile_info("stridew", stride[1])
+    tbe_context.get_context().add_compile_info("strideh", stride[0])
+    tbe_context.get_context().add_compile_info("stridew", stride[1])
 
     if bias is None and filter is not None:
         dilations = (1, 1, 1, 1)

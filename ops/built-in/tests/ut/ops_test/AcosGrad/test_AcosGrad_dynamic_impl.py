@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("AcosGrad", "impl.dynamic.acos_grad", "acos_grad")
@@ -16,7 +16,8 @@ case1 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910", "Ascend610", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A", "Ascend610", "Ascend710"], case1)
 
-with te.op.dynamic():
-    ut_case.run(["Ascend910", "Ascend610", "Ascend710"])
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run(["Ascend910A", "Ascend610", "Ascend710"])

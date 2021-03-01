@@ -21,14 +21,15 @@ import te.lang.dynamic
 import re as func_re
 from topi.cce import util
 from impl import common_util
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from functools import reduce as func_reduce
-from te import tik
+from impl.util.platform_adapter import tik
 from impl import constant_util as constant
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from te.utils.error_manager import error_manager_vector as error_manager
+from impl.util.platform_adapter import error_manager_vector as error_manager
 from .. import trans_data_common_func as tdc
+from impl.util.platform_adapter import tbe_context
 
 # max num of tiling params
 TILING_ARG_NUM = 128
@@ -483,7 +484,7 @@ class TransData:
         # build cce
         tik_inst.BuildCCE(kernel_name=self.kernel_name, inputs=[self.input_tensors], outputs=[self.output_tensor],
                           flowtable=[self.tiling_gm], enable_l2=False)      
-        te.op.add_compile_info("vars", {"srcFormat": self.src_format,
+        tbe_context.get_context().add_compile_info("vars", {"srcFormat": self.src_format,
                                         "dstFormat": self.dst_format,
                                         "dType": self.dtype,
                                         "ubSize": self.ub_size,

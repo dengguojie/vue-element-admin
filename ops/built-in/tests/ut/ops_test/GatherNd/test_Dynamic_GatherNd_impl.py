@@ -15,7 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Dynamic GatherNd ut case
 """
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 
@@ -29,7 +29,7 @@ def gen_dynamic_gather_nd_case(dict_params, dict_indices, dict_y, kernel_name_va
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910A"],
                  gen_dynamic_gather_nd_case(
                      {"shape": (-1,), "dtype": "float32", "ori_shape": (-1,),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551),)},
@@ -39,7 +39,7 @@ ut_case.add_case(["Ascend910"],
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551), (1, 1))},
                      "dynamic_gather_nd_01", "success"))
 
-ut_case.add_case(["Ascend910"],
+ut_case.add_case(["Ascend910A"],
                  gen_dynamic_gather_nd_case(
                      {"shape": (22551,), "dtype": "float16", "ori_shape": (22551,),
                       "format": "ND", "ori_format": "ND", "range": ((22551, 22551),)},
@@ -82,6 +82,6 @@ ut_case.add_case("all",
 
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

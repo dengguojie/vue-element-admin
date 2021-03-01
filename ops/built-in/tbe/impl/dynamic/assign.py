@@ -15,12 +15,13 @@
 """
 assign.py
 """
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # max int32
@@ -137,7 +138,7 @@ class Assign:
                                    inputs=(self.ref_gm, self.value_gm),
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
-        te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
 @register_operator("Assign")

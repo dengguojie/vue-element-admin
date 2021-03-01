@@ -17,14 +17,13 @@ limitations under the License.
 
 assignsub
 """
-from te import tvm
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
 
-from te.utils import shape_util
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -98,10 +97,10 @@ def assign_sub(var, value, output_z, kernel_name="assign_sub"):
     para_check.check_dtype(dtype_var, check_list, param_name="var")
     para_check.check_dtype(dtype_value, check_list, param_name="value")
 
-    ins = classify([var, value], Mode.ELEWISE)
+    ins = classify([var, value], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (data1, data2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             var_shape, value_shape = shape_util.variable_shape([data1, data2])
 
             tensor_var = tvm.placeholder(var_shape, dtype_var, "tensor_var")

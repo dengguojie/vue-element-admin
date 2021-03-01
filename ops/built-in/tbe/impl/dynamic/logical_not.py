@@ -16,17 +16,12 @@
 logical_not
 """
 from functools import reduce as reduceIns
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils import shape_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
@@ -63,7 +58,7 @@ def logical_not_compute(x, y, kernel_name="logical_not"):
 
 
 @register_operator("LogicalNot")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def logical_not(x, y, kernel_name="logical_not"):
     """
     calculating data
@@ -86,12 +81,12 @@ def logical_not(x, y, kernel_name="logical_not"):
         dtype_x = "int8"
 
     check_tuple = ("int8",)
-    check_dtype(dtype_x, check_tuple, param_name="x1")
+    para_check.check_dtype(dtype_x, check_tuple, param_name="x1")
 
     schedules, tensors = [], []
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     for (input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])

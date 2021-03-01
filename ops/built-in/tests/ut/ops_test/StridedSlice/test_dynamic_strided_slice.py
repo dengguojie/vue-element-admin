@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("StridedSlice", "impl.dynamic.strided_slice", "strided_slice")
@@ -28,11 +28,11 @@ def gen_concat_case(shape, dtype, case_name_val, expect, input_format="ND"):
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_concat_case((-1, -1), "float16", "case_1", "success"))
 
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

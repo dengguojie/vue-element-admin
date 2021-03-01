@@ -17,11 +17,13 @@ avg_pool_1d
 """
 
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
 from te.utils import error_manager
-from te.utils.error_manager import error_manager_vector
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 C0 = 16
 
@@ -227,7 +229,7 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_blo
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@tbe_base.register_operator("AvgPool1DD")
+@register_operator("AvgPool1DD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
@@ -347,10 +349,10 @@ def avg_pool_1d(x_dict,
 
     with build_config:
         tvm.build(sch_list, var_list, rules=rules, target="cce", name=kernel_name)
-    tbe_base.add_compile_info("core_num", core_num)
-    tbe_base.add_compile_info("max_w_in_ub", wo_ub_factor_max)
-    tbe_base.add_compile_info("ksize", ksize)
-    tbe_base.add_compile_info("strides", strides)
-    tbe_base.add_compile_info("pad_l", pads[0])
-    tbe_base.add_compile_info("pad_r", pads[1])
-    tbe_base.add_compile_info("ceil_mode", ceil_mode)
+    tbe_context.get_context().add_compile_info("core_num", core_num)
+    tbe_context.get_context().add_compile_info("max_w_in_ub", wo_ub_factor_max)
+    tbe_context.get_context().add_compile_info("ksize", ksize)
+    tbe_context.get_context().add_compile_info("strides", strides)
+    tbe_context.get_context().add_compile_info("pad_l", pads[0])
+    tbe_context.get_context().add_compile_info("pad_r", pads[1])
+    tbe_context.get_context().add_compile_info("ceil_mode", ceil_mode)

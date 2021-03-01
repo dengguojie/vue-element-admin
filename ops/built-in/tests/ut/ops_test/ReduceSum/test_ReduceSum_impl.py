@@ -33,6 +33,6 @@ def gen_dynamic_reduce_sum_case(shape_x, range_x, dtype_val, format,
 #                                                "success"))
 
 if __name__ == '__main__':
-    import te
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")

@@ -15,13 +15,12 @@
 """
 dynamic mul
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
@@ -108,10 +107,10 @@ def mul(input1, input2, output, kernel_name="mul"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = classify([input1, input2], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input1, input2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input1, input2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             shape_x1, shape_x2 = shape_util.variable_shape([input1, input2])
             # mul_compute

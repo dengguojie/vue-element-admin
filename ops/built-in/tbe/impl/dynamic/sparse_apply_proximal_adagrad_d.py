@@ -16,12 +16,13 @@
 sparse_apply_proximal_adagrad_d
 """
 # pylint: disable=unused-argument
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 import te.lang.dynamic
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 DTYPE_FP32 = "float32"
 DTYPE_INT32 = "int32"
@@ -789,6 +790,6 @@ def sparse_apply_proximal_adagrad_d(var_dict, accum_dict, lr_dict, l1_dict,
     obj = SparseApplyProximalAdagradD(var_dtype, indices_dtype, kernel_name)
     obj.sparse_apply_proximal_adagrad_d()
     # add compile info
-    te.op.add_compile_info("vars",
+    tbe_context.get_context().add_compile_info("vars",
                            {"ub_size": obj.ub_size, "core_num": obj.core_num,
                             "ub_tensor_num": obj.ub_tensor_num})

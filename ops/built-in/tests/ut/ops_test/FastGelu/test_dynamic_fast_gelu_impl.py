@@ -3,7 +3,7 @@
 '''
 fast_gelu dynamic test UT
 '''
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("FastGelu", "impl.dynamic.fast_gelu", "fast_gelu")
@@ -108,5 +108,6 @@ ut_case.add_case("Ascend910A", case2)
 ut_case.add_case("Ascend910A", case3)
 ut_case.add_case("Ascend910A", case4)
 
-with te.op.dynamic():
-    ut_case.run("Ascend910A")
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")

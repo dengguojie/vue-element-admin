@@ -16,11 +16,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 dynamic bn_training_reduce
 """
 import te
-import te.lang.cce as tbe
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te.platform import log
-from te.utils import para_check
-from te.utils import shape_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute

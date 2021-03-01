@@ -15,19 +15,13 @@
 """
 dynamic mul_no_nan
 """
-from te import tvm
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import OPTION_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import Mode
-from te.lang.base.shape_classifier import classify
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 
 
@@ -67,7 +61,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
 
 
 @register_operator("MulNoNan")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, OPTION_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_OUTPUT, para_check.KERNEL_NAME)
 def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     """
     calculating data
@@ -90,18 +84,18 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     check_tuple = ("float16", "float32", "int32")
     inputx1_data_type = x1.get("dtype").lower()
     inputx2_data_type = x2.get("dtype").lower()
-    check_dtype(inputx1_data_type, check_tuple)
-    check_dtype(inputx2_data_type, check_tuple)
+    para_check.check_dtype(inputx1_data_type, check_tuple)
+    para_check.check_dtype(inputx2_data_type, check_tuple)
     para_check.check_elewise_shape_range([x1, x2],
                                          support_broadcast=True)
 
     shape_x1 = x1.get("shape")
     shape_x2 = x2.get("shape")
 
-    ins = classify([x1, x2], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_x1, _x2) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             shape_x1, shape_x2 = shape_util.variable_shape([_x1, _x2])
             # mul_compute

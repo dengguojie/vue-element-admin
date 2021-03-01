@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ReduceMean", "impl.dynamic.reduce_mean", "reduce_mean")
@@ -26,7 +26,8 @@ ut_case.add_case("all", gen_dynamic_reduce_mean_case((-1,3,-1,2), [(1,None), (3,
                                        (1,), [(1,1),], "float16", "ND", (-1,3,-1,2), (1, ), 
                                        True, "dynamic_reduce_mean_ND_1", "success"))
 
-with te.op.dynamic():
-    ut_case.run("Ascend910")
-
-
+if __name__ == "__main__":
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
+    
+    

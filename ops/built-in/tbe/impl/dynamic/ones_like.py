@@ -16,17 +16,12 @@
 ones_like
 """
 import functools
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.para_check import KERNEL_NAME
-from te.utils.para_check import REQUIRED_INPUT
-from te.utils.para_check import REQUIRED_OUTPUT
-from te.utils.para_check import check_dtype
-from te.utils.para_check import check_op_params
-from te.utils.op_utils import variable_shape
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -68,7 +63,7 @@ def ones_like_compute(input_x, output_y, kernel_name="ones_like"):
 
 
 @register_operator("OnesLike")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def ones_like(x, y, kernel_name="ones_like"):
     """
     output a tensor of all one, shape and dtype is same of input
@@ -90,12 +85,12 @@ def ones_like(x, y, kernel_name="ones_like"):
     dtype_input = x.get("dtype").lower()
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     src_dtype = dtype_input
-    check_dtype(src_dtype, check_list, param_name="x")
+    para_check.check_dtype(src_dtype, check_list, param_name="x")
     schedules, tensors = [], []
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     for (_x,) in ins:
-        with tbe_base.compute():
-            x_shape = variable_shape([_x])
+        with tbe.compute():
+            x_shape = shape_util.variable_shape([_x])
             fuse_shape = [1]
             fuse_shape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
             data_input = tvm.placeholder(fuse_shape, name="data_input", dtype=src_dtype)

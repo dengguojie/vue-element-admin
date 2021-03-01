@@ -31,14 +31,13 @@ dynamic elu
 
 """
 import functools
-import te.lang.cce as tbe
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-from te.utils import para_check
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-from te.utils import shape_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -150,10 +149,10 @@ def elu(x, y, alpha=1.0, kernel_name="elu"):
                            % (error_info['op_name'], error_info['param_name'], \
                               error_info['expect_value'], error_info['real_value']))
     schedules, tensors = [], []
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
 
     for (_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])

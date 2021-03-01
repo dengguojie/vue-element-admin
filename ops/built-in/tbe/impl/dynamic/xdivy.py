@@ -15,15 +15,14 @@
 """
 dynamic xdivy
 """
-from te import tvm
-import te.lang.cce as tbe
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import Mode
-from te.lang.base.shape_classifier import classify
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import classify
 import te.platform as tbe_platform
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -161,10 +160,10 @@ def xdivy(input_x, input_y, output_z, kernel_name="xdivy"):
                                                                "input_x",
                                                                "input_y",
                                                                error_detal)
-    ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_input_x, _input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             shape_x1, shape_x2 = shape_util.variable_shape([_input_x, _input_y])
             # mul_compute

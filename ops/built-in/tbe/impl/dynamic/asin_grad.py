@@ -32,14 +32,13 @@ asin_grad
     [1] All : 'y' and 'dy' must have the same type and shape.
     [2] All : shape size limit is 2147483648.
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 # scalar in asin_grad and Newton's equation
@@ -135,11 +134,11 @@ def asin_grad(y, dy, z, kernel_name="asin_grad"):
                                error_info['param2_dtype']))
 
     # get 2 input tensors: data_y, data_dy
-    ins = classify([y, dy], Mode.ELEWISE)
+    ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for (_y, _dy) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_y, shape_dy = shape_util.variable_shape([_y, _dy])
             data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
             data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_y)

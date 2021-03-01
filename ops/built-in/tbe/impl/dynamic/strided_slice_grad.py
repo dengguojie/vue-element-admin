@@ -16,12 +16,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 strided_slice_grad
 """
 import te
-from te.utils import para_check
-from te import tik
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tik
 from impl.dynamic import pad_align
 from impl.dynamic import pad_not_align
 from impl.dynamic import pad_common
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # number of cores
 INT32_BLOCK = 8
@@ -93,7 +94,7 @@ def grad_compute(obj, mask_list):
                               outputs=[obj.output_gm],
                               flowtable=[obj.tiling_gm],
                               config=opt_config)
-    te.op.add_compile_info("vars", {"ubSize": obj.buf_size, "maxCore": obj.max_core,
+    tbe_context.get_context().add_compile_info("vars", {"ubSize": obj.buf_size, "maxCore": obj.max_core,
                                     "begin_mask": mask_list[0], "end_mask": mask_list[1],
                                     "ellipsis_mask": mask_list[2], "new_axis_mask": mask_list[3],
                                     "shrink_axis_mask": mask_list[4]})

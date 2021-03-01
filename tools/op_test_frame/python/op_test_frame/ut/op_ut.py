@@ -554,10 +554,13 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         try:
             if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
                 # there is a bug in te, we can't import te before tensorflow, so can't import te outside
-                import te  # pylint: disable=import-outside-toplevel
-                with te.op.dynamic():
+                import tbe  # pylint: disable=import-outside-toplevel
+                import tbe.common.context.op_info as operator_info # pylint: disable=import-outside-toplevel
+                with tbe.common.context.op_context.OpContext("dynamic"):
+                    op_info = operator_info.OpInfo(self.op_type, self.op_type)
+                    tbe.common.context.op_context.get_context().add_op_info(op_info)
                     op_func(*case_info.op_params, **addition_params)
-                    compile_info = te.op.get_compile_info()
+                    compile_info = tbe.common.context.get_context().get_compile_info()
                     self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
             else:
                 op_func(*case_info.op_params, **addition_params)

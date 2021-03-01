@@ -32,13 +32,12 @@ rsqrt
 """
 
 import te.platform as tbe_platform
-from te import tvm
-import te.lang.cce as tbe
-from te.utils import shape_util
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -130,11 +129,11 @@ def rsqrt(x, y, kernel_name="rsqrt_cce"):
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")
 
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for (_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_x])[0]
 
             input_data = tvm.placeholder(x_shape, name="input_data",

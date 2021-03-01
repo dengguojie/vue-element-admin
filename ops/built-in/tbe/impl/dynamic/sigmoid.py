@@ -17,14 +17,13 @@ dynamic sigmoid
 """
 from functools import reduce as reduceIns
 import te.platform as tbe_platform
-from te import tvm
-from te.lang import cce as tbe
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-from te.utils import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -98,9 +97,9 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     para_check.check_dtype(dtype, check_list, param_name="x")
 
     schedules, tensors = [], []
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     for (_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, x_shape[0])

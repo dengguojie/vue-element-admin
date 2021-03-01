@@ -14,19 +14,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 reduce sum
 """
 import te
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import OPTION_ATTR_BOOL
-from te.utils.op_utils import KERNEL_NAME
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 NONETYPE = type(None)
@@ -61,7 +55,7 @@ def reduce_sum_compute(x, axes, y, keepdims=None, kernel_name="reduce_sum"):
     if cce_product not in ("Ascend310",) and dtype == "float16" and \
             tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         x = tbe.cast_to(x, "float32")
-    res_sum = tbe.sum(x, axis=axes, keepdims=keepdims)
+    res_sum = tbe.reduce_sum(x, axis=axes, keepdims=keepdims)
     res = tbe.cast_to(res_sum, dtype)
 
     return res
@@ -69,8 +63,8 @@ def reduce_sum_compute(x, axes, y, keepdims=None, kernel_name="reduce_sum"):
 
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator("ReduceSum")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
-                 OPTION_ATTR_BOOL, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                 para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
     """reduce a tensor on a certain axes based on sum.
 
@@ -95,21 +89,21 @@ def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
     dtype_x = x["dtype"]
     dtype_lower_x = dtype_x.lower()
     check_list_x = ("float16", "float32")
-    check_dtype(dtype_lower_x, check_list_x, param_name="x")
+    para_check.check_dtype(dtype_lower_x, check_list_x, param_name="x")
     x["rel_pos_to_reduce"] = "before"
 
     dtype_axes = axes["dtype"]
     dtype_lower_axes = dtype_axes.lower()
     check_list_axes = ("int32", "int64")
-    check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")
+    para_check.check_dtype(dtype_lower_axes, check_list_axes, param_name="axes")
     axes["rel_pos_to_reduce"] = "axis"
 
     schedules = []
-    ins = classify([x, axes], Mode.REDUCE, {"keepdims": keepdims})
+    ins = classify([x, axes], OpPatternMode.REDUCE, {"keepdims": keepdims})
     tensors = []
 
     for (x, axes) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x, shape_axes = shape_util.variable_shape([x, axes], op_mode="reduce")
             data_input_x = tvm.placeholder(shape_x, name="data_input_x",
                                            dtype=dtype_lower_x)

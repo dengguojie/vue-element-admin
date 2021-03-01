@@ -17,15 +17,14 @@ exp
 """
 import math
 from functools import reduce as reduceIns
-import te.lang.cce as tbe
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 
@@ -120,10 +119,10 @@ def exp(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="exp"):
         real_value = "base < 0 or base notequal with -1"
         error_manager_vector.raise_err_input_value_invalid(
             kernel_name, "base", expect_value, real_value)
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x = shape_util.variable_shape([input_x])
             fuseshape = [1]
             fuseshape[0] = reduceIns(lambda x, y: x * y, shape_x[0])

@@ -16,12 +16,13 @@
 drop_out_do_mask.py
 """
 # pylint: disable=too-many-arguments,too-few-public-methods,too-many-instance-attributes
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # max int32
 MAX_INT32 = 2 ** 31 - 1
@@ -237,7 +238,7 @@ class DropOutDoMask:
                                    inputs=(self.var_gm, self.mask_gm, self.keep_prob_gm),
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
-        te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
 def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=2, block_num=16):

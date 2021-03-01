@@ -15,15 +15,14 @@
 """
 bn_infer_grad
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -171,10 +170,10 @@ def bn_infer_grad(grads, scale, batch_variance,
     para_check.check_dtype(input_scale_dtype, ("float32",), param_name="scale")
     para_check.check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
-    ins = classify([grads, scale, batch_variance], Mode.ELEWISE)
+    ins = classify([grads, scale, batch_variance], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_grads, _scale, _batch_variance) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_grads, shape_scale, shape_batch_variance = shape_util.variable_shape([_grads, 
                                                                                         _scale,
                                                                                         _batch_variance])

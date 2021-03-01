@@ -15,7 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Dynamic SparseApplyFtrlD ut case
 """
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 
@@ -39,7 +39,7 @@ def gen_dynamic_sparse_apply_ftrl_d_case(dict_var, dict_accum, dict_linear, dict
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -54,7 +54,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      2, 0, 0, -0.5,
                      "dynamic_sparse_apply_ftrl_d_01", "success"))
 
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (-1, 80), "dtype": "float32", "ori_shape": (-1, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -69,7 +69,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      2, 0, 0, -0.5,
                      "dynamic_sparse_apply_ftrl_d_02", "success"))
 
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (-1, 1), "dtype": "float32", "ori_shape": (-1, 1),
                       "format": "ND", "ori_format": "ND", "range": ((21340, 21340), (1, 1))},
@@ -85,7 +85,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_03", "success"))
 
 # var dtype is invalid
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "int32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -101,7 +101,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_04", RuntimeError))
 
 # indices dtype is invalid
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -117,7 +117,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_05", RuntimeError))
 
 # len(var_shape) != len(accum_shape)
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80, 2), "dtype": "float32", "ori_shape": (7800, 80, 2),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80), (2, 2))},
@@ -133,7 +133,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_06", RuntimeError))
 
 # len(var_shape) != len(linear_shape)
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -149,7 +149,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_07", RuntimeError))
 
 # len(var_shape) != len(grad_shape)
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80, 2), "dtype": "float32", "ori_shape": (7800, 80, 2),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80), (2, 2))},
@@ -165,7 +165,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_08", RuntimeError))
 
 # len(var_shape) != len(var_out_shape)
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -184,7 +184,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                  ))
 
 # len(indices_shape) == 1
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (-1, 80), "dtype": "float32", "ori_shape": (-1, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -200,7 +200,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_10", RuntimeError))
 
 # len(var_shape) < 2
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (-1,), "dtype": "float32", "ori_shape": (-1,),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800),)},
@@ -216,7 +216,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_11", RuntimeError))
 
 # valid: lr_attr > 0
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -232,7 +232,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_12", RuntimeError))
 
 # valid: l1_attr >= 0
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -248,7 +248,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
                      "dynamic_sparse_apply_ftrl_d_13", RuntimeError))
 
 # valid: l2_attr >= 0
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -265,7 +265,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
 
 
 # valid: lr_power_attr <= 0
-ut_case.add_case(["Ascend910", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend710"],
                  gen_dynamic_sparse_apply_ftrl_d_case(
                      {"shape": (7800, 80), "dtype": "float32", "ori_shape": (7800, 80),
                       "format": "ND", "ori_format": "ND", "range": ((7800, 7800), (80, 80))},
@@ -282,7 +282,7 @@ ut_case.add_case(["Ascend910", "Ascend710"],
 
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)
 

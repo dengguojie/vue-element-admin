@@ -15,14 +15,14 @@
 """
 dynamic tile
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -163,10 +163,10 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
     input_m["range"] = multiples_range_adapt
 
     extra_params = {"disable_optimization": True}
-    ins = tbe_base.classify([input_m, input_x], tbe_base.Mode.ELEWISE_WITH_BROADCAST, extra_params)
+    ins = classify([input_m, input_x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
     for (_input_m, _input_x) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_mul, shape = shape_util.variable_shape([_input_m, _input_x])
             data = tvm.placeholder(shape, name="input_x", dtype=input_x_dtype)
             input_mul = tvm.placeholder(shape_mul, name="multiples", dtype=input_m_dtype)
@@ -182,4 +182,4 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
 
     tbe.build(schedules, config)
 
-    tbe_base.add_compile_info("compile_shape", compile_shape)
+    tbe_context.get_context().add_compile_info("compile_shape", compile_shape)

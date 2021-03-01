@@ -19,14 +19,13 @@ not_equal
 """
 from __future__ import absolute_import
 
-from te import tvm
+from impl.util.platform_adapter import tvm
 from te.platform.fusion_manager import fusion_manager
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-import te.lang.cce as tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
@@ -65,8 +64,8 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
         the result of compute
     """
     dtype_x = input_x.dtype
-    shape_x = tbe.util.shape_to_list(input_x.shape)
-    shape_y = tbe.util.shape_to_list(input_y.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
     shape_x, shape_y, shape_broadcast = shape_util.broadcast_shapes(shape_x,
                                                                     shape_y,
                                                                     param_name_input1="input_x",
@@ -151,10 +150,10 @@ def not_equal(input_x, input_y, output_z, kernel_name="not_equal"):
                                            error_info['param_name2'], error_info['param1_dtype'],
                                            error_info['param2_dtype']))
 
-    ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x_, input_y_) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape, y_shape = shape_util.variable_shape([input_x_, input_y_])
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")
             tensor_y = tvm.placeholder(y_shape, y_dtype, "tensor_y")

@@ -17,9 +17,10 @@ strided slice
 """
 from __future__ import absolute_import
 import te.lang.dynamic
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from .strided_slice import StridedSlice
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
@@ -68,5 +69,5 @@ def slice(x, offsets, size, y, kernel_name="slice"):
                   config=opt_config,
                   enable_l2=False)
 
-    te.op.add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num})
+    tbe_context.get_context().add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num})
     return inst

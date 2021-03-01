@@ -17,17 +17,12 @@ abs
 """
 from functools import reduce as reduceIns
 import te.platform as tbe_platform
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import variable_shape
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
@@ -66,7 +61,7 @@ def abs_compute(x, y, kernel_name="abs"):
 
 # pylint: disable=redefined-builtin
 @register_operator("Abs")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def abs(x, y, kernel_name="abs"):
     """
     algorithm: abs
@@ -88,13 +83,13 @@ def abs(x, y, kernel_name="abs"):
     """
     dtype_input = x.get("dtype").lower()
     check_list = ("float16", "float32", "int32")
-    check_dtype(dtype_input, check_list, param_name="x")
+    para_check.check_dtype(dtype_input, check_list, param_name="x")
 
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_x,) in ins:
-        with tbe_base.compute():
-            x_shape = variable_shape([_x])
+        with tbe.compute():
+            x_shape = shape_util.variable_shape([_x])
 
             fuse_shape = [1]
             fuse_shape[0] = reduceIns(lambda x, y: x * y, x_shape[0])

@@ -15,13 +15,12 @@
 """
 dynamic adam_apply_one
 """
-import te.lang.cce as tbe
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -334,11 +333,11 @@ def adam_apply_one(input0, input1, input2, input3, input4,
         dynamic_inputs.append(add2_y)
         dynamic_inputs[-1]["shape"] = shape_add2_y
 
-    ins = classify(dynamic_inputs, Mode.ELEWISE)
+    ins = classify(dynamic_inputs, OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for _dinputs in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_dinputs = shape_util.variable_shape(_dinputs)
             idx = NUM_ZERO
             for shape_dinput in shape_dinputs:

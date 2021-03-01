@@ -15,7 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 PadD: Not Align
 """
-from te import tik
+from impl.util.platform_adapter import tik
 # vector_repeat
 MAX_REPEAT = 255
 # block_size

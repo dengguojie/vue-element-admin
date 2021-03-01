@@ -15,17 +15,17 @@
 """
 binary_cross_entropy_grad
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe_context
 
 
 # define a scalar, value = 1
@@ -113,10 +113,10 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
             cof = reduce_elts ** (-1)
             cof = tvm.const(cof, dtype=calc_dtype)
         else:
-            cof = tbe_base.var("cof", dtype=calc_dtype)
+            cof = tbe.var("cof", dtype=calc_dtype)
             if calc_dtype == "float16":
-                tbe_base.var("cof_empty", dtype=calc_dtype)
-            tbe_base.add_compile_info("reduce_mean_cof_dtype", calc_dtype)
+                tbe.var("cof_empty", dtype=calc_dtype)
+            tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", calc_dtype)
         result = tbe.vmuls(result, cof)
 
     if dtype == "float16":
@@ -196,9 +196,9 @@ def binary_cross_entropy_grad(x, y, grad_output, weight, output,
 
     schedules, tensors = [], []
     if weight is not None:
-        ins = classify([x, grad_output], Mode.ELEWISE_WITH_BROADCAST)
+        ins = classify([x, grad_output], OpPatternMode.ELEWISE_WITH_BROADCAST)
         for (_predict_shape, _dout_shape) in ins:
-            with tbe_base.compute():
+            with tbe.compute():
                 predict_shape, dout_shape = shape_util.variable_shape([_predict_shape, _dout_shape])
                 dout_data_input = tvm.placeholder(dout_shape, name="dout_data_input",
                                                   dtype=predict_dtype_lower)
@@ -217,9 +217,9 @@ def binary_cross_entropy_grad(x, y, grad_output, weight, output,
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
     else:
-        ins = classify([x, grad_output], Mode.ELEWISE_WITH_BROADCAST)
+        ins = classify([x, grad_output], OpPatternMode.ELEWISE_WITH_BROADCAST)
         for (_predict_shape, _dout_shape) in ins:
-            with tbe_base.compute():
+            with tbe.compute():
                 predict_shape, dout_shape = shape_util.variable_shape([_predict_shape, _dout_shape])
                 weight_data_input = None
                 dout_data_input = tvm.placeholder(dout_shape, name="dout_data_input",

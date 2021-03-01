@@ -15,14 +15,13 @@
 """
 mod
 """
-from te import tvm
+from impl.util.platform_adapter import tvm
 import te.platform as tbe_platform
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -52,8 +51,8 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
     res: TVM tensor
         output tensor. Has the same type as "input_x".
     """
-    shape_x = tbe.util.shape_to_list(input_x.shape)
-    shape_y = tbe.util.shape_to_list(input_y.shape)
+    shape_x = shape_util.shape_to_list(input_x.shape)
+    shape_y = shape_util.shape_to_list(input_y.shape)
     dtype = input_x.dtype.lower()
 
     has_improve_precision = False
@@ -125,11 +124,11 @@ def mod(input_x, input_y, output_z, kernel_name="mod"):
     input_dtype = input_x.get("dtype").lower()
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
-    ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedule, tensors = [], []
 
     for (input_x, input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x, shape_y = shape_util.variable_shape([input_x, input_y])
             reshape_x, reshape_y = shape_util.refine_shapes_for_broadcast(shape_x, shape_y)
             data_x = tvm.placeholder(reshape_x, dtype=input_dtype, name="data_x")

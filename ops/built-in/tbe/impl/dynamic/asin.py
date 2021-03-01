@@ -30,14 +30,13 @@ asin
   Constraint :
     [1] All : shape size limit is 2147483648.
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util import util_compute
 from impl.util.platform_adapter import register_operator
 
@@ -216,11 +215,11 @@ def asin(x, y, kernel_name="asin"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = classify([x], Mode.ELEWISE)
+    ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     for (_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_x])
 
             data_input = tvm.placeholder(x_shape[0], dtype=x_dtype,

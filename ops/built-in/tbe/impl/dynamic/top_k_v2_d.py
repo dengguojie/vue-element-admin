@@ -16,8 +16,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 topk_v2
 """
-import te.lang.base as tbe_base
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
 from impl.dynamic.top_k_d import top_k_d
 from impl.util.platform_adapter import register_operator
 

@@ -15,23 +15,16 @@
 """
 sigmoid_cross_entropy_with_logits
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.op_utils import variable_shape
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import broadcast_shapes
-from te.utils.op_utils import check_elewise_shape_range
-from topi import generic
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import OpImplMode
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -47,7 +40,7 @@ def get_broadcast_shapes(input1, input2, input1_name, input2_name):
     """
     x0_shape = shape_util.shape_to_list(input1.shape)
     x1_shape = shape_util.shape_to_list(input2.shape)
-    x0_shape, x1_shape, y_shape = broadcast_shapes(x0_shape, x1_shape, param_name_input1=input1_name,
+    x0_shape, x1_shape, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape, param_name_input1=input1_name,
                                                    param_name_input2=input2_name)
     return y_shape
 
@@ -123,7 +116,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
             not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
         vadds_res = tbe.cast_to(vadds_res, "float16")
 
-    vlog_res = tbe.vlog(vadds_res, priority_flag=1)
+    vlog_res = tbe.vlog(vadds_res, OpImplMode.HIGH_PRECISION)
 
     if dtype_predict == "float32" and \
             not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
@@ -140,7 +133,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
 
 
 @register_operator("SigmoidCrossEntropyWithLogits")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoid_cross_entropy_with_logits"):
     """
     calculating data:
@@ -172,13 +165,13 @@ def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoi
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype_predict, check_list, param_name="predict")
     para_check.check_dtype(input_dtype_target, check_list, param_name="target")
-    check_elewise_shape_range([predict, target], support_broadcast=False)
-    ins = classify([predict, target], Mode.ELEWISE)
+    para_check.check_elewise_shape_range([predict, target], support_broadcast=False)
+    ins = classify([predict, target], OpPatternMode.ELEWISE)
 
     schedules, tensors = [], []
     for (x1, x2) in ins:
-        with tbe_base.compute():
-            shape_predict, shape_target = variable_shape([x1, x2])
+        with tbe.compute():
+            shape_predict, shape_target = shape_util.variable_shape([x1, x2])
             data_predict = tvm.placeholder(shape_predict,
                                            name="data_predict",
                                            dtype=input_dtype_predict)
@@ -192,7 +185,7 @@ def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoi
 
             tensors.append([data_predict, data_target, loss])
         with tvm.target.cce():
-            sch = generic.auto_schedule(loss)
+            sch = tbe.auto_schedule(loss)
         schedules.append(sch)
     # build
     config = {"name": kernel_name, "tensor_list": tensors}

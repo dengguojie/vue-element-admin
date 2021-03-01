@@ -15,7 +15,7 @@ TileWithAxis ut case
 """
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
+import tbe
 from op_test_frame.ut import OpUT
 ut_case = OpUT("ThresholdV2D", "impl.dynamic.threshold_v2_d", "threshold_v2_d")
 
@@ -77,5 +77,5 @@ ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case5)
 
 if __name__ == '__main__':
-    with te.op.dynamic():
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend910A")

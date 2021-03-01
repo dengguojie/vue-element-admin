@@ -20,13 +20,12 @@ import math
 from functools import reduce as reduceIns
 
 import te.platform as tbe_platform
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -281,12 +280,12 @@ def power(input_x, output_y, power=1.0, scale=1.0,
     input_dtype = input_x.get("dtype").lower()
     type_tuple = ("float16", "float32", "int32")
     para_check.check_dtype(input_dtype, type_tuple, param_name="x")
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     for (input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             x_shape = shape_util.variable_shape([input_x])
             fuseshape = [1]

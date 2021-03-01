@@ -14,14 +14,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 leaky_relu_grad
 """
 
-import te.lang.cce as tbe
-from te import tvm
-import te.lang.base as tbe_base
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 # define a scalar , value = 0
@@ -128,10 +127,10 @@ def leaky_relu_grad(g, x, y, negative_slope=0, kernel_name="leaky_relu_grad"):
     if g_dtype != x_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "g", "x",
                                                               g_dtype, x_dtype)
-    ins = classify([g, x], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([g, x], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (g, x) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             g_shape, x_shape = shape_util.variable_shape([g, x])
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")

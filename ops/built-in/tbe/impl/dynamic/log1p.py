@@ -16,14 +16,13 @@ http://www.apache.org/licenses/LICENSE-2.0
 log1p
 """
 from functools import reduce as reduce_ins
-import te.lang.cce as tbe
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 # define a scalar, value = -1
@@ -308,9 +307,9 @@ def log1p(input_x, output_y, kernel_name="log1p"):
     input_dtype = dtype.lower()
     para_check.check_dtype(input_dtype, check_list, param_name="input_x")
     schedules, tensors = [], []
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     for (_input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]
             fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])

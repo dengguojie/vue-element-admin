@@ -19,17 +19,17 @@ fast_gelu grad
 import operator
 import functools
 
-import te.lang.cce as tbe
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
 
-import te.lang.base as tbe_base
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import OpImplMode
 
 
 CONST_1 = 1
@@ -38,7 +38,7 @@ CONST_1 = 1
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals
 @register_operator_compute("FastGeluGrad", op_mode="dynamic", support_fusion=False)
-def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", impl_mode="high_performance"):
+def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: fast_gelu_grad
     calculating: dy*res'
@@ -90,10 +90,7 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
     div_down_i = tbe.vadds(exp_x, const_3)
     div_down = tbe.vmul(div_down_i, div_down_i)
 
-    if impl_mode == "high_performance":
-        div_down_rec = tbe.vrec(div_down, priority_flag=0)
-    else:
-        div_down_rec = tbe.vrec(div_down, priority_flag=1)
+    div_down_rec = tbe.vrec(div_down, impl_mode)
     result_temp = tbe.vmul(div_up, div_down_rec)
 
     result = tbe.vmul(input_dy, result_temp)
@@ -103,7 +100,7 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
 @register_operator("FastGeluGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
-def fast_gelu_grad(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", impl_mode="high_performance"):
+def fast_gelu_grad(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: fast_gelu_grad
     calculating: dy*res'
@@ -140,10 +137,10 @@ def fast_gelu_grad(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", im
         error_detail = "all input shape must be equal"
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "shape_dy", "shape_x", error_detail)
 
-    ins = classify([input_dy, input_x], Mode.ELEWISE)
+    ins = classify([input_dy, input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_input_dy, _input_x) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             dy_shape, x_shape = shape_util.variable_shape([_input_dy, _input_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, dy_shape)

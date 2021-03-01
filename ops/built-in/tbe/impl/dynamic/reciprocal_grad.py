@@ -15,14 +15,13 @@
 """
 reciprocal_grad
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 # define a scaler , value = -1
@@ -117,9 +116,9 @@ def reciprocal_grad(input_y, input_dy, output_data,
     check_list = ("float16", "float32", "int32", "int8")
     para_check.check_dtype(dtype_y, check_list, param_name="input_y")
     schedules, tensors = [], []
-    ins = classify([input_y, input_dy], Mode.ELEWISE)
+    ins = classify([input_y, input_dy], OpPatternMode.ELEWISE)
     for (_input_y, _input_dy) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_y, shape_dy = shape_util.variable_shape([_input_y, _input_dy])
             data_y = tvm.placeholder(shape_y, name="data_y", dtype=dtype_y)
             data_dy = tvm.placeholder(shape_dy, name="data_dy", dtype=dtype_dy)

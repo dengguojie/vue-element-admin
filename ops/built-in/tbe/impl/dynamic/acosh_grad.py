@@ -35,15 +35,14 @@ dynamic acosh_grad
 # pylint: disable=invalid-name,too-many-locals
 import operator
 
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 NUM_ONE = 1
@@ -186,10 +185,10 @@ def acosh_grad(y, dy, z, kernel_name="acosh_grad"):
         error_detail = "dtype of y and dy should be same"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "y", "dy", error_detail)
 
-    ins = classify([y, dy], Mode.ELEWISE)
+    ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (y, dy) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             shape_x1, shape_x2 = shape_util.variable_shape([y, dy])
             # mul_compute

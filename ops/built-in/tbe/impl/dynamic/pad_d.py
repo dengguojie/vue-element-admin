@@ -15,13 +15,14 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 padD
 """
-from te import tik
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import error_manager_vector
 import te.lang.dynamic
 from impl.dynamic import pad_align
 from impl.dynamic import pad_not_align
 from impl.dynamic import pad_common
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # maximum of gm
 MAX_INT32 = 2**31 - 1
@@ -60,7 +61,7 @@ def pad_compute(obj):
                               outputs=[obj.output_gm],
                               flowtable=[obj.tiling_gm],
                               config=opt_config)
-    te.op.add_compile_info("vars", {"ub_size": obj.buf_size, "core_num": obj.max_core,
+    tbe_context.get_context().add_compile_info("vars", {"ub_size": obj.buf_size, "core_num": obj.max_core,
                                     "padding": obj.ori_padding})
 
     return {"compile_info": te.op.get_compile_info()}

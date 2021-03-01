@@ -17,21 +17,14 @@ bias_add_grad
 """
 # pylint: disable=locally-disabled,invalid-name
 # pylint: disable=unnecessary-comprehension,global-statement
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_format
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_ATTR_STR
-from te.utils.error_manager import error_manager_vector
-from te.utils import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import shape_util
 from topi.cce import util as cce_util
 from impl.util import util_common
 from impl.util.platform_adapter import register_operator
@@ -130,14 +123,14 @@ def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32"):
         x = tbe.cast_to(x, "float32")
 
-    result = tbe.sum(x, REDUCE_LIST)
+    result = tbe.reduce_sum(x, REDUCE_LIST)
     result = tbe.cast_to(result, y_dtype)
 
     return result
 
 
 @register_operator("BiasAddGrad")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_STR, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     """
     Reduce a tensor on last dimension in axis based on sum.
@@ -166,19 +159,19 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     dtype = x.get("dtype").lower()
     data_format = data_format.upper()
     check_list = ("float16", "float32")
-    check_dtype(dtype, check_list, param_name="x")
+    para_check.check_dtype(dtype, check_list, param_name="x")
     data_format_tuple = ("NCHW", "NHWC")
     input_data_format = x.get("format").upper()
-    check_format(data_format, data_format_tuple, param_name="x")
+    para_check.check_format(data_format, data_format_tuple, param_name="x")
     x["rel_pos_to_reduce"] = "before"
 
     g_shape_list = _infer_axes(input_data_format, data_format, shape)
     input_axis = {"shape": [len(g_shape_list), ], "value": g_shape_list, "rel_pos_to_reduce": "axis"}
     global REDUCE_LIST
-    ins = classify([x, input_axis], Mode.REDUCE, {"keepdims": False})
+    ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
     schedules, tensors = [], []
     for (_x, axes) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
             input_data = tvm.placeholder(shape_x, name="input_data", dtype=dtype)
             REDUCE_LIST = cce_util.axis_check(len(shape_x), axes.get("value"))

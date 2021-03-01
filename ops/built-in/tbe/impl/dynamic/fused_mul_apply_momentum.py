@@ -15,14 +15,13 @@
 """
 dynamic fused_mul_apply_momentum
 """
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import shape_util
-from te.lang import cce as tbe
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
@@ -170,10 +169,10 @@ def fused_mul_apply_momentum(var,
     data_momentum = tvm.placeholder(shape_scalar, dtype=var_dtype, name="data_momentum")
     data_x2 = tvm.placeholder(shape_scalar, dtype=var_dtype, name="data_x2")
     
-    ins = classify([var, accum, x1], Mode.ELEWISE)
+    ins = classify([var, accum, x1], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_var, _accum, _x1) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_var, shape_accum, shape_x1 = shape_util.variable_shape([_var, _accum, _x1])
             data_var = tvm.placeholder(shape_var, dtype=var_dtype, name="data_var")
             data_accum = tvm.placeholder(shape_accum, dtype=var_dtype, name="data_accum")           

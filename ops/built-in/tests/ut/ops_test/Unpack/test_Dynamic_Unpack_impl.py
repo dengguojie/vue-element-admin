@@ -15,7 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Dynamic Unpack ut case
 """
-import te
+import tbe
 from op_test_frame.ut import OpUT
 
 
@@ -29,7 +29,7 @@ def gen_dynamic_unpack_case(dict_input, list_dict_outs, num, axis, kernel_name_v
             "support_expect": True}
 
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_dynamic_unpack_case(
                      {"shape": (-1, -1, -1), "dtype": "float32", "ori_shape": (-1, -1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((1, 32), (1, 2),(1, 20))},
@@ -38,7 +38,7 @@ ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
                       "format": "ND", "ori_format": "ND","range":((1,32),(1,20))}],2,1,
                      "dynamic_unpack_01", "success"))
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                  gen_dynamic_unpack_case(
                      {"shape": (-1, -1, -1), "dtype": "float32", "ori_shape": (-1, -1, -1),
                       "format": "ND", "ori_format": "ND", "range": ((1, None), (1, None), (1, 20))},
@@ -49,6 +49,6 @@ ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
 
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

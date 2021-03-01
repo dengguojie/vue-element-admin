@@ -15,19 +15,13 @@
 """
 relu_grad
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils.op_utils import check_op_params
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_elewise_shape_range
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.error_manager import error_manager_vector
-from te.utils import shape_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
@@ -136,7 +130,7 @@ def relu_grad_compute(input_gradients, input_features, output_backprops,
 
 
 @register_operator("ReluGrad")
-@check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def relu_grad(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
     calculate the backpropagation of relu operation
@@ -161,16 +155,16 @@ def relu_grad(input_gradients, input_features, output_backprops, kernel_name="re
     g_dtype = input_gradients.get("dtype").lower()
     x_dtype = input_features.get("dtype").lower()
     check_list =("float16", "float32", "int32", "int8", "uint8")
-    check_dtype(g_dtype, check_list, param_name="input_gradients")
-    check_dtype(x_dtype, check_list, param_name="input_features")
-    check_elewise_shape_range([input_gradients, input_features], support_broadcast=True)
+    para_check.check_dtype(g_dtype, check_list, param_name="input_gradients")
+    para_check.check_dtype(x_dtype, check_list, param_name="input_features")
+    para_check.check_elewise_shape_range([input_gradients, input_features], support_broadcast=True)
     if g_dtype != x_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "input_gradients", "input_features",
                                                               g_dtype, x_dtype)
-    ins = classify([input_gradients, input_features], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_gradients, input_features], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (g, x) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             g_shape, x_shape = shape_util.variable_shape([g, x])
             tensor_g = tvm.placeholder(g_shape, g_dtype, "tensor_g")
             tensor_x = tvm.placeholder(x_shape, x_dtype, "tensor_x")

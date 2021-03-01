@@ -15,17 +15,16 @@
 """
 select
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils.error_manager import error_manager_vector
-from te.utils.shape_util import broadcast_shapes
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # define a VALUE, value = 1
 VALUE_ONE = 1
@@ -65,7 +64,7 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     else:
         condition = tbe.cast_to(condition, num_dtype)
 
-    _, _, shape_max = broadcast_shapes(shape_util.shape_to_list(condition.shape),
+    _, _, shape_max = shape_util.broadcast_shapes(shape_util.shape_to_list(condition.shape),
                                        shape_util.shape_to_list(x1.shape),
                                        param_name_input1="condition",
                                        param_name_input2="x1")
@@ -151,7 +150,7 @@ def select(condition, x1, x2, y, kernel_name="select"):
             error_detail = "dims of tensor condition and x1 must be equal!"
             error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", "x1", error_detail)
 
-    tbe_base.add_compile_info("boardcast_condition_fill", fill_shape)
+    tbe_context.get_context().add_compile_info("boardcast_condition_fill", fill_shape)
 
     x_target = x1
     x_target["shape"] = list(x_target["shape"])
@@ -166,10 +165,10 @@ def select(condition, x1, x2, y, kernel_name="select"):
     x_target["shape"] = tuple(x_target["shape"])
     x_target["range"] = tuple(x_target["range"])
 
-    ins = classify([condition, x_target], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([condition, x_target], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_condition, _x1) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_con, shape_x = shape_util.variable_shape([_condition, _x1])
             flag_cloud = tbe_platform.api_check_support("te.lang.cce.vsel", "float32")
             flag_dtype = dtype_x1 in ("float32", "int32")

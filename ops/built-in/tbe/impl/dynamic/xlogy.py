@@ -15,14 +15,13 @@
 """
 dynamic xlogy
 """
-import te.lang.cce as tbe
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
-from te.lang.base.shape_classifier import Mode
-from te.lang.base.shape_classifier import classify
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import classify
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -352,10 +351,10 @@ def xlogy(input_x, input_y, output_z, kernel_name="xlogy"):
                                error_info['param1_dtype'],
                                error_info['param2_dtype']))
 
-    ins = classify([input_x, input_y], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_input_x, _input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             shape_x1, shape_x2 = shape_util.variable_shape([_input_x, _input_y])
             # mul_compute

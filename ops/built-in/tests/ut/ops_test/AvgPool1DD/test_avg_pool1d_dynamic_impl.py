@@ -14,7 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 AvgPool1D ut case
 """
 from op_test_frame.ut import OpUT
-import te
+import tbe
 
 ut_case = OpUT("AvgPool1DD", "impl.dynamic.avg_pool_1d", "avg_pool_1d")
 
@@ -37,5 +37,5 @@ ut_case.add_case(["Ascend910A"], {"params": [
 
 
 if __name__ == '__main__':
-    with te.op.dynamic():
+    with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend910A")

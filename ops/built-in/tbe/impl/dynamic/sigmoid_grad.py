@@ -17,15 +17,14 @@ sigmoid_grad
 """
 from functools import reduce as reduceIns
 
-from te import tvm
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-import te.lang.base as tbe_base
-import te.lang.cce as tbe
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils.error_manager import error_manager_vector
-from te.utils import shape_util
-from te.utils import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 # General limitation of the reduce size for input shape: 2**30
@@ -119,10 +118,10 @@ def sigmoid_grad(x,
     if x_dtype != dx_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "x", "dx",
                                                               x_dtype, dx_dtype)
-    ins = classify([x, dx], Mode.ELEWISE)
+    ins = classify([x, dx], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (sig, dx) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_sig, shape_dx = shape_util.variable_shape([sig, dx])
             shape_sig = [reduceIns(lambda x, y: x * y, shape_sig)]
             shape_dx = [reduceIns(lambda x, y: x * y, shape_dx)]

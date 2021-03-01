@@ -23,10 +23,10 @@ from __future__ import absolute_import
 import math
 
 import te.lang.dynamic
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from te import platform as tbe_platform
-from te import tik
-from te.utils.error_manager import error_manager_vector as error_manager
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import error_manager_vector as error_manager
 
 from impl.util.util_tik_comm_func import gm2ub
 from impl.util.util_tik_comm_func import ub2gm
@@ -34,6 +34,7 @@ from impl.util.util_tik_comm_func import ceil_div
 from impl import common_util
 from impl import constant_util as constant
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 MAX_SIZE = 2 ** 31 - 1
 VNCHW_BLOCK_SIZE = 512
@@ -464,7 +465,7 @@ class ConcatV2:
                       config=opt_config,
                       enable_l2=False)
 
-        te.op.add_compile_info("vars", {"input_size": len(self.input_tensors),
+        tbe_context.get_context().add_compile_info("vars", {"input_size": len(self.input_tensors),
                                         "concat_dim": self.axis,
                                         "block_dim": self.aicore_num
                                         })

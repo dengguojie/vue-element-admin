@@ -18,17 +18,12 @@ f(x) = min(max(0,x), 6)
 """
 from functools import reduce as reduceIns
 import te.platform as tbe_platform
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te import tvm
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te.utils import shape_util
-from te.utils.op_utils import KERNEL_NAME
-from te.utils.op_utils import REQUIRED_INPUT
-from te.utils.op_utils import REQUIRED_OUTPUT
-from te.utils.op_utils import check_dtype
-from te.utils.op_utils import check_op_params
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
@@ -57,7 +52,7 @@ def relu6_compute(input_x, output_y, kernel_name="relu6"):
 
 
 @register_operator("Relu6")
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def relu6(input_x, output_y, kernel_name="relu6"):
     """
        f(x)= 6(x >= 6)
@@ -80,15 +75,15 @@ def relu6(input_x, output_y, kernel_name="relu6"):
     dtype_input = input_x.get("dtype").lower()
     vmaxs_support = tbe_platform.api_check_support("te.lang.cce.vmaxs", "float32")
     if not vmaxs_support:
-        check_dtype(dtype_input, ("int32", "float16"), param_name="input_x")
+        para_check.check_dtype(dtype_input, ("int32", "float16"), param_name="input_x")
 
     check_list = ("int32", "float16", "float32")
-    check_dtype(dtype_input, check_list, param_name="input_x")
+    para_check.check_dtype(dtype_input, check_list, param_name="input_x")
 
-    ins = classify([input_x], Mode.ELEWISE)
+    ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_input_x,) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
 
             fuse_shape = [1]

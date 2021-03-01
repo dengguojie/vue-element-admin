@@ -15,13 +15,14 @@
 """
 dynamic less
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2 ** (-126)
@@ -175,10 +176,10 @@ def less(input_x, input_y, output_z, kernel_name="less"):
             error_info['op_name'], error_info['param_name1'], error_info['param_name2'], error_info['param1_dtype'],
             error_info['param2_dtype']))
 
-    ins = tbe_base.classify([input_x, input_y], tbe_base.Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             # shape
             x_shape, y_shape = shape_util.variable_shape([input_x, input_y])
 

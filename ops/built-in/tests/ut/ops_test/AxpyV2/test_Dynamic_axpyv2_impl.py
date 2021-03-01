@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 #  pylint: disable=invalid-name,missing-module-docstring
 #!/usr/bin/env python
-import te
+import tbe
 from op_test_frame.ut import OpUT
 import numpy as np
 ut_case = OpUT("AxpyV2", "impl.dynamic.axpy_v2", "axpy_v2")
@@ -38,5 +38,5 @@ ut_case.add_case("all",
                                        "success"))
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")

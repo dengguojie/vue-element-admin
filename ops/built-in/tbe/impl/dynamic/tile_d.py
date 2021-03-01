@@ -15,14 +15,14 @@
 """
 dynamic tile_d
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -172,10 +172,10 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     input_x["range"] = range_adapt
 
     extra_params = {"disable_optimization": True}
-    ins = tbe_base.classify([input_x], tbe_base.Mode.ELEWISE_WITH_BROADCAST, extra_params)
+    ins = classify([input_x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
     for (_input_x, ) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape = shape_util.variable_shape([_input_x])[0]
             data = tvm.placeholder(shape, name="data", dtype=input_dtype)
             res = tile_d_compute(data, output_x, multiples_adapt, kernel_name)
@@ -189,4 +189,4 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
 
     tbe.build(schedules, config)
 
-    tbe_base.add_compile_info("tiling_info", tiling_info)
+    tbe_context.get_context().add_compile_info("tiling_info", tiling_info)

@@ -15,11 +15,13 @@
 """
 resize_nearest_neighbor_v2.py
 """
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
 import te.lang.dynamic
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from impl.util import util_tik_comm_func
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # max uint16
@@ -861,7 +863,7 @@ class ResizeNearestNeighbor(object):
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
 
-        te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes,
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
                                         "core_num": self.ai_core_num,
                                         "max_w_len": self.ub_max_num // self.images_shape_c0,
                                         "align_corners": int(self.align_corners),
@@ -941,7 +943,7 @@ def fill_index_in_ub(tik_instance, idx_ub, idx_num, vector_num=64):
                           1, 1, 1, 1, 8, 0, 8)
 
 
-@te.op.register_operator("ResizeNearestNeighborV2")
+@register_operator("ResizeNearestNeighborV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,

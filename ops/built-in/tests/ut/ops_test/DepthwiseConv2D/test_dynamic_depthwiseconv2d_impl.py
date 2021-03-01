@@ -32,6 +32,7 @@ for test_case  in depthwise_conv2d_dynamic_ut_testcase:
     ut_case.add_case(test_case[0], gen_trans_data_case(*test_case[1:]))
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    import tbe
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        ut_case.run("Ascend910A")
     exit(0)

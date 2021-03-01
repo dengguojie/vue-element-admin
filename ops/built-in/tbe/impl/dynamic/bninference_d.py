@@ -15,16 +15,16 @@
 """
 bninference_d
 """
-import te.lang.cce as tbe
+from impl.util.platform_adapter import tbe
 import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te import tvm
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable=invalid-name,redefined-outer-name
@@ -486,7 +486,7 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
     # compute mean shape
     mean["shape"] = shape_mean
 
-    tbe_base.add_compile_info("broadcast_mean_shape", shape_mean)
+    tbe_context.get_context().add_compile_info("broadcast_mean_shape", shape_mean)
 
     mean_range = []
     for i, _range in enumerate(x["range"]):
@@ -497,14 +497,14 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
     variance["shape"] = shape_variance
 
     # op compute and schedule
-    ins = classify([x, mean], Mode.ELEWISE_WITH_BROADCAST)
+    ins = classify([x, mean], OpPatternMode.ELEWISE_WITH_BROADCAST)
 
     schedules, tensors = [], []
 
     # used to be create holder
     for (x_input, mean_input) in ins:
         # op compute
-        with tbe_base.compute():
+        with tbe.compute():
             # get all dynamic tensor shape
             shape_x, shape_mean = shape_util.variable_shape([x_input, mean_input])
 
