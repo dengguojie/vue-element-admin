@@ -4674,7 +4674,7 @@ class CceConvOp:
         _, _, _, nn_axis = new_c_col_axis
 
         c_tiling_factor = [tiling["CL0_matrix"][0],
-                           tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2]]
+                           int(tiling["CL0_matrix"][1]*tiling["CL0_matrix"][2])]
         if len(tiling["CL0_matrix"]) == 4:
             tiling["CL0_matrix"] = tiling["CL0_matrix"] + [1] + [1]
         elif len(tiling["CL0_matrix"]) == 5:
@@ -5118,7 +5118,9 @@ class CceConvOp:
             if "c_ub_avg" in tensor_map:
                 if self._v200_width_out_1_flag:
                     remove_padded_column = tensor_map["remove_padded_column"]
+                    sch[remove_padded_column].set_scope(cce.scope_ubuf)
                     sch[remove_padded_column].compute_at(sch[res_c], m_outer_inner_outer)
+                    sch[remove_padded_column].emit_insn(remove_padded_column.op.axis[0], "dma_copy")
                 sch[c_ub_avg].compute_at(sch[res_c], m_outer_inner_outer)
                 if "mean_matrix" in tensor_map:
                     sch[mean_matrix].compute_at(sch[res_c], m_outer_inner_outer)   # k.inner.outer

@@ -271,6 +271,8 @@ class CubeParaProcess:
             out_w_upper = _get_output(in_range[W_DIM][1], w_shape[W_DIM],
                                       (self.pads[2], self.pads[3]), self.strides[W_DIM],
                                       self.dilations[W_DIM])
+        if out_h_lower <= 0 or out_w_lower <= 0:
+            err_man.raise_err_specific_user(self.op_type, "lower output_range of h/w must be more than 0!")
         if out_range:
             return [out_range[N_DIM], out_range[C_DIM], (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
         return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
