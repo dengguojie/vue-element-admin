@@ -139,38 +139,39 @@ target_link_libraries(cpu_kernels_llt
 
 set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
-  testcase/attr_value_utest.cpp
-  testcase/context_utest.cpp
-  testcase/cpu_kernels_register_utest.cpp
-  testcase/device_utest.cpp
-  testcase/eigen_threadpool_utest.cpp
-  testcase/node_def_utest.cpp
-  testcase/sharder_utest.cpp
-  testcase/tensor_utest.cpp
-  testcase/kernel_util_utest.cpp
-  testcase/concatv2_utest.cpp
-  testcase/trans_data_utest.cpp
-  testcase/get_dynamic_dims_utest.cpp
-  testcase/identity_utest.cpp
-  testcase/reshape_utest.cpp
-  testcase/round_utest.cpp
-  testcase/strided_slice_utest.cpp
-  testcase/less_utest.cpp
-  testcase/logging_utest.cpp
-  testcase/top_k_utest.cpp
-  testcase/ceil_utest.cpp
-  testcase/realdiv_utest.cpp
-  testcase/add_utest.cpp
-  testcase/mul_utest.cpp
-  testcase/cast_utest.cpp
-  testcase/split_v_utest.cpp
-  testcase/random_uniform_utest.cpp
-  testcase/strided_slice_v2_utest.cpp
-  testcase/sparse_to_dense_utest.cpp
-  testcase/fill_utest.cpp
-  testcase/euqal_utest.cpp
-  testcase/where_utest.cpp
-  testcase/avg_pool1d_avg_matrix_utest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_read_file.cpp
+  testcase/common/src/attr_value_utest.cpp
+  testcase/common/src/context_utest.cpp
+  testcase/common/src/cpu_kernels_register_utest.cpp
+  testcase/common/src/device_utest.cpp
+  testcase/common/src/eigen_threadpool_utest.cpp
+  testcase/common/src/node_def_utest.cpp
+  testcase/common/src/sharder_utest.cpp
+  testcase/common/src/tensor_utest.cpp
+  testcase/common/src/kernel_util_utest.cpp
+  testcase/concatv2/src/concatv2_utest.cpp
+  testcase/trans_data/src/trans_data_utest.cpp
+  testcase/get_dynamic_dims/src/get_dynamic_dims_utest.cpp
+  testcase/identity/src/identity_utest.cpp
+  testcase/reshape/src/reshape_utest.cpp
+  testcase/round/src/round_utest.cpp
+  testcase/strided_slice/src/strided_slice_utest.cpp
+  testcase/less/src/less_utest.cpp
+  testcase/logging/src/logging_utest.cpp
+  testcase/top_k/src/top_k_utest.cpp
+  testcase/ceil/src/ceil_utest.cpp
+  testcase/realdiv/src/realdiv_utest.cpp
+  testcase/add/src/add_utest.cpp
+  testcase/mul/src/mul_utest.cpp
+  testcase/cast/src/cast_utest.cpp
+  testcase/split_v/src/split_v_utest.cpp
+  testcase/random_uniform/src/random_uniform_utest.cpp
+  testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
+  testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
+  testcase/fill/src/fill_utest.cpp
+  testcase/equal/src/equal_utest.cpp
+  testcase/where/src/where_utest.cpp
+  testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
@@ -203,6 +204,7 @@ cann_install(
 ]]
 add_custom_command(
   TARGET  cpu_kernels_ut POST_BUILD
+  COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR}/testcase && python3.7 run_all_gen_data.py
   COMMAND cpu_kernels_ut
   COMMENT "Run cpu_kernels_ut"
 )
