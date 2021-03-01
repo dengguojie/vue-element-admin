@@ -1,0 +1,27 @@
+import onnx
+from onnx import helper
+from onnx import AttributeProto, TensorProto, GraphProto
+
+
+def make_relu(version_number):
+    X = helper.make_tensor_value_info("X", TensorProto.FLOAT, [3, 4, 5])
+    Y = helper.make_tensor_value_info("Y", TensorProto.FLOAT, [3, 4, 5])
+    node_def = helper.make_node('Relu',
+                                inputs=['X'],
+                                outputs=['Y'],
+                                )
+    graph = helper.make_graph(
+        [node_def],
+        "test_relu",
+        [X],
+        [Y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-relu_test")
+    model.opset_import[0].version = version_number
+    onnx.save(model, "./test_relu_case_version_{}.onnx".format(version_number))
+
+if __name__ == '__main__':
+    relu_list = (9,11,12,13)
+    for i in relu_list:
+        make_relu(i)

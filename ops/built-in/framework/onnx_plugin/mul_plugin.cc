@@ -42,6 +42,9 @@ Status ParseParamsMul(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("Mul")
     .FrameworkType(ONNX)
     .OriginOpType("ai.onnx::11::Mul")
+    .OriginOpType({"ai.onnx::9::Mul",
+                   "ai.onnx::12::Mul",
+                   "ai.onnx::13::Mul"})
     .ParseParamsFn(ParseParamsMul)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
