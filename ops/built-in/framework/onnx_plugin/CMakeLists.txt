@@ -93,6 +93,7 @@ set(_onnx_plugins
   depth_to_space_plugin.cc
   affine_grid_plugin.cc
   reduceL2_plugin.cc
+  clip_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
