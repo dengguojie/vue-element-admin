@@ -20,7 +20,6 @@
  */
 #include <string>
 #include <vector>
-
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
@@ -52,6 +51,7 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
       break;
     }
   }
+
   if (!set_axis_flag) {
     OP_LOGI("Concat", "onnx Concat op has no axis attr.");
     concat_dim = DEFAULT_CONCAT_DIM;
@@ -81,6 +81,7 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
   op.GetAttr("N", input_size);
   std::vector<ge::Operator> inputs;
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
+
   if (input_size == 0) {
     OP_LOGE("ParseOpToGraphConcat", "input_size must ge 1");
     return FAILED;
@@ -96,6 +97,7 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
                          .create_dynamic_input_x(input_size)
                          .set_attr_concat_dim(concat_dim)
                          .set_attr_N(input_size);
+                         
     std::string input_name = "";
     for (int i = 0; i < input_size; ++i) {
       input_name = "data_concat_" + to_string(i);
@@ -112,7 +114,8 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType("ai.onnx::11::Concat")
-    .OriginOpType({"ai.onnx::12::Concat",
+    .OriginOpType({"ai.onnx::9::Concat",
+                  "ai.onnx::12::Concat",
                   "ai.onnx::13::Concat"})
     .ParseParamsFn(ParseParamsConcatCall)
     .ParseOpToGraphFn(ParseOpToGraphConcat)

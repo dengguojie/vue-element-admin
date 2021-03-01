@@ -23,7 +23,7 @@ def make_concat(version_num):
 
 
 if __name__ == '__main__':
-    concat_list = (11, 12, 13)
+    concat_list = (9, 11, 12, 13)
     for i in concat_list:
         make_concat(i)
 
