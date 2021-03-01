@@ -19,6 +19,7 @@ import te.platform as tbe_platform
 from tbe.dsl.compute import util as te_util
 from tbe.common.tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from te import tvm
 
 
