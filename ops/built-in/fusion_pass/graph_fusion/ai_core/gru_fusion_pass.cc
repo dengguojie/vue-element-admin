@@ -161,7 +161,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
 
   // create a splitD Op
   OpDescPtr splitDesc = nullptr;
-  splitDesc = std::make_shared<ge::OpDesc>("DynamicGRUV2_split", "SplitD");
+  splitDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/DynamicGRUV2_split", "SplitD");
   FUSION_PASS_CHECK(splitDesc == nullptr, 
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "splitD is null, SplitD failed."), return PARAM_INVALID);
 
