@@ -114,7 +114,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
   graph_fusion/ai_core/batch_to_space_nd_fusion_pass.cc
   graph_fusion/ai_core/biasadd_conv_fusion_pass.cc
-  graph_fusion/ai_core/combined_non_max_suppression_fusion_pass.cc
   graph_fusion/ai_core/concatd_fusion_pass.cc
   graph_fusion/ai_core/concat_fusion_pass.cc
   graph_fusion/ai_core/concat_v2d_fusion_pass.cc
