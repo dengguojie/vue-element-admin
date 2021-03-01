@@ -17,7 +17,7 @@ l2_loss_schedule
 """
 from __future__ import absolute_import
 import math
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 
 

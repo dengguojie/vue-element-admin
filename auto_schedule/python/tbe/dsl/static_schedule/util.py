@@ -24,7 +24,7 @@ from typing import Hashable
 from typing import Callable
 from typing import Union
 
-from te import tvm
+from tbe import tvm
 from te.platform.cce_conf import CceProductParams as pver
 from te.platform.cce_conf import VERSION_CLOUD
 from . import pattern

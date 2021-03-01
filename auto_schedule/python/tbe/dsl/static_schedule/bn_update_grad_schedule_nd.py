@@ -20,7 +20,7 @@ from __future__ import division
 import math
 
 import te.lang.cce
-from te import tvm
+from tbe import tvm
 import te.platform.cce_params as cce
 from te import platform as cceconf
 from te.platform import cce_util

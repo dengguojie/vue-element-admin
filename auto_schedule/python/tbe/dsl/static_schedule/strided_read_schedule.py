@@ -15,7 +15,7 @@
 """
 strided_read
 """
-from te import tvm
+from tbe import tvm
 
 
 def strided_read_schedule(res, input_tensors):

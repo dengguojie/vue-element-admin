@@ -18,11 +18,11 @@ Pure broadcast schedule
 import math
 import te
 
-from te import tvm
+from tbe import tvm
 from te.platform import log
 
-from te.tvm.tensor import Tensor
-from te.tvm.schedule import Schedule
+from tbe.tvm.tensor import Tensor
+from tbe.tvm.schedule import Schedule
 from te.platform.cce_util import get_align_factor
 from te.platform.cce_util import get_buffer
 from te.platform.cce_util import apply_for_new_alloc

@@ -22,7 +22,7 @@ from __future__ import division
 import math
 from functools import reduce as functools_reduce
 
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 from tbe.dsl.instrinsic.cce_intrin import get_bit_len
 from te.platform import get_soc_spec

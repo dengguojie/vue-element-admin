@@ -16,7 +16,7 @@
 l2 normalize schedule
 """
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from . import util
 from .vector_schedule import VectorSchedule

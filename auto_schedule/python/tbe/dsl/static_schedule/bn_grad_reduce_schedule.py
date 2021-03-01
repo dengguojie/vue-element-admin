@@ -19,7 +19,7 @@ import copy
 import math
 
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from . import util
 from .elewise_schedule_new import ElewiseSchedule

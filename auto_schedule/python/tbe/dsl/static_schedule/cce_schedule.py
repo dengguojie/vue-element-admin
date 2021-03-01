@@ -29,7 +29,7 @@ from functools import reduce as functools_reduce
 
 import te.lang.cce
 
-from te import tvm
+from tbe import tvm
 from te import platform as cceconf
 from te.platform import log
 

@@ -17,7 +17,7 @@ ascend_dequant
 """
 from functools import reduce as function_reduce
 import te.lang.cce
-from te import tvm
+from tbe import tvm
 from te import platform as cceconf
 
 

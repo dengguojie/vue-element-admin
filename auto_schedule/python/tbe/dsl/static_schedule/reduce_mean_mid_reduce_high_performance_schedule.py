@@ -18,7 +18,7 @@ reduce atomic schedule
 import math
 
 import te.lang.cce
-from te import tvm
+from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
 from te.platform import cce_util

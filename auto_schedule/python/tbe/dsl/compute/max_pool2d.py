@@ -15,7 +15,7 @@
 """
 max_pool2d
 """
-from te import tvm
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.testing.testing import is_debug_mode
 

@@ -18,7 +18,7 @@ softmax schedule, provide a schedule for softmax
 # pylint: disable=too-many-lines
 from __future__ import absolute_import
 
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 from te.platform import log
 from tbe.dsl.instrinsic import cce_emitinsn_params

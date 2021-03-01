@@ -16,7 +16,7 @@
 read_select_schedule
 """
 from functools import reduce as functools_reduce
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 from tbe.dsl.instrinsic.cce_intrin import get_bit_len
 

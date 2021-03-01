@@ -15,7 +15,7 @@
 """
 write_select_schedule
 """
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 
 

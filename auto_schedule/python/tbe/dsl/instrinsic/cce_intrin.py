@@ -24,11 +24,11 @@ from te.platform import cce_conf
 from te.platform import cce_params
 from te.platform import cce_util
 
-from te.tvm.ir_builder import create as _create
-from te.tvm.intrin import call_extern
-from te.tvm import make as _make
-from te.tvm.tensor_intrin import decl_tensor_intrin
-from te.tvm import api as tvm
+from tbe.tvm.ir_builder import create as _create
+from tbe.tvm.intrin import call_extern
+from tbe.tvm import make as _make
+from tbe.tvm.tensor_intrin import decl_tensor_intrin
+from tbe.tvm import api as tvm
 
 # the limit of the nesting depth in the generated CCE,
 # if num_segments > MAX_BRACKET_DEPTH, stackoverflow,

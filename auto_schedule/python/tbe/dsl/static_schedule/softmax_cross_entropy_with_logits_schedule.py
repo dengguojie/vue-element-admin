@@ -18,7 +18,7 @@ softmax_cross_entropy_with_logits op schedule
 import math
 
 import te.lang.cce
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 from te.platform import cce_util
 from tbe.dsl.instrinsic import cce_emitinsn_params

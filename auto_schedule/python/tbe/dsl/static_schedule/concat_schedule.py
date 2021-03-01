@@ -20,7 +20,7 @@ import math
 from functools import reduce as functools_reduce
 
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 
 
 def _get_align_factor(dtype):

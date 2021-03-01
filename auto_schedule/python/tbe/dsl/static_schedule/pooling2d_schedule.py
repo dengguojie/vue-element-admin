@@ -18,7 +18,7 @@ pooling2d_schedule
 import math
 
 from te import platform as cce
-from te import tvm
+from tbe import tvm
 from te.platform import intrinsic_check_support
 from te.platform import get_soc_spec
 from tbe.dsl.instrinsic import cce_emitinsn_params as cce_params

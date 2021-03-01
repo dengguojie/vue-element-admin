@@ -18,7 +18,7 @@ ascend_quant
 from functools import reduce as function_reduce
 import copy
 import te.lang.cce
-from te import tvm
+from tbe import tvm
 from te import platform as cceconf
 from te.platform.cce_conf import CceProductParams as pver
 from tbe.dsl.instrinsic import cce_emitinsn_params

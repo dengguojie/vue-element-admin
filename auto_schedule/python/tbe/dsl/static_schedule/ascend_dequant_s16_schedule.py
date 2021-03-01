@@ -15,7 +15,7 @@
 """
 ascend_dequant_s16
 """
-from te import tvm
+from tbe import tvm
 
 
 def ascend_dequant_s16_schedule(res, input_tensors):

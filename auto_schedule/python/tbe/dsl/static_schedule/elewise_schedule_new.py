@@ -20,7 +20,7 @@ import math
 import functools
 
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from te.platform.cce_conf import CceProductParams as pver

@@ -16,7 +16,7 @@
 common
 """
 from __future__ import absolute_import
-from te import tvm
+from tbe import tvm
 import te.platform.cce_params as cce_params
 from tbe.common.utils.errormgr.error_manager_util import get_error_message
 

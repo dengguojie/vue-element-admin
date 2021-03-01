@@ -20,7 +20,7 @@ from __future__ import division
 from functools import reduce as reduceIns
 
 import te.lang.cce
-from te import tvm
+from tbe import tvm
 from te import platform as cceconf
 from te.platform.cce_conf import CceProductParams as pver
 from te.platform import log

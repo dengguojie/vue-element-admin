@@ -16,7 +16,7 @@
 pooling3d_max_grad_grad_schedule
 """
 from te import platform as cce
-from te import tvm
+from tbe import tvm
 
 ASCEND_QUANT_TAG = "quant"
 POOLING3D_TAG_PREFIX = "pooling3d_"

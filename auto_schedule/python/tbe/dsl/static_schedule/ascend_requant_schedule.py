@@ -15,7 +15,7 @@
 """
 ascend_requant
 """
-from te import tvm
+from tbe import tvm
 
 
 def ascend_requant_schedule(res, input_tensors):

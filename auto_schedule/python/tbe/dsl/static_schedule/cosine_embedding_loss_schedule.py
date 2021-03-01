@@ -18,7 +18,7 @@ batch_normalization_forward_training_reduce
 from __future__ import absolute_import
 from __future__ import division
 from functools import reduce as functools_reduce
-from te import tvm
+from tbe import tvm
 import te.platform.cce_params as cce
 from te import platform as cceconf
 from te.platform import log

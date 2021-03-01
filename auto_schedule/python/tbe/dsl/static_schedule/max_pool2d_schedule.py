@@ -16,7 +16,7 @@
 max_pool2d_schedule
 """
 from te import platform as cce
-from te import tvm
+from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params as cce_params
 from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver

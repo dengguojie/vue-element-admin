@@ -18,7 +18,7 @@ elewise mutil out schedule
 import math
 
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from te.platform.cce_conf import CceProductParams as pver
 from tbe.common.utils.errormgr import get_error_message
 from . import util

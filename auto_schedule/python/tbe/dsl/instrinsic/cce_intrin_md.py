@@ -26,14 +26,14 @@ from tbe.dsl.instrinsic import cce_emitinsn_params
 from te.platform import cce_params
 from te.platform import cce_util
 
-from te.tvm._ffi.function import register_func
-from te.tvm.ir_builder import create as _create
-from te.tvm.intrin import call_extern
-from te.tvm import ir_pass
-from te.tvm import api as tvm
-from te.tvm import expr as _expr
-from te.tvm import stmt as _stmt
-from te.tvm import make as _make
+from tbe.tvm._ffi.function import register_func
+from tbe.tvm.ir_builder import create as _create
+from tbe.tvm.intrin import call_extern
+from tbe.tvm import ir_pass
+from tbe.tvm import api as tvm
+from tbe.tvm import expr as _expr
+from tbe.tvm import stmt as _stmt
+from tbe.tvm import make as _make
 
 
 # max repeat time

@@ -16,7 +16,7 @@
 Add your rules to pattern mapping here so cce auto_schedule can distribute your operators
 to corresponding schedule correctly
 """
-from te import tvm
+from tbe import tvm
 
 from .cce_schedule_distribution_rules import OpPatternRules
 from .cce_schedule_distribution_rules import OpSubPatternRules

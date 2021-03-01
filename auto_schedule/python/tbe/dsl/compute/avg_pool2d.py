@@ -15,7 +15,7 @@
 """
 avg_pool2d
 """
-from te import tvm
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
 
 _POOL2D_TAG = "pooling2d_"

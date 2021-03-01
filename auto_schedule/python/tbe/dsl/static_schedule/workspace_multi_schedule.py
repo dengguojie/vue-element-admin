@@ -16,7 +16,7 @@
 elewise mutil out schedule
 """
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from . import util
 from .cce_schedule_declarations import OpSpecTypes
 

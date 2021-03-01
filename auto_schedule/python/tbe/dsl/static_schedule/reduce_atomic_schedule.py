@@ -18,7 +18,7 @@ reduce atomic schedule
 from functools import reduce as reduceIns
 
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 import te.platform.cce_params as cce
 from te.platform.cce_conf import CceProductParams as pver

@@ -20,7 +20,7 @@ import math
 import copy
 
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from te.platform import log
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.common.utils.errormgr import get_error_message

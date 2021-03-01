@@ -19,7 +19,7 @@ import math
 
 import te
 
-from te import tvm
+from tbe import tvm
 from te.platform import log
 
 from te.platform.cce_util import get_align_factor

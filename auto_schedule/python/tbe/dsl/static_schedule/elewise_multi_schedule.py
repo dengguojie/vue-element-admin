@@ -16,7 +16,7 @@
 elewise mutil out schedule
 """
 import math
-from te import tvm
+from tbe import tvm
 from te import platform as cceconf
 from te.platform import log
 from . import util

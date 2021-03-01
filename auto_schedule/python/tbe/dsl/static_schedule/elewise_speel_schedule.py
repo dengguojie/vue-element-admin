@@ -15,7 +15,7 @@
 """
 elewise speel schedule
 """
-from te import tvm
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
 
 from . import util

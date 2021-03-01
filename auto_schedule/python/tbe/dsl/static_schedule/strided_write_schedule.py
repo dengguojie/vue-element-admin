@@ -15,7 +15,7 @@
 """
 strided_write
 """
-from te import tvm
+from tbe import tvm
 
 
 def strided_write_schedule(res, input_tensors):

@@ -15,7 +15,7 @@
 """
 ascend_anti_quant
 """
-from te import tvm
+from tbe import tvm
 
 
 def ascend_anti_quant_schedule(res, input_tensors):

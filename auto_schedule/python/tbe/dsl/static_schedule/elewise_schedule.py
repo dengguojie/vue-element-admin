@@ -24,7 +24,7 @@ from te.platform import log
 from te.platform import intrinsic_check_support
 from te.platform.cce_conf import CceProductParams as pver
 from te import platform as cceconf
-from te import tvm
+from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.instrinsic.cce_intrin import intrin_factor
 import te.platform.cce_params as cce_params

@@ -16,7 +16,7 @@
 pooling3d_schedule
 """
 from te import platform as cce
-from te import tvm
+from tbe import tvm
 from te import platform as cceconf
 from .pooling3d_max_grad_grad_schedule import pooling3d_max_grad_grad_schedule
 

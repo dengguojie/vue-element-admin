@@ -22,7 +22,7 @@ import functools
 from math import sqrt
 
 import te.lang.cce
-from te import tvm
+from tbe import tvm
 from te import platform as cceconf
 from te.platform.cce_conf import CceProductParams as pver
 import te.platform.cce_params as cce

@@ -19,7 +19,7 @@ from __future__ import absolute_import
 import functools
 
 import te
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 from .util import get_emit_insn_map
 from .util import gen_reversed_subgraph_list
