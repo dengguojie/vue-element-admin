@@ -482,7 +482,7 @@ def _check_tilinng_k_l1():
         _raise_dx_opti_err("kb should be divisible by kbl1")
 
 
-def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b):
+def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, loc_multi_group_flag):
     if TILING.get("BL0_matrix") is None:
         _raise_dx_opti_err("tiling[BL0_matrix] can not be None")
     if TILING.get("BL0_matrix") == []:
@@ -501,7 +501,8 @@ def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b):
         full_k1 = DIM_MAP["dy_c1_extend"]
         if TILING.get("BL0_matrix")[0] != full_k1 and TILING.get("BL0_matrix")[5] > 1:
             _raise_dx_opti_err("If axis k in tiling BL0 is not full load, group_BL0 must be 1.")
-        if TILING.get("AL0_matrix")[1] != TILING.get("BL0_matrix")[0]:
+
+        if TILING.get("AL0_matrix")[1] != TILING.get("BL0_matrix")[0] and not loc_multi_group_flag:
             _raise_dx_opti_err(
                 "axis k in tilling AL0 is not equal to axis k in tilling BL0"
             )
@@ -772,7 +773,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
         manual_pingpong_buffer.get("AL0_pbuffer")
     )
 
-    _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b)
+    _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, loc_multi_group_flag)
 
     # check tilling in CL0
     _check_tilling_l0c(
@@ -1563,7 +1564,7 @@ def _get_mmad_factor():
     """
     al0_factor = [TILING.get("AL0_matrix")[0], TILING.get("AL0_matrix")[1]]
     bl0_factor = [TILING.get("BL0_matrix")[0], TILING.get("BL0_matrix")[1], TILING.get("BL0_matrix")[5]]
-    reduce_factor = TILING.get("BL0_matrix")[0]
+    reduce_factor = TILING.get("AL0_matrix")[1]
     return al0_factor, bl0_factor, reduce_factor
 
 
@@ -1754,16 +1755,12 @@ def _get_l0a_and_l0b_axis(  # pylint: disable=R0913,R0914
         al0_axis_factor[0] * cce_params.CUBE_MKN[c_l0c.dtype]["mac"][0]
     )
     bl0_n_outer, bl0_n_inner = sch[c_l0c].split(new_c_col_axis[1], bl0_axis_factor[1])
-    # for loc_multi_group_flag is true scenes, split factor of g_axis of bl0
-    bl0_g_outer, bl0_g_inner = sch[c_l0c].split(new_c_col_axis[4], bl0_axis_factor[2])
     # for reduce axis, al0 and b_l0b should be the same
     k_outer_outer, k_outer_inner = sch[c_l0c].split(reduce_out, reduce_axis_factor)
     _, batch_l0c_inner = sch[c_l0c].split(c_l0c.op.axis[1], 1)
     sch[c_l0c].reorder(
-        bl0_g_outer,
         k_outer_outer,
         bl0_n_outer,
-        bl0_g_inner,
         al0_m_out,
         batch_l0c_inner,
         bl0_n_inner,
@@ -2717,7 +2714,17 @@ def opti_schedule(
 
     # attach tensor of a_l0a
     sch[a_l0a].compute_at(sch[c_l0c], al0_m_out)
-    sch[b_l0b].compute_at(sch[c_l0c], bl0_n_outer)
+
+    def _bl0_attach():
+        """
+        if loc_multi_group_flag and bl0_factor in group axis is 2,
+        comput axis equal with l0c
+        """
+        if loc_multi_group_flag and bl0_axis_factor[2] > 1:
+            sch[b_l0b].compute_at(sch[c_gm], c_slice_axis)
+        else:
+            sch[b_l0b].compute_at(sch[c_l0c], bl0_n_outer)
+    _bl0_attach()
     _print_ir_conv("attach l0a/l0b", sch)
 
     # split and get axis of al1_at_l0c_axis, bl1_at_l0c_axis

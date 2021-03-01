@@ -1608,7 +1608,7 @@ def general_schedule(
                 elif status == Compare.GREATE_EQ:
                     l1_nb = bl1_tilling_n * bl0_tiling_nb
                     _, _, _n0 = cce_params.CUBE_MKN[b_l1.dtype]["mac"]
-                    if l0c_multi_group_flag:   
+                    if n0_32_flag is not None:   
                         l1_nb = l1_nb * bl1_tilling_g // 2
                         _n0 *= 2
                     l1b2out_affine_shape = [1, None, l1_nb, cl0_tiling_m0, _n0]
