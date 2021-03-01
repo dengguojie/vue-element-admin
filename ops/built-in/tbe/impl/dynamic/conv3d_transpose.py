@@ -18,7 +18,7 @@ conv3d_transpose
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 import te.lang.base as tbe_base
-from te.lang.cce.te_compute import conv3d_backprop_input_compute as conv3d_bp_dx
+from tbe.dsl.compute import conv3d_backprop_input_compute as conv3d_bp_dx
 from impl.dynamic import check_and_config_para
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util

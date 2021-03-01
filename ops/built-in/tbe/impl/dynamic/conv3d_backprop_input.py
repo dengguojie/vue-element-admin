@@ -18,7 +18,7 @@ conv3d_backprop_input
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 import te.lang.base as tbe_base
-from te.lang.cce.te_compute import conv3d_backprop_input_compute as conv3d_bp_dx
+from tbe.dsl.compute import conv3d_backprop_input_compute as conv3d_bp_dx
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
@@ -64,10 +64,16 @@ _DEFAULT_MAX_SHAPE_NUM = 1000000
 # dilation must be in [1,255]
 _DILATION_HW_MIN = 1
 _DILATION_HW_MAX = 255
+
 # NDHWC or NCDHW
 FORMAT_5D_DIMS = 5
 # NDC1HWC0
 FORMAT_6D_DIMS = 6
+
+# lower range
+_LOWER_RANGE = 1
+# upper range
+_UPPER_RANGE = 4096
 
 # the bytes length of several dtype
 _BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
@@ -77,6 +83,12 @@ _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # align with 16 for chips
 _C0_SIZE = tbe_platform.C0_SIZE
 
+
+def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
+    if attr_value < attr_min or attr_value > attr_max:
+        cube_err.raise_err_attr_range_invalid(
+            'conv3d_backprop_input', "[{},{}]".format(attr_min, attr_max),
+            attr_name, str(attr_value))
 
 def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
                      ori_format_out_backprop, ori_shape_out_backprop,
@@ -151,12 +163,40 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
 
     return shape_filters, shape_out_backprop, shape_strides, shape_dilations, range_input, shape_res
 
+def _check_range(range, range_min=1, range_max=None):
+    if range[0] < range_min:
+        cube_err.raise_err_specific(
+            'conv3d_backprop_input', "the lower bound of range should be larger than {}".format(range_min))
+    if (range_max is not None) and (range[1] > range_max):
+        cube_err.raise_err_specific(
+            'conv3d_backprop_input', "the upper bound of range should be less than {}".format(range_max))
+    if range[0] > range[1] and range[1] != -1:
+        cube_err.raise_err_specific(
+            'conv3d_backprop_input', "the upper bound of range should be larger than lower bound")
+
+def _check_dynamic_flag(input_size_ndhwc):
+    dim_str = "NDHW"
+    for i in range(4):
+        if input_size_ndhwc[i] < -1:
+            cube_err.raise_err_specific(
+                'conv3d_backprop_input',"Dynamic flag is -1, but dim {} is {}".format(dim_str[i], input_size_ndhwc[i]))
+    if input_size_ndhwc[-1] < 0:
+        cube_err.raise_err_specific(
+            'conv3d_backprop_input',"Dim C does not support dynamic shape")
+
 def _get_output(x_in, k_size, pads, stride, dilation):
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0 = fmap_range
+    _check_range(fmap_range_n)
+    _check_range(fmap_range_d)
+    _check_range(fmap_range_h, _LOWER_RANGE, _UPPER_RANGE)
+    _check_range(fmap_range_w, _LOWER_RANGE, _UPPER_RANGE)
     w_d, w_h, w_w, w_c, w_n = kernel
+    _check_attr_range("stride's D", stride[1], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
+    _check_attr_range("stride's H", stride[2], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
+    _check_attr_range("stride's W", stride[3], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     if not all(i == 0 for i in pads):
         out_d_lower = util_common.ceil(fmap_range_d[0], stride[1])
         out_d_upper = util_common.ceil(fmap_range_d[1], stride[1])
@@ -196,7 +236,7 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     return range_dedy, range_input
 
 def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,
-                            out_backprop_dtype, range_dedy, range_input):
+                        out_backprop_dtype, range_dedy, range_input):
 
     _, dy_k0, _ = tbe_platform.CUBE_MKN[out_backprop_dtype]['mac']
     _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filters_dtype]['mac']
@@ -207,23 +247,28 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
     shape_filter_frac = (util_common.ceil(filter_channel, w_n0) * filter_depth * filter_h * filter_w,
                          util_common.ceil(filter_batch, w_k0), w_k0, w_n0)
 
-    if shape_out_backprop[0] == -1:
+    for i in range(FORMAT_5D_DIMS):
+        if input_sizes[i] == -1 and shape_out_backprop[i] != -1:
+            cube_err.raise_err_specific(
+                'conv3d_backprop_input', 'Dynamic dim in input size and out_backprop should be same.')
+
+    if input_sizes[0] == -1:
         dedy_batch = tbe_base.var("batch_n", range_input[0])
         tbe_base.add_exclude_bound_var(dedy_batch)
         input_sizes[0] = dedy_batch
-    if shape_out_backprop[1] == -1:
+    if input_sizes[1] == -1:
         dx_depth = tbe_base.var("dedx_d", range_input[1])
         dedy_depth = tbe_base.var("dedy_d", range_dedy[1])
         tbe_base.add_exclude_bound_var(dx_depth)
         tbe_base.add_exclude_bound_var(dedy_depth)
         input_sizes[1] = dx_depth
-    if shape_out_backprop[2] == -1:
+    if input_sizes[2] == -1:
         dx_h = tbe_base.var("dedx_h", range_input[3])
         dedy_h = tbe_base.var("dedy_h", range_dedy[3])
         tbe_base.add_exclude_bound_var(dx_h)
         tbe_base.add_exclude_bound_var(dedy_h)
         input_sizes[2] = dx_h
-    if shape_out_backprop[3] == -1:
+    if input_sizes[3] == -1:
         dx_w = tbe_base.var("dedx_w", range_input[4])
         dedy_w = tbe_base.var("dedy_w", range_dedy[4])
         tbe_base.add_exclude_bound_var(dx_w)
@@ -284,12 +329,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     -----------------------
     All transformed params
     """
-    def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
-        if attr_value < attr_min or attr_value > attr_max:
-            cube_err.raise_err_attr_range_invalid(
-                'conv3d_backprop_input', "[{},{}]".format(attr_min, attr_max),
-                attr_name, str(attr_value))
-
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
         if dtype is None:
             bit_ratio = _BIT_RATIO_DICT.get("float16")
@@ -347,6 +386,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         if (not isinstance(fmap_h, tvm.expr.Var) and
             not isinstance(fmap_w, tvm.expr.Var) and
             not isinstance(fmap_deep, tvm.expr.Var)):
+            pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
             fmap_h_padding = fmap_h + pad_up + pad_down
             fmap_w_padding = fmap_w + pad_left + pad_right
             fmap_d_padding = fmap_deep + pad_head + pad_tail
@@ -421,8 +461,15 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     filter_d_dilation = (filter_depth - 1) * dilation_d + 1
 
+    pad_var_flag = False
+    if not isinstance(pads, str):
+        pad_var_flag = all(i == -1 for i in pads)
+        pad_all_positive_flag = all(i >= 0 for i in pads)
+        if not pad_var_flag and not pad_all_positive_flag:
+            cube_err.raise_err_specific(
+                    'conv3d_backprop_input', "pad should be positive")
     # pads compute
-    if pads == 'SAME' or all(i == -1 for i in pads):
+    if pads == 'SAME' or pad_var_flag:
         pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = tvm.max(pad_h, 0) if isinstance(fmap_h, tvm.expr.Var) else max(pad_h, 0)
         pad_up = pad_h // 2
@@ -440,7 +487,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         pads = _PADDING_VAILD
 
     pads = list(pads)
-    pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
     if isinstance(fmap_deep, tvm.expr.Var):
         fmap_d_upper, dedy_d_upper = range_input[1][1], range_dedy[1][1]
     else:
@@ -499,14 +545,14 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     _check_attr_range("Fmap's H", fmap_h_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
     _check_attr_range("Fmap's W", fmap_h_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
     # stride value limit
-    _check_attr_range("stride's H", stride_h, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
-    _check_attr_range("stride's W", stride_w, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's H*W",
                       stride_h * stride_w, _STRIDE_HW_MIN, _STRIDE_SIZE_MAX)
     _check_attr_range("stride's H*W*D", stride_h * stride_w * stride_d,
                       _STRIDE_HW_MIN, _STRIDE_SIZE_HWD_MAX)
 
     # dilation value limit
+    _check_attr_range("dilation's N", dilation_n, _DILATION_HW_MIN, _DILATION_HW_MIN)
+    _check_attr_range("dilation's C", dilation_c, _DILATION_HW_MIN, _DILATION_HW_MIN)
     _check_attr_range("dilation's H", dilation_h, _DILATION_HW_MIN, _DILATION_HW_MAX)
     _check_attr_range("dilation's W", dilation_w, _DILATION_HW_MIN, _DILATION_HW_MAX)
 
@@ -534,13 +580,16 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
     ori_shape_out_backprop = out_backprop.get("ori_shape")
     # range_input is N,D,C1,H,W,C0
     range_input = y.get("range")
-    ori_y_shape = y.get("ori_shape")
     filters_dtype = filter.get("dtype")
     out_backprop_dtype = out_backprop.get("dtype")
     res_dtype = y.get("dtype")
     ori_format_filters = filter.get("ori_format")
     ori_format_out_backprop = out_backprop.get("ori_format")
     ori_format_res = y.get("ori_format")
+
+    if not(ori_format_res == ori_format_out_backprop == data_format):
+        cube_err.raise_err_specific(
+            'conv3d_backprop_input',"The data format of out_backprop, input_size and data_format should be same")
 
     ori_shape_strides = strides
     ori_shape_dilations = dilations
@@ -557,7 +606,7 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
                          range_input,
                          ori_format_res,
                          input_sizes)
-
+    _check_dynamic_flag(input_sizes)
     if len(range_input) == FORMAT_5D_DIMS:
         c1_value = util_common.ceil(input_sizes[-1], _C0_SIZE)
         range_input = [range_input[0], range_input[1], (c1_value, c1_value),

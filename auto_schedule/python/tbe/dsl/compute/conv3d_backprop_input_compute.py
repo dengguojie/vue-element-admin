@@ -136,8 +136,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     dedy_shape[2] = cout_g // _BLOCK_SIZE
     _, _, filter_d, filter_h, filter_w = filter_sizes
     filter_frac_6d = [cout_g, filter_d, cin1_g, filter_h, filter_w, _BLOCK_SIZE]
-    dx_c_aligned = te_util.align(dx_c, _BLOCK_SIZE)
-    input_sizes[-1] = dx_c_aligned
+    input_sizes[-1] = te_util.align(dx_c, _BLOCK_SIZE)
 
     if var_map:
         DynamicConv3dBpInputParams.tiling_info_dict = {
@@ -272,6 +271,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
             cube_err.raise_err_two_paras('E62503', 'conv3d_backprop_input', str(dedy_batch), str(fmap_batch))
         # Check dhw dimension
         if "dedy_h" not in var_map and "dedy_w" not in var_map and "dedy_d" not in var_map:
+            pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
             fmap_h_padding = fmap_h + pad_up + pad_down
             fmap_w_padding = fmap_w + pad_left + pad_right
             fmap_d_padding = fmap_deep + pad_head + pad_tail
@@ -304,7 +304,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
 
-    _, dilation_d, dilation_h, dilation_w, _ = dilations
+    dilation_n, dilation_d, dilation_h, dilation_w, dilation_c = dilations
     if dilation_d != 1:
         cube_err.raise_err_specific("conv3d_backprop_input", "dilation in D dimension only supports 1.")
 
@@ -329,9 +329,8 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     filter_d_dilation = (filter_depth - 1) * dilation_d + 1
-
     pads = list(pads)
-    pad_head, pad_tail, pad_up, pad_down, pad_left, pad_right = pads
+
     if "dedy_d" in var_map:
         dedy_d_bound = get_te_var("dedy_d").get_bound()
         dedx_d_bound = get_te_var("dedx_d").get_bound()
@@ -377,6 +376,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                       _FILTER_HW_MIN, _KHWD_COEFF)
 
     # stride value limit
+    _check_attr_range("stride's D", stride_d, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's H", stride_h, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's W", stride_w, _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's H*W",
@@ -385,6 +385,8 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                       _STRIDE_HW_MIN, _STRIDE_SIZE_HWD_MAX)
 
     # dilation value limit
+    _check_attr_range("dilation's N", dilation_n, _DILATION_HW_MIN, _DILATION_HW_MIN)
+    _check_attr_range("dilation's C", dilation_c, _DILATION_HW_MIN, _DILATION_HW_MIN)
     _check_attr_range("dilation's H", dilation_h, _DILATION_HW_MIN, _DILATION_HW_MAX)
     _check_attr_range("dilation's W", dilation_w, _DILATION_HW_MIN, _DILATION_HW_MAX)
 

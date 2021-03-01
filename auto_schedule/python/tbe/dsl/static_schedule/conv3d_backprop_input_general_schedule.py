@@ -178,7 +178,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                                     (None, aub_tiling_m_factor),
                                     (None, aub_w + kernel_w - 1), (None, None))
             sch[a_vn].buffer_tile((None, None), (None, None), (None, None),
-                                  (None, aub_tiling_m_factor // stride_h + 1),
+                                  (None, aub_tiling_m_factor),
                                   (None, None), (None, None))
         return a_l1_h_outer
 

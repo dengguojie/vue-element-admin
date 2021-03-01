@@ -96,6 +96,34 @@ class Conv3dBpInputTiling(CubeTilingOp):
         self.key = "C_shape"
         self.op_type = "conv3d_backprop_input"
 
+    def _get_d_factor(self, tiling, stride_d, kernel_d, dedy_d):
+        """
+        get d_factor value
+
+        Parameters
+        ----------
+        tiling: tiling information
+
+        stride_d: stride in d dimension
+
+        kernel_d: kernel size in d dimension
+
+        dedy_d: stride in d dimension
+
+        Returns
+        ---------
+        d_factor: d value in AL1 and UB
+        """
+        al0_tiling_dfactor = tiling["AL0_matrix"][-1]
+        if tiling.get("BL0_matrix"):
+            bl0_tiling_kd = tiling["BL0_matrix"][-1]
+        else:
+            bl0_tiling_kd = kernel_d
+        ext = ((al0_tiling_dfactor - 1) + stride_d - 1) // stride_d * stride_d
+        estimate_d = ((bl0_tiling_kd - 1) + stride_d -1) // stride_d * stride_d + ext + 1
+        d_factor = min(estimate_d, dedy_d)
+        return d_factor
+
     def get_padding(self, padh, padt, padu, padl):
         """
         get padding in tiling info for cost model's - get tiling function
@@ -323,10 +351,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
                               BIT_RATIO_DICT.get(self.c_type))
                 tiling_k_aub = tiling_in.get("AUB_shape")[0] // (self.b_info[3] * self.b_info[4])
                 dy_d = self._get_dedy_d(d_o, self.stride_d)
-                al0_tiling_dfactor = tiling["AL0_matrix"][5]
-                d_factor = min((self.k_d - 2 + al0_tiling_dfactor + self.stride_d - 1) // self.stride_d + 1, dy_d)
-                if self.k_d == self.stride_d:
-                    d_factor = max(d_factor - 1, 1)
+                d_factor = self._get_d_factor(tiling_in, self.stride_d, self.k_d, dy_d)
                 m_aub_max = ((tbe_platform.get_soc_spec("UB_SIZE") - cub_buffer) //
                              BIT_RATIO_DICT.get(self.a_type) //
                              tiling_in.get("manual_pingpong_buffer").get("AUB_pbuffer") //
@@ -544,10 +569,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
 
         # get d
         dy_d = self._get_dedy_d(d_o, self.stride_d)
-        al0_tiling_dfactor = tiling['AL0_matrix'][5]
-        d_factor = min((self.k_d - 2 + al0_tiling_dfactor + self.stride_d - 1) // self.stride_d + 1, dy_d)
-        if self.k_d == self.stride_d:
-            d_factor = max(d_factor - 1, 1)
+        d_factor = self._get_d_factor(tiling, self.stride_d, self.k_d, dy_d)
 
         # fmap size in L1 (d * M * K * db * 2byte)
         fmap_l1_size = (d_factor * al1_bound * tiling["AL1_shape"][0] *
@@ -582,10 +604,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         aub_tiling_k_factor = aub_tiling_k // (self.k_h * self.k_w * utils.CUBE_SIZE)
         aub_tiling_m_factor = aub_tiling_m
 
-        al0_tiling_dfactor = tiling["AL0_matrix"][5]
-        d_factor = min((self.k_d - 2 + al0_tiling_dfactor + self.stride_d - 1) // self.stride_d + 1, dy_d)
-        if self.k_d == self.stride_d:
-            d_factor = max(d_factor - 1, 1)
+        d_factor = self._get_d_factor(tiling, self.stride_d, self.stride_d, dy_d)
 
         dedy_ub_size = ((d_factor * aub_tiling_k_factor * dy_w * utils.CUBE_SIZE * utils.FP16_SIZE *
                         utils.icd(aub_tiling_m_factor, self.stride_h)) *
