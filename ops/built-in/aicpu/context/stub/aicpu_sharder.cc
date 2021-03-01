@@ -18,22 +18,7 @@
 #include "aicpu_context.h"
 
 namespace aicpu {
-SharderNonBlock::SharderNonBlock()
-    : schedule_(NULL), doTask_(NULL), cpuCoreNum_(0) {}
-
-SharderNonBlock &SharderNonBlock::GetInstance() {
-  static SharderNonBlock sharderNonBlock;
-  return sharderNonBlock;
-}
-
-void SharderNonBlock::ParallelFor(int64_t total, int64_t perUnitSize,
-                                  const SharderWork &work) {
-  work(0, total);
-}
-
-uint32_t SharderNonBlock::GetCPUNum() { return 1; }
-
-status_t GetThreadLocalCtx(const std::string &key, std::string &value) {
+status_t __attribute__((weak)) GetThreadLocalCtx(const std::string &key, std::string &value) {
   return AICPU_ERROR_NONE;
 }
 }  // namespace aicpu

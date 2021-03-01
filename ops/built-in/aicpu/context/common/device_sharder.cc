@@ -16,8 +16,6 @@
 #include "device_sharder.h"
 
 #include <dlfcn.h>
-
-#include "aicpu_sharder.h"
 #include "log.h"
 
 namespace {
@@ -70,7 +68,7 @@ void DeviceSharder::ParallelFor(
   }
 
   KERNEL_LOG_WARN("Function[%s] is null", kParallelForFunc);
-  SharderNonBlock::GetInstance().ParallelFor(total, perUnitSize, work);
+  work(0, total);
 }
 
 /*
@@ -82,6 +80,6 @@ uint32_t DeviceSharder::GetCPUNum() const {
   }
 
   KERNEL_LOG_WARN("Function[%s] is null", kGetCPUNumFunc);
-  return SharderNonBlock::GetInstance().GetCPUNum();
+  return 1;
 }
 }  // namespace aicpu
