@@ -452,10 +452,10 @@ def reget_tensor_list(outs):
         if ConvParam.tiling_query_param["bias_flag"]:
             mad_shape = c_col.shape
             bias_l0c = tvm.compute(mad_shape, lambda group, n, c1_opt, m, c0:
-                                bias_ub(group*mad_shape[2]*mad_shape[4] +
-                                c1_opt*mad_shape[4] + c0).astype(c_col.dtype),
-                                name=op_tag + "bias_l0c",
-                                tag=op_tag + "bias_l0c")
+                                   bias_ub(group*mad_shape[2]*mad_shape[4] + \
+                                   c1_opt*mad_shape[4] + c0).astype(c_col.dtype),
+                                   name=op_tag + "bias_l0c",
+                                   tag=op_tag + "bias_l0c")
             c_col = tvm.compute(mad_shape, lambda *indice:
                                 bias_l0c(*indice) + c_col(*indice),
                                 name=op_tag + "c_col_bias",
@@ -477,10 +477,10 @@ def reget_tensor_list(outs):
         if ConvParam.v200_width_out_1_flag:
             removepad_shape = ConvParam.tensor_map["remove_padded_column"].shape
             res_tensor = tvm.compute(removepad_shape, lambda batch, cout1, howo, cout0:
-                                c_ub(batch, cout1, howo*2, cout0),
-                                name="remove_padded_column",
-                                tag=op_tag + "remove_padded_column",
-                                attrs={"width_out": ConvParam.w_out})
+                                     c_ub(batch, cout1, howo*2, cout0),
+                                     name="remove_padded_column",
+                                     tag=op_tag + "remove_padded_column",
+                                     attrs={"width_out": ConvParam.w_out})
             ConvParam.tensor_map["remove_padded_column"] = res_tensor
             c_ub = res_tensor
 
@@ -1677,7 +1677,7 @@ class CceConvOp:
                 fused_channel_wise = [0, 0, cub_channel_coefficient]
                 tiling_new = handle_v100_tiling(fused_channel_wise)
             if tilingdict_flag:
-                return
+                return dict()
             tiling_ok_flag = check_tiling(tiling_new, w_dtype,
                                           fmap_shape_nc1hwc0)
             tiling = {}

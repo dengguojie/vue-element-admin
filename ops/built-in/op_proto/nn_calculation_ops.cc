@@ -3460,7 +3460,7 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   // update pads if padding is SAME
   std::string pad_str;
   if (!x_shape.empty() && GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME" &&
-      x_shape[idx_n] != -1) {
+      (x_shape[idx_h] == -1 or x_shape[idx_w] == -1)) {
     op.SetAttr("pads", {-1, -1, -1, -1});
     OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in dynamic_shape");
   }
