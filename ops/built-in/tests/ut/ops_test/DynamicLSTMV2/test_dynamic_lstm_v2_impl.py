@@ -5,11 +5,6 @@ import numpy as np
 
 ut_case = OpUT("DynamicLSTMV2", "impl.dynamic_lstm_v2", "dynamic_lstm_v2")
 
-# def calc_expect_func(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf,
-#                 wco, mask, y, output_h, output_c,
-#                 num_output=0, expose_hidden=False, time_major=True, forget_bias=0.0,
-#                 kernel_name="dynamic_lstm"):
-#                 return np.ones(y['shape'], dtype=np.float16)
 
 t = 2
 ut_case.add_case(
@@ -36,7 +31,6 @@ ut_case.add_case(
     },
 )
 
-t = 3
 print('run case 2')
 ut_case.add_case(
     'Ascend310', 
@@ -56,6 +50,7 @@ ut_case.add_case(
         'addition_params': {'impl_mode': 'high_precision'},
         'case_name': 'dynamic_lstm_v2_case1',
         'expect': 'success',
+        'support_expect': True,
         # 'calc_expect_func': calc_expect_func
     },
 )
@@ -82,7 +77,7 @@ ut_case.add_case(
             256, False, True, 0.0 
         ],
         'addition_params': {'impl_mode': 'high_precision'},
-        'case_name': 'dynamic_lstm_v2_case1',
+        'case_name': 'dynamic_lstm_v2_case2',
         'expect': 'success',
         # 'calc_expect_func': calc_expect_func
     },
