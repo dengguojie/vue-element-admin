@@ -82,7 +82,6 @@ from .api import pooling3d_max_grad_grad
 from .te_compute.common import cast_to_round
 from .te_compute.common import calculate_one_or_zero
 from .te_compute.conv_compute import conv
-from .te_compute.conv_compute import ConvParam
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_compute

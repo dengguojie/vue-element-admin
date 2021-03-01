@@ -31,7 +31,6 @@ from .common import cast_to
 from .common import cast_to_round
 from .concat_compute import concat
 from .conv_compute import conv
-from .conv_compute import ConvParam
 from .conv_compute import check_conv_shape
 from .conv_compute import conv_compress
 from .conv_compute import is_support_v200

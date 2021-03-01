@@ -380,14 +380,17 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if "fmap_w" in ConvParam.var_map and dynamic_para:
             fmap_w_upper = get_te_var("fmap_w").get_bound()[1]
             if fmap_w_upper:
+                #same as static conv2d
                 wo_upper = get_te_var("wo").get_bound()[1]
+                ho_upper = math.floor(config['mac'][0] / wo_upper) + 2
             else:
+                #caculate ho_num for dynamic range[low, None]
                 fmap_w_upper = DYNAMIC_FMAP_W_MAX
                 if isinstance(pad_left, tvm.expr.Expr):
                     wo_upper = int_ceil_div(fmap_w_upper, stridew)
                 else:
                     wo_upper = math.floor((fmap_w_upper - wk_dilation + pad_left + pad_right) / stridew) + 1
-            ho_upper = math.floor(config['mac'][0] / wo_upper) + 2
+                ho_upper = math.floor(config['mac'][0] / wo_upper) + 1
             l1_m = ((ho_upper - 1) * strideh + hk_dilation) * fmap_w_upper
             max_feature_map_l1 = ci0 * l1_m * m_bit_ratio[w_dtype]
             _l1_buffer_size_check(max_feature_map_l1, fusion_para, "dynamic")
@@ -612,12 +615,20 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             fmap_l1_shape = fmap_shape  # NC1HWC0
             fmap_l1_shape[2] = (fmap_l1_shape[2] - 1) // stride_h + 1
 
-            fmap_l1 = tvm.compute(fmap_l1_shape, lambda n_idx, ci1_idx, \
-                hi_idx, \
-                wi_idx, \
-                ci0_idx: fmap[n_idx, \
-                ci1_idx, hi_idx*stride_h, wi_idx, ci0_idx], \
-                name="fmap_l1")
+            if ConvParam.var_map and ConvParam.para_dict["pooling_mode"] == "AVG":
+                group_opt = ConvParam.para_dict["group_opt"]
+                fmap_al1_shape = (group_opt, fmap_l1_shape[0], ConvParam.para_dict["c1_opt"],
+                                  fmap_l1_shape[2], fmap_l1_shape[3], fmap_l1_shape[4])
+                fmap_l1 = tvm.compute(fmap_al1_shape, lambda group0, n, c1, h, w, c0:
+                                      fmap(n, c1 + group0*ConvParam.para_dict["c1_opt"],
+                                           h*stride_h, w, c0), name="fmap_l1")
+            else:
+                fmap_l1 = tvm.compute(fmap_l1_shape, lambda n_idx, ci1_idx, \
+                    hi_idx, \
+                    wi_idx, \
+                    ci0_idx: fmap[n_idx, \
+                    ci1_idx, hi_idx*stride_h, wi_idx, ci0_idx], \
+                    name="fmap_l1")
             TENSOR_MAP["fmap_l1"] = fmap_l1
             return fmap_l1
         return None
@@ -840,7 +851,18 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                              block_size_m,
                                              block_size_k)
                 if not strideh_opti_flag:
-                    img2col_para = (fmap, filter_h, filter_w, padding, stride, width_out)
+                    if ConvParam.para_dict["pooling_mode"] == "AVG":
+                        group_opt = ConvParam.para_dict["group_opt"]
+                        fmap_shape = ConvParam.para_dict["a_shape"]
+                        fmap_l1_shape = (group_opt, fmap_shape[0], ConvParam.para_dict["c1_opt"],
+                                         fmap_shape[2], fmap_shape[3], fmap_shape[4])
+                        fmap_al1 = tvm.compute(fmap_l1_shape, lambda group0, n, c1, h, w, c0:
+                                               fmap(n, c1 + group0*ConvParam.para_dict["c1_opt"],
+                                                    h, w, c0), name="fmap_l1")
+                        img2col_para = (fmap_al1, filter_h, filter_w, padding, stride, width_out)
+                        TENSOR_MAP["fmap_l1"] = fmap_al1
+                    else:
+                        img2col_para = (fmap, filter_h, filter_w, padding, stride, width_out)
                 else:
                     img2col_para = (fmap_l1, filter_h, filter_w, padding, (1, stride_w), width_out)
                 fmap_im2col_fractal_res = img2col(fmap_im2col_fractal_shape, img2col_para)
@@ -899,8 +921,11 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         out_channel_c0 = weight_shape[2]
         out_channel = out_channel_c1*out_channel_c0
 
-        strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict["c0_optim_flg"] and \
-            sum(ConvParam.para_dict['pad_h'] + ConvParam.para_dict['pad_w']) == 0
+        if ConvParam.var_map and ConvParam.para_dict["pooling_mode"] == "AVG":
+            strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict["c0_optim_flg"]
+        else:
+            strideh_opti_flag = (filter_h == 1 and stride_h > 1) and not optim_dict["c0_optim_flg"] and \
+                sum(ConvParam.para_dict['pad_h'] + ConvParam.para_dict['pad_w']) == 0
 
         if ConvParam.fusion_para.get("l1_fusion_type") == 1:
             # for L1  breadth fusion, fmap must load all at once
@@ -1000,7 +1025,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     def cub_fp16_compute(data, weight, mad_dtype, res_dtype, stride_h,
                          stride_w, dilate_h, dilate_w, filter_h, filter_w, bias=False,
                          no_vector=False, tiling=None, conv_fused_flag=False,
-                         optim_dict=None, kernel_name=None):
+                         optim_dict=None, kernel_name=None, padding_mode="VALID", pooling_mode=None):
         """
         conv
 
@@ -1092,6 +1117,56 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                   'dilate': dilate,
                                   'width_out': width_out,
                                   'kernel_name': kernel_name})
+        if pooling_mode == "AVG":
+            out_h = ConvParam.h_out
+            out_w = ConvParam.w_out
+            pad_t, _, pad_l, _ = padding
+            input_h, input_w = data.shape[2:4]
+            conv_shape = ConvParam.dim_map["output_conv_res_shape"]
+            if padding_mode == "VALID":
+                c_ub_avg = tvm.compute(conv_shape,
+                                       lambda n, c1, m, c0:
+                                       tvm.div(c_ub(n, c1, m, c0), filter_h*filter_w).astype(res_dtype),
+                                       name='C_UB_AVG',
+                                       tag=OP_TAG + "C_UB_AVG")
+            else:
+                mean_matrix_shape = [c_ub.shape[2], c_ub.shape[3]]
+                mean_matrix = tvm.compute(mean_matrix_shape,
+                                          lambda m, c0:
+                                          tvm.select(
+                                              tvm.any(m < out_h*out_w),
+                                              tvm.max(
+                                                  (tvm.min((m // out_w)*stride_h-pad_t+filter_h, input_h) -
+                                                   tvm.max((m // out_w)*stride_h-pad_t, 0))* \
+                                                   (tvm.min((m % out_w)*stride_w-pad_l+filter_w, input_w) -
+                                                    tvm.max((m % out_w)*stride_w-pad_l, 0)), 1
+                                              ).astype("int")),
+                                          name="mean_matrix")
+                mean_matrix_fp16 = tvm.compute(mean_matrix_shape,
+                                               lambda *index:
+                                               mean_matrix(*index).astype(res_dtype),
+                                               name="mean_matrix_fp16")
+                if "Ascend310" in cce_conf.get_soc_spec("SOC_VERSION"):
+                    mean_matrix_rec = tvm.compute(mean_matrix_shape,
+                                                  lambda *index:
+                                                  1/mean_matrix_fp16(*index),
+                                                  name="mean_matrix_rec")
+                    c_ub_avg = tvm.compute(conv_shape,
+                                           lambda n, c1, m, c0:
+                                           c_ub(n, c1, m, c0)*mean_matrix_rec(m, c0),
+                                           name='C_UB_AVG',
+                                           tag=OP_TAG + "C_UB_AVG")
+                else:
+                    c_ub_avg = tvm.compute(conv_shape,
+                                           lambda n, c1, m, c0:
+                                           tvm.div(c_ub(n, c1, m, c0), mean_matrix_fp16(m, c0)).astype(res_dtype),
+                                           name='C_UB_AVG',
+                                           tag=OP_TAG+"C_UB_AVG")
+                    mean_matrix_rec = c_ub_avg
+                TENSOR_MAP["mean_matrix_fp16"] = mean_matrix_fp16
+                TENSOR_MAP["mean_matrix_rec"] = mean_matrix_rec
+                TENSOR_MAP["mean_matrix"] = mean_matrix
+            TENSOR_MAP["c_ub_avg"] = c_ub_avg
 
         filter_shape = [out_channel, filter_h, filter_w, 1]
         dim_map1 = im2col_dim(shape_to_list(fmap.shape), filter_shape,
@@ -1106,7 +1181,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         ConvParam.tensor_map = TENSOR_MAP
         ConvParam.dim_map.update(dim_map_copy)
         ConvParam.tiling = tiling
-
+        if pooling_mode == "AVG":
+            return c_ub_avg
         return c_ub
 
     def img2col(shape, img2col_para):
@@ -1145,13 +1221,25 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             back_h = (virtual_h // fmap_wo) * stride[0] + (col_w // kernel_w % kernel_h)
             back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)
 
+            if len(fmap.shape) == len(ConvParam.para_dict["a_shape"]):
+                return tvm.select(tvm.any(back_h < padding[0],
+                                          back_h > fmap.shape[2] + padding[0] - 1,
+                                          back_w < padding[2],
+                                          back_w > fmap.shape[3] + padding[2] - 1),
+                                  tvm.const(0, fmap.dtype),
+                                  fmap(n_batch,
+                                       back_c1 + group*ConvParam.para_dict["c1_opt"],
+                                       back_h - padding[0],
+                                       back_w - padding[2],
+                                       block_size_w))
             return tvm.select(tvm.any(back_h < padding[0],
-                                      back_h > fmap.shape[2] + padding[0] - 1,
+                                      back_h > fmap.shape[3] + padding[0] - 1,
                                       back_w < padding[2],
-                                      back_w > fmap.shape[3] + padding[2] - 1),
+                                      back_w > fmap.shape[4] + padding[2] - 1),
                               tvm.const(0, fmap.dtype),
-                              fmap(n_batch,
-                                   back_c1 + group*ConvParam.para_dict["c1_opt"],
+                              fmap(group,
+                                   n_batch,
+                                   back_c1,
                                    back_h - padding[0],
                                    back_w - padding[2],
                                    block_size_w))
@@ -2216,7 +2304,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         conv_res = cub_fp16_compute(data, weight, mad_dtype, res_dtype, stride_h, stride_w,
                                     dilate_h, dilate_w, filter_h, filter_w,
                                     bias=False, no_vector=no_vector_flag, tiling=ConvParam.tiling,
-                                    conv_fused_flag=dsl_flag, optim_dict=optim_dict, kernel_name=kernel_name)
+                                    conv_fused_flag=dsl_flag, optim_dict=optim_dict, kernel_name=kernel_name,
+                                    padding_mode=para_dict.get("padding_mode"),
+                                    pooling_mode=para_dict.get("pooling_mode"))
         res = conv_res
 
         if ConvParam.v200_width_out_1_flag:

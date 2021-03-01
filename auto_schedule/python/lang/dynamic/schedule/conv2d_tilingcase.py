@@ -28,7 +28,7 @@ from tbe.common.tiling.get_tiling import get_tiling
 from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var
 
-from te.lang.cce.te_compute.conv_compute import ConvParam
+from tbe.dsl.compute.conv_compute import ConvParam
 from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection
 from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils

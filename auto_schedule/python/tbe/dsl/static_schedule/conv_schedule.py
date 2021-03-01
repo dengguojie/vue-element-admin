@@ -17,9 +17,9 @@ Schedule of conv2d.
 """
 import re
 from enum import Enum
-from te.lang.cce.te_compute.conv_compute import ConvParam
-from te.lang.cce.te_compute.conv_compute import is_support_v200
-from te.lang.cce.te_compute.conv_compute import is_support_v220
+from tbe.dsl.compute.conv_compute import ConvParam
+from tbe.dsl.compute.conv_compute import is_support_v200
+from tbe.dsl.compute.conv_compute import is_support_v220
 from te.lang.cce.te_compute.elewise_compute import vmul
 from te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util

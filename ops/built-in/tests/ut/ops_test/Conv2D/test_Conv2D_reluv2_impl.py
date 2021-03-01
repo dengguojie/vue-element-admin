@@ -13,7 +13,6 @@ def test_conv2d_reluv2_fusion(test_arg):
     from topi import generic
     from topi.cce import util
     from te import platform as cce_conf
-    from te.lang.cce import ConvParam
     from te import platform as cce
     from impl.conv2d import conv2d_compute
     from impl.relu_v2 import relu_v2_compute

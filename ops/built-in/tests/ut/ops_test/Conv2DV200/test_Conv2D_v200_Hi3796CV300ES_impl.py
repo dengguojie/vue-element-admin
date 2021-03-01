@@ -13,7 +13,6 @@ def TestConv2dV200(test_arg):
     from topi import generic
     from topi.cce import util
     from te import platform as cce_conf
-    from te.lang.cce import ConvParam
     from te import platform as cce
     from impl.conv2d import conv2d_compute
     from impl.leaky_relu import leaky_relu_compute
