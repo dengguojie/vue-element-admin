@@ -62,9 +62,34 @@ graphStatus WithRankAtLeast(const GeTensorDescPtr& tensorDesc, int64_t rank, GeS
   return GRAPH_SUCCESS;
 }
 
+graphStatus WithRankShape(GeShape& shape, int64_t rank, const char* op_name)
+{
+    if (rank > INT32_MAX) {
+        OP_LOGE(op_name, "Rank cannot exceed INT32_MAX");
+        return GRAPH_FAILED;
+    }
+
+    int64_t existing = static_cast<int64_t>(shape.GetDimNum());
+
+    if(shape.GetDims() == UNKNOWN_RANK) {
+        std::vector<int64_t> out_shape(rank, UNKNOWN_DIM);
+        shape = GeShape(out_shape);
+        return GRAPH_SUCCESS;
+    }
+    if (existing != rank) {
+        OP_LOGE(op_name, "Shape must be rank [%lld]", rank);
+        return GRAPH_FAILED;
+    }
+    // out = shape;
+    std::vector<int64_t> dim_values = shape.GetDims();
+    shape = GeShape(dim_values);
+    return GRAPH_SUCCESS;
+    
+}
+
 graphStatus WithRank(const TensorDesc& tensor, int64_t rank, Shape& out, const char* op_name) {
   if (rank > INT32_MAX) {
-    OP_LOGE(op_name, "Rank cannot exceed int32max");
+    OP_LOGE(op_name, "Rank cannot exceed INT32_MAX");
     return GRAPH_FAILED;
   }
   Shape s = tensor.GetShape();
@@ -86,7 +111,7 @@ graphStatus WithRank(const TensorDesc& tensor, int64_t rank, Shape& out, const c
 
 graphStatus WithRank(const GeTensorDescPtr& tensorDesc, int64_t rank, GeShape& out_shape) {
   if (rank > INT32_MAX) {
-    OP_LOGE("", "Rank cannot exceed int32max");
+    OP_LOGE("", "Rank cannot exceed INT32_MAX");
     return GRAPH_FAILED;
   }
 
@@ -554,6 +579,12 @@ static graphStatus GetShapeDataFromShapeTensor(Operator& op,
   }
   int64_t dim_value = ((rank > 0) && (dims[0] > 0)) ? dims[0] : 1;
   data.clear();
+  if (dims[0] < 0) {
+    OP_LOGI(op_name, "Shape rank is %zu, dims[0] value is [%lld]", dims.size(),
+            dims[0]);
+    data.push_back(UNKNOWN_DIM_NUM);
+    return GRAPH_SUCCESS;
+  }
   data.reserve(dim_value);
   Tensor shape_tensor;
   if (data_type == DT_INT32) {

@@ -1093,7 +1093,7 @@ IMPLEMT_INFERFUNC(SparseTensorDenseMatMul, SparseTensorDenseMatMulInfer) {
     InferShapeErrorReport(op.GetName().c_str(), "x1_shape", "MakeShapeFromShapeTensor", "MakeShapeFromShapeTensor error.");
     return GRAPH_FAILED;
   }
-  if (x1_shape.GetDimNum() != 2) {
+  if (WithRankShape(x1_shape, 2, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x1_shape rank must be 2.");
     InferShapeErrorReport(op.GetName().c_str(), "x1_shape", "dims rank", "Input x1_shape rank must be 2.");
     return GRAPH_FAILED;

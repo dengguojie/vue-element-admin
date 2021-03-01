@@ -51,6 +51,15 @@ graphStatus WithRankAtLeast(const GeTensorDescPtr& tensorDesc, int64_t rank, GeS
 
 /**
  * Check whether Shape's rank is equal to rank
+ * @param shape Input tensor shape
+ * @param rank expect shape rank
+ * @param out Output Shape
+ * @return status whether Shape's condition Satisfied
+ */
+graphStatus WithRankShape(GeShape& shape, int64_t rank, const char* op_name);
+
+/**
+ * Check whether Shape's rank is equal to rank
  * @param tensor Input tensor
  * @param rank expect val of Shape
  * @param out Output Shape
