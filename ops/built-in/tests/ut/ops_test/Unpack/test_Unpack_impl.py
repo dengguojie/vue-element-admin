@@ -304,6 +304,31 @@ case_num_is_none = {
     "expect": "success"
 }
 
+case_5hd_supoort = {
+    "params":
+        [
+            {
+                "shape": (1, 1, 2, 2, 16),
+                "format": "NC1HWC0",
+                "dtype": "float16",
+                "ori_shape": (1, 2, 2, 16),
+                "ori_format": "NHWC"
+            },
+            [
+                {
+                    "shape": (1, 1, 2, 2, 16),
+                    "format": "NC1HWC0",
+                    "dtype": "float16",
+                    "ori_shape": (1, 2, 2, 16),
+                    "ori_format": "NHWC"
+                }
+            ],
+            1, 0
+        ],
+    "case_name": 'test_unpack_case_5hd_support_case',
+    "expect": "success"
+}
+
 case_input_num_invaild = {
     "params":
         [
@@ -351,12 +376,34 @@ ut_case.add_case(["Ascend910", "Ascend310"], case_small_shape_not_aligned_fp16)
 # ut_case.add_case(["Ascend910", "Ascend310"], case_big_shape_not_aligned_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_multi_output_fp16)
 ut_case.add_case(["Ascend910", "Ascend310"], case_num_is_none)
+ut_case.add_case(["Ascend910", "Ascend310"], case_5hd_supoort)
 ut_case.add_case(["Ascend910", "Ascend310"], case_input_num_invaild)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_cust_test_func(test_func=test_check_supported)
 
 
 # ut_case.add_case(["Ascend310"], case1)
+def test_op_select_format(test_arg):
+    from impl.unpack import op_select_format
+    op_select_format({
+                "shape": (1, 1, 2, 2, 16),
+                "format": "NC1HWC0",
+                "dtype": "float16",
+                "ori_shape": (1, 2, 2, 16),
+                "ori_format": "NHWC"
+            },
+            [
+                {
+                    "shape": (1, 1, 2, 2, 16),
+                    "format": "NC1HWC0",
+                    "dtype": "float16",
+                    "ori_shape": (1, 2, 2, 16),
+                    "ori_format": "NHWC"
+                }
+            ],
+            1, 0, "test_unpack_case_5hd_support_case")
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 
 if __name__ == '__main__':

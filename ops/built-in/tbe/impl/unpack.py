@@ -85,7 +85,7 @@ def op_select_format(x, y, num, axis, kernel_name="unpack"):
     axis = axis % len(ori_shape)
 
     is_support_5hd = False
-    if ori_format in support_ori_format and len(ori_shape) == 4 and ori_format[axis] != "C":
+    if ori_format in support_ori_format and len(ori_shape) == 4 and ori_format[axis] == "N":
         is_support_5hd = True
 
     dtype_base = ["float16", "float", "int32", "int8", "int16", "int64", "uint8", "uint16", "uint32", "uint64"]

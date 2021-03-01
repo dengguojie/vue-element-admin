@@ -81,6 +81,7 @@ Status UnpackFusionPass::AddUnpackOps(OpDescPtr fused_desc, ComputeGraph& graph,
     GeTensorDesc unpack_output_tensor = unpack_desc->GetOutputDesc(h);
     GeShape unpack_output_shape = unpack_output_tensor.GetShape();
     unpack_output_tensor.SetShape(unpack_output_shape);
+    unpack_output_tensor.SetOriginShape(unpack_output_shape);
     FUSION_PASS_CHECK(unpack_desc->UpdateOutputDesc(h, unpack_output_tensor) != GRAPH_SUCCESS,
                       OP_LOGE(kFusedOpType.c_str(), "UpdateOutputDesc failed."), return FAILED);
   }
@@ -188,6 +189,7 @@ Status UnpackFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<No
       FUSION_PASS_CHECK(splitvd_out_shape.SetDim(split_dim, size_splits_new[h]) != GRAPH_SUCCESS,
                         OP_LOGE(kFusedOpType.c_str(), "SetDim failed."), return FAILED);
       splitvd_out_tensor.SetShape(splitvd_out_shape);
+      splitvd_out_tensor.SetOriginShape(splitvd_out_shape);
       FUSION_PASS_CHECK(splitvd_base_desc->UpdateOutputDesc(h, splitvd_out_tensor) != GRAPH_SUCCESS,
                         OP_LOGE(kFusedOpType.c_str(), "UpdateOutputDesc failed."), return FAILED);
       output_desc.push_back(splitvd_out_tensor);
