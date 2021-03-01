@@ -730,7 +730,7 @@ def general_schedule(
 
     # check tiling and set default tiling
     def check_and_set_default_tiling(  # pylint: disable=R0913
-        tiling, atype, btype, stride_h, stride_w, filter_shape
+        tiling, atype, btype, stride_h, stride_w, filter_shape, l0c_multi_group_flag
     ):
         """
         check and set default tiling
@@ -750,7 +750,7 @@ def general_schedule(
 
         if not _check_tiling(tiling):
             tiling = {}
-            _, _, k_w, k_h, _ = filter_shape
+            _, cin1, k_w, k_h, _ = filter_shape
             bit_dir = {
                 "float32": 16,
                 "int32": 16,
@@ -766,8 +766,8 @@ def general_schedule(
                 k_al0 = 32
 
             if btype in bit_dir.keys():
-                k_bl1 = bit_dir[atype]
-                k_bl0 = bit_dir[atype]
+                k_bl1 = bit_dir[btype]
+                k_bl0 = bit_dir[btype]
             else:
                 # defaut value 32
                 k_bl1 = 32
@@ -779,13 +779,15 @@ def general_schedule(
             else:
                 tiling["AUB_shape"] = None
                 tiling["BUB_shape"] = None
-
+            if l0c_multi_group_flag:
+                n_dim = cin1
+                group_dim = 2
             tiling["AL1_shape"] = [k_al1, 1, 1, 1]
             tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
             tiling["AL0_matrix"] = [1, 1, 16, k_al0, 1, 1]
-            tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
-            tiling["CL0_matrix"] = [1, 1, 16, 16, 1, 1]
-            tiling["CUB_matrix"] = [1, 1, 16, 16, 1, 1]
+            tiling["BL0_matrix"] = [1, n_dim, 16, k_bl0, 1, 1]
+            tiling["CL0_matrix"] = [n_dim, 1, 16, 16, 1, group_dim]
+            tiling["CUB_matrix"] = [n_dim, 1, 16, 16, 1, group_dim]
             tiling["block_dim"] = [1, 1, 1, 1]
             tiling["n_bef_batch_flag"] = 0
             tiling["n_bef_group_flag"] = 0
@@ -908,11 +910,15 @@ def general_schedule(
             filter_shape_g = (cou1_g * b_ddr_k0,
                               cin1_g,
                               kernel_h, kernel_w, b_ddr_n0)
+        l0c_multi_group_flag = False
         if deconv_res.dtype == "int8":
-            filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
+            if cin1_g % 2 == 1 and g_after >1:
+                l0c_multi_group_flag = True
+            else:
+                filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
 
-        return filter_shape_g
-    filter_shape_g = _set_filter_shape()
+        return filter_shape_g, l0c_multi_group_flag
+    filter_shape_g, l0c_multi_group_flag = _set_filter_shape()
 
     def _set_bias_flag(c_add_bias, bias_add_vector):
         if c_add_bias is not None or bias_add_vector is not None:
@@ -976,9 +982,8 @@ def general_schedule(
     if sch.tbe_compile_para is not None:
         out_of_order = sch.tbe_compile_para.get("out_of_order")
 
-    tiling = check_and_set_default_tiling(tiling, a_ddr.dtype,
-                                          b_ddr.dtype, stride_h,
-                                          stride_w, filter_shape_g)
+    tiling = check_and_set_default_tiling(tiling, a_ddr.dtype, b_ddr.dtype, stride_h,
+                                          stride_w, filter_shape_g, l0c_multi_group_flag)
     if DEBUG_MODE:
         print('general input shape: ', 'filter_g: ', filter_shape_g, 'dy: ',
               output_shape, 'dx: ', img_shape)
@@ -1005,7 +1010,7 @@ def general_schedule(
     def _tiling_l0_process():
         if al0_tiling_ma == a_col_ma and al0_tiling_ka == a_col_ka and a_col_batch == 1 and g_after == 1:
             tiling["AL0_matrix"] = []
-
+        bl0_tiling_g = 1
         if tiling.get("BL0_matrix") != []:
             (
                 bl0_tiling_kb,
@@ -1013,7 +1018,7 @@ def general_schedule(
                 bl0_tiling_n0,
                 bl0_tiling_k0,
                 _,
-                _
+                bl0_tiling_g
             ) = tiling.get("BL0_matrix")
         else:
             (
@@ -1024,14 +1029,15 @@ def general_schedule(
                 bl0_tiling_k0
             ) = list(i.value for i in b_col.shape)
             bl0_tiling_kb = bl0_tiling_kb
-        return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0
+        return bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0, bl0_tiling_g
 
     def _tiling_l1_process():
+        al1_tilling_g = 1
         if tiling.get("AL1_shape") != []:
-            al1_tilling_k, al1_tilling_m, _, _ = tiling.get("AL1_shape")
+            al1_tilling_k, al1_tilling_m, _, al1_tilling_g = tiling.get("AL1_shape")
             if (al1_tilling_k == kernel_h * kernel_w * cou1_g * al1_co0 and \
-               al1_tilling_m == _ceil(c_l0c_hw,
-                                      cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
+               al1_tilling_m == _ceil(c_l0c_hw, cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc) \
+               and al1_tilling_g == 1
             ):
                 tiling["AL1_shape"] = []
         else:
@@ -1039,9 +1045,9 @@ def general_schedule(
             al1_tilling_k = kernel_h * kernel_w * cou1_g * al1_co0
             al1_tilling_m = _ceil(c_l0c_hw,
                                   cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
-
+        bl1_tilling_g = 1
         if tiling.get("BL1_shape") != []:
-            bl1_tilling_k, bl1_tilling_n, _, _ = tiling.get("BL1_shape")
+            bl1_tilling_k, bl1_tilling_n, _, bl1_tilling_g = tiling.get("BL1_shape")
         else:
             if w_trans_flag:
                 # [G*Cout1*Hk*Wk, cin1, cin0, cout0]: bl1_co1, bl1_k1, _, bl1_co0
@@ -1051,11 +1057,11 @@ def general_schedule(
                 # [G*Cin1*Hk*Wk, cou1, cou0, cin0]: bl1_k1, bl1_co1,bl1_co0,_
                 bl1_tilling_k = kernel_h * kernel_w * bl1_co0 * bl1_co1
                 bl1_tilling_n = bl1_k1 // (kernel_h * kernel_w * cl0_tiling_nc * g_after)
-        return al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n
+        return al1_tilling_k, al1_tilling_m, al1_tilling_g, bl1_tilling_k, bl1_tilling_n, bl1_tilling_g
 
     # check tiling
     def _tiling_check_equal():
-        if tiling.get("BL0_matrix") != []:
+        if tiling.get("BL0_matrix") != [] and bl0_tiling_g == 1:
             if al0_tiling_ka != bl0_tiling_kb:
                 _raise_dx_general_err("ka != kb.")
             if bl0_tiling_nb != cl0_tiling_nc:
@@ -1063,25 +1069,32 @@ def general_schedule(
 
         if al0_tiling_ma != cl0_tiling_mc:
             _raise_dx_general_err("ma != mc.")
-
+        if l0c_multi_group_flag:
+            quant_fusion_rule = (bl0_tiling_nb == cin1_g and cl0_tiling_nc == cin1_g and
+                                 cub_tiling_nc_factor == cin1_g and cl0_tiling_g == 2 and cub_tiling_g == 2)
+            if not quant_fusion_rule:
+                _raise_dx_general_err("illegal tiling in dequant + quant or requant fusion scene.")
     def _tiling_check_factor():
         if (kernel_w * kernel_h * cou1_g) % al0_tiling_ka != 0:
             _raise_dx_general_err("Co1*Hk*Wk % ka != 0")
         if al1_tilling_k % al0_tiling_ka != 0:
             _raise_dx_general_err("k_AL1 % ka != 0.")
 
-        if tiling.get("BL1_shape") != [] and tiling.get("BL0_matrix") != []:
-            if bl1_tilling_k % bl0_tiling_kb != 0:
-                _raise_dx_general_err("k_BL1 % kb != 0.")
+        if bl1_tilling_k % bl0_tiling_kb != 0:
+            _raise_dx_general_err("k_BL1 % kb != 0.")
 
         if (cl0_tiling_nc % cub_tiling_nc_factor != 0) and (not cube_vector_split):
             _raise_dx_general_err("nc % nc_factor != 0.")
 
-        if tiling.get("BL1_shape") != []:
-            if al1_tilling_k > bl1_tilling_k and al1_tilling_k % bl1_tilling_k != 0:
-                _raise_dx_general_err("k_AL1 > k_BL1 but k_AL1 % k_BL1 != 0.")
-            if bl1_tilling_k > al1_tilling_k and bl1_tilling_k % al1_tilling_k != 0:
-                _raise_dx_general_err("k_BL1 > k_AL1 but k_BL1 % k_AL1 != 0.")
+        if al1_tilling_k > bl1_tilling_k and al1_tilling_k % bl1_tilling_k != 0:
+            _raise_dx_general_err("k_AL1 > k_BL1 but k_AL1 % k_BL1 != 0.")
+        if bl1_tilling_k > al1_tilling_k and bl1_tilling_k % al1_tilling_k != 0:
+            _raise_dx_general_err("k_BL1 > k_AL1 but k_BL1 % k_AL1 != 0.")
+        tiling_k_g = ((al1_tilling_k // al1_co0, al1_tiling_g), (bl1_tilling_k // al1_co0, bl1_tilling_g),
+                      (al0_tiling_ka, al0_tiling_g), (bl0_tiling_kb, bl0_tiling_g))
+        illegal_k_g = any([(k_g[0] != (kernel_w * kernel_h * cou1_g) and k_g[1] > 1) for k_g in tiling_k_g])
+        if illegal_k_g:
+            _raise_dx_general_err("Illegal tiling：If split k, factor of g in buffer must be 1")
 
     def _tiling_check_load():
         if stride_h == 1 and stride_w == 1:
@@ -1189,12 +1202,12 @@ def general_schedule(
         cub_tiling_m0,
         cub_tiling_n0,
         _,
-        _
+        cub_tiling_g
     ) = tiling.get("CUB_matrix")
-    cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, cl0_tiling_n0, _, _ = tiling.get(
+    cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, cl0_tiling_n0, _, cl0_tiling_g = tiling.get(
         "CL0_matrix"
     )
-    al0_tiling_ma, al0_tiling_ka, al0_tiling_m0, al0_tiling_k0, _, _ = tiling.get(
+    al0_tiling_ma, al0_tiling_ka, al0_tiling_m0, al0_tiling_k0, _, al0_tiling_g = tiling.get(
         "AL0_matrix"
     )
 
@@ -1219,8 +1232,8 @@ def general_schedule(
     a_col_shape = shape_to_list(a_col.shape)
     a_col_g, a_col_batch, a_col_ma, a_col_ka, _, _ = a_col_shape
 
-    bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0 = _tiling_l0_process()
-    al1_tilling_k, al1_tilling_m, bl1_tilling_k, bl1_tilling_n = _tiling_l1_process()
+    bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0, bl0_tiling_g = _tiling_l0_process()
+    al1_tilling_k, al1_tilling_m, al1_tiling_g, bl1_tilling_k, bl1_tilling_n, bl1_tilling_g = _tiling_l1_process()
     _tiling_check_equal()
     _tiling_check_factor()
     _tiling_check_load()
@@ -1242,6 +1255,7 @@ def general_schedule(
                 sch_agent.attach_at(c_ub, c_ddr, affine_shape=affine_cub)
             else:
                 _raise_dx_general_err("c_ub attach error.")
+            return status
 
         def _fusion_cub_process():
             if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
@@ -1281,7 +1295,8 @@ def general_schedule(
                     else:
                         sch_agent.same_attach(ub_tensor, c_ub)
                     if tensor_attr["fusion_param"] < 1:
-                        sch[ub_tensor].bind_buffer(ub_tensor.op.axis[1], len_align, 0)
+                        if status != Compare.EQUAL:
+                            sch[ub_tensor].bind_buffer(ub_tensor.op.axis[1], len_align, 0)
                         sch[c_ub].reused_by(ub_tensor)
                 for input_tensor_mem in tensor_map["input_tensor_list"]:
                     sch_agent.same_attach(input_tensor_mem, c_ub)
@@ -1306,7 +1321,7 @@ def general_schedule(
             affine_cub = (
                 1,
                 1,
-                int(c_ub_nc_factor / 2),
+                int(c_ub_nc_factor * cub_tiling_g / 2),
                 cub_tiling_mc_factor * cub_tiling_m0,
                 cub_tiling_n0 * 2
             )
@@ -1322,7 +1337,7 @@ def general_schedule(
                 cub_tiling_n0
             )
 
-        _attach_cub()
+        status = _attach_cub()
 
         sch[c_ub].buffer_align(
             (1, 1),
@@ -1347,7 +1362,7 @@ def general_schedule(
         if n0_32_flag is not None:
             affine_l0c = (1,
                           1,
-                          int(cl0_tiling_nc / 2),
+                          int(cl0_tiling_nc * cl0_tiling_g / 2),
                           cl0_tiling_mc * cl0_tiling_m0,
                           cl0_tiling_n0 * 2)
         else:
@@ -1420,8 +1435,8 @@ def general_schedule(
         else:
             status_ori = Compare.LESS_EQ
         status = Compare.compare(
-            [al0_tiling_ma, al0_tiling_m0, al0_tiling_ka, al0_tiling_k0],
-            [cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
+            [1, 1, al0_tiling_ma, al0_tiling_m0, al0_tiling_ka, al0_tiling_k0],
+            [cl0_tiling_g, 1, cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
         )
 
         if status_ori == Compare.EQUAL:
@@ -1479,13 +1494,24 @@ def general_schedule(
                 sch_agent.attach_at(b_col, c_ddr, affine_shape=l0b2out_affine_shape)
             else:
                 _raise_dx_general_err("l0b attach error.")
+        elif l0c_multi_group_flag:
+            l0b2l0c_affine_shape = (
+                1,
+                None,
+                bl1_tilling_n,
+                cl0_tiling_mc * cl0_tiling_m0,
+                bl0_tiling_n0,
+                bl0_tiling_kb,
+                bl0_tiling_k0
+            )
+            sch_agent.attach_at(b_col, c_col, affine_shape=l0b2l0c_affine_shape)
         return neg_src_stride
 
     def _al1_process():
         l1_ma = al1_tilling_m * al0_tiling_ma
         l1_ka = al1_tilling_k // al0_tiling_k0
         l1a2l0c_affine_shape = (
-            1,
+            al1_tiling_g,
             1,
             None,
             l1_ma * al0_tiling_m0,
@@ -1498,8 +1524,8 @@ def general_schedule(
             status = Compare.GREATE_EQ
         else:
             status = Compare.compare(
-                [l1_ma, al0_tiling_m0, l1_ka, al0_tiling_k0],
-                [cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
+                [al1_tiling_g, 1, l1_ma, al0_tiling_m0, l1_ka, al0_tiling_k0],
+                [cl0_tiling_g, 1, cl0_tiling_mc, cl0_tiling_m0, c_col_k1, c_col_k0]
             )
 
         if tiling.get("AL1_shape") == [] and tiling.get("AL0_matrix") == []:
@@ -1538,7 +1564,7 @@ def general_schedule(
             bl0_tiling_n0_temp = bl0_tiling_n0
             cl0_tiling_nc_temp = cl0_tiling_nc
             cl0_tiling_n0_temp = cl0_tiling_n0
-            if n0_32_flag is not None:
+            if n0_32_flag is not None and not l0c_multi_group_flag:
                 l1_nb //= 2
                 _n0 *= 2
                 bl1_shape[1] = _ceil(bl1_shape[1], 2)
@@ -1548,7 +1574,7 @@ def general_schedule(
                 cl0_tiling_nc_temp //= 2
             l1_kb = bl1_tilling_k // _k0
             l1b2l0c_affine_shape = (
-                1,
+                bl1_tilling_g,
                 None,
                 l1_nb,
                 cl0_tiling_m0,
@@ -1557,7 +1583,7 @@ def general_schedule(
                 bl0_tiling_k0
             )
             if w_trans_flag:
-                tiling_ori_bl1 = bl1_tilling_k // _k0, l1_nb, _n0, _k0
+                tiling_ori_bl1 = bl1_tilling_g * bl1_tilling_k // _k0, l1_nb, _n0, _k0
             else:
                 tiling_ori_bl1 = (
                     l1_nb * kernel_h * kernel_w,
@@ -1568,21 +1594,39 @@ def general_schedule(
 
             status_ori = Compare.compare(tiling_ori_bl1, bl1_shape)
             status = Compare.compare(
-                [l1_nb, bl0_tiling_n0_temp, l1_kb, bl0_tiling_k0],
-                [cl0_tiling_nc_temp, cl0_tiling_n0_temp, c_col_k1, c_col_k0]
+                [bl1_tilling_g, 1, l1_nb, bl0_tiling_n0_temp, l1_kb, bl0_tiling_k0],
+                [cl0_tiling_g, 1, cl0_tiling_nc_temp, cl0_tiling_n0_temp, c_col_k1, c_col_k0]
             )
-            if status_ori == Compare.EQUAL:
-                # bl1 full load but tiling.get("BL1_shape") is not []
-                pass
-            elif status == Compare.EQUAL:
-                sch_agent.same_attach(b_l1, c_col)
-            elif status == Compare.LESS_EQ:
-                sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
-            elif status == Compare.GREATE_EQ:
-                l1b2out_affine_shape = [1, None, l1_nb, cl0_tiling_m0, bl0_tiling_n0]
-                sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape)
-            else:
-                _raise_dx_general_err("b_l1 attach error.")
+            def _bl1_attach():
+                if status_ori == Compare.EQUAL:
+                    # bl1 full load but tiling.get("BL1_shape") is not []
+                    pass
+                elif status == Compare.EQUAL:
+                    sch_agent.same_attach(b_l1, c_col)
+                elif status == Compare.LESS_EQ:
+                    sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
+                elif status == Compare.GREATE_EQ:
+                    l1_nb = bl1_tilling_n * bl0_tiling_nb
+                    _, _, _n0 = cce_params.CUBE_MKN[b_l1.dtype]["mac"]
+                    if l0c_multi_group_flag:   
+                        l1_nb = l1_nb * bl1_tilling_g // 2
+                        _n0 *= 2
+                    l1b2out_affine_shape = [1, None, l1_nb, cl0_tiling_m0, _n0]
+                    sch_agent.attach_at(b_l1, c_ddr, affine_shape=l1b2out_affine_shape)
+                else:
+                    _raise_dx_general_err("b_l1 attach error.")
+            _bl1_attach()
+        elif l0c_multi_group_flag:
+            l1b2l0c_affine_shape = (
+                1,
+                None,
+                bl1_tilling_n,
+                cl0_tiling_m0,
+                bl0_tiling_n0,
+                c_col_k1,
+                bl0_tiling_k0
+            )
+            sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
 
     def _aub_process():
         if stride_h > 1 or stride_w > 1:
@@ -1635,8 +1679,12 @@ def general_schedule(
             _al1_process()
             _bl1_process()
         else:
-            _bl1_process()
-            _al1_process()
+            if al1_tiling_g < bl1_tilling_g:
+                _al1_process()
+                _bl1_process()
+            else:
+                _bl1_process()
+                _al1_process()
 
         if stride_h > 1 or stride_w > 1:
             _aub_process()
@@ -2107,7 +2155,12 @@ def general_schedule(
         L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
 
     sch_agent = ScheduleAgent(sch)
-    sch_agent[c_ddr].split_group(c_ddr.op.axis[1], nparts=g_after)
+    # split g_dim for ddr; outer is g, inner is c1
+    if l0c_multi_group_flag:
+        cl0_factor = cin1_g * cl0_tiling_g // 2
+        sch_agent[c_ddr].split_group(c_ddr.op.axis[1], cl0_factor)
+    else:
+        sch_agent[c_ddr].split_group(c_ddr.op.axis[1], nparts=g_after)
 
     affine_cub = _cub_process()
     _cl0_process(affine_cub)
@@ -2158,41 +2211,6 @@ def general_schedule(
             (None, None), (None, None), (None, None), (w_offset, w_extend), (None, None)
         )
 
-    def _c_col_buffer_tile():
-        axis_split_list, axis_unit, axis_offset = sch_agent[c_ddr].get_axis_split_list_and_extend(2)
-        l0c_attach = sch_agent.apply_var(sch[c_col])
-        if l0c_attach is not None:
-            ddr_idx = list(sch[c_ddr].leaf_iter_vars).index(l0c_attach)
-            ddr_var_list = sch[c_ddr].leaf_iter_vars[0:ddr_idx]
-            for var in ddr_var_list[::-1]:
-                if var in axis_split_list:
-                    c1_idx = axis_split_list.index(var)
-                    axis = axis_split_list[0:c1_idx + 1]
-                    unit = axis_unit[0:c1_idx + 1]
-                    offset = axis_offset[0:c1_idx + 1]
-                    c_offset = 0
-                    for idx in range(c1_idx + 1):
-                        offset_idx = (offset[idx] * 2 if deconv_res.dtype == "int8" else offset[idx])
-                        factor_len = (0 if unit[idx] == 1 else offset_idx)
-                        c_offset = c_offset + axis[idx] * factor_len
-                    sch[c_col].buffer_tile(
-                    (None, 1),
-                    (None, None),
-                    (c_offset, tiling["CL0_matrix"][0]),
-                    (None, None),
-                    (None, None),
-                    (None, None),
-                    (None, None),
-                    )
-                    if c_add_bias is not None:
-                        sch[c_add_bias].buffer_tile(
-                        (None, 1),
-                        (None, None),
-                        (c_offset, tiling["CL0_matrix"][0]),
-                        (None, None),
-                        (None, None),)
-                    break
-
     ax_core = _bind_core()
     if is_conv1d_situation:
         _conv1d_split_tile()
@@ -2203,7 +2221,7 @@ def general_schedule(
         """
         g dimension only loads 1 each time
         """
-        if not tiling.get("BL1_shape") and g_after != 1:
+        if not tiling.get("BL1_shape") and g_after != 1 and not l0c_multi_group_flag:
             axs = sch_agent[c_ddr].get_active_scopes()
             ax_g, _, _, _, _ = axs
             _, bl1_at_inner = sch_agent[c_ddr].split(ax_g, factor=1)
@@ -2213,7 +2231,6 @@ def general_schedule(
     _full_load_bl1_bl0()
 
     sch_agent.apply()
-    _c_col_buffer_tile()
     if var_map:
         _handle_dynamic_workspace(stride_w)
     else:

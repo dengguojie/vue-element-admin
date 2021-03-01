@@ -130,7 +130,7 @@ def get_filter_shape(ori_format_filters, ori_shape_filters):
     return shape_filters
 
 
-def exchange_filter_nc_axis(ori_format_filters, ori_shape_filters):
+def exchange_filter_nc_axis(ori_format_filters, ori_shape_filters, groups):
     """
     Get filter shape of NCHW from original shape
     :param ori_format_filters:
@@ -138,20 +138,20 @@ def exchange_filter_nc_axis(ori_format_filters, ori_shape_filters):
     :return: filter shape of exchange filter nc axis
     """
     if ori_format_filters == "NCHW":
-        shape_filters = (ori_shape_filters[1],
+        shape_filters = [ori_shape_filters[1],
                          ori_shape_filters[0],
                          ori_shape_filters[2],
-                         ori_shape_filters[3])
+                         ori_shape_filters[3]]
     elif ori_format_filters == "NHWC":
-        shape_filters = (ori_shape_filters[3],
+        shape_filters = [ori_shape_filters[3],
                          ori_shape_filters[1],
                          ori_shape_filters[2],
-                         ori_shape_filters[0])
+                         ori_shape_filters[0]]
     elif ori_format_filters == "HWCN":
-        shape_filters = (ori_shape_filters[0],
+        shape_filters = [ori_shape_filters[0],
                          ori_shape_filters[1],
                          ori_shape_filters[3],
-                         ori_shape_filters[2])
+                         ori_shape_filters[2]]
     else:
         args_dict = {
             "errCode": "E60004",
@@ -160,6 +160,13 @@ def exchange_filter_nc_axis(ori_format_filters, ori_shape_filters):
             "format": ori_format_filters
         }
         raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    if shape_filters[1] % groups != 0:
+        args_dict = {
+            "errCode": "E60108",
+            "reason": "batch of weight % groups must be 0",
+        }
+        raise RuntimeError(args_dict, err_man.get_error_message(args_dict))
+    shape_filters[0], shape_filters[1] = ( shape_filters[0] * groups, shape_filters[1] // groups)
     return shape_filters
 
 

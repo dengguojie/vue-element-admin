@@ -231,6 +231,7 @@ def _get_data_amount_l1(l1_shape, isdouble):
         block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
         l1_k = TILING.get(l1_shape)[0]
         l1_mn = TILING.get(l1_shape)[1]
+        l1_g = TILING.get(l1_shape)[3]
         if l1_k == 0 or l1_mn == 0:
             _raise_dx_opti_err("l1_k or l1_mn can not be zero")
         if l1_k % block_k != 0:
@@ -240,6 +241,7 @@ def _get_data_amount_l1(l1_shape, isdouble):
                 l1_k
                 * l1_mn
                 * TILING.get("CL0_matrix")[1]
+                * l1_g
                 * block_m
                 * DTYPE_BYTE_MAP[TENSOR_MAP.get("a_l1").dtype]
             )
@@ -248,6 +250,7 @@ def _get_data_amount_l1(l1_shape, isdouble):
                 l1_k
                 * l1_mn
                 * TILING.get("CL0_matrix")[0]
+                * l1_g
                 * block_n
                 * DTYPE_BYTE_MAP[TENSOR_MAP.get("b_l1").dtype]
             )
@@ -271,13 +274,15 @@ def _check_tilling_l0(l0_shape, l0_space, isdouble):
     """
     row = TILING.get(l0_shape)[0]
     col = TILING.get(l0_shape)[1]
+    group = TILING.get(l0_shape)[5]
     if row == 0 or col == 0:
-        _raise_dx_opti_err("k, m, n in L0A/B can not be zero")
+        _raise_dx_opti_err("k, m, n, group in L0A/B can not be zero")
     data_amount_l0 = (
         row
         * col
         * TILING.get(l0_shape)[2]
         * TILING.get(l0_shape)[3]
+        * group
         * DTYPE_BYTE_MAP[TENSOR_MAP.get("b_l0b").dtype]
         * isdouble
     )
@@ -299,9 +304,10 @@ def _check_tilling_l0c(l0c_shape, l0c_space, isdouble):
     -----------------------------------------------------
     """
     cl0_m, cl0_n = TILING.get(l0c_shape)[1], TILING.get(l0c_shape)[0]
+    cl0_group = TILING.get(l0c_shape)[5]
     if TILING.get("BL0_matrix") != []:
         bl0_n = TILING.get("BL0_matrix")[1]
-        if cl0_m == 0 or cl0_n == 0:
+        if cl0_m == 0 or cl0_n == 0 or cl0_group == 0:
             _raise_dx_opti_err("cl0_m, cl0_n can not be zero")
         if cl0_n != bl0_n:
             _raise_dx_opti_err(
@@ -312,6 +318,7 @@ def _check_tilling_l0c(l0c_shape, l0c_space, isdouble):
         * cl0_n
         * TILING.get(l0c_shape)[2]
         * TILING.get(l0c_shape)[3]
+        * cl0_group
         * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_l0c").dtype]
         * isdouble
     )
@@ -343,6 +350,7 @@ def _check_tilling_cub(strideh, stridew, cub_space, isdouble, is_conv1d_bool):
                 * nc_factor
                 * cl0_m_extent
                 * TILING.get("CUB_matrix")[3]
+                * group_cub
                 * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_ub").dtype]
                 * isdouble
             )
@@ -390,12 +398,14 @@ def _check_tilling_cub(strideh, stridew, cub_space, isdouble, is_conv1d_bool):
                 * nc_factor
                 * real_m
                 * TILING.get("CUB_matrix")[3]
+                * group_cub
                 * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_ub").dtype]
                 * isdouble
             )
         return dilate_cub_size
 
     nc_factor, mc_factor = TILING.get("CUB_matrix")[0], TILING.get("CUB_matrix")[1]
+    group_cub = TILING.get("CUB_matrix")[5]
     if mc_factor != TILING.get("CL0_matrix")[1]:
         _raise_dx_opti_err("mc_factor is not equal to mc")
     if TILING.get("CL0_matrix")[0] % nc_factor != 0:
@@ -409,6 +419,7 @@ def _check_tilling_cub(strideh, stridew, cub_space, isdouble, is_conv1d_bool):
             * mc_factor
             * TILING.get("CUB_matrix")[2]
             * TILING.get("CUB_matrix")[3]
+            * group_cub
             * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_ub").dtype]
             * isdouble
         )
@@ -426,26 +437,28 @@ def _check_tilling_cub(strideh, stridew, cub_space, isdouble, is_conv1d_bool):
 
 
 def _get_tiling_l0a_l0b(cl0_matrix, l0_matrix, instr):
-    """ get l0a and l0b matrix """
+    """ get l0a and l0b matrix according to l0b and l0a matrix"""
     k_dim = DIM_MAP.get("A_matrix_dim")[-3]
+    batch_l0 = 1
+    g_l0 = 1
     if instr == "A":
         block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("a_l0a").dtype][
             "mac"
         ]
         # l0_matrix is bl0_matrix:[kb, nb, n0, k0]
         if l0_matrix != []:
-            full_ab = [cl0_matrix[1], l0_matrix[0], block_m, block_k, 1]
+            full_ab = [cl0_matrix[1], l0_matrix[0], block_m, block_k, batch_l0, g_l0]
         else:
-            full_ab = [cl0_matrix[1], k_dim, block_m, block_k, 1]
+            full_ab = [cl0_matrix[1], k_dim, block_m, block_k, batch_l0, g_l0]
     elif instr == "B":
         block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l0b").dtype][
             "mac"
         ]
         # l0_matrix is al0_matrix:[ma, ka, m0, k0]
         if l0_matrix != []:
-            full_ab = [l0_matrix[1], cl0_matrix[0], block_n, block_k, 1]
+            full_ab = [l0_matrix[1], cl0_matrix[0], block_n, block_k, batch_l0, g_l0]
         else:
-            full_ab = [k_dim, cl0_matrix[0], block_n, block_k, 1]
+            full_ab = [k_dim, cl0_matrix[0], block_n, block_k, batch_l0, g_l0]
     else:
         _raise_dx_opti_err("instr should be A or B")
 
@@ -473,7 +486,10 @@ def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b):
     if TILING.get("BL0_matrix") is None:
         _raise_dx_opti_err("tiling[BL0_matrix] can not be None")
     if TILING.get("BL0_matrix") == []:
-        data_amount_l0b = data_amount_l1b
+        if TILING.get("BL1_shape") == []:
+            data_amount_l0b = data_amount_l1b
+        else:
+            data_amount_l0b = data_amount_l1b // TILING.get("BL1_shape")[3]
         if data_amount_l0b > cce_conf.get_soc_spec("L0B_SIZE"):
             _raise_dx_opti_err("tiling size exceed L0B Buffer")
     else:
@@ -482,14 +498,17 @@ def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b):
             cce_conf.get_soc_spec("L0B_SIZE"),
             manual_pingpong_buffer.get("BL0_pbuffer")
         )
+        full_k1 = DIM_MAP["dy_c1_extend"]
+        if TILING.get("BL0_matrix")[0] != full_k1 and TILING.get("BL0_matrix")[5] > 1:
+            _raise_dx_opti_err("If axis k in tiling BL0 is not full load, group_BL0 must be 1.")
         if TILING.get("AL0_matrix")[1] != TILING.get("BL0_matrix")[0]:
             _raise_dx_opti_err(
-                "axis k in tilling AL0 is not " "equal to axis k in tilling BL0"
+                "axis k in tilling AL0 is not equal to axis k in tilling BL0"
             )
 
 
 # check tiling and set default tiling
-def _check_and_set_default_tiling(tiling, atype, btype):
+def _check_and_set_default_tiling(tiling, atype, btype, loc_multi_group_flag):
     """
     check and set default tiling
     :param tiling:
@@ -537,15 +556,20 @@ def _check_and_set_default_tiling(tiling, atype, btype):
             else:
                 # add one is needed by buffer_tile of ub
                 m_al0 = m_cl0 = int_ceil_div(dy_w, block_m) + 1
-
+        if loc_multi_group_flag:
+            n_min = DIM_MAP["dy_c1_extend"]
+            group_cl0 = 2
+        else:
+            n_min = 1
+            group_cl0 = 1
         tiling["AUB_shape"] = None
         tiling["BUB_shape"] = None
         tiling["AL1_shape"] = [k_al1, 1, 1, 1]
         tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
         tiling["AL0_matrix"] = [m_al0, 1, 16, k_al0, 1, 1]
-        tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
-        tiling["CL0_matrix"] = [1, m_cl0, 16, 16, 1, 1]
-        tiling["CUB_matrix"] = [1, m_cl0, 16, 16, 1, 1]
+        tiling["BL0_matrix"] = [1, n_min, 16, k_bl0, 1, 1]
+        tiling["CL0_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
+        tiling["CUB_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
         tiling["block_dim"] = [1, 1, 1, 1]
         tiling["n_bef_batch_flag"] = 0
         tiling["n_bef_group_flag"] = 0
@@ -575,7 +599,8 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     kernel_name,
     is_conv1d_bool,
     tiling_case=None,
-    var_map=None
+    var_map=None,
+    loc_multi_group_flag=False
 ):
     """
     get tilling parameter from get_tilling and check all parameter
@@ -583,15 +608,31 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
 
     def _handle_quant_tiling():
         if fusion_type in (FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
-            TILING["CL0_matrix"][0] //= 2
-            if TILING["CL0_matrix"][0] == 0:
-                TILING["CL0_matrix"][0] = 1
-            TILING["CL0_matrix"][3] = 32
-
-            TILING["CUB_matrix"][0] //= 2
-            if TILING["CUB_matrix"][0] == 0:
-                TILING["CUB_matrix"][0] = 1
             TILING["CUB_matrix"][3] = 32
+            TILING["CL0_matrix"][3] = 32
+            if not loc_multi_group_flag:
+                # correct c1_dim due to c1_l0c/c1_ddr is 2
+                TILING["CL0_matrix"][0] //= 2
+                if TILING["CL0_matrix"][0] == 0:
+                    TILING["CL0_matrix"][0] = 1
+
+                TILING["CUB_matrix"][0] //= 2
+                if TILING["CUB_matrix"][0] == 0:
+                    TILING["CUB_matrix"][0] = 1
+            else:
+                # in loc_multi_group_flag scenes, correct g_dim
+                TILING["CL0_matrix"][5] //= 2
+                TILING["CUB_matrix"][5] //= 2
+        def _group_quant_illegal_quant():
+            if loc_multi_group_flag:
+                # n axis is full load, block_dim_n is 1
+                n_dim_rule = (TILING["block_dim"][1] == 1 and TILING["CL0_matrix"][0] == filter_shape_g[1]
+                              and TILING["CUB_matrix"][0] == filter_shape_g[1])
+                if TILING["BL1_shape"]:
+                    n_dim_rule = n_dim_rule and TILING["BL1_shape"][1] == 1
+                if not n_dim_rule:
+                    _raise_dx_opti_err("Illegal tiling in dequant + quant or requant fusion scene.")
+        _group_quant_illegal_quant()
 
     def _check_tiling_l1():
         data_amount_l1b = _get_data_amount_l1(
@@ -641,7 +682,8 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     _calc_double_op_num(fusion_type)
 
     if fusion_type in (FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
-        filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
+        if not loc_multi_group_flag:
+            filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
 
     bias_flag = _get_bias_flag()
 
@@ -692,7 +734,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     DeconvParam.update_para_map("out_of_order", out_of_order)
 
     TILING = _check_and_set_default_tiling(
-        TILING, TENSOR_MAP["img_placehold"].dtype, TENSOR_MAP["filter_placehold"].dtype
+        TILING, TENSOR_MAP["img_placehold"].dtype, TENSOR_MAP["filter_placehold"].dtype, loc_multi_group_flag
     )
 
     _print_debug(
@@ -1303,7 +1345,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
     return tensor_dx_gm, var_map
 
 
-def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range):  # pylint: disable=R0915
+def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, loc_multi_group_flag):  # pylint: disable=R0915
     """
     using tilling parameter calculate factor
 
@@ -1399,7 +1441,7 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range):  # pylin
         return undilate_l0c_m
 
     def _get_al1_and_bl1_parts(l0c_parts):
-        al1_parts = [1, 1]
+        al1_parts = [1, 1, 1]
         if TILING["AL1_shape"]:  # AL1_shape = [C1,H*W,16,16],batch=1
             # parts of k-axis from DDR to L1---need div by H*W
             al1_parts = [
@@ -1407,10 +1449,12 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range):  # pylin
                     DIM_MAP[GroupDictKeys.dy_c1_extend],
                     int_ceil_div(TILING["AL1_shape"][0], block_k)
                 ),
-                int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1])
+                int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1]),
+                # factor of group
+                TILING["AL1_shape"][3]
             ]
 
-        bl1_parts = [1, 1]
+        bl1_parts = [1, 1, 1]
         if TILING["BL1_shape"]:
             if (l0c_parts[0] % TILING["BL1_shape"][1]) != 0:
                 _raise_dx_opti_err(
@@ -1421,7 +1465,9 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range):  # pylin
                     DIM_MAP["B_matrix_dim"][1],
                     int_ceil_div(TILING["BL1_shape"][0], block_k)
                 ),
-                int_ceil_div(l0c_parts[0], TILING["BL1_shape"][1])
+                int_ceil_div(l0c_parts[0], TILING["BL1_shape"][1]),
+                # factor of group
+                TILING["BL1_shape"][3]
             ]
         return al1_parts, bl1_parts
 
@@ -1473,6 +1519,9 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range):  # pylin
         )
     ]
 
+    if loc_multi_group_flag:
+        # used to calculate bl1_parts
+        l0c_parts[0] = int_ceil_div(DIM_MAP.get("out_img_shape")[1] // TILING["block_dim"][3], l0c_tiling_factor[0])
     if "dedy_h" in var_map or "dedy_w" in var_map:
         l0c_parts[1] = int_ceil_div(
             int_ceil_div(DIM_MAP.get("out_img_shape")[2], TILING["block_dim"][2]),
@@ -1513,7 +1562,7 @@ def _get_mmad_factor():
             tilling factor for reduce axis
     """
     al0_factor = [TILING.get("AL0_matrix")[0], TILING.get("AL0_matrix")[1]]
-    bl0_factor = [TILING.get("BL0_matrix")[0], TILING.get("BL0_matrix")[1]]
+    bl0_factor = [TILING.get("BL0_matrix")[0], TILING.get("BL0_matrix")[1], TILING.get("BL0_matrix")[5]]
     reduce_factor = TILING.get("BL0_matrix")[0]
     return al0_factor, bl0_factor, reduce_factor
 
@@ -1576,7 +1625,7 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
 
 
 def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
-    sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map
+    sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, loc_multi_group_flag
 ):
     """
     get l0c and l1 axis
@@ -1620,7 +1669,10 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         return reorder_flag
 
     # split c_gm according to factor of loc and out_shape
-    g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
+    if not loc_multi_group_flag:
+        g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
+    else:
+        g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[0])
     l0c_n_outer, l0c_n_inner = sch[c_gm].split(c_gm_inner, l0c_factor[0])
     l0c_m_outer, l0c_m_inner = sch[c_gm].split(c_gm.op.axis[2], l0c_factor[1])
     sch[c_gm].reorder(g_dim, c_gm.op.axis[0], l0c_n_outer, l0c_m_outer, l0c_n_inner, l0c_m_inner)
@@ -1702,12 +1754,16 @@ def _get_l0a_and_l0b_axis(  # pylint: disable=R0913,R0914
         al0_axis_factor[0] * cce_params.CUBE_MKN[c_l0c.dtype]["mac"][0]
     )
     bl0_n_outer, bl0_n_inner = sch[c_l0c].split(new_c_col_axis[1], bl0_axis_factor[1])
+    # for loc_multi_group_flag is true scenes, split factor of g_axis of bl0
+    bl0_g_outer, bl0_g_inner = sch[c_l0c].split(new_c_col_axis[4], bl0_axis_factor[2])
     # for reduce axis, al0 and b_l0b should be the same
     k_outer_outer, k_outer_inner = sch[c_l0c].split(reduce_out, reduce_axis_factor)
     _, batch_l0c_inner = sch[c_l0c].split(c_l0c.op.axis[1], 1)
     sch[c_l0c].reorder(
+        bl0_g_outer,
         k_outer_outer,
         bl0_n_outer,
+        bl0_g_inner,
         al0_m_out,
         batch_l0c_inner,
         bl0_n_inner,
@@ -1787,6 +1843,38 @@ def _dilate_schedule(sch, dilate_ub, out_w, dilate_w, dilate_h):
     sch[dilate_ub].unroll(wi_axis)
     return wo_axis
 
+
+def _check_quant_fusion_legal(fusion_type):
+    """
+    In the two fusion scenes, l0b, ub and l0c has the minimum data load,
+    Any buffer hyperspace, the fusion backs to single operator
+    :param fusion_type:  FUSION_DX_DEQUANT_QUANT or FUSION_DX_REQUANT
+
+    """
+    block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+    min_n = DIM_MAP["dx_c1_extend"]
+    min_l0b = min_n * block_k * block_n * DTYPE_BYTE_MAP[TENSOR_MAP.get("b_l0b").dtype]
+    if min_l0b > cce_conf.get_soc_spec("L0B_SIZE"):
+        _raise_dx_opti_err("The minimum data in l0b exceed buffer space, the fusion backs to single operator.")
+    min_m = 1
+    if TENSOR_MAP.get("dilate_ub") is not None:
+        # when mmad, the min unit of M is a fmap's w
+        dy_w = DIM_MAP["img_shape"][3]
+        # mc's calculation rule refor to auto tiling
+        if dy_w % 16 == 0:
+            min_m = dy_w // block_m
+        else:
+            # add one is needed by buffer_tile of ub
+            min_m = int_ceil_div(dy_w, block_m) + 1
+    group_l0c = 2
+    min_l0c = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_l0c").dtype] * group_l0c
+    if min_l0c > cce_conf.get_soc_spec("L0C_SIZE"):
+        _raise_dx_opti_err("The minimum data in l0c exceed buffer space, the fusion backs to single operator.")
+    _calc_double_op_num(fusion_type)
+    min_ub = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_gm").dtype] \
+             * group_l0c * FUSION_TYPE_2_OPERAND_NUM[fusion_type]
+    if min_ub > cce_conf.get_soc_spec("UB_SIZE"):
+        _raise_dx_opti_err("The minimum data in ub exceed buffer space, the fusion backs to single operator.")
 
 def opti_schedule(
     tensor, sch_list, tiling_case=None, var_range=None
@@ -2007,27 +2095,26 @@ def opti_schedule(
 
     def _attach_al1_bl1():
         # attach tensor of al1 and bl1 to c_l0c
-        if TILING["AL1_shape"]:
-            _print_debug("al1_parts[0]:", al1_parts[0])
-            if al1_parts[0] != 1:
-                sch[a_l1].compute_at(sch[c_l0c], al1_at_l0c_axis)
-                if DeconvParam.get_para_map("load3d_flag"):
-                    sch[a_l0a_before].compute_at(sch[c_l0c], al1_at_l0c_axis)
-            else:
-                sch[a_l1].compute_at(sch[c_gm], al1_at_c_axis)
-                if DeconvParam.get_para_map("load3d_flag"):
-                    sch[a_l0a_before].compute_at(sch[c_gm], al1_at_c_axis)
-        else:  # TILING["AL1_shape"]=[]
+        al1_attach_at_cl0 = True if (al1_parts[0] != 1 or (loc_multi_group_flag and al1_parts[2] == 1)) else False
+        if al1_attach_at_cl0:
+            sch[a_l1].compute_at(sch[c_l0c], al1_at_l0c_axis)
+            if DeconvParam.get_para_map("load3d_flag"):
+                sch[a_l0a_before].compute_at(sch[c_l0c], al1_at_l0c_axis)
+        elif TILING["AL1_shape"]:
+            sch[a_l1].compute_at(sch[c_gm], al1_at_c_axis)
+            if DeconvParam.get_para_map("load3d_flag"):
+                sch[a_l0a_before].compute_at(sch[c_gm], al1_at_c_axis)
+        else:
             sch[a_l1].compute_at(sch[c_gm], batch_in_out_axis)
             if DeconvParam.get_para_map("load3d_flag"):
                 sch[a_l0a_before].compute_at(sch[c_gm], batch_in_out_axis)
 
-        if TILING["BL1_shape"]:
-            _print_debug("bl1_parts[0]:", bl1_parts[0])
-            if bl1_parts[0] != 1:
-                sch[b_l1].compute_at(sch[c_l0c], bl1_at_l0c_axis)
-            else:  # bl1_parts[0] == 1
-                sch[b_l1].compute_at(sch[c_gm], bl1_at_c_axis)
+        bl1_attach_at_cl0 = True if (bl1_parts[0] != 1 or (loc_multi_group_flag and bl1_parts[2] == 1)) else False
+
+        if bl1_attach_at_cl0:
+            sch[b_l1].compute_at(sch[c_l0c], bl1_at_l0c_axis)
+        elif TILING["BL1_shape"]: # bl1_parts[0] == 1
+            sch[b_l1].compute_at(sch[c_gm], bl1_at_c_axis)
         else:  # TILING["BL1_shape"]=[]
             sch[b_l1].compute_at(sch[c_gm], batch_in_out_axis)
 
@@ -2489,44 +2576,6 @@ def opti_schedule(
         cache_read_mode = 0 if overload_flag else 1
         param.pragma(overload_axis, "json_info_cache_read_mode", cache_read_mode)
 
-    def _buffer_tile_loc_c1():
-        no_coefficient = (l0c_factor[0] * 2 if dx_res_write.dtype == "int8" else l0c_factor[0])
-        noo_coefficient_unzero = int_ceil_div(
-                int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
-            )
-        noo_coefficient = 0 if bl1_parts[1] == 1 else noo_coefficient_unzero
-        noio_coefficient = (
-            0
-            if TILING["block_dim"][1] == 1
-            else int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1])
-        )
-        noii_coefficient = (
-            0 if int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1]) == 1
-            else 1
-        )
-        cub_buffertile_n_min = (
-            bl1_at_c_axis.var * noo_coefficient
-            + noio_coefficient * l1_n_out_inner_out
-            + noii_coefficient * noii_axis.var
-        ) * no_coefficient
-        sch[c_l0c].buffer_tile(
-            (None, 1),
-            (None, None),
-            (cub_buffertile_n_min, no_coefficient),
-            (None, None),
-            (None, None),
-            (None, None),
-            (None, None),
-        )
-        if c_add_bias is not None:
-            sch[c_add_bias].buffer_tile(
-            (None, 1),
-            (None, None),
-            (cub_buffertile_n_min, no_coefficient),
-            (None, None),
-            (None, None),
-            )
-
     TILING.clear()
     dx_res = tensor
     sch = sch_list[0]
@@ -2556,10 +2605,15 @@ def opti_schedule(
         TENSOR_MAP.get("c_l0c"),
         TENSOR_MAP.get("c_gm")
     )
+    loc_multi_group_flag = False
     if dx_res_write.dtype == "int8":
         # In quant or requant scenes, co of ddr is 32, c1_ddr is c1_loc//2
         DIM_MAP["dx_6GD_shape"][2] = (DIM_MAP["dx_6GD_shape"][2] + 1) // 2
         DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] * 2
+        # In quant scenes, if C1 % 2 == 1 and G>1, the min group_l0c is 2
+        if DIM_MAP["dx_c1_extend"] % 2 == 1 and DIM_MAP["g_extend"] > 1:
+            loc_multi_group_flag = True
+            _check_quant_fusion_legal(fusion_type)
 
     if DeconvParam.get_para_map("load3d_flag"):
         a_l0a_before = TENSOR_MAP.get("a_l0a_before")
@@ -2580,7 +2634,7 @@ def opti_schedule(
     )
 
     _get_tiling(
-        dx_res_write, fusion_type, kernel_name, is_conv1d_bool, tiling_case, var_map
+        dx_res_write, fusion_type, kernel_name, is_conv1d_bool, tiling_case, var_map, loc_multi_group_flag
     )
 
     # get factor and parts from tiling
@@ -2592,7 +2646,7 @@ def opti_schedule(
         undilate_l0c_m,
         need_buffer_tile,
         mask_ub_need_bind_buffer
-    ) = _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range)
+    ) = _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, loc_multi_group_flag)
     al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
     num_batch = DIM_MAP["img_shape"][0]
     _print_ir_conv("before split", sch)
@@ -2614,7 +2668,7 @@ def opti_schedule(
         overload_flag_gm,
         l0c_m_outer
     ) = _get_l0c_and_l1_axis(
-        sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map
+        sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, loc_multi_group_flag
     )
     al1_at_c_axis = batch_in_inner_axis
     bl1_at_c_axis = l1_n_outer_outer
@@ -2644,7 +2698,8 @@ def opti_schedule(
         sch[c_l0c].op.axis[1],
         sch[c_l0c].op.axis[2],
         sch[c_l0c].op.axis[3],
-        sch[c_l0c].op.axis[4]
+        sch[c_l0c].op.axis[4],
+        sch[c_l0c].op.axis[0]
     ]
     sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
     if bias_l0c is not None:
@@ -2695,7 +2750,7 @@ def opti_schedule(
                 (1, cce_params.CUBE_MKN["float16"]["mac"][0]),
                 (1, cce_params.CUBE_MKN["float16"]["mac"][0])
             )
-    _buffer_tile_loc_c1()
+
     # double buffer
     _do_double_buffer(fusion_type)
     _print_ir_conv("enable double buffer", sch)

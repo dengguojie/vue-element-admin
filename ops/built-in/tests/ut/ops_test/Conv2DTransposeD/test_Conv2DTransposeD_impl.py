@@ -9,6 +9,9 @@ import conv2d_transpose_ut_testcase
 import util_for_conv2d_transpose as util
 from op_test_frame.ut import OpUT
 from impl.conv2d_transpose_d import get_op_support_info
+from impl.conv2d_transpose_d import conv2d_transpose_d
+from impl.conv2d_transpose_d import conv2d_transpose_d_compute
+from te import tvm
 
 ut_case = OpUT("Conv2DTransposeD", "impl.conv2d_transpose_d", "conv2d_transpose_d")
 
@@ -133,11 +136,62 @@ def test_split_transposed(test_arg):
     y = {"format": "NC1HWC0","ori_format": "NCHW", "dtype": "float16", "shape": (1, 1, 3, 3, 16), "ori_shape": (1, 16, 3, 3)}
     get_op_support_info(x, filter, None, None, y, (1, 16, 3, 3), (1, 1, 1, 1), (0, 0, 0, 0), data_format="NCHW")
 
+
+def test_op_group_int8(test_arg):
+    x = {"ori_shape": (1, 192, 48, 80), "dtype": "int8", "ori_format": "NCHW","shape": (1, 6, 48, 80, 32), "format":"NC1HWC0"}
+    weight = {"ori_shape": (144, 64, 3, 3), "dtype": "int8", "ori_format": "NCHW", "shape": (54, 3, 16, 32), "format": "FRACTAL_NZ"}
+    bias = None
+    y = {"ori_shape": (1, 144, 48, 32), "dtype": "int8", "ori_format": "NCHW", "shape": (1, 5, 48, 80, 32), "format":"NC1HWC0"}
+
+    try:
+        conv2d_transpose_d(x, weight, bias, None, y, (1, 144, 48, 32), (1, 1, 1, 1), (0, 0, 0, 0),
+                           dilations=(1, 1, 1, 1), groups=10, data_format="NCHW", offset_x=0,
+                           kernel_name="deconvolution")
+    except RuntimeError as e:
+        print(e)
+        pass
+
+
+def test_op_compute_int8(test_arg):
+    x = tvm.placeholder(
+        (1, 6, 48, 80, 32),
+        name="x",
+        dtype="int8",
+        attrs={"ori_shape": (1, 192, 48, 80), "ori_format": "NCHW"},
+    )
+    weight_tensor = tvm.placeholder(
+        (54, 3, 16, 32),
+        name="filter",
+        dtype="int8",
+        attrs={
+            "ori_shape": (144, 64, 3, 3),
+            "ori_format": "NCHW",
+        },
+    )
+    dedx_list = {
+        "ori_shape": (1,144,48,80),
+        "shape": (1,5,48,80,32),
+        "dtype": "int8",
+        "ori_format": "NCHW",
+        "format": "NC1HWC0",
+    }
+    try:
+        conv2d_transpose_d_compute(
+        x, weight_tensor, None, None, dedx_list,
+        (1, 144, 48, 80),
+        (1, 1, 1, 1), (0, 0, 0, 0),
+        dilations=(1, 1, 1, 1), groups=10,
+        )
+    except RuntimeError as e:
+        print(e)
+        pass
+
+
 _gen_conv2d_transpose_op_case()
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_split_transposed)
-
-
+ut_case.add_cust_test_func(test_func=test_op_group_int8)
+ut_case.add_cust_test_func(test_func=test_op_compute_int8)
 
 
 if __name__ == "__main__":

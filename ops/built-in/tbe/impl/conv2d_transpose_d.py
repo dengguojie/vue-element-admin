@@ -236,7 +236,7 @@ def get_op_support_info(x,  # pylint: disable=invalid-name,R0913,R0914,W0613
                         strides,
                         pads,
                         dilations=(1, 1, 1, 1),
-                        group=1,
+                        groups=1,
                         data_format="NHWC",
                         offset_x=0,
                         kernel_name="conv2d_transpose_d"):
@@ -547,7 +547,7 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
 
     if filter_dtype == "int8":
         ori_shape_filter = util_deconv_comm.exchange_filter_nc_axis(
-            ori_format_filter, ori_shape_filter
+            ori_format_filter, ori_shape_filter, groups
         )
 
     shape_filter = util_deconv_comm.get_filter_shape(
@@ -686,9 +686,15 @@ def _conv2d_transpose_cce(
         return (x_1 + x_2 - 1) // x_2
 
     if filter_dtype == "int8" and x_dtype == "int8":
+        if shape_filter[0] % groups != 0:
+            args_dict = {
+                "errCode": "E60108",
+                "reason": "batch of weight % groups must be 0",
+            }
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
         shape_filter = [
-            shape_filter[1],
-            shape_filter[0],
+            shape_filter[1] * groups,
+            shape_filter[0] // groups,
             shape_filter[2],
             shape_filter[3],
         ]

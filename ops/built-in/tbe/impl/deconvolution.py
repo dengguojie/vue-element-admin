@@ -576,9 +576,17 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         ori_format_weight, ori_shape_weight
     )
     if weight_dtype == "int8":
+        # NCHW means (groups * cout_ori, cin_ori, hk,wk), but it means
+        # (groups * cin_ori, cout_ori, hk, wk) in int8 scenes.
+        if shape_weight[0] % groups != 0:
+            args_dict = {
+                "errCode": "E60108",
+                "reason": "batch of weight % groups must be 0",
+            }
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
         shape_weight[0], shape_weight[1] = (
-            shape_weight[1],
-            shape_weight[0],
+            shape_weight[1] * groups,
+            shape_weight[0] // groups,
         )
 
     shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
@@ -731,9 +739,17 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
         }
 
     if filter_dtype == "int8" and x_dtype == "int8":
+        # NCHW means (groups * cout_ori, cin_ori, hk,wk), but it means
+        # (groups * cin_ori, cout_ori, hk, wk) in int8 scenes.
+        if shape_filter[0] % groups != 0:
+            args_dict = {
+                "errCode": "E60108",
+                "reason": "batch of weight % groups must be 0",
+            }
+            raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
         shape_filter = [
-            shape_filter[1],
-            shape_filter[0],
+            shape_filter[1] * groups,
+            shape_filter[0] // groups,
             shape_filter[2],
             shape_filter[3],
         ]

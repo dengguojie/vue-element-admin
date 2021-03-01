@@ -53,23 +53,24 @@ def _shape_nchw_to_nc1hwc0(shape, dtype):
     )
 
 
-def _shape_nchw_to_fz(shape, dtype):
+def _shape_nchw_to_fz(shape, dtype, groups):
     batch, channel, height, weight = shape
     block_k = _get_block("k", dtype)
     block_n = _get_block("n", dtype)
-
+    if dtype == "int8":
+        batch = batch // groups
     channel1 = _ceil(channel, block_n)
     channel0 = block_n
     batch1 = _ceil(batch, block_k)
     batch0 = block_k
     if dtype == "int8":
-        return batch1 * height * weight, channel1, channel0, batch0
+        return groups * batch1 * height * weight, channel1, channel0, batch0
     return channel1 * height * weight, batch1, batch0, channel0
 
 
-def _get_ori_shape(shape, dtype):
+def _get_ori_shape(shape, dtype, groups):
     if dtype == "int8":
-        return [shape[1], shape[0], shape[2], shape[3]]
+        return [shape[1] * groups, shape[0] // groups, shape[2], shape[3]]
     return shape
 
 
@@ -87,6 +88,7 @@ def gen_deconv_case(case):
         dilation,
         bias_flag,
     ) = case[1:9]
+    groups = 1
     expect_result = "success"
     if len(case) == 10:
         expect_result = case[9]
@@ -104,8 +106,8 @@ def gen_deconv_case(case):
         "format": "NC1HWC0",
     }
     filters = {
-        "ori_shape": _get_ori_shape(filter_shape, case_dtype),
-        "shape": _shape_nchw_to_fz(filter_shape, case_dtype),
+        "ori_shape": _get_ori_shape(filter_shape, case_dtype, groups),
+        "shape": _shape_nchw_to_fz(filter_shape, case_dtype, groups),
         "dtype": case_dtype,
         "ori_format": "NCHW",
         "format": "FRACTAL_Z",
@@ -157,7 +159,7 @@ def _get_deconv_node(case):
         filter_shape,
         dedx_shape,
     ) = case[0:4]
-
+    groups = 1
     if case_dtype == "int8":
         dedx_dtype = "int32"
     else:
@@ -169,12 +171,13 @@ def _get_deconv_node(case):
         dtype=case_dtype,
         attrs={"ori_shape": dedy_shape, "ori_format": "NCHW"},
     )
+
     weight = tvm.placeholder(
-        _shape_nchw_to_fz(filter_shape, case_dtype),
+        _shape_nchw_to_fz(filter_shape, case_dtype, groups),
         name="filter",
         dtype=case_dtype,
         attrs={
-            "ori_shape": _get_ori_shape(filter_shape, case_dtype),
+            "ori_shape": _get_ori_shape(filter_shape, case_dtype, groups),
             "ori_format": "NCHW",
         },
     )
@@ -324,6 +327,53 @@ def test_op_check_supported(test_arg):
                     kernel_name="deconvolution")
 
 
+def test_op_group_requant(test_arg):
+    x = {"ori_shape": (1, 192, 48, 80), "dtype": "int8", "ori_format": "NCHW", "shape": (1, 6, 48, 80, 32), "format":"NC1HWC0"}
+    weight = {"ori_shape": (144, 64, 3, 3), "dtype": "int8", "ori_format": "NCHW", "shape": (54, 3, 16, 32), "format": "FRACTAL_NZ"}
+    bias = None
+    y = {"ori_shape": (1, 144, 48, 80), "dtype": "int8", "ori_format": "NCHW",  "shape": (1, 5, 48, 80, 32), "format":"NC1HWC0"}
+    from impl.deconvolution import deconvolution
+    try:
+        deconvolution(x, weight, bias, None, y, (1, 1, 1, 1), (0, 0, 0, 0),
+                      dilations=(1, 1, 1, 1), groups=10, data_format="NCHW", offset_x=0,
+                      kernel_name="deconvolution")
+    except RuntimeError as e:
+        print(e)
+        pass
+
+def test_op_compute_int8(test_arg):
+    x = tvm.placeholder(
+        (1, 6, 48, 80, 32),
+        name="x",
+        dtype="int8",
+        attrs={"ori_shape": (1, 192, 48, 80), "ori_format": "NCHW"},
+    )
+    weight_tensor = tvm.placeholder(
+        (54, 3, 16, 32),
+        name="filter",
+        dtype="int8",
+        attrs={
+            "ori_shape": (144, 64, 3, 3),
+            "ori_format": "NCHW",
+        },
+    )
+    dedx_list = {
+        "ori_shape": (1,144,48,80),
+        "shape": (1,5,48,80,32),
+        "dtype": "int8",
+        "ori_format": "NCHW",
+        "format": "NC1HWC0",
+    }
+    try:
+        deconvolution_compute(
+        x, weight_tensor, None, None, dedx_list,
+        (1, 1, 1, 1), (0, 0, 0, 0),
+        dilations=(1, 1, 1, 1), groups=10,
+        )
+    except RuntimeError as e:
+        print(e)
+        pass
+
 for case_ut in deconvolution_ut_case:
     print("==========add case for deconvlution===============")
     print("the case is :", case_ut)
@@ -336,7 +386,8 @@ for fusion_case in deconvolution_ut_fusion_case:
         fusion_case[0], test_func=test_deconvolution_fusion(fusion_case)
     )
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
-
+ut_case.add_cust_test_func(test_func=test_op_group_requant)
+ut_case.add_cust_test_func(test_func=test_op_compute_int8)
 if __name__ == "__main__":
     ut_case.run()
     sys.exit(0)

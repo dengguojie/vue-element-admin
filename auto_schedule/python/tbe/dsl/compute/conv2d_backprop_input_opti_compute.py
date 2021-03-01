@@ -487,7 +487,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                     bias_ub_brc_shape,
                     lambda *indices:
                     tensor_bias(
-                        indices[2] * co_k + indices[4]
+                        indices[0] * shape_c[2] * co_k + indices[2] * co_k + indices[4]
                     ),
                     name="bias_ub_brc"
                 )
