@@ -19,34 +19,34 @@ Inherit VectorSchedule() and implement all abstract method to build your own sch
 
 # Standard Packages
 from abc import ABC
-from enum import auto
 from enum import Enum
+from enum import auto
 from typing import Any
-from typing import Set
-from typing import List
-from typing import Dict
-from typing import Tuple
-from typing import Union
 from typing import Callable
+from typing import Dict
 from typing import Hashable
 from typing import Iterable
+from typing import List
 from typing import NoReturn
 from typing import Optional
+from typing import Set
+from typing import Tuple
+from typing import Union
 
-# Third_party Packages
-from te import tvm
-from te.tvm.expr import Reduce
-from te.tvm.tensor import Tensor
-from te.tvm.schedule import Fuse
-from te.tvm.schedule import Split
-from te.tvm.schedule import Stage
-from te.tvm.schedule import IterVar
-from te.tvm.schedule import Schedule
+from tbe import tvm
 from tbe.dsl.base import operation
-from .util import is_keepdims
-from .util import is_reduce_tensor
+from tbe.tvm.expr import Reduce
+from tbe.tvm.schedule import Fuse
+from tbe.tvm.schedule import IterVar
+from tbe.tvm.schedule import Schedule
+from tbe.tvm.schedule import Split
+from tbe.tvm.schedule import Stage
+from tbe.tvm.tensor import Tensor
+
 from .util import get_reduce_all_axes
 from .util import get_reduce_axis_indices
+from .util import is_keepdims
+from .util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
 from .vector_schedule_base import VectorScheduleBase
 

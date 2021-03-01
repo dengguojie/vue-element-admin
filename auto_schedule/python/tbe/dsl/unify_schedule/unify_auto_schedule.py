@@ -20,15 +20,15 @@ from typing import Any
 from typing import Dict
 from typing import List
 
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.var import AttrVarDesc
 from tbe.dsl.base.var import Category
 from tbe.dsl.base.var import Var
+from tbe.tvm.build_module import BuildConfigs
 from te import platform as cce
-from te import tvm
 from te.platform import cce_conf
-from te.tvm.build_module import BuildConfigs
 
 from . import CompileInfo
 from . import Pattern

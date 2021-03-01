@@ -16,24 +16,24 @@
 elewise schedule
 """
 import copy
-from typing import Optional
 from copy import deepcopy
+from typing import Optional
 
-from te import tvm
+from tbe import tvm
 from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import register_schedule
 
-from . import CompileInfo
-from . import DTYPE_BYTE_MAPPING
-from . import FAKE_NODE_TAG
-from . import INSN_MAPPING
-from . import Pattern
-from . import SUPPORT_SCALAR_INSNS
-from . import TERNARY_INSNS
 from . import util
+from .constants import CompileInfo
+from .constants import DTYPE_BYTE_MAPPING
+from .constants import FAKE_NODE_TAG
+from .constants import INSN_MAPPING
+from .constants import Pattern
+from .constants import SUPPORT_SCALAR_INSNS
+from .constants import TERNARY_INSNS
 from .elewise_tilingcase import TilingStrategy
 
 # block size in D architecture

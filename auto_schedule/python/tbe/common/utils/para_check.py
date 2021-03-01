@@ -15,10 +15,9 @@
 """
 common function for check ops parameter
 """
-import re
 import math
+import re
 import warnings
-
 from enum import Enum
 from functools import reduce as _reduce
 from functools import wraps

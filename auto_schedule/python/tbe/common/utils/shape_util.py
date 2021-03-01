@@ -15,16 +15,17 @@
 """
 common function for check ops parameter
 """
+from functools import reduce
+
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
+from tbe.tvm import api as tvm
+from tbe.tvm import expr as _expr
+from tbe.tvm import make as _make
+from tbe.tvm import tensor as _tensor
 from te.platform.fusion_manager import fusion_manager
-from te.tvm import expr as _expr
-from te.tvm import make as _make
-from te.tvm import api as tvm
-from te.tvm import tensor as _tensor
-from tbe.common.utils import para_check
-from functools import reduce
-from tbe.common.utils.errormgr import get_error_message
 
 
 def squeeze_shape(shape):

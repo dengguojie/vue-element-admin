@@ -18,7 +18,7 @@ corresponding schedule template for user's compute
 """
 from enum import Enum, auto  # pylint: disable=E0611
 
-from te import tvm
+from tbe import tvm
 from tbe.dsl.base import operation
 
 from . import Pattern

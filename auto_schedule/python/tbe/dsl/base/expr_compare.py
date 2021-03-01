@@ -16,8 +16,8 @@
 compare expr
 """
 import sympy
-from te.tvm import expr
 from tbe.common.utils.errormgr import get_error_message
+from tbe.tvm import expr
 
 
 def _te_expr2sympy_expr(te_expr):

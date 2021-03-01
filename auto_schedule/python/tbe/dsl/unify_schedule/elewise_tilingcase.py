@@ -25,10 +25,10 @@ from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
 from tbe.dsl.base.operation import register_tiling_case
 
-from . import CompileInfo
-from . import DTYPE_BYTE_MAPPING
-from . import Pattern
 from . import util
+from .constants import CompileInfo
+from .constants import DTYPE_BYTE_MAPPING
+from .constants import Pattern
 
 COMMON = "common"
 BROADCAST = "broadcast"

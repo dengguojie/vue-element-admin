@@ -17,28 +17,26 @@ nn
 """
 from __future__ import absolute_import
 
-from te import tvm
-from te.tvm.dsl_source_info import source_info_decorator
-from tbe.dsl.base.expr_compare import expr_equal as equal
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.base.expr_compare import expr_equal as equal
+from tbe.tvm.dsl_source_info import source_info_decorator
 
-from .math import vadd
-from .math import vadds
-from .math import vmuls
-from .math import vmax
-from .math import vmin
-from .math import vsub
-from .math import _cast_tensors_for_instr
-from .math import _auto_cast_of_elewise
 from .math import __multiple_elewise_op
 from .math import __single_elewise_op
+from .math import _cast_tensors_for_instr
 from .math import _check_multi_compute_pattern
+from .math import vadd
+from .math import vadds
+from .math import vmax
+from .math import vmin
+from .math import vmuls
+from .math import vsub
 from .util import check_input_tensor_shape
 from .util import dtype_check_decorator
-from .util import judge_var
 from .util import in_dynamic_and_static_unify
+from .util import judge_var
 from .util import shape_to_list
-
 
 NAME_INDEX = [0]
 

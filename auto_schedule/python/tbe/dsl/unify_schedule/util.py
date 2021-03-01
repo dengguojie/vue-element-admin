@@ -15,23 +15,23 @@
 """
 schedule util
 """
-from typing import List
 from functools import reduce
 from operator import mul
+from typing import List
 from typing import Union
 
-from te.platform.cce_conf import CceProductParams as product_params
-from te import platform as cce
-from te import tvm
-from te.tvm.expr import Var
-from te.tvm.expr import Reduce
-from te.tvm.tensor import Tensor
-from te.tvm.tensor import PlaceholderOp
+from tbe import tvm
+from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
-from tbe.common.utils.errormgr import get_error_message
+from tbe.tvm.expr import Reduce
+from tbe.tvm.expr import Var
+from tbe.tvm.tensor import PlaceholderOp
+from tbe.tvm.tensor import Tensor
+from te import platform as cce
+from te.platform.cce_conf import CceProductParams as product_params
 
-from . import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
+from .constants import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
     NEED_TEMP_SPACE_INSNS, VCMP_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, NEED_EXTENT_NODE_INSNS
 
 VAR_BOUND_LIMIT = 2147483647

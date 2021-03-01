@@ -15,28 +15,25 @@
 """
 math
 """
-from decorator import decorator
-
 import tbe.dsl
-from te import tvm
+from decorator import decorator
+from tbe import tvm
+from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation as operation_context
 from tbe.dsl.base.expr_compare import expr_equal as equal
+from tbe.tvm.dsl_source_info import source_info_decorator
 from te.platform.cce_conf import CceProductParams as pver
-from tbe.common.utils.errormgr import get_error_message
-from te.tvm.dsl_source_info import source_info_decorator
 
 from .cast import _cast
-from .util import shape_to_list
+from .util import auto_cast_tensor
+from .util import dsl_check_support
+from .util import dtype_check_decorator
+from .util import get_tvm_scalar
+from .util import in_dynamic_and_static_unify
 from .util import is_cast_support
 from .util import judge_var
-from .util import auto_cast_tensor
-from .util import get_tvm_scalar
-from .util import dtype_check_decorator
-from .util import _get_priority_flag_value
-from .util import dsl_check_support
+from .util import shape_to_list
 from .util import util_astype
-from .util import in_dynamic_and_static_unify
-
 
 NAME_INDEX = [0]
 

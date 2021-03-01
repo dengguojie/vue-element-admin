@@ -21,8 +21,8 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 
-# Third-party Packages
-from te.tvm.schedule import Schedule
+from tbe.tvm.schedule import Schedule
+
 from .vector_tilingcase import TilingCaseBase
 
 

@@ -18,15 +18,16 @@ reduce atomic schedule
 import abc
 import copy
 
-from te import platform as cceconf
-from te import tvm
-from tbe.dsl.base import operation
 import te.platform.cce_params as cce
-from te.platform.cce_conf import CceProductParams as Pver
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
-from .reduce_tilingcase import ReduceTilingCase
-from .constants import INSN_MAPPING
+from tbe.dsl.base import operation
+from te import platform as cceconf
+from te.platform.cce_conf import CceProductParams as Pver
+
 from .constants import DTYPE_BYTE_MAPPING
+from .constants import INSN_MAPPING
+from .reduce_tilingcase import ReduceTilingCase
 
 CONST = "const"
 BLOCK_SIZE_BYTE = 32

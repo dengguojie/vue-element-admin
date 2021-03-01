@@ -25,12 +25,11 @@ from typing import Union
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.base.operation import var_inner
-from tbe.dsl.unify_schedule import Pattern
-# Third-party Packages
-from te.tvm.tensor import Tensor
+from tbe.tvm.tensor import Tensor
 
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import INSN_MAPPING
+from .constants import Pattern
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo

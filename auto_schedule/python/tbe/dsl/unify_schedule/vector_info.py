@@ -18,29 +18,28 @@ Information containers for compute graph of vector operator schedule
 
 # Standard Packages
 from typing import Any
-from typing import Set
+from typing import Callable
 from typing import Dict
+from typing import Iterable
 from typing import List
+from typing import Optional
+from typing import Set
 from typing import Tuple
 from typing import Union
-from typing import Optional
-from typing import Callable
-from typing import Iterable
 
-# Third-party packages
+from tbe import tvm
 from tbe.dsl.base import operation
-from te import tvm
-from te.tvm.tensor import Tensor
-from te.tvm.tensor import PlaceholderOp
+from tbe.tvm.tensor import PlaceholderOp
+from tbe.tvm.tensor import Tensor
 from te.platform.cce_conf import get_soc_spec
 
+from .constants import *
+from .util import equals_one
+from .util import expr_equal
 from .util import get_reduce_all_axes
 from .util import get_reduce_axes
 from .util import is_placeholder
 from .util import shape_to_list
-from .util import equals_one
-from .util import expr_equal
-from .constants import *
 
 
 class ComputeGraphInfo:

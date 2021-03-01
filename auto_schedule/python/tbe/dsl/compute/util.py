@@ -18,18 +18,17 @@ util
 # pylint: disable=import-error
 from decorator import decorator
 from functools import wraps
-from te import tvm
+from tbe import tvm
+from tbe.common.utils import shape_util
+from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
+from te.platform.cce_conf import CceProductParams as pver
 from te.platform.cce_conf import VERSION_CLOUD
 from te.platform.cce_conf import VERSION_MINI
-from te.platform.cce_conf import VERSION_SHISI
 from te.platform.cce_conf import VERSION_MINI_NG1
 from te.platform.cce_conf import VERSION_MINI_NG1M
 from te.platform.cce_conf import VERSION_MINI_NG1PG2
-from te.platform.cce_conf import CceProductParams as pver
-from tbe.common.utils.errormgr import get_error_message
-from tbe.common.utils import shape_util
-
+from te.platform.cce_conf import VERSION_SHISI
 
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,

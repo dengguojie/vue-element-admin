@@ -17,24 +17,22 @@ cast
 """
 # pylint: disable=import-error
 import warnings
-from decorator import decorator
 
 import tbe.dsl
-from te import tvm
-from te import platform as cceconf
+from decorator import decorator
+from tbe import tvm
 from tbe.common.utils.errormgr import get_error_message
-from te.tvm.dsl_source_info import source_info_decorator
 from tbe.common.testing.testing import is_debug_mode
+from tbe.tvm.dsl_source_info import source_info_decorator
+from te import platform as cceconf
 
-from .util import shape_to_list
-from .util import auto_cast_tensor
-from .util import is_cast_support
-from .util import get_cast_type
+from .util import DTYPE_MAP
 from .util import check_input_tensor_shape
 from .util import dsl_support_dtype
-from .util import DTYPE_MAP
+from .util import get_cast_type
 from .util import in_dynamic_and_static_unify
-
+from .util import is_cast_support
+from .util import shape_to_list
 
 NAME_INDEX = [0]
 

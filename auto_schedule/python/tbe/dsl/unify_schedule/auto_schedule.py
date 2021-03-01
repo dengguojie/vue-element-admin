@@ -19,7 +19,7 @@ from __future__ import absolute_import as _abs
 
 import tbe.dsl.static_schedule as static
 import tbe.dsl.unify_schedule as dynamic
-from te import tvm
+from tbe import tvm
 from tbe.dsl.base import operation
 from topi import generic
 

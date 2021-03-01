@@ -28,6 +28,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+from tbe import tvm
 from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import add_compile_info_inner
@@ -35,13 +36,11 @@ from tbe.dsl.base.operation import get_compile_info
 from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import register_build_pointcut
 from tbe.dsl.base.operation import register_tiling_case
-from te import tvm
+from tbe.tvm.expr import IntImm
+from tbe.tvm.expr import Var
+from tbe.tvm.tensor import Tensor
 from te.platform.cce_conf import CceProductParams as Version
 from te.platform.cce_conf import get_soc_spec
-from te.tvm.expr import IntImm
-from te.tvm.expr import Var
-# Third-party Packages
-from te.tvm.tensor import Tensor
 
 from .constants import CompileInfo
 from .constants import Pattern

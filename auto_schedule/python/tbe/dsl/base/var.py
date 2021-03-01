@@ -23,7 +23,7 @@ from typing import Dict
 from typing import Optional
 from typing import Tuple
 
-from te import tvm
+from tbe import tvm
 
 
 class Category(Enum):
