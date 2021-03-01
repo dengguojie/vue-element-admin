@@ -26,24 +26,38 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/debug/ge_attr_define.h"
-
+#include "common_shape_fns.h"
 #include "op_log.h"
 
 namespace ge {
 // HcomAllGather op
 IMPLEMT_INFERFUNC(HcomAllGather, HcomAllGatherInferShape) {
+  AscendString opName;
+  if (op.GetName(opName) != GRAPH_SUCCESS) {
+    OP_LOGE("HcomAllGather", "Get op name failed.");
+    return GRAPH_FAILED;
+  }
+
   auto inTensorDesc = op.get_input_desc_x();
   auto outTensorDesc = inTensorDesc;
   auto inShape = inTensorDesc.GetShape();
+  if (!ShapeFullDefined(inShape)) {
+    outTensorDesc.SetShape(inShape);
+    outTensorDesc.SetDataType(inTensorDesc.GetDataType());
+    op.update_output_desc_y(outTensorDesc);
+    OP_LOGI(opName.GetString(), "the op infershape end, shape is unknown.");
+    return GRAPH_SUCCESS;
+  }
+
   std::vector<int64_t> inDims = inShape.GetDims();
   int64_t rankSize = op.get_attr_rank_size();
   std::vector<int64_t> outDims;
   if (rankSize <= 0) {
-    OP_LOGE(op.GetName().c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
+    OP_LOGE(opName.GetString(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
     return GRAPH_FAILED;
   }
   if (inDims.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
+    OP_LOGE(opName.GetString(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
     return GRAPH_FAILED;
   }
   outDims = inDims;
@@ -53,7 +67,7 @@ IMPLEMT_INFERFUNC(HcomAllGather, HcomAllGatherInferShape) {
   outTensorDesc.SetShape(outputShape);
   outTensorDesc.SetDataType(outputDtype);
   op.update_output_desc_y(outTensorDesc);
-  OP_LOGI(op.GetName().c_str(), "the op infershape end");
+  OP_LOGI(opName.GetString(), "the op infershape end");
   return GRAPH_SUCCESS;
 }
 
@@ -175,22 +189,36 @@ INFER_FUNC_REG(HcomBroadcast, HcomBroadcastInferShape);
 
 // HcomReduceScatter op
 IMPLEMT_INFERFUNC(HcomReduceScatter, HcomReduceScatterInferShape) {
+  AscendString opName;
+  if (op.GetName(opName) != GRAPH_SUCCESS) {
+    OP_LOGE("HcomReduceScatter", "Get op name failed.");
+    return GRAPH_FAILED;
+  }
+
   auto inTensorDesc = op.get_input_desc_x();
   auto outTensorDesc = inTensorDesc;
   auto inShape = inTensorDesc.GetShape();
+  if (!ShapeFullDefined(inShape)) {
+    outTensorDesc.SetShape(inShape);
+    outTensorDesc.SetDataType(inTensorDesc.GetDataType());
+    op.update_output_desc_y(outTensorDesc);
+    OP_LOGI(opName.GetString(), "the op infershape end, shape is unknown.");
+    return GRAPH_SUCCESS;
+  }
+
   std::vector<int64_t> inDims = inShape.GetDims();
   int64_t rankSize = op.get_attr_rank_size();
   std::vector<int64_t> outDims;
   if (rankSize <= 0) {
-    OP_LOGE(op.GetName().c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
+    OP_LOGE(opName.GetString(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
     return GRAPH_FAILED;
   }
   if (inDims.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
+    OP_LOGE(opName.GetString(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
     return GRAPH_FAILED;
   }
   if (inDims[0] % rankSize) {
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGE(opName.GetString(),
             "input tensor's first dim is illegal, expected: rankSize[%ld] * N "
             "(N is positive integer), actual: %ld.",
             rankSize, inDims[0]);
@@ -203,37 +231,46 @@ IMPLEMT_INFERFUNC(HcomReduceScatter, HcomReduceScatterInferShape) {
   outTensorDesc.SetShape(outputShape);
   outTensorDesc.SetDataType(outputDtype);
   op.update_output_desc_y(outTensorDesc);
-  OP_LOGI(op.GetName().c_str(), "the op infershape end");
+  OP_LOGI(opName.GetString(), "the op infershape end");
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(HcomReduceScatter, HcomReduceScatterVerify) {
+  AscendString opName;
+  if (op.GetName(opName) != GRAPH_SUCCESS) {
+    OP_LOGE("HcomReduceScatter", "Get op name failed.");
+    return GRAPH_FAILED;
+  }
+
   std::string reduction = op.get_attr_reduction();
   const std::vector<std::string> SUPPORTED_REDUCTION = {"min", "max", "prod", "sum"};
   auto it = std::find(SUPPORTED_REDUCTION.begin(), SUPPORTED_REDUCTION.end(), reduction);
   if (it == SUPPORTED_REDUCTION.end()) {
-    OP_LOGE(op.GetName().c_str(), "Attr reduction [%s] is not supported. expected: min, max, prod, sum",
+    OP_LOGE(opName.GetString(), "Attr reduction [%s] is not supported. expected: min, max, prod, sum",
             reduction.c_str());
     return GRAPH_FAILED;
   }
   std::vector<int64_t> inDims = op.get_input_desc_x().GetShape().GetDims();
   int64_t rankSize = op.get_attr_rank_size();
   if (rankSize <= 0) {
-    OP_LOGE(op.GetName().c_str(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
+    OP_LOGE(opName.GetString(), "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
     return GRAPH_FAILED;
   }
   if (inDims.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
+    OP_LOGE(opName.GetString(), "input tensor's first dim is illegal, expected: > 0, actual: %zu.", inDims.size());
     return GRAPH_FAILED;
   }
-  if (inDims[0] % rankSize) {
-    OP_LOGE(op.GetName().c_str(),
-            "input tensor's first dim is illegal, expected: rankSize[%ld] * N "
-            "(N is positive integer), actual:%ld.",
-            rankSize, inDims[0]);
-    return GRAPH_FAILED;
+
+  if (ShapeFullDefined(op.get_input_desc_x().GetShape())) {
+    if (inDims[0] % rankSize) {
+      OP_LOGE(opName.GetString(),
+              "input tensor's first dim is illegal, expected: rankSize[%ld] * N "
+              "(N is positive integer), actual:%ld.",
+              rankSize, inDims[0]);
+      return GRAPH_FAILED;
+    }
   }
-  OP_LOGI(op.GetName().c_str(), "the op verify end");
+  OP_LOGI(opName.GetString(), "the op verify end");
   return GRAPH_SUCCESS;
 }
 
