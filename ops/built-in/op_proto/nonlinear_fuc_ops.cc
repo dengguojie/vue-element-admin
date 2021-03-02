@@ -180,17 +180,18 @@ COMMON_INFER_FUNC_REG(Relu, OneInOneOutCommonInferShape);
 
 // ----------------ReluV2-------------------
 IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
-  OP_LOGI(op.GetName().c_str(), "enter op_proto inferfunction!!!");
-  TensorDesc xDesc = op.GetInputDesc("x");
-  TensorDesc outDesc = op.GetOutputDesc("y");
-  TensorDesc outDesc_mask = op.GetOutputDesc("mask");
+  OP_LOGI(op.GetName().c_str(), "enter relu_v2 op_proto inferfunction!!!");
+  if (!OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_FAILED;
+  }
 
-  Shape shape = xDesc.GetShape();
-  Shape origin_shape = xDesc.GetOriginShape();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto xDesc = op_info->MutableInputDesc("x");
+  auto outDesc_mask = op_info->MutableOutputDesc("mask");
 
-  outDesc.SetShape(shape);
-  outDesc.SetDataType(xDesc.GetDataType());
-  (void)op.UpdateOutputDesc("y", outDesc);
+  vector<int64_t> input_shape = xDesc->MutableShape().GetDims();
+  Shape origin_shape = op.GetInputDesc("x").GetOriginShape();
+  auto origin_format = op.GetInputDesc("x").GetOriginFormat();
 
   std::vector<int64_t> dims_mask;
   std::vector<int64_t> dims = origin_shape.GetDims();
@@ -199,11 +200,11 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
     OP_LOGI("The origin shape dim is must be 4");
     return GRAPH_FAILED;
   }
-  if (xDesc.GetOriginFormat() == FORMAT_NHWC) {
+  if (origin_format == FORMAT_NHWC) {
     OP_LOGI(op.GetName().c_str(), "The format is NHWC");
     for (unsigned int i = 0; i < dims.size() - 1; i++) {
       if (1 == i) {
-        if (xDesc.GetDataType() == DT_UINT8 || xDesc.GetDataType() == DT_INT8) {
+        if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
           dims_mask.push_back((origin_shape.GetDim(3) + 31) / 32);
         } else {
           dims_mask.push_back((origin_shape.GetDim(3) + 15) / 16);
@@ -211,11 +212,11 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
       }
       dims_mask.push_back(origin_shape.GetDim(i));
     }
-  } else if (xDesc.GetOriginFormat() == FORMAT_NCHW) {
+  } else if (origin_format == FORMAT_NCHW) {
     OP_LOGI(op.GetName().c_str(), "The format is NCHW");
     for (unsigned int i = 0; i < dims.size(); i++) {
       if (1 == i) {
-        if (xDesc.GetDataType() == DT_UINT8 || xDesc.GetDataType() == DT_INT8) {
+        if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
           dims_mask.push_back((origin_shape.GetDim(1) + 31) / 32);
         } else {
           dims_mask.push_back((origin_shape.GetDim(1) + 15) / 16);
@@ -226,19 +227,23 @@ IMPLEMT_COMMON_INFERFUNC(ReluV2InferShape) {
     }
   } else {
     string expected_format_list = ConcatString("FORMAT_NHWC, FORMAT_NCHW");
-    OpsInputFormatErrReport(op.GetName(), "x", expected_format_list, ConcatString(xDesc.GetOriginFormat()));
+    OpsInputFormatErrReport(op.GetName(), "x", expected_format_list, ConcatString(origin_format));
     OP_LOGI("The format only support NHWC and NCHW.");
     return GRAPH_FAILED;
   }
-  if (xDesc.GetDataType() == DT_UINT8 || xDesc.GetDataType() == DT_INT8) {
+  if (xDesc->GetDataType() == DT_UINT8 || xDesc->GetDataType() == DT_INT8) {
     dims_mask.push_back(4);
   } else {
     dims_mask.push_back(2);
   }
 
-  outDesc_mask.SetShape(Shape(dims_mask));
-  outDesc_mask.SetDataType(DataType(DT_UINT8));
-  (void)op.UpdateOutputDesc("mask", outDesc_mask);
+  outDesc_mask->SetShape(GeShape(dims_mask));
+  outDesc_mask->SetDataType(DataType(DT_UINT8));
+  if (IsUnknown(input_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> mask_range;
+    MakeUpShapeRange(dims_mask, mask_range);
+    outDesc_mask->SetShapeRange(mask_range);
+  }
 
   return GRAPH_SUCCESS;
 }
@@ -305,17 +310,10 @@ COMMON_INFER_FUNC_REG(Relu6, Relu6InferShape);
 
 // ----------------Begin Relu6D-------------------
 IMPLEMT_COMMON_INFERFUNC(Relu6DInferShape) {
-  Shape input_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(input_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OpsOPUpdateErrReport(op.GetName(), "y");
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
   }
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 IMPLEMT_VERIFIER(Relu6D, Relu6DVerify) {

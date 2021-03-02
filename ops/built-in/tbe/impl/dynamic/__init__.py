@@ -41,6 +41,9 @@ from .scatter_mul import scatter_mul
 from .scatter_div import scatter_div
 from .equal import equal
 from .relu import relu
+from .relu_v2 import relu_v2
+from .relu_grad_v2 import relu_grad_v2
+from .relu6_d import relu6_d
 from .adam_apply_one_assign import adam_apply_one_assign
 from .add import add
 from .inv import inv
