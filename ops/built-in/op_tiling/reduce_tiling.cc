@@ -759,9 +759,19 @@ bool Reduce::Init() {
     input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
 
     // Get ori reduce aixs
-    if (op_paras.const_inputs.find("axes") != op_paras.const_inputs.end()) {
+    if (op_paras.const_inputs.find("axes") != op_paras.const_inputs.end() || op_info.count("axes_idx") > 0) {
       // axis_unknown
-      TeConstTensorData reduce_axis_info = op_paras.const_inputs.at("axes");
+      TeConstTensorData reduce_axis_info;
+      if (op_info.count("axes_idx") > 0) {
+        int axes_idx = op_info.at("axes_idx").get<int>();
+        std::string axes_name = op_paras.inputs[axes_idx].tensor[0].name;
+        for (auto &item: op_paras.const_inputs) {
+            const std::string key = item.first;
+        }
+        reduce_axis_info = op_paras.const_inputs.at(axes_name);
+      } else {
+        reduce_axis_info = op_paras.const_inputs.at("axes");
+      }
       auto size = std::get<1>(reduce_axis_info);
       ge::DataType axis_type = std::get<2>(reduce_axis_info).GetTensorDesc().GetDataType();
       V_OP_TILING_CHECK(!(axis_type != ge::DT_INT32 && axis_type != ge::DT_INT64),

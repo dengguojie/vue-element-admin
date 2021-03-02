@@ -215,3 +215,39 @@ TEST_F(ReduceTiling, ReduceTiling5) {
   OpRunInfo runInfo;
   ASSERT_TRUE(!iter->second(opParas, op_compile_info, runInfo));
 }
+
+TEST_F(ReduceTiling, ReduceTiling6) {
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+
+  std::string compileInfo = R"({ "axes_idx": 0, "_pattern": "CommReduce","push_status": 0,"common_info": [32, 1, 8, 1, 1], "pattern_info": [20000], "ub_info": [16256], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
+
+  std::vector<int64_t> input{1};
+  std::vector<int64_t> output{1};
+  std::string in_dtype = "float32";
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = in_dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = in_dtype;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_input);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg_out;
+  tensor_arg_out.tensor.push_back(tensor_output);
+  tensor_arg_out.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_arg);
+  opParas.outputs.push_back(tensor_arg_out);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "REDUCE__COUNTER__6";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(!iter->second(opParas, op_compile_info, runInfo));
+}
