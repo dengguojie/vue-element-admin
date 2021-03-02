@@ -103,7 +103,11 @@ def _inplace_compute(lhs, rhs, ops):
     elif ops == "inplace_sub":
         ret = lhs - rhs
     elif ops == "inplace_update":
-        ret = lhs - rhs
+        from tbe.common.testing.testing import is_debug_mode
+        if is_debug_mode():
+            ret = lhs + rhs - lhs
+        else:
+            ret = lhs - rhs
     else:
         raise RuntimeError("operation %s not support yet" % ops)
     return ret
