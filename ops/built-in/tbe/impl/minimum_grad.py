@@ -43,7 +43,7 @@ def _compare_value_int32(data_x, data_y, shape_dz):
 
 # pylint: disable = locally-disabled,invalid-name,too-many-arguments
 # pylint: disable = unused-argument
-def _compare_value_float(data_x, data_y):
+def _compare_value_float(data_x, data_y, shape_dz):
     """
     The input data type of the function only support float;
     The return value of the function: if data_x >= data_y return 1;
@@ -56,7 +56,8 @@ def _compare_value_float(data_x, data_y):
     max_value = tvm.const(2 ** (62), dtype="float32")
     max_value_1 = tvm.const(2 ** (2), dtype="float32")
 
-    data_zero = tbe.vmuls(data_x, 0)
+    data_zero_float = tvm.const(0, dtype="float32")
+    data_zero = tbe.broadcast(data_zero_float, shape_dz)
     min_value_tensor = tbe.vadds(data_zero, min_value)
     max_value_tensor = tbe.vadds(data_zero, max_value)
     max_value_1_tensor = tbe.vadds(data_zero, max_value_1)
@@ -80,7 +81,7 @@ def _compare_value(data_x, data_y, dtype, shape_dz):
     if dtype == "int32":
         compare_value_data = _compare_value_int32(data_x, data_y, shape_dz)
     else:
-        compare_value_data = _compare_value_float(data_x, data_y)
+        compare_value_data = _compare_value_float(data_x, data_y, shape_dz)
 
     return compare_value_data
 
