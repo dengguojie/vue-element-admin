@@ -677,7 +677,13 @@ COMMON_INFER_FUNC_REG(Rsqrt, RsqrtInferShape);
 // ----------------Rsqrt-------------------
 
 // ----------------Acos-------------------
-COMMON_INFER_FUNC_REG(Acos, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(AcosInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Acos, AcosInferShape);
 // --------------Acos END-----------------
 
 // ----------------BesselI0e-------------------
@@ -2449,13 +2455,14 @@ VERIFY_FUNC_REG(LambUpdateWithLrV2, LambUpdateWithLrV2Verify);
 
 // ----------------AdamApplyOneWithDecay-------------------
 IMPLEMT_COMMON_INFERFUNC(AdamApplyOneWithDecayInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input1", "output0")) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input1", "output0", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input2", "output1")) {
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input2", "output1", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input2", "input3", "output2")) {
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input2", "input3", "output2", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
 
@@ -2466,7 +2473,7 @@ IMPLEMT_VERIFIER(AdamApplyOneWithDecay, AdamApplyOneWithDecayVerify) {
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(AdamApplyOneWithDecay, AdamApplyOneWithDecayInferShape);
+COMMON_INFER_FUNC_REG(AdamApplyOneWithDecay, AdamApplyOneWithDecayInferShape);
 VERIFY_FUNC_REG(AdamApplyOneWithDecay, AdamApplyOneWithDecayVerify);
 // ----------------AdamApplyOneWithDecay-------------------
 
@@ -2496,6 +2503,17 @@ VERIFY_FUNC_REG(AdamApplyOne, AdamApplyOneVerify);
 
 // ----------------AdamApplyOneWithDecayAssign-------------------
 IMPLEMT_COMMON_INFERFUNC(AdamApplyOneWithDecayAssignInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input1", "output0", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input0", "input2", "output1", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "input2", "input3", "output2", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+
   return GRAPH_SUCCESS;
 }
 

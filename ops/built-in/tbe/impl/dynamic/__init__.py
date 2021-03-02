@@ -75,6 +75,8 @@ from .maximum import maximum
 from .minimum import minimum
 from .accumulate_nv2 import accumulate_nv2
 from .adam_apply_one import adam_apply_one
+from .adam_apply_one_with_decay import adam_apply_one_with_decay
+from .adam_apply_one_with_decay_assign import adam_apply_one_with_decay_assign
 from .add_n import add_n
 from .rsqrt import rsqrt
 from .greater_equal import greater_equal
@@ -132,6 +134,7 @@ from .tanh import tanh
 from .inv_grad import inv_grad
 from .sigmoid_cross_entropy_with_logits import sigmoid_cross_entropy_with_logits
 from .abs import abs
+from .acos import acos
 from .apply_centered_rms_prop_d import apply_centered_rms_prop_d
 from .apply_ftrl_d import apply_ftrl_d
 from .apply_ftrl_v2_d import apply_ftrl_v2_d
