@@ -27,5 +27,87 @@ def make_lrn():
     onnx.save(model, "./test_lrn_case_1.pb")
     onnx.checker.check_model(model)
 
+
+def make_lrn_v9():
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [2, 20, 10, 5])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [2, 20, 10, 5])
+    node_def = helper.make_node(
+        'LRN',
+        inputs=['x'],
+        outputs=['y'],
+        alpha=0.0001,
+        beta=0.75,
+        bias=1.0,
+        size=9
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'test_lrn_v9',
+        inputs=[x],
+        outputs=[y]
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 9
+    onnx.save(model, "./test_lrn_case_v9.onnx")
+    onnx.checker.check_model(model)
+
+
+def make_lrn_v12():
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [2, 20, 10, 5])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [2, 20, 10, 5])
+    node_def = helper.make_node(
+        'LRN',
+        inputs=['x'],
+        outputs=['y'],
+        alpha=0.0001,
+        beta=0.75,
+        bias=1.0,
+        size=9
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'test_lrn_v12',
+        inputs=[x],
+        outputs=[y]
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 12
+    onnx.save(model, "./test_lrn_case_v12.onnx")
+    onnx.checker.check_model(model)
+
+
+def make_lrn_v13():
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [2, 20, 10, 5])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [2, 20, 10, 5])
+    node_def = helper.make_node(
+        'LRN',
+        inputs=['x'],
+        outputs=['y'],
+        alpha=0.0001,
+        beta=0.75,
+        bias=1.0,
+        size=9
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'test_lrn_v13',
+        inputs=[x],
+        outputs=[y]
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 13
+    onnx.save(model, "./test_lrn_case_v13.onnx")
+    onnx.checker.check_model(model)
+
+
 if __name__ == '__main__':
     make_lrn()
+    make_lrn_v9()
+    make_lrn_v12()
+    make_lrn_v13()

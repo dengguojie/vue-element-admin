@@ -243,7 +243,10 @@ Status ParseParamsConv2DTranspose(const Message *op_src, ge::Operator &op_dst) {
 
 REGISTER_CUSTOM_OP("Conv2DTransposeD")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::ConvTranspose")
+  .OriginOpType({"ai.onnx::9::ConvTranspose",
+                 "ai.onnx::11::ConvTranspose",
+                 "ai.onnx::12::ConvTranspose",
+                 "ai.onnx::13::ConvTranspose"})
   .ParseParamsFn(ParseParamsConv2DTranspose)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

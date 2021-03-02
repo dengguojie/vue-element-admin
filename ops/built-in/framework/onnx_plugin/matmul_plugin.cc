@@ -37,7 +37,10 @@ Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
 // register MatMul op info to GE
 REGISTER_CUSTOM_OP("BatchMatMul")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::MatMul")
+    .OriginOpType({"ai.onnx::9::MatMul",
+                   "ai.onnx::11::MatMul",
+                   "ai.onnx::12::MatMul",
+                   "ai.onnx::13::MatMul"})
     .ParseParamsFn(ParseParamsMatMul)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

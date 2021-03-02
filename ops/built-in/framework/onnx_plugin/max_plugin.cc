@@ -34,7 +34,10 @@ Status ParseParamsMax(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("MaxN")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::Max")
+  .OriginOpType({"ai.onnx::9::Max",
+                 "ai.onnx::11::Max",
+                 "ai.onnx::12::Max",
+                 "ai.onnx::13::Max"})
   .ParseParamsFn(ParseParamsMax)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

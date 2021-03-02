@@ -66,7 +66,10 @@ Status ParseParamsLRN(const Message *op_src, ge::Operator &op_dst) {
 
 REGISTER_CUSTOM_OP("LRN")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::LRN")
+  .OriginOpType({"ai.onnx::9::LRN",
+                 "ai.onnx::11::LRN",
+                 "ai.onnx::12::LRN",
+                 "ai.onnx::13::LRN"})
   .ParseParamsFn(ParseParamsLRN)
   .ImplyType(ImplyType::TVM);
 }  //  namespace domi
