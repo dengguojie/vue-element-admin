@@ -153,12 +153,6 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
     return GRAPH_FAILED;
   }
 
-  if (true_classes_desc->GetShape().GetDim(1) != num_true) {
-    OP_LOGE(op.GetName().c_str(),
-            "Input true_classes dim[1] must equal to attr num_true.");
-    return GRAPH_FAILED;
-  }
-
   auto sampled_candidates_desc = op_desc->MutableInputDesc(1);
   GeShape sampled_candidates;
   if (WithRank(sampled_candidates_desc, 1, sampled_candidates) !=
