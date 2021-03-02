@@ -1,0 +1,15 @@
+zl-ReduceSum-onnx:t
++
+datareduced"	ReduceSum*
+keepdims 
+test-modelZ
+data
+
+
+
+b
+reduced
+
+
+
+B

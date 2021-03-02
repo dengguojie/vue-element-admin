@@ -1,197 +1,134 @@
 import onnx
-from onnx import helper, TensorProto
+import numpy as np
+from onnx import helper
+from onnx import AttributeProto, TensorProto, GraphProto
+
+# The protobuf definition can be found here:
+# https://github.com/onnx/onnx/blob/master/onnx/onnx.proto
 
 
-def default_axes_keepdims():
+def do_not_keepdims(version_t):
+    axes = [1]
+    keepdims = 0
+
     # Create one input (ValueInfoProto)
     data = helper.make_tensor_value_info('data', TensorProto.FLOAT, [3, 2, 2])
 
     # Create one output (ValueInfoProto)
-    reduced = helper.make_tensor_value_info(
-        'reduced', TensorProto.FLOAT, [3, 2, 2])
+    reduced = helper.make_tensor_value_info('reduced', TensorProto.FLOAT, [3, 2])
 
-    # Create a node (NodeProto)
-    node_def = helper.make_node(
-        'ReduceSum',  # node name
-        inputs=['data'],  # inputs
-        outputs=['reduced'],  # outputs
-        keepdims=1,  # attributes
-        axes=[0, 1, 2]
-    )
+    node = onnx.helper.make_node(
+        'ReduceSum',
+        inputs=['data'],
+        outputs=['reduced'],
+        axes=axes,
+        keepdims=keepdims)
 
-    # Create the graph (GraphProto)
     graph_def = helper.make_graph(
-        [node_def],
+        [node],
         'test-model',
         inputs=[data],
-        outputs=[reduced],
-    )
+        outputs=[reduced])
 
     # Create the model (ModelProto)
     model_def = helper.make_model(graph_def, producer_name='zl-ReduceSum-onnx')
-    model_def.opset_import[0].version = 11  # version 11
+    model_def.opset_import[0].version = version_t
 
     onnx.checker.check_model(model_def)
-    print('The model is checked!')
-    onnx.save(model_def, "./reduce_sum_default_axes_keepdims.onnx")  # save onnx model
-    print('The model is:\n{}'.format(model_def))
+    onnx.save(model_def, "./onnx/test_ReduceSum_onnx_case1.onnx")
 
 
-def do_not_keepdims():
+def keepdims(version_t):  # type: () -> None
+    axes = [1]
+    keepdims = 1
     # Create one input (ValueInfoProto)
     data = helper.make_tensor_value_info('data', TensorProto.FLOAT, [3, 2, 2])
-    # axes = helper.make_tensor_value_info('axes', TensorProto.FLOAT, [3, 2, 2])
 
     # Create one output (ValueInfoProto)
-    reduced = helper.make_tensor_value_info(
-        'reduced', TensorProto.FLOAT, [3, 2, 2])
+    reduced = helper.make_tensor_value_info('reduced', TensorProto.FLOAT, [3, 1, 2])
 
-    # axes = helper.make_tensor_value_info('axes', AttributeProto.INT, [])
-    # keepdims = helper.make_tensor_value_info('keepdims', AttributeProto.INT, [])
+    node = onnx.helper.make_node(
+        'ReduceSum',
+        inputs=['data'],
+        outputs=['reduced'],
+        axes=axes,
+        keepdims=keepdims)
 
-    # Create a node (NodeProto)
-    node_def = helper.make_node(
-        'ReduceSum',  # node name
-        inputs=['data'],  # inputs
-        outputs=['reduced'],  # outputs
-        keepdims=0,  # alpha=2.0, # attributes
-        axes=[1]
-    )
-
-    # Create the graph (GraphProto)
     graph_def = helper.make_graph(
-        [node_def],
+        [node],
         'test-model',
         inputs=[data],
-        outputs=[reduced],
-    )
+        outputs=[reduced])
 
     # Create the model (ModelProto)
     model_def = helper.make_model(graph_def, producer_name='zl-ReduceSum-onnx')
-    model_def.opset_import[0].version = 11  # version 11
+    model_def.opset_import[0].version = version_t
 
     onnx.checker.check_model(model_def)
-    print('The model is checked!')
-    onnx.save(model_def, "./reduce_sum_do_not_keepdims.onnx")  # save onnx model
-    print('The model is:\n{}'.format(model_def))
+    onnx.save(model_def, "./onnx/test_ReduceSum_onnx_case2.onnx")
 
 
-def keepdims():
+def default_axes_keepdims(version_t):
+    keepdims = 1
     # Create one input (ValueInfoProto)
     data = helper.make_tensor_value_info('data', TensorProto.FLOAT, [3, 2, 2])
-    # axes = helper.make_tensor_value_info('axes', TensorProto.FLOAT, [3, 2, 2])
 
     # Create one output (ValueInfoProto)
-    reduced = helper.make_tensor_value_info(
-        'reduced', TensorProto.FLOAT, [3, 2, 2])
+    reduced = helper.make_tensor_value_info('reduced', TensorProto.FLOAT, [1, 1, 1])
 
-    # axes = helper.make_tensor_value_info('axes', AttributeProto.INT, [])
-    # keepdims = helper.make_tensor_value_info('keepdims', AttributeProto.INT, [])
+    node = onnx.helper.make_node(
+        'ReduceSum',
+        inputs=['data'],
+        outputs=['reduced'],
+        keepdims=keepdims)
 
-    # Create a node (NodeProto)
-    node_def = helper.make_node(
-        'ReduceSum',  # node name
-        inputs=['data'],  # inputs
-        outputs=['reduced'],  # outputs
-        keepdims=1,  # alpha=2.0, # attributes
-        axes=[1]
-    )
-
-    # Create the graph (GraphProto)
     graph_def = helper.make_graph(
-        [node_def],
+        [node],
         'test-model',
         inputs=[data],
-        outputs=[reduced],
-    )
+        outputs=[reduced])
 
     # Create the model (ModelProto)
     model_def = helper.make_model(graph_def, producer_name='zl-ReduceSum-onnx')
-    model_def.opset_import[0].version = 11  # version 11
+    model_def.opset_import[0].version = version_t
 
     onnx.checker.check_model(model_def)
-    print('The model is checked!')
-    onnx.save(model_def, "./reduce_sum_keepdims.onnx")  # save onnx model
-    print('The model is:\n{}'.format(model_def))
+    onnx.save(model_def, "./onnx/test_ReduceSum_onnx_case3.onnx")
 
 
-def negative_axes_keepdims():
+def negative_axes_keepdims(version_t):
+    axes = [-2]
+    keepdims = 1
     # Create one input (ValueInfoProto)
     data = helper.make_tensor_value_info('data', TensorProto.FLOAT, [3, 2, 2])
-    # axes = helper.make_tensor_value_info('axes', TensorProto.FLOAT, [3, 2, 2])
 
     # Create one output (ValueInfoProto)
-    reduced = helper.make_tensor_value_info(
-        'reduced', TensorProto.FLOAT, [3, 2, 2])
+    reduced = helper.make_tensor_value_info('reduced', TensorProto.FLOAT, [3, 1, 2])
 
-    # axes = helper.make_tensor_value_info('axes', AttributeProto.INT, [])
-    # keepdims = helper.make_tensor_value_info('keepdims', AttributeProto.INT, [])
+    node = onnx.helper.make_node(
+        'ReduceSum',
+        inputs=['data'],
+        outputs=['reduced'],
+        axes=axes,
+        keepdims=keepdims)
 
-    # Create a node (NodeProto)
-    node_def = helper.make_node(
-        'ReduceSum',  # node name
-        inputs=['data'],  # inputs
-        outputs=['reduced'],  # outputs
-        keepdims=1,  # alpha=2.0, # attributes
-        axes=[-2]
-    )
-
-    # Create the graph (GraphProto)
     graph_def = helper.make_graph(
-        [node_def],
+        [node],
         'test-model',
         inputs=[data],
-        outputs=[reduced],
-    )
+        outputs=[reduced])
 
     # Create the model (ModelProto)
     model_def = helper.make_model(graph_def, producer_name='zl-ReduceSum-onnx')
-    model_def.opset_import[0].version = 11  # version 11
+    model_def.opset_import[0].version = version_t
 
     onnx.checker.check_model(model_def)
-    print('The model is checked!')
-    onnx.save(model_def, "./reduce_sum_negative_axes_keepdims.onnx")  # save onnx model
-    print('The model is:\n{}'.format(model_def))
+    onnx.save(model_def, "./onnx/test_ReduceSum_onnx_case4.onnx")
 
 
-def default_axes_keepdims_int64():
-    # Create one input (ValueInfoProto)
-    data = helper.make_tensor_value_info('data', TensorProto.INT64, [3, 2, 2])  # change to TensorProto.INT64
-
-    # Create one output (ValueInfoProto)
-    reduced = helper.make_tensor_value_info(
-        'reduced', TensorProto.FLOAT, [3, 2, 2])
-
-    # Create a node (NodeProto)
-    node_def = helper.make_node(
-        'ReduceSum',  # node name
-        inputs=['data'],  # inputs
-        outputs=['reduced'],  # outputs
-        keepdims=1,  # attributes
-        axes=[0, 1, 2]
-    )
-
-    # Create the graph (GraphProto)
-    graph_def = helper.make_graph(
-        [node_def],
-        'test-model',
-        inputs=[data],
-        outputs=[reduced]
-    )
-
-    # Create the model (ModelProto)
-    model_def = helper.make_model(graph_def, producer_name='zl-ReduceSum-onnx')
-    model_def.opset_import[0].version = 11  # version 11
-
-    onnx.checker.check_model(model_def)
-    print('The model is checked!')
-    onnx.save(model_def, "./reduce_sum_default_axes_keepdims_int64.onnx")  # save onnx model
-    print('The model is:\n{}'.format(model_def))
-
-
-if __name__ == '__main__':
-    default_axes_keepdims()
-    do_not_keepdims()
-    keepdims()
-    negative_axes_keepdims()
-    default_axes_keepdims_int64()
+if __name__ == "__main__":
+    version_t = 11
+    do_not_keepdims(version_t)
+    keepdims(version_t)
+    default_axes_keepdims(version_t)
+    negative_axes_keepdims(version_t)

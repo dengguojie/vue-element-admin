@@ -111,7 +111,9 @@ static Status ParseOpToGraphReduceSum(const Operator& op, Graph& graph)
 // register ReduceSum op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::ReduceSum")
+  .OriginOpType({"ai.onnx::9::ReduceSum",
+                "ai.onnx::11::ReduceSum",
+                "ai.onnx::12::ReduceSum"})
   .ParseParamsFn(parse_params_reduce_sum)
   .ParseOpToGraphFn(ParseOpToGraphReduceSum)
   .ImplyType(ImplyType::TVM);
