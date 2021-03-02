@@ -482,7 +482,7 @@ def _check_tilinng_k_l1():
         _raise_dx_opti_err("kb should be divisible by kbl1")
 
 
-def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, loc_multi_group_flag):
+def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, l0c_multi_group_flag):
     if TILING.get("BL0_matrix") is None:
         _raise_dx_opti_err("tiling[BL0_matrix] can not be None")
     if TILING.get("BL0_matrix") == []:
@@ -502,14 +502,14 @@ def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, loc_multi_
         if TILING.get("BL0_matrix")[0] != full_k1 and TILING.get("BL0_matrix")[5] > 1:
             _raise_dx_opti_err("If axis k in tiling BL0 is not full load, group_BL0 must be 1.")
 
-        if TILING.get("AL0_matrix")[1] != TILING.get("BL0_matrix")[0] and not loc_multi_group_flag:
+        if TILING.get("AL0_matrix")[1] != TILING.get("BL0_matrix")[0] and not l0c_multi_group_flag:
             _raise_dx_opti_err(
                 "axis k in tilling AL0 is not equal to axis k in tilling BL0"
             )
 
 
 # check tiling and set default tiling
-def _check_and_set_default_tiling(tiling, atype, btype, loc_multi_group_flag):
+def _check_and_set_default_tiling(tiling, atype, btype, l0c_multi_group_flag):
     """
     check and set default tiling
     :param tiling:
@@ -557,7 +557,7 @@ def _check_and_set_default_tiling(tiling, atype, btype, loc_multi_group_flag):
             else:
                 # add one is needed by buffer_tile of ub
                 m_al0 = m_cl0 = int_ceil_div(dy_w, block_m) + 1
-        if loc_multi_group_flag:
+        if l0c_multi_group_flag:
             n_min = DIM_MAP["dy_c1_extend"]
             group_cl0 = 2
         else:
@@ -601,7 +601,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     is_conv1d_bool,
     tiling_case=None,
     var_map=None,
-    loc_multi_group_flag=False
+    l0c_multi_group_flag=False
 ):
     """
     get tilling parameter from get_tilling and check all parameter
@@ -611,7 +611,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
         if fusion_type in (FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
             TILING["CUB_matrix"][3] = 32
             TILING["CL0_matrix"][3] = 32
-            if not loc_multi_group_flag:
+            if not l0c_multi_group_flag:
                 # correct c1_dim due to c1_l0c/c1_ddr is 2
                 TILING["CL0_matrix"][0] //= 2
                 if TILING["CL0_matrix"][0] == 0:
@@ -621,11 +621,11 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
                 if TILING["CUB_matrix"][0] == 0:
                     TILING["CUB_matrix"][0] = 1
             else:
-                # in loc_multi_group_flag scenes, correct g_dim
+                # in l0c_multi_group_flag scenes, correct g_dim
                 TILING["CL0_matrix"][5] //= 2
                 TILING["CUB_matrix"][5] //= 2
         def _group_quant_illegal_quant():
-            if loc_multi_group_flag:
+            if l0c_multi_group_flag:
                 # n axis is full load, block_dim_n is 1
                 n_dim_rule = (TILING["block_dim"][1] == 1 and TILING["CL0_matrix"][0] == filter_shape_g[1]
                               and TILING["CUB_matrix"][0] == filter_shape_g[1])
@@ -683,7 +683,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     _calc_double_op_num(fusion_type)
 
     if fusion_type in (FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
-        if not loc_multi_group_flag:
+        if not l0c_multi_group_flag:
             filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
 
     bias_flag = _get_bias_flag()
@@ -735,7 +735,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     DeconvParam.update_para_map("out_of_order", out_of_order)
 
     TILING = _check_and_set_default_tiling(
-        TILING, TENSOR_MAP["img_placehold"].dtype, TENSOR_MAP["filter_placehold"].dtype, loc_multi_group_flag
+        TILING, TENSOR_MAP["img_placehold"].dtype, TENSOR_MAP["filter_placehold"].dtype, l0c_multi_group_flag
     )
 
     _print_debug(
@@ -773,7 +773,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
         manual_pingpong_buffer.get("AL0_pbuffer")
     )
 
-    _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, loc_multi_group_flag)
+    _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, l0c_multi_group_flag)
 
     # check tilling in CL0
     _check_tilling_l0c(
@@ -1346,7 +1346,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
     return tensor_dx_gm, var_map
 
 
-def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, loc_multi_group_flag):  # pylint: disable=R0915
+def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, l0c_multi_group_flag):  # pylint: disable=R0915
     """
     using tilling parameter calculate factor
 
@@ -1520,7 +1520,7 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, loc_multi
         )
     ]
 
-    if loc_multi_group_flag:
+    if l0c_multi_group_flag:
         # used to calculate bl1_parts
         l0c_parts[0] = int_ceil_div(DIM_MAP.get("out_img_shape")[1] // TILING["block_dim"][3], l0c_tiling_factor[0])
     if "dedy_h" in var_map or "dedy_w" in var_map:
@@ -1626,7 +1626,7 @@ def _bind_multi_core(  # pylint: disable=R0913,R0914
 
 
 def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
-    sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, loc_multi_group_flag
+    sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, l0c_multi_group_flag
 ):
     """
     get l0c and l1 axis
@@ -1670,7 +1670,7 @@ def _get_l0c_and_l1_axis(  # pylint: disable=R0914,R0913,W0613
         return reorder_flag
 
     # split c_gm according to factor of loc and out_shape
-    if not loc_multi_group_flag:
+    if not l0c_multi_group_flag:
         g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], nparts=g_extend)
     else:
         g_dim, c_gm_inner = sch[c_gm].split(c_gm.op.axis[1], l0c_factor[0])
@@ -2092,7 +2092,7 @@ def opti_schedule(
 
     def _attach_al1_bl1():
         # attach tensor of al1 and bl1 to c_l0c
-        al1_attach_at_cl0 = True if (al1_parts[0] != 1 or (loc_multi_group_flag and al1_parts[2] == 1)) else False
+        al1_attach_at_cl0 = True if (al1_parts[0] != 1 or (l0c_multi_group_flag and al1_parts[2] == 1)) else False
         if al1_attach_at_cl0:
             sch[a_l1].compute_at(sch[c_l0c], al1_at_l0c_axis)
             if DeconvParam.get_para_map("load3d_flag"):
@@ -2106,7 +2106,7 @@ def opti_schedule(
             if DeconvParam.get_para_map("load3d_flag"):
                 sch[a_l0a_before].compute_at(sch[c_gm], batch_in_out_axis)
 
-        bl1_attach_at_cl0 = True if (bl1_parts[0] != 1 or (loc_multi_group_flag and bl1_parts[2] == 1)) else False
+        bl1_attach_at_cl0 = True if (bl1_parts[0] != 1 or (l0c_multi_group_flag and bl1_parts[2] == 1)) else False
 
         if bl1_attach_at_cl0:
             sch[b_l1].compute_at(sch[c_l0c], bl1_at_l0c_axis)
@@ -2602,14 +2602,14 @@ def opti_schedule(
         TENSOR_MAP.get("c_l0c"),
         TENSOR_MAP.get("c_gm")
     )
-    loc_multi_group_flag = False
+    l0c_multi_group_flag = False
     if dx_res_write.dtype == "int8":
         # In quant or requant scenes, co of ddr is 32, c1_ddr is c1_loc//2
         DIM_MAP["dx_6GD_shape"][2] = (DIM_MAP["dx_6GD_shape"][2] + 1) // 2
         DIM_MAP["dx_6GD_shape"][5] = DIM_MAP["dx_6GD_shape"][5] * 2
         # In quant scenes, if C1 % 2 == 1 and G>1, the min group_l0c is 2
         if DIM_MAP["dx_c1_extend"] % 2 == 1 and DIM_MAP["g_extend"] > 1:
-            loc_multi_group_flag = True
+            l0c_multi_group_flag = True
             _check_quant_fusion_legal(fusion_type)
 
     if DeconvParam.get_para_map("load3d_flag"):
@@ -2631,7 +2631,7 @@ def opti_schedule(
     )
 
     _get_tiling(
-        dx_res_write, fusion_type, kernel_name, is_conv1d_bool, tiling_case, var_map, loc_multi_group_flag
+        dx_res_write, fusion_type, kernel_name, is_conv1d_bool, tiling_case, var_map, l0c_multi_group_flag
     )
 
     # get factor and parts from tiling
@@ -2643,7 +2643,7 @@ def opti_schedule(
         undilate_l0c_m,
         need_buffer_tile,
         mask_ub_need_bind_buffer
-    ) = _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, loc_multi_group_flag)
+    ) = _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, l0c_multi_group_flag)
     al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
     num_batch = DIM_MAP["img_shape"][0]
     _print_ir_conv("before split", sch)
@@ -2665,7 +2665,7 @@ def opti_schedule(
         overload_flag_gm,
         l0c_m_outer
     ) = _get_l0c_and_l1_axis(
-        sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, loc_multi_group_flag
+        sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, l0c_multi_group_flag
     )
     al1_at_c_axis = batch_in_inner_axis
     bl1_at_c_axis = l1_n_outer_outer
@@ -2717,10 +2717,10 @@ def opti_schedule(
 
     def _bl0_attach():
         """
-        if loc_multi_group_flag and bl0_factor in group axis is 2,
+        if l0c_multi_group_flag and bl0_factor in group axis is 2,
         comput axis equal with l0c
         """
-        if loc_multi_group_flag and bl0_axis_factor[2] > 1:
+        if l0c_multi_group_flag and bl0_axis_factor[2] > 1:
             sch[b_l0b].compute_at(sch[c_gm], c_slice_axis)
         else:
             sch[b_l0b].compute_at(sch[c_l0c], bl0_n_outer)

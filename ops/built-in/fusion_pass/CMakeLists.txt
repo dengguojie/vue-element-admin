@@ -130,7 +130,6 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/conv_to_fullyconnection_fusion_pass.cc
   graph_fusion/ai_core/copy_fusion_pass.cc
   graph_fusion/ai_core/decode_bbox_v2_insert_transpose_pass.cc
-  graph_fusion/ai_core/deconv_group_fusion_pass.cc
   graph_fusion/ai_core/deconv_weight_trans_fusion_pass.cc
   graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
   graph_fusion/ai_core/derelu_fusion_pass.cc

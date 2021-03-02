@@ -238,7 +238,7 @@ class ScopeManager:
         """
         self._stage.reused_by(*args)
 
-    def split_group(self, parent, nparts=None):
+    def split_group(self, parent, factor=None, nparts=None):
         """
         only use in group convolution, split group axis and
         set both g and c in self._active_scopes
@@ -248,12 +248,18 @@ class ScopeManager:
         if self._axis_unit.get(parent) is None:
             raise_schedule_agent_err("parent scope can not be None")
         unit, extent = self._axis_unit[parent]
-        outer, inner = self._stage.split(parent, nparts=nparts)
+        outer, inner = [None, None]
+        if nparts is not None:
+            outer, inner = self._stage.split(parent, nparts=nparts)
+            factor = ceil_div(extent, nparts)
+            self._axis_unit[inner] = [unit, factor]
+            self._axis_unit[outer] = [factor * unit, nparts]
+        else:
+            outer, inner = self._stage.split(parent, factor=factor)
+            self._axis_unit[inner] = [unit, factor]
+            self._axis_unit[outer] = [unit * factor, ceil_div(extent, factor)]
         # move g_axis out
         self._stage.reorder(outer, self._stage.op.axis[0], inner)
-        factor = ceil_div(extent, nparts)
-        self._axis_unit[inner] = [unit, factor]
-        self._axis_unit[outer] = [factor * unit, nparts]
         if parent in self._active_scopes:  # not else
             self._add_g_active_scope(parent, outer, inner)
         self._axis_split_list[1] = [inner]

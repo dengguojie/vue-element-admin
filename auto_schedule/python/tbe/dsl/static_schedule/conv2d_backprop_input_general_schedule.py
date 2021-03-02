@@ -1501,7 +1501,7 @@ def general_schedule(
                 bl1_tilling_n,
                 cl0_tiling_mc * cl0_tiling_m0,
                 bl0_tiling_n0,
-                bl0_tiling_kb,
+                al0_tiling_ka,
                 bl0_tiling_k0
             )
             sch_agent.attach_at(b_col, c_col, affine_shape=l0b2l0c_affine_shape)
