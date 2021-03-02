@@ -126,6 +126,7 @@ from .split import split
 from .split_v import split_v
 from .strided_slice_grad import strided_slice_grad
 from .fill import fill
+from .fills import fills
 from .drop_out_do_mask import drop_out_do_mask
 from .tanh import tanh
 from .inv_grad import inv_grad

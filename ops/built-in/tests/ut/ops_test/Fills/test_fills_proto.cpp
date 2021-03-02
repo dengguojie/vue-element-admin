@@ -16,9 +16,14 @@ class fills : public testing::Test {
 
 TEST_F(fills, fills_infershape_diff_test){
   ge::op::Fills op;
-  op.UpdateInputDesc("x", create_desc({3, 30, 10, 16, 17}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("x", create_desc_shape_range({-1, -1},
+                                                  ge::DT_FLOAT16,
+                                                  ge::FORMAT_ND,
+                                                  {1, 1},
+                                                  ge::FORMAT_ND,
+                                                  {{1, 1},{1, 1}}));
   
-  float value = 3.0;
+  float value = 1.0;
   op.SetAttr("value", value);
 
   auto ret = op.InferShapeAndType();
@@ -26,23 +31,12 @@ TEST_F(fills, fills_infershape_diff_test){
 
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-  std::vector<int64_t> expected_output_shape = {3, 30, 10, 16, 17};
+  std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-}
 
-TEST_F(fills, fills_infershape_same_test){
-  ge::op::Fills op;
-  op.UpdateInputDesc("x", create_desc({3, 30, 10, 16, 17}, ge::DT_FLOAT16));
-
-  float value = 3.0;
-  op.SetAttr("value", value);
-
-  auto ret = op.InferShapeAndType();
-  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-  auto output_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-  std::vector<int64_t> expected_output_shape = {3, 30, 10, 16, 17};
-  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{1,1},{1,1}};
+  EXPECT_EQ(output_shape_range, expected_shape_range);
 }
 

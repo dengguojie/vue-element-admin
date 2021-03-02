@@ -3182,41 +3182,21 @@ COMMON_INFER_FUNC_REG(Muls, OneInOneOutCommonInferShape);
 VERIFY_FUNC_REG(Muls, MulsVerify);
 // ------------Muls Op End----------------
 
-// ------------fills Op Start----------------
-bool InferShapeAndTypeFills(Operator& op, const string& x, const string& y, const string& value) {
-  float value_num;
-  if (op.GetAttr(value, value_num) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  TensorDesc vOutputDesc = op.GetOutputDesc(y);
-
-  DataType input_dtype = op.GetInputDesc(x).GetDataType();
-  Format input_format = op.GetInputDesc(x).GetFormat();
-  ge::Shape shapeX = op.GetInputDesc(x).GetShape();
-
-  vOutputDesc.SetShape(shapeX);
-  vOutputDesc.SetDataType(input_dtype);
-  vOutputDesc.SetFormat(input_format);
-  op.UpdateOutputDesc(y, vOutputDesc);
-
-  return true;
-}
-// ----------------Add-------------------
+// ------------Fills Op Start----------------
 IMPLEMT_VERIFIER(Fills, FillsVerify) {
   return GRAPH_SUCCESS;
 }
-// Obtains the processing function of the output tensor description.
+VERIFY_FUNC_REG(Fills, FillsVerify);
+
 IMPLEMT_COMMON_INFERFUNC(FillsInferShape) {
-  if (InferShapeAndTypeFills(op, "x", "y", "value")) {
+  OP_LOGI(op.GetName().c_str(), "Enter FillsInferShape");
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
 }
-// Registered inferfunction
 COMMON_INFER_FUNC_REG(Fills, FillsInferShape);
-// Registered verify function
-VERIFY_FUNC_REG(Fills, FillsVerify);
-// -----------fills Op End----------------
+// -----------Fills Op End----------------
 
 // --------------MulNoNan
 IMPLEMT_VERIFIER(MulNoNan, MulNoNanVerify) {
