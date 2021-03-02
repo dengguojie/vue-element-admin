@@ -85,6 +85,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/sparse_to_dense.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/fill.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/equal.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/device/where.cc
   ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
 )
@@ -170,6 +171,7 @@ set(_cpu_kernels_ut_files
   testcase/sparse_to_dense/src/sparse_to_dense_utest.cpp
   testcase/fill/src/fill_utest.cpp
   testcase/equal/src/equal_utest.cpp
+  testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
   testcase/where/src/where_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
 )

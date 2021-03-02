@@ -22,6 +22,7 @@ set(local_kernels_src_files
     kernels/normalized/random_uniform.cc
     kernels/normalized/fill.cc
     kernels/normalized/equal.cc
+    kernels/normalized/adaptive_max_pool_2d.cc
     utils/sparse_group.cc
     utils/eigen_tensor.cc
     utils/kernel_util.cc

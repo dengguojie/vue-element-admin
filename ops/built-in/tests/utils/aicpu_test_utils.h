@@ -18,6 +18,7 @@
 #define OPS_TEST_UTILS_AICPU_TEST_UTISL_H_
 #include <random>
 #include <vector>
+#include <math.h>
 
 template <typename T>
 bool CompareResult(T output[], T expect_output[], uint64_t num) {
@@ -33,6 +34,22 @@ bool CompareResult(T output[], T expect_output[], uint64_t num) {
   }
   return result;
 }
+
+template <typename T>
+bool CompareFloatResult(T output[], T expect_output[], uint64_t num) {
+  bool result = true;
+  for (uint64_t i = 0; i < num; ++i) {
+    if (std::abs(output[i] - expect_output[i]) > 0.0000001) {
+      std::cout << "output[" << i << "] = ";
+      std::cout << output[i];
+      std::cout << ", expect_output[" << i << "] = ";
+      std::cout << expect_output[i] << std::endl;
+      result = false;
+    }
+  }
+  return result;
+}
+
 
 template <typename T>
 void SetRandomValue(T input[], uint64_t num, float min = 0.0,

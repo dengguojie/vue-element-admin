@@ -32,6 +32,7 @@ const uint32_t kThreadNum = 32;
 const uint32_t kFirstInputIndex = 0;
 const uint32_t kSecondInputIndex = 1;
 const uint32_t kFirstOutputIndex = 0;
+const uint32_t kSecondOutputIndex = 1;
 const uint32_t kDynamicInput = -1;
 const uint32_t kDynamicOutput = -2;
 const uint64_t kEigenAlignmentBytes = 16;
