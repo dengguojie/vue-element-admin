@@ -247,11 +247,6 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
     shape_filter_frac = (util_common.ceil(filter_channel, w_n0) * filter_depth * filter_h * filter_w,
                          util_common.ceil(filter_batch, w_k0), w_k0, w_n0)
 
-    for i in range(FORMAT_5D_DIMS):
-        if input_sizes[i] == -1 and shape_out_backprop[i] != -1:
-            cube_err.raise_err_specific(
-                'conv3d_backprop_input', 'Dynamic dim in input size and out_backprop should be same.')
-
     if input_sizes[0] == -1:
         dedy_batch = tbe_base.var("batch_n", range_input[0])
         tbe_base.add_exclude_bound_var(dedy_batch)
