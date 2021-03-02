@@ -19,11 +19,12 @@ def gen_dynamic_broadcast_to_case(shape_x, range_x, shape, dtype_val,
         "support_expect": True}
 
 
-# ut_case.add_case("Ascend910A", gen_dynamic_broadcast_to_case((1, 1, -1), ((1, 1),(1, 1), (5, 5)), [3, 1, 5],
-#                                                 "float16",
-#                                                 "dynamic_broadcast_to_fp16_ND",
-#                                                 "success"))
+ut_case.add_case("Ascend910A", gen_dynamic_broadcast_to_case((1, 1, -1), ((1, 1),(1, 1), (5, 5)), [3, 1, 5],
+                                                "float16",
+                                                "dynamic_broadcast_to_fp16_ND",
+                                                "success"))
 
 
 if __name__ == "__main__":
-    ut_case.run("Ascend910A")
+    with te.op.dynamic():
+        ut_case.run("Ascend910A")

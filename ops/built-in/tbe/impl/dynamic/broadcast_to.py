@@ -132,18 +132,20 @@ def broadcast_to(x, shape, y, kernel_name="broadcast_to"):
     x["range"] = x_range_adapt
     shape["shape"] = shape_shape_adapt
     shape["range"] = shape_range_adapt
-
+    
+    extra_params = {"disable_optimization":True}
+    ins = tbe_base.classify([shape, x], tbe_base.Mode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
-
-    with tbe_base.compute():
-        shape_shape, shape_x = shape_util.variable_shape([shape, x])
-        shape_input = tvm.placeholder(shape_shape, name="shape_input", dtype=input_shape_dtype)
-        x_input = tvm.placeholder(shape_x, name="x_input", dtype=input_x_dtype)
-        res = broadcast_to_compute(x_input, shape_shape, y, kernel_name=kernel_name)
-        tensors.append([x_input, shape_input, res])
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
-    schedules.append(sch)
+    for (_shape, _x) in ins:
+        with tbe_base.compute():
+            shape_shape, shape_x = shape_util.variable_shape([_shape, _x])
+            shape_input = tvm.placeholder(shape_shape, name="shape_input", dtype=input_shape_dtype)
+            x_input = tvm.placeholder(shape_x, name="x_input", dtype=input_x_dtype)
+            res = broadcast_to_compute(x_input, shape_shape, y, kernel_name=kernel_name)
+            tensors.append([x_input, shape_input, res])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
