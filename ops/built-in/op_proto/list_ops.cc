@@ -603,7 +603,7 @@ IMPLEMT_INFERFUNC(TensorListPushBackBatch, TensorListPushBackBatchInfer) {
   }
   Shape tensor;
   if (WithRankAtLeast(op.GetInputDesc(1), 1, tensor, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name, "Input tensor must be more than 1-D.");
+    OP_LOGE(op_name, "Input tensor must be at least 1-D.");
     return GRAPH_FAILED;
   }
   if (MergePrefix(op_name, tensor, input_handles, tensor, input_handles)
@@ -806,7 +806,7 @@ IMPLEMT_INFERFUNC(TensorListSplit, TensorListSplitInfer) {
   Shape tensor_shape = op.GetInputDesc(0).GetShape();
   Shape ignored;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, ignored, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name, "Input tensor shape must be more than 1D.");
+    OP_LOGE(op_name, "Input tensor shape must be at least 1-D.");
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(2), 1, ignored, op_name) != GRAPH_SUCCESS) {
@@ -1103,7 +1103,7 @@ IMPLEMT_INFERFUNC(TensorListScatterIntoExistingList, TensorListScatterIntoExisti
 
   Shape ignored;
   if (WithRankAtLeast(op.GetInputDesc(1), 1, ignored, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name, "Input tensor must be more than 1-D.");
+    OP_LOGE(op_name, "Input tensor must be at least 1-D.");
     return GRAPH_FAILED;
   }
 
