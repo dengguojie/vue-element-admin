@@ -113,12 +113,6 @@ Status PadFusionPass::PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& p
   FUSION_PASS_CHECK(pad_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
-  GeTensorDesc input_desc0 = pad_desc->GetInputDesc(0);
-  DataType data_type = input_desc0.GetDataType();
-  FUSION_PASS_CHECK(data_type == DT_INT64 || data_type == DT_INT8,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(),"the datatype is not supported"),
-                    return NOT_CHANGED);
-
   ge::AttrUtils::SetListListInt(pad_desc, attr_name, paddings);
 
   // get pad const achor

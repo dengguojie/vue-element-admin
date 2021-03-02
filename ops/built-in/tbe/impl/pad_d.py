@@ -61,19 +61,9 @@ def get_op_support_info(input_x, output_x, paddings, kernel_name="pad_d"):
     return op_cal_info_in_json
 
 
-def check_supported(input_x, output_x, paddings, kernel_name="pad_d"):
-    """
-    supported aicpu route
-    """
-    dtype = input_x.get("dtype").lower()
-    if dtype not in ("float16", "float32", "int32", "uint8"):
-        return False
-    return True
-
-
 def _ceil_div(value, block):
     """
-    Integrate the inputs value by block.
+    Integrate the input value by block.
     """
     return (value + block - 1) // block
 
