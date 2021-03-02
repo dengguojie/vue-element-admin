@@ -337,6 +337,41 @@ TEST_F(TransDataTiling, TransData_tiling9) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   TeOpTensorArg tensorInputsArg, tensorOutputsArg;
   TeOpParas opParas;
+  std::vector<int64_t> input_shape = {3, 34, 34, 16, 2};
+  std::vector<int64_t> output_shape = {3468, 1, 16, 16};
+  std::string dtype = "float16";
+
+  TeOpTensor tensorInput;
+  tensorInput.shape = input_shape;
+  tensorInput.dtype = dtype;
+  tensorInputsArg.tensor.push_back(tensorInput);
+  tensorInputsArg.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputsArg);
+
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = output_shape;
+  tensorOutput.dtype = dtype;
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+  opParas.op_type = "TransData";
+  std::string compileInfo3 = "{\"vars\": {\"srcFormat\": \"DHWCN\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo3;
+  op_compile_info.key = "123456abcdefghi";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "100 63232 1 32 0 0 1 1 109 2 0 1 1 89 2 0 240 240 0 2 16 32 295936 0 1156 1 32 3 1156 36992 1156 1 256 3 1156 295936 2 1 16 0 0 0 0 3952 ");
+}
+
+TEST_F(TransDataTiling, TransData_tiling10) {
+  using namespace optiling;
+  optiling::OpRunInfo op_run_info;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  TeOpTensorArg tensorInputsArg, tensorOutputsArg;
+  TeOpParas opParas;
   std::vector<int64_t> input_shape = {79, 79, 23, 31};
   std::vector<int64_t> output_shape = {12482, 2, 16, 16};
   std::string dtype = "float16";
@@ -358,9 +393,10 @@ TEST_F(TransDataTiling, TransData_tiling9) {
   std::string compileInfo3 = "{\"vars\": {\"srcFormat\": \"HWCN\", \"dstFormat\": \"FRACTAL_Z\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo3;
-  op_compile_info.key = "123456abcdefghi";
+  op_compile_info.key = "23456abcdefghi";
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string_int64(runInfo.tiling_data), "100 63232 1 32 0 0 1 2 196 31 7 1 2 165 31 7 240 240 0 31 16 496 3195392 7 6241 1 713 0 0 0 6241 1 512 0 0 0 31 1 16 0 0 0 0 3952 ");
 }
+

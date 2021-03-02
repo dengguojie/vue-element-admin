@@ -41,7 +41,8 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
     elif (src_format == "NC1HWC0" and dst_format == "NCHW"):
         trans_data_negative_target_ch.trans_data_negative_target_ch(src, dst, src_format, dst_format, kernel_name)
     elif (src_format == "NCHW" and dst_format == "NC1HWC0") or (src_format == "NCDHW" and dst_format == "NDC1HWC0") \
-          or ((src_format == "HWCN") and (dst_format == "FRACTAL_Z" or dst_format == "FRACTAL_ZN")):
+          or ((src_format == "HWCN") and (dst_format == "FRACTAL_Z" or dst_format == "FRACTAL_ZN")) \
+          or (src_format == "DHWCN" and dst_format == "FRACTAL_Z_3D"):
         trans_data_positive_source_nct.trans_data_positive_source_nct(src, dst, src_format, dst_format, kernel_name)
     else:
         return trans_data_rnn(src, dst, src_format, dst_format, 0, 0, kernel_name)
