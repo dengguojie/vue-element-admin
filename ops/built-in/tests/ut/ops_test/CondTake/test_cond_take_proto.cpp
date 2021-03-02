@@ -23,7 +23,7 @@
 #include "op_proto_test_util.h"
 #include "condtake_ops.h"
 
-class SparseAddTest : public testing::Test {
+class CondTakeTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
     std::cout << "CondTake SetUp" << std::endl;
@@ -34,7 +34,7 @@ class SparseAddTest : public testing::Test {
   }
 };
 
-TEST_F(SparseAddTest, InferShape) {
+TEST_F(CondTakeTest, InferShape) {
   ge::op::CondTake op;
   op.UpdateInputDesc("data", create_desc({2, 2}, ge::DT_FLOAT));
   op.UpdateInputDesc("mask", create_desc({2, 2}, ge::DT_FLOAT));
