@@ -45,6 +45,7 @@ from .adam_apply_one_assign import adam_apply_one_assign
 from .add import add
 from .inv import inv
 from .gelu import gelu
+from .smooth_l1_loss_grad import smooth_l1_loss_grad
 from .fast_gelu import fast_gelu
 from .axpy import axpy
 from .floor_mod import floor_mod

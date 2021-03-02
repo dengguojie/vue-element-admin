@@ -140,12 +140,11 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsV2, SigmoidCrossEntropyWithLo
 
 // ----------------SmoothL1LossGrad-------------------
 IMPLEMT_COMMON_INFERFUNC(SmoothL1LossGradInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "label", "gradient")) {
+  if (OneInOneOutDynamicInfer(op, "predict", {"gradient"})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(SmoothL1LossGrad, SmoothL1LossGradInferShape);
 // ----------------SmoothL1LossGrad END-------------------
 
