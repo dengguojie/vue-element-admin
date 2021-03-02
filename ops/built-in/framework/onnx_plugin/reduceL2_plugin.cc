@@ -32,33 +32,25 @@ namespace domi {
 Status ParseParamsReduceL2(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = dynamic_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
-      OP_LOGE("ReduceL2", "Dynamic cast op_src to NodeProto failed.");
-      return FAILED;
+    OP_LOGE("ReduceL2", "Dynamic cast op_src to NodeProto failed.");
+    return FAILED;
   }
 
   int p_num = 2;
-  std::vector<int> v_axes;
-  bool set_axes_flag = false;
+  std::vector<int> v_axes = {};
   bool keep_dims = true;
   for (const auto& attr : node->attribute()) {
-      if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
-          for (int i = 0; i < attr.ints_size(); i++) {
-              v_axes.push_back(attr.ints(i));
-          }
-          set_axes_flag = true;
-      } else if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
-          if (attr.i() != 1) {
-              keep_dims = false;
-          }
+    if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
+      for (int i = 0; i < attr.ints_size(); i++) {
+        v_axes.push_back(attr.ints(i));
       }
+    } else if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
+      keep_dims = (attr.i() == 1);
+    }
   }
 
-  if (set_axes_flag) {
-      op_dest.SetAttr("axes", v_axes);
-  } else {
-      OP_LOGI("ReduceL2", "onnx ReduceL2 op has no axes attr, use default.");
-  }
-  op_dest.SetAttr("keep_dims", keep_dims);
+  op_dest.SetAttr("axes", v_axes);
+  op_dest.SetAttr("keepdim", keep_dims);
   op_dest.SetAttr("p", p_num);
   return SUCCESS;
 }
