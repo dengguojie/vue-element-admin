@@ -54,7 +54,10 @@ Status ParseParamsTransposeD(const Message *op_src, ge::Operator &op_dest) {
 // register Transpose op info to GE
 REGISTER_CUSTOM_OP("TransposeD")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::Transpose")
+  .OriginOpType({"ai.onnx::9::Transpose",
+                 "ai.onnx::11::Transpose",
+                 "ai.onnx::12::Transpose",
+                 "ai.onnx::13::Transpose"})
   .ParseParamsFn(ParseParamsTransposeD)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
