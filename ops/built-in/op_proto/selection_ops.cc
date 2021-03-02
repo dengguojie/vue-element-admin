@@ -1661,15 +1661,24 @@ VERIFY_FUNC_REG(Select, SelectVerify);
 // ---------------Select END-----------------------
 
 // ----------------SelectV2----------------------
-bool BroadCastTwoinOneout(const Operator& op, const ge::Shape& shape_x, const ge::Shape& shape_y,
-                          std::vector<int64_t>& dim_out) {
-  std::vector<int64_t> dim_x = shape_x.GetDims();
-  std::vector<int64_t> dim_y = shape_y.GetDims();
+bool BroadCastTwoinOneout(const Operator& op, std::vector<int64_t>& shape_x, std::vector<int64_t>& shape_y,
+                          std::vector<std::pair<int64_t, int64_t>>& range_x,
+                          std::vector<std::pair<int64_t, int64_t>>& range_y,
+                          std::vector<int64_t>& dim_out,
+                          std::vector<std::pair<int64_t, int64_t>>& range_out) {
+  std::vector<int64_t> dim_x = shape_x;
+  std::vector<int64_t> dim_y = shape_y;
+  std::vector<std::pair<int64_t, int64_t>> range_x_new = range_x;
+  std::vector<std::pair<int64_t, int64_t>> range_y_new = range_y;
   // exchange them
   if (dim_x.size() < dim_y.size()) {
     std::vector<int64_t> dim_tmp = dim_x;
+    std::vector<std::pair<int64_t, int64_t>> range_tmp = range_x_new;
     dim_x = dim_y;
     dim_y = dim_tmp;
+
+    range_x_new = range_y_new;
+    range_y_new = range_tmp;
   }
 
   // expand smalll shape
@@ -1677,6 +1686,7 @@ bool BroadCastTwoinOneout(const Operator& op, const ge::Shape& shape_x, const ge
     int dec = dim_x.size() - dim_y.size();
     for (int i = 0; i < dec; i++) {
       dim_y.insert(dim_y.begin(), (int64_t)1);
+      range_y_new.insert(range_y_new.begin(), {1, 1});
     }
   }
 
@@ -1689,7 +1699,11 @@ bool BroadCastTwoinOneout(const Operator& op, const ge::Shape& shape_x, const ge
     }
 
     int64_t dim = dim_x[i] > dim_y[i] ? dim_x[i] : dim_y[i];
+    std::pair<int64_t, int64_t> range = {0, 0};
+    range.first = range_x_new[i].first < range_y_new[i].first ? range_x_new[i].first : range_y_new[i].first;
+    range.second = range_x_new[i].second > range_y_new[i].second ? range_x_new[i].second : range_y_new[i].second;
     dim_out.push_back(dim);
+    range_out.push_back(range);
   }
   return true;
 }
@@ -1702,27 +1716,43 @@ IMPLEMT_VERIFIER(SelectV2, SelectV2Verify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(SelectV2InferShape) {
-  Shape x1_shape = op.GetInputDesc("condition").GetShape();
-  Shape x2_shape = op.GetInputDesc("then").GetShape();
-  Shape x3_shape = op.GetInputDesc("else").GetShape();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto condition_desc = op_info->MutableInputDesc("condition");
+  vector<int64_t> condition_shape = condition_desc->MutableShape().GetDims();
+  DataType condition_dtype = condition_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> condition_range;
+  condition_desc->GetShapeRange(condition_range);
 
-  std::vector<int64_t> x1_x2_max;
-  if (!BroadCastTwoinOneout(op, x1_shape, x2_shape, x1_x2_max)) {
+  auto then_desc = op_info->MutableInputDesc("then");
+  vector<int64_t> then_shape = then_desc->MutableShape().GetDims();
+  DataType then_dtype = then_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> then_range;
+  then_desc->GetShapeRange(then_range);
+
+  auto else_desc = op_info->MutableInputDesc("else");
+  vector<int64_t> else_shape = else_desc->MutableShape().GetDims();
+  DataType else_dtype = else_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> else_range;
+  else_desc->GetShapeRange(else_range);
+
+  std::vector<int64_t> condition_then_max_shape;
+  std::vector<std::pair<int64_t, int64_t>> condition_then_max_range;
+
+  if (!BroadCastTwoinOneout(op, condition_shape, then_shape, condition_range, then_range,
+                            condition_then_max_shape, condition_then_max_range)) {
     return GRAPH_FAILED;
   }
-  ge::Shape shape_x1_x2_max = ge::Shape(x1_x2_max);
-  std::vector<int64_t> broadcast_shape;
-  if (!BroadCastTwoinOneout(op, shape_x1_x2_max, x3_shape, broadcast_shape)) {
+  std::vector<int64_t> max_shape;
+  std::vector<std::pair<int64_t, int64_t>> max_range;
+  if (!BroadCastTwoinOneout(op, condition_then_max_shape, else_shape, condition_then_max_range,
+                            else_range, max_shape, max_range)) {
     return GRAPH_FAILED;
   }
-  DataType input_dtype = op.GetInputDesc("then").GetDataType();
-  ge::Shape outputShape = ge::Shape(broadcast_shape);
-  TensorDesc tensordesc_output = op.GetOutputDesc("result");
-  tensordesc_output.SetShape(outputShape);
-  tensordesc_output.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("result", tensordesc_output);
-  OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.", to_string(outputShape).c_str(),
-          input_dtype);
+  auto result_desc = op_info->MutableOutputDesc("result");
+  result_desc->SetShape(GeShape(max_shape));
+  result_desc->SetShapeRange(max_range);
+  result_desc->SetDataType(then_dtype);
+
   return GRAPH_SUCCESS;
 }
 

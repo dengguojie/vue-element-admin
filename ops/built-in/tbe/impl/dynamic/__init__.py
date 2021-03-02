@@ -156,6 +156,7 @@ from .relu6 import relu6
 from .relu6_grad import relu6_grad
 from .relu_grad import relu_grad
 from .select import select
+from .select_v2 import select_v2
 from .max_pool import max_pool
 from .sign import sign
 from .acosh import acosh

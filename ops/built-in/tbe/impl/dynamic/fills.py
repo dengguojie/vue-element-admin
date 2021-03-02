@@ -66,7 +66,7 @@ def fills_compute(x, value, dtype, kernel_name="fills"):
 
 @register_operator("Fills")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
-                                                                     para_check.KERNEL_NAME)
+                            para_check.KERNEL_NAME)
 def fills(x, y, value, kernel_name="fills"):
     """
     do  fills operation
