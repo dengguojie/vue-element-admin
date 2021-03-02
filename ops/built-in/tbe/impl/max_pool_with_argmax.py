@@ -57,9 +57,14 @@ def check_supported(input_x, out_y, output_argmax, ksize, strides,
     """
     if ksize[1] * ksize[2] > SCALAR_255:
         return False
-    input_shape = input_x.get("shape")
-    in_size_h = input_shape[2]
-    in_size_w = input_shape[3]
+    input_format = input_x.get("ori_format").upper()
+    input_shape = input_x.get("ori_shape")
+    if input_format == "NHWC": 
+        in_size_h = input_shape[1]
+        in_size_w = input_shape[2]
+    else:
+        in_size_h = input_shape[2]
+        in_size_w = input_shape[3]
     window_h = ksize[1]
     window_w = ksize[2]
     stride_h = strides[1]

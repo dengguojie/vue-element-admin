@@ -121,9 +121,9 @@ def test_check_support(test_arg):
                     "max_pool_with_argmax_check_support_case_001")
     assert not res
     res = check_supported(
-                    {"shape": (2,2,16,8,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,16,8,16),"ori_format": "NHWC"},
-                    {"shape": (2,2,2,1,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,2,1,16),"ori_format": "NHWC"},
-                    {"shape": (2,2,2,1,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (2,2,2,1,16),"ori_format": "NHWC"},
+                    {"shape": (2,2,16,8,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,16,8,32),"ori_format": "NHWC"},
+                    {"shape": (2,2,2,1,16), "dtype": "float16", "format": "NHWC", "ori_shape": (2,2,1,32),"ori_format": "NHWC"},
+                    {"shape": (2,2,2,1,16), "dtype": "uint16", "format": "NHWC", "ori_shape": (2,2,1,32),"ori_format": "NHWC"},
                     [1, 8, 8, 1],
                     [1, 8, 8, 1],
                     "VALID",
