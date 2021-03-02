@@ -86,8 +86,6 @@ class StridedSliceCpuKernel : public CpuKernel {
     KERNEL_CHECK_NULLPTR(x_tensor_shape, KERNEL_STATUS_INNER_ERROR,
                         "[CalStridedSlice] check x_tensor_shape is [nullptr].");
     std::vector<int64_t> x_shape = x_tensor_shape->GetDimSizes();
-    KERNEL_LOG_INFO("[CalStridedSlice] x_shape: [%s]",
-                    VectorToString(x_shape).c_str());
 
     // convert negative idx to positive
     // calculate y_shape temp with [begin_tmp, end_tmp, strides]

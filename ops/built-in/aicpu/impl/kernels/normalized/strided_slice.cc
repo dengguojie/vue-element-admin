@@ -96,16 +96,9 @@ inline void ProcessEndMask(const std::vector<int64_t> &strides,
 }
 
 inline bool ProcessNewAxisMask(int64_t new_axis_mask,
-                               size_t &j,  int64_t &bit_mask,
-                               std::vector<int64_t> &begin_res,
-                               std::vector<int64_t> &end_res,
-                               std::vector<int64_t> &strides_res) {
+                               size_t &i, int64_t &bit_mask) {
   if (new_axis_mask & bit_mask) {
-    begin_res.push_back(0);
-    end_res.push_back(0);
-    begin_res.push_back(0);
-    j++;
-    bit_mask *= 2;
+    i--;
     return true;
   } else {
     return false;
@@ -153,8 +146,7 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
                      i, j, bit_mask, begin_j);
     ProcessEndMask(strides, x_shape, end_mask, shrink_axis_mask,
                    i, j, bit_mask, end_j);
-    if (ProcessNewAxisMask(new_axis_mask, j, bit_mask,
-                           begin_res, end_res, strides_res)) {
+    if (ProcessNewAxisMask(new_axis_mask, i, bit_mask)) {
       return KERNEL_STATUS_OK;
     }
     if (ProcessShrinkAxisMask(x_shape, shrink_axis_mask, i, bit_mask,
@@ -239,7 +231,7 @@ uint32_t StridedSliceCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(InitParamsWithMasks(x_shape_, begin_mask_, end_mask_,
                           ellipsis_mask_, new_axis_mask_, shrink_axis_mask_,
                           begin_, end_, strides_),
-                      "[%s] Init params with masks failed.", kStridedSlice);
+                      "[%s] init params with masks failed.", kStridedSlice);
 
   // cal strided slice
   Tensor *x_tensor = ctx.Input(0);
