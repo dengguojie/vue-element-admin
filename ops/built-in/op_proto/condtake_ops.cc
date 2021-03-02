@@ -22,34 +22,33 @@
 #include <unordered_set>
 #include "op_log.h"
 #include "util/common_shape_fns.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(CondTake, CondTakeInfer) {
-  TensorDesc output_data_desc = op.GetOutputDesc("out_data");
-  output_data_desc.SetDataType(DT_FLOAT);
-  TensorDesc output_index_desc = op.GetOutputDesc("out_index");
-  output_index_desc.SetDataType(DT_INT32);
-  TensorDesc output_num_desc = op.GetOutputDesc("valid_num");
-  output_num_desc.SetDataType(DT_INT32);
-
-  Shape input_data_shape = op.GetInputDesc("data").GetShape();
-  output_data_desc.SetShape(input_data_shape);
-  output_index_desc.SetShape(input_data_shape);
-  output_num_desc.SetShape(Shape({1}));
-  if (op.UpdateOutputDesc("out_data", output_data_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "out_data update failed!\n");
-    return GRAPH_FAILED;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_desc->MutableInputDesc(0);
+  std::vector<std::pair<int64_t, int64_t>> range;
+  //out_data
+  auto output_data_desc = op_desc->MutableOutputDesc(0);
+  output_data_desc->SetShape(x_desc->GetShape());
+  output_data_desc->SetDataType(DT_FLOAT);
+  //out_index
+  auto output_index_desc = op_desc->MutableOutputDesc(1);
+  output_index_desc->SetShape(x_desc->GetShape());
+  output_index_desc->SetDataType(DT_INT32);
+  if(x_desc->GetShapeRange(range) == GRAPH_SUCCESS){
+    output_data_desc->SetShapeRange(range);
+    output_index_desc->SetShapeRange(range);    
   }
-  if (op.UpdateOutputDesc("out_index", output_index_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "out_index update failed!\n");
-    return GRAPH_FAILED;
-  }
-  if (op.UpdateOutputDesc("valid_num", output_num_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "valid_num update failed!\n");
-    return GRAPH_FAILED;
-  }
+  //valid_num
+ auto output_num_desc = op_desc->MutableOutputDesc(2);
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  y_range.push_back(std::pair<int64_t, int64_t>{1, 1} );
+  output_num_desc->SetShape(ge::GeShape({1}));
+  output_num_desc->SetShapeRange(y_range);
+  output_num_desc->SetDataType(DT_INT32);
   return GRAPH_SUCCESS;
 }
-
 INFER_FUNC_REG(CondTake, CondTakeInfer);
 }  // namespace ge
