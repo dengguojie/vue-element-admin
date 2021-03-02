@@ -205,3 +205,7 @@ from .bn_infer_grad import bn_infer_grad
 from .selu import selu
 from .binary_cross_entropy import binary_cross_entropy
 from .binary_cross_entropy_grad import binary_cross_entropy_grad
+from .softmax_v2 import softmax_v2
+from .softmax_grad import softmax_grad
+from .log_softmax_v2 import log_softmax_v2
+from .log_softmax_grad import log_softmax_grad

@@ -87,6 +87,7 @@ set(_optiling_files
   gemm.cc
   bias_add_grad.cc
   reduce_mean.cc
+  softmax_tiling.cc
 )
 
 set(_op_tiling_include
