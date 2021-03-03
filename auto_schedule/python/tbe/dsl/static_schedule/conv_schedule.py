@@ -25,14 +25,14 @@ from te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
-from te import tvm
+from tbe import tvm
 from te import platform as cce
 from te.platform import cce_conf
 from te.platform import CUBE_MKN
 from te.platform import cce_util
 from te.platform import get_soc_spec
 from te.platform.fusion_manager import get_fusion_build_cfg
-from te.utils.error_manager import error_manager_cube as err_man
+from tbe.common.utils.errormgr import error_manager_cube as err_man
 
 # tiling check
 TILING_AL1_SHAPWE_DIM = 4

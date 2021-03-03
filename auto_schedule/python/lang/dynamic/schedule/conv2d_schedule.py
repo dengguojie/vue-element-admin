@@ -19,8 +19,8 @@ from tbe.dsl.static_schedule.conv_schedule import CceConvOp
 from tbe.dsl.static_schedule.util import gen_dfs_tensor_map
 from te.lang.dynamic.schedule.constants import Pattern
 
-from te.tvm import schedule as tvm
-from te.lang.base.operation_impl import register_schedule
+from tbe.tvm import schedule as tvm
+from tbe.dsl.base.operation import register_schedule
 
 
 @register_schedule(pattern=Pattern.CONV2D)

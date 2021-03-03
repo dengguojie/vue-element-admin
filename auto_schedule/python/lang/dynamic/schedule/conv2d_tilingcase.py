@@ -19,14 +19,13 @@ import copy
 import math
 from collections import OrderedDict
 
-import te
-from te.tvm.expr import Expr
-from te.tvm import schedule as tvm
+from tbe.tvm.expr import Expr
+from tbe.tvm import schedule as tvm
 from te.platform import cce_conf
 from tbe.common.tiling.get_tiling import get_tiling
 
-from te.lang.base.operation_impl import register_tiling_case
-from te.lang.base.operation_impl import get_te_var
+from tbe.dsl.base.operation import register_tiling_case
+from tbe.dsl.base.operation import get_te_var
 
 from tbe.dsl.compute.conv_compute import ConvParam
 from te.lang.dynamic.schedule.cube_tilingcase import TilingSelection

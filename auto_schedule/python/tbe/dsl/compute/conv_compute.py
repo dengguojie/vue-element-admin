@@ -17,17 +17,14 @@ conv2d DSL interface.
 """
 from __future__ import division
 import math
-from te import tvm
+from tbe import tvm
 from te.platform import cce_conf
 from te.platform import CUBE_MKN
 from topi.cce import util
 from topi.cce.util import check_load3d_w_out_1_support
-from te.utils.error_manager import error_manager_cube as err_man
-from te.lang.base.operation_impl import get_te_var
-try:
-    from te.tvm.dsl_source_info import source_info_decorator
-except ImportError:
-    from .util import source_info_decorator
+from tbe.common.utils.errormgr import error_manager_cube as err_man
+from tbe.dsl.base.operation import get_te_var
+from tbe.tvm.dsl_source_info import source_info_decorator
 
 # fmapH, fmapW must be in [1,4096]
 FMAP_HW_MIN = 1
