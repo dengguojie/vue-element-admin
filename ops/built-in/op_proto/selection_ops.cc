@@ -1174,6 +1174,55 @@ IMPLEMT_COMMON_INFERFUNC(GatherElementsInferShape) {
 COMMON_INFER_FUNC_REG(GatherElements, GatherElementsInferShape);
 // --------------------------GatherElements END---------------------
 
+// --------------------------LogSpaceD---------------------
+bool InferShapeAndTypeLogSpaceD(Operator& op, const string& input_name, const string& output_name,
+                                    const string& attr_name) {
+    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+    DataType output_dtype = op.GetInputDesc(input_name).GetDataType();
+    Format output_format = op.GetInputDesc(input_name).GetFormat();
+    ge::Shape shape = op.GetInputDesc(input_name).GetShape();
+    ge::Shape outshape = ge::Shape(shape);
+    v_output_desc.SetShape(outshape);
+    v_output_desc.SetFormat(output_format);
+    int64_t dtype = 1;
+    if (op.GetAttr(attr_name, dtype) != GRAPH_SUCCESS) {
+        v_output_desc.SetDataType(DT_FLOAT);
+    } else {
+        if (dtype == 0) {
+            v_output_desc.SetDataType(DT_FLOAT16);
+        }
+        if (dtype == 1) {
+            v_output_desc.SetDataType(DT_FLOAT);
+        }
+    }
+    op.UpdateOutputDesc(output_name, v_output_desc);
+    return true;
+}
+
+IMPLEMT_VERIFIER(LogSpaceD, LogSpaceDVerify)
+{
+    if (op.GetInputDesc("assist").GetShape().GetDims().size() != 1) {
+        OP_LOGE(op.GetName().c_str(), "Input size must be 1.");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+// Obtains the processing function of the output tensor description.
+IMPLEMT_COMMON_INFERFUNC(LogSpaceDInferShape)
+{
+    if(InferShapeAndTypeLogSpaceD(op, "assist", "y", "dtype")) {
+        return GRAPH_SUCCESS;
+    }
+    OP_LOGE(op.GetName().c_str(), "should have the assist, y and dtype.");
+    return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(LogSpaceD, LogSpaceDInferShape);
+
+VERIFY_FUNC_REG(LogSpaceD, LogSpaceDVerify);
+// --------------------------LogSpaceD END---------------------
+
 // ----------------UnsortedSegmentSum-------------------
 static void GetUnsortedSegmentSumConstValue(const Tensor& const_tensor, const DataType& dtype, int64_t& const_data) {
   if (dtype == ge::DT_INT32) {
