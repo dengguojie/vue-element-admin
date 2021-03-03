@@ -1,0 +1,46 @@
+[
+    {
+        "case_name": "Test_Roll_001",
+        "op": "Roll",
+        "input_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [3,4,5],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [0.1,1.0]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [3,4,5]
+            }
+        ],
+        "attr": [
+            {
+                "name": "shifts",
+                "type": "list_int",
+                "value": [2,1]
+            },
+            {
+                "name": "dims",
+                "type": "list_int",
+                "value": [0,1]
+            }
+        ]
+    }
+]
