@@ -1158,4 +1158,66 @@ COMMON_INFER_FUNC_REG(Cdist, CdistInferShape);
 VERIFY_FUNC_REG(Cdist, CdistVerify);
 // ----------------Cdist ----------------------------
 
+// ----------------CdistGrad Begin------------------------
+IMPLEMT_COMMON_INFERFUNC(CdistGradInferShape) {
+    TensorDesc output_desc = op.GetOutputDesc("y");
+
+    DataType input_dtype = op.GetInputDesc("x1").GetDataType();
+    Format input_format = op.GetInputDesc("x1").GetFormat();
+
+    ge::Shape grad_shape = op.GetInputDesc("grad").GetShape();
+    ge::Shape cdist_shape = op.GetInputDesc("cdist").GetShape();
+    ge::Shape input1_shape = op.GetInputDesc("x1").GetShape();
+    ge::Shape input2_shape = op.GetInputDesc("x2").GetShape();
+
+    std::vector < int64_t > grad_dim = grad_shape.GetDims();
+    std::vector < int64_t > cdist_dim = cdist_shape.GetDims();
+    std::vector < int64_t > input1_dim = input1_shape.GetDims();
+    std::vector < int64_t > input2_dim = input2_shape.GetDims();
+
+    auto dim_size = input1_dim.size();
+    if ((dim_size != 3) && (dim_size != 4)) {
+        OP_LOGE(op.GetName().c_str(), "the first inputs datasize not equal 3 and 4!\n");
+        return GRAPH_FAILED;
+    }
+    if ((input2_dim.size() != dim_size) || (grad_dim.size() != dim_size) || (cdist_dim.size() != dim_size)) {
+        OP_LOGE(op.GetName().c_str(), "the one of other three inputs datasize not equal the first one \n");
+        return GRAPH_FAILED;
+    }
+
+    for (size_t i = 0; i < dim_size; i++) {
+        auto dim = input1_dim[i];
+        if ((input2_dim[i] != dim) || (grad_dim[i] != dim) || (cdist_dim[i] != dim)) {
+            OP_LOGE(op.GetName().c_str(), "the one of other three inputs not equal the first one \n");
+            return GRAPH_FAILED;
+        }
+    }
+    input1_dim.erase(input1_dim.end() - 2);
+
+    ge::Shape output_shape = ge::Shape(input1_dim);
+    output_desc.SetShape(output_shape);
+    output_desc.SetDataType(input_dtype);
+    output_desc.SetFormat(input_format);
+    op.UpdateOutputDesc("y", output_desc);
+
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(CdistGrad, CdistGradVerify) {
+    DataType x1_dtype = op.GetInputDesc("x1").GetDataType();
+    DataType x2_dtype = op.GetInputDesc("x2").GetDataType();
+    DataType grad_dtype = op.GetInputDesc("grad").GetDataType();
+    DataType cdist_dtype = op.GetInputDesc("cdist").GetDataType();
+
+    if ((x2_dtype != x1_dtype) || (grad_dtype != x1_dtype) || (cdist_dtype != x1_dtype)) {
+        OP_LOGE(op.GetName().c_str(), "the four input datatype must not be the same \n");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(CdistGrad, CdistGradInferShape);
+VERIFY_FUNC_REG(CdistGrad, CdistGradVerify);
+// ----------------CdistGrad END---------------------------------
+
 }  // namespace ge
