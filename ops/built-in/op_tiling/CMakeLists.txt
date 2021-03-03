@@ -84,6 +84,7 @@ set(_optiling_files
   trans_data_negative_target_h_mode200.cc
   unpack.cc
   unsorted_segment_sum.cc
+  unsorted_segment.cc
   gemm.cc
   bias_add_grad.cc
   reduce_mean.cc

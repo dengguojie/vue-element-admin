@@ -25,6 +25,9 @@ from .softplus_grad import softplus_grad
 from .softplus import softplus
 from .unsorted_segment_sum import unsorted_segment_sum
 from .div_no_nan import div_no_nan
+from .unsorted_segment_min import unsorted_segment_min
+from .unsorted_segment_max import unsorted_segment_max
+from .unsorted_segment_prod import unsorted_segment_prod
 from .gather_nd import gather_nd
 from .gather import gather
 from .gather_v2 import gather_v2

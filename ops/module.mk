@@ -356,6 +356,7 @@ LOCAL_SRC_FILES := \
         built-in/fusion_pass/common/fp16_t.cc \
         built-in/op_proto/util/error_util.cc \
         built-in/op_tiling/unsorted_segment_sum.cc \
+        built-in/op_tiling/unsorted_segment.cc \
         built-in/op_tiling/gather_nd.cc \
         built-in/op_tiling/gather_v2.cc \
         built-in/op_tiling/gather.cc \

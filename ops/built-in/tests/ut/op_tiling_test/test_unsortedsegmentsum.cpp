@@ -20,8 +20,8 @@ class UnsortedSegmentSumTiling : public testing::Test {
 static string to_string(const std::stringstream &tiling_data) {
   auto data = tiling_data.str();
   string result;
-  int64_t tmp = 0;
-  for (size_t i = 0; i < data.length(); i += sizeof(int64_t)) {
+  int32_t tmp = 0;
+  for (size_t i = 0; i < data.length(); i += sizeof(int32_t)) {
     memcpy(&tmp, data.c_str() + i, sizeof(tmp));
     result += std::to_string(tmp);
     result += " ";
@@ -80,7 +80,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_0) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "8589934597 4298100160 0 15118284898304 0 1 70368744177664 3520 13455548422815744 1 70368744177664 3520 4294967296 0 15118284898304 0 824636853696 70368744179712 15118284882360 4294967298 4294967297 4294967297 4294967297 4294967297 4294967297 1 0 0 0 0 0 0 0 0 0 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "5 2 3132864 1 0 0 16384 3520 0 0 1 0 0 16384 3520 0 0 3132864 1 0 0 16384 3520 0 0 1 0 0 16384 3520 0 0 3132864 192 2048 16384 440 3520 2 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   using namespace optiling;
@@ -132,7 +132,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "137438953473 4294969856 1374389535040 10995116280320 137438953504 1374389534721 10995116278080 137438956032 10995116277792 1374389534721 10995116278080 137438956032 4294967328 1374389535040 10995116280320 137438953504 4294967376 343597383690 343597383690 137438954496 17179869185 137438953476 137438953504 17179869185 137438953476 32 0 0 0 0 0 0 0 0 0 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 80 1 10 80 10 80 1024 32 1 4 4 32 32 32 1 4 4 32 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 
 

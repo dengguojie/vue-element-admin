@@ -1256,6 +1256,12 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
 COMMON_INFER_FUNC_REG(UnsortedSegmentSum, UnsortedSegmentSumInferShape);
 // ----------------UnsortedSegmentSum END----------------
 
+// ----------------UnsortedSegment-------------------
+COMMON_INFER_FUNC_REG(UnsortedSegmentMin, UnsortedSegmentSumInferShape);
+COMMON_INFER_FUNC_REG(UnsortedSegmentMax, UnsortedSegmentSumInferShape);
+COMMON_INFER_FUNC_REG(UnsortedSegmentProd, UnsortedSegmentSumInferShape);
+// ----------------UnsortedSegment END----------------
+
 // ----------------UnsortedSegmentSumD-------------------
 IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumDInferShape) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -2941,47 +2947,6 @@ IMPLEMT_COMMON_INFERFUNC(InplaceSubDInferShape) {
 COMMON_INFER_FUNC_REG(InplaceSubD, InplaceSubDInferShape);
 // ----------------InplaceSubD  END-------------------
 
-// ----------------UnsortedSegmentMin-------------------
-IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMinInferShape) {
-  auto input_desc = op.GetInputDesc("x");
-  const std::string kNumSegmentsName = "num_segments";
-  Tensor num_segments_data;
-  auto data_type = op.GetInputDesc(kNumSegmentsName).GetDataType();
-  int64_t num_segments;
-  if (op.GetInputConstData(kNumSegmentsName, num_segments_data) != GRAPH_SUCCESS) {
-    OP_LOGI(op.GetName().c_str(), "GetInputConstData %s failed.", kNumSegmentsName.c_str());
-    num_segments = -1;
-  } else {
-    if (!GetScalerValue(op, num_segments_data, data_type, num_segments)) {
-      OP_LOGE(op.GetName().c_str(), "Invalid data type of num_segments_data, data_type is %d.", (int)data_type);
-      return GRAPH_FAILED;
-    }
-  }
-
-  Shape shape = op.GetInputDesc("x").GetShape();
-  Shape shape_id = op.GetInputDesc("segment_ids").GetShape();
-  int64_t dim_idsize_input = shape_id.GetDimNum();
-  int64_t dim_size_input = shape.GetDimNum();
-  vector<int64_t> shape_vector;
-  shape_vector.push_back(num_segments);
-  for (int i = dim_idsize_input; i < dim_size_input; i++) {
-    shape_vector.push_back(shape.GetDim(i));
-  }
-  Shape output_shape(shape_vector);
-  DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(output_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(UnsortedSegmentMin, UnsortedSegmentMinInferShape);
-// ----------------UnsortedSegmentMin END-------------------
-
 // ----------------UnsortedSegmentMinD-------------------
 IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMinDInferShape) {
   auto input_desc = op.GetInputDesc("x");
@@ -3016,45 +2981,6 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMinDInferShape) {
 COMMON_INFER_FUNC_REG(UnsortedSegmentMinD, UnsortedSegmentMinDInferShape);
 // ----------------UnsortedSegmentMinD END-------------------
 
-// ----------------UnsortedSegmentMax-------------------
-IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMaxInferShape) {
-  auto input_desc = op.GetInputDesc("x");
-  const std::string kNumSegmentsName = "num_segments";
-  Tensor num_segments_data;
-  auto data_type = op.GetInputDesc(kNumSegmentsName).GetDataType();
-  int64_t num_segments;
-  if (op.GetInputConstData(kNumSegmentsName, num_segments_data) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetInputConstData %s failed.", kNumSegmentsName.c_str());
-    num_segments = -1;
-  } else {
-    if (!GetScalerValue(op, num_segments_data, data_type, num_segments)) {
-      OP_LOGE(op.GetName().c_str(), "Invalid data type of num_segments_data, data_type is %d.", (int)data_type);
-      return GRAPH_FAILED;
-    }
-  }
-  Shape shape = op.GetInputDesc("x").GetShape();
-  Shape shape_id = op.GetInputDesc("segment_ids").GetShape();
-  int64_t dim_idsize_input = shape_id.GetDimNum();
-  int64_t dim_size_input = shape.GetDimNum();
-  vector<int64_t> shape_vector;
-  shape_vector.push_back(num_segments);
-  for (int i = dim_idsize_input; i < dim_size_input; i++) {
-    shape_vector.push_back(shape.GetDim(i));
-  }
-  Shape output_shape(shape_vector);
-  DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(output_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-COMMON_INFER_FUNC_REG(UnsortedSegmentMax, UnsortedSegmentMaxInferShape);
-// ----------------UnsortedSegmentMax END-------------------
-
 // ----------------UnsortedSegmentMaxD-------------------
 IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMaxDInferShape) {
   auto input_desc = op.GetInputDesc("x");
@@ -3086,47 +3012,6 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentMaxDInferShape) {
 }
 COMMON_INFER_FUNC_REG(UnsortedSegmentMaxD, UnsortedSegmentMaxDInferShape);
 // ----------------UnsortedSegmentMaxD END-------------------
-
-// ----------------UnsortedSegmentProd-------------------
-IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentProdInferShape) {
-  auto input_desc = op.GetInputDesc("x");
-  const std::string kNumSegmentsName = "num_segments";
-  Tensor num_segments_data;
-  auto data_type = op.GetInputDesc(kNumSegmentsName).GetDataType();
-  int64_t num_segments;
-  if (GRAPH_SUCCESS != op.GetInputConstData(kNumSegmentsName, num_segments_data)) {
-    OP_LOGI(op.GetName().c_str(), "GetInputConstData %s failed.", kNumSegmentsName.c_str());
-    num_segments = -1;
-  } else {
-    if (!GetScalerValue(op, num_segments_data, data_type, num_segments)) {
-      OP_LOGE(op.GetName().c_str(), "Invalid data type of num_segments_data, data_type is %d.", (int)data_type);
-      return GRAPH_FAILED;
-    }
-  }
-
-  Shape shape = op.GetInputDesc("x").GetShape();
-  Shape shape_id = op.GetInputDesc("segment_ids").GetShape();
-  int64_t dim_idsize_input = shape_id.GetDimNum();
-  int64_t dim_size_input = shape.GetDimNum();
-  vector<int64_t> shape_vector;
-  shape_vector.push_back(num_segments);
-  for (int i = dim_idsize_input; i < dim_size_input; i++) {
-    shape_vector.push_back(shape.GetDim(i));
-  }
-  Shape output_shape(shape_vector);
-  DataType input_dtype = input_desc.GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(output_shape);
-  tensordesc_output.SetDataType(input_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(UnsortedSegmentProd, UnsortedSegmentProdInferShape);
-// ----------------UnsortedSegmentProd END-------------------
 
 // ----------------UnsortedSegmentProdD----------------------
 IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentProdDInferShape) {
