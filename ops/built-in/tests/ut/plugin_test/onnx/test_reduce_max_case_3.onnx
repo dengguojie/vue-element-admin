@@ -1,0 +1,15 @@
+zl-ReduceMax-onnx:t
++
+datareduced"	ReduceMax*
+keepdims 
+test-modelZ
+data
+
+
+
+b
+reduced
+
+
+
+B
