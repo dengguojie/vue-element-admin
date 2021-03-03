@@ -1103,7 +1103,7 @@ def general_schedule(
         elif tiling.get("AUB_shape") is None:
             _raise_dx_general_err("stride > 1 but AUB_shape is None.")
 
-        if tiling.get("BL0_matrix") == [] and tiling.get("BL1_shape") != []:
+        if tiling.get("BL0_matrix") == [] and tiling.get("BL1_shape") != [] and not l0c_multi_group_flag:
             _raise_dx_general_err("BL0 full load but BL1 not!")
 
     def _tiling_check_pbuffer():

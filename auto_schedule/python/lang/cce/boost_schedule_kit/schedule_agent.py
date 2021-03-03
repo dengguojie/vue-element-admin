@@ -243,7 +243,7 @@ class ScopeManager:
         only use in group convolution, split group axis and
         set both g and c in self._active_scopes
         """
-        if nparts is None:
+        if nparts is None and factor is None:
             raise_schedule_agent_err("factor nparts can not be None")
         if self._axis_unit.get(parent) is None:
             raise_schedule_agent_err("parent scope can not be None")
