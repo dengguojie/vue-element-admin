@@ -2169,4 +2169,91 @@ IMPLEMT_VERIFIER(DenseImageWarpGrad, DenseImageWarpGradVerify) {
 INFER_FUNC_REG(DenseImageWarpGrad, DenseImageWarpGradInfer);
 VERIFY_FUNC_REG(DenseImageWarpGrad, DenseImageWarpGradVerify);
 //-----------------DenseImageWarp Op End-------------------
+// ---------------GridSampler2D Op start-------------------
+IMPLEMT_INFERFUNC(GridSampler2D, GridSampler2DInferShape) {
+    vector<int64_t> grid_shape = op.GetInputDesc("grid").GetShape().GetDims();
+    vector<int64_t> x_shape = op.GetInputDesc("x").GetShape().GetDims();
+    DataType x_dtype = op.GetInputDesc("x").GetDataType();
+    Format x_format = op.GetInputDesc("x").GetFormat();
+
+    if (x_shape.size() != 4 || grid_shape.size() != 4) {
+        OP_LOGW(op.GetName().c_str(), "Expected dim of x and grid should be 4. x dim is %d. grid dim is %d.",
+                x_shape.size(), grid_shape.size());
+        return GRAPH_FAILED;
+    }
+
+    x_shape[2] = grid_shape[1];
+    x_shape[3] = grid_shape[2];
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(x_shape));
+    output_desc.SetDataType(x_dtype);
+    output_desc.SetFormat(x_format);
+    (void)op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(GridSampler2D, GridSampler2DInferShape);
+// ----------------GridSampler2D END---------------------
+
+// ---------------GridUnnormal Op start-------------------
+IMPLEMT_INFERFUNC(GridUnnormal, GridUnnormalInferShape) {
+    vector<int64_t> grid_shape = op.GetInputDesc("grid").GetShape().GetDims();
+    vector<int64_t> x_shape = op.GetInputDesc("assist").GetShape().GetDims();
+    DataType grid_dtype = op.GetInputDesc("grid").GetDataType();
+    Format grid_format = op.GetInputDesc("grid").GetFormat();
+
+    if (x_shape.size() != 4 || grid_shape.size() != 4) {
+        OP_LOGW(op.GetName().c_str(), "Expected dim of assist and grid should be 4. assist dim is %d. grid dim is %d.",
+                x_shape.size(), grid_shape.size());
+        return GRAPH_FAILED;
+    }
+
+    if (grid_shape[3] != 2) {
+        OP_LOGW(op.GetName().c_str(), "Expected last dim of grid should be 2. last dim of grid is %d.", grid_shape[3]);
+        return GRAPH_FAILED;
+    }
+
+    TensorDesc diff_desc = op.GetOutputDesc("diff");
+    diff_desc.SetShape(ge::Shape(grid_shape));
+    diff_desc.SetDataType(grid_dtype);
+    diff_desc.SetFormat(grid_format);
+    (void)op.UpdateOutputDesc("diff", diff_desc);
+
+    TensorDesc pos_desc = op.GetOutputDesc("position");
+    pos_desc.SetShape(ge::Shape(grid_shape));
+    pos_desc.SetDataType(DT_INT32);
+    pos_desc.SetFormat(grid_format);
+    (void)op.UpdateOutputDesc("position", pos_desc);
+    return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(GridUnnormal, GridUnnormalInferShape);
+// ----------------GridUnnormal END---------------------
+
+// ---------------ImageUnfold Op start-------------------
+IMPLEMT_INFERFUNC(ImageUnfold, ImageUnfoldInferShape) {
+    // N,C,Hin,Win
+    vector<int64_t> x_shape = op.GetInputDesc("x").GetShape().GetDims();
+    // N,Hout,Wout,4
+    vector<int64_t> pos_shape = op.GetInputDesc("position").GetShape().GetDims();
+    DataType x_dtype = op.GetInputDesc("x").GetDataType();
+    Format x_format = op.GetInputDesc("x").GetFormat();
+
+    if (x_shape.size() != 4 || pos_shape.size() != 4) {
+        OP_LOGW(op.GetName().c_str(), "Expected dim of x and position should be 4. x dim is %d. position dim is %d.",
+                x_shape.size(), pos_shape.size());
+        return GRAPH_FAILED;
+    }
+
+    vector<int64_t> output_shape = x_shape;
+    output_shape[2] = pos_shape[1];
+    output_shape[3] = pos_shape[2];
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(output_shape));
+    output_desc.SetDataType(x_dtype);
+    output_desc.SetFormat(x_format);
+    (void)op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(ImageUnfold, ImageUnfoldInferShape);
+// ----------------ImageUnfold END---------------------
+
 }  // namespace ge
