@@ -556,7 +556,7 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
   int64_t padb = attr_params[idx++];
   int64_t padl = attr_params[idx++];
   int64_t padr = attr_params[idx++];
-  int64_t inc = attr_params[idx++];
+  int64_t outc = attr_params[idx++];
   int64_t kh = attr_params[idx++];
   int64_t kw = attr_params[idx++];
 
@@ -597,7 +597,7 @@ static bool SetDepthwiseConv2dOutShapeRange(ge::Operator& op,
     }
 
     std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
-    out_range[idx_c] = std::make_pair((int64_t)inc, (int64_t)inc);
+    out_range[idx_c] = std::make_pair((int64_t)outc, (int64_t)outc);
     if (x_shape[idx_h] == -1) {
       vector<int64_t> attr_params_h = {strh, dilh, padt + padb, kh};
       SetDepthwiseConv2dOutShapeRange(pad_str, idx_h, attr_params_h, fm_range, out_range);
@@ -629,6 +629,9 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   int64_t inW = -1;
   int64_t outH = 0;
   int64_t outW = 0;
+  int64_t outC = 0;
+  int64_t filterN = 0;
+  int64_t filterC = 0;
   int64_t filterH = 0;
   int64_t filterW = 0;
   int64_t dilationH = 0;
@@ -706,8 +709,16 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
 
   Format filterFormat = tensorDescW.GetFormat();
   std::string filterFormatStr = format2str[filterFormat];
+  int64_t fnPosition = 0;
+  int64_t fcPosition = 0;
   int64_t fhPosition = 0;
   int64_t fwPosition = 0;
+  if (!GetDimInFormat(op.GetName(), filterFormatStr, "N", fnPosition)) {
+    return GRAPH_FAILED;
+  }
+  if (!GetDimInFormat(op.GetName(), filterFormatStr, "C", fcPosition)) {
+    return GRAPH_FAILED;
+  }
   if (!GetDimInFormat(op.GetName(), filterFormatStr, "H", fhPosition)) {
     return GRAPH_FAILED;
   }
@@ -715,6 +726,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
     return GRAPH_FAILED;
   }
 
+  filterN = shapeW.GetDim(fnPosition);
+  filterC = shapeW.GetDim(fcPosition);
   filterH = shapeW.GetDim(fhPosition);
   filterW = shapeW.GetDim(fwPosition);
 
@@ -734,6 +747,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   CHECK(strideH == 0 || strideW == 0,  OP_LOGE(op.GetName().c_str(), "stride is 0."), return GRAPH_FAILED);
   outH = (inH + padtop + padbottom - effectiveFilterH) / strideH + 1;
   outW = (inW + padleft + padright - effectiveFilterW) / strideW + 1;
+  outC = filterN * filterC;
   if (unknown_rank) {
     outH = -1;
     outW = -1;
@@ -746,14 +760,14 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   // NC1HWC0(NCHW/NHWC)
   if (formatOut == FORMAT_NCHW) {
     shapeOut.push_back(inN);
-    shapeOut.push_back(inC);
+    shapeOut.push_back(outC);
     shapeOut.push_back(outH);
     shapeOut.push_back(outW);
   } else if (formatOut == FORMAT_NHWC) {
     shapeOut.push_back(inN);
     shapeOut.push_back(outH);
     shapeOut.push_back(outW);
-    shapeOut.push_back(inC);
+    shapeOut.push_back(outC);
   } else {
     OP_LOGE(op.GetName().c_str(),
             "output y format should be NCHW or NHWC."
@@ -778,7 +792,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   if (is_dynamic) {
     vector<int64_t> attr_params = {strideH, strideW, dilationH, dilationW,
                                    padtop, padbottom, padleft, padright,
-                                   inC, filterH, filterW};
+                                   outC, filterH, filterW};
     if (!SetDepthwiseConv2dOutShapeRange(op, attr_params, shapeOut, tensorDescIn, tensordesc_output)) {
       return GRAPH_FAILED;
     }

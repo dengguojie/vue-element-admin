@@ -69,7 +69,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest1) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                  ge::FORMAT_NHWC, {{4, 4}, {6, 32}, {1, 64}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                   ge::FORMAT_NHWC, {{4, 4}, {6, 32}, {1, 64}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -87,7 +87,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest2) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, 64, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, 64, 64},
                                                                  ge::FORMAT_NHWC, {{4, 4}, {6, 32}, {64, 64}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({4, -1, 64, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, 64, 64},
                                                                   ge::FORMAT_NHWC, {{4, 4}, {6, 32}, {64, 64}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -105,7 +105,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest3) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({4, 64, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, 64, -1, 64},
                                                                  ge::FORMAT_NHWC, {{4, 4}, {64, 64}, {1, 64}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({4, 64, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, 64, -1, 64},
                                                                   ge::FORMAT_NHWC, {{4, 4}, {64, 64}, {1, 64}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -123,7 +123,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest4) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({-1, 64, 64, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-1, 64, 64, 64},
                                                                  ge::FORMAT_NHWC, {{1, 64}, {64, 64}, {64, 64}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({-1, 64, 64, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-1, 64, 64, 64},
                                                                   ge::FORMAT_NHWC, {{1, 64}, {64, 64}, {64, 64}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -141,7 +141,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest5) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({-1, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-1, -1, -1, 64},
                                                                  ge::FORMAT_NHWC, {{1, 64}, {6, 32}, {1, 64}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({-1, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-1, -1, -1, 64},
                                                                   ge::FORMAT_NHWC, {{1, 64}, {6, 32}, {1, 64}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -159,7 +159,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest6) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                  ge::FORMAT_NHWC, {{4, 4}, {6, -1}, {1, -1}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                   ge::FORMAT_NHWC, {{4, 4}, {6, -1}, {1, -1}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -177,7 +177,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest7) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                  ge::FORMAT_NHWC, {{4, 4}, {-6, -1}, {-1, 64}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                   ge::FORMAT_NHWC, {{4, 4}, {1, -1}, {1, 64}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -195,7 +195,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest8) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                  ge::FORMAT_NHWC, {{4, 4}, {6, 4097}, {-1, 5000}, {64, 64}}));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_shape_range({4, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {4, -1, -1, 64},
                                                                   ge::FORMAT_NHWC, {{4, 4}, {6, 4096}, {1, 4096}, {64, 64}}));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
@@ -212,7 +212,7 @@ TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest8) {
 TEST_F(DepthwiseConv2DProtoTest, DepthwiseConv2dDynamicBaseTest9) {
     ge::op::DepthwiseConv2D depthwiseconv2d;
     depthwiseconv2d.UpdateInputDesc("x", create_desc_with_ori({-2}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-2}, ge::FORMAT_NHWC));
-    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 1, 64}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 1, 64}, ge::FORMAT_HWCN));
+    depthwiseconv2d.UpdateInputDesc("filter", create_desc_with_ori({1, 1, 64, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN, {1, 1, 64, 1}, ge::FORMAT_HWCN));
     depthwiseconv2d.UpdateOutputDesc("y", create_desc_with_ori({-1, -1, -1, 64}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {-1, -1, -1, 64}, ge::FORMAT_NHWC));
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
     depthwiseconv2d.SetAttr("pads", {0, 0, 0, 0});
