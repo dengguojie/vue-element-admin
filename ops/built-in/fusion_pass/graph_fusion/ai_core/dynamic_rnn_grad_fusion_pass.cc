@@ -98,7 +98,9 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
   vector<ge::NodePtr> basicLstm_cell_state_grad_nodes={};
   vector<ge::NodePtr> matmul_nodes={};
   vector<ge::NodePtr> split_nodes={};
+  vector<ge::NodePtr> reshape_nodes={};
 
+  int64_t n_value = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(1);
   ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
   int64_t t_size = dynamicRNNGradDesc->GetInputDesc(8).GetShape().GetDim(0);
   // all input
@@ -212,6 +214,40 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
      basicLstmCellStateGradDesc->AddOutputDesc("dc_prev", tensor_dc_prew);
      ge::AttrUtils::SetFloat(basicLstmCellStateGradDesc, "forget_bias", 1.0);
      ge::AttrUtils::SetStr(basicLstmCellStateGradDesc, "activation", "Tanh");
+     //add reshape
+     if (n_value % 16 != 0) {
+       auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/cellReshape" + std::to_string(i), "Reshape");
+       FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error."),
+                         return result);
+       auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
+       reshapeOp.BreakConnect();
+
+       vector<int64_t> inputTensorDescCellDgateDims = {(output_dims[1] + 15) / 16, (output_dims[0] + 15) / 16, 16, 16};
+       vector<int64_t> inputTensorDescCellDgateOriDims = {output_dims[0], output_dims[1]};
+       ge::GeShape inputTensorDescCellDgateShape(inputTensorDescCellDgateDims);
+
+       ge::GeTensorDesc reshapeCellInputDesc = ge::GeTensorDesc(inputTensorDescCellDgateShape, ge::FORMAT_FRACTAL_NZ, output_tensor_desc.GetDataType());
+       reshapeCellInputDesc.SetOriginShape(GeShape(inputTensorDescCellDgateOriDims));
+       reshapeCellInputDesc.SetOriginFormat(ge::FORMAT_ND);
+
+       vector<int64_t> outputTensorDescCellDgateDims = {1, (output_dims[1] + 15) / 16, (output_dims[0] + 15) / 16, 16, 16};
+       vector<int64_t> outputTensorDescCellDgateOriDims = {1, output_dims[0], output_dims[1]};
+       ge::GeShape outputTensorDescCellDgateShape(outputTensorDescCellDgateDims);
+
+       ge::GeTensorDesc reshapeCellOutputDesc = ge::GeTensorDesc(outputTensorDescCellDgateShape, ge::FORMAT_FRACTAL_NZ, output_tensor_desc.GetDataType());
+       reshapeCellOutputDesc.SetOriginShape(GeShape(outputTensorDescCellDgateOriDims));
+       reshapeCellOutputDesc.SetOriginFormat(ge::FORMAT_ND);
+
+       reshape_desc->UpdateInputDesc("x", reshapeCellInputDesc);
+       reshape_desc->UpdateOutputDesc("y", reshapeCellOutputDesc);
+
+       ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
+       FUSION_PASS_CHECK(myReshape_node==nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape node  error."),
+                         return result);
+       newNodes.push_back(myReshape_node);
+       reshape_nodes.push_back(myReshape_node);
+     }
+
      // add matmul
      ge::OpDescPtr lstmBatchMatMulDesc = nullptr;
      FUSION_PASS_MAKE_SHARED(
@@ -321,6 +357,7 @@ vector<vector<ge::NodePtr>> DynamicRNNGradFusionPass::AddTLoopNode(ge::NodePtr d
   result.push_back(basicLstm_cell_state_grad_nodes);
   result.push_back(matmul_nodes);
   result.push_back(split_nodes);
+  result.push_back(reshape_nodes);
 
   return result;
 }
@@ -336,10 +373,16 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
   ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
   int64_t num_split_x = dynamicRNNGradDesc->GetInputDesc(7).GetShape().GetDim(0);
   FUSION_PASS_CHECK(resultNode.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "resultNode is null, fusion failed."), failStatus=true);
-  FUSION_PASS_CHECK(resultNode.size() != 3, OP_LOGE(FUSED_OP_TYPE.c_str(), "resultNode lenght is not there, fusion failed."), failStatus=true);
+  FUSION_PASS_CHECK(resultNode.size() != 4, OP_LOGE(FUSED_OP_TYPE.c_str(), "resultNode lenght is not there, fusion failed."), failStatus=true);
   vector<ge::NodePtr> basic_lstm_cell_state_grad_nodes = resultNode[0];
   vector<ge::NodePtr> matmul_nodes = resultNode[1];
   vector<ge::NodePtr> split_nodes = resultNode[2];
+  vector<ge::NodePtr> reshape_nodes = {};
+
+  int64_t n_value = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(6).GetShape().GetDim(1);
+  if (n_value % 16 != 0) {
+    reshape_nodes = resultNode[3];
+  }
   // c dy dh dc i j f o tanct
   for (int64_t i = 0; i < num_split_x; i++){
      //add cell input edge
@@ -424,10 +467,21 @@ Status DynamicRNNGradFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, 
                                                           lstmXConcatD->GetInDataAnchor(idx)),
                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
                        return FAILED);
-     FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(0),
-                                                          lstmGageConcatD->GetInDataAnchor(idx)),
-                       OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
-                       return FAILED);
+     if (n_value % 16 != 0) {
+       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(0),
+                                                            reshape_nodes[i]->GetInDataAnchor(0)),
+                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                         return FAILED);
+       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(reshape_nodes[i]->GetOutDataAnchor(0),
+                                                            lstmGageConcatD->GetInDataAnchor(idx)),
+                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                         return FAILED);
+     } else {
+       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(basic_lstm_cell_state_grad_nodes[i]->GetOutDataAnchor(0),
+                                                            lstmGageConcatD->GetInDataAnchor(idx)),
+                         OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's input[%d] to fusion node:%s's input[%d] failed.", matmul_nodes[i]->GetName().c_str(), 0,split_nodes[i]->GetName().c_str(), 0),
+                         return FAILED);
+     }
 
      if (i == num_split_x - 1) {
          if (dynamicRNNGradNode->GetOutDataAnchor(4)->GetPeerInDataAnchors().size() > 0) {
@@ -664,7 +718,11 @@ ge::NodePtr DynamicRNNGradFusionPass::AddLSTMInputGradNode(ge::NodePtr dynamicRN
   dgate_concat_dims.push_back(16);
   ge::GeShape dgate_concat_shape(dgate_concat_dims);
   ge::GeTensorDesc concat_gate_input_tensor_desc = ge::GeTensorDesc(dgate_concat_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
-  concat_gate_input_tensor_desc.SetOriginShape(matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetShape());
+  vector<int64_t> dgate_concat_ori_dims = matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetShape().GetDims();
+  if (n_value % 16 != 0) {
+    dgate_concat_ori_dims = {1, dgate_concat_ori_dims[0], dgate_concat_ori_dims[1]};
+  }
+  concat_gate_input_tensor_desc.SetOriginShape(GeShape(dgate_concat_ori_dims));
   concat_gate_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
   ge::OpDescPtr lstmGageConcatDDesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
