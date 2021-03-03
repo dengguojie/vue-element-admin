@@ -428,6 +428,33 @@ REG_OP(MVN)
     .OP_END_FACTORY_REG(MVN)
 
 /**
+*@brief Normalizes the input . \n
+
+*@par Inputs:
+* One input:
+*x: An NCHW tensor of type float16 or float32 . \n
+
+*@par Attributes:
+*@li eps: An optional float32 epsilon for not dividing by zero. Defaults to "1e-9" . \n
+*@li axes: A list of Intefers, along which axis to reduce. Defaults to "[0, 2, 3]" . \n
+
+*@par Outputs:
+*y: An NCHW tensor of type float16 or float32 . \n
+
+*@attention Constraints:
+* The input tensor must have the NCHW format, whose shape length must be 4.
+*@par Third-party framework compatibility
+* Compatible with the ONNX operator MeanVarianceNormalization.
+*/
+
+REG_OP(MVNV2)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16})) /* "First operand." */
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))  /* "Result, has same element type as inputs" */
+    .ATTR(eps, Float, 1e-9)
+    .ATTR(axes, ListInt, {0, 2, 3})
+    .OP_END_FACTORY_REG(MVNV2)
+
+/**
 *@brief Normalizes the input "x1" . \n
 
 *@par Inputs:

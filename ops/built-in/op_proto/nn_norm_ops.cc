@@ -321,6 +321,26 @@ INFER_FUNC_REG(MVN, MVNInferShape);
 VERIFY_FUNC_REG(MVN, MVNVerify);
 //-----------------------MVN---------------------------
 
+//------------------------MVNV2---------------------------
+IMPLEMT_INFERFUNC(MVNV2, MVNV2InferShape) {
+  auto outShape = op.GetInputDesc("x").GetShape();
+  auto outDtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc td = op.GetOutputDesc("y");
+  td.SetShape(outShape);
+  td.SetDataType(outDtype);
+  CHECK(op.UpdateOutputDesc("y", td) != GRAPH_SUCCESS,
+          GE_OP_LOGE(GRAPH_FAILED, "Update output desc of node[MVNV2] failed."), return GRAPH_FAILED);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(MVNV2, MVNV2Verify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(MVNV2, MVNV2InferShape);
+VERIFY_FUNC_REG(MVNV2, MVNV2Verify);
+//-----------------------MVNV2---------------------------
+
 //------------------------Normalize---------------------------
 IMPLEMT_INFERFUNC(Normalize, NormalizeInfer) {
   auto input_dType = op.get_input_desc_x1().GetDataType();

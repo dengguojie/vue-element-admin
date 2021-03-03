@@ -388,6 +388,7 @@ from .normalize_sum import normalize_sum
 from .normalize_scale import normalize_scale
 from .crop import crop
 from .mvn import mvn
+from .mvn_v2 import mvn_v2
 from .threshold import threshold
 from .prior_box_d import prior_box_d
 from .scale import scale
