@@ -30,7 +30,10 @@ Status ParseParamsSize(const Message *op_src, ge::Operator &op_dest) {
 // register Size op info to GE
 REGISTER_CUSTOM_OP("Size")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::Size")
+  .OriginOpType({"ai.onnx::9::Size",
+                 "ai.onnx::11::Size",
+                 "ai.onnx::12::Size",
+                 "ai.onnx::13::Size"})
   .ParseParamsFn(ParseParamsSize)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

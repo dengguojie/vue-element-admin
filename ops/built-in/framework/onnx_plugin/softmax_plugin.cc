@@ -35,18 +35,19 @@ Status ParseParamsSoftmax(const Message *op_src, ge::Operator &op_dest) {
       set_axes_flag = true;
     }
   }
-  if (set_axes_flag) {
-    op_dest.SetAttr("axes", v_axis);
-  } else {
-    OP_LOGE("Softmax", "onnx SoftMax op has no axes attr");
-    return FAILED;
+  if (!set_axes_flag) {
+    // default value in version 9,11,12.
+    v_axis.push_back(1);
   }
+  op_dest.SetAttr("axes", v_axis);
   return SUCCESS;
 }
 
 REGISTER_CUSTOM_OP("SoftmaxV2")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::Softmax")
+  .OriginOpType({"ai.onnx::9::Softmax",
+                 "ai.onnx::11::Softmax",
+                 "ai.onnx::12::Softmax"})
   .ParseParamsFn(ParseParamsSoftmax)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
