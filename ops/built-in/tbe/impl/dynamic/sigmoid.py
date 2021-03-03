@@ -68,7 +68,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
         tensor_one = tbe.broadcast(tvm.const(1, dtype), inp_shape)
         tmp_rec = tbe.vdiv(tensor_one, tmp_sum)
     else:
-        tmp_rec = tbe.vrec(tmp_sum)
+        tmp_rec = tbe.vrec(tmp_sum, "high_precision")
 
     return tmp_rec
 
