@@ -1895,7 +1895,8 @@ IMPLEMT_VERIFIER(Pow, PowVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(PowInferShape) {
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

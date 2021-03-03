@@ -185,6 +185,7 @@ from .floor import floor
 from .leaky_relu import leaky_relu
 from .mod import mod
 from .power import power
+from .pow import pow
 from .truncate_div import truncate_div
 from .truncate_mod import truncate_mod
 from .xdivy import xdivy
