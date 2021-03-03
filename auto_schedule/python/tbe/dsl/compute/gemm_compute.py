@@ -18,6 +18,7 @@ gemm_compute
 import math
 from enum import Enum
 
+from tbe.dsl import broadcast
 from tbe.dsl.compute.util import check_input_tensor_shape
 from tbe.dsl.compute.mmad_compute import matmul
 from te.lang.base.operation_impl import in_dynamic
@@ -28,6 +29,12 @@ from te.tvm.tensor import Tensor
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_util
+
+
+BATCH_MATMUL_LENGTH = 5
+BATCH_LENGTH_1 = 1
+BATCH_LENGTH_2 = 2
+BATCH_LENGTH_3 = 3
 
 
 def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
@@ -543,6 +550,95 @@ def gemm(tensor_a, tensor_b, para_dict):
     result = gemm_compute.calculate()
 
     return result
+
+
+@para_check.check_input_type(Tensor, Tensor, Tensor)
+def batchmatmul_fusedmuladd_reshape(batch_matmul_output, data_input1, data_input2):
+    """
+    reshape batchmatmul+fusedmuladd ubfusion inputs tensors
+
+    Parameters:
+    batch_matmul_output: the tensor of batchmatmul result
+
+    data_input1: the tensor of mul
+
+    data_input2: the tensor of add
+
+    Returns result
+    """
+    shape_0 = shape_util.shape_to_list(batch_matmul_output.shape)
+    shape_1 = shape_util.shape_to_list(data_input1.shape)
+    shape_2 = shape_util.shape_to_list(data_input2.shape)
+    batch_shape = shape_util.shape_to_list(batch_matmul_output.op.attrs["batch_shape"])
+    shape_max = batch_shape + shape_0[-4:]
+    if data_input1.op.attrs["format"] != "FRACTAL_NZ" and shape_1[-1] != 1:
+        input1_ndim = shape_1[-1]
+        shape_1_nz = shape_1[0:-2] + [input1_ndim // 16, 1, 1, 16]
+        data_input1 = tvm.compute(
+            shape_1_nz,
+            lambda *indice: data_input1(*indice[0:2], 0, indice[-4] * 16 + indice[-1]),
+            name="broadcast_nz_mul",
+            tag="broadcast_nz_mul")
+    if data_input2.op.attrs["format"] != "FRACTAL_NZ" and shape_2[-1] != 1:
+        input2_ndim = shape_2[-1]
+        shape_2_nz = shape_2[0:-2] + [input2_ndim // 16, 1, 1, 16]
+        data_input2 = tvm.compute(
+            shape_2_nz,
+            lambda *indice: data_input2(*indice[0:2], 0, indice[-4] * 16 + indice[-1]),
+            name="broadcast_nz_mul",
+            tag="broadcast_nz_mul")
+    data_input1 = broadcast(data_input1, shape_max)
+    data_input2 = broadcast(data_input2, shape_max)
+
+    # trans the batch_shape to 1 dim
+    if len(batch_shape) == BATCH_LENGTH_1:
+        data_input1 = tvm.compute(shape_0, lambda *indice: data_input1(indice[0], *indice[-4:]),
+                                  name="broadcast_mul",
+                                  tag="broadcast_mul")
+        data_input2 = tvm.compute(shape_0, lambda *indice: data_input2(indice[0], *indice[-4:]),
+                                  name="broadcast_add",
+                                  tag="broadcast_add")
+    elif len(batch_shape) == BATCH_LENGTH_2:
+        data_input1 = tvm.compute(shape_0, lambda *indice: data_input1(indice[0] // batch_shape[-1],
+                                                                       indice[0] % batch_shape[-1],
+                                                                       *indice[-4:]),
+                                  name="broadcast_mul",
+                                  tag="broadcast_mul")
+        data_input2 = tvm.compute(shape_0, lambda *indice: data_input2(indice[0] // batch_shape[-1],
+                                                                       indice[0] % batch_shape[-1],
+                                                                       *indice[-4:]),
+                                  name="broadcast_add",
+                                  tag="broadcast_add")
+    elif len(batch_shape) == BATCH_LENGTH_3:
+        data_input1 = tvm.compute(shape_0,
+                                  lambda *indice: data_input1(indice[0] // batch_shape[-1] // batch_shape[-2],
+                                                              indice[0] // batch_shape[-1] % batch_shape[-2],
+                                                              indice[0] % batch_shape[-1], *indice[-4:]),
+                                  name="broadcast_mul",
+                                  tag="broadcast_mul")
+        data_input2 = tvm.compute(shape_0,
+                                  lambda *indice: data_input2(indice[0] // batch_shape[-1] // batch_shape[-2],
+                                                              indice[0] // batch_shape[-1] % batch_shape[-2],
+                                                              indice[0] % batch_shape[-1], *indice[-4:]),
+                                  name="broadcast_add",
+                                  tag="broadcast_add")
+    else:
+        data_input1 = tvm.compute(shape_0, lambda *indice: data_input1(
+                indice[0] // batch_shape[-1] // batch_shape[-2] // batch_shape[-3],
+                indice[0] // batch_shape[-1] // batch_shape[-2] % batch_shape[-3],
+                indice[0] // batch_shape[-1] % batch_shape[-2],
+                indice[0] % batch_shape[-1], *indice[-4:]),
+                                  name="broadcast_add",
+                                  tag="broadcast_add")
+        data_input2 = tvm.compute(shape_0, lambda *indice: data_input2(
+                indice[0] // batch_shape[-1] // batch_shape[-2] // batch_shape[-3],
+                indice[0] // batch_shape[-1] // batch_shape[-2] % batch_shape[-3],
+                indice[0] // batch_shape[-1] % batch_shape[-2],
+                indice[0] % batch_shape[-1], *indice[-4:]),
+                                  name="broadcast_add",
+                                  tag="broadcast_add")
+    return data_input1, data_input2
+
 
 
 def _do_align(tensor_need_align, shape_aligned, name, in_dtype):
