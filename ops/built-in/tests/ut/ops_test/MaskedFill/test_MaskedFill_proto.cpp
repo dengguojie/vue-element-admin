@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0. You may not use this file except in compliance with the License.
@@ -19,48 +19,46 @@
  */
 #include <gtest/gtest.h>
 #include <iostream>
-#include <vector>
 #include "op_proto_test_util.h"
 #include "selection_ops.h"
 
-class MaskedFillTest : public testing::Test {
-protected:
-    static void SetUpTestCase() {
-        std::cout << "masked_fill test SetUp" << std::endl;
-}
+class masked_fill:public testing::Test{
+    protected:
+        static void SetUpTestCase(){
+            std::cout<<"masked_fill Proto Test SetUp"<<std::endl;
+        }
 
-    static void TearDownTestCase() {
-        std::cout << "masked_fill test TearDown" << std::endl;
-    }
+        static void TearDownTestCase(){
+            std::cout<<"masked_fill Proto Test TearDown"<<std::endl;
+        }
 };
 
-TEST_F(MaskedFillTest, masked_fill_test_case_1) {
-    ge::op::MaskedFill masked_fill_op;
 
-    ge::TensorDesc tensorDesc1;
-    ge::Shape shape1({2, 3, 4});
-    tensorDesc1.SetDataType(ge::DT_FLOAT16);
-    tensorDesc1.SetShape(shape1);
-    masked_fill_op.UpdateInputDesc("x", tensorDesc1);
-
-    ge::TensorDesc tensorDesc2;
-    ge::Shape shape2({2, 3, 4});
-    tensorDesc2.SetDataType(ge::DT_BOOL);
-    tensorDesc2.SetShape(shape2);
-    masked_fill_op.UpdateInputDesc("mask", tensorDesc2);
-
-    ge::TensorDesc tensorDesc3;
-    ge::Shape shape3({1});
-    tensorDesc3.SetDataType(ge::DT_FLOAT16);
-    tensorDesc3.SetShape(shape3);
-    masked_fill_op.UpdateInputDesc("value", tensorDesc3);
-
-    auto ret = masked_fill_op.InferShapeAndType();
+TEST_F(masked_fill,masked_fill_infershape_diff_test){
+    ge::op::MaskedFill op;
+    auto tensor_desc_x = create_desc_shape_range({-1,8,375},
+                                                ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                {16,8,375},
+                                                ge::FORMAT_ND, {{15, 16},{8,8},{375,375}});
+    auto tensor_desc_mask = create_desc_shape_range({-1,8,375},
+                                                ge::DT_INT8, ge::FORMAT_ND,
+                                                {16,8,375},
+                                                ge::FORMAT_ND, {{15, 16},{8,8},{375,375}});
+    auto tensor_desc_value = create_desc_shape_range({1},
+                                                ge::DT_FLOAT16, ge::FORMAT_ND,
+                                                {1},
+                                                ge::FORMAT_ND, {{1, 1}});
+    op.UpdateInputDesc("x", tensor_desc_x);
+    op.UpdateInputDesc("mask", tensor_desc_mask);
+    op.UpdateInputDesc("value", tensor_desc_value);
+    auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-    auto output_desc = masked_fill_op.GetOutputDesc("y");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-    std::vector<int64_t> expected_output_shape = {2, 3, 4};
-    EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+    auto output_y1_desc = op.GetOutputDesc("y");
+    EXPECT_EQ(output_y1_desc.GetDataType(), ge::DT_FLOAT16);
+    std::vector<int64_t> expected_output_shape = {-1, 8, 375};
+    EXPECT_EQ(output_y1_desc.GetShape().GetDims(), expected_output_shape);
+    std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+    EXPECT_EQ(output_y1_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+    std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{15, 16},{8,8},{375,375}};
+    EXPECT_EQ(output_shape_range, expected_shape_range);
 }
-

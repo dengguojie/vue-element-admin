@@ -219,3 +219,4 @@ from .softmax_v2 import softmax_v2
 from .softmax_grad import softmax_grad
 from .log_softmax_v2 import log_softmax_v2
 from .log_softmax_grad import log_softmax_grad
+from .masked_fill import masked_fill

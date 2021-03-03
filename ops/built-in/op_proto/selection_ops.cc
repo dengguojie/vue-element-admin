@@ -3719,80 +3719,12 @@ VERIFY_FUNC_REG(InplaceIndexAdd, InplaceIndexAddVerify);
 // ----------------InplaceIndexAdd END---------------------
 
 // ----------------MaskedFill Begin-------------------
-static bool InferBoardcastShape(std::vector<int64_t>& dims_input,
-                         std::vector<int64_t>& dims_mask,
-                         std::vector<int64_t>& dims_reslt) {
-  if (dims_input.size() < dims_mask.size()) {
-    std::vector<int64_t> dims_tmp = dims_input;
-    dims_input = dims_mask;
-    dims_mask = dims_tmp;
-  }
-
-  if (dims_input.size() != dims_mask.size()) {
-    int dec = dims_input.size() - dims_mask.size();
-    for (int i = 0; i < dec; i++) {
-      dims_mask.insert(dims_mask.begin(), (int64_t)1);
-    }
-  }
-
-  for (size_t i = 0; i < dims_input.size(); i++) {
-    if ((dims_input[i] != dims_mask[i]) && (dims_input[i] != 1) &&
-        (dims_mask[i] != 1)) {
-      return GRAPH_FAILED;
-    }
-
-    int64_t dims =
-        (dims_input[i] > dims_mask[i]) ? dims_input[i] : dims_mask[i];
-    dims_reslt.push_back(dims);
-  }
-  return GRAPH_SUCCESS;
-}
-
-static bool InferMaskedFillShape(const ge::Operator& op,
-                                 const string& input_name,
-                                 const string& mask_name,
-                                 ge::TensorDesc& result_desc) {
-  result_desc = op.GetInputDesc(input_name);
-  ge::Shape shape_input = op.GetInputDesc(input_name).GetShape();
-  ge::Shape shape_mask = op.GetInputDesc(mask_name).GetShape();
-  std::vector<int64_t> dims_input = shape_input.GetDims();
-  std::vector<int64_t> dims_mask = shape_mask.GetDims();
-  std::vector<int64_t> dims_y;
-
-  auto output_dtype = result_desc.GetDataType();
-  if (InferBoardcastShape(dims_input, dims_mask, dims_y) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  ge::Shape output_shape = ge::Shape(dims_y);
-
-  result_desc.SetShape(output_shape);
-  result_desc.SetDataType(output_dtype);
-
-  return GRAPH_SUCCESS;
-}
-
 IMPLEMT_COMMON_INFERFUNC(InferMaskedFillShape) {
   // ge::Operator op;
-  Shape x_shape = op.GetInputDesc("x").GetShape();
-  std::vector<int64_t> dims_x = x_shape.GetDims();
-  ge::TensorDesc result_desc;
-
-  if (dims_x.size() == 0) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "mask", "y", is_dynamic_output)){
     return GRAPH_FAILED;
   }
-
-  if (InferMaskedFillShape(op, "x", "mask", result_desc) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-
-  auto output_shape = result_desc.GetShape();
-  auto output_dtype = result_desc.GetDataType();
-
-  // update output desc
-  ge::TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(output_shape);
-  output_desc.SetDataType(output_dtype);
-  (void)op.UpdateOutputDesc("y", output_desc);
   return GRAPH_SUCCESS;
 }
 
