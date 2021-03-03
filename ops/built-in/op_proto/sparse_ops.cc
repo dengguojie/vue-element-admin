@@ -663,15 +663,54 @@ IMPLEMT_INFERFUNC(SparseSparseMinimum, SparseSparseMinimumInfer) {
 INFER_FUNC_REG(SparseSparseMinimum, SparseSparseMinimumInfer);
 
 IMPLEMT_INFERFUNC(SparseReduceMax, SparseReduceMaxInfer) {
-  Shape unknown_shape(ge::UNKNOWN_SHAPE);
-
+  bool keep_dim = false;
+  if (op.GetAttr("keep_dims", keep_dim) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr keep_dims failed");
+    return GRAPH_FAILED;
+  }
   DataType x_values_type = op.GetInputDesc("x_values").GetDataType();
-
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(unknown_shape);
-  y_desc.SetDataType(x_values_type);
-  op.UpdateOutputDesc("y", y_desc);
-
+  Tensor x_shape_tensor;
+  Tensor reduction_axes_tensor;
+  auto result_x = op.GetInputConstData("x_shape", x_shape_tensor);
+  auto result_reduction = op.GetInputConstData("reduction_axes", reduction_axes_tensor);
+  if (result_x != GRAPH_SUCCESS || result_reduction != GRAPH_SUCCESS) {
+    Shape unknown_shape(ge::UNKNOWN_SHAPE);
+    TensorDesc y_desc = op.GetOutputDesc("y");
+    y_desc.SetShape(unknown_shape);
+    y_desc.SetDataType(x_values_type);
+    op.UpdateOutputDesc("y", y_desc);
+  } else {
+    const int64_t* x_shape_data = reinterpret_cast<const int64_t *>(x_shape_tensor.GetData());
+    const int32_t* reduction_axes_data = reinterpret_cast<const int32_t *>(reduction_axes_tensor.GetData());
+    int64_t ndims = x_shape_tensor.GetTensorDesc().GetShape().GetShapeSize();
+    int32_t count = reduction_axes_tensor.GetTensorDesc().GetShape().GetShapeSize();
+    std::unordered_set<int64_t> axes;
+    for (int32_t i = 0; i < count; ++i) {
+      axes.insert((static_cast<int64_t>(reduction_axes_data[i]) + ndims) % ndims);
+    }
+    std::vector<int64_t> dims;
+    if (keep_dim) {
+      dims.reserve(ndims);
+      for (int d = 0; d < ndims; ++d) {
+        if (axes.find(d) == axes.end()) {
+          dims.push_back(x_shape_data[d]);
+        } else {
+          dims.push_back(1);
+        }
+      }
+    } else {
+      for (int d = 0; d < ndims; ++d) {
+        if (axes.find(d) == axes.end()) {
+          dims.push_back(x_shape_data[d]);
+        }
+      }
+    }
+    TensorDesc y_desc = op.GetOutputDesc("y");
+    ge::Shape shape(dims);
+    y_desc.SetShape(shape);
+    y_desc.SetDataType(x_values_type);
+    op.UpdateOutputDesc("y", y_desc);
+  }
   return GRAPH_SUCCESS;
 }
 

@@ -1197,14 +1197,13 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
   for (int64_t i = 0; i < num_incides; ++i) {
     auto indices_tensor_name = "indices" + std::to_string(i);
     TensorDesc unused_tensor;
-    if ((op.TryGetInputDesc(indices_tensor_name, unused_tensor)) == GRAPH_FAILED) {
-      OP_LOGW(op.GetName().c_str(), "try get indices %ld failed !", i);
-      all_indices_constant = false;
-    }
     const TensorDesc indices_tensor = op.GetDynamicInputDesc("indices", i);
     const TensorDesc data_tensor = op.GetDynamicInputDesc("x", i);
     const auto indices_shape = indices_tensor.GetShape();
     const auto data_shape = data_tensor.GetShape();
+    if (!RankKnown(indices_shape)) {
+      continue;
+    }
     const auto rank_of_indices = indices_shape.GetDimNum();
     const auto rank_of_data = data_shape.GetDimNum();
     std::vector<int64_t> indices_dims = indices_shape.GetDims();
@@ -1215,14 +1214,14 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
 
     for (uint8_t i = 0; i < rank_of_indices; ++i) {
       if ((Merge(data_dims[i], indices_dims[i], dims[i])) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "shape of x must start with shape of indices !");
+        OP_LOGE(op.GetName().c_str(), "Shape of x must start with shape of indices !");
         return GRAPH_FAILED;
       }
     }
     Shape data_suffix_shape;
     auto result = SubShape(data_shape, rank_of_indices, rank_of_data, 1, data_suffix_shape, op.GetName().c_str());
     if (result != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "get suffix shape of x error !");
+      OP_LOGE(op.GetName().c_str(), "Get suffix shape of x error !");
       return GRAPH_FAILED;
     }
     result = Merge(last_suffix_shape, data_suffix_shape, last_suffix_shape, op.GetName().c_str());
@@ -1233,15 +1232,17 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
     if (op.TryGetInputDesc(indices_tensor_name, unused_tensor) == GRAPH_SUCCESS) {
       Tensor indices_data_tensor;
       result = op.GetInputConstData(indices_tensor_name, indices_data_tensor);
-      if (result != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Failed to get indices tensor data !");
-        return GRAPH_FAILED;
-      }
-      const int32_t* indices_data = reinterpret_cast<const int32_t*>(indices_data_tensor.GetData());
-      int64_t count = indices_data_tensor.GetTensorDesc().GetShape().GetShapeSize();
-      for (int32_t i = 0; i < count; ++i) {
-        if (static_cast<int64_t>(indices_data[i]) > max_index) {
-          max_index = static_cast<int64_t>(indices_data[i]);
+      if (result == GRAPH_SUCCESS) {
+        const int32_t* indices_data = reinterpret_cast<const int32_t*>(indices_data_tensor.GetData());
+        if (indices_data != nullptr) {
+          int64_t count = indices_data_tensor.GetTensorDesc().GetShape().GetShapeSize();
+          for (int32_t i = 0; i < count; ++i) {
+            if (static_cast<int64_t>(indices_data[i]) > max_index) {
+              max_index = static_cast<int64_t>(indices_data[i]);
+            }
+          }
+        } else {
+          all_indices_constant = false;
         }
       }
     }
@@ -1251,7 +1252,7 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
   Shape output_shape;
   auto result = Concatenate(output_shapePrefix, last_suffix_shape, output_shape);
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate output_shape error! ");
+    OP_LOGE(op.GetName().c_str(), "Generate output_shape error! ");
     return GRAPH_FAILED;
   }
 
@@ -1260,7 +1261,7 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
   y_desc.SetDataType(data_tensor.GetDataType());
   y_desc.SetShape(output_shape);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed");
+    OP_LOGE(op.GetName().c_str(), "Update y desc failed");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

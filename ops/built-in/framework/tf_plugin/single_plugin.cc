@@ -981,6 +981,13 @@ REGISTER_CUSTOM_OP("UnbatchGrad")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register FusedBatchNormV2 op to GE
+REGISTER_CUSTOM_OP("FusedBatchNormV2")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("FusedBatchNormV2")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register UnicodeScript op to GE
 REGISTER_CUSTOM_OP("UnicodeScript")
     .FrameworkType(TENSORFLOW)
