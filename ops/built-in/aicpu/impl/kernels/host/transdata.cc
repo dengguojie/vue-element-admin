@@ -134,6 +134,9 @@ static int64_t Ceil(int64_t a, int64_t b) {
 }  // namespace
 
 namespace aicpu {
+int32_t TransDataCpuKernel::GetPrimaryFormat(int32_t format){
+    return static_cast<int32_t>(static_cast<uint32_t>(format) & 0xff);
+}
 template <typename T>
 uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
                                       Tensor *input_tensor,
@@ -148,7 +151,8 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
       "Input type is not DT_INT8 or DT_FLOAT16 or DT_FLOAT [%d]", dt);
   const int64_t cube_k = dt == DT_INT8 ? 32 : 16;
   auto input_shape = input_tensor->GetTensorShape();
-  auto input_format = input_shape->GetFormat();
+  auto ge_input_format = input_shape->GetFormat();
+  int32_t input_format = GetPrimaryFormat(ge_input_format);
   std::vector<int64_t> dims;
   dims = input_shape->GetDimSizes();
   KERNEL_CHECK_FALSE((dims.size() >= 4), KERNEL_STATUS_PARAM_INVALID,
@@ -307,11 +311,11 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
     }
     return KERNEL_STATUS_OK;
   }
-
-  if ((output_format != FORMAT_FRACTAL_Z) &&
-      (output_format != FORMAT_FRACTAL_Z_3D)) {
+int32_t primary_out_put_format = GetPrimaryFormat(output_format);
+  if ((primary_out_put_format != FORMAT_FRACTAL_Z) &&
+      (primary_out_put_format != FORMAT_FRACTAL_Z_3D)) {
     KERNEL_LOG_EVENT("%s unsupport output_format [%d]", kTransData,
-                     output_format);
+                     primary_out_put_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 

@@ -34,6 +34,19 @@ class TransDataCpuKernel : public CpuKernel {
   template <typename T>
   uint32_t DealData(T *input_Data, T *output_data, Tensor *input_tensor,
                     Tensor *out_put_tensor, int64_t group);
+  /**
+ * Get format from primary and sub-format,
+ * in bits field:
+ * ----------------------------------
+ * |  1 byte  |   2 bytes  | 1 byte |
+ * |----------|------------|--------|
+ * | reserved | sub-format | format |
+ * ----------------------------------
+ * @param primary_format
+ * @param sub_format
+ * @return
+ */
+  int32_t GetPrimaryFormat(int32_t format);
   uint32_t FormatTransferHwcnToFZC04(TransArgs &args, uint8_t *output_addr,
                                      uint64_t length);
   uint32_t PaddingOne(TransArgs &args, std::shared_ptr<uint8_t> &dst);
