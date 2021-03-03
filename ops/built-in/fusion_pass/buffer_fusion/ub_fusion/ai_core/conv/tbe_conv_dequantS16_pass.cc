@@ -36,6 +36,8 @@ static const string kPatternRequantS16 = "requants16";
 static const string kPatternOtherInput2 = "otherInput2";
 static const string kPatternOtherInput3 = "otherInput3";
 static const string kOpTypeReadSelect = "ReadSelect";
+static const string fused_op_type_ = "FusedOp";
+
 /*
  * @brief:  define conv2d op fusion pattern
  *
@@ -92,6 +94,46 @@ vector<BufferFusionPattern*> ConvDequantS16FusionPass::DefinePatterns() {
 }
 
 /*
+ * @brief: check memery reuse input output tensor shape is equal or not
+ */
+static bool IsShapeEqual(const NodePtr a_node, uint32_t id_in, uint32_t id_out) {
+  if (a_node == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "input node is nullptr");
+    return false;
+  }
+  OpDescPtr a_desc = a_node->GetOpDesc();
+  if (a_desc == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "get node desc failed");
+    return false;
+  }
+  if (id_in >= a_desc->GetInputsSize()) {
+    OP_LOGD(fused_op_type_.c_str(), "index is illegal: input id_in(%u) is out of range(%u)",
+            id_in, a_desc->GetInputsSize());
+    return false;
+  }
+  if (id_out >= a_desc->GetOutputsSize()) {
+    OP_LOGD(fused_op_type_.c_str(), "index is illegal: input id_out(%u) is out of range(%u)",
+            id_out, a_desc->GetOutputsSize());
+    return false;
+  }
+  int64_t in_size = 0;
+  int64_t out_size = 0;
+  ge::graphStatus graph_status = ge::TensorUtils::GetTensorMemorySizeInBytes(a_desc->GetInputDesc(id_in), in_size);
+  if (graph_status != ge::GRAPH_SUCCESS) {
+    OP_LOGD(fused_op_type_.c_str(), "get input tensor memory size in bytes failed");
+    return false;
+  }
+  graph_status = ge::TensorUtils::GetTensorMemorySizeInBytes(a_desc->GetOutputDesc(id_out), out_size);
+  if (graph_status != ge::GRAPH_SUCCESS) {
+    OP_LOGD(fused_op_type_.c_str(), "get output tensor memory size in bytes failed");
+    return false;
+  }
+  OP_LOGD(fused_op_type_.c_str(), "node[%s]'s reuse input %u size is %lld, output %u size is %lld",
+          a_node->GetName().c_str(), id_in, in_size, id_out, out_size);
+  return in_size == out_size;
+}
+
+/*
  *          conv2d
  *            |
  *       dequants16        other_input(s16)
@@ -114,7 +156,7 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
     in_pre += deq_matched.at(0)->GetInDataNodes().size() - 1;
     deq_name = deq_matched.at(0)->GetName();
     // pre request check
-    auto req_s16_node = req_matched.at(0);
+    auto &req_s16_node = req_matched.at(0);
     auto all_in_node = req_s16_node->GetInDataNodes();
     OpDescPtr req_s16_desc = req_s16_node->GetOpDesc();
 
@@ -150,6 +192,12 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
     int out_pos = 0;
     for (auto out_desc : all_out_desc) {
       if (out_desc.GetDataType() == DT_INT16) {
+        if (!IsShapeEqual(req_s16_node, in_pos, out_pos)) {
+          OP_LOGD(fused_op_type_.c_str(),
+                  "[Node:%s type:%s] input memory size is not equal with output",
+                  req_s16_node->GetName().c_str(), req_s16_node->GetType().c_str());
+          break;
+        }
         TensorUtils::SetReuseInput(out_desc, true);
         TensorUtils::SetReuseInputIndex(out_desc, in_pre);
         req_s16_desc->UpdateOutputDesc(out_pos, out_desc);

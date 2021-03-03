@@ -281,6 +281,46 @@ static Status GetDimSizes(const ge::GeTensorDesc &conv_input_tensor, int64_t &c)
   return SUCCESS;
 }
 
+/*
+ * @brief: check memery reuse input output tensor shape is equal or not
+ */
+static bool IsShapeEqual(const NodePtr a_node, uint32_t id_in, uint32_t id_out) {
+  if (a_node == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "input node is nullptr");
+    return false;
+  }
+  OpDescPtr a_desc = a_node->GetOpDesc();
+  if (a_desc == nullptr) {
+    OP_LOGD(fused_op_type_.c_str(), "get node desc failed");
+    return false;
+  }
+  if (id_in >= a_desc->GetInputsSize()) {
+    OP_LOGD(fused_op_type_.c_str(), "index is illegal: input id_in(%u) is out of range(%u)",
+            id_in, a_desc->GetInputsSize());
+    return false;
+  }
+  if (id_out >= a_desc->GetOutputsSize()) {
+    OP_LOGD(fused_op_type_.c_str(), "index is illegal: input id_out(%u) is out of range(%u)",
+            id_out, a_desc->GetOutputsSize());
+    return false;
+  }
+  int64_t in_size = 0;
+  int64_t out_size = 0;
+  ge::graphStatus graph_status = ge::TensorUtils::GetTensorMemorySizeInBytes(a_desc->GetInputDesc(id_in), in_size);
+  if (graph_status != ge::GRAPH_SUCCESS) {
+    OP_LOGD(fused_op_type_.c_str(), "get input tensor memory size in bytes failed");
+    return false;
+  }
+  graph_status = ge::TensorUtils::GetTensorMemorySizeInBytes(a_desc->GetOutputDesc(id_out), out_size);
+  if (graph_status != ge::GRAPH_SUCCESS) {
+    OP_LOGD(fused_op_type_.c_str(), "get output tensor memory size in bytes failed");
+    return false;
+  }
+  OP_LOGD(fused_op_type_.c_str(), "node[%s]'s reuse input %u size is %lld, output %u size is %lld",
+          a_node->GetName().c_str(), id_in, in_size, id_out, out_size);
+  return in_size == out_size;
+}
+
 static void SetMemoryReuse(const BufferFusionMapping &mapping) {
   size_t in_pre = 0;
   std::string deq_name;
@@ -306,6 +346,12 @@ static void SetMemoryReuse(const BufferFusionMapping &mapping) {
       OP_LOGD(fused_op_type_.c_str(), "dequant node name: %s", deq_name.c_str());
       if (all_in_node.at(0)->GetName() == deq_name) {
         in_pos = 1;
+      }
+      if (!IsShapeEqual(vadd_node, in_pos, 0)) {
+        OP_LOGD(fused_op_type_.c_str(),
+                "[Node:%s type:%s] input memory size is not equal with output",
+                vadd_node->GetName().c_str(), vadd_node->GetType().c_str());
+        return;
       }
       auto input_out = vadd_node->GetInDataAnchor(in_pos)->GetPeerOutAnchor();
       size_t peer_inputs = input_out->GetPeerInDataAnchors().size();

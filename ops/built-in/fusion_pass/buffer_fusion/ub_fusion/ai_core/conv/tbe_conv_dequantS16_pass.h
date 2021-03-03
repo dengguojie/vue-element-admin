@@ -34,9 +34,6 @@ class ConvDequantS16FusionPass : public BufferFusionPassBase {
  protected:
   vector<BufferFusionPattern*> DefinePatterns() override;
   Status GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
-
- private:
-  const string fused_op_type_ = "FusedOp";
 };
 }  // namespace fe
 
