@@ -417,7 +417,7 @@ class Conv2dParaProcess(CubeParaProcess):
                               group_para["cout1_opt"], block_size_n, block_size_k)
         else:
             w_shape_frac_z = (group_para.get("group_opt") * group_para.get("c1_opt") * w_shape[H_DIM] * w_shape[W_DIM],
-                              w_shape[N_DIM] // block_size_n, block_size_n, block_size_k)
+                              group_para.get("cout1_opt"), block_size_n, block_size_k)
         return in_shape, w_shape, in_shape_nc1hwc0, w_shape_frac_z
 
     def check_paras(self):

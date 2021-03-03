@@ -615,7 +615,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             fmap_l1_shape = fmap_shape  # NC1HWC0
             fmap_l1_shape[2] = (fmap_l1_shape[2] - 1) // stride_h + 1
 
-            if ConvParam.var_map and ConvParam.para_dict["pooling_mode"] == "AVG":
+            if ConvParam.var_map:
                 group_opt = ConvParam.para_dict["group_opt"]
                 fmap_al1_shape = (group_opt, fmap_l1_shape[0], ConvParam.para_dict["c1_opt"],
                                   fmap_l1_shape[2], fmap_l1_shape[3], fmap_l1_shape[4])
@@ -851,7 +851,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                              block_size_m,
                                              block_size_k)
                 if not strideh_opti_flag:
-                    if ConvParam.para_dict["pooling_mode"] == "AVG":
+                    if ConvParam.var_map:
                         group_opt = ConvParam.para_dict["group_opt"]
                         fmap_shape = ConvParam.para_dict["a_shape"]
                         fmap_l1_shape = (group_opt, fmap_shape[0], ConvParam.para_dict["c1_opt"],

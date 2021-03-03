@@ -2193,7 +2193,8 @@ class CceConvOp:
                         'conv_fm_h': fmap.shape[2],
                         'conv_fm_w': fmap.shape[3],
                         'conv_fm_c0': fmap.shape[4],
-                        'group_flag': 1
+                        'group_flag': 1,
+                        'l1_group_flag': 1
                     }
                     if ConvParam.para_dict["pooling_mode"] == "AVG":
                         im2col_attr_0["l1_group_flag"] = 1
