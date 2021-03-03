@@ -711,8 +711,12 @@ IMPLEMT_VERIFIER(ApplyKerasMomentumD, ApplyKerasMomentumDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyKerasMomentumDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyKerasMomentum op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "accum", {"accum"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -772,8 +776,12 @@ IMPLEMT_VERIFIER(ApplyPowerSignD, ApplyPowerSignDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyPowerSignDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyPowerSignD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "m", "m");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "m", {"m"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
