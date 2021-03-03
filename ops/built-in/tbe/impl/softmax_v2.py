@@ -370,19 +370,9 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     shape = te.lang.cce.util.shape_to_list(input_x.shape)
     dtype = input_x.dtype
     axis = list(axis)
-    last_dim = len(input_x.shape) - 1
-    vcmax_flag = False
 
-    for i in axis:
-        if i in (-1, last_dim):
-            vcmax_flag = True
-
-    if dtype == "float32" and vcmax_flag and \
-            not tbe_platform.cce_conf.api_check_support("te.lang.cce.reduce_max", "float32"):
-        data_max_input = te.lang.cce.cast_to(input_x, "float16")
-        data_max_output = te.lang.cce.reduce_max(data_max_input,
-                                                 axis=axis, keepdims=True)
-        data_max = te.lang.cce.cast_to(data_max_output, "float32")
+    if dtype == "float32":
+        data_max = te.lang.cce.reduce_max(input_x, axis=axis, keepdims=True, priority_flag=True)
     else:
         data_max = te.lang.cce.reduce_max(input_x, axis=axis, keepdims=True)
 
