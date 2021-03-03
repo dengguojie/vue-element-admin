@@ -58,7 +58,10 @@ Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
 // register Gemm op info to GE
 REGISTER_CUSTOM_OP("MatMulV2")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::Gemm")
+    .OriginOpType({"ai.onnx::9::Gemm",
+                   "ai.onnx::11::Gemm",
+                   "ai.onnx::12::Gemm",
+                   "ai.onnx::13::Gemm"})
     .ParseParamsFn(ParseParamsGemm)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

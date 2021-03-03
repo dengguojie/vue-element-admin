@@ -56,7 +56,10 @@ Status ParseParamsGlobalAveragePool(const Message* op_src, ge::Operator& op_dest
 
 REGISTER_CUSTOM_OP("AvgPool")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::GlobalAveragePool")
+    .OriginOpType({"ai.onnx::9::GlobalAveragePool",
+                   "ai.onnx::11::GlobalAveragePool",
+                   "ai.onnx::12::GlobalAveragePool",
+                   "ai.onnx::13::GlobalAveragePool"})
     .ParseParamsFn(ParseParamsGlobalAveragePool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
