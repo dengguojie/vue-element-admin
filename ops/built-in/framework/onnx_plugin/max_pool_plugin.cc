@@ -205,7 +205,10 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("MaxPoolV3")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::MaxPool")
+    .OriginOpType({"ai.onnx::9::MaxPool",
+                   "ai.onnx::11::MaxPool",
+                   "ai.onnx::12::MaxPool",
+                   "ai.onnx::13::MaxPool"})
     .ParseParamsFn(ParseParamsMaxPool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

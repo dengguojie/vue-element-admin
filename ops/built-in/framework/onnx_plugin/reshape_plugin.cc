@@ -44,7 +44,10 @@ Status ParseParamsReshape(const Message* op_src, ge::Operator& op_dest) {
 // register Add op info to GE
 REGISTER_CUSTOM_OP("Reshape")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::Reshape")
+    .OriginOpType({"ai.onnx::9::Reshape",
+                   "ai.onnx::11::Reshape",
+                   "ai.onnx::12::Reshape",
+                   "ai.onnx::13::Reshape"})
     .ParseParamsFn(ParseParamsReshape)
     .ImplyType(ImplyType::GELOCAL);
 }  // namespace domi

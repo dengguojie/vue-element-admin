@@ -129,9 +129,85 @@ def make_max_pool4():
     onnx.checker.check_model(model)
 
 
+def make_max_pool_v12():
+    """2d pads v12"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3, 28, 28])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3, 30, 30])
+    node_def = helper.make_node(
+        'MaxPool',
+        inputs=['x'],
+        outputs=['y'],
+        kernel_shape=[3, 3],
+        pads=[2, 2, 2, 2]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'MaxPool_v12',
+        [x],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 12
+    onnx.save(model, "./test_maxpool_case_v12.onnx")
+    onnx.checker.check_model(model)
+
+
+def make_max_pool_v13():
+    """2d pads v13"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3, 28, 28])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3, 30, 30])
+    node_def = helper.make_node(
+        'MaxPool',
+        inputs=['x'],
+        outputs=['y'],
+        kernel_shape=[3, 3],
+        pads=[2, 2, 2, 2]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'MaxPool_v13',
+        [x],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 13
+    onnx.save(model, "./test_maxpool_case_v13.onnx")
+    onnx.checker.check_model(model)
+
+def make_max_pool_v9():
+    """2d default v9"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3, 32, 32])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3, 31, 31])
+    node_def = helper.make_node(
+        'MaxPool',
+        inputs=['x'],
+        outputs=['y'],
+        kernel_shape=[2, 2]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'MaxPool_v9',
+        [x],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 9
+    onnx.save(model, "./test_maxpool_case_v9.onnx")
+    onnx.checker.check_model(model)
+
+
 if __name__ == '__main__':
     make_max_pool()
     make_max_pool1()
     make_max_pool2()
     make_max_pool3()
     make_max_pool4()
+    make_max_pool_v9()
+    make_max_pool_v12()
+    make_max_pool_v13()
