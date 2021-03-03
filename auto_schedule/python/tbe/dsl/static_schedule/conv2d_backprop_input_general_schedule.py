@@ -758,8 +758,8 @@ def general_schedule(
                 "int8": 32
             }
             if atype in bit_dir.keys():
-                k_al1 = k_w * k_h * 16
                 k_al0 = bit_dir[atype]
+                k_al1 = k_w * k_h * k_al0
             else:
                 # defaut value 32
                 k_al1 = 32
