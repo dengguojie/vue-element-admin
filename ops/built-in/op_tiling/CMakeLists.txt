@@ -50,6 +50,7 @@ set(_optiling_files
   pad_d.cc
   reduce_tiling.cc
   resize_nearest_neighbor_v2.cc
+  resize_bilinear_v2_grad.cc
   scale.cc
   scatter_add.cc
   scatter_nd.cc
