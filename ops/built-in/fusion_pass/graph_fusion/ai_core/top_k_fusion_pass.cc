@@ -289,16 +289,17 @@ Status TopKFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vector<Node
                     OP_LOGE(kFusedOpType.c_str(), "Input transporse set perm failed"), return FAILED);
   // set input_transpose output shape range
   vector<pair<int64_t, int64_t>> shape_range_after_sorted;
-  FUSION_PASS_CHECK(!trans_data_tensor.GetShapeRange(shape_range_after_sorted) != GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "GetShapeRange failed"), return FAILED);
+  if (trans_data_tensor.GetShapeRange(shape_range_after_sorted) != GRAPH_SUCCESS) {
+    OP_LOGD(kFusedOpType.c_str(), "GetShapeRange failed. However the process is fine.");
+  }
   if (shape_range_after_sorted.size() > 0) {
     int64_t tmp = shape_range_after_sorted[dim_aim].second;
     shape_range_after_sorted[dim_aim].second = shape_range_after_sorted[dim_size - 1].second;
     shape_range_after_sorted[dim_size - 1].second = tmp;
   }
   GeTensorDesc out_trans_data_tensor = trans_input_desc->GetOutputDesc(0);
-  FUSION_PASS_CHECK(!out_trans_data_tensor.SetShapeRange(shape_range_after_sorted) != GRAPH_SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "GetShapeRange failed"), return FAILED);
+  FUSION_PASS_CHECK(out_trans_data_tensor.SetShapeRange(shape_range_after_sorted) != GRAPH_SUCCESS,
+                    OP_LOGE(kFusedOpType.c_str(), "SetShapeRange failed"), return FAILED);
   // set input_transpose output shape
   GeShape transpose_assit_shape(trans_dim_info);
   auto transin_mutable_output0 = trans_input_desc->MutableOutputDesc(0);
