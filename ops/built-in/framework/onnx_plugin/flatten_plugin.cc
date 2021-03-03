@@ -26,7 +26,7 @@ using ge::Operator;
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 // only support onnx flatten axis be [0,r)
-Status ParseParamsFlatten(const Message *op_src, ge::Operator &op_dest) {
+Status ParseParamsFlatten(const Message* op_src, ge::Operator& op_dest) {
   // 1.add dynamic input and out
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
   if (opDesc == nullptr) {
@@ -35,10 +35,9 @@ Status ParseParamsFlatten(const Message *op_src, ge::Operator &op_dest) {
   }
   opDesc->AddDynamicInputDesc("args", 1);
   opDesc->AddDynamicOutputDesc("output", 1);
-  // 2.set original_type
-  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::11::Flatten");
-  // 3.set attr if needed
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+
+  // 2.set attr if needed
+  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("Flatten", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
@@ -55,7 +54,55 @@ Status ParseParamsFlatten(const Message *op_src, ge::Operator &op_dest) {
   return SUCCESS;
 }
 
-static Status ParseOpToGraphFlatten(const Operator &op, Graph &graph) {
+Status ParseParamsFlattenV11(const Message* op_src, ge::Operator& op_dest) {
+  if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
+    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    return FAILED;
+  }
+  // set original_type
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::11::Flatten");
+
+  return SUCCESS;
+}
+
+Status ParseParamsFlattenV12(const Message* op_src, ge::Operator& op_dest) {
+  if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
+    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    return FAILED;
+  }
+  // set original_type
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::12::Flatten");
+
+  return SUCCESS;
+}
+
+Status ParseParamsFlattenV13(const Message* op_src, ge::Operator& op_dest) {
+  if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
+    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    return FAILED;
+  }
+  // set original_type
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::13::Flatten");
+
+  return SUCCESS;
+}
+
+Status ParseParamsFlattenV9(const Message* op_src, ge::Operator& op_dest) {
+  if (ParseParamsFlatten(op_src, op_dest) != SUCCESS) {
+    OP_LOGE("Flatten", "Parser params of flatten failed.");
+    return FAILED;
+  }
+  // set original_type
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::9::Flatten");
+
+  return SUCCESS;
+}
+
+static Status ParseOpToGraphFlatten(const Operator& op, Graph& graph) {
   int axis = 1;
   if (op.GetAttr("axis", axis) != SUCCESS) {
     OP_LOGE("Flatten", "get axis from op failed");
@@ -67,7 +114,7 @@ static Status ParseOpToGraphFlatten(const Operator &op, Graph &graph) {
   }
 
   auto data0 = op::Data("data0").set_attr_index(0);
-  std::vector<Operator> inputs {data0};
+  std::vector<Operator> inputs{data0};
   std::vector<std::pair<Operator, std::vector<size_t>>> output_indexs;
   if (axis == 0) {
     auto flattenV2 = op::FlattenV2().set_input_x(data0).set_attr_axis(0).set_attr_end_axis(-1);
@@ -96,7 +143,28 @@ static Status ParseOpToGraphFlatten(const Operator &op, Graph &graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
   .OriginOpType("ai.onnx::11::Flatten")
-  .ParseParamsFn(ParseParamsFlatten)
+  .ParseParamsFn(ParseParamsFlattenV11)
+  .ParseOpToGraphFn(ParseOpToGraphFlatten)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("PartitionedCall")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::12::Flatten")
+  .ParseParamsFn(ParseParamsFlattenV12)
+  .ParseOpToGraphFn(ParseOpToGraphFlatten)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("PartitionedCall")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::13::Flatten")
+  .ParseParamsFn(ParseParamsFlattenV13)
+  .ParseOpToGraphFn(ParseOpToGraphFlatten)
+  .ImplyType(ImplyType::TVM);
+
+REGISTER_CUSTOM_OP("PartitionedCall")
+  .FrameworkType(ONNX)
+  .OriginOpType("ai.onnx::9::Flatten")
+  .ParseParamsFn(ParseParamsFlattenV9)
   .ParseOpToGraphFn(ParseOpToGraphFlatten)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
