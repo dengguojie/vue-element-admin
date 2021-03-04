@@ -227,3 +227,4 @@ from .log_softmax_v2 import log_softmax_v2
 from .log_softmax_grad import log_softmax_grad
 from .masked_fill import masked_fill
 from .resize_bilinear_v2_grad import resize_bilinear_v2_grad
+from .bessel_i0e import bessel_i0e
