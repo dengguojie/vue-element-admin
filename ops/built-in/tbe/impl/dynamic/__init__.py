@@ -54,6 +54,7 @@ from .gelu import gelu
 from .smooth_l1_loss_grad import smooth_l1_loss_grad
 from .fast_gelu import fast_gelu
 from .axpy import axpy
+from .axpy_v2 import axpy_v2
 from .floor_mod import floor_mod
 from .mul import mul
 from .invert import invert
