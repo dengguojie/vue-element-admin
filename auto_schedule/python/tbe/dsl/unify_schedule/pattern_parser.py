@@ -19,6 +19,7 @@ corresponding schedule template for user's compute
 from enum import Enum, auto  # pylint: disable=E0611
 
 from tbe import tvm
+from tbe.common.register import get_operator
 from tbe.dsl.base import operation
 
 from . import Pattern
@@ -106,12 +107,29 @@ class ComputeType(Enum):
     MAT_MUL = auto()
     SOFTMAX = auto()
 
+
+def _get_custom_pattern():
+    """
+    get custom pattern
+    :return:
+    """
+    pattern = None
+    if operation._in_compatible_mode():
+        pattern = operation.get_context().get_pattern()
+    else:
+        op_type = operation.get_context().get_op_type()
+        if op_type:
+            pattern = get_operator(op_type).get_pattern()
+
+    return pattern
+
+
 def get_pattern(outs):
     """
     :param outs:
-    :return:
+    
     """
-    pattern = operation.get_context().get_pattern()
+    pattern = _get_custom_pattern()
     if pattern is None:
         return _parse_pattern(outs)
     if callable(pattern):
