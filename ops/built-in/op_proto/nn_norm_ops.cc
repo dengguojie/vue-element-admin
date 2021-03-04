@@ -110,7 +110,6 @@ COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits, SigmoidCrossEntropyWithLogi
 
 // -------------------SigmoidCrossEntropyWithLogitsV2---------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
-  TensorDesc outputTensordesc = op.GetOutputDesc("loss");
 
   std::string reduction = "mean";
   if (op.GetAttr("reduction", reduction) == GRAPH_FAILED) {
@@ -120,20 +119,23 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
   }
 
   if (reduction == "none") {
-    // if reduction == "none" , output shape == x.shape
-    OP_LOGI(op.GetName().c_str(), "the attr reduction = none");
-    outputTensordesc.SetShape(op.GetInputDesc("predict").GetShape());
-  } else {
-    // if reduction == "mean" or reduction == "sum" , output a scalar
-    std::vector<int64_t> oShapeVector;
-    Shape oShape(oShapeVector);
-    outputTensordesc.SetShape(ge::Shape(oShape));
+        if (OneInOneOutDynamicInfer(op, "predict", {"loss"})) {
+        return GRAPH_SUCCESS;
+    }
+        return GRAPH_FAILED;  
+  } 
+  else {
+      // if reduction == "mean" or reduction == "sum" , output a scalar
+      auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+      auto outputTensordesc = op_info->MutableOutputDesc("loss");
+      auto predict_desc = op_info->MutableInputDesc("predict");
+      DataType predict_dtype = predict_desc->GetDataType();
+      std::vector<int64_t> o_shape;
+      outputTensordesc->SetShape(GeShape(o_shape));
+      outputTensordesc->SetDataType(predict_dtype);
+      return GRAPH_SUCCESS;
+    }
   }
-
-  outputTensordesc.SetDataType(op.GetInputDesc("predict").GetDataType());
-  (void)op.UpdateOutputDesc("loss", outputTensordesc);
-  return GRAPH_SUCCESS;
-}
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsV2, SigmoidCrossEntropyWithLogitsV2InferShape);
 // ------------------SigmoidCrossEntropyWithLogitsV2 END------------------

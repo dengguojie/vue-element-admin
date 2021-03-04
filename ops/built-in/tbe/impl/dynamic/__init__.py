@@ -80,6 +80,7 @@ from .square import square
 from .sparse_apply_proximal_adagrad_d import sparse_apply_proximal_adagrad_d
 from .maximum import maximum
 from .minimum import minimum
+from .sigmoid_cross_entropy_with_logits_v2 import sigmoid_cross_entropy_with_logits_v2
 from .accumulate_nv2 import accumulate_nv2
 from .adam_apply_one import adam_apply_one
 from .adam_apply_one_with_decay import adam_apply_one_with_decay
