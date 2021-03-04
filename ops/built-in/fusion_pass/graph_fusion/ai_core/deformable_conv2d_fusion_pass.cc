@@ -308,14 +308,18 @@ Status DeformableConv2dPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
   }
   const std::string new_offset_name = node_name + "_offset";
   OpDescPtr offset_desc(new ge::OpDesc(new_offset_name, kDfmOffsetType));
+  FUSION_PASS_CHECK(offset_desc == nullptr,
+                    OP_LOGW(fused_op_type_.c_str(), "create new offset desc failed"), return NOT_CHANGED);
   FUSION_PASS_CHECK(!AddOffsetDesc(dfm_conv_node, offset_desc, with_bias),
-                    OP_LOGE(fused_op_type_.c_str(), "add new deformable_offset desc failed"), return NOT_CHANGED);
+                    OP_LOGW(fused_op_type_.c_str(), "add new deformable_offset desc failed"), return NOT_CHANGED);
   NodePtr new_offset = graph.AddNode(offset_desc);
   new_nodes.push_back(new_offset);
   const std::string new_conv_name = node_name + "_conv2d";
   OpDescPtr conv_desc(new ge::OpDesc(new_conv_name, kConv2DType));
+  FUSION_PASS_CHECK(conv_desc == nullptr,
+                    OP_LOGW(fused_op_type_.c_str(), "create new conv2d desc failed"), return NOT_CHANGED);
   FUSION_PASS_CHECK(!AddConvDesc(dfm_conv_node, conv_desc, with_bias),
-                    OP_LOGE(fused_op_type_.c_str(), "add new conv2d desc failed"), return NOT_CHANGED);
+                    OP_LOGW(fused_op_type_.c_str(), "add new conv2d desc failed"), return NOT_CHANGED);
   NodePtr new_conv = graph.AddNode(conv_desc);
   new_nodes.push_back(new_conv);
   std::vector<string> offset_in_data = {"x", "offsets"};

@@ -137,7 +137,6 @@ set(_tf_plugins
   data_format_dim_map_plugin.cc
   decode_bbox_plugin.cc
   decode_bbox_v2_plugin.cc
-  deformable_conv2d_plugin.cc
   depth_to_space_plugin.cc
   depthwise_conv2d_backprop_filter_plugin.cc
   depthwise_conv2d_backprop_input_plugin.cc
