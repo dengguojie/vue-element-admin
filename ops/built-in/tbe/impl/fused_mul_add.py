@@ -463,10 +463,17 @@ def fusion_mul_add_compute(data_input0, data_input1, data_input2,
     output tensor
     """
     shape_0 = shape_util.shape_to_list(data_input0.shape)
-    batch_matmul_flag = ("matmul" in data_input0.op.tag) and \
-                         data_input0.op.attrs["format"] == "FRACTAL_NZ" and \
-                         len(shape_0) == BATCH_MATMUL_LENGTH
-    if batch_matmul_flag:
+    shape_1 = shape_util.shape_to_list(data_input1.shape)
+    batch_matmul_flag_lhs = ("matmul" in data_input0.op.tag) \
+                            and data_input0.op.attrs["format"] == "FRACTAL_NZ" \
+                            and len(shape_0) == BATCH_MATMUL_LENGTH
+    batch_matmul_flag_rhs = ("matmul" in data_input1.op.tag) \
+                            and data_input1.op.attrs["format"] == "FRACTAL_NZ" \
+                            and len(shape_1) == BATCH_MATMUL_LENGTH
+    if batch_matmul_flag_rhs:
+        data_input0, data_input1 = data_input1, data_input0
+
+    if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
         data_input1, data_input2 = batchmatmul_fusedmuladd_reshape(data_input0, data_input1, data_input2)
         mul_result = tbe.vmul(data_input0, data_input1)
         res = tbe.vadd(mul_result, data_input2)

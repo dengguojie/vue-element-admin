@@ -43,5 +43,4 @@ batchmatmul_ut_fusion_case = [
         "expect": "success",
         "support_expect": True
     },
-
 ]

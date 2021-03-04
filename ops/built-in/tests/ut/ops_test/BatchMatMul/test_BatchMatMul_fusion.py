@@ -246,12 +246,15 @@ def test_batchmatmul_fusedmuladd_fusion_ub(fusion_case):
 
         data_input0 = tvm.placeholder(shape_input0,
                                     name="data_input0",
+                                    attrs={'format': format_input0},
                                     dtype=dtype_input0)
         data_input1 = tvm.placeholder(shape_input1,
                                     name="data_input1",
+                                    attrs={'format': format_input1},
                                     dtype=dtype_input1)
         data_input2 = tvm.placeholder(shape_input2,
                                     name="data_input2",
+                                    attrs={'format': format_input2},
                                     dtype=dtype_input2)
         result_matmul.op.tag = "matmul"
         res = fusion_mul_add_compute(result_matmul, data_input1, data_input2, [])

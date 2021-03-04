@@ -24,8 +24,8 @@ from tbe.dsl.compute.mmad_compute import matmul
 from te.lang.base.operation_impl import in_dynamic
 from te.platform import cce_conf
 from te.platform import cce_params
-from te.tvm import api as tvm
-from te.tvm.tensor import Tensor
+from tbe.tvm import api as tvm
+from tbe.tvm.tensor import Tensor
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_util

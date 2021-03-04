@@ -26,6 +26,7 @@ from impl import batch_matmul_vector
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
+
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 NoneType = type(None)
