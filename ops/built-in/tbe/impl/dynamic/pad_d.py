@@ -64,7 +64,7 @@ def pad_compute(obj):
     tbe_context.get_context().add_compile_info("vars", {"ub_size": obj.buf_size, "core_num": obj.max_core,
                                     "padding": obj.ori_padding})
 
-    return {"compile_info": te.op.get_compile_info()}
+    return {"compile_info": tbe_context.get_context().get_compile_info()}
 
 
 @register_operator("PadD")

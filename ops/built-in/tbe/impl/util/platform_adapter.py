@@ -18,23 +18,41 @@ platform adapter
 import te
 from tbe.dsl.base import operation
 import tbe as platform_tbe
+import tbe.common.register as tbe_register
 from te import platform
 from te import tik
 from te import tvm
 
 
 tbe_platform = platform
-register_operator = te.op.register_operator
+register_operator = tbe_register.register_operator
 
 
 # pylint: disable=unused-argument
 def register_operator_compute(op_type, op_mode="dynamic", support_fusion=False):
-    return te.op.register_fusion_compute(op_type)
-
-
-class OpPatternMode:
     """
-    Mode
+    register op compute func
+
+    Parameters
+    ----------
+    op_type : string
+        op_func_name(old process) or op type(new process)
+    op_mode: string
+        dynamic or static shape
+    support_fusion: bool
+        support dynamic shape UB fusion
+
+    Returns
+    -------
+    decorator : decorator
+        decorator to register compute func
+    """
+    return tbe_register.register_op_compute(op_type, op_mode, support_fusion)
+
+
+class OpPatternMode(object):
+    """
+    op pattern mode
     """
     NONE = ""
     ELEWISE = "elewise"
@@ -42,12 +60,15 @@ class OpPatternMode:
     REDUCE = "reduce"
 
 
-class OpImplMode:
+class OpImplMode(object):
+    """
+    op implement mode high_performance or high_precision
+    """
     HIGH_PERFORMANCE = "high_performance"
     HIGH_PRECISION = "high_precision"
 
 
-class TbeContextKey:
+class TbeContextKey(object):
     """
     TbeContextKey
     """

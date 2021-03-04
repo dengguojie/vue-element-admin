@@ -99,7 +99,7 @@ def grad_compute(obj, mask_list):
                                     "ellipsis_mask": mask_list[2], "new_axis_mask": mask_list[3],
                                     "shrink_axis_mask": mask_list[4]})
 
-    return {"compile_info": te.op.get_compile_info()}
+    return {"compile_info": tbe_context.get_context().get_compile_info()}
 
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals

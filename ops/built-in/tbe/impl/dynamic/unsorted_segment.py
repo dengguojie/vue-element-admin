@@ -17,8 +17,9 @@ unsorted_segment
 """
 # pylint: disable=too-many-lines
 import te.lang.dynamic
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform
+from impl.util.platform_adapter import tbe_context
 
 ONE_BLOCK_E = 1
 ONE_DIV_E = 2
@@ -1372,7 +1373,7 @@ def unsorted_segment(x_dict, segment_ids_dict, num_segments_dict, y_dict,
     obj.unsorted_segment()
     # add compile info
     if dynamic_mode:
-        te.op.add_compile_info("vars",
+        tbe_context.get_context().add_compile_info("vars",
                                {"ub_size": obj.obj_tiling.ub_size, "core_num": obj.core_num,
                                 "dtype": obj.obj_gm_tensor.input_gm.dtype,
                                 "ub_tensor_num": obj.ub_tensor_num})

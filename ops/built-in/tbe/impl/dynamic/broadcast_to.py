@@ -15,14 +15,15 @@
 """
 dynamic broadcast_to
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -134,10 +135,10 @@ def broadcast_to(x, shape, y, kernel_name="broadcast_to"):
     shape["range"] = shape_range_adapt
     
     extra_params = {"disable_optimization":True}
-    ins = tbe_base.classify([shape, x], tbe_base.Mode.ELEWISE_WITH_BROADCAST, extra_params)
+    ins = classify([shape, x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
     for (_shape, _x) in ins:
-        with tbe_base.compute():
+        with tbe.compute():
             shape_shape, shape_x = shape_util.variable_shape([_shape, _x])
             shape_input = tvm.placeholder(shape_shape, name="shape_input", dtype=input_shape_dtype)
             x_input = tvm.placeholder(shape_x, name="x_input", dtype=input_x_dtype)

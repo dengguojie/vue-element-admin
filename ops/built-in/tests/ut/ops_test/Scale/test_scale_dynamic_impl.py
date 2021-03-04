@@ -40,7 +40,7 @@ case1 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910A"], case1)
+# ut_case.add_case(["Ascend910A"], case1)
 if __name__ == "__main__":
     with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend910A")

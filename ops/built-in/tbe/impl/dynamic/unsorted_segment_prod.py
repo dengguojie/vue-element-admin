@@ -17,12 +17,13 @@ unsorted_segment_sum
 """
 # pylint: disable=too-many-lines
 import te.lang.dynamic
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
 from . import unsorted_segment
+from impl.util.platform_adapter import register_operator
 
 
-@te.op.register_operator("UnsortedSegmentProd")
+@register_operator("UnsortedSegmentProd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

@@ -15,16 +15,14 @@
 """
 dynamic logsoftmax_v2
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from te.lang.base import operation
-from te.lang.base.operation import add_compile_info
+from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable = locally-disabled,unused-argument
@@ -65,7 +63,7 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
         has_improve_precision = True
 
     data_exp = tbe.vexp(data_sub)
-    data_sum = tbe.sum(data_exp, axis=axis, keepdims=True)
+    data_sum = tbe.reduce_sum(data_exp, axis=axis, keepdims=True)
     data_log = tbe.vlog(data_sum)
     data_log_broadcast = tbe.broadcast(data_log, shape)
     res = tbe.vsub(data_sub, data_log_broadcast)
@@ -107,14 +105,14 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     if not isinstance(axis, int):
         axis = list(axis)
 
-    add_compile_info("ori_axis", axis)
+    tbe_context.get_context().add_compile_info("ori_axis", axis)
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     axis = shape_util.axis_check(len(shape), axis)
     if isinstance(axis, int):
         axis = [axis]
 
-    with tbe_base.compute():
+    with tbe.compute():
         new_shape = []
         if len(shape) == 1:
             a = operation.var("a")

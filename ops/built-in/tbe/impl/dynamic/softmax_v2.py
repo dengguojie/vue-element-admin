@@ -15,16 +15,14 @@
 """
 dynamic softmax_v2
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from te.lang.base import operation
-from te.lang.base.operation import add_compile_info
+from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
@@ -84,7 +82,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         data_exp = tbe.cast_to(data_exp, "float32")
         has_improve_precision = True
 
-    data_expsum = tbe.sum(data_exp, axis, keepdims=True)
+    data_expsum = tbe.reduce_sum(data_exp, axis, keepdims=True)
     data_expsum = tbe.vrec(data_expsum)
     data_expsum = tbe.broadcast(data_expsum, shape)
     output = tbe.vmul(data_exp, data_expsum)
@@ -117,7 +115,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     kernel_name : str
         cce kernel name, default value is softmax_v2
     impl_mode: str.
-        high_precision or high_performance for inference, default value is "high_performance".
+        high_precision or high_performance for inference, default value is OpImplMode.HIGH_PERFORMANCE.
         no need to add into ops_info file.
 
     Returns
@@ -130,14 +128,14 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if not isinstance(axis, int):
         axis = list(axis)
 
-    add_compile_info("ori_axis", axis)
+    tbe_context.get_context().add_compile_info("ori_axis", axis)
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     axis = shape_util.axis_check(len(shape), axis)
     if isinstance(axis, int):
         axis = [axis]
 
-    with tbe_base.compute():
+    with tbe.compute():
         new_shape = []
         if len(shape) == 1:
             a = operation.var("a")

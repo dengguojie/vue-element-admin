@@ -15,16 +15,14 @@
 """
 dynamic softmaxgrad
 """
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tvm
 from te import platform as tbe_platform
-from te.platform.fusion_manager import fusion_manager
-from te.lang.base import operation
-from te.lang.base.operation import add_compile_info
+from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=unused-variable
@@ -62,7 +60,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
         grad_softmax = tbe.cast_to(grad_softmax, "float32")
         softmax = tbe.cast_to(softmax, "float32")
         has_improve_precision = True
-    data_sum = tbe.sum(data_vmul, axis=-1, keepdims=True)
+    data_sum = tbe.reduce_sum(data_vmul, axis=-1, keepdims=True)
     data_sum_tmp = tbe.broadcast(data_sum, shape_input2)
     data_sub = tbe.vsub(grad_softmax, data_sum_tmp)
     res = tbe.vmul(softmax, data_sub)
@@ -101,12 +99,12 @@ def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):
     dtype = softmax.get("dtype").lower()
 
     axis = -1
-    add_compile_info("ori_axis", axis)
+    tbe_context.get_context().add_compile_info("ori_axis", axis)
     para_check.check_shape(shape, param_name="softmax")
     para_check.check_shape(grad_shape, param_name="grad_softmax")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="softmax")
 
-    with tbe_base.compute():
+    with tbe.compute():
         new_shape = []
         a = operation.var("a")
         new_shape.append(a)

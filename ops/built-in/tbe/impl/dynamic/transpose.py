@@ -1922,8 +1922,9 @@ class Transpose(object):
                           inputs=[self.data_in, self.data_perm],
                           outputs=[self.data_out],
                           flowtable=[self.data_tiling])
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
-        return {"compile_info": te.op.get_compile_info()}
+        tbe_context.get_context().add_compile_info("vars", {
+            "ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
+        return {"compile_info": tbe_context.get_context().get_compile_info()}
 
 
 @register_operator("Transpose")

@@ -1315,4 +1315,4 @@ def transpose_d(x, y, perm, kernel_name="transpose_d"):
     tbe_context.get_context().add_compile_info("vars",
                            {"ub_size": ub_size, "core_num": CORE_NUM,
                             "perm": pos_perm, "dtype": in_dtype})
-    return {"compile_info": te.op.get_compile_info()}
+    return {"compile_info": tbe_context.get_context().get_compile_info()}
