@@ -19,6 +19,7 @@
  * \brief pow fusion pass( --> square)
  */
 #include "pow_2_square_fusion_pass.h"
+#include <math.h>
 #include <iostream>
 #include <vector>
 #include <map>
@@ -68,25 +69,21 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   ge::OutDataAnchorPtr constAnchorPtr2 = PowAnchorPtr2->GetPeerOutAnchor();
   ge::NodePtr constNode2 = constAnchorPtr2->GetOwnerNode();
   ge::OpDescPtr constNode2_desc = constNode2->GetOpDesc();
-
-  if (!ge::AttrUtils::GetTensor(constNode2_desc, "value", constTensor2)) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Get data node in index node failed.");
-    return NOT_CHANGED;
-  }
-  if (constTensor2 != nullptr) {
-    constSize2 = constTensor2->GetData().GetSize();
-    constType2 = constTensor2->GetTensorDesc().GetDataType();
-  } else {
-    return NOT_CHANGED;
-  }
+  vector<ge::GeTensorPtr> pow_y = ge::OpDescUtils::MutableWeights(constNode2);
+  FUSION_PASS_CHECK(pow_y.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Pow input y is null ptr!"),
+                    return PARAM_INVALID);
+  constTensor2 = pow_y[0];
+  constSize2 = constTensor2->GetData().GetSize();
+  constType2 = constTensor2->GetTensorDesc().GetDataType();
   if (constTensor2->GetData().GetData() != nullptr) {
     constDataPtr = (float*)constTensor2->GetData().GetData();
     constData = (float)(*constDataPtr);
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow index is %f", constData);
   } else {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow input y is tensor");
     return NOT_CHANGED;
   }
-  if (constData == 2.0 && constType2 == ge::DT_FLOAT && constSize2 == 4) {
+  if (fabs(constData - 2.0) <= 1e-6 && constType2 == ge::DT_FLOAT && constSize2 == 4) {
     ge::GeTensorDesc input_desc0 = pow_node->GetOpDesc()->GetInputDesc(0);
     ge::GeTensorDesc input_desc1 = pow_node->GetOpDesc()->GetInputDesc(1);
     ge::GeTensorDesc output_desc0 = pow_node->GetOpDesc()->GetOutputDesc(0);
