@@ -44,6 +44,6 @@ target_link_libraries(ops_cpp_onnx_plugin_utest PRIVATE
 
 add_custom_command(
         TARGET ops_cpp_onnx_plugin_utest POST_BUILD
-        COMMAND export LD_LIBRARY_PATH=${ASCEND_ATC_DIR} && ./ops_cpp_onnx_plugin_utest
+        COMMAND export LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${ASCEND_ATC_DIR} && ./ops_cpp_onnx_plugin_utest
         COMMENT "Run ops plugin utest"
 )
