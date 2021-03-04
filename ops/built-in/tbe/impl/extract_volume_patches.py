@@ -1735,7 +1735,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             max_khkw_factor = ub_num // (tensor0_num + tensor00_num)
             if max_khkw_factor == 0:
                 error_manager_vector.raise_err_specific_reson("extract_volume_patches",
-                                                              "Not Support shape, needs UB memory size",
+                                                              "Not Support shape, needs UB memory size: %d" %
                                                               (tensor00_num + tensor0_num) * 2)
             workspace_8bit_khkw_factor = min(max_khkw_factor, khkw.value)
             if max_khkw_factor >= khkw.value * 2:
@@ -1819,7 +1819,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             max_khkw_factor = ub_num // (tensor10_num + tensor1_num + tensor2_num)
             if max_khkw_factor == 0:
                 error_manager_vector.raise_err_specific_reson("extract_volume_patches",
-                                                              "Not Support shape, needs UB memory size",
+                                                              "Not Support shape, needs UB memory size: %d" %
                                                               (tensor10_num + tensor1_num + tensor2_num) * 2)
             workspace2_khkw_factor = min(max_khkw_factor, khkw.value)
             if max_khkw_factor >= khkw.value * 2:
@@ -1902,7 +1902,7 @@ def _extract_volume_patches_schedule(res, sch_list, original_cin):
             max_mhowo_factor = ub_num // (tensor42_num + tensor5_num + tensor7_num)
             if max_mhowo_factor == 0:
                 error_manager_vector.raise_err_specific_reson("extract_volume_patches",
-                                                              "Not Support shape, needs UB memory size",
+                                                              "Not Support shape, needs UB memory size: %d" %
                                                               (tensor42_num + tensor5_num + tensor7_num) * 2)
             res_mhowo_factor = min(max_mhowo_factor, mhowo)
             split_res_mhowo_flag = 1
