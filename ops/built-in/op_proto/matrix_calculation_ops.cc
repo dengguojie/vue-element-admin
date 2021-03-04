@@ -21,8 +21,11 @@
 #include "inc/matrix_calculation_ops.h"
 
 #include <algorithm>
+#include <iostream>
 #include <limits>
+#include <map>
 #include <string>
+#include <sstream>
 #include <utility>
 #include <vector>
 
@@ -38,6 +41,7 @@
 #include "op_log.h"
 #include "register/infer_data_slice_registry.h"
 
+using namespace std;
 
 namespace ge {
 // ----------------FullyConnection-------------------
@@ -2560,5 +2564,240 @@ IMPLEMT_VERIFIER(Tril, TrilVerify) { return GRAPH_SUCCESS; }
 INFER_FUNC_REG(Tril, TrilInferShape);
 VERIFY_FUNC_REG(Tril, TrilVerify);
 // ----------------Tril END----------------
-}  // namespace ge
+// ----------------EinSum-------------------
+// check if there is an ellipsis
+bool is_ellispis(std::string ori_str, std::string target) {
+    std::string::size_type idx;
+    idx = ori_str.find(target);
+    if (idx == std::string::npos){
+        return false;
+    } else {
+        return true;
+    }
+}
 
+// remove spaces from the string
+void trim_whitespace(std::string &s)
+{
+    int index = 0;
+    if(!s.empty()) {
+        while((index = s.find(' ',index)) != string::npos) {
+            s.erase(index,1);
+        }
+    }
+}
+
+//  cut the string in half
+void split_equ(std::string eqn,std::string &in_equ,std::string &out_equ) {
+    size_t pos = 0;
+    if ((pos = eqn.find("->")) != std::string::npos) {
+        in_equ = eqn.substr(0,pos);
+        out_equ = eqn.substr(pos+2);
+    } else {
+        return;
+    }
+} 
+// gets an array of input strings
+void get_in_equ_list(std::string in_equ,vector<std::string> &in_equ_list) {
+    std::stringstream equ_stream(in_equ);
+    std::string term;
+    while (! equ_stream.eof()) {
+        std::getline(equ_stream, term, ',');
+        in_equ_list.push_back(term);
+    }
+}
+
+// Scenes with ellipses 
+void map_with_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
+                        map<std::string, int64_t> &equ_map,
+                        map<std::string, vector<int64_t>> &ellipsis_map) {
+    int64_t equ_temp_size = equ_temp.size();
+    int64_t equ_tensor_temp_size = equ_tensor_temp.size();
+    int64_t ell_size = equ_tensor_temp_size + 3 - equ_temp_size;
+    std::string dot = "...";
+    vector<int64_t> ell_list;
+    std::string equ_key = "A";
+
+    if (equ_temp[0] == dot[0]) {
+        for (int64_t i = 0; i < ell_size; i++){
+            ell_list.push_back(equ_tensor_temp[i]);
+            ellipsis_map[dot] = ell_list;
+        }
+        for (int64_t i = 0; i < (equ_tensor_temp_size - ell_size); i++) {
+            equ_key[0] = equ_temp[i+3];
+            equ_map[equ_key] = equ_tensor_temp[i+ell_size];
+        }
+    } else if (equ_temp[equ_temp_size - 1] == dot[0]){
+        for (int64_t i = (equ_tensor_temp_size - ell_size); i < equ_tensor_temp_size; i++) {
+            ell_list.push_back(equ_tensor_temp[i]);
+            ellipsis_map[dot] = ell_list;
+        }
+        for (int64_t i = 0; i < (equ_tensor_temp_size - ell_size); i++) {
+            equ_key[0] = equ_temp[i];
+            equ_map[equ_key] = equ_tensor_temp[i];
+        }
+    } else {
+        int64_t start_index = equ_temp.find_first_of(".");
+        for (int64_t i = 0; i < start_index; i++) {
+            equ_key[0] = equ_temp[i];
+            equ_map[equ_key] = equ_tensor_temp[i];
+        }
+        for (int64_t j = start_index; j < (start_index+ell_size); j++) {
+            ell_list.push_back(equ_tensor_temp[j]);
+            ellipsis_map[dot] = ell_list;
+        }
+        for (int64_t k = 0; k < (equ_tensor_temp_size - ell_size - start_index); k++) {
+            equ_key[0] = equ_temp[k+start_index+3];
+            equ_map[equ_key] = equ_tensor_temp[k+start_index+ell_size];
+        }
+    }
+}
+
+// Scenes without ellipses
+void map_without_ellipsis(std::string equ_temp,vector<int64_t> equ_tensor_temp,
+                        map<std::string, int64_t> &equ_map) {
+    int64_t equ_temp_size = equ_temp.size();
+    int64_t equ_tensor_temp_size = equ_tensor_temp.size();
+    if (equ_temp_size != equ_tensor_temp_size) {
+    }
+    for (int64_t i = 0; i < equ_temp_size; i++) {
+        std::string equ_key = "A";
+        equ_key[0] = equ_temp[i];
+        equ_map[equ_key] = equ_tensor_temp[i];
+    }
+}
+
+// Output shape with ellipsis
+void output_with_ellipsis(vector<int64_t> &output_shape,std::string out_equ,
+                            map<std::string, int64_t> equ_map,
+                            map<std::string, vector<int64_t>> ellipsis_map) {
+    int64_t out_equ_size = out_equ.size();
+    std::string dot = "...";
+    vector<int64_t> ell_list;
+    ell_list = ellipsis_map[dot];
+    int64_t ell_size = ell_list.size();
+    std::string equ_key = "A";
+    if (out_equ[0] == dot[0]) {
+        for (int64_t i = 0; i < ell_size; i++) {
+            output_shape.push_back(ell_list[i]);
+        }
+        for (int64_t i = 3; i < out_equ_size; i++) {
+            equ_key[0] = out_equ[i];
+            output_shape.push_back(equ_map[equ_key]);
+        }
+    } else if (out_equ[out_equ_size - 1] == dot[0]){
+        for (int64_t i = 0; i < (out_equ_size-3); i++) {
+            equ_key[0] = out_equ[i];
+            output_shape.push_back(equ_map[equ_key]);
+        }
+        for (int64_t i = 0; i < ell_size; i++) {
+            output_shape.push_back(ell_list[i]);
+        }
+    } else {
+        int64_t start_index = out_equ.find_first_of(".");
+        for (int64_t i = 0; i < start_index; i++) {
+            equ_key[0] = out_equ[i];
+            output_shape.push_back(equ_map[equ_key]);
+        }
+        for (int64_t i = 0; i < ell_size; i++) {
+            output_shape.push_back(ell_list[i]);
+        }
+        for (int64_t i = (start_index+3); i < out_equ_size; i++) {
+            equ_key[0] = out_equ[i];
+            output_shape.push_back(equ_map[equ_key]);
+        }
+    }
+}
+
+// Output shape without ellipsis
+void output_without_ellipsis(vector<int64_t> &output_shape,std::string out_equ,
+                            map<std::string, int64_t> equ_map) {
+    int64_t out_equ_size = out_equ.size();
+    int64_t val;
+    std::string equ_key = "A";
+    for (int64_t i = 0; i < out_equ_size; i++)
+    {   equ_key[0] = out_equ[i];
+        val = equ_map[equ_key];
+        output_shape.push_back(val);
+    }
+
+}
+
+// einsum infer shape
+void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list,vector<int64_t> &output_shape) {
+
+    trim_whitespace(eqn);
+    int64_t tensor_size = tensor_list.size();
+// define two maps to hold the corresponding characters
+    map<std::string, int64_t> equ_map;
+    map<std::string, vector<int64_t>> ellipsis_map;
+    std::string in_equ;
+    std::string out_equ;
+// Split string
+    split_equ(eqn,in_equ,out_equ);
+// gets a list of input strings
+    vector<std::string> in_equ_list;
+    get_in_equ_list(in_equ,in_equ_list);
+
+    int64_t in_equ_size = in_equ_list.size();
+    if (in_equ_size != tensor_size) {
+        return;
+    }
+    std::string equ_temp;
+    vector<int64_t> equ_tensor_temp;
+    std::string targets = "...";
+    for (int64_t i = 0; i < in_equ_size; i++)
+    {
+        equ_temp = in_equ_list[i];
+        equ_tensor_temp = tensor_list[i];
+        if (is_ellispis(equ_temp, targets)) {
+            map_with_ellipsis(equ_temp,equ_tensor_temp,equ_map,ellipsis_map);
+        } else {
+            map_without_ellipsis(equ_temp,equ_tensor_temp,equ_map);
+        }
+    }
+    if (out_equ.size() == 0) {
+        return;
+    } else {
+        if (is_ellispis(out_equ,targets)) {
+            output_with_ellipsis(output_shape, out_equ, equ_map,ellipsis_map);
+        } else {
+            output_without_ellipsis(output_shape, out_equ, equ_map);
+        }
+    }
+}
+
+IMPLEMT_COMMON_INFERFUNC(EinSumInferShape) {
+    auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
+    // get attr equation
+    std::string equation;
+    if (op.GetAttr("equation", equation) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "GetOpAttr equation failed");
+        return GRAPH_FAILED;
+    }
+    // set tensor_size attr 
+    int64_t tensor_size = op.GetInputsSize();
+    op.SetAttr("tensor_size", tensor_size);
+    vector<vector<int64_t>> tensor_list;
+    for (size_t i = 0; i < op.GetInputsSize(); i++) {
+        auto xi_dims = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+        tensor_list.push_back(xi_dims);
+    }
+    vector<int64_t> output_shape;
+    einsum_infer_shape(equation,tensor_list,output_shape);
+    // updata output shape and dtype 
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(output_shape));
+    output_desc.SetDataType(x0_type);
+    CHECK(op.UpdateOutputDesc("y",output_desc) != GRAPH_SUCCESS,
+         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."),
+         return GRAPH_FAILED);
+    return GRAPH_SUCCESS;
+}
+IMPLEMT_VERIFIER(EinSum, EinSumVerify) {
+    return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(EinSum, EinSumInferShape);
+VERIFY_FUNC_REG(EinSum, EinSumVerify);
+// ----------------EinSum-------------------
+}  // namespace ge
