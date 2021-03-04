@@ -22,6 +22,7 @@
 #include "graph/operator.h"
 #include "op_log.h"
 #include "util/common_shape_fns.h"
+#include "util/util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(DenseToDenseSetOperation, DenseToDenseSetOperationInfer) {
@@ -141,12 +142,13 @@ IMPLEMT_INFERFUNC(DenseToSparseSetOperation, DenseToSparseSetOperationInfer) {
     return GRAPH_FAILED;
   }
 
-  auto x1_tensor = op.GetInputDesc(0);
-  Shape x1_shape;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x1_desc = op_desc->MutableInputDesc(0);
+  GeShape x1_shape;
   Shape x2_shape = x2_shape_tensor.GetShape();
   int64_t output_rank_dim = 0;
   const int64_t input_rank_dim = x2_shape.GetDim(0);
-  if (WithRankAtLeast(x1_tensor, 2, x1_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(x1_desc, 2, x1_shape) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x1 rank at least must be 2.");
     return GRAPH_FAILED;
   }
