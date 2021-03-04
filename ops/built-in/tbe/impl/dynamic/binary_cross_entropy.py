@@ -39,7 +39,7 @@ NoneType = type(None)
 # pylint: disable=invalid-name,too-many-arguments
 # pylint: disable=unused-argument,too-many-locals
 @register_operator_compute("BinaryCrossEntropy", op_mode="dynamic", support_fusion=False)
-def binary_cross_entropy_compute(x, y, weight, output,
+def binary_cross_entropy_compute(x, y, weight, output, axis,
                                  reduction, kernel_name):
     """
     calculating binary_cross_entropy
@@ -68,8 +68,9 @@ def binary_cross_entropy_compute(x, y, weight, output,
     ori_dtype = x.dtype
     trans_dtype = ori_dtype
     shape = shape_util.shape_to_list(x.shape)
-    if ori_dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vmul", "float32"):
+    if ori_dtype == "float16" and \
+       tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32") and \
+       tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
         x = tbe.cast_to(x, "float32")
         y = tbe.cast_to(y, "float32")
         if weight is not None:
@@ -80,7 +81,7 @@ def binary_cross_entropy_compute(x, y, weight, output,
     const_neg_one = tvm.const(-1, trans_dtype)
     # calcu value : y * log(x)
     x = tbe.vmaxs(x, tvm.const(SCALAR_EPS, trans_dtype))
-    x_log_tmp = tbe.vlog(x, OpImplMode.HIGH_PRECISION)
+    x_log_tmp = tbe.vlog(x)
     data_mul1 = tbe.vmul(x_log_tmp, y)
     # calcu value : (1-y) * log(1-x)
     x_neg_tmp = tbe.vmuls(x, const_neg_one)
@@ -88,7 +89,7 @@ def binary_cross_entropy_compute(x, y, weight, output,
     y_neg_tmp = tbe.vmuls(y, const_neg_one)
     y1_tmp = tbe.vadds(y_neg_tmp, const_one)
     x1_tmp = tbe.vmaxs(x1_tmp, tvm.const(SCALAR_EPS, trans_dtype))
-    x1_log_tmp = tbe.vlog(x1_tmp, OpImplMode.HIGH_PRECISION)
+    x1_log_tmp = tbe.vlog(x1_tmp)
     data_mul2 = tbe.vmul(x1_log_tmp, y1_tmp)
     # calcu value : y * log(x) + (1-y) * log(1-x)
     data_sum = tbe.vadd(data_mul1, data_mul2)
@@ -111,17 +112,11 @@ def binary_cross_entropy_compute(x, y, weight, output,
                 tbe.var("cof_empty", dtype=calc_dtype)
             tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", calc_dtype)
 
-    # get total axis for reduce
-    axis_d = []
-    for i, _ in enumerate(shape):
-        axis_d.append(i)
-    axis_d = shape_util.axis_check(len(shape), axis_d)
-
     if reduction == "mean":
         result = tbe.vmuls(result, cof)
-        result = tbe.reduce_sum(result, axis=axis_d, keepdims=False)
+        result = tbe.reduce_sum(result, axis=axis["value"], keepdims=False)
     elif reduction == "sum":
-        result = tbe.reduce_sum(result, axis=axis_d, keepdims=False)
+        result = tbe.reduce_sum(result, axis=axis["value"], keepdims=False)
     elif reduction == "none":
         pass
 
@@ -181,13 +176,12 @@ def binary_cross_entropy(x, y, weight, output,
 
     predict_shape = x.get("shape")
     predict_dtype = x.get("dtype")
-    predict_dtype_lower = predict_dtype.lower()
+    x["rel_pos_to_reduce"] = "before"
 
     target_shape = y.get("shape")
     target_dtype = y.get("dtype")
-    target_dtype_lower = target_dtype.lower()
+    y["rel_pos_to_reduce"] = "before"
 
-    # check dtype
     dtype_list = ("float16", "float32")
     para_check.check_dtype(predict_dtype, dtype_list, param_name="x")
     para_check.check_dtype(target_dtype, dtype_list, param_name="y")
@@ -196,43 +190,51 @@ def binary_cross_entropy(x, y, weight, output,
     if weight is not None:
         weight_shape = weight.get("shape")
         weight_dtype = weight.get("dtype")
-        weight_dtype_lower = weight_dtype.lower()
         para_check.check_dtype(weight_dtype, dtype_list, param_name="weight")
         shape_util.compare_tensor_dict_key(x, weight, "dtype")
+        weight["rel_pos_to_reduce"] = "before"
+
+    axis = []
+    for i, _ in enumerate(predict_shape):
+        axis.append(i)
+    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
     schedules, tensors = [], []
     if weight is not None:
-        ins = classify([x, y, weight], OpPatternMode.REDUCE, {"keepdims": True})
-        for (_predict_shape, _target_shape, _weight_shape) in ins:
+        ins = classify([x, y, weight, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
+        for (_predict_shape, _target_shape, _weight_shape, _axis) in ins:
             with tbe.compute():
                 predict_shape, target_shape, weight_shape = shape_util.variable_shape([_predict_shape,
                                                                                        _target_shape,
-                                                                                       _weight_shape])
+                                                                                       _weight_shape,
+                                                                                       _axis], op_mode="reduce")[0:3]
                 data_weight = tvm.placeholder(weight_shape, name="data_weight",
-                                              dtype=weight_dtype_lower)
+                                              dtype=weight_dtype)
                 data_predict = tvm.placeholder(predict_shape, name="data_predict",
-                                               dtype=predict_dtype_lower)
+                                               dtype=predict_dtype)
                 data_target = tvm.placeholder(target_shape, name="data_target",
-                                              dtype=target_dtype_lower)
+                                              dtype=target_dtype)
                 res = binary_cross_entropy_compute(data_predict, data_target,
-                                                   data_weight, output,
+                                                   data_weight, output, _axis,
                                                    reduction, kernel_name)
                 tensors.append([data_predict, data_target, data_weight, res])
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
     else:
-        ins = classify([x, y], OpPatternMode.REDUCE, {"keepdims": True})
-        for (_predict_shape, _target_shape) in ins:
+        ins = classify([x, y, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
+        for (_predict_shape, _target_shape, _axis) in ins:
             with tbe.compute():
-                predict_shape, target_shape = shape_util.variable_shape([_predict_shape, _target_shape])
+                predict_shape, target_shape = shape_util.variable_shape([_predict_shape,
+                                                                         _target_shape,
+                                                                         _axis], op_mode="reduce")[0:2]
                 data_weight = None
                 data_predict = tvm.placeholder(predict_shape, name="data_predict",
-                                               dtype=predict_dtype_lower)
+                                               dtype=predict_dtype)
                 data_target = tvm.placeholder(target_shape, name="data_target",
-                                              dtype=target_dtype_lower)
+                                              dtype=target_dtype)
                 res = binary_cross_entropy_compute(data_predict, data_target,
-                                                   data_weight, output,
+                                                   data_weight, output, _axis,
                                                    reduction, kernel_name)
                 tensors.append([data_predict, data_target, res])
             with tvm.target.cce():

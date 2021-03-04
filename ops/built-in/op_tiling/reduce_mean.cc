@@ -67,4 +67,5 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
 
 REGISTER_OP_TILING_FUNC_BUFFERED(ReduceMean, ReduceMeanTiling);
 REGISTER_OP_TILING_FUNC_BUFFERED(ReduceMeanD, ReduceMeanTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BinaryCrossEntropy, ReduceMeanTiling);
 }  // namespace optiling
