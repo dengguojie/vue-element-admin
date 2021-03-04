@@ -936,6 +936,27 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
         fused_multi_core, block = _bind_core()
 
+        def _do_buffer_tile():
+            if not load2d_flag and tiling["BL1_shape"]:
+                k_bl1 = tiling["BL1_shape"][0]
+                if width_grads % k_bl1 == 0:
+                    extent_h = 1
+                else:
+                    if k_bl1 % width_grads == 0:
+                        step = k_bl1 // width_grads
+                    else:
+                        step = te_util.int_ceil_div(k_bl1, width_grads) + 1
+                    extent_h = (step - 1) * stride_height + (kernel_height - 1) * dilation_height + 1
+                if extent_h < height_fmap:
+                    sch[fmap_l1].buffer_tile(
+                        (None, None),
+                        (None, None),
+                        (None, extent_h),
+                        (None, None),
+                        (None, None)
+                    )
+
+        _do_buffer_tile()
         _l0_attach()
         _al1_attach()
         _bl1_attach()
