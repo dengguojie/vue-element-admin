@@ -39,20 +39,26 @@ IMPLEMT_COMMON_INFERFUNC(TargetCropAndResizeInferShape) {
   OP_LOGI("TargetCropAndResize", "infer shape begin");
   auto x_desc = op.GetInputDesc("x");
   auto x_shape = x_desc.GetShape().GetDims();
-  int64_t channel = 3; 
+  int64_t channel = 3;
+  int64_t xDimNum = op.GetInputDesc("x").GetShape().GetDimNum();
+  if (x_shape.empty() || xDimNum < 4) {
+    OP_LOGE(op.GetName().c_str(), "get x shape failed, or x shape is smaller than 4.");
+    OpsOneInputShapeErrReport(op.GetName(), "x", "x shape is empty or x shape is smaller than 4!");
+    return GRAPH_FAILED;
+  }
 
   auto boxes_shape = op.GetInputDesc("boxes").GetShape().GetDims();
   int64_t boxesDimNum = op.GetInputDesc("boxes").GetShape().GetDimNum();
-  if (boxes_shape.empty() || boxesDimNum < 4) {
-    OP_LOGE(op.GetName().c_str(), "get boxes shape failed, or boxes shape is smaller than 4.");
-    OpsOneInputShapeErrReport(op.GetName(), "boxes", "boxes shape is empty or boxes shape is smaller than 4 !");
+  if (boxes_shape.empty() || boxesDimNum < 2) {
+    OP_LOGE(op.GetName().c_str(), "get boxes shape failed, or boxes shape is smaller than 2.");
+    OpsOneInputShapeErrReport(op.GetName(), "boxes", "boxes shape is empty or boxes shape is smaller than 2!");
     return GRAPH_FAILED;
   }
   int64_t batch = boxes_shape[0];
   if (x_desc.GetFormat() == FORMAT_NCHW) {
-    channel = boxes_shape[1];
+    channel = x_shape[1];
   } else if (x_desc.GetFormat() == FORMAT_NHWC) {
-    channel = boxes_shape[3];
+    channel = x_shape[3];
   }
 
   int64_t output_h = 0;

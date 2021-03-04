@@ -39,7 +39,35 @@ TEST_F(target_crop_and_resize_infer_test, target_crop_and_resize_infer_test_1) {
   // new op and do infershape
   ge::op::TargetCropAndResize op;
   op.UpdateInputDesc("x", create_desc_with_ori({1,3,224,224}, ge::DT_UINT8, ge::FORMAT_NCHW, {1,3,224,224}, ge::FORMAT_NCHW));
-  op.UpdateInputDesc("boxes", create_desc_with_ori({}, ge::DT_INT32, ge::FORMAT_ND, {}, ge::FORMAT_ND));
+  op.UpdateInputDesc("boxes", create_desc_with_ori({5,4}, ge::DT_INT32, ge::FORMAT_ND, {5,4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("box_index", create_desc_with_ori({5}, ge::DT_INT32, ge::FORMAT_ND, {5}, ge::FORMAT_ND));
+  op.set_attr_output_h(100);
+  op.set_attr_output_w(120);
+  op.set_attr_input_format("YUV420SP_U8");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(target_crop_and_resize_infer_test, target_crop_and_resize_infer_test_2) {
+  // new op and do infershape
+  ge::op::TargetCropAndResize op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1,3,224}, ge::DT_UINT8, ge::FORMAT_NCHW, {1,3,224}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc("boxes", create_desc_with_ori({5,4}, ge::DT_INT32, ge::FORMAT_ND, {5,4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("box_index", create_desc_with_ori({5}, ge::DT_INT32, ge::FORMAT_ND, {5}, ge::FORMAT_ND));
+  op.set_attr_output_h(100);
+  op.set_attr_output_w(120);
+  op.set_attr_input_format("YUV420SP_U8");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(target_crop_and_resize_infer_test, target_crop_and_resize_infer_test_3) {
+  // new op and do infershape
+  ge::op::TargetCropAndResize op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1,3,224,224}, ge::DT_UINT8, ge::FORMAT_NCHW, {1,3,224,224}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc("boxes", create_desc_with_ori({5}, ge::DT_INT32, ge::FORMAT_ND, {5}, ge::FORMAT_ND));
   op.UpdateInputDesc("box_index", create_desc_with_ori({5}, ge::DT_INT32, ge::FORMAT_ND, {5}, ge::FORMAT_ND));
   op.set_attr_output_h(100);
   op.set_attr_output_w(120);
