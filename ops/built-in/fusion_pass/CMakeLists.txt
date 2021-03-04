@@ -108,6 +108,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/avg_pool_pass.cc
   graph_fusion/ai_core/avg_pool_v2_fusion_pass.cc
   graph_fusion/ai_core/avg_pool_v2_grad_fusion_pass.cc
+  graph_fusion/ai_core/batch_matmul_fusion_pass.cc
   graph_fusion/ai_core/batch_multi_class_nms_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_fusion_pass.cc
