@@ -22,12 +22,11 @@ concat_v2_d: Concatenates tensors along one dimension.
 from __future__ import absolute_import
 import math
 
-import te.lang.dynamic
-from impl.util.platform_adapter import para_check
 from te import platform as tbe_platform
+
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_vector as error_manager
-
 from impl.util.util_tik_comm_func import gm2ub
 from impl.util.util_tik_comm_func import ub2gm
 from impl.util.util_tik_comm_func import ceil_div
@@ -120,6 +119,9 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
 def _vadd(instance: tik.Tik, mask, dst: tik.Tensor, src0: tik.Tensor, src1: tik.Tensor, repeat_times,
           dst_blk_stride, src0_blk_stride, src1_blk_stride,
           dst_rep_stride, src0_rep_stride, src1_rep_stride):
+    """
+    _vadd
+    """
     dtype_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // dtype_size
     with instance.if_scope(dst_rep_stride <= MAX_REPEAT_STRIDE):
@@ -199,6 +201,9 @@ def _concat_ub_vadd(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_ind
 
 
 def _data_move_all_align(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, nburst, burst, dst_stride):
+    """
+    _data_move_all_align
+    """
     inst = tik_instance
     type_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // type_size
@@ -307,6 +312,9 @@ class ConcatV2:
                     self.all_align.set_as(self.all_align + self._dims[i * 2] % self.block_element)
 
         def init_mask_cycle_info(self):
+            """
+            init_mask_cycle_info
+            """
             inst = self.tik_instance
             tmp_all_align = inst.Scalar(dtype="int8", name="tmp_all_align", init_value=0)
             block_element = self.block_element
@@ -347,6 +355,9 @@ class ConcatV2:
             return self._dims[index], self._dims[index + 1]
 
         def get_mask_cycle_burst(self, input_index):
+            """
+            get mask cycle burst of input
+            """
             return self._mask_cycle_inner_burst[input_index]
 
         def update_tiling(self, src_dtype, dst_dtype):
@@ -380,8 +391,8 @@ class ConcatV2:
         self.axis = axis
 
         self.dtype = input_values[0].get("dtype").lower()
-        self.output_shape = [MAX_SIZE, ]
-        self.input_shape = [MAX_SIZE, ]
+        self.output_shape = (MAX_SIZE,)
+        self.input_shape = (MAX_SIZE,)
 
         self.input_tensors, self.output_tensor = self._init_gm_tensor(self.input_shape, self.output_shape,
                                                                       len(input_values),
@@ -465,22 +476,32 @@ class ConcatV2:
                       config=opt_config,
                       enable_l2=False)
 
-        tbe_context.get_context().add_compile_info("vars", {"input_size": len(self.input_tensors),
-                                        "concat_dim": self.axis,
-                                        "block_dim": self.aicore_num
-                                        })
+        tbe_context.get_context().add_compile_info("vars", {
+            "input_size": len(self.input_tensors),
+            "concat_dim": self.axis,
+            "block_dim": self.aicore_num
+        })
         return inst
 
     def _get_ceil_32bytes_count(self, count: tik.Scalar):
+        """
+        get ceil of 32 bytes
+        """
         ceil_num = ceil_div(count, self.ele_each_block)
         return ceil_num * self.ele_each_block
 
     # pylint: disable=invalid-name,unused-variable,too-many-statements
     def _concat_inner_dim_each_split(self, out_dim_idx, inner_dim_split_idx):
+        """
+        concat inner dim each split
+        """
         for index, _ in enumerate(self.input_tensors):
             self._concat_compute_tensor_inner_dim(out_dim_idx, inner_dim_split_idx, index)
 
     def _copy_one_row(self, row_idx, tensor_index):
+        """
+        copy_one_row
+        """
         inst = self.tik_instance
         factor = self.ub_buffer_length // 2
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
@@ -504,6 +525,9 @@ class ConcatV2:
                     ub2gm(inst, output_gm[out_start_index:], ub, count)
 
     def _copy_one_block(self, row_idx, tensor_index):
+        """
+        copy_one_block
+        """
         inst = self.tik_instance
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
         input_gm = self.input_tensors[tensor_index]
@@ -519,6 +543,9 @@ class ConcatV2:
                 ub2gm(inst, output_gm[out_start_index:], ub, self.ele_each_block)
 
     def _concat_compute_tensor_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
+        """
+        concat_compute_tensor_inner_dim
+        """
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
         with self.tik_instance.if_scope(inner_dims > 0):
             with self.tik_instance.if_scope(inner_dims % self.ele_each_block == 0):
@@ -527,6 +554,9 @@ class ConcatV2:
                 self._concat_tensor_not_align_inner_dim(out_dim_idx, inner_dim_split_idx, tensor_index)
 
     def _concat_tensor_align_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
+        """
+        _concat_tensor_align_inner_dim
+        """
         inst = self.tik_instance
         factor = self.ub_buffer_length
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
@@ -549,6 +579,9 @@ class ConcatV2:
                 ub2gm(inst, output_gm[out_start_index:], ub, count)
 
     def _concat_tensor_not_align_inner_dim(self, out_dim_idx, inner_dim_split_idx, tensor_index):
+        """
+        _concat_tensor_not_align_inner_dim
+        """
         inst = self.tik_instance
         factor = self.ub_buffer_length
         inner_dims, output_idx = self.tiling_param.get_dims(tensor_index)
@@ -590,6 +623,9 @@ class ConcatV2:
                             ub2gm(inst, output_gm[new_out_start_index:], ub, align_count)
 
     def _is_all_align_do_multi_output_lines(self):
+        """
+        _is_all_align_do_multi_output_lines
+        """
         ub_len = self.ub_buffer_length // 4
         output_inner_dims = self.tiling_param.output_inner_length
         return tik.all(self.tiling_param.all_align == 1,
@@ -615,6 +651,9 @@ class ConcatV2:
                 self._concat_inner_dim_each_split(out_dim_idx, inner_dim_split_idx)
 
     def _concat_only_last_input_not_align(self, core_idx):
+        """
+        _concat_only_last_input_not_align
+        """
         inst = self.tik_instance
         aicore_num = self.aicore_num
         out_dims = self.tiling_param.out_dim
@@ -645,6 +684,9 @@ class ConcatV2:
                         corrected.set_as(1)
 
     def _concat_all_align_with_multi_output_lines(self, core_idx):
+        """
+        _concat_all_align_with_multi_output_lines
+        """
         inst = self.tik_instance
         ub_len = self.ub_buffer_length // 6 // self.ele_each_block * self.ele_each_block
         out_dims = self.tiling_param.out_dim
@@ -703,10 +745,9 @@ class ConcatV2:
         ub_len = ub_len // self.ele_each_block * self.ele_each_block
         output_inner_dim = self.tiling_param.output_inner_length
         ub_can_storage_lines_vnchwconv = ub_len // self.ele_each_block
-        ub_can_copy_lines = inst.Scalar(dtype="int64", name="ub_can_copy_lines",
-                                        init_value=self.ub_buffer_length //
-                                                   (self.tiling_param.output_inner_length * 4) //
-                                                   self.ele_each_block * self.ele_each_block)
+        ub_can_copy_lines = inst.Scalar(
+            dtype="int64", name="ub_can_copy_lines",
+            init_value=self.ub_buffer_length // ((output_inner_dim * 4) // self.ele_each_block * self.ele_each_block))
         if self.type_size % 2 == 0:
             min_inner_dim = self.tiling_param.min_inner_dim
             max_inner_dim = self.tiling_param.max_inner_dim
@@ -746,6 +787,9 @@ class ConcatV2:
                     self._concat_small_inner_each_core_one_line(core_idx, out_dims, count_each_core)
 
     def _concat_small_inner_each_core_one_line(self, core_idx, out_dims, count_each_core):
+        """
+        _concat_small_inner_each_core_one_line
+        """
         inst = self.tik_instance
         with inst.for_range(0, count_each_core, name="inner_loop") as j:
             row_idx = j + count_each_core * core_idx
@@ -764,6 +808,9 @@ class ConcatV2:
         self._concat_small_inner_each_core_last_row_last_tensor(row_idx)
 
     def _concat_small_inner_each_core_without_treat_overlap(self, row_idx, tensors):
+        """
+        _concat_small_inner_each_core_without_treat_overlap
+        """
         inst = self.tik_instance
         output_tensor = self.output_tensor
         output_inner_len = self.tiling_param.output_inner_length
@@ -816,6 +863,9 @@ class ConcatV2:
                 ub2gm(inst, output_tensor[out_start_idx:], out_ub, ub_data_count)
 
     def _concat_small_inner_each_core_last_row_last_tensor(self, row_idx):
+        """
+        _concat_small_inner_each_core_last_row_last_tensor
+        """
         inst = self.tik_instance
         ub_length = self.ub_buffer_length
         output_inner_len = self.tiling_param.output_inner_length
@@ -883,6 +933,9 @@ class ConcatV2:
                                     ub2gm(inst, output_tensor[new_out_start_index:], out_ub, align_count)
 
     def _concat_small_inner_each_core_multi_line(self, core_idx, out_dims, ub_can_copy_lines):
+        """
+        _concat_small_inner_each_core_multi_line
+        """
         inst = self.tik_instance
         if tbe_platform.cce_conf.api_check_support("tik.vadd", self.dtype):
             with inst.if_scope(self.tiling_param.max_inner_dim >= self.ele_each_block):
@@ -893,6 +946,9 @@ class ConcatV2:
             self._concat_small_inner_each_core_multi_line_by_scalar(core_idx, out_dims)
 
     def _concat_small_inner_each_core_multi_line_by_vadd(self, core_idx, out_dims, ub_can_copy_lines):
+        """
+        _concat_small_inner_each_core_multi_line_by_vadd
+        """
         inst = self.tik_instance
         ub_copy_times = ceil_div(out_dims, ub_can_copy_lines)
         ub_copy_times_each_core = ceil_div(ub_copy_times, self.aicore_num)
@@ -908,6 +964,9 @@ class ConcatV2:
                 self._concat_small_inner_each_core_multi_line_by_vadd_each_loop(row_idx, to_do_count)
 
     def _concat_small_inner_each_core_multi_line_by_scalar(self, core_idx, out_dims):
+        """
+        _concat_small_inner_each_core_multi_line_by_scalar
+        """
         inst = self.tik_instance
         ub_len = self.ub_buffer_length // 2
         block_element = self.ele_each_block
@@ -931,6 +990,9 @@ class ConcatV2:
                 self._concat_small_inner_each_core_multi_line_by_scalar_each_loop(row_idx, to_do_count, ub_len)
 
     def _concat_small_inner_each_core_multi_line_by_vadd_each_loop(self, row_idx, lines):
+        """
+        _concat_small_inner_each_core_multi_line_by_vadd_each_loop
+        """
         inst = self.tik_instance
         tensors = self.input_tensors
         output_tensor = self.output_tensor
@@ -979,6 +1041,9 @@ class ConcatV2:
                 ub2gm(inst, output_tensor[out_start_idx:], out_ub, output_inner_len * lines)
 
     def _concat_small_inner_each_core_multi_line_by_scalar_each_loop(self, row_idx, lines, ub_length):
+        """
+        concat small inner by scalar each loop
+        """
         inst = self.tik_instance
         tensors = self.input_tensors
         output_tensor = self.output_tensor
@@ -999,6 +1064,9 @@ class ConcatV2:
             ub2gm(inst, output_tensor[out_start_idx:], out_ub, output_inner_len * lines)
 
     def _concat_small_inner_each_core_multi_lines_first_block_element_rows(self, out_ub, tmp_ub, lines):
+        """
+        concat small inner dim when each_core_multi_lines_first_block_element_rows
+        """
         inst = self.tik_instance
         tensors = self.input_tensors
         output_tensor = self.output_tensor
@@ -1033,6 +1101,9 @@ class ConcatV2:
                           align_size, burst)
 
     def _concat_with_vnchwconv(self, core_idx, out_dims, ub_len):
+        """
+        concat with vnchwconv
+        """
         need_recover = False
         ori_dtype = self.dtype
         if self._check_need_convert2float16():
@@ -1099,11 +1170,17 @@ class ConcatV2:
             self._convert_dtype(ori_dtype)
 
     def _check_need_convert2float16(self):
+        """
+        _check_need_convert2float16
+        """
         if not tbe_platform.cce_conf.api_check_support("tik.vnchwconv", self.dtype) or self.type_size != 2:
             return True
         return False
 
     def _convert_dtype(self, dtype):
+        """
+        convert dtype
+        """
         for index, _ in enumerate(self.input_tensors):
             self.input_tensors[index] = self.input_tensors[index].reinterpret_cast_to(dtype)
         self.output_tensor = self.output_tensor.reinterpret_cast_to(dtype)
@@ -1116,12 +1193,15 @@ class ConcatV2:
         self.dtype = dtype
 
     def _concat_first_dim(self, core_idx):
+        """
+        concat first dim
+        """
         aicore_num = self.aicore_num
         inst = self.tik_instance
         ub_len = self.ub_buffer_length
         output_tensor = self.output_tensor
         with inst.new_stmt_scope():
-            in_out_ub = inst.Tensor(dtype=self.dtype, shape=(ub_len, ), scope=tik.scope_ubuf, name="in_out_ub")
+            in_out_ub = inst.Tensor(dtype=self.dtype, shape=(ub_len,), scope=tik.scope_ubuf, name="in_out_ub")
             for index, input_tensor in enumerate(self.input_tensors):
                 inner_dim, output_idx = self.tiling_param.get_dims(index)
                 data_count_each_core = ceil_div(ceil_div(inner_dim, aicore_num),
@@ -1149,8 +1229,11 @@ class ConcatV2:
                             gm2ub(inst, in_out_ub, input_tensor[input_addr - rollback_count], align_count)
                             ub2gm(inst, output_tensor[output_addr - rollback_count], in_out_ub, align_count)
 
+
 def _check_shape(input_values, shape_name):
-    # check the length of input shape must be equal
+    """
+    check the length of input shape must be equal
+    """
     dim_num = len(input_values[0].get(shape_name))
     for _, tensor_dict in enumerate(input_values):
         shape_input = tensor_dict.get(shape_name)
@@ -1160,7 +1243,10 @@ def _check_shape(input_values, shape_name):
                                                        [i.get(shape_name) for i in input_values])
 
 
-def __check_params(input_values, axis):
+def _check_params(input_values, axis):
+    """
+    check params
+    """
     _check_shape(input_values, "shape")
     _check_shape(input_values, "ori_shape")
 
@@ -1201,7 +1287,7 @@ def __check_params(input_values, axis):
     for input_value in input_values:
         input_format = input_value.get("format")
         dtype_lists.append(input_value.get("dtype"))
-        supported_formats = {"ND", "NHWC", "NCHW"}
+        supported_formats = {"ND", "NHWC", "NCHW", "NDHWC", "NDCHW"}
         if input_format not in supported_formats:
             error_manager.raise_err_input_format_invalid('concat',
                                                          'input_values',
@@ -1240,6 +1326,6 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     -------
     tik instance
     """
-    __check_params(input_values, axis)
+    _check_params(input_values, axis)
     concat_instance = ConcatV2(input_values, axis, kernel_name)
     return concat_instance.concat_compute()
