@@ -143,11 +143,6 @@ Status SetAttrToDesc(ge::Operator& op_dest, MaxPoolAttr& node_attr) {
   }
 
   if (node_attr.set_ksizes_flag) {
-    // check whether the parameter of kernel shape is valid.
-    if (node_attr.v_ksizes[1] * node_attr.v_ksizes[2] > 255) {
-      OP_LOGE("MaxPool", "the value of kernel shape is out of constraints, failed to transfrom.");
-      return FAILED;
-    }
     op_dest.SetAttr("ksize", node_attr.v_ksizes);
   } else {
     OP_LOGI("MaxPool", "onnx MaxPool op has no ksize attr, set it to 1.");
@@ -155,11 +150,6 @@ Status SetAttrToDesc(ge::Operator& op_dest, MaxPoolAttr& node_attr) {
   }
 
   if (node_attr.set_strides_flag) {
-    // check whether the parameter of strides is valid.
-    if (node_attr.v_strides[1] > 63 || node_attr.v_strides[2] > 63) {
-      OP_LOGE("MaxPool", "the value of strides is out of constraints, failed to transfrom.");
-      return FAILED;
-    }
     op_dest.SetAttr("strides", node_attr.v_strides);
   } else {
     OP_LOGI("MaxPool", "onnx MaxPool op has no strides attr, use default.");
