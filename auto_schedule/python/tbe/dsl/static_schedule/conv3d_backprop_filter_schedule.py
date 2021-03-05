@@ -940,13 +940,13 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             if not load2d_flag and tiling["BL1_shape"]:
                 k_bl1 = tiling["BL1_shape"][0]
                 if width_grads % k_bl1 == 0:
-                    extent_h = 1
+                    step = 1
                 else:
                     if k_bl1 % width_grads == 0:
                         step = k_bl1 // width_grads
                     else:
                         step = te_util.int_ceil_div(k_bl1, width_grads) + 1
-                    extent_h = (step - 1) * stride_height + (kernel_height - 1) * dilation_height + 1
+                extent_h = (step - 1) * stride_height + (kernel_height - 1) * dilation_height + 1
                 if extent_h < height_fmap:
                     sch[fmap_l1].buffer_tile(
                         (None, None),
