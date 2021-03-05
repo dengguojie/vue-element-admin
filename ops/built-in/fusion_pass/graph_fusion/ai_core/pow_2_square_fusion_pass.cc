@@ -70,8 +70,8 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   ge::NodePtr constNode2 = constAnchorPtr2->GetOwnerNode();
   ge::OpDescPtr constNode2_desc = constNode2->GetOpDesc();
   vector<ge::GeTensorPtr> pow_y = ge::OpDescUtils::MutableWeights(constNode2);
-  FUSION_PASS_CHECK(pow_y.empty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "Pow input y is null ptr!"),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(pow_y.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow input y is tensor!"),
+                    return NOT_CHANGED);
   constTensor2 = pow_y[0];
   constSize2 = constTensor2->GetData().GetSize();
   constType2 = constTensor2->GetTensorDesc().GetDataType();
