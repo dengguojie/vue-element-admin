@@ -43,27 +43,29 @@ TEST_F(STRIDED_SLICE_UT, ExpMasks)
 {
   auto node_def = CpuKernelUtils::CreateNodeDef();
 
-  vector<int32_t> x{ 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6 };
-  vector<int32_t> begin{ 1, 0, 0 };
-  vector<int32_t> end{ 2, 2, 3 };
-  vector<int32_t> strides{ 1, 1, 1 };
-  vector<int32_t> y(6);
+  vector<int32_t> x{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                     16, 17, 18 };
+  vector<int32_t> begin{ 0, 0 };
+  vector<int32_t> end{ 0, 0 };
+  vector<int32_t> strides{ 1, -1 };
+  vector<int32_t> y(18);
 
   NodeDefBuilder(node_def.get(), "StridedSlice", "StridedSlice")
       .Input({"x", DT_INT32, { 3, 2, 3 }, x.data()})
-      .Input({"begin", DT_INT32, {3}, begin.data()})
-      .Input({"end", DT_INT32, {3}, end.data()})
-      .Input({"strides", DT_INT32, {3}, strides.data()})
-      .Output({"y", DT_INT32, { 1, 2, 3 }, y.data()})
-      .Attr("begin_mask", 0)
-      .Attr("end_mask", 0)
-      .Attr("ellipsis_mask", 0)
+      .Input({"begin", DT_INT32, {2}, begin.data()})
+      .Input({"end", DT_INT32, {2}, end.data()})
+      .Input({"strides", DT_INT32, {2}, strides.data()})
+      .Output({"y", DT_INT32, { 3, 2, 3 }, y.data()})
+      .Attr("begin_mask", 2)
+      .Attr("end_mask", 2)
+      .Attr("ellipsis_mask", 1)
       .Attr("new_axis_mask", 0)
       .Attr("shrink_axis_mask", 0);
 
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
 
-  vector<int32_t> expectY{ 3, 3, 3, 4, 4, 4 };
+  vector<int32_t> expectY{ 3, 2, 1, 6, 5, 4, 9, 8, 7, 12, 11, 10,
+                           15, 14, 13, 18, 17, 16 };
   EXPECT_EQ(y, expectY);
 }
 

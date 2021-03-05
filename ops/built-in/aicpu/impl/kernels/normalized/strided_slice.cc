@@ -34,42 +34,38 @@ static uint32_t ProcessEllipsisMask(
     const std::vector<int64_t> &strides,
     const std::vector<int64_t> &x_shape,
     int64_t ellipsis_mask, int64_t new_axis_mask,
-    size_t &i, size_t &j,
-    int64_t &bit_mask, int64_t &has_ellipsis,
+    size_t &i, size_t &j, int64_t &bit_mask, bool &has_ellipsis,
     int64_t &begin_j, int64_t &end_j, int64_t &strides_j,
     std::vector<int64_t> &begin_res,
     std::vector<int64_t> &end_res,
     std::vector<int64_t> &strides_res) {
   if (ellipsis_mask & bit_mask) {
     if (has_ellipsis) {
-      KERNEL_LOG_ERROR("[%s] process ellipsis mask failed.", kStridedSlice);
+      KERNEL_LOG_ERROR("[%s] multiple ellipses in slice spec not allowed.",
+                       kStridedSlice);
       return KERNEL_STATUS_INNER_ERROR;
     }
-    has_ellipsis = 1;
-  }
 
-  if (has_ellipsis == 1) {
-    // When there is ellipsis, handle the second half of the ellipsis split.
     j++;
     bit_mask *= 2;
-    int64_t bit_mask_tmp = bit_mask;
-    size_t ellipsis_bits = x_shape.size() - i - (strides.size() - j);
-    for (size_t k = j; k < strides.size(); ++k) {
-      if (new_axis_mask & bit_mask_tmp) {
+    size_t ellipsis_bits = x_shape.size() - strides.size();
+    int64_t bit_mask_tmp = 1;
+    for (size_t k = 0; k < strides.size(); ++k) {
+      if ((new_axis_mask & bit_mask_tmp) && !(ellipsis_mask & bit_mask_tmp)) {
         ellipsis_bits++;
       }
       bit_mask_tmp *= 2;
     }
-    for (size_t k = ellipsis_bits; k > 0; --k) {
+    for (size_t k = 0; k <= ellipsis_bits; ++k) {
       begin_res.push_back(0);
       end_res.push_back(x_shape[i]);
-      begin_res.push_back(1);
+      strides_res.push_back(1);
       i++;
     }
     begin_j = begin[j];
     end_j = end[j];
     strides_j = strides[j];
-    has_ellipsis = 2;
+    has_ellipsis = true;
   }
 
   return KERNEL_STATUS_OK;
@@ -128,7 +124,7 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
                       int64_t ellipsis_mask, int64_t new_axis_mask,
                       int64_t shrink_axis_mask,
                       size_t &i, size_t &j,
-                      int64_t &bit_mask, int64_t &has_ellipsis,
+                      int64_t &bit_mask, bool &has_ellipsis,
                       std::vector<int64_t> &begin_res,
                       std::vector<int64_t> &end_res,
                       std::vector<int64_t> &strides_res) {
@@ -137,7 +133,7 @@ uint32_t ProcessMasks(const std::vector<int64_t> &begin,
   int64_t strides_j = strides[j];
   if (j < strides.size()) {
     if (ProcessEllipsisMask(begin, end, strides, x_shape, ellipsis_mask,
-            shrink_axis_mask, i, j, bit_mask, has_ellipsis,
+            new_axis_mask, i, j, bit_mask, has_ellipsis,
             begin_j, end_j, strides_j, begin_res, end_res, strides_res) ==
           KERNEL_STATUS_INNER_ERROR) {
       return KERNEL_STATUS_INNER_ERROR;
@@ -176,11 +172,11 @@ uint32_t StridedSliceCpuKernel::InitParamsWithMasks(
   size_t i = 0;
   size_t j = 0;
   int64_t bit_mask = 1;
-  int64_t has_ellipsis = 0;
+  bool has_ellipsis = false;
   std::vector<int64_t> begin_res;
   std::vector<int64_t> end_res;
   std::vector<int64_t> strides_res;
-  while ((i < x_shape.size()) || j < (strides.size())) {
+  while (i < x_shape.size()) {
     KERNEL_HANDLE_ERROR(ProcessMasks(begin, end, strides, x_shape,
                             begin_mask, end_mask, ellipsis_mask, new_axis_mask,
                             shrink_axis_mask, i, j, bit_mask, has_ellipsis,
@@ -214,6 +210,12 @@ uint32_t StridedSliceCpuKernel::InitParamsWithMasks(
   begin = begin_res;
   end = end_res;
   strides = strides_res;
+  KERNEL_LOG_INFO("[%s] begin with masks: [%s].", kStridedSlice,
+                  VectorToString(begin).c_str());
+  KERNEL_LOG_INFO("[%s] end with masks: [%s].", kStridedSlice,
+                  VectorToString(end).c_str());
+  KERNEL_LOG_INFO("[%s] strides with masks: [%s].", kStridedSlice,
+                  VectorToString(strides).c_str());
   return KERNEL_STATUS_OK;
 }
 
@@ -284,10 +286,6 @@ uint32_t StridedSliceCpuKernel::ParseKernelParams(CpuKernelContext &ctx) {
                       "[%s] parse index input failed.", kStridedSlice);
   KERNEL_HANDLE_ERROR(ParseIndexInput(ctx, 3, strides_),
                       "[%s] parse index input failed.", kStridedSlice);
-  for (size_t i = 0; i < strides_.size(); ++i) {
-    KERNEL_CHECK_FALSE((strides_[i] != 0), KERNEL_STATUS_PARAM_INVALID,
-        "[%s] strides[%zu] must be non-zero.", kStridedSlice, i);
-  }
 
   // get masks
   KERNEL_HANDLE_ERROR(GetMaskAttr(ctx, "begin_mask", begin_mask_),
