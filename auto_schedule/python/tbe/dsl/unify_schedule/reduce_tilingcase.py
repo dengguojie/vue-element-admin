@@ -18,8 +18,6 @@ Reduce Schedule Remake stage 1 - Tilingcase
 
 # Standard Package
 from enum import Enum
-from enum import auto
-from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -29,6 +27,9 @@ from typing import Tuple
 from typing import Union
 
 from tbe import tvm
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import add_compile_info_inner
@@ -39,8 +40,6 @@ from tbe.dsl.base.operation import register_tiling_case
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import Tensor
-from te.platform.cce_conf import CceProductParams as Version
-from te.platform.cce_conf import get_soc_spec
 
 from .constants import CompileInfo
 from .constants import Pattern
@@ -457,7 +456,7 @@ def _calculate_atomic_tiling_cases(info: SingleReduceInfo) -> List[ReduceTilingC
 
 
 def check_atomic_add_support(reduce_info: SingleReduceInfo):
-    if not Version().is_cloud_version():
+    if get_soc_spec(SOC_VERSION) != ASCEND_910:
         return False
     reduce_tensor: Tensor = reduce_info.reduce_tensor
     if reduce_tensor is None:

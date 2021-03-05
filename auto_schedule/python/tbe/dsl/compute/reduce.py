@@ -20,9 +20,9 @@ import warnings
 # pylint: disable=import-error
 from decorator import decorator
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.tvm.dsl_source_info import source_info_decorator
-from te.platform import get_soc_spec
 
 from .cast import _cast
 from .math import vmuls

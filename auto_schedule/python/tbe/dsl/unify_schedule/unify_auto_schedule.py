@@ -21,6 +21,7 @@ from typing import Dict
 from typing import List
 
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.var import AttrVarDesc
@@ -28,7 +29,6 @@ from tbe.dsl.base.var import Category
 from tbe.dsl.base.var import Var
 from tbe.tvm.build_module import BuildConfigs
 from te import platform as cce
-from te.platform import cce_conf
 
 from . import CompileInfo
 from . import Pattern
@@ -105,7 +105,7 @@ def build(schedules_list, config_map=None):
     :return:
     """
     if util.get_build_cfg() == "disable" and \
-            not cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT"):
+            not get_soc_spec("CUBE_VECTOR_SPLIT"):
         # prebuild
         return
 

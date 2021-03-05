@@ -18,12 +18,16 @@ reduce atomic schedule
 import abc
 import copy
 
-import te.platform.cce_params as cce
 from tbe import tvm
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
-from te import platform as cceconf
-from te.platform.cce_conf import CceProductParams as Pver
 
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import INSN_MAPPING
@@ -253,7 +257,7 @@ class _VectorSchedule(object):
         return
 
     def _get_block_num(self):
-        return cceconf.get_soc_spec("CORE_NUM")
+        return get_soc_spec("CORE_NUM")
 
     def _map_apend(self, input_map, key, value):
         if input_map.get(key):
@@ -742,8 +746,9 @@ class ReduceAtomicSchedule(_VectorSchedule):
         """
         :return: Bool
         """
+        soc_ver = get_soc_spec(SOC_VERSION)
         # platform: cloud, ng1
-        if not Pver().is_cloud_version() and not Pver().is_ng1_version():
+        if soc_ver != ASCEND_910 and soc_ver not in (ASCEND_610, ASCEND_615, ASCEND_710):
             return False
         # type: fp32
         reduce_tensor = self._reduce_info["reduce_tensor"]
@@ -1455,7 +1460,7 @@ class ReduceAtomicSchedule(_VectorSchedule):
 
         if len(self._last_output_tensors) > 1:
             final_out_tensor_ub_rf = final_out_tensor_ub_rf[0]
-        self._schedule[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
+        self._schedule[final_out_tensor_ub_rf].set_scope(scope_ubuf)
         self._reduce_tiling_para["ub_tiling"][0]["tiling_tensor"] = \
             final_out_tensor_ub_rf
 

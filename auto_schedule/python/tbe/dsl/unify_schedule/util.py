@@ -21,6 +21,16 @@ from typing import List
 from typing import Union
 
 from tbe import tvm
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import HI3796CV300CS
+from tbe.common.platform import HI3796CV300ES
+from tbe.common.platform import SD3403
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
@@ -29,7 +39,6 @@ from tbe.tvm.expr import Var
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
 from te import platform as cce
-from te.platform.cce_conf import CceProductParams as product_params
 
 from .constants import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
     NEED_TEMP_SPACE_INSNS, VCMP_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, NEED_EXTENT_NODE_INSNS
@@ -76,14 +85,14 @@ def is_v100():
     """
     :return:
     """
-    return product_params().is_mini_version() or product_params().is_cloud_version()
+    return get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_310)
 
 
 def is_v200():
     """
     :return:
     """
-    return product_params().is_ng1_version() or product_params().is_lhisi_version()
+    return get_soc_spec(SOC_VERSION) in (ASCEND_610, ASCEND_615, ASCEND_710, HI3796CV300ES, HI3796CV300CS, SD3403)
 
 
 def need_temp_space(tensor: tvm.tensor.Tensor):
@@ -245,14 +254,14 @@ def get_ub_size():
     """
     :return:
     """
-    return cce.get_soc_spec("UB_SIZE")
+    return get_soc_spec("UB_SIZE")
 
 
 def get_core_num():
     """
     :return:
     """
-    return cce.get_soc_spec("CORE_NUM")
+    return get_soc_spec("CORE_NUM")
 
 
 def get_build_cfg():

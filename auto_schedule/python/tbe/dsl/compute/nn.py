@@ -18,6 +18,7 @@ nn
 from __future__ import absolute_import
 
 from tbe import tvm
+from tbe.common.platform import intrinsic_check_support
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.expr_compare import expr_equal as equal
 from tbe.tvm.dsl_source_info import source_info_decorator
@@ -92,7 +93,6 @@ def vaddrelu(lhs, rhs):
     -------
     wrapped_tensor : relu (lhs + rhs)
     """
-    from te.platform import intrinsic_check_support
     if not isinstance(lhs, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -154,7 +154,6 @@ def vsubrelu(lhs, rhs):
     -------
     wrapped_tensor : relu (lhs - rhs)
     """
-    from te.platform import intrinsic_check_support
     if not isinstance(lhs, tvm.tensor.Tensor):
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -212,7 +211,6 @@ def vrelu(raw_tensor):
     -------
     wrapped_tensor : vrelu(raw_tensor)
     """
-    from te.platform import intrinsic_check_support
     _is_current_chip_support_vaddrelu = intrinsic_check_support("Intrinsic_vaddrelu")
     vaddrelu_pattern = _check_multi_compute_pattern(("elewise_binary_add",), raw_tensor)
     if _is_current_chip_support_vaddrelu and vaddrelu_pattern:
@@ -244,7 +242,6 @@ def vlrelu(raw_tensor, alpha=0):
     -------
     wrapped_tensor : vlrelu(raw_tensor)
     """
-    from te.platform import intrinsic_check_support
     dtype = raw_tensor.dtype
     shape = raw_tensor.shape
 

@@ -17,18 +17,23 @@ util
 """
 # pylint: disable=import-error
 from decorator import decorator
-from functools import wraps
 from tbe import tvm
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import HI3796CV300CS
+from tbe.common.platform import HI3796CV300ES
+from tbe.common.platform import SD3403
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import intrinsic_check_support
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
-from te.platform.cce_conf import CceProductParams as pver
-from te.platform.cce_conf import VERSION_CLOUD
-from te.platform.cce_conf import VERSION_MINI
-from te.platform.cce_conf import VERSION_MINI_NG1
-from te.platform.cce_conf import VERSION_MINI_NG1M
-from te.platform.cce_conf import VERSION_MINI_NG1PG2
-from te.platform.cce_conf import VERSION_SHISI
+
+ASCEND_SHISI = "smallhisi"
 
 # Save op's output dtype, when first call the template api,we will save the dtype.
 # Before auto scheduling,get the dtype and convert the res tensor to this dtype,
@@ -52,508 +57,508 @@ DSL_CHECK_SUPPORT_MAP = {
     "broadcast": {
         "AllSoc": ("float16", "float32", "int32", "int16", "uint16",
                    "int8", "uint8"),
-        VERSION_MINI: ("float16", "float32", "int32", "int16", "uint16",
+        ASCEND_310: ("float16", "float32", "int32", "int16", "uint16",
+                     "int8", "uint8"),
+        ASCEND_910: ("float16", "float32", "int32", "int16", "uint16",
+                     "int8", "uint8"),
+        ASCEND_710: ("float16", "float32", "int32", "int16", "uint16",
+                     "int8", "uint8"),
+        ASCEND_610: ("float16", "float32", "int32", "int16", "uint16",
+                     "int8", "uint8"),
+        ASCEND_615: ("float16", "float32", "int32", "int16", "uint16",
+                     "int8", "uint8"),
+        ASCEND_SHISI: ("float16", "float32", "int32", "int16", "uint16",
                        "int8", "uint8"),
-        VERSION_CLOUD: ("float16", "float32", "int32", "int16", "uint16",
-                        "int8", "uint8"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32", "int16", "uint16",
-                            "int8", "uint8"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32", "int16", "uint16",
-                             "int8", "uint8"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32", "int16", "uint16",
-                               "int8", "uint8"),
-        VERSION_SHISI: ("float16", "float32", "int32", "int16", "uint16",
-                        "int8", "uint8"),
     },
 
     # segment
     "unsorted_segment_sum": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_mean": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_prod": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32", "int16"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32", "int16"),
+        ASCEND_610: ("float16", "float32", "int32", "int16"),
+        ASCEND_615: ("float16", "float32", "int32", "int16"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_min": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32", "int16"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32", "int16"),
+        ASCEND_610: ("float16", "float32", "int32", "int16"),
+        ASCEND_615: ("float16", "float32", "int32", "int16"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
     "unsorted_segment_max": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32", "int16"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32", "int16"),
+        ASCEND_610: ("float16", "float32", "int32", "int16"),
+        ASCEND_615: ("float16", "float32", "int32", "int16"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
 
     # inplace
     "inplace_add": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
     "inplace_sub": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
     "inplace_update": {
         "AllSoc": ("float16", "float32", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "float32", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "float32", "int32"),
     },
 
     # ceil/floor/round/trunc
     "ceil": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "floor": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "round": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "trunc": {
         "AllSoc": ("float16",),
-        VERSION_MINI: (),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: (),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "round_half_up": {
         "AllSoc": ("float16",),
-        VERSION_MINI: (),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: (),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
 
     # reduce
     "reduce_sum": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),  # int32: nlst support, last not
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),  # int32: nlst support, last not
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "reduce_max": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32", "int32"),  # fp32:last need priority_flag
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"), # v200 int32: nlst support, last not
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32", "int32"),  # fp32:last need priority_flag
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"), # v200 int32: nlst support, last not
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "reduce_min": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),  # fp32:last need priority_flag
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),  # fp32:last need priority_flag
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "reduce_prod": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),  # int32: nlst/last support
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),  # int32: nlst/last support
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
 
     # elewise
     "vadd": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vsub": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vmul": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32", "int16"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32", "int16"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32", "int16"),
+        ASCEND_610: ("float16", "float32", "int32", "int16"),
+        ASCEND_615: ("float16", "float32", "int32", "int16"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vdiv": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32",),
-        VERSION_CLOUD: ("float16", "float32",),
-        VERSION_MINI_NG1: ("float16", "float32",),
-        VERSION_MINI_NG1M: ("float16", "float32",),
-        VERSION_MINI_NG1PG2: ("float16", "float32",),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32",),
+        ASCEND_910: ("float16", "float32",),
+        ASCEND_710: ("float16", "float32",),
+        ASCEND_610: ("float16", "float32",),
+        ASCEND_615: ("float16", "float32",),
+        ASCEND_SHISI: ("float16",),
     },
     "vmod": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vmin": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vmax": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vadds": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vmins": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vmaxs": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vmuls": {
         "AllSoc": ("float16", "int32"),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16", "int32"),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16", "int32"),
     },
     "vnot": {
         "AllSoc": ("int16", "uint16"),
-        VERSION_MINI: ("int16", "uint16"),
-        VERSION_CLOUD: ("int16", "uint16"),
-        VERSION_MINI_NG1: ("int16", "uint16"),
-        VERSION_MINI_NG1M: ("int16", "uint16"),
-        VERSION_MINI_NG1PG2: ("int16", "uint16"),
-        VERSION_SHISI: ("int16", "uint16"),
+        ASCEND_310: ("int16", "uint16"),
+        ASCEND_910: ("int16", "uint16"),
+        ASCEND_710: ("int16", "uint16"),
+        ASCEND_610: ("int16", "uint16"),
+        ASCEND_615: ("int16", "uint16"),
+        ASCEND_SHISI: ("int16", "uint16"),
     },
     "vor": {
         "AllSoc": ("int16", "uint16"),
-        VERSION_MINI: ("int16", "uint16"),
-        VERSION_CLOUD: ("int16", "uint16"),
-        VERSION_MINI_NG1: ("int16", "uint16"),
-        VERSION_MINI_NG1M: ("int16", "uint16"),
-        VERSION_MINI_NG1PG2: ("int16", "uint16"),
-        VERSION_SHISI: ("int16", "uint16"),
+        ASCEND_310: ("int16", "uint16"),
+        ASCEND_910: ("int16", "uint16"),
+        ASCEND_710: ("int16", "uint16"),
+        ASCEND_610: ("int16", "uint16"),
+        ASCEND_615: ("int16", "uint16"),
+        ASCEND_SHISI: ("int16", "uint16"),
     },
     "vand": {
         "AllSoc": ("int16", "uint16"),
-        VERSION_MINI: ("int16", "uint16"),
-        VERSION_CLOUD: ("int16", "uint16"),
-        VERSION_MINI_NG1: ("int16", "uint16"),
-        VERSION_MINI_NG1M: ("int16", "uint16"),
-        VERSION_MINI_NG1PG2: ("int16", "uint16"),
-        VERSION_SHISI: ("int16", "uint16"),
+        ASCEND_310: ("int16", "uint16"),
+        ASCEND_910: ("int16", "uint16"),
+        ASCEND_710: ("int16", "uint16"),
+        ASCEND_610: ("int16", "uint16"),
+        ASCEND_615: ("int16", "uint16"),
+        ASCEND_SHISI: ("int16", "uint16"),
     },
     "vcmp": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vlogic": {
         "AllSoc": ("bool",),
-        VERSION_MINI: ("bool",),
-        VERSION_CLOUD: ("bool",),
-        VERSION_MINI_NG1: ("bool",),
-        VERSION_MINI_NG1M: ("bool",),
-        VERSION_MINI_NG1PG2: ("bool",),
-        VERSION_SHISI: ("bool",),
+        ASCEND_310: ("bool",),
+        ASCEND_910: ("bool",),
+        ASCEND_710: ("bool",),
+        ASCEND_610: ("bool",),
+        ASCEND_615: ("bool",),
+        ASCEND_SHISI: ("bool",),
     },
     "vsel": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vcmpsel": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vlog": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vexp": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vabs": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vrec": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vrelu": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16",),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16",),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vsqrt": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vrsqrt": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vaxpy": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vmla": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vmadd": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vmaddrelu": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vlrelu": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vaddrelu": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16",),
-        VERSION_MINI_NG1: ("int16", "float16", "float32"),
-        VERSION_MINI_NG1M: ("int16", "float16", "float32"),
-        VERSION_MINI_NG1PG2: ("int16", "float16", "float32"),
-        VERSION_SHISI: ("int16", "float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16",),
+        ASCEND_710: ("int16", "float16", "float32"),
+        ASCEND_610: ("int16", "float16", "float32"),
+        ASCEND_615: ("int16", "float16", "float32"),
+        ASCEND_SHISI: ("int16", "float16",),
     },
     "vsubrelu": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16",),
-        VERSION_MINI_NG1: ("int16", "float16", "float32"),
-        VERSION_MINI_NG1M: ("int16", "float16", "float32"),
-        VERSION_MINI_NG1PG2: ("int16", "float16", "float32"),
-        VERSION_SHISI: ("int16", "float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16",),
+        ASCEND_710: ("int16", "float16", "float32"),
+        ASCEND_610: ("int16", "float16", "float32"),
+        ASCEND_615: ("int16", "float16", "float32"),
+        ASCEND_SHISI: ("int16", "float16",),
     },
 
     # common
     "clip": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32"),  # int32: schedule not support
-        VERSION_MINI_NG1M: ("float16", "float32"),  # int32: schedule not support
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),  # int32: schedule not support
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32"),  # int32: schedule not support
+        ASCEND_610: ("float16", "float32"),  # int32: schedule not support
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),  # int32: schedule not support
     },
     "cast_to": {
         "AllSoc": ("f162f32", "f162s8", "f162u8", "f162s32", \
                    "s82f16", "s82u8", "u82f16", "u82s8", \
                    "s322f16", "s322s8", "s322u8", "s322f32"),
-        VERSION_MINI: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                       "f162f32", "f162s8", "f162u8", "f162s32", \
+        ASCEND_310: ("f322f16", "f322s8", "f322u8", "f322s32", \
+                     "f162f32", "f162s8", "f162u8", "f162s32", \
+                     "s82f16", "s82u8", "u82f16", "u82s8", \
+                     "s322f16", "s322s8", "s322u8", "s322f32"),
+        ASCEND_910: ("f322f16", "f322s8", "f322u8", "f322s32", \
+                     "f162f32", "f162s8", "f162u8", "f162s32", \
+                     "s82f16", "s82u8", "u82f16", "u82s8", \
+                     "s322f16", "s322s8", "s322u8", "s322f32"),
+        ASCEND_710: ("f322f16", "f322s8", "f322u8", "f322s32", \
+                     "f162f32", "f162s8", "f162u8", "f162s32", \
+                     "s82f16", "s82u8", "u82f16", "u82s8", \
+                     "s322f16", "s322s8", "s322u8", "s322f32"),
+        ASCEND_610: ("f322f16", "f322s8", "f322u8", "f322s32", \
+                     "f162f32", "f162s8", "f162u8", "f162s32", \
+                     "s82f16", "s82u8", "u82f16", "u82s8", \
+                     "s322f16", "s322s8", "s322u8", "s322f32"),
+        ASCEND_615: ("f322f16", "f322s8", "f322u8", "f322s32", \
+                     "f162f32", "f162s8", "f162u8", "f162s32", \
+                     "s82f16", "s82u8", "u82f16", "u82s8", \
+                     "s322f16", "s322s8", "s322u8", "s322f32"),
+        ASCEND_SHISI: ("f162f32", "f162s8", "f162u8", "f162s32", \
                        "s82f16", "s82u8", "u82f16", "u82s8", \
                        "s322f16", "s322s8", "s322u8", "s322f32"),
-        VERSION_CLOUD: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                        "f162f32", "f162s8", "f162u8", "f162s32", \
-                        "s82f16", "s82u8", "u82f16", "u82s8", \
-                        "s322f16", "s322s8", "s322u8", "s322f32"),
-        VERSION_MINI_NG1: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                            "f162f32", "f162s8", "f162u8", "f162s32", \
-                            "s82f16", "s82u8", "u82f16", "u82s8", \
-                            "s322f16", "s322s8", "s322u8", "s322f32"),
-        VERSION_MINI_NG1M: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                             "f162f32", "f162s8", "f162u8", "f162s32", \
-                             "s82f16", "s82u8", "u82f16", "u82s8", \
-                             "s322f16", "s322s8", "s322u8", "s322f32"),
-        VERSION_MINI_NG1PG2: ("f322f16", "f322s8", "f322u8", "f322s32", \
-                               "f162f32", "f162s8", "f162u8", "f162s32", \
-                               "s82f16", "s82u8", "u82f16", "u82s8", \
-                               "s322f16", "s322s8", "s322u8", "s322f32"),
-        VERSION_SHISI: ("f162f32", "f162s8", "f162u8", "f162s32", \
-                        "s82f16", "s82u8", "u82f16", "u82s8", \
-                        "s322f16", "s322s8", "s322u8", "s322f32"),
     },
 
     "conv": {
@@ -581,30 +586,30 @@ DSL_CHECK_SUPPORT_MAP = {
 UNIFY_DSL_CHECK_SUPPORT_MAP = {
     "reduce_prod": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32"),
-        VERSION_CLOUD: ("float16", "float32"),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "vsel": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),
-        VERSION_CLOUD: ("float16",),
-        VERSION_MINI_NG1: ("float16", "float32"),
-        VERSION_MINI_NG1M: ("float16", "float32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16",),
+        ASCEND_910: ("float16",),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+        ASCEND_SHISI: ("float16",),
     },
     "reduce_sum": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16", "float32", "int32"),
-        VERSION_CLOUD: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1M: ("float16", "float32", "int32"),
-        VERSION_MINI_NG1PG2: ("float16", "float32", "int32"),
-        VERSION_SHISI: ("float16",),
+        ASCEND_310: ("float16", "float32", "int32"),
+        ASCEND_910: ("float16", "float32", "int32"),
+        ASCEND_710: ("float16", "float32", "int32"),
+        ASCEND_610: ("float16", "float32", "int32"),
+        ASCEND_615: ("float16", "float32", "int32"),
+        ASCEND_SHISI: ("float16",),
     },
 }
 
@@ -626,7 +631,9 @@ def dsl_support_dtype(dsl_name):
     if all_support_dtype is None:
         return []
 
-    soc_ver = pver().get_product_version()
+    soc_ver = get_soc_spec(SOC_VERSION)
+    if soc_ver in (HI3796CV300CS, HI3796CV300ES, SD3403):
+        soc_ver = ASCEND_SHISI
     soc_support_dtype = all_support_dtype.get(soc_ver)
     if soc_support_dtype is None:
         soc_support_dtype = all_support_dtype.get("AllSoc")
@@ -657,7 +664,9 @@ def dsl_check_support(dsl_api, dtype=None):
     if all_support_dtype is None:
         return False
 
-    soc_ver = pver().get_product_version()
+    soc_ver = get_soc_spec(SOC_VERSION)
+    if soc_ver in (HI3796CV300CS, HI3796CV300ES, SD3403):
+        soc_ver = ASCEND_SHISI
     soc_support_dtype = all_support_dtype.get(soc_ver)
     if soc_support_dtype is None:
         soc_support_dtype = all_support_dtype.get("AllSoc")
@@ -757,7 +766,6 @@ def is_cast_support(src_type, dst_type):
     """
     is_cast_support
     """
-    from te.platform import intrinsic_check_support
     if src_type == dst_type:
         return True
 
@@ -901,7 +909,6 @@ def auto_cast_tensor(tensor, intr, supported_types=None, is_auto_cast=True):
     """
     auto_cast_tensor
     """
-    from te.platform import intrinsic_check_support
     from .cast import _cast
     if isinstance(tensor, tvm.tensor.Tensor):
         dtype = tensor.dtype

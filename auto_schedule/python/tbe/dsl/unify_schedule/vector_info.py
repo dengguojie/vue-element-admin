@@ -28,10 +28,10 @@ from typing import Tuple
 from typing import Union
 
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.base import operation
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
-from te.platform.cce_conf import get_soc_spec
 
 from .constants import *
 from .util import equals_one
