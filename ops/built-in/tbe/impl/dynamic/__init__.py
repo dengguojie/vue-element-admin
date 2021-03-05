@@ -80,6 +80,7 @@ from .div import div
 from .sqrt import sqrt
 from .threshold_v2_d import threshold_v2_d
 from .square import square
+from .squared_difference import squared_difference
 from .sparse_apply_proximal_adagrad_d import sparse_apply_proximal_adagrad_d
 from .maximum import maximum
 from .minimum import minimum
