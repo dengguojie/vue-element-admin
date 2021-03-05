@@ -59,6 +59,7 @@ def op_select_format(input_data, x1, x2, value, y, kernel_name="addcdiv"):
         support_dtype.extend([dtype] * len(support_format))
 
     support_format = support_format * dtype_len
+    last_format = ["ND"] * len(support_format)
 
     input0 = gen_param(classify="input0", name="input_data",
                        datatype=",".join(support_dtype),
@@ -71,7 +72,7 @@ def op_select_format(input_data, x1, x2, value, y, kernel_name="addcdiv"):
                        format=",".join(support_format))
     input3 = gen_param(classify="input3", name="value",
                        datatype=",".join(support_dtype),
-                       format=",".join(support_format))
+                       format=",".join(last_format))
     output0 = gen_param(classify="output0", name="y",
                         datatype=",".join(support_dtype),
                         format=",".join(support_format))
