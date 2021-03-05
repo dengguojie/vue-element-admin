@@ -53,11 +53,12 @@ graphStatus MakeBatchSquareMatrix(const TensorDesc& tensor, Shape& out, const ch
 
 graphStatus MakeBatchSquareMatrix(const GeTensorDescPtr& tensor_desc,
                                   GeShape& out, const char* op_name) {
-  GeShape s;
-  if (WithRankAtLeast(tensor_desc, 2, s) == GRAPH_FAILED) {
-    OP_LOGE("input tensor's rank at least 2.");
+  GeShape ge_shape;
+  if (WithRankAtLeast(tensor_desc, 2, ge_shape) == GRAPH_FAILED) {
+    OP_LOGE("Input tensor's rank at least 2.");
     return GRAPH_FAILED;
   }
+  Shape s(ge_shape.GetDims());
   size_t existing = s.GetDimNum();
   int64_t dim1 = s.GetDim(existing - 2);
   int64_t dim2 = s.GetDim(existing - 1);
@@ -68,16 +69,22 @@ graphStatus MakeBatchSquareMatrix(const GeTensorDescPtr& tensor_desc,
     return GRAPH_FAILED;
   }
 
-  GeShape batch_shape;
-  if (SubShape(s, 0, -2, 1, batch_shape, op_name) == GRAPH_FAILED) {
-    OP_LOGE(op_name, "Get SubShape batch_shape Failed.");
-    return GRAPH_FAILED;
+  if (RankKnown(ge_shape)) {
+    GeShape batch_shape;
+    if (SubShape(ge_shape, 0, -2, 1, batch_shape, op_name) == GRAPH_FAILED) {
+      OP_LOGE(op_name, "Get subShape batch_shape failed.");
+      return GRAPH_FAILED;
+    }
+    if (Concatenate(batch_shape, GeShape({out_dim, out_dim}), out) ==
+        GRAPH_FAILED) {
+      OP_LOGE(op_name, "Concatenate batch_shape and out_dim failed.");
+      return GRAPH_FAILED;
+    }
+  } else {
+    GeShape unknown_shape(ge::UNKNOWN_SHAPE);
+    out = unknown_shape;
   }
-  if (Concatenate(batch_shape, GeShape({out_dim, out_dim}), out) ==
-      GRAPH_FAILED) {
-    OP_LOGE(op_name, "Concatenate batch_shape and out_dim Failed.");
-    return GRAPH_FAILED;
-  }
+
   return GRAPH_SUCCESS;
 }
 
