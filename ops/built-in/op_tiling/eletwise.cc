@@ -457,9 +457,11 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
   }
   bool is_const = false;
   bool is_support_broadcast = true;
+  bool use_special_pattern = true;
   if (flag_info.size() > 2) {
     is_const = flag_info[1];
     is_support_broadcast = flag_info[2];
+    use_special_pattern = flag_info[3];
   }
   size_t dim_len = 0;
   bool is_pure_elementwise = true;
@@ -471,7 +473,7 @@ bool EletwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const
     ret = ret && WriteConstTiling(op_type, op_info, run_info, key, block_dims);
   } else if (IsEmptyTensor(op_type, op_paras)) {
     ret = ret && WriteConstTiling(op_type, op_info, run_info, INT32_MIN, 1);
-  } else if (is_pure_elementwise || !is_support_broadcast) {
+  } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     Eletwise eletwise(op_type, op_paras, op_info, flag_info);
     ret = ret && eletwise.DoTiling();
     ret = ret && eletwise.WriteTilingData(run_info);
