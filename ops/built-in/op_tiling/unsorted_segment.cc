@@ -210,15 +210,27 @@ public:
     }
 };
 
-class UBParam {
+class CommonScalar {
 public:
-    FrontLast ids_param;
-    FrontLast e_out_param;
-    FrontLast e_out_loop_param;
     FrontLast num_segments_param;
-    int32_t e_num_part_ub_num;
+    FrontLast num_segments_loop_param;
+    FrontLast e_out_param;
+    FrontLast ids_param;
+    FrontLast e_out_loop_param;
     int32_t num_segments_core_num;
-    float ub_use_rate;
+    float ub_use_rate = 0;
+    int32_t input_once_num = 0;
+    int32_t output_once_num = 0;
+
+    int32_t select_key = 0;
+    int32_t ids_last_burst_len = 0;
+
+    int32_t repeat_time_front_part = 0;
+    int32_t repeat_time_last_part = 0;
+    int32_t align_scalar = 0;
+    int32_t e_lenBurst_front = 0;
+    int32_t e_lenBurst_last = 0;
+    int32_t e_num_part_ub_num = 0;
 };
 
 class UnsortedSegmentTilingCal {
@@ -226,14 +238,11 @@ public:
     UnsortedSegmentTilingCal(int32_t _core_num, int32_t _num_segments, int32_t input_byte,
                                 int32_t _ids_num, int32_t _e_num, int32_t _ub_size)
     {
-        // ===================basic param===============================
         core_num = _core_num;
         num_segments = _num_segments;
         ids_num = _ids_num;
         e_num = _e_num;
         ub_size = _ub_size;
-        need_core_num = 0;
-        num_segments_core_num = 0;
         mask = BYTE_FULL_MASK / input_byte;
 
         ele_num_per_block = BYTE_BLOCK / input_byte;
@@ -241,26 +250,20 @@ public:
 
         ids_once_num = ((ub_size / 5 / BYTE_BLOCK) * BYTE_BLOCK) / BYTE_INT32;
         res_ub_size = ub_size - ids_once_num * BYTE_INT32;
+        obj_scalar = &scalars[0];
 
         int32_t ub_div_rates[UB_TEMPLATE_NUM][2] = {{1, 1}, {1, 2}, {2, 1}};
         for (int i = 0; i < UB_TEMPLATE_NUM; i++) {
             int32_t a = ub_div_rates[i][0];
             int32_t b = ub_div_rates[i][1];
-            ub_tensor_nums[i][0] = _floor_align_mask(res_ub_size / (a + b) * a / input_byte);
-            ub_tensor_nums[i][1] = _floor_align_mask(res_ub_size / (a + b) * b / input_byte);
+            scalars[i].input_once_num = _floor_align_mask(res_ub_size / input_byte / (a + b) * a);
+            scalars[i].output_once_num = _floor_align_mask(res_ub_size / input_byte / (a + b) * b);
         }
         _get_select_keys_for_compile();
-
-
-        // ===================scalar param==============================
-        select_key_input_scalar = 0;
-        ids_last_burst_len_input_scalar = 0;
-        repeat_time_front_part = 0;
-        repeat_time_last_part = 0;
-        align_scalar = 0;
-        e_lenBurst_front_input_scalar = 0;
-        e_lenBurst_last_input_scalar = 0;
-        e_num_part_ub_num_input_scalar = 0;
+    }
+    ~UnsortedSegmentTilingCal()
+    {
+        obj_scalar = nullptr;
     }
     // ===================basic param===============================
     int32_t core_num;
@@ -273,108 +276,49 @@ public:
 
     int32_t ids_once_num;
     int32_t res_ub_size;
-    int32_t ub_tensor_nums[UB_TEMPLATE_NUM][2];
-    int32_t need_core_num;
     vector<map<string, int>> select_keys_for_compile;
-    int32_t num_segments_core_num;
-    const int32_t min_num_segments_per_core = 4;
     // ===================scalar param==============================
-    // common params
-    int32_t select_key_input_scalar;
-    FrontLast e_out_loop_param_input_scalar;
-    FrontLast ids_param_input_scalar;
-    FrontLast e_out_param_input_scalar;
-    FrontLast num_segments_param;
-    FrontLast num_segments_loop_param;
-    int32_t e_num_part_ub_num_input_scalar;
+    CommonScalar scalars[UB_TEMPLATE_NUM];
+    CommonScalar* obj_scalar;
 
-    // ids params
     int32_t ids_num;
-    int32_t ids_last_burst_len_input_scalar;
-
-    // e num params
     int32_t e_num;
-    int32_t repeat_time_front_part;
-    int32_t repeat_time_last_part;
-    int32_t align_scalar;
-
-    int32_t e_lenBurst_front_input_scalar;
-    int32_t e_lenBurst_last_input_scalar;
 
     int32_t _floor_align_mask(int32_t val) {
         return max(val / mask * mask, mask);
     }
 
-    void _get_tiling_params(const vector<map<string, int>>& select_mode, int32_t ids_ele_byte)
+    void _get_tiling_params(int i, int32_t ids_ele_byte)
     {
+        auto& scalar = scalars[i];
         if (e_num % ele_num_per_block == 0) {
-            align_scalar = 0;
+            scalar.align_scalar = 0;
         } else {
-            align_scalar = ele_num_per_block - (e_num - (e_num / ele_num_per_block) * ele_num_per_block);
+            scalar.align_scalar = ele_num_per_block - (e_num - (e_num / ele_num_per_block) * ele_num_per_block);
         }
 
-        UBParam ub_params[UB_TEMPLATE_NUM];
-        for (int i = 0; i < UB_TEMPLATE_NUM; i++) {
-            int32_t input_once_num_tmp = ub_tensor_nums[i][0];
-            int32_t output_once_num_tmp = ub_tensor_nums[i][1];
+        int32_t e_max_block_ub = min(
+                _floor_align_mask(scalar.output_once_num / num_segments), 255 * mask);
+        scalar.e_out_param.div_by_part(e_num, e_max_block_ub, mask, core_num);
+        scalar.e_out_loop_param.div_by_num(scalar.e_out_param.times, core_num);
+        scalar.num_segments_core_num = max(min(core_num / scalar.e_out_loop_param.times,
+                                _ceil_div(num_segments*scalar.e_out_param.last, mask)), 1);
 
-            int32_t e_max_block_ub = min(
-                    _floor_align_mask(output_once_num_tmp / num_segments), 255 * mask);
-            ub_params[i].e_out_param.div_by_part(e_num, e_max_block_ub, mask, core_num);
+        scalar.ids_param.div_by_part(ids_num,
+                min(scalar.input_once_num / scalar.e_out_param.front, ids_once_num));
+        scalar.e_num_part_ub_num = _ceil_div(scalar.e_out_param.front, mask) * mask;
+        scalar.num_segments_param.div_by_part(num_segments,
+            scalar.output_once_num / scalar.e_num_part_ub_num, 1, scalar.num_segments_core_num);
+        float rate_out = float(scalar.e_out_param.front * scalar.num_segments_param.front) / scalar.output_once_num;
+        float rate_in = float(scalar.e_out_param.front * scalar.ids_param.front) / scalar.input_once_num;
+        scalar.ub_use_rate = rate_in * rate_out;
+        scalar.num_segments_loop_param.div_by_num(scalar.num_segments_param.times, scalar.num_segments_core_num);
+        scalar.e_lenBurst_front = _ceil_div(scalar.e_out_param.front, ele_num_per_block);
+        scalar.e_lenBurst_last = _ceil_div(scalar.e_out_param.last, ele_num_per_block);
+        scalar.repeat_time_front_part = _ceil_div(scalar.e_out_param.front, mask);
+        scalar.repeat_time_last_part = _ceil_div(scalar.e_out_param.last, mask);
+        scalar.ids_last_burst_len = _ceil_div(ids_num, BYTE_BLOCK / ids_ele_byte);
 
-            ub_params[i].e_out_loop_param.div_by_num(ub_params[i].e_out_param.times, core_num);
-            ub_params[i].num_segments_core_num = max(min(core_num / ub_params[i].e_out_loop_param.times,
-                                    _ceil_div(num_segments, min_num_segments_per_core)), 1);
-
-            ub_params[i].ids_param.div_by_part(ids_num,
-                    min(input_once_num_tmp / ub_params[i].e_out_param.front, ids_once_num));
-
-            ub_params[i].e_num_part_ub_num = _ceil_div(ub_params[i].e_out_param.front, mask) * mask;
-
-            ub_params[i].num_segments_param.div_by_part(num_segments,
-             output_once_num_tmp / ub_params[i].e_num_part_ub_num, 1, ub_params[i].num_segments_core_num);
-            float rate_out =
-             float(ub_params[i].e_out_param.front * ub_params[i].num_segments_param.front) / output_once_num_tmp;
-            float rate_in = float(ub_params[i].e_out_param.front * ub_params[i].ids_param.front) / input_once_num_tmp;
-            ub_params[i].ub_use_rate = rate_in * rate_out;
-        }
-
-        float ub_use_rate = 0;
-        for (auto the_mode : select_mode) {
-            auto ub_param = ub_params[the_mode["ub_div_id"]];
-            if (ub_param.ub_use_rate > ub_use_rate) {
-                bool is_in_list = False;
-                for (auto select_key : select_keys_for_compile) {
-                    if (the_mode["ub_div_id"] == select_key["ub_div_id"]) {
-                        is_in_list = True;
-                        break;
-                    }
-                }
-                if (not is_in_list) {
-                    continue;
-                }
-                ub_use_rate = ub_param.ub_use_rate;
-                select_key_input_scalar = the_mode["select_key"];
-                ids_param_input_scalar = ub_param.ids_param;
-                e_out_param_input_scalar = ub_param.e_out_param;
-                e_out_loop_param_input_scalar = ub_param.e_out_loop_param;
-                num_segments_param = ub_param.num_segments_param;
-                e_num_part_ub_num_input_scalar = ub_param.e_num_part_ub_num;
-                num_segments_core_num = ub_param.num_segments_core_num;
-                if (ids_param_input_scalar.times == 1) {
-                    break;
-                }
-            }
-        }
-        num_segments_loop_param.div_by_num(num_segments_param.times, num_segments_core_num);
-
-        need_core_num = e_out_loop_param_input_scalar.times * num_segments_loop_param.times;
-        e_lenBurst_front_input_scalar = _ceil_div(e_out_param_input_scalar.front, ele_num_per_block);
-        e_lenBurst_last_input_scalar = _ceil_div(e_out_param_input_scalar.last, ele_num_per_block);
-
-        repeat_time_front_part = _ceil_div(e_out_param_input_scalar.front, mask);
-        repeat_time_last_part = _ceil_div(e_out_param_input_scalar.last, mask);
-        ids_last_burst_len_input_scalar = _ceil_div(ids_num, BYTE_BLOCK / ids_ele_byte);
     }
 
     void _get_select_keys_for_compile()
@@ -448,27 +392,25 @@ public:
         SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID.end());
     }
 
-    vector<map<string, int>> _get_tiling_mode()
+    vector<map<string, int>> _get_tiling_mode(int32_t num_segments_core_num)
     {
         int32_t e_vector_num = _ceil_div(e_num, mask);
-        int32_t num_segments_estimate_block =
-            max(min(core_num / e_vector_num, _ceil_div(num_segments, min_num_segments_per_core)), 1);
 
         if (e_vector_num == 1 and e_num % ele_num_per_block != 0) {
             if (e_num >= ele_num_per_block) {
-                if (e_num >= ele_num_per_block) {
+                if (ids_num <= ids_once_num) {
                     return SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID;
                 }
                 return SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID;
             }
-            if (e_num >= ele_num_per_block) {
+            if (ids_num <= ids_once_num) {
                 return SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID;
             }
             return SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID;
         } else if (e_num % ele_num_per_block == 0) {
             if (ids_num <= ids_once_num) {
                 if (e_num <= e_max_by_stride) {
-                    if (num_segments_estimate_block > 1) {
+                    if (num_segments_core_num > 1) {
                         return SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN;
                     }
                     return SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN;
@@ -476,7 +418,7 @@ public:
                 return SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN;
             }
             if (e_num <= e_max_by_stride) {
-                if (num_segments_estimate_block > 1) {
+                if (num_segments_core_num > 1) {
                     return SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN;
                 }
                 return SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN;
@@ -485,7 +427,7 @@ public:
         }
         if (ids_num <= ids_once_num) {
             if (e_num <= e_max_by_stride) {
-                if (num_segments_estimate_block > 1) {
+                if (num_segments_core_num > 1) {
                     return SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID;
                 }
                 return SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID;
@@ -493,7 +435,7 @@ public:
             return SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID;
         }
         if (e_num <= e_max_by_stride) {
-            if (num_segments_estimate_block > 1) {
+            if (num_segments_core_num > 1) {
                 return SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID;
             }
             return SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID;
@@ -501,68 +443,64 @@ public:
         return SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID;
     }
 
-    void UnsortedSegmentWriteTilingParams(OpRunInfo &run_info)
+    void write_tiling_params(OpRunInfo &run_info)
     {
-        ByteBufferPut(run_info.tiling_data, select_key_input_scalar);
-        ByteBufferPut(run_info.tiling_data, e_out_loop_param_input_scalar.times);
-        ByteBufferPut(run_info.tiling_data, e_out_loop_param_input_scalar.front);
-        ByteBufferPut(run_info.tiling_data, e_out_loop_param_input_scalar.last);
-        ByteBufferPut(run_info.tiling_data, ids_param_input_scalar.times);
-        ByteBufferPut(run_info.tiling_data, ids_param_input_scalar.front);
-        ByteBufferPut(run_info.tiling_data, ids_param_input_scalar.last);
-        ByteBufferPut(run_info.tiling_data, e_out_param_input_scalar.times);
-        ByteBufferPut(run_info.tiling_data, e_out_param_input_scalar.front);
-        ByteBufferPut(run_info.tiling_data, e_out_param_input_scalar.last);
-
-        ByteBufferPut(run_info.tiling_data, num_segments_param.times);
-        ByteBufferPut(run_info.tiling_data, num_segments_param.front);
-        ByteBufferPut(run_info.tiling_data, num_segments_param.last);
-        ByteBufferPut(run_info.tiling_data, num_segments_loop_param.times);
-        ByteBufferPut(run_info.tiling_data, num_segments_loop_param.front);
-        ByteBufferPut(run_info.tiling_data, num_segments_loop_param.last);
-
-        ByteBufferPut(run_info.tiling_data, e_num_part_ub_num_input_scalar);
-
+        ByteBufferPut(run_info.tiling_data, obj_scalar->select_key);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_out_loop_param.times);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_out_loop_param.front);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_out_loop_param.last);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->ids_param.times);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->ids_param.front);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->ids_param.last);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_out_param.times);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_out_param.front);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_out_param.last);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->num_segments_param.times);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->num_segments_param.front);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->num_segments_param.last);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->num_segments_loop_param.times);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->num_segments_loop_param.front);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->num_segments_loop_param.last);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_num_part_ub_num);
         ByteBufferPut(run_info.tiling_data, e_num);
-        ByteBufferPut(run_info.tiling_data, repeat_time_front_part);
-        ByteBufferPut(run_info.tiling_data, repeat_time_last_part);
-        ByteBufferPut(run_info.tiling_data, align_scalar);
-        ByteBufferPut(run_info.tiling_data, e_lenBurst_front_input_scalar);
-        ByteBufferPut(run_info.tiling_data, e_lenBurst_last_input_scalar);
-        ByteBufferPut(run_info.tiling_data, ids_last_burst_len_input_scalar);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->repeat_time_front_part);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->repeat_time_last_part);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->align_scalar);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_lenBurst_front);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->e_lenBurst_last);
+        ByteBufferPut(run_info.tiling_data, obj_scalar->ids_last_burst_len);
     }
 
-    void UnsortedSegmentPrintTilingParams(const std::string &op_type)
+    void print_tiling_params(const std::string &op_type)
     {
-        GELOGD("op [%s] : select_key_input_scalar=%d", op_type.c_str(), select_key_input_scalar);
-        GELOGD("op [%s] : e_out_loop_param_input_scalar.times=%d",
-         op_type.c_str(), e_out_loop_param_input_scalar.times);
-        GELOGD("op [%s] : e_out_loop_param_input_scalar.front=%d",
-         op_type.c_str(), e_out_loop_param_input_scalar.front);
-        GELOGD("op [%s] : e_out_loop_param_input_scalar.last=%d", op_type.c_str(), e_out_loop_param_input_scalar.last);
-        GELOGD("op [%s] : ids_param_input_scalar.times=%d", op_type.c_str(), ids_param_input_scalar.times);
-        GELOGD("op [%s] : ids_param_input_scalar.front=%d", op_type.c_str(), ids_param_input_scalar.front);
-        GELOGD("op [%s] : ids_param_input_scalar.last=%d", op_type.c_str(), ids_param_input_scalar.last);
-        GELOGD("op [%s] : e_out_param_input_scalar.times=%d", op_type.c_str(), e_out_param_input_scalar.times);
-        GELOGD("op [%s] : e_out_param_input_scalar.front=%d", op_type.c_str(), e_out_param_input_scalar.front);
-        GELOGD("op [%s] : e_out_param_input_scalar.last=%d", op_type.c_str(), e_out_param_input_scalar.last);
+        GELOGD("op [%s] : select_key=%d", op_type.c_str(), obj_scalar->select_key);
+        GELOGD("op [%s] : e_out_loop_param.times=%d", op_type.c_str(), obj_scalar->e_out_loop_param.times);
+        GELOGD("op [%s] : e_out_loop_param.front=%d", op_type.c_str(), obj_scalar->e_out_loop_param.front);
+        GELOGD("op [%s] : e_out_loop_param.last=%d", op_type.c_str(), obj_scalar->e_out_loop_param.last);
+        GELOGD("op [%s] : ids_param.times=%d", op_type.c_str(), obj_scalar->ids_param.times);
+        GELOGD("op [%s] : ids_param.front=%d", op_type.c_str(), obj_scalar->ids_param.front);
+        GELOGD("op [%s] : ids_param.last=%d", op_type.c_str(), obj_scalar->ids_param.last);
+        GELOGD("op [%s] : e_out_param.times=%d", op_type.c_str(), obj_scalar->e_out_param.times);
+        GELOGD("op [%s] : e_out_param.front=%d", op_type.c_str(), obj_scalar->e_out_param.front);
+        GELOGD("op [%s] : e_out_param.last=%d", op_type.c_str(), obj_scalar->e_out_param.last);
 
-        GELOGD("op [%s] : num_segments_param.times=%d", op_type.c_str(), num_segments_param.times);
-        GELOGD("op [%s] : num_segments_param.front=%d", op_type.c_str(), num_segments_param.front);
-        GELOGD("op [%s] : num_segments_param.last=%d", op_type.c_str(), num_segments_param.last);
-        GELOGD("op [%s] : num_segments_loop_param.times=%d", op_type.c_str(), num_segments_loop_param.times);
-        GELOGD("op [%s] : num_segments_loop_param.front=%d", op_type.c_str(), num_segments_loop_param.front);
-        GELOGD("op [%s] : num_segments_loop_param.last=%d", op_type.c_str(), num_segments_loop_param.last);
+        GELOGD("op [%s] : num_segments_param.times=%d", op_type.c_str(), obj_scalar->num_segments_param.times);
+        GELOGD("op [%s] : num_segments_param.front=%d", op_type.c_str(), obj_scalar->num_segments_param.front);
+        GELOGD("op [%s] : num_segments_param.last=%d", op_type.c_str(), obj_scalar->num_segments_param.last);
+        GELOGD("op [%s] : num_segments_loop_param.times=%d", op_type.c_str(),
+            obj_scalar->num_segments_loop_param.times);
+        GELOGD("op [%s] : num_segments_loop_param.front=%d", op_type.c_str(),
+            obj_scalar->num_segments_loop_param.front);
+        GELOGD("op [%s] : num_segments_loop_param.last=%d", op_type.c_str(), obj_scalar->num_segments_loop_param.last);
 
-        GELOGD("op [%s] : e_num_part_ub_num_input_scalar=%d", op_type.c_str(), e_num_part_ub_num_input_scalar);
+        GELOGD("op [%s] : e_num_part_ub_num=%d", op_type.c_str(), obj_scalar->e_num_part_ub_num);
         GELOGD("op [%s] : e_num=%d", op_type.c_str(), e_num);
-        GELOGD("op [%s] : repeat_time_front_part=%d",
-         op_type.c_str(), repeat_time_front_part);
-        GELOGD("op [%s] : repeat_time_last_part=%d", op_type.c_str(), repeat_time_last_part);
-        GELOGD("op [%s] : align_scalar=%d", op_type.c_str(), align_scalar);
-        GELOGD("op [%s] : e_lenBurst_front_input_scalar=%d", op_type.c_str(), e_lenBurst_front_input_scalar);
-        GELOGD("op [%s] : e_lenBurst_last_input_scalar=%d", op_type.c_str(), e_lenBurst_last_input_scalar);
-        GELOGD("op [%s] : ids_last_burst_len_input_scalar=%d", op_type.c_str(), ids_last_burst_len_input_scalar);
+        GELOGD("op [%s] : repeat_time_front_part=%d", op_type.c_str(), obj_scalar->repeat_time_front_part);
+        GELOGD("op [%s] : repeat_time_last_part=%d", op_type.c_str(), obj_scalar->repeat_time_last_part);
+        GELOGD("op [%s] : align_scalar=%d", op_type.c_str(), obj_scalar->align_scalar);
+        GELOGD("op [%s] : e_lenBurst_front=%d", op_type.c_str(), obj_scalar->e_lenBurst_front);
+        GELOGD("op [%s] : e_lenBurst_last=%d", op_type.c_str(), obj_scalar->e_lenBurst_last);
+        GELOGD("op [%s] : ids_last_burst_len=%d", op_type.c_str(), obj_scalar->ids_last_burst_len);
     }
 };
 
@@ -583,7 +521,7 @@ int32_t min(const int32_t a, const int32_t b)
     return b;
 }
 
-bool UnsortedSegmentGetUssCompileParams(
+bool unsorted_segment_get_compile_params(
         const std::string &op_type, const nlohmann::json &op_compile_info_json,
         int32_t &core_num, int32_t &ub_size, int32_t &ub_tensor_num)
 {
@@ -620,7 +558,7 @@ bool UnsortedSegmentGetUssCompileParams(
     return true;
 }
 
-bool UnsortedSegmentGetEleDtype(const std::string &dtype, EleByte &elebyte)
+bool unsorted_segment_get_ele_dtype(const std::string &dtype, EleByte &elebyte)
 {
     map<string, EleByte> dtype_map{{"float32", FP32_BYTE}, {"float16", FP16_BYTE},
         {"int32", INT32_BYTE}, {"int8", INT8_BYTE}, {"uint8", UINT8_BYTE}};
@@ -686,7 +624,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     bool flag = False;
     // get input dtype
     EleByte input_ele_byte;
-    flag = UnsortedSegmentGetEleDtype(input_dtype, input_ele_byte);
+    flag = unsorted_segment_get_ele_dtype(input_dtype, input_ele_byte);
     if (!flag) {
         ge::OpsOneInputShapeErrReport("UnsortedSegment", "input_data", "get input_ele_byte failed.");
         OP_LOGE("op[%s] get input_ele_byte failed.", op_type.c_str());
@@ -698,7 +636,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     GELOGD("op[%s] output_ub_ele_num_one_row is %d", op_type.c_str(), output_ub_ele_num_one_row);
     // get ids dtype
     EleByte ids_ele_byte;
-    flag = UnsortedSegmentGetEleDtype(ids_dtype, ids_ele_byte);
+    flag = unsorted_segment_get_ele_dtype(ids_dtype, ids_ele_byte);
     if (!flag) {
         ge::OpsOneInputShapeErrReport("UnsortedSegment", "ids", "get ids_ele_byte failed.");
         OP_LOGE("op[%s] get ids_ele_byte failed.", op_type.c_str());
@@ -708,7 +646,7 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     int32_t core_num = 1;
     int32_t ub_size = 256 * 1024;
     int32_t ub_tensor_num = 0;
-    flag = UnsortedSegmentGetUssCompileParams(op_type, op_compile_info_json, core_num, ub_size, ub_tensor_num);
+    flag = unsorted_segment_get_compile_params(op_type, op_compile_info_json, core_num, ub_size, ub_tensor_num);
     if (!flag) {
         OP_LOGE("op[%s] GetCompileParams failed.", op_type.c_str());
         return false;
@@ -728,15 +666,44 @@ bool UnsortedSegmentTiling(const std::string &op_type,
     //==============================================
     // tiling params
     UnsortedSegmentTilingCal params(core_num, num_segments, int32_t(input_ele_byte), ids_size, e_size, ub_size);
-    auto select_mode = params._get_tiling_mode();
-    params._get_tiling_params(select_mode, ids_ele_byte);
 
+    for (int i = 0; i < UB_TEMPLATE_NUM; i++) {
+        params._get_tiling_params(i,  ids_ele_byte);
+    }
+    auto select_mode = params._get_tiling_mode(params.scalars[0].num_segments_core_num);
+
+    float ub_use_rate = 0;
+    for (auto the_mode : select_mode) {
+        auto* scalar = &(params.scalars[the_mode["ub_div_id"]]);
+        if (scalar->ub_use_rate > ub_use_rate) {
+            bool is_in_list = False;
+            for (auto select_key : params.select_keys_for_compile) {
+                if (the_mode["ub_div_id"] == select_key["ub_div_id"]) {
+                    is_in_list = True;
+                    break;
+                }
+            }
+            if (not is_in_list) {
+                continue;
+            }
+            ub_use_rate = scalar->ub_use_rate;
+            scalar->select_key = the_mode["select_key"];
+            params.obj_scalar = scalar;
+
+            if (params.obj_scalar->ids_param.times == 1) {
+                break;
+            }
+        }
+    }
+
+    int32_t need_core_num = params.obj_scalar->e_out_loop_param.times *
+        params.obj_scalar->num_segments_loop_param.times;
     // write tiling params to run_info
-    params.UnsortedSegmentWriteTilingParams(run_info);
+    params.write_tiling_params(run_info);
     // cout tiling params
-    params.UnsortedSegmentPrintTilingParams(op_type);
+    params.print_tiling_params(op_type);
     // BlockDim, core num used in tik op
-    run_info.block_dim = params.need_core_num;
+    run_info.block_dim = need_core_num;
     // workspace, null for tik op
     std::vector<int64_t> workspace;
     run_info.workspaces = workspace;

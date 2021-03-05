@@ -137,5 +137,5 @@ TEST_F(UnsortedSegmentProdTiling, unsortedsegmentprod_tiling_1) {
     op_compile_info.key = "aa";
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(to_string(runInfo.tiling_data), "40 2 1 1 1 4 4 2 64 60 4 4 4 4 1 1 64 124 1 1 4 8 8 1 ");
+    EXPECT_EQ(to_string(runInfo.tiling_data), "40 2 1 1 1 4 4 2 64 60 8 2 2 8 1 1 64 124 1 1 4 8 8 1 ");
 }
