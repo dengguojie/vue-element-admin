@@ -49,6 +49,7 @@ from .relu_v2 import relu_v2
 from .relu_grad_v2 import relu_grad_v2
 from .relu6_d import relu6_d
 from .adam_apply_one_assign import adam_apply_one_assign
+from .sigmoid_cross_entropy_with_logits_grad_v2 import sigmoid_cross_entropy_with_logits_grad_v2
 from .add import add
 from .inv import inv
 from .gelu import gelu

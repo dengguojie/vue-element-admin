@@ -1347,26 +1347,10 @@ IMPLEMT_VERIFIER(SigmoidCrossEntropyWithLogitsGradV2,
 }
 
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsGradV2InferShape) {
-  std::string reduction;
-  if (op.GetAttr("reduction", reduction) == GRAPH_SUCCESS) {
-    if (reduction != "none" && reduction != "mean" && reduction != "sum") {
-      printf(op.GetName().c_str(),
-             "Attr reduction only support 'none', 'mean', 'sum'");
-      return GRAPH_FAILED;
-    }
+  if (OneInOneOutDynamicInfer(op, "predict", {"gradient"})) {
+    return GRAPH_SUCCESS;
   }
-
-  TensorDesc gradient_desc = op.GetOutputDesc("gradient");
-  auto tensor_predict = op.GetInputDesc("predict");
-
-  auto shape = tensor_predict.GetShape();
-  auto dataType = tensor_predict.GetDataType();
-
-  gradient_desc.SetShape(shape);
-  gradient_desc.SetDataType(dataType);
-
-  (void)op.UpdateOutputDesc("gradient", gradient_desc);
-  return GRAPH_SUCCESS;
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGradV2,
