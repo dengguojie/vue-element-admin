@@ -58,6 +58,7 @@ from .axpy import axpy
 from .axpy_v2 import axpy_v2
 from .floor_mod import floor_mod
 from .mul import mul
+from .threshold_grad_v2_d import threshold_grad_v2_d
 from .invert import invert
 from .muls import muls
 from .reduce_sum import reduce_sum

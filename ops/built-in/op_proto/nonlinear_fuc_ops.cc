@@ -522,7 +522,8 @@ IMPLEMT_VERIFIER(ThresholdGradV2D, ThresholdGradV2DVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ThresholdGradV2DInferShape) {
-  if (InferShapeAndTypeThresholdGradV2D(op, "gradients", "features", "backprops")) {
+  bool is_dynamic_output = true;
+  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "gradients", "features", "backprops", is_dynamic_output)) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;
