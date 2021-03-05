@@ -433,7 +433,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 ub_split_axis, a1_start_index = __get_ub_tiling_split_axis(
                     split_axis, block_split_axis, block_split_inner)
                 if block_split_axis == r1_start_index and \
-                        (ub_split_axis != r1_start_index or a1_start_index == 0):
+                        (ub_split_axis != r1_start_index or reduce_axis_index[0] != 0):
                     return False
 
             # if ak*..*a2*a1/core_num > rk*..*r2*r2, do not need atomic
@@ -1743,6 +1743,8 @@ class ReduceAtomicSchedule(VectorSchedule):
             ub_rf_reordered_axis_list.append(out_tensor_ub_rf.op.axis[0])
 
         def __get_reorder_case_num():
+            if shape_before_reduce in self._spec_shape_list:
+                return 0
             if block_split_axis < a1_start_index and ub_split_axis < a1_start_index:
                 return 1
             if block_split_axis < a1_start_index and ub_split_axis > a1_end_index:
