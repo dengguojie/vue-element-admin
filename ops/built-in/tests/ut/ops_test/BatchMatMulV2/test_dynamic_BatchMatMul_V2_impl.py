@@ -4,7 +4,7 @@ from sys import flags
 from op_test_frame.ut import OpUT
 
 CUBE_BLOCK = 16
-ut_case = OpUT("BatchMatmulV2", "impl.dynamic.batch_matmul_v2", "batch_matmul_v2")
+ut_case = OpUT("BatchMatMulV2", "impl.dynamic.batch_matmul_v2", "batch_matmul_v2")
 
 
 # batch_range, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batchb_flag, case_name

@@ -83,9 +83,5 @@ precision_case2 = {"params": [{"shape": (1,1,4,8,16), "dtype": "float16", "forma
                    "calc_expect_func": calc_expect_func,
                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
 
-ut_case.add_precision_case("Ascend910", precision_case1)
-ut_case.add_precision_case("Ascend910", precision_case2)
-
-
-
-ut_case.run("Ascend910")
+ut_case.add_precision_case("Ascend910A", precision_case1)
+ut_case.add_precision_case("Ascend910A", precision_case2)
