@@ -8050,7 +8050,12 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
-
+  int32_t groups = 1;
+  if (op.GetAttr("groups", groups) == GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "op get groups failed.");
+    ErrorManager::GetInstance().ReportErrMessage("E50030", {{"op_name", "Conv2DTranspose"}, {"param_name", "groups"}});
+    return false;
+  }
   if (pads_list.size() != PADS_SIZE_LIMIT) {
     OP_LOGE(op.GetName().c_str(), "op get pads_list failed.");
     map<std::string, std::string> err_map;
@@ -8083,7 +8088,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
     output_h = stride_h * (dy_h - 1) + outputpadding_h + ((filter_h - 1) * dilation_h + 1) - pad_up - pad_down;
     output_w = stride_w * (dy_w - 1) + outputpadding_w + ((filter_w - 1) * dilation_w + 1) - pad_left - pad_right;
     output_n = dy_n;
-    output_c = filter_c;
+    output_c = filter_c * groups;
   }
 
   if (x_format == FORMAT_NCHW) {
