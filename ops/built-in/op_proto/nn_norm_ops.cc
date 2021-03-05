@@ -88,7 +88,7 @@ COMMON_INFER_FUNC_REG(LogSoftmaxV2, LogSoftmaxV2InferShape);
 
 // ----------------SigmoidCrossEntropyWithLogitsGrad-------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsGradInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "target", "gradient")) {
+  if (TwoInOneOutDynamicInferNoBroadcast(op, "predict", "target", {"gradient"})) {
     return GRAPH_SUCCESS;
   }
   return GRAPH_FAILED;

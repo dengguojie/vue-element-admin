@@ -43,6 +43,7 @@ from .scatter_min import scatter_min
 from .scatter_mul import scatter_mul
 from .scatter_div import scatter_div
 from .equal import equal
+from .sigmoid_cross_entropy_with_logits_grad import sigmoid_cross_entropy_with_logits_grad
 from .relu import relu
 from .relu_v2 import relu_v2
 from .relu_grad_v2 import relu_grad_v2
