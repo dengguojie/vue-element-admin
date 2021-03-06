@@ -25,6 +25,8 @@ from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.layer_norm_tik import if_tik_support
+from impl.layer_norm_tik import layer_normalize
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -605,97 +607,105 @@ def layer_norm(input_x, input_gamma, input_beta,
     shape_gamma = list(input_gamma.get("shape"))
     shape_beta = list(input_beta.get("shape"))
 
-    if input_format == "FRACTAL_NZ":
-        begin_norm_axis = shape_util.axis_check(len(ori_shape_x), begin_norm_axis)
-        begin_params_axis = shape_util.axis_check(len(ori_shape_x), begin_params_axis)
-
-        if input_gamma_format == "FRACTAL_NZ" or \
-                input_beta_format == "FRACTAL_NZ":
-            error_detail = "gamma and beta not support Nz in bert"
-            error_manager_vector.raise_err_two_input_format_invalid(kernel_name, "input_gamma", \
-                                                                    "input_beta", error_detail)
-        if shape_gamma != shape_beta:
-            error_detail = "gamma and beta's shape must be same."
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
-                                                                   "input_beta", error_detail)
-        if ori_shape_x[begin_params_axis:] != shape_gamma:
-            error_detail = "x or gamma or begin_params_axis is wrong."
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
-                                                                   "input_gamma", error_detail)
-        if len(shape_gamma) > 1:
-            error_detail = "shape of gamma or beta only support 1D in bert"
-            error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_gamma", error_detail)
-
-        # make shape_x,shape_gamma,shape_beta dim same
-        if begin_params_axis != 0:
-            for i in range(begin_params_axis):
-                shape_gamma.insert(i, 1)
-        shape_gamma[-2] = shape_x[-4]
-        shape_gamma[-1] = 1
-        shape_gamma.append(1)
-        shape_gamma.append(shape_x[-1])
-        if begin_params_axis > len(ori_shape_x) - 2:
-            shape_x[-3:] = [shape_x[-3]*shape_x[-2], shape_x[-1]]
-            shape_gamma[-3:] = [shape_gamma[-3]*shape_gamma[-2], shape_gamma[-1]]
-        shape_beta = shape_gamma
+    tik_support = if_tik_support(input_x, input_gamma, input_beta, output_y, output_mean,
+                                 output_variance, begin_norm_axis, begin_params_axis, epsilon)
+    if tik_support:
+        layer_normalize(input_x, input_gamma, input_beta,
+                        output_y, output_mean, output_variance,
+                        begin_norm_axis, begin_params_axis,
+                        epsilon, kernel_name)
     else:
-        begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
-        begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
+        if input_format == "FRACTAL_NZ":
+            begin_norm_axis = shape_util.axis_check(len(ori_shape_x), begin_norm_axis)
+            begin_params_axis = shape_util.axis_check(len(ori_shape_x), begin_params_axis)
 
-        if shape_gamma != shape_beta:
-            error_detail = "gamma and beta's shape must be same."
-            error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
-                                                                   "input_beta", error_detail)
-        no_need_fix_gamma = False
-        no_need_fix_beta = False
-        if shape_x[begin_params_axis:] != shape_gamma:
-            if len(shape_x) == len(shape_gamma):
-                no_need_fix_gamma = True
-            else:
+            if input_gamma_format == "FRACTAL_NZ" or \
+                    input_beta_format == "FRACTAL_NZ":
+                error_detail = "gamma and beta not support Nz in bert"
+                error_manager_vector.raise_err_two_input_format_invalid(kernel_name, "input_gamma", \
+                                                                        "input_beta", error_detail)
+            if shape_gamma != shape_beta:
+                error_detail = "gamma and beta's shape must be same."
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
+                                                                       "input_beta", error_detail)
+            if ori_shape_x[begin_params_axis:] != shape_gamma:
                 error_detail = "x or gamma or begin_params_axis is wrong."
                 error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
                                                                        "input_gamma", error_detail)
-        if shape_x[begin_params_axis:] != shape_beta:
-            if len(shape_x) == len(shape_beta):
-                no_need_fix_beta = True
-            else:
-                error_detail = "x or gamma or begin_params_axis is wrong."
-                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+            if len(shape_gamma) > 1:
+                error_detail = "shape of gamma or beta only support 1D in bert"
+                error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_gamma", error_detail)
+
+            # make shape_x,shape_gamma,shape_beta dim same
+            if begin_params_axis != 0:
+                for i in range(begin_params_axis):
+                    shape_gamma.insert(i, 1)
+            shape_gamma[-2] = shape_x[-4]
+            shape_gamma[-1] = 1
+            shape_gamma.append(1)
+            shape_gamma.append(shape_x[-1])
+            if begin_params_axis > len(ori_shape_x) - 2:
+                shape_x[-3:] = [shape_x[-3]*shape_x[-2], shape_x[-1]]
+                shape_gamma[-3:] = [shape_gamma[-3]*shape_gamma[-2], shape_gamma[-1]]
+            shape_beta = shape_gamma
+        else:
+            begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
+            begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
+
+            if shape_gamma != shape_beta:
+                error_detail = "gamma and beta's shape must be same."
+                error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "input_gamma", \
                                                                        "input_beta", error_detail)
-        # make shape_x,shape_gamma,shape_beta dim same
-        if begin_params_axis != 0 and not no_need_fix_gamma:
-            for i in range(begin_params_axis):
-                shape_gamma.insert(i, 1)
-        if begin_params_axis != 0 and not no_need_fix_beta:
-            for i in range(begin_params_axis):
-                shape_beta.insert(i, 1)
+            no_need_fix_gamma = False
+            no_need_fix_beta = False
+            if shape_x[begin_params_axis:] != shape_gamma:
+                if len(shape_x) == len(shape_gamma):
+                    no_need_fix_gamma = True
+                else:
+                    error_detail = "x or gamma or begin_params_axis is wrong."
+                    error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                                           "input_gamma", error_detail)
+            if shape_x[begin_params_axis:] != shape_beta:
+                if len(shape_x) == len(shape_beta):
+                    no_need_fix_beta = True
+                else:
+                    error_detail = "x or gamma or begin_params_axis is wrong."
+                    error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
+                                                                           "input_beta", error_detail)
+            # make shape_x,shape_gamma,shape_beta dim same
+            if begin_params_axis != 0 and not no_need_fix_gamma:
+                for i in range(begin_params_axis):
+                    shape_gamma.insert(i, 1)
+            if begin_params_axis != 0 and not no_need_fix_beta:
+                for i in range(begin_params_axis):
+                    shape_beta.insert(i, 1)
 
-    data_x = tvm.placeholder(shape_x, name="x", dtype=dtype)
-    data_gamma = tvm.placeholder(shape_gamma, name="gamma", dtype=dtype)
-    data_beta = tvm.placeholder(shape_beta, name="beta", dtype=dtype)
+        data_x = tvm.placeholder(shape_x, name="x", dtype=dtype)
+        data_gamma = tvm.placeholder(shape_gamma, name="gamma", dtype=dtype)
+        data_beta = tvm.placeholder(shape_beta, name="beta", dtype=dtype)
 
-    if input_format == "FRACTAL_NZ":
+        if input_format == "FRACTAL_NZ":
 
-        mean, variance, res = \
-            layer_norm_compute_nz(data_x, data_gamma, data_beta,
-                                  output_y, output_mean, output_variance,
-                                  begin_norm_axis, begin_params_axis,
-                                  ori_shape_x, epsilon, kernel_name, impl_mode)
-    else:
+            mean, variance, res = \
+                layer_norm_compute_nz(data_x, data_gamma, data_beta,
+                                      output_y, output_mean, output_variance,
+                                      begin_norm_axis, begin_params_axis,
+                                      ori_shape_x, epsilon, kernel_name, impl_mode)
+        else:
 
-        mean, variance, res = \
-            layer_norm_compute(data_x, data_gamma, data_beta,
-                               output_y, output_mean,
-                               output_variance,
-                               begin_norm_axis, begin_params_axis,
-                               epsilon, kernel_name, impl_mode)
+            mean, variance, res = \
+                layer_norm_compute(data_x, data_gamma, data_beta,
+                                   output_y, output_mean,
+                                   output_variance,
+                                   begin_norm_axis, begin_params_axis,
+                                   epsilon, kernel_name, impl_mode)
 
-    with tvm.target.cce():
-        sch = tbe.auto_schedule([res, mean, variance])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule([res, mean, variance])
 
-    config = {"print_ir": False,
-              "name": kernel_name,
-              "tensor_list": [data_x, data_gamma,
-                              data_beta, res, mean, variance]}
+        config = {"print_ir": False,
+                  "name": kernel_name,
+                  "tensor_list": [data_x, data_gamma,
+                                  data_beta, res, mean, variance]}
 
-    tbe.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)

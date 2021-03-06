@@ -27,12 +27,36 @@ case2 = {"params": [{"shape": (64,128,1024), "dtype": "float16", "format": "NCHW
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case3 = {"params": [{"shape": (11,2,1023), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1023),"ori_format": "NCHW"},
+                    {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
+                    {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
+                    {"shape": (11,2,1023), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1023),"ori_format": "NCHW"},
+                    {"shape": (11,2,1), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1),"ori_format": "NCHW"},
+                    {"shape": (11,2,1), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1),"ori_format": "NCHW"},
+                    -1, -1],
+         "case_name": "layer_norm_1",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+case4 = {"params": [{"shape": (3,3,31425), "dtype": "float16", "format": "NCHW", "ori_shape": (3,3,31425),"ori_format": "NCHW"},
+                    {"shape": (31425,), "dtype": "float16", "format": "NCHW", "ori_shape": (31425,),"ori_format": "NCHW"},
+                    {"shape": (31425,), "dtype": "float16", "format": "NCHW", "ori_shape": (31425,),"ori_format": "NCHW"},
+                    {"shape": (3,3,31425), "dtype": "float16", "format": "NCHW", "ori_shape": (3,3,31425),"ori_format": "NCHW"},
+                    {"shape": (3,3,1), "dtype": "float16", "format": "NCHW", "ori_shape": (3,3,1),"ori_format": "NCHW"},
+                    {"shape": (3,3,1), "dtype": "float16", "format": "NCHW", "ori_shape": (3,3,1),"ori_format": "NCHW"},
+                    2, 2],
+         "case_name": "layer_norm_1",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-
-
+# pylint: disable=unused-argument
 def calc_expect_func(x, gamma, beta, y, mean, variance, begin_norm_axis,begin_params_axis):
     input_xArr = x['value']
     input_gammaArr = gamma['value']
@@ -57,6 +81,7 @@ def calc_expect_func(x, gamma, beta, y, mean, variance, begin_norm_axis,begin_pa
         variance = variance.astype(np.float16)
         res = res.astype(np.float16)
     return res, mean, variance
+
 
 ut_case.add_precision_case("all", {"params": [{"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,),"ori_format": "NCHW", "param_type": "input"},
                                               {"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,),"ori_format": "NCHW", "param_type": "input"},
