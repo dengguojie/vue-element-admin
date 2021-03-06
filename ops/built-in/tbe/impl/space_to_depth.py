@@ -127,7 +127,8 @@ def op_select_format(x, filter, y, block_size, data_format, kernel_name="space_t
         classify="input0",
         name="x",
         datatype=datatype,
-        format=input_format)
+        format=input_format,
+        unknownshape_format=input_format)
     input1 = gen_param(classify="input1", name="filter",
                        datatype="float16, float16, float16, float16, float16, float16," \
                                 "float16, float16, float16, float16",
@@ -137,7 +138,8 @@ def op_select_format(x, filter, y, block_size, data_format, kernel_name="space_t
         classify="output0",
         name="y",
         datatype=datatype,
-        format=input_format)
+        format=input_format,
+        unknownshape_format=input_format)
 
     param_list = [input0, input1, output0]
     param_dynamic_in_json = get_dynamic_param_in_json(param_list)

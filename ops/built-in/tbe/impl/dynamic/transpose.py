@@ -1886,7 +1886,7 @@ class Transpose(object):
         sub_scenario.set_as(self.ub_input_64[3])
         return scenario, fixed_len, per_core_len, sub_scenario
 
-    def compute(self, input_list):
+    def compute_tiling(self):
         scenario, fixed_len, per_core_len, sub_scenario = self._decode_tiling_head()
 
         with self.tik_inst.for_range(0, CORE_NUM, block_num = CORE_NUM) as block_idx:
@@ -1918,6 +1918,8 @@ class Transpose(object):
                                                     fixed_len, per_core_len)
                             self._move_data_s0(tp, self.ub_input_64)
 
+    def compute(self, input_list):
+        self.compute_tiling()
         self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
                           inputs=input_list,
                           outputs=[self.data_out],

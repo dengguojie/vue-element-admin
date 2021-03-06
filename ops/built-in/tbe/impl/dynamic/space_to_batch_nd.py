@@ -15,9 +15,10 @@
 """
 dynamic space_to_batch_nd
 """
+# pylint: disable=unused-import
 import te.lang.dynamic
-from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
+from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator

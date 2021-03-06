@@ -172,6 +172,7 @@ struct CompilerInfo {
     int64_t usedCoreNum;
     int64_t ubSize; //unit: block
     int64_t ubSizeCouldUse;//unit: block
+    int64_t blockSize;
     std::string dType;
     std::string opType;
     int64_t fp16Times;
@@ -180,6 +181,7 @@ struct CompilerInfo {
         usedCoreNum = 0;
         ubSize = 0;
         ubSizeCouldUse = 0;
+        blockSize = 2;
         fp16Times = 1;
     }
 };

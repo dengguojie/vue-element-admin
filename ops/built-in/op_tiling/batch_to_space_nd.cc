@@ -150,7 +150,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.tiling_mode = input_format == "NC1HWC0" ? 2 : 8;
   } else if (param.input_w * param.block_w * param.channel_zero <= ub_ele / 2) {
     param.tiling_mode = input_format == "NC1HWC0" ? 3 : 9;
-  } else if (param.input_w * param.channel_zero <= ub_ele) {
+  } else if (param.input_w * param.channel_zero <= ub_ele && param.input_w < 4096) {
     param.tiling_mode = input_format == "NC1HWC0" ? 4 : 10;
   } else {
     param.tiling_mode = input_format == "NC1HWC0" ? 5 : 11;
@@ -245,6 +245,7 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
   vector<int64_t> block_vec;
   vector<int64_t> crops_vec;
   // calc block_vec and crops_vec and check supported
+  // cppcheck-suppress *
   if (block_size != 0) {
     // BatchToSpace
     block_vec.push_back(block_size);

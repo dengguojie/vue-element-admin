@@ -161,6 +161,8 @@ from .batch_to_space import batch_to_space
 from .batch_to_space_nd import batch_to_space_nd
 from .space_to_batch import space_to_batch
 from .space_to_batch_nd import space_to_batch_nd
+from .depth_to_space import depth_to_space
+from .space_to_depth import space_to_depth
 from .greater import greater
 from .l2_loss import l2_loss
 from .log import log

@@ -284,6 +284,93 @@ static bool GetShapePerm(const string & opType, const TeOpParas & paras, ShapeIn
     return true;
 }
 
+static bool AddShapePerm(const string& opType, const TeOpParas& paras, const CompilerInfo& info, ShapeInfo& shapeInfo) {
+    OP_LOGD(opType.c_str(), "Entering AddShapePerm.");
+
+    if (paras.inputs.size() == 0 || paras.outputs.size() == 0) {
+        OP_LOGE(opType.c_str(), "inputs.size=%u, outputs.size=%u,", paras.inputs.size(), paras.outputs.size());
+        return false;
+    }
+    if (paras.inputs[0].tensor.size() == 0 || paras.outputs[0].tensor.size() == 0) {
+        OP_LOGE(opType.c_str(), "inputs tensor size=%u, outputs tensor size=%u,", paras.inputs[0].tensor.size(),
+                                                                                  paras.outputs[0].tensor.size());
+        return false;
+    }
+    shapeInfo.inShape = paras.inputs[0].tensor[0].shape;
+    shapeInfo.outShape = paras.outputs[0].tensor[0].shape;
+
+    // for depthtospace
+    if (opType == "DepthToSpace") {
+        // check input and block
+        if (shapeInfo.inShape.size() != 4) {
+            OP_LOGE(opType.c_str(), "The length of input shape must be 4, but got %u.", shapeInfo.inShape.size());
+            return false;
+        }
+        if (shapeInfo.inShape[3] % (info.blockSize * info.blockSize) != 0) {
+            OP_LOGE(opType.c_str(), "Depth size must be divisible by block size, but got depth[%u], block[%u].",
+                    shapeInfo.inShape[3], info.blockSize);
+            return false;
+        }
+        // calc input and output shape and perm
+        std::vector<int64_t> tmpVector;
+        tmpVector.push_back(shapeInfo.inShape[0] * shapeInfo.inShape[1]);
+        tmpVector.push_back(shapeInfo.inShape[2]);
+        tmpVector.push_back(info.blockSize);
+        tmpVector.push_back(shapeInfo.inShape[3] / info.blockSize);
+        shapeInfo.inShape.clear();
+        shapeInfo.inShape = tmpVector;
+        shapeInfo.outShape.clear();
+        shapeInfo.outShape.push_back(tmpVector[0]);
+        shapeInfo.outShape.push_back(tmpVector[2]);
+        shapeInfo.outShape.push_back(tmpVector[1]);
+        shapeInfo.outShape.push_back(tmpVector[3]);
+        shapeInfo.perm.clear();
+        shapeInfo.perm.push_back(0);
+        shapeInfo.perm.push_back(2);
+        shapeInfo.perm.push_back(1);
+        shapeInfo.perm.push_back(3);
+    }
+
+    // for spacetodepth
+    if (opType == "SpaceToDepth") {
+        // check input and block
+        if (shapeInfo.inShape.size() != 4) {
+            OP_LOGE(opType.c_str(), "The length of input shape must be 4, but got %u,", shapeInfo.inShape.size());
+            return false;
+        }
+        if (shapeInfo.inShape[1] % info.blockSize != 0) {
+            OP_LOGE(opType.c_str(), "Height size must be divisible by block size, but got height[%u], block[%u].",
+                    shapeInfo.inShape[1], info.blockSize);
+            return false;
+        }
+        if (shapeInfo.inShape[2] % info.blockSize != 0) {
+            OP_LOGE(opType.c_str(), "Width size must be divisible by block size, but got width[%u], block[%u].",
+                    shapeInfo.inShape[2], info.blockSize);
+            return false;
+        }
+        // calc input and output shape and perm
+        std::vector<int64_t> tmpVector;
+        tmpVector.push_back(shapeInfo.inShape[0] * shapeInfo.inShape[1] / info.blockSize);
+        tmpVector.push_back(info.blockSize);
+        tmpVector.push_back(shapeInfo.inShape[2] / info.blockSize);
+        tmpVector.push_back(shapeInfo.inShape[3] * info.blockSize);
+        shapeInfo.inShape.clear();
+        shapeInfo.inShape = tmpVector;
+        shapeInfo.outShape.clear();
+        shapeInfo.outShape.push_back(tmpVector[0]);
+        shapeInfo.outShape.push_back(tmpVector[2]);
+        shapeInfo.outShape.push_back(tmpVector[1]);
+        shapeInfo.outShape.push_back(tmpVector[3]);
+        shapeInfo.perm.clear();
+        shapeInfo.perm.push_back(0);
+        shapeInfo.perm.push_back(2);
+        shapeInfo.perm.push_back(1);
+        shapeInfo.perm.push_back(3);
+    }
+
+    return true;
+}
+
 static bool SetElePerBlock(const CompilerInfo & compilerInfo, ShapeInfo & shapeInfo) {
     shapeInfo.elePerBlock = ElementNumPerBlock(compilerInfo.dType);
     shapeInfo.eleLenInBytes = SizeofDType(compilerInfo.dType);
@@ -2014,6 +2101,16 @@ bool GetCompileParams(const string & opType, const nlohmann::json &opCompileInfo
     OP_LOGD(opType.c_str(), "GetCompileParams, coreNum[%d], ubSize[%d] blocks, dType[%s].",
            info.coreNum, info.ubSize, info.dType.c_str());
 
+    // for depthtospace and spacetodepth
+    if ((opType == "DepthToSpace") || (opType == "SpaceToDepth")) {
+        if (allVars.count("block_size") == 0) {
+            OP_LOGE(opType.c_str(), "GetCompileParams, get block_size error");
+            return false;
+        }
+        info.blockSize = allVars["block_size"].get<std::int64_t>();
+        OP_LOGD(opType.c_str(), "GetCompileParams, blockSize[%d].", info.blockSize);
+    }
+
     return true;
 }
 
@@ -2448,8 +2545,15 @@ bool TransposeTiling(const std::string &opType,
     if (GetCompileParams(opType, opInfo, compilerInfo) == false) {
         return false;
     }
-    if (GetShapePerm(opType, opParas, shapeInfo) == false) {
-        return false;
+    // for depthtospace and spacetodepth
+    if ((opType == "DepthToSpace") || (opType == "SpaceToDepth")) {
+        if (AddShapePerm(opType, opParas, compilerInfo, shapeInfo) == false) {
+            return false;
+        }
+    } else {
+        if (GetShapePerm(opType, opParas, shapeInfo) == false) {
+            return false;
+        }
     }
     if (CheckTensorShape(opType, shapeInfo) == false) {
         return false;
@@ -2466,7 +2570,8 @@ bool TransposeTiling(const std::string &opType,
     return true;
 }
 
+REGISTER_OP_TILING_FUNC_BUFFERED(DepthToSpace, TransposeTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(SpaceToDepth, TransposeTiling);
 REGISTER_OP_TILING_FUNC_BUFFERED(Transpose, TransposeTiling);
 
 }
-
