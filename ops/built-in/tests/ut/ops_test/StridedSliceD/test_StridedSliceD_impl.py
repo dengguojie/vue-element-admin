@@ -143,6 +143,33 @@ case15 = {"params": [{"shape": (7, 7, 3, 88, 77, 16), "dtype": "int32", "format"
           "expect": "success",
           "support_expect": True}
 
+case16 = {"params": [{"shape": (16, 1, 1, 1, 64, 2), "dtype": "float32", "format": "ND",
+                      "ori_shape": (16, 1, 1, 1, 64, 2), "ori_format": "ND"},
+                     {"shape": (16, 1, 1, 1, 64, 1), "dtype": "float32", "format": "ND",
+                      "ori_shape": (16, 1, 1, 1, 64, 1), "ori_format": "ND"},
+                     [0, 0], [0, 1], [1, 1], 0, 0, 1, 0, 2],
+          "case_name": "StridedSliceD_16",
+          "expect": "success",
+          "support_expect": True}
+
+case17 = {"params": [{"shape": (32, 1, 1, 1, 64, 2), "dtype": "float32", "format": "ND",
+                      "ori_shape": (32, 1, 1, 1, 64, 2), "ori_format": "ND"},
+                     {"shape": (32, 1, 1, 1, 64, 1), "dtype": "float32", "format": "ND",
+                      "ori_shape": (32, 1, 1, 1, 64, 1), "ori_format": "ND"},
+                     [0, 0], [0, 1], [1, 1], 0, 0, 1, 0, 2],
+          "case_name": "StridedSliceD_17",
+          "expect": "success",
+          "support_expect": True}
+
+case18 = {"params": [{"shape": (49, 1, 1, 1, 64, 2), "dtype": "float32", "format": "ND",
+                      "ori_shape": (49, 1, 1, 1, 64, 2), "ori_format": "ND"},
+                     {"shape": (49, 1, 1, 1, 64, 1), "dtype": "float32", "format": "ND",
+                      "ori_shape": (49, 1, 1, 1, 64, 1), "ori_format": "ND"},
+                     [0, 0], [0, 1], [1, 1], 0, 0, 1, 0, 2],
+          "case_name": "StridedSliceD_18",
+          "expect": "success",
+          "support_expect": True}
+
 
 def test_op_select_format(test_arg):
     from impl.strided_slice_d import op_select_format
@@ -184,6 +211,9 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case12)
 ut_case.add_case(["all"], case13)
 ut_case.add_case(["all"], case14)
 ut_case.add_case(["all"], case15)
+ut_case.add_case(["all"], case16)
+ut_case.add_case(["all"], case17)
+ut_case.add_case(["all"], case18)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y, begin, end, strides):
@@ -201,3 +231,7 @@ precision_case1 = {"params": [{"shape": (8, 8, 16), "dtype": "float16", "format"
                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
 
 ut_case.add_precision_case("Ascend910", precision_case1)
+
+
+if __name__ == "__main__":
+    ut_case.run("Ascend910A")

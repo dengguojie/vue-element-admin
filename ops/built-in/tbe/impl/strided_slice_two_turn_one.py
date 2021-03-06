@@ -69,8 +69,10 @@ class StridedSliceLastDim:
 
         common_src_size = 256
         more_src_size = 256
-        last_src_size = (input_size % 512) // 2
 
+        last_src_size = (input_size % 512) // 2
+        if input_size % 512 == 0:
+            last_src_size = 256
 
         if total_loop > 32:
             core_used = 32
