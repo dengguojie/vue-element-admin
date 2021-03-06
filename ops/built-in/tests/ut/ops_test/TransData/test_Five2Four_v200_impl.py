@@ -20,11 +20,6 @@ def gen_trans_data_case(src, dst, dtype, case_name_val, expect,
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3,1,16,16,16), (3, 2, 16,16),
                                      "float16", "nchw_1", "success", "NCHW"))
-"""
-ut_case.add_case(["Ascend910"],
-                 gen_trans_data_case((3,1,16,16,16), (3, 2, 16,16),
-                                     "int8", "nchw_2", "success", "NCHW"))
-"""
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3,1,16,16,16), (3, 2, 16,16),
                                      "float32", "nchw_3", "success", "NCHW"))
@@ -69,11 +64,28 @@ ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3,1,2,16,16), (3, 2, 16,16),
                                      "int8", "int8_2", "success", "NHWC"))
 
-"""
 from impl.five_2_four_v200_fp32fp16 import five_2_four_v200_fp32fp16
-ut_case.add_cust_test_func(support_soc="Ascend710",
-                           test_func=five_2_four_v200_fp32fp16(1, 2, 3, 4 ,5))
-"""                                  
+from te import platform as cce_conf
+cce_conf.cce_conf.te_set_version("Ascend710", core_type="VectorCore")
+
+def five_2_four_v200_001(test_args):
+    five_2_four_v200_fp32fp16({"shape":(3, 1, 2, 16, 16), "dtype":"int32", "format":"NC1HWC0",
+                               "origin_shape":(3, 1, 2, 16, 16),"origin_format":"NC1HWC0"},
+                              {"shape":(3, 2, 16, 16), "dtype":"int32","format":"NHWC",
+                               "origin_shape":(3, 2, 16, 16),"origin_format":"NHWC"},
+                              "NC0HWC1","NHWC")
+    cce_conf.cce_conf.te_set_version(test_args)
+
+def five_2_four_v200_002(test_args):
+    five_2_four_v200_fp32fp16({"shape":(3, 1, 2, 16, 16), "dtype":"int32", "format":"NC1HWC0",
+                               "origin_shape":(3, 1, 2, 16, 16),"origin_format":"NC1HWC0"},
+                              {"shape":(3, 2, 16, 15), "dtype":"int32","format":"NHWC",
+                               "origin_shape":(3, 2, 16, 15),"origin_format":"NHWC"},
+                               "NC0HWC1","NHWC")
+    cce_conf.cce_conf.te_set_version(test_args)
+ut_case.add_cust_test_func(test_func=five_2_four_v200_001)
+ut_case.add_cust_test_func(test_func=five_2_four_v200_002)
+
 if __name__ == '__main__':
     ut_case.run("Ascend910")
     exit(0)

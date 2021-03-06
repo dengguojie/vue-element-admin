@@ -20,7 +20,7 @@ from te import tik
 
 
 # pylint: disable=too-many-instance-attributes,too-few-public-methods
-class VnchwConv():
+class VnchwConv(object):
     """
     VnchwConv
     """
@@ -111,9 +111,13 @@ class VnchwConv():
              self.dst_width),
             name="dst_image",
             scope=tik.scope_gm)
+        
+        self.chw = self.dst_channel * self.dst_height * self.dst_width
+        self.hw = self.dst_height * self.dst_width
+        self.w = self.dst_width
 
     # pylint: disable=too-many-nested-blocks,too-many-branches,too-many-statements
-    def _compute_slice(self):
+    def compute_slice(self):
         """
         Calculate the split parameters according to different shapes
         for ub buf size
@@ -326,9 +330,9 @@ class VnchwConv():
                     with self.tik_instance.for_range(0, dst_channel_one_loop) \
                             as dst_index_c:
                         self.tik_instance.data_move(
-                            self.dst_image[index_n,
-                                           index_c * self.C0_const + dst_index_c,
-                                           h_st,
+                            self.dst_image[index_n * self.chw +
+                                           (index_c * self.C0_const + dst_index_c) * self.hw +
+                                           h_st * self.w +
                                            w_st],
                             output_ub_fp16[dst_index_c, 0],
                             0,
@@ -421,9 +425,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    index_n,
-                                    index_cm,
-                                    h_st,
+                                    index_n * self.chw +
+                                    index_cm * self.hw +
+                                    h_st * self.w +
                                     w_st],
                                 output_ub_fp32[(index_cm - dst_C_st) % 8 \
                                                * 2,
@@ -454,9 +458,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    index_n,
-                                    index_cm,
-                                    h_st + ((w_st + 8) // self.dst_width),
+                                    index_n * self.chw +
+                                    index_cm * self.hw +
+                                    (h_st + ((w_st + 8) // self.dst_width)) * self.w +
                                     (w_st + 8) % self.dst_width],
                                 output_ub_fp32[(index_cm - dst_C_st) % 8 \
                                                * 2 + 1,
@@ -519,9 +523,9 @@ class VnchwConv():
                         with self.tik_instance.if_scope(
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
-                                self.dst_image[index_n,
-                                               index_cm,
-                                               h_st,
+                                self.dst_image[index_n * self.chw +
+                                               index_cm * self.hw + 
+                                               h_st * self.w +
                                                w_st],
                                 output_ub_fp32[
                                     (index_cm - dst_C_st) % 8 * 2,
@@ -550,9 +554,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    index_n,
-                                    index_cm,
-                                    h_st + ((w_st + 8) // self.dst_width),
+                                    index_n * self.chw +
+                                    index_cm * self.hw +
+                                    (h_st + ((w_st + 8) // self.dst_width)) * self.w
                                     (w_st + 8) % self.dst_width],
                                 output_ub_fp32
                                 [(index_cm - dst_C_st) % 8 * 2 + 1,
@@ -650,9 +654,9 @@ class VnchwConv():
                 with self.tik_instance.for_range(0, dst_channel) as index_c:
                     self.tik_instance.data_move(
                         self.dst_image[
-                            index_n,
-                            c1_st * self.C0_const + index_c,
-                            0,
+                            index_n * self.chw +
+                            (c1_st * self.C0_const + index_c) * self.hw +
+                            0 +
                             0],
                         output_ub_fp16[
                             index_c,
@@ -713,9 +717,9 @@ class VnchwConv():
                     self.tik_instance.data_move(
                         temp,
                         self.dst_image[
-                            index_n + 1,
-                            0,
-                            0,
+                            (index_n + 1) * self.chw +
+                            0 +
+                            0 +
                             0],
                         0,
                         1,
@@ -787,9 +791,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -827,9 +831,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -890,9 +894,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -927,9 +931,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -943,9 +947,9 @@ class VnchwConv():
                 with self.tik_instance.if_scope(index_n < self.src_batch - 1):
                     self.tik_instance.data_move(
                         self.dst_image[
-                            index_n + 1,
-                            0,
-                            0,
+                            (index_n + 1) * self.chw +
+                            0 +
+                            0 +
                             0],
                         temp,
                         0,
@@ -1032,9 +1036,9 @@ class VnchwConv():
                         as index_c:
                     self.tik_instance.data_move(
                         self.dst_image[
-                            index_n,
-                            index_c,
-                            0,
+                            index_n * self.chw +
+                            index_c * self.hw +
+                            0 +
                             0],
                         output_ub_fp16[
                             index_c,
@@ -1140,9 +1144,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -1179,9 +1183,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -1240,9 +1244,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -1279,9 +1283,9 @@ class VnchwConv():
                                 dst_channel_one_loop > 0):
                             self.tik_instance.data_move(
                                 self.dst_image[
-                                    dst_n,
-                                    dst_c,
-                                    dst_h,
+                                    dst_n * self.chw +
+                                    dst_c * self.hw +
+                                    dst_h * self.w +
                                     dst_w],
                                 output_ub_fp32[
                                     src_c,
@@ -1337,9 +1341,9 @@ class VnchwConv():
         with self.tik_instance.if_scope(dst_channel_one_loop > 0):
             self.tik_instance.data_move(
                 self.dst_image[
-                    dst_n,
-                    dst_c,
-                    dst_h,
+                    dst_n * self.chw +
+                    dst_c * self.hw +
+                    dst_h * self.w +
                     dst_w],
                 output_ub_fp32[
                     src_c,
@@ -1419,7 +1423,7 @@ def five_2_four_v200_fp32fp16(src_dict, dst_dict,
     """
 
     obj = VnchwConv(src_dict, dst_dict, kernel_name)
-    obj._compute_slice()
+    obj.compute_slice()
     tik_instance = obj.tik_instance
     tik_instance.BuildCCE(kernel_name=obj.kernel_name,
                           inputs=[obj.src_image], outputs=[obj.dst_image])
