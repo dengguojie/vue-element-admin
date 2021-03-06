@@ -38,8 +38,8 @@ TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_0) {
 
   std::string compileInfo = "{\"vars\": {\"max_w_len\": 1305, \"core_num\": 32, \"align_corners\": 0, \"half_pixel_centers\": 0, \"strides_h\": 1, \"strides_w\": 1, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16,1,1000,1000,16};
-  std::vector<int64_t> output{16,1,1000,1000,16};
+  std::vector<int64_t> input{16, 1, 1000, 1000, 16};
+  std::vector<int64_t> output{16, 1, 1000, 1000, 16};
 
   TeOpTensor tensor_input;
   tensor_input.shape = input;
@@ -64,7 +64,7 @@ TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_0) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "200000 16 1 1000 1000 1000 1000 16 1 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "113000 16 1 1000 1000 1000 1000 16 1 2 ");
 }
 
 TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_2) {
@@ -75,8 +75,8 @@ TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_2) {
 
   std::string compileInfo = "{\"vars\": {\"max_w_len\": 1305, \"core_num\": 32, \"align_corners\": 0, \"half_pixel_centers\": 0, \"strides_h\": 1, \"strides_w\": 1, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16,1,1000,1000,16};
-  std::vector<int64_t> output{16,1,999,999,16};
+  std::vector<int64_t> input{16, 1, 1000, 1000, 16};
+  std::vector<int64_t> output{16, 1, 999, 999, 16};
 
   TeOpTensor tensor_input;
   tensor_input.shape = input;
