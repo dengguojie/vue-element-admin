@@ -2035,16 +2035,17 @@ INFER_FUNC_REG(Where, WhereInfer);
 IMPLEMT_INFERFUNC(Fingerprint, FingerprintInfer) {
   Shape unused;
   if (WithRankAtLeast(op.GetInputDesc(0), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input data must be at least 1D.");
+    OP_LOGE(op.GetName().c_str(), "Input data must be at least 1D.");
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input method rank must be 0.");
+    OP_LOGE(op.GetName().c_str(), "Input method rank must be 0.");
     return GRAPH_FAILED;
   }
-
+  int64_t batch = op.GetInputDesc(0).GetShape().GetDim(0);
   int64_t fingerprint_size;
   Tensor method_tensor;
+  uint32_t offset = sizeof(uint64_t) * 2;
   int status = op.GetInputConstData("method", method_tensor);
   if (status != GRAPH_SUCCESS) {
     fingerprint_size = UNKNOWN_DIM;
@@ -2052,27 +2053,26 @@ IMPLEMT_INFERFUNC(Fingerprint, FingerprintInfer) {
     int64_t method_dim;
     method_dim = method_tensor.GetTensorDesc().GetShape().GetDimNum();
     if (method_dim != 0) {
-      OP_LOGE(op.GetName().c_str(), "input method_tensor rank must be 0, real value is %ld.", method_dim);
+      OP_LOGE(op.GetName().c_str(), "Input method_tensor rank must be 0, real value is [%ld].", method_dim);
       return GRAPH_FAILED;
     }
     std::string method_string;
-    const char* method_data = reinterpret_cast<const char*>(method_tensor.GetData() + sizeof(uint64_t));
+    const char *method_data = reinterpret_cast<const char*>(method_tensor.GetData() + offset);
 
     method_string = method_data;
     if (method_string != "farmhash64") {
-      OP_LOGE(op.GetName().c_str(), "Unsupported method, real value is %s", method_string.c_str());
+      OP_LOGE(op.GetName().c_str(), "Unsupported method, real value is [%s]", method_string.c_str());
       return GRAPH_FAILED;
     }
     fingerprint_size = sizeof(uint64_t);
   }
 
-  int64_t batch = op.GetInputDesc(0).GetShape().GetDim(0);
   Shape shape({batch, fingerprint_size});
   TensorDesc desc = op.GetOutputDesc("y");
   desc.SetShape(shape);
   desc.SetDataType(DT_UINT8);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output y.");
+    OP_LOGE(op.GetName().c_str(), "Fail to update output y.");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
