@@ -155,8 +155,6 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   int32_t input_format = GetPrimaryFormat(ge_input_format);
   std::vector<int64_t> dims;
   dims = input_shape->GetDimSizes();
-  KERNEL_CHECK_FALSE((dims.size() >= 4), KERNEL_STATUS_PARAM_INVALID,
-                     "%s dims size [%zu] must >= 4", kTransData, dims.size());
   int64_t d_dim = 0;
   int64_t h_dim = 0;
   int64_t w_dim = 0;
@@ -318,7 +316,15 @@ int32_t primary_out_put_format = GetPrimaryFormat(output_format);
                      primary_out_put_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
-
+  auto input_shape = input_tensor->GetTensorShape();
+  std::vector<int64_t> dims;
+  KERNEL_CHECK_NULLPTR(input_shape, KERNEL_STATUS_PARAM_INVALID,
+                       "%s get input_shape failed", kTransData);
+  dims = input_shape->GetDimSizes();
+  if ((dims.size()) < 4) {
+    KERNEL_LOG_WARN("%s dims size [%zu] must >= 4", kTransData, dims.size());
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
   AttrValue *groups = ctx.GetAttr("groups");
   int64_t group = kGroupNum;
   if (groups != nullptr) {
