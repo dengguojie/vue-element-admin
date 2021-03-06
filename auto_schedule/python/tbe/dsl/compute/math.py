@@ -1458,7 +1458,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     operation : operator type, eq, ne, lt, gt, ge, le
 
     mode : bool, the dtype of return value is bool
-           bit, the dtype of return value is uint8
+           bit, the dtype of return value is uint8(dynamic is uint1)
 
     Returns
     -------
@@ -2179,7 +2179,7 @@ def vsel(condition, lhs, rhs):
 
     Parameters
     ----------
-    condition : wrapped_tensor or tvm.tensor, the dtype is bool or uint8
+    condition : wrapped_tensor or tvm.tensor, the dtype is bool or uint8(dynamic is uint1)
 
     lhs : wrapped_tensor or tvm.tensor or scalar
 

@@ -108,7 +108,8 @@ def calc(outs, option=None):
     base_key = calc_base_key()
     if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
         cases =  _const_tiling(base_key)
-        cases[0]["redundant_coe"] = redundant_coe
+        for case in cases:
+            case["redundant_coe"] = redundant_coe
         return cases
 
     # db handle

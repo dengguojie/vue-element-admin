@@ -140,7 +140,7 @@ class TensorFormat(Enum):
 
 ALL_FORMAT_LIST = [entry.value for entry in TensorFormat]
 ALL_DTYPE_LIST = ("int8", "uint8", "int16", "uint16", "int32", "uint32",
-                  "int64", "uint64", "float16", "float32", "float64", "bool")
+                  "int64", "uint64", "float16", "float32", "float64", "bool", "uint1")
 OP_NAME = ""
 PARAM_NAME = ""
 

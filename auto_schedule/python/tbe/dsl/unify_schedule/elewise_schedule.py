@@ -39,7 +39,7 @@ from .elewise_tilingcase import TilingStrategy
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
 MULTI_CORE_THRESHOLD = 1024
-
+ONE_DIM_ALIGN = 128
 N_LAST_BROADCAST_THRESHOLD = 512
 
 # temp space for last axis broadcast use vtranspose
@@ -829,6 +829,9 @@ class ElewiseSchedule:
         if self._is_db:
             tensor_space = tensor_space // 2
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
+
+        if self._is_one_dim and self._tensor_space > ONE_DIM_ALIGN:
+            self._tensor_space = self._tensor_space // ONE_DIM_ALIGN * ONE_DIM_ALIGN
 
         sch = self._schedule
         tensors = self._pure_middle_tensors \
