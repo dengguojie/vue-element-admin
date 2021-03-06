@@ -47,13 +47,3 @@ def gemm(tensor_a, tensor_b, para_dict):
         DeprecationWarning)
     from tbe.dsl.compute.gemm_compute import gemm
     return gemm(tensor_a, tensor_b, para_dict)
-
-
-class GEMMComputeParam:
-    tiling_info_dict = {}
-    dynamic_mode = None
-    batch_a = False
-    batch_b = False
-
-    def __init__(self) -> None:
-        pass

@@ -16,20 +16,21 @@
 conv2d backprop input general schedule.
 """
 from functools import reduce
-from te import tvm
-from tbe.common.tiling.get_tiling import get_tiling
+from tbe import tvm
+from te.platform import cce_conf
+from te.platform import cce_params
 from te.lang.cce.boost_schedule_kit import Compare
 from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.dsl.compute.cube_util import GroupDictKeys
 from tbe.dsl.static_schedule.util import L1CommonParam
-from te.platform import cce_conf
-from te.platform import cce_params
-from te.tvm.schedule import InferBound
-from te.tvm.schedule import ScheduleOps
-from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.tvm.schedule import InferBound
+from tbe.tvm.schedule import ScheduleOps
+
 
 # default false
 DEBUG_MODE = False  # pylint: disable=C0302

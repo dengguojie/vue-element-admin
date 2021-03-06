@@ -23,7 +23,6 @@ from te.platform import intrinsic_check_support
 from te.utils.error_manager.error_manager_util import get_error_message
 import te.platform.cce_params as cce_params
 from te.tvm.dsl_source_info import source_info_decorator
-from .depthwise_conv2d_compute import DepthwiseConv2dParam
 from .elewise_compute import vadds
 from .elewise_compute import vmuls
 from .elewise_compute import vmax
@@ -90,7 +89,7 @@ def img2col(input_img,
     img2col
     """
     warnings.warn(
-        "te.lang.cce.te_compute.common.img2col is expired, please replace it with tbe.dsl.compute.common.img2col", 
+        "te.lang.cce.te_compute.common.img2col is expired, please replace it with tbe.dsl.compute.common.img2col",
         DeprecationWarning)
     from tbe.dsl.compute.common import img2col
     return img2col(input_img, col_shape, filter_h, filter_w, pad, stride, tag, padding_value)
@@ -110,68 +109,11 @@ def im2col_6d(input_img,
     """
 
     # pylint: disable=too-many-locals
-    def _im2col_compute(input_img, indices, filter_w, pad, stride,
-                        padding_value, dilation):
-        # fmap_n, fmap_cg, fmap_c1, fmap_h, fmap_w, fmap_c0
-        sixd_flag = 0
-        if (len(input_img.shape)) == 6:
-            _, _, _, fmap_h, fmap_w, _ = input_img.shape
-            sixd_flag = 1
-        else:
-            _, _, fmap_h, fmap_w, _ = input_img.shape
-        col_n, col_cg, col_howo, col_c1, col_hw, col_ww, col_c0 = indices
-        stride_h, stride_w = stride
-        pad_top, _, pad_left, pad_right = pad
-        dilation_h, dilation_w = dilation
-        effective_filter_w = (filter_w - 1) * dilation_w + 1
-        output_w = (fmap_w.value + pad_left + pad_right - effective_filter_w) // stride_w + 1
-
-        img_n_index = col_n
-        img_c1_index = col_c1
-        img_h_index = (col_howo // output_w) * stride_h + col_hw*dilation_h
-        img_w_index = (col_howo % output_w) * stride_w + col_ww*dilation_w
-        img_c0_index = col_c0
-
-        slice_offset = DepthwiseConv2dParam.fusion_para.get("slice_offset")
-        input_memory_type = DepthwiseConv2dParam.fusion_para.get(
-            "input_memory_type")
-        offset_w = slice_offset[2] if (
-            slice_offset and input_memory_type == 1) else 0
-        if sixd_flag == 1:
-            return tvm.select(
-                tvm.any(img_h_index < pad_top,
-                        img_h_index > fmap_h.value + pad_top - 1,
-                        img_w_index < pad_left,
-                        img_w_index > fmap_w.value + pad_left - 1),
-                tvm.const(padding_value, input_img.dtype),
-                input_img(img_n_index, col_cg, img_c1_index,
-                          img_h_index - pad_top + offset_w,
-                          img_w_index - pad_left,
-                          img_c0_index))
-        return tvm.select(
-            tvm.any(img_h_index < pad_top,
-                    img_h_index > fmap_h.value + pad_top - 1,
-                    img_w_index < pad_left,
-                    img_w_index > fmap_w.value + pad_left - 1),
-            tvm.const(padding_value, input_img.dtype),
-            input_img(img_n_index,
-                      col_cg,
-                      img_h_index - pad_top + offset_w,
-                      img_w_index - pad_left,
-                      img_c0_index))
-
-    return tvm.compute(
-        col_shape,
-        lambda *indices: _im2col_compute(input_img, indices, filter_w, pad,
-                                         stride, padding_value, dilation),
-        name='im2col_row_major',
-        tag='im2col_row_major',
-        attrs={
-            'kernel_h': filter_h,
-            'kernel_w': filter_w,
-            'padding': pad,
-            'stride': stride
-        })
+    warnings.warn("te.lang.cce.te_compute.common.im2col_6d is expired, " \
+                  "please replace it with the func tbe.dsl.compute.common.im2col_6d",
+                  DeprecationWarning)
+    from tbe.dsl.compute.common import im2col_6d
+    return im2col_6d(input_img, col_shape, filter_h, filter_w, pad, stride, padding_value, dilation)
 
 
 def im2col_fractal(a_im2col_shape, in_a, dst='ca', tag=None):
@@ -179,7 +121,7 @@ def im2col_fractal(a_im2col_shape, in_a, dst='ca', tag=None):
     im2col_fractal
     """
     warnings.warn(
-        "te.lang.cce.te_compute.common.im2col_fractal is expired, please replace it with tbe.dsl.compute.common.im2col_fractal", 
+        "te.lang.cce.te_compute.common.im2col_fractal is expired, please replace it with tbe.dsl.compute.common.im2col_fractal",
         DeprecationWarning)
     from tbe.dsl.compute.common import im2col_fractal
     return im2col_fractal(a_im2col_shape, in_a, dst, tag)
@@ -192,30 +134,11 @@ def im2col_fractal_6d(a_im2col_shape, in_a):
     last_dim = in_a.shape[-1]
 
     # pylint: disable=too-many-locals
-    def __im2col_fractal_indices(indices, in_a):
-        _, c_g, h_w, _, kernel_h, kernel_w, _ = in_a.shape
-        batch_size, c_g, i_1, j_1, i_0, j_0 = indices
-
-        n_index = batch_size
-        hw_index = i_1 * _BLOCK_SIZE + i_0
-        c1_index = (((j_1 * last_dim + j_0) // last_dim) //
-                    kernel_w.value) // kernel_h.value
-        kh_index = (((j_1 * last_dim + j_0) // last_dim) //
-                    kernel_w.value) % kernel_h.value
-        kw_index = ((j_1 * last_dim + j_0) // last_dim) % kernel_w.value
-        c0_index = (j_1 * last_dim + j_0) % last_dim
-
-        return tvm.select(
-            tvm.any(hw_index < 0, hw_index > h_w.value - 1),
-            tvm.const(0.0, in_a.dtype),
-            in_a(n_index, c_g, hw_index, c1_index, kh_index, kw_index,
-                 c0_index))
-
-    return tvm.compute(
-        a_im2col_shape,
-        lambda *indices: __im2col_fractal_indices(indices, in_a),
-        name='im2col_fractal',
-        tag='im2col_fractal')
+    warnings.warn("te.lang.cce.te_compute.common.im2col_fractal_6d is expired, " \
+                  "please replace it with the func tbe.dsl.compute.common.im2col_fractal_6d",
+                  DeprecationWarning)
+    from tbe.dsl.compute.common import im2col_fractal_6d
+    return im2col_fractal_6d(a_im2col_shape, in_a)
 
 
 def mad(mad_shape, in_a, in_b, res_type, offset_x=0, v200_flag=False):

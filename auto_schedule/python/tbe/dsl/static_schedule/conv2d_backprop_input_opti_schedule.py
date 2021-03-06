@@ -18,18 +18,19 @@ conv2d_backprop_input schedule
 from copy import deepcopy
 from functools import reduce  # pylint: disable=C0302
 
-from te import tvm
-from tbe.common.tiling.get_tiling import get_tiling
+from te.platform import cce_conf
+from te.platform import cce_params
+from tbe import tvm
 from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
 from tbe.dsl.compute.cube_util import calc_info_of_iter_vars
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.dsl.compute.cube_util import GroupDictKeys
 from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.static_schedule.util import L1CommonParam
-from te.platform import cce_conf
-from te.platform import cce_params
-from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.utils.errormgr import error_manager_util
+
 
 # Don't modify,used in log_util
 DX_SUPPORT_TAG_LOG_PREFIX = "#Conv2DBackpropInput only support#"

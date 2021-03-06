@@ -20,25 +20,6 @@ Compute of depthwise conv2d.
 import warnings
 
 
-# pylint: disable=too-few-public-methods
-class DepthwiseConv2dParam:
-    """
-    class of DepthwiseConv2dParam
-    """
-    def __init__(self):
-        pass
-
-    fusion_para = {
-        "input_memory_type": 0,
-        "output_memory_type": 0,
-        "valid_shape": (),
-        "slice_offset": (),
-        "l1_fusion_type": -1,
-        "fmap_l1_addr_flag": -1,
-        "fmap_l1_valid_size": -1
-    }
-
-
 def depthwise_conv2d_compute(fmap,
                              weight,
                              depthwise_res_dtype,

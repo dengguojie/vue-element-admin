@@ -17,13 +17,13 @@
 """
 Compute of depthwise conv2d.
 """
-from te.tvm import api as tvm
 from te.platform import cce_conf
 from te.platform import cce_params
 from tbe.dsl.compute import common
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util as err_mana
+from tbe.common.utils import para_check
+from tbe.common.utils.errormgr import error_manager_util as err_mana
 from topi.cce.util import check_load3d_w_out_1_support
+from tbe.tvm import api as tvm
 
 BLOCK_SIZE = cce_params.BLOCK_REDUCE
 BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8

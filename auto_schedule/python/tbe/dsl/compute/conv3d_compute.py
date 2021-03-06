@@ -17,14 +17,15 @@ conv3d compute
 """
 import copy
 import warnings
+
 import te.platform as tbe_platform
+from tbe.dsl.compute import cube_util
+from tbe.dsl.compute import util as te_util
+from tbe.dsl.base.operation import get_te_var
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.common.utils import shape_util
-from tbe.dsl.compute import cube_util
-from tbe.dsl.compute import util as te_util
-from te.lang.base.operation_impl import get_te_var
-from te import tvm
+from tbe import tvm
 
 _OP_TAG = "conv3d_"
 _TENSOR_MAP = {}

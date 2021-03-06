@@ -17,20 +17,19 @@ conv2d backprop input DSL interface.
 """
 from inspect import currentframe
 
-from te import tvm
+from te.platform import cce_conf
+from te.platform import cce_params
 from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
-from tbe.dsl.compute.conv2d_backprop_input_opti_compute import (
-    DeConvKernelSize1Pattern
-)
+from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
 from tbe.dsl.compute.cube_util import check_pad_zero
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.dsl.compute.cube_util import GroupDictKeys
-from te.platform import cce_conf
-from te.platform import cce_params
-from te.lang.base.operation_impl import get_te_var
-from te.tvm.tensor import Tensor
+from tbe.dsl.base.operation import get_te_var
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util
+from tbe import tvm
+from tbe.tvm.tensor import Tensor
+
 
 NoneType = type(None)
 

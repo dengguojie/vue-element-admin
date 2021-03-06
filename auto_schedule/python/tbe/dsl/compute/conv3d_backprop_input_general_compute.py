@@ -20,8 +20,8 @@ from tbe.dsl.compute import conv3d_backprop_input_cube_util as conv3d_dx_utils
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.dsl.compute import cube_util
-from te import tvm
-from te.tvm.intrin import abs as tvm_abs
+from tbe import tvm
+from tbe.tvm.intrin import abs as tvm_abs
 
 
 _PAD_MIN = 0

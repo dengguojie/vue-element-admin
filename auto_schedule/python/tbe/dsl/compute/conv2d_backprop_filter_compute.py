@@ -23,15 +23,14 @@ from functools import reduce
 from te.platform import cce_params
 from te.platform.cce_conf import intrinsic_check_support
 from te.platform.cce_conf import get_soc_spec
-from te.lang.base.operation_impl import get_te_var
+from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util
-
-from te.tvm import api as tvm
-from te.tvm.expr import Var
-from te.tvm.expr import IntImm
-from te.tvm.tensor import Tensor
+from tbe.tvm import api as tvm
+from tbe.tvm.expr import Var
+from tbe.tvm.expr import IntImm
+from tbe.tvm.tensor import Tensor
 
 
 # fractal size, only support 16 for now

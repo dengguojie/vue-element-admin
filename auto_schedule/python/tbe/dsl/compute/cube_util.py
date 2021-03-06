@@ -18,10 +18,11 @@ cube util.
 import math
 from collections import namedtuple
 
-from te import tvm
 from te.platform import CUBE_MKN
 from te.platform import cce_conf
-from te.utils.error_manager import error_manager_util as err_man
+from tbe.common.utils.errormgr import error_manager_util as err_man
+from tbe import tvm
+
 
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16

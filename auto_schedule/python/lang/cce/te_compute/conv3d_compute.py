@@ -18,28 +18,6 @@ conv3d compute
 import warnings
 
 
-class Conv3DParam(object):
-    """
-    ConvParam
-    """
-    def __init__(self):
-        pass
-
-    def _get_tensor_map(self):
-        """
-         get the tensor_map in convparam
-        """
-        return self._TENSOR_MAP
-
-    _TENSOR_MAP = {}
-    dim_map = {}
-    tiling = None
-    tiling_query_param = {}
-    var_map = {}
-    dynamic_mode = None
-    tiling_info_dict = {}
-
-
 def conv3d(x, filter, filter_size, para_dict):
     """
     conv

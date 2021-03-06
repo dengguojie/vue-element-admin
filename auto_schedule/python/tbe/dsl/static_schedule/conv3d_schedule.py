@@ -16,7 +16,7 @@
 Schedule of conv3d.
 """
 import te.platform as tbe_platform
-from te import tvm
+from tbe import tvm
 from tbe.dsl.compute import conv3d_compute
 from tbe.dsl.compute import util as te_util
 from tbe.common.tiling.get_tiling import get_tiling

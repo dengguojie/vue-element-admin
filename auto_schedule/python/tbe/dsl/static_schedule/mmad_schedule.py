@@ -20,9 +20,9 @@ from math import ceil
 
 import te.platform.cce_params as cce
 import te.platform.cce_conf as conf
+from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver
 from te.platform.fusion_manager import fusion_manager
-from te.platform import get_soc_spec
 from tbe.dsl.instrinsic import cce_emitinsn_params
 import tvm
 from . import util

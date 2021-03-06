@@ -15,16 +15,15 @@
 """
 conv2d backprop input general compute.
 """
+from te.platform import cce_conf
+from te.platform import cce_params
 from tbe.dsl.compute.cube_util import ConvDslPattern
 from tbe.dsl.compute.cube_util import CubeDslPattern
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.dsl.compute.cube_util import GroupDictKeys
-from te.platform import cce_conf
-from te.platform import cce_params
-from te.tvm import api as tvm
-from te.tvm.intrin import abs as tvm_abs
 from tbe.common.utils.errormgr import error_manager_util
-
+from tbe.tvm import api as tvm
+from tbe.tvm.intrin import abs as tvm_abs
 
 
 class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902

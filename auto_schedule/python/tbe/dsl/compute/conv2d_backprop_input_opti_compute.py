@@ -15,16 +15,17 @@
 """
 conv2d_backprop_input_opti_compute
 """
+from te.platform import cce_conf
+from te.platform import cce_params
 from tbe.dsl.compute.cube_util import ConvDslPattern
 from tbe.dsl.compute.cube_util import CubeDslPattern
 from tbe.dsl.compute.cube_util import is_support_v200
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.dsl.compute.cube_util import GroupDictKeys
 from tbe.dsl.compute.util import int_ceil_div
-from te.platform import cce_conf
-from te.platform import cce_params
-from te.tvm import api as tvm
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.tvm import api as tvm
+
 
 # broadcast should be 16
 BRC_STANDARD_BLOCK_SIZE = 16

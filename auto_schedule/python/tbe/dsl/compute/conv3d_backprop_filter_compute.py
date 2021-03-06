@@ -22,7 +22,7 @@ from tbe.dsl.compute import util as te_util
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from te import tvm
+from tbe import tvm
 
 
 # fractal size, only support 16 for now

@@ -51,9 +51,3 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
         DeprecationWarning)
     from tbe.dsl.compute.conv2d_backprop_filter_compute import conv2d_backprop_filter_compute
     return conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dict)
-
-
-class DynamicConv2dBpFilterParams:
-
-    dynamic_mode = None
-    tiling_info_dict = {}

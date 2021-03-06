@@ -20,9 +20,9 @@ import functools
 import operator
 
 import te.platform as tbe_platform
-from te import tvm
 from te.platform import cce_params
-from te.utils.error_manager import error_manager_util
+from tbe.common.utils.errormgr import error_manager_util
+from tbe import tvm
 
 
 def shape_align(shape, dtype):

@@ -18,17 +18,17 @@ gemm_compute
 import math
 from enum import Enum
 
+from te.platform import cce_conf
+from te.platform import cce_params
 from tbe.dsl import broadcast
 from tbe.dsl.compute.util import check_input_tensor_shape
 from tbe.dsl.compute.mmad_compute import matmul
-from te.lang.base.operation_impl import in_dynamic
-from te.platform import cce_conf
-from te.platform import cce_params
+from tbe.dsl.base.operation import in_dynamic
+from tbe.common.utils import para_check
+from tbe.common.utils import shape_util
+from tbe.common.utils.errormgr import error_manager_util
 from tbe.tvm import api as tvm
 from tbe.tvm.tensor import Tensor
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_util
 
 
 BATCH_MATMUL_LENGTH = 5

@@ -17,7 +17,7 @@ cube util.
 """
 from tbe.dsl.compute import cube_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from te import tvm
+from tbe import tvm
 
 
 def _im2col_row_major(a_im2col_vm_shape,  # pylint: disable=R0913, E1101

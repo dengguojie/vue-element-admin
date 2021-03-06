@@ -18,16 +18,16 @@ gemm schedule
 from enum import Enum
 from functools import reduce  # pylint: disable=C0302
 
-from te import tvm
-from tbe.common.tiling.get_tiling import get_tiling
-from tbe.dsl.base.operation import in_dynamic
-from tbe.dsl.base.operation import get_te_var
-from te.lang.cce.boost_schedule_kit import Compare
-from te.lang.cce.boost_schedule_kit import ScheduleAgent
 from te.platform import cce_conf
 from te.platform import cce_params
 from te.platform.cce_build import build_config
-from te.utils.error_manager import error_manager_util
+from te.lang.cce.boost_schedule_kit import Compare
+from te.lang.cce.boost_schedule_kit import ScheduleAgent
+from tbe.dsl.base.operation import in_dynamic
+from tbe.dsl.base.operation import get_te_var
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.utils.errormgr import error_manager_util
+from tbe import tvm
 
 
 class Params:

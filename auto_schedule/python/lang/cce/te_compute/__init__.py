@@ -80,7 +80,6 @@ from .segment_compute import unsorted_segment_prod
 from .depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
 from .depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from .depthwise_conv2d_compute import depthwise_conv2d_compute
-from .depthwise_conv2d_compute import DepthwiseConv2dParam
 from .inplace_compute import inplace_add
 from .inplace_compute import inplace_sub
 from .inplace_compute import inplace_update

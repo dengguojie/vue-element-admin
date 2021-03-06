@@ -18,19 +18,21 @@ conv2d backprop filter schudule.
 
 from __future__ import absolute_import
 from __future__ import print_function
-from te import tvm
+
 from te.platform.cce_params import scope_ubuf
 from te.platform.cce_params import scope_ca
 from te.platform.cce_params import scope_cb
 from te.platform.cce_params import scope_cc
 from te.platform.cce_params import scope_cbuf
 from te.platform.cce_conf import get_soc_spec
-from tbe.common.tiling.get_tiling import get_tiling
+from tbe import tvm
 from tbe.dsl.compute.cube_util import shape_to_list
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
-
+from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.conv2d_backprop_filter_compute import DynamicConv2dBpFilterParams
+
+
 # for debug, delete before publish
 DEBUG_MODE = False
 # disable double buffer, set True

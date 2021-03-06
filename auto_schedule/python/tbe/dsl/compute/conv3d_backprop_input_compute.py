@@ -15,16 +15,15 @@
 """
 conv3d backprop input DSL interface.
 """
-import te.lang.cce as tbe
-from tbe.dsl.compute import util as te_util
-from te.lang.base.operation_impl import get_te_var
 import te.platform as tbe_platform
-from tbe.common.utils import para_check
+from tbe.dsl.compute import util as te_util
 from tbe.dsl.compute import conv3d_backprop_input_general_compute as conv3d_bp_gen_dx
+from tbe.dsl.base.operation import get_te_var
+from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from te import tvm
+from tbe import tvm
 
 
 # fmapH, fmapW must be in [1,4096]

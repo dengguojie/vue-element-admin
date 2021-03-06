@@ -85,7 +85,6 @@ from .te_compute.conv_compute import conv
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_compute
-from .te_compute.depthwise_conv2d_compute import DepthwiseConv2dParam
 from .te_compute.conv_compute import check_conv_shape
 from .te_compute.conv_compute import conv_compress
 from .te_compute.conv_compute import is_support_v200

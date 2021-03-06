@@ -15,11 +15,11 @@
 """
 CceConv2dBackpropInputOp
 """
+from te.platform import cce_conf
+from te.platform import cce_params
 from tbe.dsl.compute.conv2d_backprop_input_compute import DeconvParam
 from tbe.dsl.static_schedule.conv2d_backprop_input_general_schedule import general_schedule
 from tbe.dsl.static_schedule.conv2d_backprop_input_opti_schedule import opti_schedule
-from te.platform import cce_conf
-from te.platform import cce_params
 from tbe.common.utils.errormgr import error_manager_util
 
 

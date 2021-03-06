@@ -23,15 +23,14 @@ from functools import wraps
 
 import te.platform.cce_params as cce
 import te.platform.cce_conf as cce_conf
-from te.utils.error_manager import error_manager_util
-from te.utils.shape_util import shape_to_list
-from te.utils import para_check
-
+from tbe.dsl.compute.util import check_input_tensor_shape
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.common.utils.shape_util import shape_to_list
+from tbe.common.utils import para_check
+from tbe.common.testing.dsl_source_info import source_info_decorator
 # pylint: disable=import-error, ungrouped-imports
 import topi
-from te import tvm
-from .util import check_input_tensor_shape
-from te.tvm.dsl_source_info import source_info_decorator
+from tbe import tvm
 
 
 def _elecnt_of_shape(shape):
