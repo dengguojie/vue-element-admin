@@ -19,6 +19,8 @@ dynamic operator
 from __future__ import absolute_import as _abs
 from .avg_pool_1d import avg_pool_1d
 from .avg_pool import avg_pool
+from .arg_max_v2 import arg_max_v2
+from .arg_min import arg_min
 from .broadcast_to import broadcast_to
 from .softsign import softsign
 from .softplus_grad import softplus_grad

@@ -71,6 +71,7 @@ set(_optiling_files
   tile_d.cc
   tile.cc
   max_pool.cc
+  arg_max_v2.cc
   batch_to_space_nd.cc
   space_to_batch_nd.cc
   drop_out_do_mask.cc
