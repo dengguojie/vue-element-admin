@@ -58,6 +58,7 @@ TEST_F(TransDataTiling, TransData_tiling1) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "NCHW";
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -65,6 +66,7 @@ TEST_F(TransDataTiling, TransData_tiling1) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "NC1HWC0";								  
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -94,6 +96,7 @@ TEST_F(TransDataTiling, TransData_tiling2) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "NHWC";							  
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -101,6 +104,7 @@ TEST_F(TransDataTiling, TransData_tiling2) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "NC1HWC0";							  
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -130,6 +134,7 @@ TEST_F(TransDataTiling, TransData_tiling3) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "ND";						
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -137,6 +142,7 @@ TEST_F(TransDataTiling, TransData_tiling3) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "FRACTAL_NZ";									 
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -168,6 +174,7 @@ TEST_F(TransDataTiling, TransData_tiling4) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "NC1HWC0";								 
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -175,6 +182,7 @@ TEST_F(TransDataTiling, TransData_tiling4) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "NHWC";							   
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -203,6 +211,7 @@ TEST_F(TransDataTiling, TransData_tiling5) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "FRACTAL_NZ";									
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -211,6 +220,7 @@ TEST_F(TransDataTiling, TransData_tiling5) {
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
   tensorOutput.dtype = dtype;
+  tensorOutput.format = "ND";							 
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
@@ -238,6 +248,7 @@ TEST_F(TransDataTiling, TransData_tiling6) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "FRACTAL_Z_3D";									  
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -245,6 +256,7 @@ TEST_F(TransDataTiling, TransData_tiling6) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "NDHWC";								
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -273,6 +285,7 @@ TEST_F(TransDataTiling, TransData_tiling7) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "NC1HWC0";								 
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -280,6 +293,7 @@ TEST_F(TransDataTiling, TransData_tiling7) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "NCHW";							   
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -308,6 +322,7 @@ TEST_F(TransDataTiling, TransData_tiling8) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "NCDHW";							   
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -315,6 +330,7 @@ TEST_F(TransDataTiling, TransData_tiling8) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "NDC1HWC0";								   
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -343,6 +359,7 @@ TEST_F(TransDataTiling, TransData_tiling9) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "DHWCN";
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -350,6 +367,7 @@ TEST_F(TransDataTiling, TransData_tiling9) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "FRACTAL_Z_3D";
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -378,6 +396,7 @@ TEST_F(TransDataTiling, TransData_tiling10) {
 
   TeOpTensor tensorInput;
   tensorInput.shape = input_shape;
+  tensorInput.format = "HWCN";							  
   tensorInput.dtype = dtype;
   tensorInputsArg.tensor.push_back(tensorInput);
   tensorInputsArg.arg_type = TA_SINGLE;
@@ -385,6 +404,7 @@ TEST_F(TransDataTiling, TransData_tiling10) {
 
   TeOpTensor tensorOutput;
   tensorOutput.shape = output_shape;
+  tensorOutput.format = "FRACTAL_Z";									
   tensorOutput.dtype = dtype;
   tensorOutputsArg.tensor.push_back(tensorOutput);
   tensorOutputsArg.arg_type = TA_SINGLE;
@@ -400,3 +420,344 @@ TEST_F(TransDataTiling, TransData_tiling10) {
   EXPECT_EQ(to_string_int64(runInfo.tiling_data), "100 63232 1 32 0 0 1 2 196 31 7 1 2 165 31 7 240 240 0 31 16 496 3195392 7 6241 1 713 0 0 0 6241 1 512 0 0 0 31 1 16 0 0 0 0 3952 ");
 }
 
+TEST_F(TransDataTiling, TransData_tiling_NCHW2NHWC) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {100, 16, 16, 17};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "NCHW";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "NHWC";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_NCHW2HWCN) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {16, 16, 17, 100};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "NCHW";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "HWCN";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_NHWC2NCHW) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {100, 16, 17, 16};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "NHWC";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "NCHW";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_NHWC2HWCN) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {17, 16, 16, 100};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "NHWC";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "HWCN";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_HWCN2NCHW) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {16, 16, 100, 17};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "HWCN";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "NCHW";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_HWCN2NHWC) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {16, 100, 17, 16};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "HWCN";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "NHWC";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_CHWN2NCHW) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {16, 100, 17, 16};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "CHWN";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "NCHW";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_CHWN2NHWC) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {16, 17, 16, 100};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "CHWN";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "NHWC";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling_CHWN2HWCN) {
+  using namespace optiling;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+
+  TeOpParas opParas;
+  vector<int64_t> inShape = {100, 17, 16, 16};
+  vector<int64_t> outShape = {17, 16, 100, 16};
+
+  TeOpTensorArg tensorInputs;
+  TeOpTensor tensorInput;
+  tensorInput.shape = inShape;
+  tensorInput.format = "CHWN";
+  tensorInput.dtype = "float16";
+  tensorInputs.tensor.push_back(tensorInput);
+  tensorInputs.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputs);
+
+  TeOpTensorArg tensorOutputsArg;
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = outShape;
+  tensorOutput.format = "HWCN";
+  tensorOutput.dtype = "float16";
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+
+  std::string compileInfo = "{\"vars\": {\"core_num\":32, \"ub_size\":8192, \"dtype\":\"float16\"}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = this->test_info_->name();
+
+  opParas.op_type = "TransData";
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}

@@ -68,6 +68,105 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
                                     (2, 23, 3, 3),
                                     "float16", "NC1HWC0", "NCHW", "case_7", "success"))
 
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (42767, 23, 3, 3),
+                                    "float32", "NCHW", "NHWC", "case_8", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "NCHW", "HWCN", "case_9", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (42767, 23, 3, 3),
+                                    "int32", "NHWC", "NCHW", "case_10", "success"))
+# transpose not support int8 now
+# ut_case.add_case(["all"],
+#                  gen_transdata_case((-1, -1, -1, -1),
+#                                     (32, 32, 32, 32),
+#                                     "int8", "NHWC", "HWCN", "case_11", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (42767, 23, 3, 3),
+                                    "int16", "HWCN", "NCHW", "case_12", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "int64", "HWCN", "NHWC", "case_13", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (42767, 23, 3, 3),
+                                    "uint16", "CHWN", "NCHW", "case_14", "success"))
+# transpose not support uint8 now
+# ut_case.add_case(["all"],
+#                  gen_transdata_case((-1, -1, -1, -1),
+#                                     (32, 32, 32, 32),
+#                                     "uint8", "CHWN", "NHWC", "case_15", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "uint64", "CHWN", "HWCN", "case_16", "success"))
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (42767, 23, 3, 3),
+                                    "float16", "NHWC", "NCHW", "case_17", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "NHWC", "HWCN", "case_18", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (42767, 23, 3, 3),
+                                    "float16", "HWCN", "NCHW", "case_19", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "HWCN", "NHWC", "case_20", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (42767, 23, 3, 3),
+                                    "float16", "CHWN", "NCHW", "case_21", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "CHWN", "NHWC", "case_22", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "CHWN", "HWCN", "case_23", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "uint32", "CHWN", "HWCN", "case_24", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "CHWC", "HWCN", "case_25", RuntimeError))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "CHWN", "CHWN", "case_26", RuntimeError))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (32, 32, 32, 32),
+                                    "float16", "CHWN", "CHWH", "case_27", RuntimeError))
+                                    
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):
         ut_case.run("Ascend910A")

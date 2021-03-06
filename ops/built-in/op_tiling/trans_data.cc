@@ -19,12 +19,14 @@
  * \brief dynamic TransData op tiling
  */
 #include <string>
+#include <vector>
 #include <algorithm>
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "trans_data_common.h"
+#include "transpose.h"
 
 namespace optiling {
 
@@ -359,6 +361,16 @@ int32_t GetMultiCoreAxis(std::vector<int64_t> inShape, int32_t axisPosC, int64_t
   return max_element(coreLpCnt.begin(), coreLpCnt.end()) - coreLpCnt.begin();
 }
 
+bool is_do_with_transpose_formats(const std::string& srcFormat, const std::string& dstFormat){
+  const std::vector<std::string> FormatList = {"NCHW", "NHWC", "HWCN", "CHWN"};
+  if (std::find(FormatList.begin(), FormatList.end(), srcFormat) != FormatList.end() &&
+      std::find(FormatList.begin(), FormatList.end(), dstFormat) != FormatList.end() && dstFormat != srcFormat) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 /*
  * @brief: tiling function of op
  * @param [in] opType: opType of the op
@@ -386,11 +398,31 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     OP_LOGE(opType.c_str(), "op TransDataTiling: output shape error.");
     return false;
   }
-
+  std::string srcFormat = opParas.inputs[0].tensor[0].format;
+  std::string dstFormat = opParas.outputs[0].tensor[0].format;
+  OP_LOGD(opType, "Input format is [%s], Output format is [%s].",
+          srcFormat.c_str(), dstFormat.c_str());
+  if (is_do_with_transpose_formats(srcFormat, dstFormat)) {
+    std::vector<int64_t> perm_shape;
+    TeOpParas opParasTranspose;
+    opParasTranspose = opParas;
+    perm_shape.push_back(4);
+    ge::Shape ge_shape(perm_shape);
+    ge::Tensor const_tensor(ge::TensorDesc(ge_shape, ge::Format::FORMAT_ND, ge::DataType::DT_INT64));
+    int64_t buf[4];
+    std::map<char, std::int64_t> DimIndex;
+    for (int64_t i = 0; i < srcFormat.size(); i++) {
+      DimIndex[srcFormat[i]] = i;
+    }
+    for (int64_t i = 0; i < dstFormat.size(); i++) {
+      buf[i] = DimIndex[dstFormat[i]];
+    }
+    opParasTranspose.const_inputs["perm"] = std::make_tuple((const unsigned char*)buf, sizeof(buf), const_tensor);
+    bool ret = TransposeTiling(opType, opParasTranspose, op_info, runInfo);
+    return ret;
+  }
   std::vector<int64_t> inShape = opParas.inputs[0].tensor[0].shape;
   std::vector<int64_t> outShape = opParas.outputs[0].tensor[0].shape;
-  std::string srcFormat;
-  std::string dstFormat;
   std::string realSrcFormat;
   std::string realDstFormat;
   std::string dType;
