@@ -26,6 +26,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
@@ -80,7 +81,7 @@ def get_fusion_params(x_tensor, y):
     return fusion_params
 
 
-@fusion_manager.register("leaky_relu")
+@register_operator_compute("leaky_relu", op_mode="dynamic", support_fusion=False)
 def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """
     compute for caffe_relu_layer_cce

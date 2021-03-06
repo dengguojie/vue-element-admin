@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -34,7 +35,7 @@ NEG_ONE = -1
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("softplus")
+@register_operator_compute("softplus", op_mode="dynamic", support_fusion=False)
 def softplus_compute(input_x, y, kernel_name="softplus"):
     """
     Compute for softplus.

@@ -41,6 +41,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 # scalar in asinh_grad
 NUM_MINUS_ONE = -1
@@ -106,7 +107,7 @@ def _cosh_repeat(data):
 
 
 # pylint: disable=unused-argument,invalid-name,too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("asinh_grad")
+@register_operator_compute("asinh_grad", op_mode="dynamic", support_fusion=False)
 def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
     """
     do element-wise asinh_grad compute

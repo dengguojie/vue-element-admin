@@ -24,6 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # define a scalar, value = 1
@@ -32,7 +33,7 @@ SCALAR_ONE = 1
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=unused-variable
-@tbe_platform.fusion_manager.fusion_manager.register("softplus_grad")
+@register_operator_compute("softplus_grad", op_mode="dynamic", support_fusion=False)
 def softplus_grad_compute(input_gradients, input_features, output_backprops,
                           kernel_name="softplus_grad"):
     """

@@ -26,6 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import OpImplMode
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -68,7 +69,7 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
         tensor_one = tbe.broadcast(tvm.const(1, dtype), inp_shape)
         tmp_rec = tbe.vdiv(tensor_one, tmp_sum)
     else:
-        tmp_rec = tbe.vrec(tmp_sum, "high_precision")
+        tmp_rec = tbe.vrec(tmp_sum, OpImplMode.HIGH_PRECISION)
 
     return tmp_rec
 

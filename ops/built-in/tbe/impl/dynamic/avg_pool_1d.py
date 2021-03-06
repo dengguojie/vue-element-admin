@@ -19,16 +19,14 @@ avg_pool_1d
 import te.platform as tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
-from te.utils import error_manager
-from impl.util.platform_adapter import error_manager_vector
-from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import register_operator_compute
 
 C0 = 16
 
 # pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("avg_pool_1d")
+@register_operator_compute("avg_pool_1d", op_mode="dynamic", support_fusion=False)
 def avg_pool_1d_compute(x,
                         div,
                         out_dict,

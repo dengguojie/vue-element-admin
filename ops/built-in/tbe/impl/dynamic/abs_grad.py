@@ -44,12 +44,13 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 SHAPE_SIZE_LIMIT = 2147483648
 
 
 # pylint: disable=unused-argument,too-many-locals,invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("abs_grad")
+@register_operator_compute("abs_grad", op_mode="dynamic", support_fusion=False)
 def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     """
     do abs_grad compute

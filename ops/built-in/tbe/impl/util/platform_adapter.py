@@ -15,20 +15,19 @@
 """
 platform adapter
 """
-import te
-from tbe.dsl.base import operation
+
+from te import platform
+from tbe.dsl.base import operation as tbe_operation
 import tbe as platform_tbe
 import tbe.common.register as tbe_register
-from te import platform
-from te import tik
-from te import tvm
+from tbe import tik as tbe_tik
+from tbe import tvm as tbe_tvm
 
 
 tbe_platform = platform
 register_operator = tbe_register.register_operator
 
 
-# pylint: disable=unused-argument
 def register_operator_compute(op_type, op_mode="dynamic", support_fusion=False):
     """
     register op compute func
@@ -50,7 +49,7 @@ def register_operator_compute(op_type, op_mode="dynamic", support_fusion=False):
     return tbe_register.register_op_compute(op_type, op_mode, support_fusion)
 
 
-class OpPatternMode(object):
+class OpPatternMode:
     """
     op pattern mode
     """
@@ -60,7 +59,7 @@ class OpPatternMode(object):
     REDUCE = "reduce"
 
 
-class OpImplMode(object):
+class OpImplMode:
     """
     op implement mode high_performance or high_precision
     """
@@ -68,7 +67,7 @@ class OpImplMode(object):
     HIGH_PRECISION = "high_precision"
 
 
-class TbeContextKey(object):
+class TbeContextKey:
     """
     TbeContextKey
     """
@@ -80,8 +79,7 @@ para_check = platform_tbe.common.utils.para_check
 shape_util = platform_tbe.common.utils.shape_util
 error_manager_vector = platform_tbe.common.utils.errormgr
 classify = tbe.classify
-operation = operation
-tik = tik
-tvm = tvm
+operation = tbe_operation
+tik = tbe_tik
+tvm = tbe_tvm
 tbe_context = platform_tbe.common.context
-

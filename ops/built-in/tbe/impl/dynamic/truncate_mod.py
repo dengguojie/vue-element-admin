@@ -23,10 +23,11 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("truncate_mod")
+@register_operator_compute("truncate_mod", op_mode="dynamic", support_fusion=False)
 def truncate_mod_compute(input_x, input_y, output_z,
                          kernel_name="truncate_mod"):
     """

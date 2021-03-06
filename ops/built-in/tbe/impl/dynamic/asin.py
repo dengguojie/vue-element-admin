@@ -39,6 +39,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util import util_compute
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 NUM_ONE = 1.0
@@ -93,7 +94,7 @@ def _taylor_compute(data_x, x_square=None):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("asin")
+@register_operator_compute("asin", op_mode="dynamic", support_fusion=False)
 def asin_compute(x, y, kernel_name="asin"):
     """
     do element-wise asin compute

@@ -44,6 +44,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from functools import reduce as reduce_ins
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # shape limit
@@ -79,7 +80,7 @@ MIN_FP16 = 2 ** (-24)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@tbe_platform.fusion_manager.fusion_manager.register("asinh")
+@register_operator_compute("asinh", op_mode="dynamic", support_fusion=False)
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     """
     algrithm: asinh(x) = log(x + sqrt(x^2 + 1))

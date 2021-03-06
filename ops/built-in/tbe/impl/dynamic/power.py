@@ -27,6 +27,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,too-many-locals
@@ -191,7 +192,7 @@ def zero_diff_scale_compute(input_x, shift, power):
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
 # pylint: disable=too-many-locals
-@tbe_platform.fusion_manager.fusion_manager.register("power")
+@register_operator_compute("power", op_mode="dynamic", support_fusion=False)
 def power_compute(input_x, output_y, power=1.0, scale=1.0,
                   shift=0.0, kernel_name="power"):
     """

@@ -17,10 +17,11 @@ resize_bilinear_v2_grad.py
 """
 
 import te
-from te import tik
+from impl.util.platform_adapter import tik
 from te import platform as tbe_platform
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 MAX_INT32 = 2 ** 31 - 1
 TILING_NUM = 64
@@ -337,7 +338,7 @@ class ResizeBilinearV2Grad(object):
         self.tiling_compute()
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.grads_gm, self.images_gm],
                                    outputs=[self.output_gm], flowtable=[self.tiling_gm])
-        te.op.add_compile_info("vars", {"core_num": self.core_num})
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num})
         return self.tik_instance
 
     def get_dtype_size(self, dtype):

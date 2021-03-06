@@ -25,6 +25,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=invalid-name,redefined-outer-name
@@ -169,7 +170,7 @@ def _fused_compute(x, mean, variance):
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
-@tbe_platform.fusion_manager.fusion_manager.register("bninference_d")
+@register_operator_compute("bninference_d", op_mode="dynamic", support_fusion=False)
 def bninference_d_compute(x, mean, variance, scale, bias, y,
                           momentum, epsilon, use_global_stats, mode):
     """
