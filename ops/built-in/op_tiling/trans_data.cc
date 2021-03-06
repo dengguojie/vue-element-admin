@@ -314,6 +314,29 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew.push_back(axisC0);
   }
 
+  if (srcFormat == "NDHWC" && dstFormat == "FRACTAL_Z_3D") {
+    if (inShape.size() != 5) {
+      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      return false;
+    }
+    realSrcFormat = "NDHC";
+    realDstFormat = "DCHNT";
+    inShapeNew.push_back(inShape[0]);
+    inShapeNew.push_back(inShape[1]);
+    inShapeNew.push_back(inShape[3] * inShape[2]);
+    inShapeNew.push_back(inShape[4]);
+    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
+    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
+    int64_t axisC0 = c0Len;
+    int64_t axisNi = NI_16;
+    int64_t axisNo = GetCeilDiv(inShape[0], axisNi);
+    outShapeNew.push_back(inShape[1]);
+    outShapeNew.push_back(axisC1);
+    outShapeNew.push_back(inShape[3] * inShape[2]);
+    outShapeNew.push_back(axisNo * axisNi);
+    outShapeNew.push_back(axisC0);
+  }
+
   return true;
 }
 
@@ -457,9 +480,6 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     return false;
   }
 
-  HeadTilingParam headParams;
-  headParams.shapeLoopCnt = 1;
-
   if (realSrcFormat[realSrcFormat.length() - 1] != 'C' && realDstFormat[realDstFormat.length() - 1] == 'T') {
     TransDataMode100Param runParamsPart1;
     flag = TillingPositiveMode100(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
@@ -472,20 +492,30 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     OP_LOGD(opType.c_str(), "start print runParams");
     PrintTilingMode100Params(opType, runParamsPart1);
   } else if (realSrcFormat[realSrcFormat.length() - 1] == 'C' && realDstFormat[realDstFormat.length() - 1] == 'T') {
-    int32_t axisPosC = std::strchr(realSrcFormat.c_str(), 'C') - realSrcFormat.c_str();
-    int32_t multiCoreAxisPosPart1 = GetMultiCoreAxis(inShapeNew, axisPosC, blockElemCnt, c0Len, blockDim);
-    TransDataMode101Param runParamsPart1;
-    flag = TillingPositiveMode101(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, multiCoreAxisPosPart1,
-                                  axisPosC, blockDim, blockElemCnt, c0Len, ubSize, runParamsPart1);
-    if (!flag) {
-      OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode101Param tiling params error");
-      return false;
+    if (realSrcFormat[realSrcFormat.length() - 2] == realDstFormat[realDstFormat.length() - 2]) {
+      TransDataMode1010Param runParamsPart1;
+      flag = TillingPositiveMode1010(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
+                                     blockDim, blockElemCnt, ubSize, runParamsPart1);
+      if (!flag) {
+        OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode101Param tiling params error");
+        return false;
+      }
+      SetRunningMode1010Params(runParamsPart1, runInfo);
+      OP_LOGD(opType.c_str(), "start print runParams");
+      PrintTilingMode1010Params(opType, runParamsPart1);
+    } else {
+      TransDataMode1011Param runParamsPart1;
+      flag = TillingPositiveMode1011(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
+                                     blockDim, blockElemCnt, ubSize, runParamsPart1);
+      if (!flag) {
+        OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode101Param tiling params error");
+        return false;
+      }
+      SetRunningMode1011Params(runParamsPart1, runInfo);
+      OP_LOGD(opType.c_str(), "start print runParams");
+      PrintTilingMode1011Params(opType, runParamsPart1);
     }
-    ByteBufferPut(runInfo.tiling_data, headParams.shapeLoopCnt);
-    OP_LOGD(opType.c_str(), "shapeLoopCnt=%d", headParams.shapeLoopCnt);
-    SetRunningMode101Params(runParamsPart1, runInfo);
-    OP_LOGD(opType.c_str(), "start print runParams");
-    PrintTilingMode101Params(opType, runParamsPart1);
+
   } else if ((srcFormat == "NC1HWC0" && dstFormat == "NHWC") || (srcFormat == "FRACTAL_NZ" && dstFormat == "ND") ||
               (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC")) {
     TransDataMode201Param runParams201;

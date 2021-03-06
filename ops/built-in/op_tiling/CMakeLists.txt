@@ -83,6 +83,8 @@ set(_optiling_files
   trans_data_positive_target_t_mode100.cc
   trans_data_positive_target_t_mode101.cc
   trans_data_negative_target_h_mode200.cc
+  trans_data_positive_source_tc_1010.cc
+  trans_data_positive_source_tc_1011.cc
   unpack.cc
   unsorted_segment_sum.cc
   unsorted_segment.cc

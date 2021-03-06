@@ -110,15 +110,17 @@ TEST_F(TransDataTiling, TransData_tiling2) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "TransData";
-  std::string compileInfo2 = "{\"vars\": {\"srcFormat\": \"NHWC\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126976, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+  std::string compileInfo2 = "{\"vars\": {\"srcFormat\": \"NHWC\", \"dstFormat\": \"NC1HWC0\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo2;
   op_compile_info.key = "123456ab";
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  // EXPECT_EQ(to_string_int64(runInfo.tiling_data),
+            // "1 77 101 63488 32 225 1200 3968 0 0 0 0 7140 38080 11904 63488 3968 9443840 16 3968 744 248 3 752 1 744 0 0 1 38080 1 0 0 1 63488 0 0 1 0 1 0 2 0 1 75 1 3 1 75 3 752 1 744 225 1 1 1 1200 1 0 1 0 2 0 1 55 1 3 1 55 3 752 1 744 165 1 1 1 880 ");
   EXPECT_EQ(to_string_int64(runInfo.tiling_data),
-            "1 77 101 63488 32 225 1200 3968 0 0 0 0 7140 38080 11904 63488 3968 9443840 16 3968 744 248 3 752 1 744 0 0 1 38080 1 0 0 1 63488 0 0 1 0 1 0 2 0 1 75 1 3 1 75 3 752 1 744 225 1 1 1 1200 1 0 1 0 2 0 1 55 1 3 1 55 3 752 1 744 165 1 1 1 880 ");
+            "1010 63232 2 7140 38080 7140 38080 1 11856 63232 3 3952 247 16 3 38080 38080 16 3 3 1 1 10 157 1 0 1 1 10 157 1 0 ");
 }
 
 TEST_F(TransDataTiling, TransData_tiling3) {
@@ -148,15 +150,17 @@ TEST_F(TransDataTiling, TransData_tiling3) {
   tensorOutputsArg.arg_type = TA_SINGLE;
   opParas.outputs.push_back(tensorOutputsArg);
   opParas.op_type = "TransData";
-  std::string compileInfo3 = "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ubSize\": 126976, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+  std::string compileInfo3 = "{\"vars\": {\"srcFormat\": \"ND\", \"dstFormat\": \"FRACTAL_NZ\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo3;
   op_compile_info.key = "123456abc";
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  // EXPECT_EQ(to_string_int64(runInfo.tiling_data),
+            // "1 77 101 63488 29 384 6144 3968 0 0 0 0 110950 177664 177520 256 3968 63488 16 3968 11095 1 3968 3968 1 3968 0 0 248 256 1 0 0 1 256 0 0 1 0 1 0 34 0 1 10 1 384 10 1 384 384 1 384 384 24 1 1 160 1 0 1 0 34 0 1 10 1 343 10 1 343 352 1 343 343 22 1 1 160 ");
   EXPECT_EQ(to_string_int64(runInfo.tiling_data),
-            "1 77 101 63488 29 384 6144 3968 0 0 0 0 110950 177664 177520 256 3968 63488 16 3968 11095 1 3968 3968 1 3968 0 0 248 256 1 0 0 1 256 0 0 1 0 1 0 34 0 1 10 1 384 10 1 384 384 1 384 384 24 1 1 160 1 0 1 0 34 0 1 10 1 343 10 1 343 352 1 343 343 22 1 1 160 ");
+            "1010 63232 17 221900 355328 110950 177664 1 177520 256 11095 3952 1 16 3952 63232 256 16 7 3952 2 1 10 1 3 3191 2 1 10 1 3 3191 ");
 }
 
 
@@ -760,4 +764,42 @@ TEST_F(TransDataTiling, TransData_tiling_CHWN2HWCN) {
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+}
+
+TEST_F(TransDataTiling, TransData_tiling11) {
+  using namespace optiling;
+  optiling::OpRunInfo op_run_info;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  TeOpTensorArg tensorInputsArg, tensorOutputsArg;
+  TeOpParas opParas;
+  std::vector<int64_t> input_shape = {2, 7, 11, 11, 16};
+  std::vector<int64_t> output_shape = {7, 1, 11, 11, 1, 16, 16};
+  std::string dtype = "float16";
+
+  TeOpTensor tensorInput;
+  tensorInput.shape = input_shape;
+  tensorInput.format = "NDHWC";
+  tensorInput.dtype = dtype;
+  tensorInputsArg.tensor.push_back(tensorInput);
+  tensorInputsArg.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputsArg);
+
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = output_shape;
+  tensorOutput.format = "FRACTAL_Z_3D";							  
+  tensorOutput.dtype = dtype;
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+  opParas.op_type = "TransData";
+  std::string compileInfo2 = "{\"vars\": {\"srcFormat\": \"NDHWC\", \"dstFormat\": \"FRACTAL_Z_3D\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": 0, \"hiddenSize\": 0, \"group\": 1}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo2;
+  op_compile_info.key = this->test_info_->name();
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data),
+            "1011 63232 4 1 3952 0 27104 32 13552 2 3952 0 247 3952 16 30976 30976 16 0 16 1 0 1 0 1 0 1 0 1 106 1 0 121 1 256 7 121 30976 ");
 }

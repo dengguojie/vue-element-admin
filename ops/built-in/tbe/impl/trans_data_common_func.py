@@ -185,7 +185,7 @@ def clean_ubuf(tik_inst, src, src_offset, dup_len):
     dtype = src.dtype.lower()
     if dtype == "float16":
         dtype_factor = 2
-    elif dtype == "float32":
+    elif dtype in ("float32", "int32"):
         dtype_factor = 1
     batch_size = MASK_64
 
@@ -198,7 +198,8 @@ def clean_ubuf(tik_inst, src, src_offset, dup_len):
             left_elem = dup_len_reg % (batch_size * dtype_factor)
             repeat_loop = repeat // REPEAT_LIMIT_VECT
             repeat_left = repeat % REPEAT_LIMIT_VECT
-            dup_value = float(0)
+            dup_value = tik_inst.Scalar(dtype=dtype)
+            dup_value.set_as(0)
 
             with tik_inst.if_scope(repeat_loop > 0):
                 with tik_inst.for_range(0, repeat_loop) as rpt_idx:
@@ -303,6 +304,6 @@ def get_dtype_factor(dtype):
     the data type factor as an Integral
     """
 
-    size_factor = 2 if dtype.lower() == "float32" else 1
+    size_factor = 2 if dtype.lower() in ("float32", "int32") else 1
 
     return size_factor

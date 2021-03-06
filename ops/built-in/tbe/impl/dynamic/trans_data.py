@@ -25,6 +25,7 @@ from impl.dynamic.transpose import Transpose
 from . import trans_data_negative_target_tc
 from . import trans_data_negative_target_ch
 from . import trans_data_positive_source_nct
+from . import trans_data_positive_source_tc
 
 TILING_MAX_SIZE_GM = 2048 # 16KB
 MAX_INT64_VALUE = 2 ** 64 - 1
@@ -74,4 +75,4 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
         transpose_instance = Transpose(tik_inst, x_dtype, tensor_list, kernel_name)
         return transpose_instance.compute(input_list)
     else:
-        return trans_data_rnn(src, dst, src_format, dst_format, 0, 0, kernel_name)
+        trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
