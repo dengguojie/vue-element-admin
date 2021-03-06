@@ -158,7 +158,9 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
-
+    if shape_out_backprop[-1] <= -1:
+        cube_err.raise_err_specific(
+            'conv3d_backprop_input', 'The C dim of outbackprop should not be dynamic')
     shape_out_backprop[-1] = shape_filters[-1]
 
     return shape_filters, shape_out_backprop, shape_strides, shape_dilations, range_input, shape_res
@@ -247,23 +249,23 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
     shape_filter_frac = (util_common.ceil(filter_channel, w_n0) * filter_depth * filter_h * filter_w,
                          util_common.ceil(filter_batch, w_k0), w_k0, w_n0)
 
-    if input_sizes[0] == -1:
+    if input_sizes[0] == -1 or dedy_batch == -1:
         dedy_batch = tbe_base.var("batch_n", range_input[0])
         tbe_base.add_exclude_bound_var(dedy_batch)
         input_sizes[0] = dedy_batch
-    if input_sizes[1] == -1:
+    if input_sizes[1] == -1 or dedy_depth == -1:
         dx_depth = tbe_base.var("dedx_d", range_input[1])
         dedy_depth = tbe_base.var("dedy_d", range_dedy[1])
         tbe_base.add_exclude_bound_var(dx_depth)
         tbe_base.add_exclude_bound_var(dedy_depth)
         input_sizes[1] = dx_depth
-    if input_sizes[2] == -1:
+    if input_sizes[2] == -1 or dedy_h == -1:
         dx_h = tbe_base.var("dedx_h", range_input[3])
         dedy_h = tbe_base.var("dedy_h", range_dedy[3])
         tbe_base.add_exclude_bound_var(dx_h)
         tbe_base.add_exclude_bound_var(dedy_h)
         input_sizes[2] = dx_h
-    if input_sizes[3] == -1:
+    if input_sizes[3] == -1 or dedy_w == -1:
         dx_w = tbe_base.var("dedx_w", range_input[4])
         dedy_w = tbe_base.var("dedy_w", range_dedy[4])
         tbe_base.add_exclude_bound_var(dx_w)

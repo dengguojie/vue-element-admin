@@ -1019,8 +1019,15 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     # cub
     cddr_n_outer, cddr_m_outer, cddr_n_for_cub = _cub_process()
     # l0c
-    cddr_deep_factor = al0_tiling_dfactor
-    kd_factor = bl0_tiling_kd
+    if not var_map:
+        cddr_deep_factor = al0_tiling_dfactor
+        kd_factor = bl0_tiling_kd
+    else:
+        bl0_tiling_kd = 1
+        cddr_deep_factor = 1
+        al0_tiling_dfactor = 1
+        kd_factor = 1
+        tiling["block_dim"][-1] = 1
     kd_tiling_l1_factor = bl1_tiling_kdparts
     (batch_outer, al1_at_ddr_m_outer, batch_inner, bl1_at_ddr_n_outer, bl1_at_ddr_n_inner,
     col_at_ddr_axis, cddr_m_outer_inner, _, c_ddr_deep_outer, _) = _l0c_procees()
@@ -1211,7 +1218,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 sch[a_vn].set_storage_bound(a_filling_bound)
 
         al1_bound, al1_h = _get_al1_bound()
-        sch[a_l1].buffer_tile((None, None), (None, None), (None, None), (None, al1_h), (None, None), (None, None))
+        extent_h = tvm.select(tvm.floordiv(al1_h, a_ddr.shape[3] * stride_h) < 1,
+                              al1_h,
+                              al1_h + padu)
+        sch[a_l1].buffer_tile((None, None), (None, None), (None, None), (None, extent_h), (None, None), (None, None))
         sch[a_l1].set_storage_bound(al1_bound)
         sch[a_col].set_storage_bound(_get_al0_bound())
         _set_aub_bound(al1_h)
