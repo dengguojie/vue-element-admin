@@ -201,7 +201,7 @@ def _calc_double_op_num(fusion_type):
         FUSION_TYPE_2_OPERAND_NUM[fusion_type] = double_op_num
 
 
-def _get_data_amount_l1(l1_shape, isdouble):
+def _get_data_amount_l1(l1_shape, isdouble, l0c_multi_group_flag):
     """
     using tilling parameter calculate data amount in l1
 
@@ -217,7 +217,7 @@ def _get_data_amount_l1(l1_shape, isdouble):
     if TILING.get(l1_shape) != [] and len(TILING.get(l1_shape)) != CONST_L1_SHAPE_DIM:
         _raise_dx_opti_err("{} should be {}".format(l1_shape, CONST_L1_SHAPE_DIM))
 
-    if TILING.get(l1_shape) == []:
+    if TILING.get(l1_shape) == [] and not l0c_multi_group_flag:
         if l1_shape == "AL1_shape":
             data_amount_l1 = (
                 reduce(lambda x, y: x * y, DIM_MAP["A_matrix_dim"][2:])
@@ -230,9 +230,11 @@ def _get_data_amount_l1(l1_shape, isdouble):
             )
     else:
         block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
-        l1_k = TILING.get(l1_shape)[0]
-        l1_mn = TILING.get(l1_shape)[1]
-        l1_g = TILING.get(l1_shape)[3]
+        # if l0c_multi_group_flag and TILING.get(l1_shape) is [], l1 comput at l0c
+        full_k = DIM_MAP["B_matrix_dim"][1] * block_k
+        l1_k = TILING.get(l1_shape)[0] if TILING.get(l1_shape) else full_k
+        l1_mn = TILING.get(l1_shape)[1] if TILING.get(l1_shape) else 1
+        l1_g = TILING.get(l1_shape)[3] if TILING.get(l1_shape) else 1
         if l1_k == 0 or l1_mn == 0:
             _raise_dx_opti_err("l1_k or l1_mn can not be zero")
         if l1_k % block_k != 0:
@@ -638,11 +640,11 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
 
     def _check_tiling_l1():
         data_amount_l1b = _get_data_amount_l1(
-            "BL1_shape", manual_pingpong_buffer.get("BL1_pbuffer")
+            "BL1_shape", manual_pingpong_buffer.get("BL1_pbuffer"), l0c_multi_group_flag
         )
         if "dedy_h" not in var_map and "dedy_w" not in var_map:
             data_amount_l1a = _get_data_amount_l1(
-                "AL1_shape", manual_pingpong_buffer.get("AL1_pbuffer")
+                "AL1_shape", manual_pingpong_buffer.get("AL1_pbuffer"), l0c_multi_group_flag
             )
             if DeconvParam.get_para_map("l1_fusion_type") != -1:
                 data_amount_l1a = 0
@@ -2739,6 +2741,45 @@ def opti_schedule(
     _attach_al1_bl1()
     _print_ir_conv("attach al1/bl1", sch)
 
+    def _buffer_tile_l0c_c1():
+        no_coefficient = (l0c_factor[0] * 2 if dx_res_write.dtype == "int8" else l0c_factor[0])
+        noo_coefficient_unzero = int_ceil_div(
+                int_ceil_div(DIM_MAP["dx_6GD_shape"][2], l0c_factor[0]), bl1_parts[1]
+            )
+        noo_coefficient = 0 if bl1_parts[1] == 1 else noo_coefficient_unzero
+        noio_coefficient = (
+            0
+            if TILING["block_dim"][1] == 1
+            else int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1])
+        )
+        noii_coefficient = (
+            0 if int_ceil_div(noo_coefficient_unzero, TILING["block_dim"][1]) == 1
+            else 1
+        )
+        cub_buffertile_n_min = (
+            bl1_at_c_axis.var * noo_coefficient
+            + noio_coefficient * l1_n_out_inner_out
+            + noii_coefficient * noii_axis.var
+        ) * no_coefficient
+        sch[c_l0c].buffer_tile(
+            (None, 1),
+            (None, None),
+            (cub_buffertile_n_min, no_coefficient),
+            (None, None),
+            (None, None),
+            (None, None),
+            (None, None),
+        )
+        if c_add_bias is not None:
+            sch[c_add_bias].buffer_tile(
+            (None, 1),
+            (None, None),
+            (cub_buffertile_n_min, no_coefficient),
+            (None, None),
+            (None, None),
+            )
+    if not l0c_multi_group_flag:
+        _buffer_tile_l0c_c1()
     # do buffer_tile or buffer_align for cub
     if need_buffer_tile:
         _do_buffer_tile()
