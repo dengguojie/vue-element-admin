@@ -361,7 +361,7 @@ REGISTER_CUSTOM_OP("LookupTableImport")
 // register LookupTableInsert op to GE
 REGISTER_CUSTOM_OP("LookupTableInsert")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("LookupTableInsertV2")
+    .OriginOpType({"LookupTableInsert", "LookupTableInsertV2"})
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
@@ -480,7 +480,7 @@ REGISTER_CUSTOM_OP("MutableHashTableOfTensors")
 // register MutableHashTable op to GE
 REGISTER_CUSTOM_OP("MutableHashTable")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("MutableHashTableV2")
+    .OriginOpType({"MutableHashTable", "MutableHashTableV2"})
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
