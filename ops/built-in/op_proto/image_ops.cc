@@ -1414,6 +1414,143 @@ COMMON_INFER_FUNC_REG(KeepRatioResizeBilinear, KeepRatioResizeBilinearInferShape
 VERIFY_FUNC_REG(KeepRatioResizeBilinear, KeepRatioResizeBilinearVerify);
 // ----------------------KeepRatioResizeBilinear END----------------------
 
+// ---------------ResizeD Op Start-------------------
+IMPLEMT_COMMON_INFERFUNC(ResizeDInferShape) {
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+    Format input_format = op.GetInputDesc("x").GetFormat();
+    Shape input_shape = op.GetInputDesc("x").GetShape();
+    std::vector<int64_t> input_dims = input_shape.GetDims();
+    std::vector<int64_t> sizes;
+    std::string mode = "nearest";
+    op.GetAttr("sizes", sizes);
+    op.GetAttr("mode", mode);
+    if (mode == "cubic") {
+        if (input_dims.size() != 4) {
+            return GRAPH_FAILED;
+        }
+
+        if (sizes.size() != 2) {
+            return GRAPH_FAILED;
+        }
+
+        std::vector<int64_t> dim_vec;
+        for (size_t i = 0; i < 2; i++) {
+            int64_t dims = input_dims[i];
+            dim_vec.push_back(dims);
+        }
+        for (size_t i = 0; i < 2; i++) {
+            int64_t dims = sizes[i];
+            dim_vec.push_back(dims);
+        }
+
+        Shape output_shape = Shape(dim_vec);
+        output_desc.SetShape(output_shape);
+        output_desc.SetDataType(input_dtype);
+        output_desc.SetFormat(input_format);
+        op.UpdateOutputDesc("y", output_desc);
+
+        return GRAPH_SUCCESS;
+    } else if (mode == "linear") {
+        if (input_dims.size() != 4)
+        {
+            return GRAPH_FAILED;
+        }
+        if (sizes.size() != 1)
+        {
+            return GRAPH_FAILED;
+        }
+
+        int64_t n = input_dims[0];
+        int64_t c = input_dims[1];
+        int64_t h = input_dims[2];
+        int64_t output_w = sizes[0];
+
+        std::vector<int64_t> dim_vec;
+        dim_vec.push_back(n);
+        dim_vec.push_back(c);
+        dim_vec.push_back(h);
+        dim_vec.push_back(output_w);
+        Shape output_shape = Shape(dim_vec);
+
+        output_desc.SetShape(output_shape);
+        output_desc.SetDataType(input_dtype);
+        output_desc.SetFormat(input_format);
+        op.UpdateOutputDesc("y", output_desc);
+        return GRAPH_SUCCESS;
+    } else {
+        return GRAPH_FAILED;
+    }
+}
+
+IMPLEMT_VERIFIER(ResizeD, ResizeDVerify) {
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ResizeD, ResizeDInferShape);
+VERIFY_FUNC_REG(ResizeD, ResizeDVerify);
+// ---------------ResizeD Op End-------------------
+
+// ---------------ResizeGradD Op Start-------------------
+IMPLEMT_COMMON_INFERFUNC(ResizeGradDInferShape) {
+    TensorDesc out_put_desc = op.GetOutputDesc("y");
+    DataType input_dtype = op.GetInputDesc("grads").GetDataType();
+    Format input_format = op.GetInputDesc("grads").GetFormat();
+    Shape input_shape = op.GetInputDesc("grads").GetShape();
+    std::vector<int64_t> input_dims = input_shape.GetDims();
+    std::vector<int64_t> original_size;
+    op.GetAttr("original_size", original_size);
+
+    std::string mode = "nearest";
+    op.GetAttr("mode", mode);
+
+    if (mode == "linear") {
+        if (input_dims.size() != 4 || input_dims[2] != 1)
+        {
+            return GRAPH_FAILED;
+        }
+        if (original_size.size() != 3) {
+            return GRAPH_FAILED;
+        }
+
+        int64_t N = input_dims[0];
+        int64_t C = input_dims[1];
+        int64_t H = input_dims[2];
+        int64_t output_W = original_size[2];
+
+        std::vector < int64_t > dim_vec;
+        dim_vec.push_back(N);
+        dim_vec.push_back(C);
+        dim_vec.push_back(H);
+        dim_vec.push_back(output_W);
+        Shape output_shape = Shape(dim_vec);
+
+        out_put_desc.SetShape(output_shape);
+        out_put_desc.SetDataType(input_dtype);
+        out_put_desc.SetFormat(input_format);
+        op.UpdateOutputDesc("y", out_put_desc);
+
+        return GRAPH_SUCCESS;
+    } else if (mode == "cubic") {
+        out_put_desc.SetShape(input_shape);
+        out_put_desc.SetDataType(input_dtype);
+        out_put_desc.SetFormat(input_format);
+        op.UpdateOutputDesc("y", out_put_desc);
+
+        return GRAPH_SUCCESS;
+    }
+}
+
+IMPLEMT_VERIFIER(ResizeGradD, ResizeGradDVerify)
+{
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ResizeGradD, ResizeGradDInferShape);
+VERIFY_FUNC_REG(ResizeGradD, ResizeGradDVerify);
+// ---------------ResizeGradD Op End-------------------
+
+
 // ---------------ResizeNearestNeighborV2D Op Start-------------------
 COMMON_INFER_FUNC_REG(ResizeNearestNeighborV2D, ResizeInferShape);
 // ---------------ResizeNearestNeighborV2D Op End-------------------

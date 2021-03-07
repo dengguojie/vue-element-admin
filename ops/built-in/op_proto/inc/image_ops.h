@@ -1517,6 +1517,96 @@ REG_OP(DenseImageWarp)
     .OP_END_FACTORY_REG(DenseImageWarp)
 
 /**
+*@brief Calculate the resize_d function. \n
+
+*@par Inputs:
+*One inputs, including:
+* @li x: A tensor. Must be one of the following types:
+*     float16, float32. \n
+
+*@par Attributes:
+*@li sizes: An optional listInt. \n
+*@li scales: An optional listFloat.
+    Defaults to none. \n
+*@li roi: An optional listInt.
+    Defaults to none. \n
+*@li coordinate_transformation_mode: An optional String.
+    Defaults to "half_pixel". \n
+*@li cubic_coeff_a: An optional float.
+    Defaults to -0.75. \n
+*@li exclude_outside: An optional int.
+    Defaults to 0. \n
+*@li extrapolation_value: An optional float.
+    Defaults to 0.0. \n
+*@li mode: An optional String.
+    Defaults to "nearest". \n
+*@li nearest_mode: An optional String.
+    Defaults to "round_prefer_floor". \n
+
+*@par Outputs:
+*y: A Tensor with the same type of x's,
+    shape depends on x and sizes. \n
+*/
+REG_OP(ResizeD)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(sizes, ListInt)
+    .ATTR(scales, ListFloat, {})
+    .ATTR(roi, ListInt, {})
+    .ATTR(coordinate_transformation_mode, String, "half_pixel")
+    .ATTR(cubic_coeff_a, Float, -0.75)
+    .ATTR(exclude_outside, Int, 0)
+    .ATTR(extrapolation_value, Float, 0.0)
+    .ATTR(mode, String, "nearest")
+    .ATTR(nearest_mode, String, "round_prefer_floor")
+    .OP_END_FACTORY_REG(ResizeD)
+
+/**
+*@brief Calculate the resize_grad_d function. \n
+
+*@par Inputs:
+*One inputs, including:
+* @li grads: A tensor. Must be one of the following types:
+*     float16, float32. \n
+
+*@par Attributes:
+*@li original_size: An optional listInt. \n
+*@li roi: An optional listInt.
+    Defaults to none. \n
+*@li scales: An optional listFloat.
+    Defaults to none. \n
+*@li coordinate_transformation_mode: An optional String.
+    Defaults to "half_pixel". \n
+*@li cubic_coeff_a: An optional float.
+    Defaults to -0.75. \n
+*@li exclude_outside: An optional int.
+    Defaults to 0. \n
+*@li extrapolation_value: An optional float.
+    Defaults to 0.0. \n
+*@li mode: An optional String.
+    Defaults to "nearest". \n
+*@li nearest_mode: An optional String.
+    Defaults to "round_prefer_floor". \n
+
+*@par Outputs:
+*y: A Tensor with the same type of x's,
+    shape depends on x and sizes. \n
+*/
+REG_OP(ResizeGradD)
+    .INPUT(grads, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(original_size, ListInt)
+    .ATTR(roi, ListInt, {})
+    .ATTR(scales, ListFloat, {})
+    .ATTR(coordinate_transformation_mode, String, "half_pixel")
+    .ATTR(cubic_coeff_a, Float, -0.75)
+    .ATTR(exclude_outside, Int, 0)
+    .ATTR(extrapolation_value, Float, 0.0)
+    .ATTR(mode, String, "nearest")
+    .ATTR(nearest_mode, String, "round_prefer_floor")
+    .OP_END_FACTORY_REG(ResizeGradD)
+
+/**
 *@brief Computes the gradients of DenseImageWarp with respect to image and flow. \n
 
 *@par Inputs:
