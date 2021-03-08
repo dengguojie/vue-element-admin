@@ -48,7 +48,6 @@ set(_onnx_plugins
   relu_plugin.cc
   reshape_plugin.cc
   shape_plugin.cc
-  sigmoid_plugin.cc
   sqrt_plugin.cc
   sub_plugin.cc
   tile_plugin.cc
