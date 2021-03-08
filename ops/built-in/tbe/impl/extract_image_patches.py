@@ -466,22 +466,23 @@ def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dila
 
 # pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
-                                           c_in_real):
+                                           c_in_real, align_block_size):
     # cut howo col partially
-    max_v_ub = avg_split_ub_size // (khkw * c_in_real * BLOCK_SIZE)
+    c_in_align = _ceil_div(c_in_real, align_block_size) * align_block_size
+    max_v_ub = avg_split_ub_size // (khkw * c_in_align * align_block_size)
     max_v_load3d_limit = LOAD3D_REPEAT_TIME_LIMIT // khkw
     if max_v_ub > max_v_load3d_limit:
         max_v_ub = 0
-    max_v_l1 = SIZE_L1 // (cut_h_row * fmap_w * c_in_real * type_size * DOUBLE_BUFFER)
+    max_v_l1 = SIZE_L1 // (cut_h_row * fmap_w * c_in_align * type_size * DOUBLE_BUFFER)
     if max_v_l1 * BLOCK_SIZE > fmap_w:
-        max_v_l1 = SIZE_L1 // ((cut_h_row + stride_h - 1) * fmap_w * c_in_real * type_size * DOUBLE_BUFFER)
+        max_v_l1 = SIZE_L1 // ((cut_h_row + stride_h - 1) * fmap_w * c_in_align * type_size * DOUBLE_BUFFER)
     if max_v_ub > max_v_l1:
         max_v_ub = max_v_l1
-    cut_hw_up_w = (max_v_ub * BLOCK_SIZE + out_w - 1) // out_w * out_w
+    cut_hw_up_w = (max_v_ub * align_block_size + out_w - 1) // out_w * out_w
 
     # cut howo col partially, move_rate
     # move_rate useful move rate while mte2 data move
-    move_rate = max_v_ub * BLOCK_SIZE / (cut_hw_up_w + DELTA)
+    move_rate = max_v_ub * align_block_size / (cut_hw_up_w + DELTA)
     return max_v_ub, move_rate
 
 
@@ -524,11 +525,11 @@ def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, 
 
     max_v_cut_col_p, move_rate_cut_col_p = \
         _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
-                                               c_in_real)
+                                               c_in_real, align_block_size)
 
     max_v_cut_min = _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size, cut_h_row,
                                                    align_block_size)
-    return [max_v_cut_col, max_v_cut_row, max_v_cut_col_p, max_v_cut_min, move_rate_cut_col, move_rate_cut_row, \
+    return [max_v_cut_col, max_v_cut_row, max_v_cut_col_p, max_v_cut_min, move_rate_cut_col, move_rate_cut_row,
             move_rate_cut_col_p]
 
 
@@ -1240,4 +1241,3 @@ def extract_image_patches(images, y, ksizes, strides, dilates, padding, kernel_n
         tvm.build(sch, [data_input, output_res, workspace_res], "cce", name=kernel_name)
         if fmap_c % align_block_size != 0:
             _write_workspace_info([workspace_res], kernel_name)
-
