@@ -575,6 +575,12 @@ class CaseGenerator:
         if value.get('paramType') == 'optional':
             input_format = ["UNDEFINED"]
             input_dtype = ["UNDEFINED"]
+        elif value.get('paramType') == 'dynamic':
+            input_name = "".join([input_name, '0'])
+            input_format = [] if len(value['format']) == 0 else \
+                list(set(value['format'].split(',')))
+            input_dtype = [] if len(value['dtype']) == 0 else \
+                list(set(value['dtype'].split(',')))
         else:
             input_format = [] if len(value['format']) == 0 else \
                 list(set(value['format'].split(',')))
