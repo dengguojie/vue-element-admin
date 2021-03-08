@@ -25,7 +25,7 @@ TEST_F(sparse_reduce_max, sparse_reduce_max_infer_shape_01) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
-  std::vector<int64_t> expected_output_shape = {-1};
+  std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 TEST_F(sparse_reduce_max, sparse_reduce_max_infer_shape_02) {

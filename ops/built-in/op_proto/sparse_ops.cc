@@ -674,7 +674,7 @@ IMPLEMT_INFERFUNC(SparseReduceMax, SparseReduceMaxInfer) {
   auto result_x = op.GetInputConstData("x_shape", x_shape_tensor);
   auto result_reduction = op.GetInputConstData("reduction_axes", reduction_axes_tensor);
   if (result_x != GRAPH_SUCCESS || result_reduction != GRAPH_SUCCESS) {
-    Shape unknown_shape(ge::UNKNOWN_SHAPE);
+    Shape unknown_shape(ge::UNKNOWN_RANK);
     TensorDesc y_desc = op.GetOutputDesc("y");
     y_desc.SetShape(unknown_shape);
     y_desc.SetDataType(x_values_type);

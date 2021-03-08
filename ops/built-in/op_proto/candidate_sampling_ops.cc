@@ -152,9 +152,8 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
     OP_LOGE(op.GetName().c_str(), "Input true_classes must be 2-D.");
     return GRAPH_FAILED;
   }
-  
   int64_t unused_dim = 0;
-  if (WithValue(true_classes_desc->GetShape().GetDim(1), num_true, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithValue(true_classes.GetDim(1), num_true, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(),
             "Input true_classes dim[1] must equal to attr num_true.");
     return GRAPH_FAILED;

@@ -1194,6 +1194,7 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
     OP_LOGE(op.GetName().c_str(), "Attr N < 1");
     return GRAPH_FAILED;
   }
+  TensorDesc y_desc = op.GetOutputDesc("y");
   for (int64_t i = 0; i < num_incides; ++i) {
     auto indices_tensor_name = "indices" + std::to_string(i);
     TensorDesc unused_tensor;
@@ -1244,6 +1245,13 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
         } else {
           all_indices_constant = false;
         }
+      } else {
+        Shape output_shape(ge::UNKNOWN_RANK);
+        auto data_tensor = op.GetDynamicInputDesc("x", 0);
+        y_desc.SetDataType(data_tensor.GetDataType());
+        y_desc.SetShape(output_shape);
+        op.UpdateOutputDesc("y", y_desc);
+        return GRAPH_SUCCESS;
       }
     }
   }
@@ -1255,8 +1263,6 @@ IMPLEMT_INFERFUNC(ParallelDynamicStitch, ParallelDynamicStitchInfer) {
     OP_LOGE(op.GetName().c_str(), "Generate output_shape error! ");
     return GRAPH_FAILED;
   }
-
-  TensorDesc y_desc = op.GetOutputDesc("y");
   auto data_tensor = op.GetDynamicInputDesc("x", 0);
   y_desc.SetDataType(data_tensor.GetDataType());
   y_desc.SetShape(output_shape);
