@@ -20,7 +20,6 @@ from enum import Enum
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.compute.conv_compute import is_support_v200
 from tbe.dsl.compute.conv_compute import is_support_v220
-from te.lang.cce.te_compute.elewise_compute import vmul
 from te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.common.tiling.get_tiling import get_tiling
@@ -31,7 +30,7 @@ from te.platform import cce_conf
 from te.platform import CUBE_MKN
 from te.platform import cce_util
 from te.platform import get_soc_spec
-from te.platform.fusion_manager import get_fusion_build_cfg
+from tbe.common.register import set_fusion_buildcfg
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 
 # tiling check
@@ -502,6 +501,7 @@ def reget_tensor_list(outs):
                              lambda *indice: cast_0(*indice).astype("float32"),
                              name="cast_1")
         ConvParam.tensor_map["cast_1"] = cast_1
+        from tbe.dsl.api import vmul
         mul_0 = vmul(cast_1, cast_1)
 
         tuple_reduce = tvm.comm_reducer(_fcombine,
@@ -5071,9 +5071,11 @@ class CceConvOp:
             else:
                 block_tile = bido - bido
             handle_max_pooling()
-            build_config = get_fusion_build_cfg()
-            build_config["read_write_bank_conflict"] = 1
-            build_config["sync_mode"] = 3
+            build_config = {
+                "read_write_bank_conflict": 1,
+                "sync_mode": 3
+            }
+            set_fusion_buildcfg("conv2d", build_config)
 
         # ============ tile cub ========================
         if is_support_v220():
