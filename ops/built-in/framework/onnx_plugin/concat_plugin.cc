@@ -53,8 +53,9 @@ Status OpConcatUpdateInfo(const Message* op_src, ge::Operator& op_dest) {
   }
 
   if (!set_axis_flag) {
-    OP_LOGI("Concat", "onnx Concat op has no axis attr.");
+    OP_LOGI("ERROR", "onnx Concat op has no axis attr.");
     concat_dim = DEFAULT_CONCAT_DIM;
+    return PARAM_INVALID;
   }
   op_dest.SetAttr("concat_dim", concat_dim);
 

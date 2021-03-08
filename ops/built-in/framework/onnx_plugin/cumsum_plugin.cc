@@ -24,27 +24,19 @@ Status ParseParamsCumSum(const Message *op_src, ge::Operator &op_dest) {
     return FAILED;
   }
 
-  int exclusive = 0;
-  int reverse = 0;
-  bool exclusive_flag = false;
-  bool reverse_flag = false;
+  bool exclusive = false;
+  bool reverse = false;
   for (const auto &attr : node->attribute()) {
     if (attr.name() == "exclusive" &&
         attr.type() == ge::onnx::AttributeProto::INT) {
-      exclusive = attr.i();
-      if (exclusive == 1) {
-        exclusive_flag = true;
-      }
+      exclusive = (attr.i() == 1);
     } else if (attr.name() == "reverse" &&
                attr.type() == ge::onnx::AttributeProto::INT) {
-      reverse = attr.i();
-      if (reverse == 1) {
-        reverse_flag = true;
-      }
+      reverse = (attr.i() == 1);
     }
   }
-  op_dest.SetAttr("exclusive", exclusive_flag);
-  op_dest.SetAttr("reverse", reverse_flag);
+  op_dest.SetAttr("exclusive", exclusive);
+  op_dest.SetAttr("reverse", reverse);
 
   return SUCCESS;
 }
@@ -52,7 +44,9 @@ Status ParseParamsCumSum(const Message *op_src, ge::Operator &op_dest) {
 // register CumSum op info to GE
 REGISTER_CUSTOM_OP("Cumsum")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::CumSum")
+  .OriginOpType({"ai.onnx::11::CumSum",
+                "ai.onnx::12::CumSum",
+                "ai.onnx::13::CumSum"})
   .ParseParamsFn(ParseParamsCumSum)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi
