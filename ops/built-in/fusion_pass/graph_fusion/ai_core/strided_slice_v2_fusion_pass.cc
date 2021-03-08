@@ -122,8 +122,8 @@ Status ConstToAttrStridedSliceV2Pass::SetConstDesc(
   ge::GeShape tenShapes(tensor_shape);
   tensor_desc.SetOriginFormat(des_desc.GetOriginFormat());
   tensor_desc.SetFormat(des_desc.GetFormat());
-  tensor_desc.SetOriginDataType(des_desc.GetOriginDataType());
-  tensor_desc.SetDataType(des_desc.GetDataType());
+  tensor_desc.SetOriginDataType(DataType::DT_INT64);
+  tensor_desc.SetDataType(DataType::DT_INT64);
   tensor_desc.SetOriginShape(tenShapes);
   tensor_desc.SetShape(tenShapes);
   return SUCCESS;
@@ -253,7 +253,7 @@ Status ConstToAttrStridedSliceV2Pass::GetReverseState(
   return SUCCESS;
 }
 
-void ConstToAttrStridedSliceV2Pass::UpdateShape(ge::NodePtr &fused_node, ge::OpDescPtr fuse_desc) {
+void ConstToAttrStridedSliceV2Pass::UpdateShapeAndDataType(ge::NodePtr &fused_node, ge::OpDescPtr fuse_desc) {
   std::vector<int64_t> begin;
   ge::AttrUtils::GetListInt(fused_node->GetOpDesc(), "begin", begin);
   int64_t dim_num = begin.size();
@@ -270,6 +270,8 @@ void ConstToAttrStridedSliceV2Pass::UpdateShape(ge::NodePtr &fused_node, ge::OpD
   ge::GeTensorDesc stride_desc_output = stride_desc->GetOutputDesc(0);
   stride_desc_output.SetOriginShape(begin_shape);
   stride_desc_output.SetShape(begin_shape);
+  stride_desc_output.SetOriginDataType(DataType::DT_INT64);
+  stride_desc_output.SetDataType(DataType::DT_INT64);
   stride_desc->UpdateOutputDesc(0, stride_desc_output);
 
   size_t ends_idx = fuse_desc->GetInputIndexByName("end");
@@ -280,6 +282,8 @@ void ConstToAttrStridedSliceV2Pass::UpdateShape(ge::NodePtr &fused_node, ge::OpD
   ge::GeTensorDesc end_desc_output = end_desc->GetOutputDesc(0);
   end_desc_output.SetOriginShape(begin_shape);
   end_desc_output.SetShape(begin_shape);
+  end_desc_output.SetOriginDataType(DataType::DT_INT64);
+  end_desc_output.SetDataType(DataType::DT_INT64);
   end_desc->UpdateOutputDesc(0, end_desc_output);
 
   size_t begin_idx = fuse_desc->GetInputIndexByName("begin");
@@ -290,6 +294,8 @@ void ConstToAttrStridedSliceV2Pass::UpdateShape(ge::NodePtr &fused_node, ge::OpD
   ge::GeTensorDesc begin_desc_output = begin_desc->GetOutputDesc(0);
   begin_desc_output.SetOriginShape(begin_shape);
   begin_desc_output.SetShape(begin_shape);
+  begin_desc_output.SetOriginDataType(DataType::DT_INT64);
+  begin_desc_output.SetDataType(DataType::DT_INT64);
   begin_desc->UpdateOutputDesc(0, begin_desc_output);
 
   fuse_desc->UpdateInputDesc(stride_idx, stride_desc->GetOutputDesc(0));
@@ -419,7 +425,7 @@ Status ConstToAttrStridedSliceV2Pass::Fusion(ge::ComputeGraph &graph,
   } else if (need_to_cpu) {
     // construct const tensor : begin, end, strides
     MakeConstNode(fused_node, fuse_desc);
-    UpdateShape(fused_node, fuse_desc);
+    UpdateShapeAndDataType(fused_node, fuse_desc);
     FUSION_PASS_CHECK(
         !AutoRemoveInput(graph, fused_node,
                          fuse_desc->GetInputIndexByName("axes")),
