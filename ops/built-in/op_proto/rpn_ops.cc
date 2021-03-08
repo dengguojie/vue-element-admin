@@ -44,20 +44,32 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
 
   out_box_desc.SetShape(in_desc.GetShape());
   out_box_desc.SetDataType(in_desc.GetDataType());
-  if (op.UpdateOutputDesc("selected_boxes", out_box_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
-  }
 
   std::vector<int64_t> dims_in = in_desc.GetShape().GetDims();
   out_idx_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
   out_idx_desc.SetDataType(DT_INT32);
+
+  out_mask_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
+  out_mask_desc.SetDataType(DT_BOOL);
+
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  in_desc.GetShapeRange(shape_range);
+
+  if (shape_range.size() > 0) {
+    std::vector<std::pair<int64_t, int64_t>> out_range = shape_range;
+    out_box_desc.SetShapeRange(out_range);
+    out_idx_desc.SetShapeRange({out_range[0]});
+    out_mask_desc.SetShapeRange({out_range[0]});
+  }
+
+  if (op.UpdateOutputDesc("selected_boxes", out_box_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    return GRAPH_FAILED;
+  }
   if (op.UpdateOutputDesc("selected_idx", out_idx_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
     return GRAPH_FAILED;
   }
-  out_mask_desc.SetShape(Shape(std::vector<int64_t>{dims_in.front()}));
-  out_mask_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("selected_mask", out_mask_desc) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
     return GRAPH_FAILED;
