@@ -76,7 +76,8 @@ OP_PATTERN_RULES = {
      OpPatterns.CONV3D_BACKPROP_FILTER_PATTERN, OpPatterns.CONV3D_PATTERN,
      OpPatterns.CONV2D_BACKPROP_INPUT_PATTERN,
      OpPatterns.CONV2D_BACKPROP_FILTER_PATTERN,
-     OpPatterns.DEPTHWISECONV_PATTERN),
+     OpPatterns.DEPTHWISECONV_PATTERN,
+     OpPatterns.CUBE_LAYER_NORM),
 
     OpPatternRules.pure_broadcast_pattern_rule:
         (OpPatterns.PURE_BROADCAST_PATTERN,),
@@ -129,6 +130,7 @@ SIMPLE_MAPPING = {
     OpPatterns.CONV2D_BACKPROP_FILTER_PATTERN: OpFlags.conv2d_backprop_filter_flag,
     OpPatterns.CONV2D_BACKPROP_INPUT_PATTERN: OpFlags.conv2d_backprop_input_flag,
     OpPatterns.CONV3D_BACKPROP_INPUT_PATTERN: OpFlags.conv3d_backprop_input_flag,
+    OpPatterns.CUBE_LAYER_NORM: OpFlags.cube_layer_norm_flag,
     OpPatterns.MATMUL_PATTERN: OpFlags.matmul_flag,
     OpPatterns.MATMUL_V2_PATTERN: OpFlags.matmul_v2_flag,
     OpPatterns.GEMM_PATTERN: OpFlags.gemm_flag,

@@ -18,6 +18,9 @@ layer_norm
 from te import tvm
 from te import platform as tbe_platform
 import te.lang.cce as tbe
+from tbe.dsl.compute.layer_norm_cube import LayerNormCube
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
 from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
@@ -301,6 +304,24 @@ def _broadcast_nz(tensor, shape):
         tensor = tbe.broadcast(tensor, temp_shape)
     tensor = tbe.broadcast(tensor, shape)
     return tensor
+
+
+def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis):
+    """
+    judge case using cube to handle reducesum
+    only supported follow case in cloud:
+        ori_shape: (128m, 1024), "shape": (64, m, 16, 16), "dtype": fp16
+    """
+    def _check_shape():
+        if len(ori_shape_x) != 2 or ori_shape_x[-1] != 1024 or ori_shape_x[-2] % 128 != 0:
+            return False
+        if len(shape_x) != 4 or list(shape_x[0:1] + shape_x[2:]) != [64, 16, 16] or shape_x[1] % 8 != 0:
+            return False
+        if "Ascend910" not in get_soc_spec(SOC_VERSION):
+            return False
+        return True
+
+    return (dtype == "float16" and begin_norm_axis == 1 and _check_shape())
 
 
 def layer_norm_compute_nz(input_x, input_gamma, input_beta,
@@ -607,6 +628,7 @@ def layer_norm(input_x, input_gamma, input_beta,
     shape_gamma = list(input_gamma.get("shape"))
     shape_beta = list(input_beta.get("shape"))
 
+    flag_vector2cube = False
     tik_support = if_tik_support(input_x, input_gamma, input_beta, output_y, output_mean,
                                  output_variance, begin_norm_axis, begin_params_axis, epsilon)
     if tik_support:
@@ -619,6 +641,7 @@ def layer_norm(input_x, input_gamma, input_beta,
             begin_norm_axis = shape_util.axis_check(len(ori_shape_x), begin_norm_axis)
             begin_params_axis = shape_util.axis_check(len(ori_shape_x), begin_params_axis)
 
+            flag_vector2cube = _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis)
             if input_gamma_format == "FRACTAL_NZ" or \
                     input_beta_format == "FRACTAL_NZ":
                 error_detail = "gamma and beta not support Nz in bert"
@@ -636,18 +659,19 @@ def layer_norm(input_x, input_gamma, input_beta,
                 error_detail = "shape of gamma or beta only support 1D in bert"
                 error_manager_vector.raise_err_input_shape_invalid(kernel_name, "input_gamma", error_detail)
 
-            # make shape_x,shape_gamma,shape_beta dim same
-            if begin_params_axis != 0:
-                for i in range(begin_params_axis):
-                    shape_gamma.insert(i, 1)
-            shape_gamma[-2] = shape_x[-4]
-            shape_gamma[-1] = 1
-            shape_gamma.append(1)
-            shape_gamma.append(shape_x[-1])
-            if begin_params_axis > len(ori_shape_x) - 2:
-                shape_x[-3:] = [shape_x[-3]*shape_x[-2], shape_x[-1]]
-                shape_gamma[-3:] = [shape_gamma[-3]*shape_gamma[-2], shape_gamma[-1]]
-            shape_beta = shape_gamma
+            # make shape_x,shape_gamma,shape_beta dim same in vector case
+            if not flag_vector2cube:
+                if begin_params_axis != 0:
+                    for i in range(begin_params_axis):
+                        shape_gamma.insert(i, 1)
+                shape_gamma[-2] = shape_x[-4]
+                shape_gamma[-1] = 1
+                shape_gamma.append(1)
+                shape_gamma.append(shape_x[-1])
+                if begin_params_axis > len(ori_shape_x) - 2:
+                    shape_x[-3:] = [shape_x[-3]*shape_x[-2], shape_x[-1]]
+                    shape_gamma[-3:] = [shape_gamma[-3]*shape_gamma[-2], shape_gamma[-1]]
+                shape_beta = shape_gamma
         else:
             begin_norm_axis = shape_util.axis_check(len(shape_x), begin_norm_axis)
             begin_params_axis = shape_util.axis_check(len(shape_x), begin_params_axis)
@@ -685,14 +709,18 @@ def layer_norm(input_x, input_gamma, input_beta,
         data_beta = tvm.placeholder(shape_beta, name="beta", dtype=dtype)
 
         if input_format == "FRACTAL_NZ":
-
-            mean, variance, res = \
-                layer_norm_compute_nz(data_x, data_gamma, data_beta,
-                                      output_y, output_mean, output_variance,
-                                      begin_norm_axis, begin_params_axis,
-                                      ori_shape_x, epsilon, kernel_name, impl_mode)
+            if flag_vector2cube:
+                layer_norm_cube = LayerNormCube({"ori_shape": ori_shape_x,
+                                               "epsilon": epsilon})
+                mean, variance, res = \
+                    layer_norm_cube.layer_norm_cube_compute(data_x, data_gamma, data_beta)
+            else: 
+                mean, variance, res = \
+                    layer_norm_compute_nz(data_x, data_gamma, data_beta,
+                                        output_y, output_mean, output_variance,
+                                        begin_norm_axis, begin_params_axis,
+                                        ori_shape_x, epsilon, kernel_name, impl_mode)
         else:
-
             mean, variance, res = \
                 layer_norm_compute(data_x, data_gamma, data_beta,
                                    output_y, output_mean,

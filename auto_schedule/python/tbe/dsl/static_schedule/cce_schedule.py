@@ -61,6 +61,8 @@ from .conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
 from .conv2d_backprop_filter_schedule import CceConv2dBackpropFilterOp
 from .conv3d_backprop_input_schedule import CceConv3dBackpropInputOp
 from .conv3d_backprop_filter_schedule import CceConv3dBackpropFilterOp
+from .layer_norm_cube_schedule import CceLayerNormCubeOp
+from .layer_norm_cube_schedule import reget_layernorm_multioutput
 from .depthwise_conv2d_schedule import depthwise_conv2d_schedule
 from .elewise_schedule import CceOp
 from .elewise_speel_schedule import CceSpeelOp
@@ -294,6 +296,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     fusion_manager.set_op_res(outs)
 
     outs = reget_tensor_list(outs)
+    outs = reget_layernorm_multioutput(outs)
 
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
     if isinstance(outs, (tuple, list)):
@@ -507,6 +510,8 @@ def check_support_muti_output(outs):
         for sub_opt in operation_list:
             tag = sub_opt.op.tag
             if 'matmul' in tag:
+                return True
+            if "cube_layer_norm" in tag:
                 return True
             if "elewise" not in tag and "broadcast" not in tag and \
                     "reduce" not in tag and not ConvParam.convbn1_flag and \
@@ -1191,6 +1196,9 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             cceconf.scope_ubuf,
             need_tensorize=True, need_pragma=True)
         cce_conv2d_backprop_filter_op.schedule(outs[0], outs, sch_list)
+    elif pattern == OpPatterns.CUBE_LAYER_NORM:
+        cce_cube_layer_norm_op = CceLayerNormCubeOp(cceconf.scope_ubuf)
+        cce_cube_layer_norm_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.MATMUL_PATTERN:
         mmad_schedule(outs, sch_list)  # pylint: disable=W0631
     elif pattern == OpPatterns.GEMM_PATTERN:
