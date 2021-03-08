@@ -1,0 +1,128 @@
+# # -*- coding:utf-8 -*-
+from sch_test_frame.ut import OpUT
+from sch_test_frame.utils.op_param_util import cartesian_set_format_dtype
+from sch_test_frame.common import precision_info
+import numpy as np
+
+from te import tvm
+import te.lang.cce as tbe
+import te.lang.base as tbe_base
+from te.utils import shape_util
+from te.lang.base.shape_classifier import classify
+from te.lang.base.shape_classifier import Mode
+from tbe.common.register import register_operator
+
+
+@register_operator("vadd")
+def dsl_dync_vadd(x, y, z, kernel_name="dsl_dync_vadd"):
+    input_dtype = x.get("dtype")
+
+    ins = classify([x, y], Mode.ELEWISE)
+    schedules, tensors = [], []
+
+    for (x, y) in ins:
+        with tbe_base.compute():
+            shape_x, shape_y = shape_util.variable_shape([x, y])
+            data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
+            data2 = tvm.placeholder(shape_y, name='data2', dtype=input_dtype)
+            res = tbe.vadd(data1, data2)
+
+            tensors.append((data1, data2, res))
+
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
+
+    config = {"name": kernel_name, "tensor_list": tensors}
+    tbe.cce_build_code(schedules, config)
+
+
+ut_case = OpUT("vadd", "vadd.test_dynamic_vadd_impl", "dsl_dync_vadd")
+
+case1 = {
+    "params": [{
+        "shape": (5, -1, 16, 16),
+        "dtype": "float16",
+        "range": [(5, 5), (1, 10), (16, 16), (16, 16)]
+    }, {
+        "shape": (5, -1, 16, 16),
+        "dtype": "float16",
+        "range": [(5, 5), (1, 10), (16, 16), (16, 16)]
+    }, {
+        "shape": (5, -1, 16, 16),
+        "dtype": "float16",
+        "range": [(5, 5), (1, 10), (16, 16), (16, 16)]
+    }],
+    "case_name":
+    "test_dync_vadd_1",
+    "expect":
+    "success",
+    "support_expect":
+    True
+}
+
+case2 = {
+    "params": [{
+        "shape": (30000, -1),
+        "dtype": "float32",
+        "range": [(30000, 30000), [1, 100]]
+    }, {
+        "shape": (30000, -1),
+        "dtype": "float32",
+        "range": [(30000, 30000), [1, 100]]
+    }, {
+        "shape": (30000, -1),
+        "dtype": "float32",
+        "range": [(30000, 30000), [1, 100]]
+    }],
+    "case_name":
+    "test_dync_vadd_2",
+    "expect":
+    "success",
+    "support_expect":
+    True
+}
+
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
+ut_case.add_case(["Ascend910", "Ascend710"], case2)
+
+
+def calc_expect_func(x, y, z):
+    x_value = x.get("value")
+    y_value = y.get("value")
+    res = np.add(x_value, y_value)
+    return (res, )
+
+
+ut_case.add_precision_case(
+    "all", {
+        "params": [
+            {
+                "shape": (2, -1),
+                "dtype": "float16",
+                "range": [(2, 2), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (2, -1),
+                "dtype": "float16",
+                "range": [(2, 2), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (2, -1),
+                "dtype": "float16",
+                "range": [(2, 2), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "output"
+            },
+        ],
+        "calc_expect_func":
+        calc_expect_func,
+        "precision_standard":
+        precision_info.PrecisionStandard(0.001, 0.001),
+        "case_name":
+        "test_dync_vadd_prec_01"
+    })

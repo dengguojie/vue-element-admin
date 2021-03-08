@@ -35,7 +35,7 @@ set_ut_env() {
   export OP_TEST_FRAME_INSTALL_HOME="${CANN_ROOT}/tools/op_test_frame/python"
   export OPS_SOURCE_PATH="${CANN_ROOT}/ops/built-in/tbe"
   export ASCEND_OPP_PATH=$install_path/opp
-  export PYTHONPATH=$OPS_SOURCE_PATH:$OP_TEST_FRAME_INSTALL_HOME:$PYTHONPATH
+  export PYTHONPATH=$OPS_SOURCE_PATH:$PYTHONPATH
   export LD_LIBRARY_PATH=$install_path/atc/lib64:${CANN_ROOT}/lib:$LD_LIBRARY_PATH
   export PATH=$PATH:$install_path/atc/ccec_compiler/bin
 }
@@ -50,7 +50,7 @@ run_ut() {
     exit $STATUS_FAILED
   fi
 
-  python3.7 "${CANN_ROOT}/ops/built-in/tests/run_ut.py"                     \
+  python3.7 "${CANN_ROOT}/scripts/run_ut.py"                     \
                 --soc_version="${supported_soc}"                            \
                 --simulator_lib_path="${BASE_HOME}/toolkit/tools/simulator" \
                 --pr_changed_file="${pr_file}"                              \

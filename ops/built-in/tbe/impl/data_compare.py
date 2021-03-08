@@ -78,7 +78,7 @@ def data_compare_compute(input_x, input_y, output_num, atol, rtol, kernel_name="
     else:
         res_sel = tbe.cast_to(res_sel, "float16")
 
-    res_num = tbe.sum(res_sel, axis = shape_list)
+    res_num = tbe.sum(res_sel, axis=shape_list)
     res_num = tbe.cast_to(res_num, "float32")
 
     return res_num
