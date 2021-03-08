@@ -312,13 +312,12 @@ def general_schedule(
                     or a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut"
                 ):
                     a_l1 = a_col_before.op.input_tensors[0]
-                    a_filling = a_l1.op.input_tensors[0]
-                    dy_vn = a_filling.op.input_tensors[0]
+                    dy_vn = a_l1.op.input_tensors[0]
                     a_zero = dy_vn.op.input_tensors[0]
-                    a_ddr = dy_vn.op.input_tensors[1]
+                    a_filling = dy_vn.op.input_tensors[1]
+                    a_ddr = a_filling.op.input_tensors[0]
                     stride_h, stride_w = shape_to_list(a_filling.op.attrs["stride_expand"])
 
-                    a_ub = sch.cache_read(a_ddr, cce_params.scope_ubuf, [dy_vn])
                     sch[a_zero].set_scope(cce_params.scope_ubuf)
                     sch[dy_vn].set_scope(cce_params.scope_ubuf)
                     sch[a_filling].set_scope(cce_params.scope_ubuf)
@@ -327,7 +326,6 @@ def general_schedule(
                     tensor_map["a_filling"] = a_filling
                     tensor_map["dy_vn"] = dy_vn
                     tensor_map["a_zero"] = a_zero
-                    tensor_map["a_ub"] = a_ub
                 else:
                     a_ddr = a_col_before.op.input_tensors[0]  # dEdY in ddr
                     stride_h = 1
@@ -1652,16 +1650,11 @@ def general_schedule(
                     al1_co0
                 ]
                 sch_agent.attach_at(a_filling, a_l1, ub_shape)
-                if var_map:
-                    extent_ub_h = min(ub_shape[2] // stride_h + 1, ub_shape[2])
-                    sch[a_zero].buffer_tile(
-                        (None, None), (None, None), (None, ub_shape[2]), (None, ub_shape[3]), (None, None))
-                    sch[dy_vn].buffer_tile((None, None), (None, None), (None, extent_ub_h), (None, None), (None, None))
-                    sch[a_ub].buffer_tile((None, None), (None, None), (None, extent_ub_h), (None, None), (None, None))
             if var_map:
                 sch_agent.same_attach(dy_vn, a_filling)
+            else:
+                sch_agent.same_attach(a_ub, a_filling)
             sch_agent.same_attach(a_zero, a_filling)
-            sch_agent.same_attach(a_ub, a_filling)
 
     def _attach_bias():
         split_bias_flag = tiling.get("CUB_channel_wise_flag")
@@ -1708,11 +1701,12 @@ def general_schedule(
 
         if stride_h > 1 or stride_w > 1:
             if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2:
-                sch[a_ub].double_buffer()
                 sch[a_filling].double_buffer()
                 sch[a_zero].double_buffer()
                 if var_map:
                     sch[dy_vn].double_buffer()
+                else:
+                    sch[a_ub].double_buffer()
 
         if var_map and not tiling.get("AL1_shape"):
             a_l1_db_flag = 1
@@ -1951,12 +1945,11 @@ def general_schedule(
             sch_agent[a_filling].unroll(afill_w_inner)
 
             sch_agent[a_zero].reused_by(a_filling)
-            sch_agent[a_ub].reused_by(dy_vn)
+            sch_agent[a_zero].reused_by(dy_vn)
 
             sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "vector_dup")
             sch[dy_vn].emit_insn(dy_vn.op.axis[0], "phony_insn")
             sch_agent[a_filling].emit_insn(afill_n, "dma_copy")
-            sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
             sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)
         sch[a_col].emit_insn(a_col.op.axis[1], 'im2col_v2', setfmatrix_dict_0)
@@ -2104,11 +2097,9 @@ def general_schedule(
                             aub_h,
                             aub_h + 1)
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0
-                aub_bound = aub_co1 * aub_h * dy_w * aub_co0
                 sch[a_filling].set_storage_bound(a_filling_bound)
-                sch[dy_vn].set_storage_bound(aub_bound)
+                sch[dy_vn].set_storage_bound(a_filling_bound)
                 sch[a_zero].set_storage_bound(a_filling_bound)
-                sch[a_ub].set_storage_bound(aub_bound)
 
         al1_bound, al1_h = _get_al1_bound()
         sch[a_l1].set_storage_bound(al1_bound)

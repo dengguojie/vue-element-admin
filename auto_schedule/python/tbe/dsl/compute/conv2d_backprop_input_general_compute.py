@@ -176,21 +176,15 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                 kernel_cout0
             )
             if stride_h == 1 and stride_w == 1:
-                dy_filling = dy_ddr
+                dy_vn = dy_ddr
             else:
                 dy_zero = _fill_zero(shape_dy_filling)
-                dy_vn = tvm.compute(
-                    shape_to_list(dy_ddr.shape),
-                    lambda *indice: dy_zero(*indice) + dy_ddr(*indice),
-                    name="dy_vn",
-                    tag="dy_vn"
-                )
 
                 dy_filling = tvm.compute(
                     shape_dy_filling,
                     lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: tvm.select(
                         tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0),
-                        dy_vn[
+                        dy_ddr[
                             batch_idx,
                             kernel_cout1_idx,
                             ho_idx // stride_h,
@@ -203,7 +197,14 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                     attrs={"stride_expand": (self._stride_h, self._stride_w)}
                 )
 
-            return dy_filling, shape_dy_filling, dy_h
+                dy_vn = tvm.compute(
+                    shape_dy_filling,
+                    lambda *indice: dy_zero(*indice) + dy_filling(*indice),
+                    name="dy_vn",
+                    tag="dy_vn"
+                )
+
+            return dy_vn, shape_dy_filling, dy_h
 
         fusion_para = self._fusion_para
         DeConvPattern.fusion_para_map = fusion_para
