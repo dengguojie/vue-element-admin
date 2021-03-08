@@ -363,7 +363,7 @@ def check_supported(input_x1,
                 res = False
         elif shape_a[1] != shape_b[0]:
             res = False
-    elif src_dtype in cube_type:
+    elif src_dtype in cube_type and not dynamic_flag:
         if len(shape_a) != 2 and len(shape_b) != 2:
             res = False
         if trans_a:
@@ -376,7 +376,7 @@ def check_supported(input_x1,
         else:
             k_b_shape = shape_b[0]
 
-        if not dynamic_flag and k_shape != k_b_shape:
+        if k_shape != k_b_shape:
             res = False
 
     return res

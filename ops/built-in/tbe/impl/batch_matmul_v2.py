@@ -336,7 +336,7 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
             else:
                 if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
                     return False
-    elif src_dtype == "float16":
+    elif src_dtype == "float16" and not dynamic_flag:
         shape_length = len(shape_a)
         if trans_a:
             k_shape = shape_a[shape_length - 2]
@@ -349,10 +349,10 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
         else:
             k_b_shape = shape_b[shape_length_b - 2]
 
-        if not dynamic_flag and k_shape != k_b_shape:
+        if k_shape != k_b_shape:
             return False
 
-        if not dynamic_flag and len(shape_a) == len(shape_b):
+        if len(shape_a) == len(shape_b):
             if shape_a[:shape_length - 2] != shape_b[:shape_length_b - 2]:
                 return False
     return True
