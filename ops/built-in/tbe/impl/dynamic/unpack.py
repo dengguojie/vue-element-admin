@@ -194,13 +194,16 @@ class Unpack:
 
         if self.output_num == 1:
             self.x_reshape = (self.dim_vars[0] * self.dim_vars[1], )
-            self.right_range = (1, left_upper * right_upper)
+            self.right_range = (1, left_upper * right_upper) if left_upper and right_upper else (1, None)
         else:
             self.x_reshape = (self.dim_vars[0], self.output_num, self.dim_vars[1])
             self.right_range = (1, right_upper)
 
     def _init_flag(self):
-        self.special_tiling = (self.axis_at_last_dim or self.right_range[1] < MIN_RIGHT_DIM) and self.output_num > 1
+        if not self.right_range[1]:
+            self.special_tiling = self.axis_at_last_dim and self.output_num > 1
+        else:
+            self.special_tiling = (self.axis_at_last_dim or self.right_range[1] < MIN_RIGHT_DIM) and self.output_num > 1
 
     def _set_dim_var(self, dim_name, dim_range):
         """
