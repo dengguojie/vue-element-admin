@@ -19,7 +19,7 @@ import math
 import warnings
 
 from tbe import tvm
-from tbe.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.dsl_source_info import source_info_decorator
 
 
 _POOL3D_TAG = "pooling3d_"

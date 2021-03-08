@@ -19,7 +19,7 @@ import warnings
 
 from te import tvm
 from te.utils.shape_util import shape_to_list
-from te.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.dsl_source_info import source_info_decorator
 
 from .broadcast_compute import broadcast
 from .elewise_compute import __binary_elewise_op

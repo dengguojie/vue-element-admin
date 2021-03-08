@@ -23,9 +23,9 @@ from decorator import decorator
 from tbe import tvm
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform.platform_info import api_check_support
+from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.testing.testing import is_debug_mode
 from tbe.common.utils.errormgr import get_error_message
-from tbe.tvm.dsl_source_info import source_info_decorator
 
 from .util import DTYPE_MAP
 from .util import check_input_tensor_shape

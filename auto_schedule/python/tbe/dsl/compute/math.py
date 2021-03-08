@@ -22,10 +22,10 @@ from tbe.common.platform import ASCEND_310
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation as operation_context
 from tbe.dsl.base.expr_compare import expr_equal as equal
-from tbe.tvm.dsl_source_info import source_info_decorator
 
 from .cast import _cast
 from .util import auto_cast_tensor

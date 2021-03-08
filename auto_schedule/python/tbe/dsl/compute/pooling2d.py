@@ -23,7 +23,7 @@ from te.platform import get_soc_spec
 from te.platform.cce_conf import CceProductParams as pver
 from te.platform.cce_policy import get_L1_info
 from tbe.common.utils.errormgr import get_error_message
-from tbe.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.dsl_source_info import source_info_decorator
 
 from .cast import _cast
 from .common import img2col

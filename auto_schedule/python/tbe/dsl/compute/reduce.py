@@ -21,8 +21,8 @@ import warnings
 from decorator import decorator
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils.errormgr import get_error_message
-from tbe.tvm.dsl_source_info import source_info_decorator
 
 from .cast import _cast
 from .math import vmuls

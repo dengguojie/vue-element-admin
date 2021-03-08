@@ -21,7 +21,7 @@ from __future__ import division
 import warnings
 
 from tbe import tvm
-from tbe.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.dsl_source_info import source_info_decorator
 from .util import dtype_check_decorator
 from .util import check_input_tensor_shape
 from .util import shape_to_list

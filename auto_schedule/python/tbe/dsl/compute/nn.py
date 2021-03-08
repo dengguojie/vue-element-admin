@@ -19,9 +19,9 @@ from __future__ import absolute_import
 
 from tbe import tvm
 from tbe.common.platform import intrinsic_check_support
+from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.expr_compare import expr_equal as equal
-from tbe.tvm.dsl_source_info import source_info_decorator
 
 from .math import __multiple_elewise_op
 from .math import __single_elewise_op

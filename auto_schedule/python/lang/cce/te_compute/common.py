@@ -22,7 +22,7 @@ from te import platform as cceconf
 from te.platform import intrinsic_check_support
 from te.utils.error_manager.error_manager_util import get_error_message
 import te.platform.cce_params as cce_params
-from te.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.dsl_source_info import source_info_decorator
 from .elewise_compute import vadds
 from .elewise_compute import vmuls
 from .elewise_compute import vmax

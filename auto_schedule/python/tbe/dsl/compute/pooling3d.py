@@ -18,7 +18,7 @@ pooling3d
 import math
 from tbe import tvm
 from te.platform.cce_conf import get_soc_spec
-from tbe.tvm.dsl_source_info import source_info_decorator
+from tbe.common.testing.dsl_source_info import source_info_decorator
 
 
 _POOL3D_TAG = "pooling3d_"
