@@ -91,6 +91,11 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
   xInput.Update(xInputShape, ge::FORMAT_FRACTAL_NZ, xInput.GetDataType());
   gruOpDesc->UpdateInputDesc("x", xInput);
 
+  FUSION_PASS_CHECK(AddTransposNode(fusedNode, 1, graph) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add transpos failed"), return FAILED);
+  FUSION_PASS_CHECK(AddTransposNode(fusedNode, 2, graph) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add transpos failed"), return FAILED);
+
   // process weight_input
   GeTensorDesc weightInput = fusedDesc->GetInputDesc(1);
   std::vector<int64_t> weightInputDims = RemoveNumDirectionsDim(weightInput.GetShape().GetDims(), true);
@@ -294,6 +299,54 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
       OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y_h failed."), return FAILED);
   }
 
+  return SUCCESS;
+}
+
+Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::ComputeGraph &graph) {
+  ge::NodePtr weightNode = gruNode->GetInDataAnchor(anchorIndex)->GetPeerOutAnchor()->GetOwnerNode();
+  std::shared_ptr<ge::OpDesc> transposeOpdesc = nullptr;
+  FUSION_PASS_MAKE_SHARED(
+      (transposeOpdesc = std::make_shared<ge::OpDesc>(weightNode->GetName() + "_transpose_b", "TransposeD")),
+  return FAILED);
+
+  vector<int64_t> perm = {0, 2, 1};
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(transposeOpdesc, "perm", perm),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Set perm to %s failed.", transposeOpdesc->GetName().c_str()),
+  return FAILED);
+
+  ge::GeTensorDesc inputDesc = weightNode->GetOpDesc()->GetOutputDesc(0).Clone();
+  std::vector<int64_t> dims = inputDesc.GetShape().GetDims();
+  FUSION_PASS_CHECK(dims.size() != 3, OP_LOGE(FUSED_OP_TYPE.c_str(), "weight dim size is not 3."), return FAILED);
+  std::vector<int64_t> newDim = {dims[0], dims[2], dims[1]};
+
+  ge::GeTensorDesc outputDesc = gruNode->GetOpDesc()->GetInputDesc(anchorIndex).Clone();
+  outputDesc.SetOriginShape(GeShape(newDim));
+  outputDesc.SetShape(GeShape(newDim));
+
+  FUSION_PASS_CHECK(transposeOpdesc->AddInputDesc("x", inputDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.", transposeOpdesc->GetName().c_str()),
+  return FAILED);
+  FUSION_PASS_CHECK(transposeOpdesc->AddOutputDesc("y", outputDesc) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.", transposeOpdesc->GetName().c_str()),
+  return FAILED);
+
+  ge::NodePtr transposeNode = graph.AddNode(transposeOpdesc);
+
+  ge::OutDataAnchorPtr src = weightNode->GetOutDataAnchor(0);
+  ge::InDataAnchorPtr dst = gruNode->GetInDataAnchor(anchorIndex);
+
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "remove %s input edge error", gruNode->GetName().c_str()),
+  return FAILED);
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(src, transposeNode->GetInDataAnchor(0)) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                            weightNode->GetName().c_str(), transposeNode->GetName().c_str()),
+  return FAILED);
+
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), dst) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                            transposeNode->GetName().c_str(), gruNode->GetName().c_str()),
+  return FAILED);
   return SUCCESS;
 }
 

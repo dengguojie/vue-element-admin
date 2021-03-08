@@ -37,6 +37,7 @@ private:
   void ProcessZFormat(std::vector<int64_t> &dims);
   std::vector<int64_t> RemoveNumDirectionsDim(const std::vector<int64_t> dims, bool isReverse);
   std::vector<int64_t> ProcessOutputDim(const std::vector<int64_t> dims);
+  Status AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::ComputeGraph &graph);
   const string FUSED_OP_TYPE = "SplitD_DynamicGRUV2";
 };
 } // namespace fe
