@@ -15,7 +15,6 @@
 """
 dynamic space_to_batch_nd
 """
-# pylint: disable=unused-import
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -37,8 +36,8 @@ BLOCK_BYTES = 32
 REPEAT_LIMIT = 255
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-instance-attributes,unexpected-keyword-arg
-# pylint: disable=too-many-locals,too-many-arguments,attribute-defined-outside-init,too-many-statements
+# pylint: disable=invalid-name,unused-argument,too-many-instance-attributes,unexpected-keyword-arg,too-many-function-args
+# pylint: disable=too-many-locals,too-many-arguments,attribute-defined-outside-init,too-many-statements,too-many-public-methods
 class SpaceToBatchND:
     """Performs space_to_batch_nd on input tensor
     5HD:
@@ -184,8 +183,9 @@ class SpaceToBatchND:
                     repeat_offset = repeat_loop_idx * dst_rep * self.blk_ele
                     self.vector_dup_continuous(src[repeat_offset:], size)
 
-    def run_block_h(self, ub_a, ub_b, core_idx, idx_bh, ele_idx):
-        """run block height function.
+    # function for 5hd
+    def run_block_h_5hd(self, ub_a, ub_b, core_idx, ele_idx, idx_bh):
+        """run block height for 5hd function.
         """
         # vector dup and move in
         start = (self.pads_t - idx_bh + self.block_h - 1) // self.block_h
@@ -244,23 +244,23 @@ class SpaceToBatchND:
                 ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_c", scope=tik.scope_ubuf)
                 ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_d", scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
-                    self.run_block_h(ub_a, ub_b, core_idx, idx_bh, ele_idx * 2)
-                    self.run_block_h(ub_c, ub_d, core_idx, idx_bh, ele_idx * 2 + 1)
+                    self.run_block_h_5hd(ub_a, ub_b, core_idx, ele_idx * 2, idx_bh)
+                    self.run_block_h_5hd(ub_c, ub_d, core_idx, ele_idx * 2 + 1, idx_bh)
                 with self.tik_instance.if_scope(core_ele % 2 == 1):
-                    self.run_block_h(ub_a, ub_b, core_idx, idx_bh, core_ele - 1)
+                    self.run_block_h_5hd(ub_a, ub_b, core_idx, core_ele - 1, idx_bh)
 
     def run_block_h_close_db_5hd(self, core_idx, core_ele):
         """run block height for 5hd function, close double buffer.
         """
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_a", scope=tik.scope_ubuf)
+                ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_b", scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, core_ele) as ele_idx:
-                    ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_a", scope=tik.scope_ubuf)
-                    ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_b", scope=tik.scope_ubuf)
-                    self.run_block_h(ub_a, ub_b, core_idx, idx_bh, ele_idx)
+                    self.run_block_h_5hd(ub_a, ub_b, core_idx, ele_idx, idx_bh)
 
-    def run_output_h(self, ub_a, ub_b, core_idx, idx_oh, idx_bh, ele_idx):
-        """run output height function.
+    def run_output_h_5hd(self, ub_a, ub_b, core_idx, ele_idx, idx_oh, idx_bh):
+        """run output height for 5hd function.
         """
         # vector dup and move in
         flag_h = idx_oh * self.block_h + idx_bh
@@ -312,10 +312,10 @@ class SpaceToBatchND:
                     ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_c", scope=tik.scope_ubuf)
                     ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,), name="ub_d", scope=tik.scope_ubuf)
                     with self.tik_instance.for_range(0, core_ele // 2) as ele_idx:
-                        self.run_output_h(ub_a, ub_b, core_idx, idx_oh, idx_bh, ele_idx * 2)
-                        self.run_output_h(ub_c, ub_d, core_idx, idx_oh, idx_bh, ele_idx * 2 + 1)
+                        self.run_output_h_5hd(ub_a, ub_b, core_idx, ele_idx * 2, idx_oh, idx_bh)
+                        self.run_output_h_5hd(ub_c, ub_d, core_idx, ele_idx * 2 + 1, idx_oh, idx_bh)
                     with self.tik_instance.if_scope(core_ele % 2 == 1):
-                        self.run_output_h(ub_a, ub_b, core_idx, idx_oh, idx_bh, core_ele - 1)
+                        self.run_output_h_5hd(ub_a, ub_b, core_idx, core_ele - 1, idx_oh, idx_bh)
 
     def run_output_h_close_db_5hd(self, core_idx, core_ele):
         """run output height for 5hd function, close double buffer.
@@ -323,88 +323,375 @@ class SpaceToBatchND:
         with self.tik_instance.new_stmt_scope():
             with self.tik_instance.for_range(0, self.output_h) as idx_oh:
                 with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                    ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_a", scope=tik.scope_ubuf)
+                    ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,), name="ub_b", scope=tik.scope_ubuf)
                     with self.tik_instance.for_range(0, core_ele) as ele_idx:
-                        ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
-                                                        name="ub_a",
-                                                        scope=tik.scope_ubuf)
-                        ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
-                                                        name="ub_b",
-                                                        scope=tik.scope_ubuf)
-                        self.run_output_h(ub_a, ub_b, core_idx, idx_oh, idx_bh, ele_idx)
-
-    def run_block_w(self, ub_a, core_idx, idx_oh, idx_bh, idx_bw, ele_idx):
-        """run block width function.
-        """
-        # vector dup and move in
-        flag_h = idx_oh * self.block_h + idx_bh
-        self.vector_dup_continuous(ub_a, self.output_w * self.channel_zero)
-        with self.tik_instance.if_scope(tik.all(flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h)):
-            start = (self.pads_l - idx_bw + self.block_w - 1) // self.block_w
-            end = (self.pads_l + self.input_w - idx_bw + self.block_w - 1) // self.block_w
-            offset_gm_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * \
-                           self.channel_zero + (idx_oh * self.block_h + idx_bh - self.pads_t) * self.input_w * \
-                           self.channel_zero + (idx_bw + start * self.block_w - self.pads_l) * self.channel_zero
-            offset_ub_in = start * self.channel_zero
-            src_stride_out = (self.block_w - 1) * self.channel_zero // self.blk_ele
-            with self.tik_instance.if_scope(end > start):
-                self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, end - start,
-                                            self.channel_zero // self.blk_ele, src_stride_out, 0)
-        # move out
-        offset_gm_out = (idx_bh * self.block_w + idx_bw) * self.input_b * self.channel_one * self.output_h * \
-                        self.output_w * self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * \
-                        self.output_h * self.output_w * self.channel_zero + idx_oh * self.output_w * \
-                        self.channel_zero
-        self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_a, 0, 1,
-                                    self.output_w * self.channel_zero // self.blk_ele, 0, 0)
+                        self.run_output_h_5hd(ub_a, ub_b, core_idx, ele_idx, idx_oh, idx_bh)
 
     def run_block_w_5hd(self, core_idx, core_ele):
         """run block width for 5hd function, close double buffer.
         """
         with self.tik_instance.new_stmt_scope():
+            ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele,), name="ub_a", scope=tik.scope_ubuf)
             with self.tik_instance.for_range(0, self.output_h) as idx_oh:
                 with self.tik_instance.for_range(0, self.block_h) as idx_bh:
                     with self.tik_instance.for_range(0, self.block_w) as idx_bw:
                         with self.tik_instance.for_range(0, core_ele) as ele_idx:
-                            ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele,),
-                                                            name="ub_a",
-                                                            scope=tik.scope_ubuf)
-                            self.run_block_w(ub_a, core_idx, idx_oh, idx_bh, idx_bw, ele_idx)
-
-    def run_output_w(self, ub_a, core_idx, idx_oh, idx_bh, idx_ow, idx_bw, ele_idx):
-        """run output width function.
-        """
-        # vector dup and move in
-        flag_h = idx_oh * self.block_h + idx_bh
-        flag_w = idx_ow * self.block_w + idx_bw
-        self.vector_dup_continuous(ub_a, self.channel_zero)
-        with self.tik_instance.if_scope(
-                tik.all(flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h, flag_w >= self.pads_l,
-                        flag_w < self.pads_l + self.input_w)):
-            offset_gm_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * \
-                           self.channel_zero + (idx_oh * self.block_h + idx_bh - self.pads_t) * self.input_w * \
-                           self.channel_zero + (idx_ow * self.block_w + idx_bw - self.pads_l) * self.channel_zero
-            self.tik_instance.data_move(ub_a, self.input_gm[offset_gm_in], 0, 1, self.channel_zero // self.blk_ele, 0,
-                                        0)
-        # move out
-        offset_gm_out = (idx_bh * self.block_w + idx_bw) * self.input_b * self.channel_one * self.output_h * \
-                        self.output_w * self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * \
-                        self.output_h * self.output_w * self.channel_zero + (idx_oh * self.output_w + idx_ow) * \
-                        self.channel_zero
-        self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_a, 0, 1, self.channel_zero // self.blk_ele, 0, 0)
+                            # vector dup and move in
+                            flag_h = idx_oh * self.block_h + idx_bh
+                            self.vector_dup_continuous(ub_a, self.output_w * self.channel_zero)
+                            with self.tik_instance.if_scope(
+                                    tik.all(flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h)):
+                                start = (self.pads_l - idx_bw + self.block_w - 1) // self.block_w
+                                end = (self.pads_l + self.input_w - idx_bw + self.block_w - 1) // self.block_w
+                                offset_gm_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * \
+                                               self.input_w * self.channel_zero + \
+                                               (idx_oh * self.block_h + idx_bh - self.pads_t) * self.input_w * \
+                                               self.channel_zero + (idx_bw + start * self.block_w - self.pads_l) * \
+                                               self.channel_zero
+                                offset_ub_in = start * self.channel_zero
+                                src_stride_out = (self.block_w - 1) * self.channel_zero // self.blk_ele
+                                with self.tik_instance.if_scope(end > start):
+                                    self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0,
+                                                                end - start, self.channel_zero // self.blk_ele,
+                                                                src_stride_out, 0)
+                            # move out
+                            offset_gm_out = (idx_bh * self.block_w + idx_bw) * self.input_b * self.channel_one * \
+                                            self.output_h * self.output_w * self.channel_zero + \
+                                            (core_idx * self.one_core_ele + ele_idx) * self.output_h * self.output_w * \
+                                            self.channel_zero + idx_oh * self.output_w * self.channel_zero
+                            self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_a, 0, 1,
+                                                        self.output_w * self.channel_zero // self.blk_ele, 0, 0)
 
     def run_output_w_5hd(self, core_idx, core_ele):
         """run output width for 5hd function, close double buffer.
         """
         with self.tik_instance.new_stmt_scope():
+            ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele,), name="ub_a", scope=tik.scope_ubuf)
             with self.tik_instance.for_range(0, self.output_h) as idx_oh:
                 with self.tik_instance.for_range(0, self.block_h) as idx_bh:
                     with self.tik_instance.for_range(0, self.output_w) as idx_ow:
                         with self.tik_instance.for_range(0, self.block_w) as idx_bw:
                             with self.tik_instance.for_range(0, core_ele) as ele_idx:
-                                ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele,),
+                                # vector dup and move in
+                                flag_h = idx_oh * self.block_h + idx_bh
+                                flag_w = idx_ow * self.block_w + idx_bw
+                                self.vector_dup_continuous(ub_a, self.channel_zero)
+                                with self.tik_instance.if_scope(
+                                        tik.all(flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h,
+                                                flag_w >= self.pads_l, flag_w < self.pads_l + self.input_w)):
+                                    offset_gm_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * \
+                                                   self.input_w * self.channel_zero + \
+                                                   (idx_oh * self.block_h + idx_bh - self.pads_t) * self.input_w * \
+                                                   self.channel_zero + \
+                                                   (idx_ow * self.block_w + idx_bw - self.pads_l) * self.channel_zero
+                                    self.tik_instance.data_move(ub_a, self.input_gm[offset_gm_in], 0, 1,
+                                                                self.channel_zero // self.blk_ele, 0, 0)
+                                # move out
+                                offset_gm_out = (idx_bh * self.block_w + idx_bw) * self.input_b * self.channel_one * \
+                                                self.output_h * self.output_w * self.channel_zero + \
+                                                (core_idx * self.one_core_ele + ele_idx) * self.output_h * \
+                                                self.output_w * self.channel_zero + \
+                                                (idx_oh * self.output_w + idx_ow) * self.channel_zero
+                                self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_a, 0, 1,
+                                                            self.channel_zero // self.blk_ele, 0, 0)
+
+    # function for 6hd
+    def run_block_h_6hd(self, ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b, c_idx, idx_bh):
+        """run block height for 6hd function.
+        """
+        flag_d = (core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd
+        with self.tik_instance.if_scope(tik.all(flag_d >= self.pads_f, flag_d < self.pads_f + self.input_d)):
+            # vector dup and move in
+            start = (self.pads_t - idx_bh + self.block_h - 1) // self.block_h
+            end = (self.pads_t + self.input_h - idx_bh + self.block_h - 1) // self.block_h
+            offset_gm_in = idx_b * self.input_d * self.channel_one * self.input_h * self.input_w * \
+                           self.channel_zero + ((core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd - \
+                           self.pads_f) * self.channel_one * self.input_h * self.input_w * self.channel_zero + \
+                           c_idx * self.input_h * self.input_w * self.channel_zero + \
+                           (idx_bh + start * self.block_h - self.pads_t) * self.input_w * self.channel_zero
+            offset_ub_in = start * self.output_w * self.block_w * self.channel_zero + self.pads_l * self.channel_zero
+            src_stride_out = (self.block_h - 1) * self.input_w * self.channel_zero // self.blk_ele
+            dst_stride_out = (self.pads_l + self.pads_r) * self.channel_zero // self.blk_ele
+            with self.tik_instance.new_stmt_scope(disable_sync=True):
+                with self.tik_instance.if_scope(end > start):
+                    # move in
+                    self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, end - start,
+                                                self.input_w * self.channel_zero // self.blk_ele, src_stride_out,
+                                                dst_stride_out)
+                    # vector dup
+                    self.vector_dup_continuous(ub_a, offset_ub_in)
+                    offset_2 = offset_ub_in + self.input_w * self.channel_zero
+                    repeat_2 = end - start - 1
+                    size_2 = (self.pads_l + self.pads_r) * self.channel_zero
+                    dst_rep = self.pad_w * self.channel_zero // self.blk_ele
+                    self.vector_dup_discrete(ub_a[offset_2:], repeat_2, size_2, 1, dst_rep)
+                    offset_3 = end * self.pad_w * self.channel_zero - self.pads_r * self.channel_zero
+                    size_3 = (self.output_h - end) * self.pad_w * self.channel_zero + self.pads_r * self.channel_zero
+                    self.vector_dup_continuous(ub_a[offset_3:], size_3)
+                with self.tik_instance.else_scope():
+                    self.vector_dup_continuous(ub_a, self.output_h * self.output_w * self.block_w * self.channel_zero)
+        with self.tik_instance.else_scope():
+            self.vector_dup_continuous(ub_a, self.output_h * self.output_w * self.block_w * self.channel_zero)
+
+        # permute and move out
+        src_stride_pt = (self.block_w - 1) * self.channel_zero // self.blk_ele
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # permute
+                offset_ub_pt = idx_bw * self.channel_zero
+                offset_ub_out = idx_bw * self.output_h * self.output_w * self.channel_zero
+                self.tik_instance.data_move(ub_b[offset_ub_out], ub_a[offset_ub_pt], 0, self.output_h * self.output_w,
+                                            self.channel_zero // self.blk_ele, src_stride_pt, 0)
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # move out
+                offset_ub_out = idx_bw * self.output_h * self.output_w * self.channel_zero
+                offset_gm_out = (((idx_bd * self.block_h + idx_bh) * self.block_w + idx_bw) * self.input_b + idx_b) * \
+                                self.output_d * self.channel_one * self.output_h * self.output_w * self.channel_zero + \
+                                (core_idx * self.one_core_ele + ele_idx) * self.channel_one * self.output_h * \
+                                self.output_w * self.channel_zero + c_idx * self.output_h * self.output_w * \
+                                self.channel_zero
+                self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_b[offset_ub_out], 0, 1,
+                                            self.output_h * self.output_w * self.channel_zero // self.blk_ele, 0, 0)
+
+    def run_block_h_open_db_6hd(self, core_idx, core_ele):
+        """run block height for 6hd function, open double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            with self.tik_instance.for_range(0, core_ele) as ele_idx:
+                with self.tik_instance.for_range(0, self.block_d) as idx_bd:
+                    with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                        with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                            ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                            name="ub_a",
+                                                            scope=tik.scope_ubuf)
+                            ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                            name="ub_b",
+                                                            scope=tik.scope_ubuf)
+                            ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                            name="ub_c",
+                                                            scope=tik.scope_ubuf)
+                            ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                            name="ub_d",
+                                                            scope=tik.scope_ubuf)
+                            with self.tik_instance.for_range(0, self.channel_one // 2) as c_idx:
+                                self.run_block_h_6hd(ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b, c_idx * 2, idx_bh)
+                                self.run_block_h_6hd(ub_c, ub_d, core_idx, ele_idx, idx_bd, idx_b, c_idx * 2 + 1,
+                                                     idx_bh)
+                            with self.tik_instance.if_scope(self.channel_one % 2 == 1):
+                                self.run_block_h_6hd(ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b, self.channel_one - 1,
+                                                     idx_bh)
+
+    def run_block_h_close_db_6hd(self, core_idx, core_ele):
+        """run block height for 6hd function, close double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            with self.tik_instance.for_range(0, core_ele) as ele_idx:
+                with self.tik_instance.for_range(0, self.block_d) as idx_bd:
+                    with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                        with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                            ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
+                                                            name="ub_a",
+                                                            scope=tik.scope_ubuf)
+                            ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
+                                                            name="ub_b",
+                                                            scope=tik.scope_ubuf)
+                            with self.tik_instance.for_range(0, self.channel_one) as c_idx:
+                                self.run_block_h_6hd(ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b, c_idx, idx_bh)
+
+    def run_output_h_6hd(self, ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b, c_idx, idx_oh, idx_bh):
+        """run output height for 6hd function.
+        """
+        # vector dup and move in
+        flag_d = (core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd
+        flag_h = idx_oh * self.block_h + idx_bh
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.if_scope(
+                    tik.all(flag_d >= self.pads_f, flag_d < self.pads_f + self.input_d, flag_h >= self.pads_t,
+                            flag_h < self.pads_t + self.input_h)):
+                offset_gm_in = idx_b * self.input_d * self.channel_one * self.input_h * self.input_w * \
+                               self.channel_zero + ((core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd - \
+                               self.pads_f) * self.channel_one * self.input_h * self.input_w * self.channel_zero + \
+                               c_idx * self.input_h * self.input_w * self.channel_zero + \
+                               (idx_oh * self.block_h + idx_bh - self.pads_t) * self.input_w * self.channel_zero
+                offset_ub_in = self.pads_l * self.channel_zero
+                # move in
+                self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
+                                            self.input_w * self.channel_zero // self.blk_ele, 0, 0)
+                # vector dup
+                self.vector_dup_continuous(ub_a, offset_ub_in)
+                offset_3 = (self.pad_w - self.pads_r) * self.channel_zero
+                size_3 = self.pads_r * self.channel_zero
+                self.vector_dup_continuous(ub_a[offset_3:], size_3)
+            with self.tik_instance.else_scope():
+                self.vector_dup_continuous(ub_a, self.output_w * self.block_w * self.channel_zero)
+
+        # permute ane move out
+        src_stride_pt = (self.block_w - 1) * self.channel_zero // self.blk_ele
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # permute
+                offset_ub_pt = idx_bw * self.channel_zero
+                offset_ub_out = idx_bw * self.output_w * self.channel_zero
+                self.tik_instance.data_move(ub_b[offset_ub_out], ub_a[offset_ub_pt], 0, self.output_w,
+                                            self.channel_zero // self.blk_ele, src_stride_pt, 0)
+        with self.tik_instance.new_stmt_scope(disable_sync=True):
+            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                # move out
+                offset_ub_out = idx_bw * self.output_w * self.channel_zero
+                offset_gm_out = (((idx_bd * self.block_h + idx_bh) * self.block_w + idx_bw) * self.input_b + idx_b) * \
+                                self.output_d * self.channel_one * self.output_h * self.output_w * self.channel_zero + \
+                                (core_idx * self.one_core_ele + ele_idx) * self.channel_one * self.output_h * \
+                                self.output_w * self.channel_zero + c_idx * self.output_h * self.output_w * \
+                                self.channel_zero + idx_oh * self.output_w * self.channel_zero
+                self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_b[offset_ub_out], 0, 1,
+                                            self.output_w * self.channel_zero // self.blk_ele, 0, 0)
+
+    def run_output_h_open_db_6hd(self, core_idx, core_ele):
+        """run output height for 6hd function, open double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            with self.tik_instance.for_range(0, core_ele) as ele_idx:
+                with self.tik_instance.for_range(0, self.block_d) as idx_bd:
+                    with self.tik_instance.for_range(0, self.output_h) as idx_oh:
+                        with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                            with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                                ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
                                                                 name="ub_a",
                                                                 scope=tik.scope_ubuf)
-                                self.run_output_w(ub_a, core_idx, idx_oh, idx_bh, idx_ow, idx_bw, ele_idx)
+                                ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                                name="ub_b",
+                                                                scope=tik.scope_ubuf)
+                                ub_c = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                                name="ub_c",
+                                                                scope=tik.scope_ubuf)
+                                ub_d = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
+                                                                name="ub_d",
+                                                                scope=tik.scope_ubuf)
+                                with self.tik_instance.for_range(0, self.channel_one // 2) as c_idx:
+                                    self.run_output_h_6hd(ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b, c_idx * 2,
+                                                          idx_oh, idx_bh)
+                                    self.run_output_h_6hd(ub_c, ub_d, core_idx, ele_idx, idx_bd, idx_b, c_idx * 2 + 1,
+                                                          idx_oh, idx_bh)
+                                with self.tik_instance.if_scope(self.channel_one % 2 == 1):
+                                    self.run_output_h_6hd(ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b,
+                                                          self.channel_one - 1, idx_oh, idx_bh)
+
+    def run_output_h_close_db_6hd(self, core_idx, core_ele):
+        """run output height for 6hd function, close double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            with self.tik_instance.for_range(0, core_ele) as ele_idx:
+                with self.tik_instance.for_range(0, self.block_d) as idx_bd:
+                    with self.tik_instance.for_range(0, self.output_h) as idx_oh:
+                        with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                            with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                                ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
+                                                                name="ub_a",
+                                                                scope=tik.scope_ubuf)
+                                ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
+                                                                name="ub_b",
+                                                                scope=tik.scope_ubuf)
+                                with self.tik_instance.for_range(0, self.channel_one) as c_idx:
+                                    self.run_output_h_6hd(ub_a, ub_b, core_idx, ele_idx, idx_bd, idx_b, c_idx, idx_oh,
+                                                          idx_bh)
+
+    def run_block_w_6hd(self, core_idx, core_ele):
+        """run block width for 6hd function, close double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele,), name="ub_a", scope=tik.scope_ubuf)
+            with self.tik_instance.for_range(0, core_ele) as ele_idx:
+                with self.tik_instance.for_range(0, self.block_d) as idx_bd:
+                    with self.tik_instance.for_range(0, self.output_h) as idx_oh:
+                        with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                            with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                                with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                                    with self.tik_instance.for_range(0, self.channel_one) as c_idx:
+                                        flag_d = (core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd
+                                        flag_h = idx_oh * self.block_h + idx_bh
+                                        self.vector_dup_continuous(ub_a, self.output_w * self.channel_zero)
+                                        with self.tik_instance.if_scope(
+                                                tik.all(flag_d >= self.pads_f, flag_d < self.pads_f + self.input_d,
+                                                        flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h)):
+                                            start = (self.pads_l - idx_bw + self.block_w - 1) // self.block_w
+                                            end = (self.pads_l + self.input_w - idx_bw + self.block_w -
+                                                   1) // self.block_w
+                                            offset_gm_in = idx_b * self.input_d * self.channel_one * \
+                                                           self.input_h * self.input_w * self.channel_zero + \
+                                                           ((core_idx * self.one_core_ele + ele_idx) * self.block_d + \
+                                                           idx_bd - self.pads_f) * self.channel_one * self.input_h * \
+                                                           self.input_w * self.channel_zero + c_idx * \
+                                                           self.input_h * self.input_w * self.channel_zero + \
+                                                           (idx_oh * self.block_h + idx_bh - self.pads_t) * \
+                                                           self.input_w * self.channel_zero + (idx_bw + start * \
+                                                           self.block_w - self.pads_l) * self.channel_zero
+                                            offset_ub_in = start * self.channel_zero
+                                            src_stride_out = (self.block_w - 1) * self.channel_zero // self.blk_ele
+                                            with self.tik_instance.if_scope(end > start):
+                                                self.tik_instance.data_move(ub_a[offset_ub_in],
+                                                                            self.input_gm[offset_gm_in], 0, end - start,
+                                                                            self.channel_zero // self.blk_ele,
+                                                                            src_stride_out, 0)
+                                        # move out
+                                        offset_gm_out = (((idx_bd * self.block_h + idx_bh) * self.block_w + idx_bw) * \
+                                                        self.input_b + idx_b) * self.output_d * self.channel_one * \
+                                                        self.output_h * self.output_w * self.channel_zero + \
+                                                        (core_idx * self.one_core_ele + ele_idx) * self.channel_one * \
+                                                        self.output_h * self.output_w * self.channel_zero + c_idx * \
+                                                        self.output_h * self.output_w * self.channel_zero + idx_oh * \
+                                                        self.output_w * self.channel_zero
+                                        self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_a, 0, 1,
+                                                                    self.output_w * self.channel_zero // self.blk_ele,
+                                                                    0, 0)
+
+    def run_output_w_6hd(self, core_idx, core_ele):
+        """run output width for 6hd function, close double buffer.
+        """
+        with self.tik_instance.new_stmt_scope():
+            ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele,), name="ub_a", scope=tik.scope_ubuf)
+            with self.tik_instance.for_range(0, core_ele) as ele_idx:
+                with self.tik_instance.for_range(0, self.block_d) as idx_bd:
+                    with self.tik_instance.for_range(0, self.output_h) as idx_oh:
+                        with self.tik_instance.for_range(0, self.block_h) as idx_bh:
+                            with self.tik_instance.for_range(0, self.output_w) as idx_ow:
+                                with self.tik_instance.for_range(0, self.block_w) as idx_bw:
+                                    with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                                        with self.tik_instance.for_range(0, self.channel_one) as c_idx:
+                                            flag_d = (core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd
+                                            flag_h = idx_oh * self.block_h + idx_bh
+                                            flag_w = idx_ow * self.block_w + idx_bw
+                                            self.vector_dup_continuous(ub_a, self.output_w * self.channel_zero)
+                                            with self.tik_instance.if_scope(
+                                                    tik.all(flag_d >= self.pads_f, flag_d < self.pads_f + self.input_d,
+                                                            flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h,
+                                                            flag_w >= self.pads_l,
+                                                            flag_w < self.pads_l + self.input_w)):
+                                                offset_gm_in = idx_b * self.input_d * self.channel_one * \
+                                                               self.input_h * self.input_w * self.channel_zero + \
+                                                               ((core_idx * self.one_core_ele + ele_idx) * \
+                                                               self.block_d + idx_bd - self.pads_f) * \
+                                                               self.channel_one * self.input_h * self.input_w * \
+                                                               self.channel_zero + c_idx * self.input_h * \
+                                                               self.input_w * self.channel_zero + \
+                                                               (idx_oh * self.block_h + idx_bh - self.pads_t) * \
+                                                               self.input_w * self.channel_zero + \
+                                                               (idx_ow * self.block_w + idx_bw - self.pads_l) * \
+                                                               self.channel_zero
+                                                self.tik_instance.data_move(ub_a, self.input_gm[offset_gm_in], 0, 1,
+                                                                            self.channel_zero // self.blk_ele, 0, 0)
+                                            # move out
+                                            offset_gm_out = (((idx_bd * self.block_h + idx_bh) * self.block_w + \
+                                                            idx_bw) * self.input_b + idx_b) * self.output_d * \
+                                                            self.channel_one * self.output_h * self.output_w * \
+                                                            self.channel_zero + (core_idx * self.one_core_ele + \
+                                                            ele_idx) * self.channel_one * self.output_h * \
+                                                            self.output_w * self.channel_zero + c_idx * \
+                                                            self.output_h * self.output_w * self.channel_zero + \
+                                                            (idx_oh * self.output_w + idx_ow) * self.channel_zero
+                                            self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_a, 0, 1,
+                                                                        self.channel_zero // self.blk_ele, 0, 0)
 
     def space_to_batch_nd_compute_tiling(self):
         """BatchToSpaceND compute tiling
@@ -442,6 +729,24 @@ class SpaceToBatchND:
                 # when format is NC1HWC0, can copy c0, no double buffer
                 with self.tik_instance.if_scope(self.tiling_mode == 5):
                     self.run_output_w_5hd(core_idx, core_ele)
+                # when format is NHC1HWC0, can copy output_h * output_w * block_w * c0, open double buffer
+                with self.tik_instance.if_scope(self.tiling_mode == 6):
+                    self.run_block_h_open_db_6hd(core_idx, core_ele)
+                # when format is NHC1HWC0, can copy output_h * output_w * block_w * c0, close double buffer
+                with self.tik_instance.if_scope(self.tiling_mode == 7):
+                    self.run_block_h_close_db_6hd(core_idx, core_ele)
+                # when format is NHC1HWC0, can copy output_w * block_w * c0, open double buffer
+                with self.tik_instance.if_scope(self.tiling_mode == 8):
+                    self.run_output_h_open_db_6hd(core_idx, core_ele)
+                # when format is NHC1HWC0, can copy output_w * block_w * c0, close double buffer
+                with self.tik_instance.if_scope(self.tiling_mode == 9):
+                    self.run_output_h_close_db_6hd(core_idx, core_ele)
+                # when format is NHC1HWC0, can copy output_w * c0, no double buffer
+                with self.tik_instance.if_scope(self.tiling_mode == 10):
+                    self.run_block_w_6hd(core_idx, core_ele)
+                # when format is NHC1HWC0, can copy c0, no double buffer
+                with self.tik_instance.if_scope(self.tiling_mode == 11):
+                    self.run_output_w_6hd(core_idx, core_ele)
 
     def space_to_batch_nd_operator(self):
         """SpaceToBatchND operator

@@ -47,7 +47,7 @@ def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"
             if len(ori_shape) != 3 or block_s[0] != 1 or pad_s[0] != 1:
                 return False
     elif ori_format in ("NCHW",):
-        if len(ori_shape) != 4 or block_s[0] != 2 or pad_s[0] != 2:
+        if len(ori_shape) != 4 or block_s[0] != 3 or pad_s[0] != 3:
             return False
     elif ori_format in ("NDHWC",):
         if len(ori_shape) != 5 or block_s[0] != 3 or pad_s[0] != 3:

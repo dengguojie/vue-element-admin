@@ -275,9 +275,9 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
                (pads_vec.size() == 4)) {
       ;
     } else if ((ori_format == "NCHW") && (block_vec.size() == 3) && (pads_vec.size() == 6) && (block_vec[0] == 1) &&
-               (pads_vec[0] == 1) && (pads_vec[1] == 1)) {
+               (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
-      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + 1);
+      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + 2);
     } else {
       OP_LOGE(op_type.c_str(),
               "Input with format NC1HWC0 which does not meet the rules, ori_format is %s, block size is %d, pads size "
@@ -289,9 +289,9 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     if (((ori_format == "NDHWC") || (ori_format == "NCDHW")) && (block_vec.size() == 3) && (pads_vec.size() == 6)) {
       ;
     } else if ((ori_format == "NCDHW") && (block_vec.size() == 4) && (pads_vec.size() == 8) && (block_vec[0] == 1) &&
-               (pads_vec[0] == 1) && (pads_vec[1] == 1)) {
+               (pads_vec[0] == 0) && (pads_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
-      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + 1);
+      pads_vec.erase(pads_vec.begin(), pads_vec.begin() + 2);
     } else {
       OP_LOGE(op_type.c_str(),
               "Input with format NDC1HWC0 which does not meet the rules, ori_format is %s, block size is %d, pads size "

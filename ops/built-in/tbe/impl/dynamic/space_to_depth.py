@@ -15,10 +15,9 @@
 """
 dynamic space_to_depth
 """
-# pylint: disable=unused-import
-from impl.util.platform_adapter import tbe_platform
 from impl.dynamic.transpose import Transpose
 from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context

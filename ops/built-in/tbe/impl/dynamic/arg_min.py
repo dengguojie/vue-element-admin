@@ -15,9 +15,8 @@
 """
 dynamic arg_min
 """
-# pylint: disable=unused-import
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
@@ -350,16 +349,17 @@ class Argmin():
                 ub_data = self.tik_instance.Tensor(self.dtype_x, (self.segment,), name="ub_data", scope=tik.scope_ubuf)
                 nburst = self.tik_instance.Scalar("uint16")
                 nburst_len = self.tik_instance.Scalar("uint16")
+                repeat_block = self.tik_instance.Scalar("uint16")
                 repeat_vcmin = self.tik_instance.Scalar("uint16")
                 with self.tik_instance.if_scope(align_idx < segment_align_tail):
                     nburst.set_as(segment_align_num + 1)
                 with self.tik_instance.else_scope():
                     nburst.set_as(segment_align_num)
                 nburst_len.set_as(_get_ceil_int(self.axis_size, self.data_each_block))
+                repeat_block.set_as(nburst_len)
                 repeat_vcmin.set_as(nburst)
                 src_nburst_stride = _get_ceil_int(self.axis_size * self.align_num, self.data_each_block) - nburst_len
                 des_nburst_stride = 0
-                repeat_block = nburst_len
                 with self.tik_instance.if_scope(self.align_num == 1):
                     nburst_len.set_as(nburst_len * nburst)
                     nburst.set_as(1)

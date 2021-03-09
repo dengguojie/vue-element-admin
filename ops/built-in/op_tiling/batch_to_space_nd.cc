@@ -136,7 +136,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.input_w = input_shape[4];
     param.channel_zero = input_shape[5];
     param.output_b = param.input_b / param.block_d / param.block_h / param.block_w;
-    param.output_d = param.input_h * param.block_d - param.crops_f - param.crops_a;
+    param.output_d = param.input_d * param.block_d - param.crops_f - param.crops_a;
     param.output_h = param.input_h * param.block_h - param.crops_t - param.crops_b;
     param.output_w = param.input_w * param.block_w - param.crops_l - param.crops_r;
   }
@@ -275,9 +275,9 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
                (crops_vec.size() == 4)) {
       ;
     } else if ((ori_format == "NCHW") && (block_vec.size() == 3) && (crops_vec.size() == 6) && (block_vec[0] == 1) &&
-               (crops_vec[0] == 1) && (crops_vec[1] == 1)) {
+               (crops_vec[0] == 0) && (crops_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
-      crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 1);
+      crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 2);
     } else {
       OP_LOGE(op_type.c_str(),
               "Input with format NC1HWC0 which does not meet the rules, ori_format is %s, block size is %d, crops size "
@@ -289,9 +289,9 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
     if (((ori_format == "NDHWC") || (ori_format == "NCDHW")) && (block_vec.size() == 3) && (crops_vec.size() == 6)) {
       ;
     } else if ((ori_format == "NCDHW") && (block_vec.size() == 4) && (crops_vec.size() == 8) && (block_vec[0] == 1) &&
-               (crops_vec[0] == 1) && (crops_vec[1] == 1)) {
+               (crops_vec[0] == 0) && (crops_vec[1] == 0)) {
       block_vec.erase(block_vec.begin());
-      crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 1);
+      crops_vec.erase(crops_vec.begin(), crops_vec.begin() + 2);
     } else {
       OP_LOGE(op_type.c_str(),
               "Input with format NDC1HWC0 which does not meet the rules, ori_format is %s, block size is %d, crops "

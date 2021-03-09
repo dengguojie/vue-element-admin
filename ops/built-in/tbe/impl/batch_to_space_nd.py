@@ -47,7 +47,7 @@ def check_supported(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
             if len(ori_shape) != 3 or block_s[0] != 1 or crop_s[0] != 1:
                 return False
     elif ori_format in ("NCHW",):
-        if len(ori_shape) != 4 or block_s[0] != 2 or crop_s[0] != 2:
+        if len(ori_shape) != 4 or block_s[0] != 3 or crop_s[0] != 3:
             return False
     elif ori_format in ("NDHWC",):
         if len(ori_shape) != 5 or block_s[0] != 3 or crop_s[0] != 3:

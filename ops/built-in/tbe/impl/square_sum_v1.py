@@ -23,6 +23,8 @@ from te import tvm
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 MIN_FP32 = 2**(-126)
 # min float16 value
@@ -33,11 +35,7 @@ SHAPE_SIZE_LIMIT = 200000000
 
 
 # pylint: disable = unused-argument
-def get_op_support_info(input_x,
-                        output1,
-                        attr1,
-                        attr2=True,
-                        kernel_name="square_sum_v1"):
+def get_op_support_info(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1"):
     """
     get_op_support_info
     """
@@ -49,7 +47,7 @@ def get_op_support_info(input_x,
     axis_split = [i for i in axis_d if i not in attr1]
     if format_x == "ND":
         if attr2:
-            axis_split_matrix=[]
+            axis_split_matrix = []
             for i in axis_split:
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
                 axis_split_matrix.append(split_0)
@@ -64,13 +62,39 @@ def get_op_support_info(input_x,
     return op_cal_info_in_json
 
 
+def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"):
+    """select format dynamiclly.
+        1. when ori_format is 'HWCN', input_format is 'FRACTAL_Z'
+            for example:
+                ori:
+                    input_x              shape = [5,5,16,16]           format = 'HWCN'
+                    output1              shape = []                    format = 'ND'
+                format transformer:
+                    input_x              shape = [25,1,16,16]          format = 'FRACTAL_Z'
+                    output1              shape = []                    format = 'ND'
+    """
+    dtype = "float16, float"
+    input_format = "ND, ND"
+    output_format = "ND, ND"
+    ori_shape = input_x.get("ori_shape")
+    ori_format = input_x.get("ori_format")
+    if ori_format in ("HWCN",) and len(
+            ori_shape) == 4 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and attr1 == [0, 1, 2, 3]:
+        dtype = "float16, float, float16, float"
+        input_format = "ND, ND, FRACTAL_Z, FRACTAL_Z"
+        output_format = "ND, ND, ND, ND"
+
+    input0 = gen_param(classify="input0", name="input_x", datatype=dtype, format=input_format)
+    output0 = gen_param(classify="output0", name="output1", datatype=dtype, format=output_format)
+
+    param_list = [input0, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
+
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
-def reduce_sum_d_compute(x,
-                         y,
-                         axis=None,
-                         keepdims=None,
-                         kernel_name="reduce_sum_d"):
+def reduce_sum_d_compute(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     """redusce_sum_d compute
 
     Parameters:
@@ -93,8 +117,7 @@ def reduce_sum_d_compute(x,
     """
     dtype = x.dtype
 
-    if dtype == "float16" and \
-            tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         x = tbe.cast_to(x, "float32")
     res_sum = tbe.sum(x, axis=axis, keepdims=keepdims)
     res = tbe.cast_to(res_sum, dtype)
@@ -126,11 +149,7 @@ def square_compute(input_x, output_y, kernel_name="square"):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("square_sum_v1")
-def square_sum_v1_compute(input_x,
-                          output1,
-                          attr1,
-                          attr2,
-                          kernel_name="square_sum_v1"):
+def square_sum_v1_compute(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"):
     """
     calculating data
 
@@ -151,21 +170,14 @@ def square_sum_v1_compute(input_x,
         axis_d = attr1
     square = square_compute(input_x, {}, kernel_name)
 
-    sum0 = reduce_sum_d_compute(square, {},
-                                axis_d,
-                                keepdims=attr2,
-                                kernel_name=kernel_name)
+    sum0 = reduce_sum_d_compute(square, {}, axis_d, keepdims=attr2, kernel_name=kernel_name)
 
     return sum0
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def square_sum_v1(input_x,
-                  output1,
-                  attr1,
-                  attr2=True,
-                  kernel_name="square_sum_v1"):
+def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1"):
     """
     calculating data
 
