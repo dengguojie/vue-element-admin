@@ -273,9 +273,16 @@ IMPLEMT_VERIFIER(EluGrad, EluGradVerify) {
   }
   return GRAPH_SUCCESS;
 }
-
-COMMON_INFER_FUNC_REG(EluGrad, ELMTWISE_INFER_SHAPEANDTYPE("grads", "y"));
 VERIFY_FUNC_REG(EluGrad, EluGradVerify);
+
+IMPLEMT_COMMON_INFERFUNC(EluGradInferShape) {
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "grads", "activations", {"y"})) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(EluGrad, EluGradInferShape);
 // --------------EluGrad END-----------------
 
 // ----------------Relu6Grad------------------
