@@ -823,7 +823,13 @@ COMMON_INFER_FUNC_REG(BesselI0e, BesselI0eInferShape);
 // --------------BesselI0e END-----------------
 
 // ----------------BesselI1e-------------------
-COMMON_INFER_FUNC_REG(BesselI1e, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(BesselI1eInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(BesselI1e, BesselI1eInferShape);
 // --------------BesselI1e END-----------------
 
 // ------------------Mul --------------------

@@ -238,3 +238,4 @@ from .masked_fill import masked_fill
 from .resize_bilinear_v2_grad import resize_bilinear_v2_grad
 from .elu_grad import elu_grad
 from .bessel_i0e import bessel_i0e
+from .bessel_i1e import bessel_i1e
