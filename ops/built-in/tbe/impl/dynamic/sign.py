@@ -23,7 +23,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-import te.platform as tbe_platform
 from impl.util.platform_adapter import register_operator
 
 NEG_SCALAR_MIN_FP16 = -(2 ** (-24))

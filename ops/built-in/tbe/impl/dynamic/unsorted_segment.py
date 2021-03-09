@@ -18,7 +18,7 @@ unsorted_segment
 # pylint: disable=too-many-lines
 import te.lang.dynamic
 from impl.util.platform_adapter import tik
-from te import platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 
 ONE_BLOCK_E = 1
@@ -123,7 +123,7 @@ BYTE_FULL_MASK = 256
 # pylint: disable=too-many-locals,too-few-public-methods,unused-argument
 
 def _get_dtype_byte(dtype):
-    return platform.get_bit_len(dtype) // 8
+    return tbe_platform.get_bit_len(dtype) // 8
 
 
 def _get_dtype_min_val(dtype):
@@ -1174,7 +1174,7 @@ def _tik_get_ub_size(is_double_buffer=True):
     -------
     ub_size
     """
-    ub_size = platform.cce_conf.get_soc_spec(platform.cce_conf.UB_SIZE) - 512
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 512
     if is_double_buffer:
         return ub_size // 2
     return ub_size
@@ -1192,7 +1192,7 @@ def _tik_get_core_num():
     -------
     core num
     """
-    return platform.cce_conf.get_soc_spec(platform.cce_conf.CORE_NUM)
+    return tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
 def _tik_init_ub_tensor_once(tik_inst, ub_tensor, repeat_time, mask, instruction):
@@ -1394,6 +1394,6 @@ def unsorted_segment(x_dict, segment_ids_dict, num_segments_dict, y_dict,
     # add compile info
     if dynamic_mode:
         tbe_context.get_context().add_compile_info("vars",
-                               {"ub_size": obj.obj_tiling.ub_size, "core_num": obj.core_num,
-                                "dtype": obj.obj_gm_tensor.input_gm.dtype,
-                                "ub_tensor_num": obj.ub_tensor_num})
+                                                   {"ub_size": obj.obj_tiling.ub_size, "core_num": obj.core_num,
+                                                    "dtype": obj.obj_gm_tensor.input_gm.dtype,
+                                                    "ub_tensor_num": obj.ub_tensor_num})

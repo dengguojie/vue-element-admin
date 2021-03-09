@@ -17,12 +17,11 @@ dynamic sparse_apply_ftrl_d
 """
 import te.lang.dynamic
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-
 
 # data type of int32
 INT32 = "int32"
@@ -35,8 +34,8 @@ DIGIT_256 = 256
 
 UB_1K_SIZE = 1024
 # The 4KB space of UB is used to store indices data
-UB_INDICES_SIZE = 4*1024
-UB_2K_SIZE = 2*1024
+UB_INDICES_SIZE = 4 * 1024
+UB_2K_SIZE = 2 * 1024
 
 # paramsRow is 32B aligned, params is in gm
 TILING_MODE_1 = 1
@@ -46,7 +45,7 @@ TILING_MODE_2 = 2
 TILING_ARG_NUM = 24
 
 # the max size of SHAPE is 2^31 - 1
-MAX_SHAPE_SIZE = 2**31 - 1
+MAX_SHAPE_SIZE = 2 ** 31 - 1
 
 TYPE_LEN_DICT = {"float32": 4, "int32": 4, "int64": 8}
 
@@ -75,6 +74,7 @@ class SparseApplyFtrl():
     """
     Function: class that execute sparse_apply_ftrl
     """
+
     def input_params_check(self, input_dicts, output_dicts):
         """
         check if the inputs are valid
@@ -154,8 +154,8 @@ class SparseApplyFtrl():
 
         profile = tik.Dprofile()
         self.tik_instance = tik.Tik(profile, disable_debug=False)
-        self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-        self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.var_dsize = TYPE_LEN_DICT.get(self.var_dtype)
         self.block_elem = BLOCK_SIZE // self.var_dsize
@@ -172,7 +172,7 @@ class SparseApplyFtrl():
         self.var_shape = (MAX_SHAPE_SIZE,)
         self.grad_shape = (MAX_SHAPE_SIZE,)
         self.indices_shape = (MAX_SHAPE_SIZE,)
-        self.tiling_shape = (TILING_ARG_NUM, )
+        self.tiling_shape = (TILING_ARG_NUM,)
         self.block_shape = (self.block_elem,)
 
         self.var = None
@@ -320,11 +320,11 @@ class SparseApplyFtrl():
         var_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
                                            name="var_ub_block", scope=tik.scope_ubuf)
         accum_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                           name="accum_ub_block", scope=tik.scope_ubuf)
+                                             name="accum_ub_block", scope=tik.scope_ubuf)
         linear_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                           name="linear_ub_block", scope=tik.scope_ubuf)
+                                              name="linear_ub_block", scope=tik.scope_ubuf)
         grad_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                              name="grad_ub_block", scope=tik.scope_ubuf)
+                                            name="grad_ub_block", scope=tik.scope_ubuf)
         ub_block_tuples = (var_ub_block, accum_ub_block, linear_ub_block, grad_ub_block)
 
         self.var_cur_row = tik_instance.Scalar(dtype=self.tiling_dtype, name="var_cur_row")
@@ -934,9 +934,9 @@ class SparseApplyFtrl():
 
         # add compile info
         tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
-                                        "ub_size": self.ub_size,
-                                        "indices_dsize": self.indices_dsize
-                                        })
+                                                            "ub_size": self.ub_size,
+                                                            "indices_dsize": self.indices_dsize
+                                                            })
 
 
 @register_operator("SparseApplyFtrlD")

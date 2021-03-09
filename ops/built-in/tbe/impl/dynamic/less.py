@@ -19,7 +19,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -104,9 +104,9 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                                   param_name_input2="input_y")
+                                                              param_name_input2="input_y")
 
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     dtype_x = input_x.dtype
     if dtype_x in ("uint8", "int8"):
         input_x = tbe.cast_to(input_x, "float16")

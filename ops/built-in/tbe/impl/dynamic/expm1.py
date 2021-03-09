@@ -20,14 +20,13 @@ from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-
 
 # define a scalar , value = -1
 SCALAR_NEGATIVE_ONE = -1.0
@@ -69,38 +68,38 @@ def _expm1_taylor_compute(input_x):
     taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
     data_power_2_div_2 = tbe.vmuls(data_power_2,
-                                           taylor_second_order_param)
+                                   taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
     taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
     data_power_3 = tbe.vmul(data_power_2, input_x)
     data_power_3_div_6 = tbe.vmuls(data_power_3,
-                                           taylor_third_order_param)
+                                   taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
     taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
     data_power_4 = tbe.vmul(data_power_3, input_x)
     data_power_4_div_24 = tbe.vmuls(data_power_4,
-                                            taylor_fourth_order_param)
+                                    taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
     taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
     data_power_5 = tbe.vmul(data_power_4, input_x)
     data_power_5_div_120 = tbe.vmuls(data_power_5,
-                                             taylor_fifth_order_param)
+                                     taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
     taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
     data_power_6 = tbe.vmul(data_power_5, input_x)
     data_power_6_div_720 = tbe.vmuls(data_power_6,
-                                             taylor_sixth_order_param)
+                                     taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
     taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
                                            "float32")
     data_power_7 = tbe.vmul(data_power_6, input_x)
     data_power_7_div_5040 = tbe.vmuls(data_power_7,
-                                              taylor_seventh_order_param)
+                                      taylor_seventh_order_param)
 
     res_second_taylor = tbe.vadd(input_x, data_power_2_div_2)
     res_third_taylor = tbe.vadd(res_second_taylor, data_power_3_div_6)
@@ -147,6 +146,7 @@ def _expm1_mini_compute(mini_res, input_x, shape):
 
     return mini_res
 
+
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
 @register_operator_compute("Expm1", op_mode="dynamic", support_fusion=False)
 def expm1_compute(input_x, output_y, kernel_name="expm1"):
@@ -174,8 +174,8 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
     dtype = input_x.dtype
     shape = input_x.shape
-    flag_cloud = tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32")
-    flag_mini = tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32")
+    flag_cloud = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
+    flag_mini = tbe_platform.api_check_support("te.lang.cce.vadd", "float32")
     if dtype.lower() == "float16" and flag_cloud:
         input_x = tbe.cast_to(input_x, "float32")
 
@@ -232,9 +232,9 @@ def expm1(input_x, output_y, kernel_name="expm1"):
         schedules.append(sch)
 
     config = {
-        "name":kernel_name,
-        "tensor_list":tensors,
-        "bool_storage_as_list":False
+        "name": kernel_name,
+        "tensor_list": tensors,
+        "bool_storage_as_list": False
     }
 
     tbe.build(schedules, config)

@@ -16,7 +16,7 @@
 mod
 """
 from impl.util.platform_adapter import tvm
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -24,6 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("Mod", op_mode="dynamic", support_fusion=False)
@@ -57,7 +58,7 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
 
     has_improve_precision = False
     if dtype != "float32" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
         has_improve_precision = True
@@ -79,7 +80,7 @@ def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
     data_div_min_ceil = tbe.ceil(data_div_min)
 
     if dtype != "int32" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         data_div_max_floor = tbe.cast_to(data_div_max_floor, "float32")
         data_div_min_ceil = tbe.cast_to(data_div_min_ceil, "float32")
 

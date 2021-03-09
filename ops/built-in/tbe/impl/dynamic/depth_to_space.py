@@ -17,15 +17,15 @@ dynamic depth_to_space
 """
 # pylint: disable=unused-import
 import te.lang.dynamic
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.dynamic.transpose import Transpose
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 BLOCK_SIZE = 32
 MAX_INT64_VALUE = 2**64 - 1
 TILING_MAX_SIZE_GM = 2048  # 16KB

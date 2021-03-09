@@ -16,7 +16,7 @@
 dynamic equal
 """
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -64,8 +64,8 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)
     shape_x, shape_y, shape_broad = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                     param_name_input1="input_x",
-                                                     param_name_input2="input_y")
+                                                                param_name_input1="input_x",
+                                                                param_name_input2="input_y")
 
     if dtype_x == "float32":
         scalar_min = tvm.const(SCALAR_MIN_FP32, dtype="float32")
@@ -85,8 +85,8 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     y_brod = tbe.broadcast(input_y, shape_broad)
 
     res_vsub = tbe.vsub(x_brod, y_brod)
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vabs",
-                                               res_vsub.dtype):
+    if tbe_platform.api_check_support("te.lang.cce.vabs",
+                                      res_vsub.dtype):
         res_vabs = tbe.vabs(res_vsub)
     else:
         res_vsub = tbe.cast_to(res_vsub, "float32")

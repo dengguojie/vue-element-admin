@@ -21,11 +21,10 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-
 
 # define a scalar , value = 1
 SCALAR_ONE = 1
@@ -108,8 +107,8 @@ def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
 
     has_improve_precision = False
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
-                                                    "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vdiv",
+                                           "float32"):
         broadcast_x = tbe.cast_to(broadcast_x, "float32")
         input_y_revised = tbe.cast_to(input_y_revised, "float32")
         has_improve_precision = True

@@ -18,7 +18,7 @@ sigmoid_grad
 from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -54,14 +54,14 @@ def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     a tenosr
     """
     dtype = x.dtype.lower()
-    cast_support = tbe_platform.cce_conf.api_check_support(
+    cast_support = tbe_platform.api_check_support(
         "te.lang.cce.cast_to", "f322f16")
     if dtype == "float32" and not cast_support:
         error_detail = "float32 transfer to float16 is only supported on mini and cloud platform!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", 'y', error_detail)
-    vmul_support = tbe_platform.cce_conf.api_check_support(
+    vmul_support = tbe_platform.api_check_support(
         "te.lang.cce.vmul", "float32")
-    vsub_support = tbe_platform.cce_conf.api_check_support(
+    vsub_support = tbe_platform.api_check_support(
         "te.lang.cce.vsub", "float32")
     if dtype == "float16":
         x = tbe.cast_to(x, "float32")

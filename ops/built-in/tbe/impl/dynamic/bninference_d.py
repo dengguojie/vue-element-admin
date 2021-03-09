@@ -16,7 +16,7 @@
 bninference_d
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -53,7 +53,7 @@ def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     shape_x = shape_util.shape_to_list(x.shape)
     shape_mean = shape_util.shape_to_list(mean.shape)
     shape_x, shape_mean, shape_max = shape_util.broadcast_shapes(shape_x, shape_mean,
-        param_name_input1="x", param_name_input2="mean")
+                                                                 param_name_input1="x", param_name_input2="mean")
 
     x_broadcast = tbe.broadcast(x, shape_max)
     mean_broadcast = tbe.broadcast(mean, shape_max)
@@ -108,7 +108,7 @@ def _fused_scale_compute(x, mean, variance, scale):
     shape_x = shape_util.shape_to_list(x.shape)
     shape_mean = shape_util.shape_to_list(mean.shape)
     shape_x, shape_mean, shape_max = shape_util.broadcast_shapes(shape_x, shape_mean,
-        param_name_input1="x", param_name_input2="mean")
+                                                                 param_name_input1="x", param_name_input2="mean")
 
     x_broadcast = tbe.broadcast(x, shape_max)
     mean_broadcast = tbe.broadcast(mean, shape_max)
@@ -157,7 +157,7 @@ def _fused_compute(x, mean, variance):
     shape_mean = shape_util.shape_to_list(mean.shape)
 
     shape_x, shape_mean, shape_max = shape_util.broadcast_shapes(shape_x, shape_mean,
-        param_name_input1="x", param_name_input2="mean")
+                                                                 param_name_input1="x", param_name_input2="mean")
 
     x_broadcast = tbe.broadcast(x, shape_max)
     mean_broadcast = tbe.broadcast(mean, shape_max)
@@ -212,7 +212,7 @@ def bninference_d_compute(x, mean, variance, scale, bias, y,
     if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
         shape_rule = "when L1_FUSION is enabled for the bninference operator, the input format must be 5HD"
         error_manager_vector.raise_err_check_params_rules("bninference_d",
-            shape_rule, "x", y.get("format").upper())
+                                                          shape_rule, "x", y.get("format").upper())
 
     fusion_params = get_fusion_params(x, mean, variance, scale, bias, fuse_y)
 
@@ -251,7 +251,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
     for x in input_tensor:
         if x is not None:
             l1_fusion_type = -1
-            if tbe_platform.fusion_manager.fusion_manager.get_build_cfg() != "disable":
+            if tbe_platform.fusion_manager.get_build_cfg() != "disable":
                 l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
                     if "L1_fusion_type" in x.op.attrs else -1
                 if l1_fusion_type == 1:
@@ -395,7 +395,7 @@ def get_param_scale_shape(shape_x, shape_scale):
 
 def get_l1_paras(x):
     l1_fusion_type = -1
-    if tbe_platform.fusion_manager.fusion_manager.get_build_cfg() != "disable":
+    if tbe_platform.fusion_manager.get_build_cfg() != "disable":
         l1_fusion_type = x.get('L1_fusion_type', -1)
         if l1_fusion_type == 1:
             raise RuntimeError("bninference does not support l1 width fusion")
@@ -480,7 +480,7 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
 
     # brodcast inputs shape
     shape_x, shape_mean, shape_variance, _, _, is_l1_depth_fusion = brodcast_inputs_shape(x, mean,
-        variance, scale, offset)
+                                                                                          variance, scale, offset)
 
     x["shape"] = shape_x
 
@@ -528,7 +528,7 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
                 tensor_list = [data_x, data_mean, data_variance, data_scale, res]
             else:
                 res = bninference_d_compute(data_x, data_mean, data_variance, None, None,
-                                                y, momentum, epsilon, use_global_stats, mode)
+                                            y, momentum, epsilon, use_global_stats, mode)
                 tensor_list = [data_x, data_mean, data_variance, res]
 
             tensors.append(tensor_list)

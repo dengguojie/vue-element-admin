@@ -16,7 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 split_d
 """
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 # max int64
-MAX_INT64 = 2**64 - 1
+MAX_INT64 = 2 ** 64 - 1
 # tiling param num
 TILING_ARG_NUM = 18
 # reserved ub size
@@ -68,6 +68,7 @@ class SplitD:
     """
     Split a tensor into `num_split` tensors along one dimension.
     """
+
     def __init__(self, x, y, split_dim, num_split, kernel_name):
         """
         Init split_d parameters
@@ -95,10 +96,10 @@ class SplitD:
         self.kernel_name = kernel_name
         self.input_dtype = x.get("dtype").lower()
         self.output_dtype = y[0].get("dtype").lower()
-        self.input_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.input_dtype) // EIGHT_BIT
+        self.input_dtype_bytes_size = tbe_platform.get_bit_len(self.input_dtype) // EIGHT_BIT
         self.input_data_each_block = BLOCK_BYTES // self.input_dtype_bytes_size
-        self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
         self.ub_number = self.ub_size // self.input_dtype_bytes_size
         self.ub_number = (self.ub_number // self.input_data_each_block) * self.input_data_each_block
         self.tiling_gm, self.input_gm, self.outs_gm = self.init_gm_tensor()
@@ -161,9 +162,9 @@ class SplitD:
         -------
         None
         """
-        self.input_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_number, ), name="input_ub",
+        self.input_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_number,), name="input_ub",
                                                  scope=tik.scope_ubuf)
-        self.temp_ub = self.tik_instance.Tensor(self.input_dtype, (self.input_data_each_block, ), name="temp_ub",
+        self.temp_ub = self.tik_instance.Tensor(self.input_dtype, (self.input_data_each_block,), name="temp_ub",
                                                 scope=tik.scope_ubuf)
 
     def tiling_args(self):
@@ -545,9 +546,10 @@ class SplitD:
             flowtable=[self.tiling_gm])
 
         tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_number, "core_num": self.core_num,
-                                        "split_dim": self.split_dim, "num_split": self.num_split})
+                                                            "split_dim": self.split_dim, "num_split": self.num_split})
 
         return self.tik_instance
+
 
 @register_operator("SplitD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.DYNAMIC_OUTPUT, para_check.REQUIRED_ATTR_INT,

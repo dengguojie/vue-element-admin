@@ -17,7 +17,7 @@ bias
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -27,7 +27,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
-
 
 
 # pylint: disable=too-few-public-methods
@@ -78,7 +77,7 @@ def _get_param_bias_shape_and_range(shape_x, shape_bias, range_bias):
 
     if length_bias == 1:
         shape = [1] * length_x
-        bias_range = ((1, 1), ) * length_x
+        bias_range = ((1, 1),) * length_x
     else:
         shape = list(shape_bias)
         bias_range = tuple(range_bias)
@@ -197,7 +196,7 @@ def get_shape_and_bias(shape_x, shape_bias, axis_, num_axes, bias_from_blob, ran
             bias_range = ((1, 1),) * axis_ + tuple(range_bias)
         elif num_axes == 0:
             shape = [1] * length_x
-            bias_range = ((1, 1), ) * length_x
+            bias_range = ((1, 1),) * length_x
         else:
             left_length = length_x - num_axes - axis_
             shape_left = [1] * axis_
@@ -207,7 +206,7 @@ def get_shape_and_bias(shape_x, shape_bias, axis_, num_axes, bias_from_blob, ran
     else:
         if length_bias == 1 and shape_bias[0] == 1:
             shape = [1] * length_x
-            bias_range = ((1, 1), ) * length_x
+            bias_range = ((1, 1),) * length_x
         else:
             left_length = length_x - length_bias - axis_
             shape_left = [1] * axis_
@@ -233,7 +232,7 @@ def _check_dtype(dtype_x, dtype_bias):
     -------
     None
     """
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float32" or dtype_bias == "float32":
             error_detail = "float32 is not support in HISI"
             error_manager_vector.raise_err_two_input_dtype_invalid("bias", "x", "bias",
@@ -339,7 +338,7 @@ def bias(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
 
     if length_x_ori == 4:
         _param_bias_check(shape_x, shape_bias)
-        shape_bias_new, range_bias_new  = _get_param_bias_shape_and_range(shape_x, shape_bias, range_bias)
+        shape_bias_new, range_bias_new = _get_param_bias_shape_and_range(shape_x, shape_bias, range_bias)
     else:
         _check_shape_axis(shape_x, shape_bias, axis, num_axes, bias_from_blob)
 

@@ -17,15 +17,15 @@ dynamic space_to_batch_nd
 """
 # pylint: disable=unused-import
 import te.lang.dynamic
-from te import platform as tbe_platform
 from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 # max int32
-MAX_INT32 = 2**31 - 1
+MAX_INT32 = 2 ** 31 - 1
 # tiling param num
 TILING_ARG_NUM = 32
 # reserved ub size
@@ -63,7 +63,7 @@ class SpaceToBatchND:
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // EIGHT_BIT
+        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // EIGHT_BIT
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
         self.ub_ele = self.ub_size // self.dtype_size
         self.blk_ele = BLOCK_BYTES // self.dtype_size
@@ -192,8 +192,8 @@ class SpaceToBatchND:
         start = (self.pads_t - idx_bh + self.block_h - 1) // self.block_h
         end = (self.pads_t + self.input_h - idx_bh + self.block_h - 1) // self.block_h
         offset_gm_in = (core_idx * self.one_core_ele + ele_idx) * self.input_h * self.input_w * \
-                        self.channel_zero + (idx_bh + start * self.block_h - self.pads_t) * self.input_w * \
-                        self.channel_zero
+                       self.channel_zero + (idx_bh + start * self.block_h - self.pads_t) * self.input_w * \
+                       self.channel_zero
         offset_ub_in = start * self.output_w * self.block_w * self.channel_zero + self.pads_l * self.channel_zero
         src_stride_out = (self.block_h - 1) * self.input_w * self.channel_zero // self.blk_ele
         dst_stride_out = (self.pads_l + self.pads_r) * self.channel_zero // self.blk_ele

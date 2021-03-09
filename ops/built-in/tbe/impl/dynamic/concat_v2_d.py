@@ -22,7 +22,7 @@ concat_v2_d: Concatenates tensors along one dimension.
 from __future__ import absolute_import
 import math
 
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
@@ -66,7 +66,7 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
     :return: [h_64_mask, l_64_mask]
     """
     dtype_size = common_util.get_data_size(dtype)
-    if not tbe_platform.cce_conf.api_check_support("tik.vadd", dtype):
+    if not tbe_platform.api_check_support("tik.vadd", dtype):
         ori_dtype_size = common_util.get_data_size(dtype)
         covert_dtype_map = {
             1: "float16",
@@ -115,6 +115,7 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
                 with instance.else_scope():
                     l_64_mask.set_as(l_64_mask & -1)
     return [h_64_mask, l_64_mask]
+
 
 def _vadd(instance: tik.Tik, mask, dst: tik.Tensor, src0: tik.Tensor, src1: tik.Tensor, repeat_times,
           dst_blk_stride, src0_blk_stride, src1_blk_stride,
@@ -165,7 +166,7 @@ def _concat_ub_vadd(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_ind
     if dst.dtype != src.dtype:
         raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
 
-    if not tbe_platform.cce_conf.api_check_support("tik.vadd", dst.dtype):
+    if not tbe_platform.api_check_support("tik.vadd", dst.dtype):
         raise RuntimeError("{} is not supported by vadd.".format(dst.dtype))
 
     dtype_size = common_util.get_data_size(dst.dtype)
@@ -223,6 +224,7 @@ def _data_move_all_align(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor
             out_addr = (burst + dst_stride) * row_idx * block_element
             ub_addr = burst * row_idx * block_element
             ub2gm(inst, dst[out_addr:], src[ub_addr:], burst * block_element, burst)
+
 
 # pylint:disable=too-many-instance-attributes,too-few-public-methods
 class ConcatV2:
@@ -731,6 +733,7 @@ class ConcatV2:
                                                inner_dims // self.ele_each_block,
                                                0, (output_inner_dims - inner_dims) // self.ele_each_block)
                         ub2gm(inst, output_tensor[output_addr:], out_ub, do_lines * output_inner_dims)
+
                 ping_pong_func(loop_idx * 2, in_ub_list1, out_ub1)
                 ping_pong_func(loop_idx * 2 + 1, in_ub_list2, out_ub2)
 
@@ -937,7 +940,7 @@ class ConcatV2:
         _concat_small_inner_each_core_multi_line
         """
         inst = self.tik_instance
-        if tbe_platform.cce_conf.api_check_support("tik.vadd", self.dtype):
+        if tbe_platform.api_check_support("tik.vadd", self.dtype):
             with inst.if_scope(self.tiling_param.max_inner_dim >= self.ele_each_block):
                 self._concat_small_inner_each_core_multi_line_by_vadd(core_idx, out_dims, ub_can_copy_lines)
             with inst.else_scope():
@@ -1030,6 +1033,7 @@ class ConcatV2:
                                           inner_dim * repeat_times * cycle_lines + pre_redundant_cnt)
                                     _concat_ub_vadd(inst, out_ub, tmp_ub, out_ub_idx, pre_redundant_cnt, inner_dim,
                                                     repeat_times, output_inner_burst, inner_dim_burst)
+
                                 ping_pong_func(out_ub, tmp_ub0, row_idx + line_idx * 2)
                                 ping_pong_func(out_ub, tmp_ub1, row_idx + line_idx * 2 + 1)
                         with inst.for_range(row_idx + repeat_times * cycle_lines, row_idx + lines) as line_idx:
@@ -1173,7 +1177,7 @@ class ConcatV2:
         """
         _check_need_convert2float16
         """
-        if not tbe_platform.cce_conf.api_check_support("tik.vnchwconv", self.dtype) or self.type_size != 2:
+        if not tbe_platform.api_check_support("tik.vnchwconv", self.dtype) or self.type_size != 2:
             return True
         return False
 

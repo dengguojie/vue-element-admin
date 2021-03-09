@@ -19,7 +19,7 @@ power
 import math
 from functools import reduce as reduceIns
 
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
@@ -144,7 +144,6 @@ def power_scalar(input_x, base, power):
     ones = tbe.vadds(tmp_zero, 1)
     zeros = tmp_zero
 
-
     if base > 0.0:
         res = tbe.vmuls(ones, math.pow(base, power))
         return res
@@ -189,6 +188,7 @@ def zero_diff_scale_compute(input_x, shift, power):
     res = power_scalar(input_x, shift, power)
 
     return res
+
 
 # pylint: disable=locally-disabled,unused-argument,too-many-arguments
 # pylint: disable=too-many-locals

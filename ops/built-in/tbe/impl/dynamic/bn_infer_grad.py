@@ -16,7 +16,7 @@
 bn_infer_grad
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -66,7 +66,7 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
 
     is_cast = False
     if grads.dtype == "float16" and \
-           tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
         is_cast = True
         grads = tbe.cast_to(grads, "float32")
 
@@ -118,7 +118,7 @@ def _check_shape(shape_grads, shape_batch_variance):
         error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance", error_detail)
 
     if shape_batch_variance[0] != 1 or shape_batch_variance[2] != 1 \
-       or shape_batch_variance[3] != 1:
+            or shape_batch_variance[3] != 1:
         error_detail = "Dimensions except Dimension C must be one for shape_batch_mean"
         error_manager_vector.raise_err_input_shape_invalid("bn_infer_grad", "batch_variance", error_detail)
 
@@ -174,7 +174,7 @@ def bn_infer_grad(grads, scale, batch_variance,
     schedules, tensors = [], []
     for (_grads, _scale, _batch_variance) in ins:
         with tbe.compute():
-            shape_grads, shape_scale, shape_batch_variance = shape_util.variable_shape([_grads, 
+            shape_grads, shape_scale, shape_batch_variance = shape_util.variable_shape([_grads,
                                                                                         _scale,
                                                                                         _batch_variance])
             grads_input = tvm.placeholder(shape_grads, name="grads_input",

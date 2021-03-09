@@ -37,7 +37,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
@@ -66,7 +66,7 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     dtype = y.dtype
     dtype_1 = dtype
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
         dtype = "float32"

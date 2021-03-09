@@ -17,7 +17,7 @@ reciprocal
 """
 from functools import reduce as reduce_ins
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -47,8 +47,8 @@ def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
     -------
     res: TVM tensor
     """
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
-                                               "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vdiv",
+                                      "float32"):
         dtype = input_x.dtype
         shape = shape_util.shape_to_list(input_x.shape)
         if dtype == "float16":

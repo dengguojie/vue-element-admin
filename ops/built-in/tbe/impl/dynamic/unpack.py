@@ -21,8 +21,7 @@ from enum import Enum
 from enum import unique
 
 from impl.util.platform_adapter import tvm
-import te.platform as tbe_platform
-from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
 from te.platform import cce_build
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
@@ -49,6 +48,7 @@ class CompileVar:
     """
     Compile var
     """
+
     def __init__(self, name, bound):
         self.tvm_var = tvm.var(name)
         self.name = name
@@ -125,25 +125,24 @@ class Unpack:
         if self.output_num is not None and x_shape[axis] != -1:
             if self.output_num != x_shape[axis]:
                 error_manager_vector.raise_err_specific_reson(self.kernel_name,
-                                                             "the num must be equal to x_shape[axis]")
+                                                              "the num must be equal to x_shape[axis]")
         if self.output_num is None:
             self.output_num = x_shape[axis]
         if self.output_num == -1:
-            error_manager_vector.raise_err_specific_reson(self.kernel_name, 
+            error_manager_vector.raise_err_specific_reson(self.kernel_name,
                                                           "the number of outputs is unknown, do not support")
         # 1536B means stack holding the param provided to the platform,
         # 1 param takes 8 bytes, needs Multiple output param and 1 input param and 1 input dynamic_param
         # mini has more parameters (offset, index) than cloud
         compile_platform = tbe_platform.get_soc_spec("SOC_VERSION")
-        if compile_platform in ("Ascend310", ):
+        if compile_platform in ("Ascend310",):
             max_num = (1536 // 3) // 8 - 2
         else:
             max_num = 1536 // 8 - 2
         if self.output_num > max_num:
             error_manager_vector.raise_err_input_param_not_in_range(self.kernel_name, 'num',
                                                                     1, max_num, self.output_num)
-    
-    
+
     def _init_params(self):
         """
         Init params info of unpack op
@@ -154,7 +153,7 @@ class Unpack:
         self.dtype_size = tbe_platform.get_bit_len(self.dtype) // 8
         one_block_bytes_size = tbe_platform.VECTOR_INST_BLOCK_WIDTH // tbe_platform.VECTOR_INST_BLOCK_NUM
         self.ele_per_block = one_block_bytes_size // self.dtype_size
-        #each output requires 192B for reg buf
+        # each output requires 192B for reg buf
         self.bound_upper = (self.ub_size - self.output_num * 192) // self.dtype_size
 
     def _trans_input_shape(self, axis):
@@ -222,7 +221,7 @@ class Unpack:
         for idx, _ in enumerate(self.output_shape):
             if idx == self.new_axis:
                 input_index[idx] = input_index[idx] + offset
-            output_index += (input_index[idx], )
+            output_index += (input_index[idx],)
         return output_index
 
     # pylint: disable=unnecessary-lambda
@@ -271,6 +270,7 @@ class Unpack:
                                      name="res" + str(i))
             self.res_tensor_list.append(res_tensor)
             offset = offset + self.output_shape[self.new_axis]
+
         # create virtual node
         def _add_compute(*index):
             virtual_tensor = self.res_tensor_list[0](*index)

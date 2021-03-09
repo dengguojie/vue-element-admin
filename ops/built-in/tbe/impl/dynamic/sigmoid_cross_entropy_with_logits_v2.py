@@ -15,7 +15,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 sigmoid_cross_entropy_with_logits_v2
 """
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import OpImplMode
+
 # define a scalar, value = 1
 SCALAR_ONE = 1
 # define a scalar, value = 0
@@ -62,7 +63,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
     """
     predict_dtype = predict.dtype
 
-    is_support_float32 = tbe_platform.cce_conf.api_check_support("tbe.vmul", "float32")
+    is_support_float32 = tbe_platform.api_check_support("tbe.vmul", "float32")
 
     if is_support_float32:
         if predict_dtype == "float16":

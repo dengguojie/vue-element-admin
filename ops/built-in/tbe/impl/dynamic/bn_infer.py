@@ -16,7 +16,7 @@
 bn_infer
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -137,7 +137,7 @@ def bn_infer_compute(x, scale, offset, mean, variance,
     # compute the batch normalization of x
     is_cast = False
     if x.dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         is_cast = True
         x = tbe.cast_to(x, "float32")
         multiplier = tbe.cast_to(multiplier, "float32")
@@ -204,7 +204,7 @@ def bn_infer(x, scale, offset, mean, variance, y,
     for (_x, _scale, _offset, _mean, _variance) in ins:
         with tbe.compute():
             shape_x, shape_scale, shape_offset, shape_mean, shape_variance = \
-            shape_util.variable_shape([_x, _scale, _offset, _mean, _variance])
+                shape_util.variable_shape([_x, _scale, _offset, _mean, _variance])
             x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
             scale_input = tvm.placeholder(shape_scale, name="scale_input", dtype=dtype_scale.lower())
             offset_input = tvm.placeholder(shape_offset, name="offset_input", dtype=dtype_offset.lower())

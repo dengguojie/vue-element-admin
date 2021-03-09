@@ -31,7 +31,7 @@ rsqrt
     [1] All : shape size limit is 2147483648.
 """
 
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
@@ -103,7 +103,6 @@ def _compute(data_input):
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-
 def rsqrt(x, y, kernel_name="rsqrt_cce"):
     """
     Algrithm: rsqrt(x) = 1 / sqrt(x)  where x > 0

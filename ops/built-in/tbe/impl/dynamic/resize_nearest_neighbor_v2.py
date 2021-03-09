@@ -22,7 +22,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_tik_comm_func
 
-
 # max uint16
 MAX_UINT16 = 2 ** 16 - 1
 # max int64
@@ -40,6 +39,7 @@ class ResizeNearestNeighbor:
     Function: use to store ResizeNearestNeighbor base parameters
     Modify: 2021-01-15
     """
+
     def __init__(self, images, size, y, align_corners, half_pixel_centers, kernel_name):
         self.tik_instance = tik.Tik()
         self.images_dtype = images.get("dtype").lower()
@@ -51,8 +51,8 @@ class ResizeNearestNeighbor:
         para_check.check_dtype(self.images_dtype, ("float32", "float16"), param_name="images")
 
         self.kernel_name = kernel_name
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
 
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
@@ -72,7 +72,7 @@ class ResizeNearestNeighbor:
         self.out_gm = self.tik_instance.Tensor(self.images_dtype, [MAX_INT64],
                                                name="out_gm", scope=tik.scope_gm)
         self.stride_threshold = MAX_UINT16 if self.images_dtype in ("float16",) else MAX_UINT16 // 2
-        self.is_suport_vdiv = tbe_platform.cce_conf.api_check_support("tik.vdiv", "float32")
+        self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
         # init tiling data
         self.resize_scale_h = self.tik_instance.Scalar("float32", name="resize_scale_h")
         self.resize_scale_w = self.tik_instance.Scalar("float32", name="resize_scale_w")
@@ -352,6 +352,7 @@ class ResizeNearestNeighbor:
             scalar_w_start_idx.set_as(self.weight_idx_ub[0])
             scalar_w_end_idx.set_as(self.weight_idx_ub[w_do_len - 1])
             input_w_len = scalar_w_end_idx - scalar_w_start_idx + 1
+
             # one sigment h and one sigment w
 
             def _do_single_nc(do_nc_num, _nc_loop_idx):

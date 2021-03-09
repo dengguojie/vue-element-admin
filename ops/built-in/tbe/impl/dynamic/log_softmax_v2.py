@@ -19,7 +19,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
@@ -57,8 +57,8 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
     # increase accuracy
     has_improve_precision = False
     if inp_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                    "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp",
+                                           "float32"):
         data_sub = tbe.cast_to(data_sub, "float32")
         has_improve_precision = True
 

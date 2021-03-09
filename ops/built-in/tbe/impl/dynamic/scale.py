@@ -16,7 +16,7 @@
 dynamic scale
 """
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -168,7 +168,8 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
                 if shape_x[axis_ + i] != shape_scale[i]:
                     error_detail = "Dimensions shape_x and shape_scale must be equal"
                     error_manager_vector.raise_err_two_input_shape_invalid(kernel_name,
-                    "shape_x[axis_ + i]", "shape_scale[i]", error_detail)
+                                                                           "shape_x[axis_ + i]", "shape_scale[i]",
+                                                                           error_detail)
 
         if num_axes == 0:
             if length_scale != 1 or shape_scale[0] != 1:
@@ -198,7 +199,8 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
                 if shape_x[axis_ + i] != shape_scale[i]:
                     error_detail = "Dimensions shape_x and shape_scale must be equal"
                     error_manager_vector.raise_err_two_input_shape_invalid(kernel_name,
-                    "shape_x[axis_ + i]", "shape_scale[i]", error_detail)
+                                                                           "shape_x[axis_ + i]", "shape_scale[i]",
+                                                                           error_detail)
 
 
 def get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob):
@@ -279,7 +281,7 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
                     if "L1_fusion_type" in x_tensor.op.attrs else -1
                 if l1_fusion_type == 1:
                     error_manager_vector.raise_err_specific_reson("scale",
-                    "Scale does not support l1 width fusion")
+                                                                  "Scale does not support l1 width fusion")
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
             in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 \
                 if "addr_type" in x_tensor.op.attrs else False
@@ -297,7 +299,7 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
         shape_rule = "the input format must be 5HD when l1 fusion"
         error_manager_vector.raise_err_check_params_rules(
-        "scale", shape_rule, "x", y.get("format").upper())
+            "scale", shape_rule, "x", y.get("format").upper())
 
     out_l1_flag = False
     out_valid_shape = []
@@ -347,7 +349,7 @@ def _fused_scale_compute(x, scale):
     dtype_scale = scale.dtype
 
     is_cast = False
-    product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":
@@ -392,7 +394,7 @@ def _fused_scale_bias_compute(x, scale, bias):
     dtype_bias = bias.dtype
 
     is_cast = False
-    product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    product_version = tbe_platform.get_soc_spec("SOC_VERSION")
 
     if product_version not in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS"):
         if dtype_x == "float16":

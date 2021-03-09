@@ -17,7 +17,7 @@ dynamic axpy
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -54,9 +54,9 @@ def _add_check_format(x, y):
 
     format_list = ("ND", "NCHW", "NHWC")
     if (list_format[0] == "FRACTAL_NZ" and len(list_shape[1]) == 1 \
-            and list_shape[1][0] % SIZE_SIXTEEN == 0) \
+        and list_shape[1][0] % SIZE_SIXTEEN == 0) \
             or (list_format[1] == "FRACTAL_NZ" and len(list_shape[0]) == 1 \
-            and list_shape[0][0] % SIZE_SIXTEEN == 0):
+                and list_shape[0][0] % SIZE_SIXTEEN == 0):
         format_pattern = 3
     elif list_format[0] == "FRACTAL_NZ" and list_format[1] in format_list \
             and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
@@ -191,7 +191,7 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
         x2 = tbe.broadcast(x2, shape_max)
 
     # start the main logic
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
         if dtype in ("float16", "float32"):
             # fp16 or fp32
             if neg_1_axis_flag:
@@ -212,7 +212,7 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
                     res_tmp = tbe.vadd(input_x_cast, res_muls)
                 else:
                     res_tmp = tbe.vaxpy(input_y_cast, input_x_cast,
-                                                tvm.const(alpha, dtype=to_type))
+                                        tvm.const(alpha, dtype=to_type))
 
                 res = tbe.cast_to(res_tmp, dtype)
 

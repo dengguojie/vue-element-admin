@@ -19,7 +19,7 @@ import collections
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
@@ -116,7 +116,7 @@ def reduce_mean_compute(x,
 
 @register_operator("ReduceMean")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean(x, axes, y,
                 keepdims=False, kernel_name="reduce_mean"):
     """
@@ -146,7 +146,6 @@ def reduce_mean(x, axes, y,
     check_list_x = ("float16", "float32", "int8", "uint8")
     para_check.check_dtype(dtype_lower_x, check_list_x)
     x["rel_pos_to_reduce"] = "before"
-
 
     dtype_axes = axes["dtype"]
     dtype_lower_axes = dtype_axes.lower()

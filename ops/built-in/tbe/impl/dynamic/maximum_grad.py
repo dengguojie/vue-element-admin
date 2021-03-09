@@ -21,13 +21,13 @@ from functools import reduce as reduceIns
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
 
 def _compare_value_int32(data_x, data_y, shape_dz):
     """
@@ -226,7 +226,6 @@ def maximum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
     none.
     """
 
-
     dtype_x = x1.get("dtype").lower()
     dtype_y = x2.get("dtype").lower()
     dtype_dz = grads.get("dtype").lower()
@@ -262,7 +261,7 @@ def maximum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
             if (grad_x, grad_y) == (True, True):
                 sch = tbe.auto_schedule(res)
         schedules.append(sch)
-    #build
+    # build
     config = {"name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)

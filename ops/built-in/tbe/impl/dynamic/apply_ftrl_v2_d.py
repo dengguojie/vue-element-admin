@@ -16,7 +16,7 @@
 dynamic apply_ftrl_v2_d
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -94,7 +94,7 @@ def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
     # cast to float32 for higher accuracy
     has_improve_precision = False
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         var_tmp = tbe.cast_to(var, "float32")
         accum_tmp = tbe.cast_to(accum, "float32")
         linear_tmp = tbe.cast_to(linear, "float32")

@@ -34,7 +34,7 @@ asinh
 import functools
 
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -45,7 +45,6 @@ from impl.util.platform_adapter import OpPatternMode
 from functools import reduce as reduce_ins
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-
 
 # shape limit
 SHAPE_SIZE_LIMIT = 2147483648
@@ -103,7 +102,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     shape = input_x.shape
     has_improve_precision = False
     if inp_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vrec", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vrec", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
 
@@ -119,7 +118,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     result = _log_taylor(data_res, shape)
     res_neg = tbe.vmuls(result, tvm.const(CONST_NEG_ONE, inp_dtype))
 
-    if input_x.dtype == result.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", input_x.dtype):
+    if input_x.dtype == result.dtype and tbe_platform.api_check_support("te.lang.cce.vcmpsel", input_x.dtype):
         res = tbe.vcmpsel(
             input_x,
             tvm.const(CONST_ZERO, input_x.dtype),
@@ -160,7 +159,7 @@ def asinh_compute_cloud(input_x, output_y, kernel_name="asinh"):
     inp_dtype = input_x.dtype.lower()
     has_improve_precision = False
     if inp_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
         inp_dtype = "float32"
@@ -247,7 +246,7 @@ def _log_taylor(data_x, shape):
     data_1 = tbe.vadds(
         data,
         tvm.const(CONST_NEG_ONE * CONST_LOG_THRESHOLD_1, "float32"))
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vcmpsel", "float32"):
         data_sel = tbe.vcmpsel(
             data,
             tvm.const(CONST_LOG_THRESHOLD_1, data.dtype),
@@ -370,7 +369,7 @@ def _log_compute(data_x, res, shape):
 
     """
     # if data > 2, use vlog
-    if data_x.dtype == res.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+    if data_x.dtype == res.dtype and tbe_platform.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
             data_x,
             tvm.const(CONST_TWO, data_x.dtype),
@@ -386,7 +385,7 @@ def _log_compute(data_x, res, shape):
     overflow_value = tbe.vmuls(data_x, CONST_FIVE_TWO)
     res_overflow = tbe.vadds(
         tbe.vlog(overflow_value), LOG_FIVE_TWO)
-    if data_x.dtype == res.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
+    if data_x.dtype == res.dtype and tbe_platform.api_check_support("te.lang.cce.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
             data_x,
             tvm.const(FLOAT_16_MAX, data_x.dtype),
@@ -438,15 +437,15 @@ def asinh(input_x, output_y, kernel_name="asinh"):
             x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]
             fuseshape[0] = reduce_ins(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype = dtype_input,
-                                         name = "data_input")
+            data_input = tvm.placeholder(fuseshape, dtype=dtype_input,
+                                         name="data_input")
             res = asinh_compute_cloud(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
-            
+
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
-    
+
     config = {
         "name": kernel_name,
         "tensor_list": tensors,
@@ -454,4 +453,3 @@ def asinh(input_x, output_y, kernel_name="asinh"):
     }
 
     tbe.build(schedules, config)
-    

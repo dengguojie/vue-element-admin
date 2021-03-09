@@ -16,7 +16,7 @@
 dynamic sigmoid
 """
 from functools import reduce as reduceIns
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check

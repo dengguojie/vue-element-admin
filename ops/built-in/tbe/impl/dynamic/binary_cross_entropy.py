@@ -16,7 +16,7 @@
 binary_cross_entropy
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -27,8 +27,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
-
-
 
 # eps value
 SCALAR_EPS = 1e-12
@@ -69,8 +67,8 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
     trans_dtype = ori_dtype
     shape = shape_util.shape_to_list(x.shape)
     if ori_dtype == "float16" and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32") and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vmul", "float32") and \
+            tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
         x = tbe.cast_to(x, "float32")
         y = tbe.cast_to(y, "float32")
         if weight is not None:
@@ -240,5 +238,5 @@ def binary_cross_entropy(x, y, weight, output,
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
-    config = {"name": kernel_name, "tensor_list":tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

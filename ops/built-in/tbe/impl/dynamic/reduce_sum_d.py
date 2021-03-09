@@ -16,7 +16,7 @@
 dynamic reduce sum
 """
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
@@ -109,7 +109,7 @@ def reduce_sum_d(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     schedules = []
     tensors = []
     ins = classify([x, input_axis], OpPatternMode.REDUCE,
-                                             {"keepdims": keepdims is True})
+                   {"keepdims": keepdims is True})
 
     for (x, axis) in ins:
         with tbe.compute():

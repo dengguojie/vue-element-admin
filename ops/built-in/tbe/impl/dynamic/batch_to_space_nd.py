@@ -17,15 +17,15 @@ dynamic batch_to_space_nd
 """
 # pylint: disable=unused-import
 import te.lang.dynamic
-from te import platform as tbe_platform
 from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 # max int32
-MAX_INT32 = 2**31 - 1
+MAX_INT32 = 2 ** 31 - 1
 # tiling param num
 TILING_ARG_NUM = 32
 # reserved ub size
@@ -61,7 +61,7 @@ class BatchToSpaceND:
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // EIGHT_BIT
+        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // EIGHT_BIT
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
         self.ub_ele = self.ub_size // self.dtype_size
         self.blk_ele = BLOCK_BYTES // self.dtype_size

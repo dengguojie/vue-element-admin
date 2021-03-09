@@ -16,7 +16,6 @@ dynamic reduce_max
 import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
@@ -29,7 +28,7 @@ NONETYPE = type(None)
 # pylint: disable=unused-argument,invalid-name
 # pylint: disable=redefined-argument-from-local
 def reduce_max_compute(x, axes, y, keepdims=None,
-                         kernel_name="reduce_max"):
+                       kernel_name="reduce_max"):
     """
     reduce_max compute
 
@@ -63,7 +62,7 @@ def reduce_max_compute(x, axes, y, keepdims=None,
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator("ReduceMax")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_max(x, axes, y, keepdims=False, kernel_name="reduce_max"):
     """
     reduce a tensor on a certain axes based on max.
@@ -92,7 +91,6 @@ def reduce_max(x, axes, y, keepdims=False, kernel_name="reduce_max"):
     check_list_x = ("float16", "float32", "int8", "uint8", "int32")
     para_check.check_dtype(dtype_lower_x, check_list_x)
     x["rel_pos_to_reduce"] = "before"
-
 
     dtype_axes = axes["dtype"]
     dtype_lower_axes = dtype_axes.lower()

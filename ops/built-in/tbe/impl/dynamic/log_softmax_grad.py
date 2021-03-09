@@ -19,7 +19,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
@@ -58,8 +58,8 @@ def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
     shape1 = shape_util.shape_to_list(input_dy.shape)
     has_improve_precision = False
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                    "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp",
+                                           "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         input_dy = tbe.cast_to(input_dy, "float32")
         has_improve_precision = True
@@ -74,6 +74,7 @@ def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
         result = tbe.cast_to(result, "float16")
 
     return result
+
 
 @register_operator("LogSoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

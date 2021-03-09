@@ -18,7 +18,7 @@ cast_cce
 # pylint: disable=too-many-locals
 from functools import reduce as reduce_ins
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from te.platform.cce_build import build_config
 from impl.util.platform_adapter import shape_util
@@ -123,8 +123,8 @@ def _float16_process(data, dst_type):
         return tbe.cast_to(data, "int32")
 
     if dst_type == "uint8":
-        if not tbe_platform.cce_conf.api_check_support("te.lang.cce.cast_to", "s322f16") and \
-                tbe_platform.cce_conf.api_check_support("te.lang.cce.vmod", "float16"):
+        if not tbe_platform.api_check_support("te.lang.cce.cast_to", "s322f16") and \
+                tbe_platform.api_check_support("te.lang.cce.vmod", "float16"):
             return tbe.cast_to(data, "uint8", True)
         data_int32 = tbe.cast_to(data, "int32")
         data_fp16 = tbe.cast_to(data_int32, "float16")

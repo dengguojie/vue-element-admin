@@ -16,9 +16,8 @@
 atomic_addr_clean
 """
 from impl.util.platform_adapter import tik
-from te import platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
-import te.lang.dynamic
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
@@ -55,7 +54,7 @@ def _tik_get_ub_size(is_double_buffer=True):
     -------
     ub_size
     """
-    ub_size = platform.cce_conf.get_soc_spec(platform.cce_conf.UB_SIZE)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if is_double_buffer:
         return ub_size // 2
     return ub_size
@@ -66,6 +65,7 @@ class DynamicAtomicAddrClean():
     """
     DynamicAtomicAddrClean
     """
+
     # pylint: disable=too-few-public-methods,too-many-statements
     def __init__(self):
         """
@@ -80,8 +80,8 @@ class DynamicAtomicAddrClean():
         None
         """
         self.tik_instance = tik.Tik()
-        self.core_num = platform.cce_conf.get_soc_spec(
-            platform.cce_conf.CORE_NUM)
+        self.core_num = tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
         self.is_double_buffer = True
         self.ub_size = _tik_get_ub_size(self.is_double_buffer)
         self.gm_tensor = self.tik_instance.Tensor("float32", (MAX_INT32,),
@@ -96,6 +96,7 @@ class DynamicAtomicAddrClean():
             CommonInputScalar
             modify date 2020-12-10
             """
+
             def __init__(self, tik_instance):
                 """
                 constructor of class CommonInputScalar
@@ -126,6 +127,7 @@ class DynamicAtomicAddrClean():
             """
             InitInputScalar
             """
+
             def __init__(self, tik_instance):
                 """
                 constructor of class InitInputScalar
@@ -345,5 +347,5 @@ def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):
     obj_dynamic_atomic_addr_clean.addr_clean(kernel_name)
     # add compile info
     tbe_context.get_context().add_compile_info("vars",
-                           {"ub_size": obj_dynamic_atomic_addr_clean.ub_size,
-                            "core_num": obj_dynamic_atomic_addr_clean.core_num})
+                                               {"ub_size": obj_dynamic_atomic_addr_clean.ub_size,
+                                                "core_num": obj_dynamic_atomic_addr_clean.core_num})

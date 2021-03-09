@@ -16,7 +16,7 @@
 dynamic floor_mod
 """
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -54,15 +54,15 @@ def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     shape_y = shape_util.shape_to_list(x2.shape)
 
     shape_x, shape_y, shape = shape_util.broadcast_shapes(shape_x, shape_y,
-                                               param_name_input1="x1",
-                                               param_name_input2="x2")
+                                                          param_name_input1="x1",
+                                                          param_name_input2="x2")
 
     # calculate result, using float32 for better precision
     has_improve_precision = False
     input_x_fp32 = x1
     input_y_fp32 = x2
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
-                                               "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vdiv",
+                                      "float32"):
         input_x_fp32 = tbe.cast_to(x1, "float32")
         input_y_fp32 = tbe.cast_to(x2, "float32")
         has_improve_precision = True
@@ -72,8 +72,8 @@ def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
 
     res = tbe.vdiv(input_x_fp32, input_y_fp32)
 
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.floor",
-                                               res.dtype):
+    if tbe_platform.api_check_support("te.lang.cce.floor",
+                                      res.dtype):
         res = tbe.floor(res)
     else:
         res = tbe.cast_to(res, "float16")

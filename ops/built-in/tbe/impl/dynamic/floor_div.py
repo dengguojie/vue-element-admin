@@ -16,7 +16,7 @@
 dynamic floordiv
 """
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
@@ -54,7 +54,7 @@ def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
         shape_util.broadcast_shapes(input_x_shape, input_y_shape, param_name_input1="input_x",
                                     param_name_input2="input_y")
 
-    if dtype_x != "float16" and tbe_platform.cce_conf.api_check_support(
+    if dtype_x != "float16" and tbe_platform.api_check_support(
             "te.lang.cce.vdiv", "float32"):
         input_x = tbe.cast_to(input_x, 'float32')
         input_y = tbe.cast_to(input_y, 'float32')
@@ -67,7 +67,7 @@ def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
 
     res = tbe.vdiv(input_x, input_y)
 
-    if dtype_x != "float16" and tbe_platform.cce_conf.get_soc_spec(
+    if dtype_x != "float16" and tbe_platform.get_soc_spec(
             "SOC_VERSION") == "Ascend310":
         res = tbe.cast_to(res, "float16")
 

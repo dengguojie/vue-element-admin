@@ -18,7 +18,7 @@ resize_bilinear_v2_grad.py
 
 import te
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
@@ -80,8 +80,8 @@ class ResizeBilinearV2Grad(object):
         self.half_pixel_centers = half_pixel_centers
         self.kernel_name = kernel_name
 
-        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-        self.core_num = tbe_platform.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.block_byte_size = 32
         self.grad_byte_size = self.get_dtype_size(self.grads_dtype)
         self.data_each_block = self.block_byte_size // self.grad_byte_size
@@ -346,7 +346,7 @@ class ResizeBilinearV2Grad(object):
         :param dtype: data type
         :return:
         """
-        dtype_byte_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
+        dtype_byte_size = tbe_platform.get_bit_len(dtype) // 8
         return dtype_byte_size
 
     def get_scale(self, scale_scalar, image_size, grad_size):

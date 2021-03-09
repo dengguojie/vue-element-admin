@@ -22,7 +22,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
-from te import platform as tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -55,7 +54,7 @@ def floor_compute(input_x, output_y, kernel_name="floor"):
 
 
 @register_operator("Floor")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def floor(input_x, output_y, kernel_name="floor"):
     """
@@ -100,4 +99,4 @@ def floor(input_x, output_y, kernel_name="floor"):
         "bool_storage_as_1bit": False
     }
 
-    tbe.build(schedules, config) 
+    tbe.build(schedules, config)

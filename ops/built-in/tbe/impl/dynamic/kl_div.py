@@ -17,7 +17,7 @@ dynamic kl_div
 """
 import functools
 
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
@@ -142,7 +142,7 @@ def _check_parameter(input_x, input_target):
                                                               dtype_target)
 
     if dtype_x == "float32" and not tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
-        error_manager_vector.raise_err_input_dtype_not_supported('kl_div', 'input_x', ('float16', ), dtype_x)
+        error_manager_vector.raise_err_input_dtype_not_supported('kl_div', 'input_x', ('float16',), dtype_x)
 
 
 @register_operator("KLDiv")

@@ -16,7 +16,7 @@ reduce sum
 import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
@@ -64,7 +64,7 @@ def reduce_sum_compute(x, axes, y, keepdims=None, kernel_name="reduce_sum"):
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator("ReduceSum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_sum(x, axes, y, keepdims=False, kernel_name="reduce_sum"):
     """reduce a tensor on a certain axes based on sum.
 

@@ -18,7 +18,7 @@ dynamic sinh
 import functools
 
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
@@ -26,6 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
 # define a scaler , value = -1
 SCALER_NEGATIVE_ONE = -1
 # define a scaler , value = 0.5

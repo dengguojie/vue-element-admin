@@ -16,14 +16,14 @@
 split_v
 """
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-MAX_SHAPE_SIZE = 2**32 - 1
+MAX_SHAPE_SIZE = 2 ** 32 - 1
 # tiling param num
 TILING_ARG_NUM = 24
 # reserved ub size
@@ -89,7 +89,7 @@ def align_value(value, factor):
     -------
     res:
     """
-    return (value + factor - 1) // factor*factor
+    return (value + factor - 1) // factor * factor
 
 
 # pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
@@ -98,6 +98,7 @@ class SplitV():
     """
     Function: class that execute split_v
     """
+
     def __init__(self, x, size_splits, split_dim, y, num_split, kernel_name):
         """
         Init split_v parameters
@@ -136,11 +137,11 @@ class SplitV():
 
         self.split_dim_dtype = split_dim.get("dtype").lower()
         self.output_dtype = y[0].get("dtype").lower()
-        self.input_dsize = tbe_platform.cce_intrin.get_bit_len(self.input_dtype) // EIGHT_BIT
-        self.size_splits_dsize = tbe_platform.cce_intrin.get_bit_len(self.size_splits_dtype) // EIGHT_BIT
+        self.input_dsize = tbe_platform.get_bit_len(self.input_dtype) // EIGHT_BIT
+        self.size_splits_dsize = tbe_platform.get_bit_len(self.size_splits_dtype) // EIGHT_BIT
         self.block_elems = BLOCK_BYTES // self.input_dsize
-        self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
         self.ub_elems = self.ub_size // self.input_dsize
         self.ub_elems = (self.ub_elems // self.block_elems) * self.block_elems
         self.tiling_dtype = "int64"
@@ -1429,8 +1430,8 @@ def split_v(x, size_splits, split_dim, y, num_split, kernel_name="split_v"):
 
     # add compile info
     tbe_context.get_context().add_compile_info("vars", {"core_num": obj.core_num,
-                                    "ub_elems": obj.ub_elems,
-                                    "num_split": obj.num_split
-                                    })
+                                                        "ub_elems": obj.ub_elems,
+                                                        "num_split": obj.num_split
+                                                        })
 
     return tik_inst

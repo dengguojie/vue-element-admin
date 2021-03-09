@@ -19,10 +19,11 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+
 
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
@@ -58,7 +59,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         if (i == -1) or (i == last_dim):
             vcmax_flag = True
     if dtype == "float32" and vcmax_flag and \
-            not tbe_platform.cce_conf.api_check_support(
+            not tbe_platform.api_check_support(
                 "te.lang.cce.reduce_max", "float32"):
         data_max_input = tbe.cast_to(input_x, "float16")
         data_max_output = tbe.reduce_max(data_max_input,
@@ -71,13 +72,13 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     data_subtrac = tbe.vsub(input_x, data_max)
 
     has_improve_precision = False
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
+    if dtype == "float16" and tbe_platform.api_check_support(
             "te.lang.cce.vexp", "float32"):
         data_subtrac = tbe.cast_to(data_subtrac, "float32")
         has_improve_precision = True
     data_exp = tbe.vexp(data_subtrac)
 
-    tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    tbe_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if data_exp.dtype == "float16" and tbe_product in ("Ascend310",):
         data_exp = tbe.cast_to(data_exp, "float32")
         has_improve_precision = True
@@ -90,6 +91,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         output = tbe.cast_to(output, "float16")
 
     return output
+
 
 @register_operator("SoftmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

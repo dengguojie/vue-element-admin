@@ -16,7 +16,7 @@
 select
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -65,9 +65,9 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
         condition = tbe.cast_to(condition, num_dtype)
 
     _, _, shape_max = shape_util.broadcast_shapes(shape_util.shape_to_list(condition.shape),
-                                       shape_util.shape_to_list(x1.shape),
-                                       param_name_input1="condition",
-                                       param_name_input2="x1")
+                                                  shape_util.shape_to_list(x1.shape),
+                                                  param_name_input1="condition",
+                                                  param_name_input2="x1")
 
     if num_dtype in ("int8", "uint8"):
         x1 = tbe.cast_to(x1, "float16")

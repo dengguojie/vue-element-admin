@@ -19,7 +19,7 @@ from functools import reduce as reduceIns
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
@@ -47,7 +47,7 @@ def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     """
     dtype = input_data.dtype
     has_improve_precision = False
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
+    if dtype == "float16" and tbe_platform.api_check_support(
             "te.lang.cce.vsqrt", "float32"):
         input_data = tbe.cast_to(input_data, "float32")
         has_improve_precision = True

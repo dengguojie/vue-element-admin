@@ -34,7 +34,7 @@ asinh_grad
 
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -129,11 +129,11 @@ def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
 
     dtype = y.dtype
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 
-    if tbe_platform.cce_conf.api_check_support('te.lang.cce.vexp', 'float32'):
+    if tbe_platform.api_check_support('te.lang.cce.vexp', 'float32'):
         # use vexp,vdiv api for high efficiency computation
         # cosh(y) = (e^y + e^-y) / 2
         #           (e^2y + 1) / 2e^y

@@ -16,7 +16,7 @@
 binary_cross_entropy_grad
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -26,7 +26,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
-
 
 # define a scalar, value = 1
 SCALAR_ONE = 1
@@ -68,10 +67,10 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
     """
     shape = shape_util.shape_to_list(x.shape)
     dtype = x.dtype
-    support = tbe_platform.cce_conf.api_check_support(
+    support = tbe_platform.api_check_support(
         "te.lang.cce.vmul", "float32")
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         x = tbe.cast_to(x, "float32")
         y = tbe.cast_to(y, "float32")
         grad_output = tbe.cast_to(grad_output, "float32")
@@ -235,5 +234,5 @@ def binary_cross_entropy_grad(x, y, grad_output, weight, output,
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
-    config = {"name": kernel_name, "tensor_list":tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

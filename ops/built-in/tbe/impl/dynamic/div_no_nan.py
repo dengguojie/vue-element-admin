@@ -18,7 +18,7 @@ dynamic tan
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -58,7 +58,7 @@ def div_no_nan_compute(input_x, input_y, ):
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
 
-    if dtype in ("float16", ):
+    if dtype in ("float16",):
         help_min = tvm.const(2 ** (-24), "float16")
         help_rec_one = tvm.const(2 ** 12, "float16")
         help_rec_sec = tvm.const(2 ** 12, "float16")
@@ -70,14 +70,14 @@ def div_no_nan_compute(input_x, input_y, ):
         neg_one = tvm.const(-1, "float32")
 
     y_cmp = tbe.vabs(input_y)
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmins", "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vmins", "float32"):
         y_index_help_1 = tbe.vmins(y_cmp, help_min)
     else:
         cmp_help = tbe.broadcast(help_min, shape_y)
         y_index_help_1 = tbe.vmin(y_cmp, cmp_help)
     y_index_help_2 = tbe.vmuls(y_index_help_1, help_rec_one)
     y_index = tbe.vmuls(y_index_help_2, help_rec_sec)
-    if dtype not in ("float16", ):
+    if dtype not in ("float16",):
         y_index = tbe.vmuls(y_index, help_rec_sec)
 
     data_x_broadcast = tbe.broadcast(input_x, shape_max)
@@ -122,7 +122,7 @@ def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
     check_list = ["float16", "float32", "int32"]
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
-    
+
     if not x_dtype in check_list or not y_dtype in check_list:
         error_detal = "sub only support float16, float32, int32"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name,
@@ -147,4 +147,3 @@ def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
               "name": kernel_name,
               "tensor_list": tensors}
     tbe.build(schedules, config)
-    

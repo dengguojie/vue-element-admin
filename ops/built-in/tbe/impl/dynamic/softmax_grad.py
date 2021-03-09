@@ -19,10 +19,11 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=unused-variable
@@ -55,7 +56,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
     has_improve_precision = False
 
     data_vmul = tbe.vmul(softmax, grad_softmax)
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         data_vmul = tbe.cast_to(data_vmul, "float32")
         grad_softmax = tbe.cast_to(grad_softmax, "float32")
         softmax = tbe.cast_to(softmax, "float32")
@@ -68,6 +69,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
         res = tbe.cast_to(res, "float16")
 
     return res
+
 
 @register_operator("SoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

@@ -16,7 +16,7 @@
 scatter_max/scatter_min/scatter_mul/scatter_div/scatter_sub dynamic shape common schedule
 """
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
@@ -51,11 +51,13 @@ FP16_MAX = 65504
 # fp16 min value
 FP16_MIN = -65504
 
+
 def ceil_div(value_x, value_y):
     """
     do ceil division
     """
     return (value_x + value_y - 1) // value_y
+
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
 # pylint: disable=too-many-public-methods,too-many-statements,too-many-lines,too-many-branches
@@ -64,6 +66,7 @@ class ScatterCommon():
        Function: use to store scatter base parameters
        Modify : 2021-01-25
     """
+
     def __init__(self, var, indices, updates, var_out, use_locking, kernel_name, compute_type):
         """
         Init ScatterCommon parameters
@@ -99,13 +102,13 @@ class ScatterCommon():
 
         self.check_input_params()
 
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
-        self.var_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
+        self.ai_core_num = tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(
+            tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.var_dtype_bytes_size = tbe_platform.get_bit_len(
             self.var_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(
             self.indices_dtype) // EIGHT_BIT
         self.var_data_each_block = BLOCK_BYTES // self.var_dtype_bytes_size
         self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
@@ -116,19 +119,19 @@ class ScatterCommon():
         self.updates_ub_num = self.ub_size_bytes // 8 * 3 // self.var_dtype_bytes_size
         self.indices_ub_num = self.ub_size_bytes // 4 // self.indices_dtype_bytes_size
 
-        if self.compute_type == "vdiv" and not tbe_platform.cce_conf.api_check_support("tik.vdiv", "float32"):
+        if self.compute_type == "vdiv" and not tbe_platform.api_check_support("tik.vdiv", "float32"):
             self.support_vdiv = 0
             self.var_ub_num = self.ub_size_bytes // 16 * 5 // self.var_dtype_bytes_size
             self.updates_ub_num = self.ub_size_bytes // 16 * 5 // self.var_dtype_bytes_size
             self.temp_ub_num = self.ub_size_bytes // 16 * 5 // self.var_dtype_bytes_size
             self.indices_ub_num = self.ub_size_bytes // 16 // self.indices_dtype_bytes_size
 
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM, ), name="tiling_gm", scope=tik.scope_gm)
-        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE, ), name="indices_gm", scope=tik.scope_gm)
-        self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ),
+        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm", scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ), name="out_gm", scope=tik.scope_gm)
+        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="out_gm", scope=tik.scope_gm)
 
         self.var_ub = None
         self.updates_ub = None
@@ -169,7 +172,7 @@ class ScatterCommon():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32", )
+        indices_support_dtype_list = ("int32",)
         var_support_dtype_list = ("float32", "int32", "float16")
         if self.compute_type == "vdiv":
             var_support_dtype_list = ("float32", "float16")
@@ -250,7 +253,7 @@ class ScatterCommon():
                                                     name="var_tile_ub", scope=tik.scope_ubuf)
         self.updates_tile_ub = self.tik_instance.Tensor(self.var_dtype, (self.var_data_each_block,),
                                                         name="updates_tile_ub", scope=tik.scope_ubuf)
-        if self.compute_type == "vdiv" and not tbe_platform.cce_conf.api_check_support("tik.vdiv", "float32"):
+        if self.compute_type == "vdiv" and not tbe_platform.api_check_support("tik.vdiv", "float32"):
             self.temp_ub = self.tik_instance.Tensor(self.var_dtype, (self.temp_ub_num,),
                                                     name="temp_ub", scope=tik.scope_ubuf)
 
@@ -339,7 +342,7 @@ class ScatterCommon():
         if self.compute_type == "vsub":
             self.tik_instance.vec_sub(mask, src1_ub, src1_ub, src2_ub, repeat_times, 8, 8, 8)
         if self.compute_type == "vdiv":
-            if tbe_platform.cce_conf.api_check_support("tik.vdiv", "float32"):
+            if tbe_platform.api_check_support("tik.vdiv", "float32"):
                 self.tik_instance.vdiv(mask, src1_ub, src1_ub, src2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             else:
                 self.tik_instance.vec_rec(mask, self.temp_ub, src2_ub, repeat_times, 8, 8)
@@ -1020,6 +1023,6 @@ class ScatterCommon():
             outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
 
         tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
-                                        "var_size": self.var_dtype_bytes_size,
-                                        "indices_size": self.indices_dtype_bytes_size,
-                                        "support_vdiv": self.support_vdiv})
+                                                            "var_size": self.var_dtype_bytes_size,
+                                                            "indices_size": self.indices_dtype_bytes_size,
+                                                            "support_vdiv": self.support_vdiv})

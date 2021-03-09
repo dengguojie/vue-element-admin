@@ -35,14 +35,13 @@ atan_grad
 import operator
 
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
-
 
 CONST_ONE = 1
 
@@ -71,7 +70,7 @@ def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     scalar_one = tvm.const(CONST_ONE, "float32")
     dtype = y.dtype
 
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 

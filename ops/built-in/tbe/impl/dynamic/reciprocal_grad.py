@@ -16,7 +16,7 @@
 reciprocal_grad
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
@@ -61,17 +61,17 @@ def reciprocal_grad_compute(input_y, input_dy, output_data,
         reciprocal_const = tbe.broadcast(reciprocal_const, shape_y, "int32")
         const_res = tbe.vmul(reciprocal_const, input_y)
     if dtype == "float32" and \
-        tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         const_res = tbe.vmuls(input_y, reciprocal_const)
     if dtype in ("float16", "int8") and \
-        tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         is_cast = True
         reciprocal_const = tvm.const(SCALER_NEGATIVE_ONE, dtype="float32")
         input_y = tbe.cast_to(input_y, "float32")
         input_dy = tbe.cast_to(input_dy, "float32")
         const_res = tbe.vmuls(input_y, reciprocal_const)
     if dtype != "float32" and \
-        not tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
+            not tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         const_res = tbe.vmuls(input_y, reciprocal_const)
     vmul_res = tbe.vmul(const_res, input_y)
     res = tbe.vmul(vmul_res, input_dy)

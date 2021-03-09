@@ -16,7 +16,7 @@
 avg_pool_1d
 """
 
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -24,6 +24,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
 
 C0 = 16
+
 
 # pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
 @register_operator_compute("avg_pool_1d", op_mode="dynamic", support_fusion=False)
@@ -161,7 +162,7 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_blo
             factor_vars.append(fuse_in_factor)
             fuse_in_out, fuse_in_in = sch[res].split(nc1h_in, fuse_in_factor)
             compute_at_axis = fuse_in_out
-            emit_insn_axis =  fuse_in_in
+            emit_insn_axis = fuse_in_in
 
             sch[tensor_div_in_ub].set_storage_bound(wo_ub_factor_max * C0)
             sch[tensor_ub_mul].set_storage_bound(wo_ub_factor_max * C0)

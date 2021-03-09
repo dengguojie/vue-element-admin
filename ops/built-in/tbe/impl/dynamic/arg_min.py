@@ -17,7 +17,7 @@ dynamic arg_min
 """
 # pylint: disable=unused-import
 import te.lang.dynamic
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -61,8 +61,8 @@ class Argmin():
         self.tik_instance = tik.Tik()
         self.dtype_x = dtype_x
         self.kernel_name = kernel_name
-        self.core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype_x) // 8
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.dtype_size = tbe_platform.get_bit_len(self.dtype_x) // 8
         self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE) // self.dtype_size
         self.segment = MAX_SEGMENT_LEN  # only for arg at last dim
         self.data_each_block = 8

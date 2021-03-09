@@ -31,7 +31,7 @@ acos
     [1] All : shape size limit is 2147483648.
 
 """
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util import util_compute
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -42,7 +42,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-
 
 NUM_ONE = 1.0
 NEG_NUM_ONE = -1.0
@@ -127,7 +126,7 @@ def acos_compute(x, y, kernel_name="acos"):
     has_improve_precision = False
     # Change dtype to float32
     if dtype == "float16" and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
         has_improve_precision = True
 
@@ -140,13 +139,13 @@ def acos_compute(x, y, kernel_name="acos"):
     x = tbe.vmul(x, sign)
 
     # x belongs to (0, 2^(-0.5))
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmins", x.dtype):
+    if tbe_platform.api_check_support("te.lang.cce.vmins", x.dtype):
         choice_1 = tbe.vmins(x, tvm.const(BOUNDARY_1, x.dtype))
     else:
         boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, x.dtype), shape)
         choice_1 = tbe.vmin(x, boundary_mask1)
 
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vsubs", choice_1.dtype):
+    if tbe_platform.api_check_support("te.lang.cce.vsubs", choice_1.dtype):
         choice_1 = tbe.vsubs(choice_1, tvm.const(BOUNDARY_1, choice_1.dtype))
     else:
         boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, choice_1.dtype), shape)

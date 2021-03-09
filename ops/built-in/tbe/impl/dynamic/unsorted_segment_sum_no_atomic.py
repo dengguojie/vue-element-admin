@@ -18,7 +18,7 @@ unsorted_segment_sum
 # pylint: disable=too-many-lines
 import te.lang.dynamic
 from impl.util.platform_adapter import tik
-from te import platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 
 # int32 select key
@@ -127,6 +127,7 @@ class UnsortedSegmentSum():
         Function: use to store concat base parameters
         Modify : 2020-12-9
     """
+
     def __init__(self, x_dict, segment_ids_dict, num_segments_dict, y_dict,
                  kernel_name):
         """
@@ -170,6 +171,7 @@ class UnsortedSegmentSum():
             Function: use to store concat base parameters
             Modify : 2020-12-9
             """
+
             def __init__(self, tik_instance, input_dtype, ids_dtype,
                          num_segments_dtype):
                 """
@@ -210,6 +212,7 @@ class UnsortedSegmentSum():
             Function: use to store concat base parameters
             Modify : 2020-12-9
             """
+
             def __init__(self):
                 """
                 constructor of class UbTensor
@@ -233,6 +236,7 @@ class UnsortedSegmentSum():
             Function: use to store concat base parameters
             Modify : 2020-12-9
             """
+
             def __init__(self, tik_instance, num_segments_dtype, ids_dtype):
                 """
                 constructor of class CommonScalar
@@ -267,6 +271,7 @@ class UnsortedSegmentSum():
             Function: use to store concat base parameters
             Modify : 2020-12-9
             """
+
             def __init__(self, tik_instance):
                 """
                 constructor of class Int32IdsScalar
@@ -304,6 +309,7 @@ class UnsortedSegmentSum():
             Function: use to store concat base parameters
             Modify : 2020-12-9
             """
+
             def __init__(self, tik_instance):
                 """
                 constructor of class Int32ENumScalar
@@ -653,7 +659,7 @@ def _enable_atomic_add(tik_inst, dtype):
     -------
     None
     """
-    if platform.api_check_support("tik.set_atomic_add") and dtype == DTYPE_FP32:
+    if tbe_platform.api_check_support("tik.set_atomic_add") and dtype == DTYPE_FP32:
         tik_inst.set_atomic_add(1)
 
 
@@ -669,7 +675,7 @@ def _disable_atomic_add(tik_inst, dtype):
     -------
     None
     """
-    if platform.api_check_support("tik.set_atomic_add") and dtype == DTYPE_FP32:
+    if tbe_platform.api_check_support("tik.set_atomic_add") and dtype == DTYPE_FP32:
         tik_inst.set_atomic_add(0)
 
 
@@ -685,7 +691,7 @@ def _tik_get_ub_size(is_double_buffer=True):
     -------
     ub_size
     """
-    ub_size = platform.cce_conf.get_soc_spec(platform.cce_conf.UB_SIZE) - 512
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - 512
     if is_double_buffer:
         return ub_size // 2
     return ub_size
@@ -703,7 +709,7 @@ def _tik_get_core_num():
     -------
     core num
     """
-    return platform.cce_conf.get_soc_spec(platform.cce_conf.CORE_NUM)
+    return tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
 def _tik_init_ub_tensor_once(tik_inst,
@@ -1617,7 +1623,7 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                                       e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
                                     input_offset_ub = 0
                                     input_n_burst = 1
-                                    input_burst_len =  obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
+                                    input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
                                     _tik_mov_input_gm2ub_continue(tik_inst,
                                                                   obj_gm_tensor.input_gm,
                                                                   obj_ub_tensor.input_ub,
@@ -1836,7 +1842,7 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                                ids_offset_ub,
                                                ids_n_burst,
                                                ids_burst_len)
-                            with tik_inst.for_range(0, obj_int32_ids_input_scalar. ele_num_ub_front_part) as \
+                            with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                     ids_index_front_part:
                                 # visit ids
                                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
@@ -2116,7 +2122,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                                 segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
-                                        index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment) *\
+                                        index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment) * \
                                        obj_int32_e_num_input_scalar.e_num
                     output_offset_ub = 0
                     output_n_burst = 1
@@ -2163,7 +2169,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                                 segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
-                                        index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment_last) *\
+                                        index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment_last) * \
                                        obj_int32_e_num_input_scalar.e_num
                     output_offset_ub = 0
                     output_n_burst = 1
@@ -2217,7 +2223,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                     obj_ub_tensor.output_ub[segment_index_front_core *
                                             obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
 
-            output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) *\
+            output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) * \
                                obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
@@ -2276,7 +2282,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
-                                        obj_int32_e_num_input_scalar.front_num_segment_lastcore) *\
+                                        obj_int32_e_num_input_scalar.front_num_segment_lastcore) * \
                                        obj_int32_e_num_input_scalar.e_num
                     output_offset_ub = 0
                     output_n_burst = 1
@@ -2323,7 +2329,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
-                                        obj_int32_e_num_input_scalar.front_num_segment_lastcore) *\
+                                        obj_int32_e_num_input_scalar.front_num_segment_lastcore) * \
                                        obj_int32_e_num_input_scalar.e_num
                     output_offset_ub = 0
                     output_n_burst = 1
@@ -2380,7 +2386,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                         obj_ub_tensor.output_ub[
                             segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
 
-            output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) *\
+            output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) * \
                                obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
@@ -2715,7 +2721,7 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                             with tik_inst.if_scope(segment_index_front_core + block_index *
                                                    obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
-                                input_offset_gm = (ids_offset_gm + ids_index_last_part) *\
+                                input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                   obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
@@ -2953,7 +2959,7 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
-                                        obj_int32_e_num_input_scalar.front_num_segment_lastcore) *\
+                                        obj_int32_e_num_input_scalar.front_num_segment_lastcore) * \
                                        obj_int32_e_num_input_scalar.e_num
                     output_offset_ub = 0
                     output_n_burst = 1
@@ -3104,6 +3110,6 @@ def unsorted_segment_sum_no_atomic(x_dict, segment_ids_dict, num_segments_dict, 
     obj.unsorted_segment_sum()
     # add compile info
     tbe_context.get_context().add_compile_info("vars",
-                           {"ub_size": obj.ub_size, "core_num": obj.core_num,
-                            "dtype": obj.obj_gm_tensor.input_gm.dtype,
-                            "ub_tensor_num": obj.ub_tensor_num})
+                                               {"ub_size": obj.ub_size, "core_num": obj.core_num,
+                                                "dtype": obj.obj_gm_tensor.input_gm.dtype,
+                                                "ub_tensor_num": obj.ub_tensor_num})

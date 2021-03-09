@@ -16,14 +16,13 @@
 less_equal
 """
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
 SCALAR_MIN_FP32 = 2 ** (-126)
@@ -65,7 +64,8 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)
     shape_x, shape_y, shape_broadcast = shape_util.broadcast_shapes(shape_x, shape_y,
-        param_name_input1="input_x", param_name_input2="input_y")
+                                                                    param_name_input1="input_x",
+                                                                    param_name_input2="input_y")
 
     if dtype_x == "float32":
         scalar_min = tvm.const(SCALAR_MIN_FP32, dtype="float32")
@@ -86,8 +86,8 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
 
     res_max = tbe.vmax(input_x, input_y)
     res_vsub = tbe.vsub(input_y, res_max)
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vabs",
-                                               res_vsub.dtype):
+    if tbe_platform.api_check_support("te.lang.cce.vabs",
+                                      res_vsub.dtype):
         res_vabs = tbe.vabs(res_vsub)
     else:
         res_vsub = tbe.cast_to(res_vsub, "float32")

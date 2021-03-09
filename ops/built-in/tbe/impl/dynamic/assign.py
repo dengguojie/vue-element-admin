@@ -16,13 +16,12 @@
 assign.py
 """
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-
 
 # max int32
 MAX_INT32 = 2 ** 31 - 1
@@ -37,6 +36,7 @@ class Assign:
     """
     Class for Dynamic shape operator Assign
     """
+
     def __init__(self, ref, value, output, kernel_name):
         self.tik_instance = tik.Tik(tik.Dprofile)
         self.ref_dtype = ref.get("dtype").lower()
@@ -55,9 +55,9 @@ class Assign:
                                                                   self.ref_dtype, self.value_dtype)
         self.kernel_name = kernel_name
 
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
-        self.max_burst_len = self.ub_size_bytes // (2*32) # 2 means double buffer, 32 means one burst of UB is 32B
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.max_burst_len = self.ub_size_bytes // (2 * 32)  # 2 means double buffer, 32 means one burst of UB is 32B
 
         if self.ref_dtype in ("int8", "uint8"):
             self.ele_per_block = 32
@@ -138,7 +138,8 @@ class Assign:
                                    inputs=(self.ref_gm, self.value_gm),
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+        tbe_context.get_context().add_compile_info("vars",
+                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
 @register_operator("Assign")

@@ -136,7 +136,7 @@ def apply_power_sign_d_compute(var,
 
     dtype = var.dtype
     if dtype == "float16" and \
-        tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         var = tbe.cast_to(var, "float32")
         m = tbe.cast_to(m, "float32")
         lr = tbe.cast_to(lr, "float32")

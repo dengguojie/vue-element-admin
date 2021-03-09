@@ -31,7 +31,7 @@ atanh
     [1] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -67,8 +67,8 @@ def atanh_compute(x, y, kernel_name="atanh"):
     inp_dtype = x.dtype
     shape = x.shape
 
-    if inp_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32") \
-        and tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32"):
+    if inp_dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32") \
+            and tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
         x = tbe.cast_to(x, "float32")
 
     data_res = _compute(x, shape)

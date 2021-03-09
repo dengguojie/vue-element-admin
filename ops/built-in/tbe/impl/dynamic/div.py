@@ -17,7 +17,7 @@ dynamic div
 """
 # pylint: disable=too-many-locals,unused-argument
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -54,8 +54,8 @@ def div_compute(input_x, input_y, output_z, kernel_name="div"):
                                                             param_name_input2="input_y")
     dtype_x = input_x.dtype
     int_list = ("int8", "uint8", "int32")
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vdiv",
-                                               "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vdiv",
+                                      "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
     input_x = tbe.broadcast(input_x, z_shape)
@@ -63,7 +63,7 @@ def div_compute(input_x, input_y, output_z, kernel_name="div"):
     res = tbe.vdiv(input_x, input_y)
 
     if dtype_x in int_list:
-        if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310":
+        if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend310":
             res = tbe.cast_to(res, "float16")
         res = tbe.floor(res)
 

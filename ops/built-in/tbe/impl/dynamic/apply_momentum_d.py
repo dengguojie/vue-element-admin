@@ -16,7 +16,7 @@
 dynamic apply_momentum_d
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -70,7 +70,7 @@ def apply_momentum_compute_d(var,
 
     # cast to float32 for higher accuracy
     dtype = var.dtype
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         var = tbe.cast_to(var, "float32")
         accum = tbe.cast_to(accum, "float32")
         lr = tbe.cast_to(lr, "float32")

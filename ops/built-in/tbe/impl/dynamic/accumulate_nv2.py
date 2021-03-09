@@ -18,7 +18,7 @@ dynamic accumulate_nv2
 
 import functools
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -26,7 +26,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-
 
 MIN_TENSOR_NUM = 1
 MAX_TENSOR_NUM = 40
@@ -61,13 +60,13 @@ def _accumulate_nv2_compute(input_x, output_y, num, kernel_name='accumulate_nv2'
     result = input_x[0]
     # in order to improve the accuracy, convert float16 to float32
     if dtype == 'float16' and length > 1 and \
-       tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         result = tbe.cast_to(result, 'float32')
 
     for i in range(1, length):
         rhs = input_x[i]
         if dtype == 'float16' and \
-           tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+                tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
             rhs = tbe.cast_to(input_x[i], 'float32')
         result = tbe.vadd(result, rhs)
 
@@ -186,7 +185,7 @@ def accumulate_nv2(input_x, output_y, num, kernel_name="accumulate_nv2"):
                 datas.append(tvm.placeholder(fuse_shape,
                                              name="data_%d" % i,
                                              dtype=dtype))
-            #_accumulate_nv2_compute
+            # _accumulate_nv2_compute
             res = _accumulate_nv2_compute(datas, output_y, num, kernel_name)
             datas.append(res)
             tensors.append(datas[:])

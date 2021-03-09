@@ -31,7 +31,7 @@ asin
     [1] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -40,7 +40,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util import util_compute
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-
 
 NUM_ONE = 1.0
 NEG_NUM_ONE = -1.0
@@ -82,7 +81,7 @@ def _taylor_compute(data_x, x_square=None):
         x_square = tbe.vmul(data_x, data_x)
 
     res = tbe.vmuls(x_square, tvm.const(COEF[TAYLOR_COUNT],
-                                                x_square.dtype))
+                                        x_square.dtype))
     for temp in reversed(range(TAYLOR_COUNT)):
         res = tbe.vadds(res, tvm.const(COEF[temp], x_square.dtype))
         if temp == 0:
@@ -118,7 +117,7 @@ def asin_compute(x, y, kernel_name="asin"):
     dtype = x.dtype
 
     # Change dtype to float32
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
 
     # Sign mask
@@ -128,13 +127,13 @@ def asin_compute(x, y, kernel_name="asin"):
     x = tbe.vmul(x, sign)
 
     # x belongs to (0, 2^(-0.5))
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmins", x.dtype):
+    if tbe_platform.api_check_support("te.lang.cce.vmins", x.dtype):
         choice_1 = tbe.vmins(x, tvm.const(BOUNDARY_1, x.dtype))
     else:
         boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, x.dtype), shape)
         choice_1 = tbe.vmin(x, boundary_mask1)
 
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vsubs", choice_1.dtype):
+    if tbe_platform.api_check_support("te.lang.cce.vsubs", choice_1.dtype):
         choice_1 = tbe.vsubs(choice_1, tvm.const(BOUNDARY_1, choice_1.dtype))
     else:
         boundary_mask1 = tbe.broadcast(tvm.const(BOUNDARY_1, choice_1.dtype), shape)
@@ -224,7 +223,7 @@ def asin(x, y, kernel_name="asin"):
             x_shape = shape_util.variable_shape([_x])
 
             data_input = tvm.placeholder(x_shape[0], dtype=x_dtype,
-                                        name="data_input")
+                                         name="data_input")
 
             res = asin_compute(data_input, y, kernel_name)
             tensors.append([data_input, res])

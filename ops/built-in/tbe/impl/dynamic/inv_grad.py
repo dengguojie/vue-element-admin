@@ -15,7 +15,7 @@
 """
 inv_grad
 """
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import error_manager_vector
@@ -58,8 +58,8 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype=dtype)
     has_improve_precision = False
     if dtype in ("float16", "int8"):
-        if tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls",
-                                                   "float32"):
+        if tbe_platform.api_check_support("te.lang.cce.vmuls",
+                                          "float32"):
             inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype="float32")
             input_y = tbe.cast_to(input_y, "float32")
             input_dy = tbe.cast_to(input_dy, "float32")

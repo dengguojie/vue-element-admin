@@ -16,9 +16,8 @@
 sigmoid_cross_entropy_with_logits
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -41,7 +40,7 @@ def get_broadcast_shapes(input1, input2, input1_name, input2_name):
     x0_shape = shape_util.shape_to_list(input1.shape)
     x1_shape = shape_util.shape_to_list(input2.shape)
     x0_shape, x1_shape, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape, param_name_input1=input1_name,
-                                                   param_name_input2=input2_name)
+                                                              param_name_input2=input2_name)
     return y_shape
 
 
@@ -133,7 +132,8 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
 
 
 @register_operator("SigmoidCrossEntropyWithLogits")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def sigmoid_cross_entropy_with_logits(predict, target, loss, kernel_name="sigmoid_cross_entropy_with_logits"):
     """
     calculating data:

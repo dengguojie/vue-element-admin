@@ -17,7 +17,7 @@ dynamic cos
 """
 import functools
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -58,7 +58,7 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
     # cast to type float32 when type is float16
     has_improve_precision = False
     if dtype.lower() == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vmul", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         dtype = "float32"
         has_improve_precision = True
@@ -110,7 +110,7 @@ def cos(input_x, output_y, kernel_name="cos"):
     """
     input_dtype = input_x.get("dtype").lower()
     check_list = ("float16", "float32")
-    para_check.check_dtype(input_dtype, check_list, param_name = "input_x")
+    para_check.check_dtype(input_dtype, check_list, param_name="input_x")
 
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
@@ -119,8 +119,8 @@ def cos(input_x, output_y, kernel_name="cos"):
             x_shape = shape_util.variable_shape([_input_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype = input_dtype,
-                                         name = "data_input")
+            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+                                         name="data_input")
             res = cos_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():

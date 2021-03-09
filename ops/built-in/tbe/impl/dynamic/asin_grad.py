@@ -33,7 +33,7 @@ asin_grad
     [2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -66,7 +66,7 @@ def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     """
 
     dtype = y.dtype
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 
@@ -149,6 +149,6 @@ def asin_grad(y, dy, z, kernel_name="asin_grad"):
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    #build
+    # build
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

@@ -18,7 +18,7 @@ sqrt_grad
 from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -50,7 +50,7 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     """
 
     dtype = x.dtype.lower()
-    mul_support = tbe_platform.cce_conf.api_check_support("te.lang.cce.vmuls", "float32")
+    mul_support = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
     if dtype == "float32" and not mul_support:
         error_detail = "not support dtype(float32) on this platform!"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "x", 'dx', error_detail)

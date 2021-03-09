@@ -17,7 +17,7 @@ transpose
 
 import te.lang.dynamic
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
@@ -25,9 +25,9 @@ from impl.util.platform_adapter import tbe_context
 
 # pylint: disable=too-many-lines
 # UB size in byte
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 # AICORE count
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 # byte count one block
 BLOCK_BYTE_COUNT = 32
 # repeat up limit for vector

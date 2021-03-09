@@ -20,7 +20,7 @@ gelu
 import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
@@ -33,13 +33,13 @@ CSVALUE = tvm.const(0.044715, "float32")
 
 # pylint: disable=too-many-locals
 def _tanh_parameter_compute(placeholders):
-
     mul_0 = tbe.vmul(placeholders, placeholders)
     pow_0 = tbe.vmul(mul_0, placeholders)
     mul_1 = tbe.vmuls(pow_0, CSVALUE)
     result = tbe.vadd(placeholders, mul_1)
 
     return result
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @register_operator_compute("Gelu", op_mode="dynamic", support_fusion=False)
@@ -68,7 +68,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     has_improve_precision = False
 
     if dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
         input_x = tbe.cast_to(input_x, "float32")
 
@@ -96,7 +96,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     # abs(y)
     mul_0_abs = tbe.vabs(mul_0)
     # -abs(y)
-    mul_0_abs_neg = tbe.vmuls(mul_0_abs, const_2)  
+    mul_0_abs_neg = tbe.vmuls(mul_0_abs, const_2)
 
     # the formula is e^(-abs(y))
     mul_0_abs_neg_exp = tbe.vexp(mul_0_abs_neg)

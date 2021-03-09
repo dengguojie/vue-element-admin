@@ -15,7 +15,7 @@
 """
 relu6_grad
 """
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -73,8 +73,8 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     x0_shape = shape_util.shape_to_list(y_y_esp_min.shape)
     x1_shape = shape_util.shape_to_list(input_grad.shape)
     _, _, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape,
-                                     param_name_input1="y_y_esp_min",
-                                     param_name_input2="input_grad")
+                                                param_name_input1="y_y_esp_min",
+                                                param_name_input2="input_grad")
 
     input1 = tbe.broadcast(y_y_esp_min, y_shape)
     input2 = tbe.broadcast(input_grad, y_shape)
@@ -86,7 +86,8 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
 
 # pylint: disable=too-many-locals
 @register_operator("Relu6Grad")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.KERNEL_NAME)
 def relu6_grad(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """
     Parameters

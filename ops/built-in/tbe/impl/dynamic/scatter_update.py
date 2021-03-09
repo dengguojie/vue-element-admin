@@ -16,7 +16,7 @@
 scatter_update
 """
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
@@ -24,7 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 # max int64 value
-MAX_INT64_VALUE = 2**64 - 1
+MAX_INT64_VALUE = 2 ** 64 - 1
 # tiling param num
 TILING_ARG_NUM = 12
 # reserved ub size
@@ -34,12 +34,14 @@ EIGHT_BIT = 8
 # bytes of one block
 BLOCK_BYTES = 32
 
+
 # pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument,invalid-name
 class ScatterUpdate():
     """
        Function: use to store scatter_update base parameters
        Modify : 2020-10-29
     """
+
     def __init__(self, var, indices, updates, var_out, use_locking, kernel_name):
         """
         Init ScatterUpdate parameters
@@ -72,25 +74,25 @@ class ScatterUpdate():
 
         self.check_input_params()
 
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
-        self.var_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
+        self.ai_core_num = tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(
+            tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.var_dtype_bytes_size = tbe_platform.get_bit_len(
             self.var_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(
             self.indices_dtype) // EIGHT_BIT
         self.var_data_each_block = BLOCK_BYTES // self.var_dtype_bytes_size
         self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
 
         self.updates_ub_num = self.ub_size_bytes // 2 // self.var_dtype_bytes_size
         self.indices_ub_num = self.ub_size_bytes // 2 // self.indices_dtype_bytes_size
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM, ), name="tiling_gm", scope=tik.scope_gm)
-        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE, ), name="indices_gm", scope=tik.scope_gm)
-        self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ),
+        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm", scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE, ), name="out_gm", scope=tik.scope_gm)
+        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="out_gm", scope=tik.scope_gm)
 
         self.updates_ub = None
         self.indices_ub = None
@@ -118,7 +120,7 @@ class ScatterUpdate():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32", )
+        indices_support_dtype_list = ("int32",)
         var_support_dtype_list = ("float32", "float16", "int8", "uint8")
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
@@ -482,8 +484,9 @@ class ScatterUpdate():
             outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
 
         tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
-                                        "var_size": self.var_dtype_bytes_size,
-                                        "indices_size": self.indices_dtype_bytes_size})
+                                                            "var_size": self.var_dtype_bytes_size,
+                                                            "indices_size": self.indices_dtype_bytes_size})
+
 
 # pylint: disable=unused-argument
 @register_operator("ScatterUpdate")

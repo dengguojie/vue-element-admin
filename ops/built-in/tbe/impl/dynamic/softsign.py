@@ -18,7 +18,7 @@ dynamic softsign
 import functools
 
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
@@ -108,7 +108,7 @@ def softsign(x, y, kernel_name="softsign"):
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
-    #build
+    # build
     config = {"name": kernel_name,
               "tensor_list": tensors}
     tbe.build(sch, config)

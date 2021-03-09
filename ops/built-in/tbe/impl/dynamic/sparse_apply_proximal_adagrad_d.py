@@ -17,7 +17,7 @@ sparse_apply_proximal_adagrad_d
 """
 # pylint: disable=unused-argument
 from impl.util.platform_adapter import tik
-from te import platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 import te.lang.dynamic
@@ -79,6 +79,7 @@ class SparseApplyProximalAdagradD:
     """
         Function: use to store concat base parameters
     """
+
     def __init__(self, var_dtype, idx_dtype, kernel_name):
         """
         constructor of class SparseApplyProximalAdagradD
@@ -106,6 +107,7 @@ class SparseApplyProximalAdagradD:
             """
             Function: use to store concat base parameters
             """
+
             def __init__(self, tik_instance, var_dtype, idx_dtype):
                 """
                 constructor of class GmTensor
@@ -165,6 +167,7 @@ class SparseApplyProximalAdagradD:
             """
                 Function: use to store concat base parameters
             """
+
             def __init__(self, tik_instance):
                 """
                 constructor of class Fp32InputScalar
@@ -234,6 +237,7 @@ class SparseApplyProximalAdagradD:
             """
                 Function: use to store concat base parameters
             """
+
             def __init__(self, tik_instance, var_dtype, idx_dtype, ub_size):
                 """
                 constructor of class UbTensor
@@ -266,7 +270,7 @@ class SparseApplyProximalAdagradD:
                                                   name="tmp_ub",
                                                   scope=tik.scope_ubuf)
                 self.grad_ub = tik_instance.Tensor(var_dtype,
-                                        (compute_row(ub_size), last_axis_ceil),
+                                                   (compute_row(ub_size), last_axis_ceil),
                                                    name="grad_ub",
                                                    scope=tik.scope_ubuf)
                 self.idx_ub = tik_instance.Tensor(idx_dtype,
@@ -309,6 +313,7 @@ class SparseApplyProximalAdagradD:
                                                      ub_shape,
                                                      name="var_t1_ub",
                                                      scope=tik.scope_ubuf)
+
         self.obj_fp32_input_scalar = Fp32InputScalar(self.tik_instance)
         self.gm_tensor = \
             GmTensor(self.tik_instance, self.var_dtype, self.idx_dtype)
@@ -321,9 +326,9 @@ class SparseApplyProximalAdagradD:
                                                  name="tiling_ub",
                                                  scope=tik.scope_ubuf)
             self.tik_instance.data_move(tiling_ub, self.gm_tensor.tiling_gm,
-                    0, 1,
-                    TILING_PARAMS_NUM * BYTE_INT32 // BYTE_BLOCK,
-                    0, 0)
+                                        0, 1,
+                                        TILING_PARAMS_NUM * BYTE_INT32 // BYTE_BLOCK,
+                                        0, 0)
             index = 0
             self.obj_fp32_input_scalar.select_key.set_as(tiling_ub[index])
             index = index + 1
@@ -335,18 +340,18 @@ class SparseApplyProximalAdagradD:
             index = index + 1
             self.obj_fp32_input_scalar.idx_last_num.set_as(tiling_ub[index])
             index = index + 1
-            self.obj_fp32_input_scalar.idx_front_burstlen.\
+            self.obj_fp32_input_scalar.idx_front_burstlen. \
                 set_as(tiling_ub[index])
             index = index + 1
-            self.obj_fp32_input_scalar.idx_last_burstlen.\
+            self.obj_fp32_input_scalar.idx_last_burstlen. \
                 set_as(tiling_ub[index])
             index = index + 1
-            self.obj_fp32_input_scalar.one_row_burstlen.\
+            self.obj_fp32_input_scalar.one_row_burstlen. \
                 set_as(tiling_ub[index])
             index = index + 1
             self.obj_fp32_input_scalar.one_row_num.set_as(tiling_ub[index])
             index = index + 1
-            self.obj_fp32_input_scalar.vec_repeat_time.\
+            self.obj_fp32_input_scalar.vec_repeat_time. \
                 set_as(tiling_ub[index])
         # init ub tensor
         with self.tik_instance.new_stmt_scope():
@@ -381,18 +386,18 @@ class SparseApplyProximalAdagradD:
             l1_scalar.set_as(l1_ub_t[0])
             l2_scalar.set_as(l2_ub_t[0])
             self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.lr_ub[0],
-                lr_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+                                         lr_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
             self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.l1_ub[0],
-                l1_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+                                         l1_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
             self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.l2_ub[0],
-                l2_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+                                         l2_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
             self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.one_ub[0],
-                ONE_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+                                         ONE_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
             self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.zero_ub[0],
-                ZERO_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+                                         ZERO_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
             self.tik_instance.vector_dup(MASK_FP32,
-                self.ub_tensor.neg_one_ub[0], NEG_ONE_FP32,
-                self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+                                         self.ub_tensor.neg_one_ub[0], NEG_ONE_FP32,
+                                         self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
 
     def sparse_apply_proximal_adagrad_d(self):
         """
@@ -408,18 +413,18 @@ class SparseApplyProximalAdagradD:
         """
         with self.tik_instance.for_range(0, self.core_num,
                                          block_num=self.core_num) as \
-            block_index:
+                block_index:
             with self.tik_instance.if_scope(block_index <
-                        self.obj_fp32_input_scalar.need_core_num):
+                                            self.obj_fp32_input_scalar.need_core_num):
                 with self.tik_instance.if_scope(
                         self.obj_fp32_input_scalar.select_key ==
                         SELECT_KEY_LAST_AXIS_80_FLOAT):
                     compute_sparse_apply_proximal_adagrad_d(block_index,
-                        self.tik_instance,
-                        self.gm_tensor,
-                        self.ub_tensor,
-                        self.obj_fp32_input_scalar)
-        opt_config = {"out_of_bound_sync_check":True}
+                                                            self.tik_instance,
+                                                            self.gm_tensor,
+                                                            self.ub_tensor,
+                                                            self.obj_fp32_input_scalar)
+        opt_config = {"out_of_bound_sync_check": True}
         self.tik_instance.BuildCCE(inputs=[self.gm_tensor.var_gm,
                                            self.gm_tensor.accum_gm,
                                            self.gm_tensor.lr_gm,
@@ -446,7 +451,7 @@ def _tik_get_ub_size(is_double_buffer=True):
     -------
     ub_size
     """
-    ub_size = platform.cce_conf.get_soc_spec(platform.cce_conf.UB_SIZE)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if is_double_buffer:
         return ub_size // 2
     return ub_size
@@ -464,7 +469,7 @@ def _tik_get_core_num():
     -------
     core num
     """
-    return platform.cce_conf.get_soc_spec(platform.cce_conf.CORE_NUM)
+    return tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
 def compute_sparse_apply_proximal_adagrad_d(block_index,
@@ -497,11 +502,11 @@ def compute_sparse_apply_proximal_adagrad_d(block_index,
             # front part
             tik_instance.data_move(ub_tensor.idx_ub[0],
                                    gm_tensor.idx_gm[idx_mov_index *
-                                            fp32_input_scalar.idx_front_num],
+                                                    fp32_input_scalar.idx_front_num],
                                    0, 1, fp32_input_scalar.idx_front_burstlen,
                                    0, 0)
             with tik_instance.for_range(0, fp32_input_scalar.idx_front_num) as \
-                idx_index:
+                    idx_index:
                 # traversal_idx
                 traversal_idx(tik_instance,
                               gm_tensor,
@@ -515,11 +520,11 @@ def compute_sparse_apply_proximal_adagrad_d(block_index,
             # last part
             tik_instance.data_move(ub_tensor.idx_ub[0],
                                    gm_tensor.idx_gm[idx_mov_index *
-                                            fp32_input_scalar.idx_front_num],
+                                                    fp32_input_scalar.idx_front_num],
                                    0, 1, fp32_input_scalar.idx_last_burstlen,
                                    0, 0)
             with tik_instance.for_range(0, fp32_input_scalar.idx_last_num) as \
-                idx_index:
+                    idx_index:
                 # traversal_idx
                 traversal_idx(tik_instance,
                               gm_tensor,
@@ -561,10 +566,10 @@ def traversal_idx(tik_instance,
     # mov grad
     tik_instance.data_move(ub_tensor.grad_ub[0],
                            gm_tensor.grad_gm[idx_mov_index *
-                                            fp32_input_scalar.idx_front_num *
-                                            fp32_input_scalar.one_row_num +
-                                            idx_index *
-                                            fp32_input_scalar.one_row_num],
+                                             fp32_input_scalar.idx_front_num *
+                                             fp32_input_scalar.one_row_num +
+                                             idx_index *
+                                             fp32_input_scalar.one_row_num],
                            0, 1,
                            fp32_input_scalar.one_row_burstlen,
                            0, 0)
@@ -765,14 +770,14 @@ def sparse_apply_proximal_adagrad_d(var_dict, accum_dict, lr_dict, l1_dict,
 
     indices_dtype = indices_dict.get("dtype").lower()
     para_check.check_dtype(indices_dtype, indices_dtype_check_list,
-                param_name="indices_dict")
+                           param_name="indices_dict")
 
     var_out_dtype = var_out_dict.get("dtype").lower()
     para_check.check_dtype(var_out_dtype, var_dtype_check_list, param_name="var_out_dict")
 
     accum_out_dtype = accum_out_dict.get("dtype").lower()
     para_check.check_dtype(accum_out_dtype, var_dtype_check_list,
-                param_name="accum_out_dict")
+                           param_name="accum_out_dict")
 
     if var_dtype != var_out_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name,
@@ -791,5 +796,5 @@ def sparse_apply_proximal_adagrad_d(var_dict, accum_dict, lr_dict, l1_dict,
     obj.sparse_apply_proximal_adagrad_d()
     # add compile info
     tbe_context.get_context().add_compile_info("vars",
-                           {"ub_size": obj.ub_size, "core_num": obj.core_num,
-                            "ub_tensor_num": obj.ub_tensor_num})
+                                               {"ub_size": obj.ub_size, "core_num": obj.core_num,
+                                                "ub_tensor_num": obj.ub_tensor_num})

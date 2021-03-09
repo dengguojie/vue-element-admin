@@ -17,7 +17,7 @@
 sigmoid_cross_entropy_with_logits_grad
 """
 
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
@@ -26,7 +26,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
-
 
 # define a scalar, value = 1
 SCALAR_ONE = 1

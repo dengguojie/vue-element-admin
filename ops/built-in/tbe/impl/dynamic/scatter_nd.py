@@ -16,7 +16,7 @@
 scatter_nd
 """
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
@@ -36,11 +36,13 @@ BLOCK_BYTES = 32
 # the vector size is 256B
 VECTOR_BYTE_SIZE = 256
 
+
 def ceil_div(value_x, value_y):
     """
     do ceil division
     """
     return (value_x + value_y - 1) // value_y
+
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
 # pylint: disable=too-many-public-methods
@@ -50,6 +52,7 @@ class ScatterNd():
        Function: use to store scatter_nd base parameters
        Modify : 2021-01-21
     """
+
     # pylint: disable=too-many-statements
     def __init__(self, indices, x, shape, y, kernel_name):
         """
@@ -81,13 +84,13 @@ class ScatterNd():
 
         self.check_input_params()
 
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(
-            tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
-        self.updates_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
+        self.ai_core_num = tbe_platform.get_soc_spec(
+            tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(
+            tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.updates_dtype_bytes_size = tbe_platform.get_bit_len(
             self.updates_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(
             self.indices_dtype) // EIGHT_BIT
         self.updates_data_each_block = BLOCK_BYTES // self.updates_dtype_bytes_size
         self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
@@ -111,13 +114,13 @@ class ScatterNd():
             self.last_var_num = None
             self.var_offset = None
 
-        self.out_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE, ), name="out_gm",
+        self.out_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,), name="out_gm",
                                                scope=tik.scope_gm, is_atomic_add=True)
 
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM, ), name="tiling_gm", scope=tik.scope_gm)
-        self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE, ), name="shape_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE, ), name="indices_gm", scope=tik.scope_gm)
-        self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE, ),
+        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm", scope=tik.scope_gm)
 
         self.updates_ub = None
@@ -135,9 +138,9 @@ class ScatterNd():
         """
         Check whether the input parameters is valid or not
         """
-        indices_support_dtype_list = ("int32", )
+        indices_support_dtype_list = ("int32",)
         updates_support_dtype_list = ("float32", "int32", "float16")
-        shape_support_dtype_list = ("int32", )
+        shape_support_dtype_list = ("int32",)
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.updates_dtype, updates_support_dtype_list, param_name="updates")
         para_check.check_dtype(self.shape_dtype, shape_support_dtype_list, param_name="shape")
@@ -1272,9 +1275,10 @@ class ScatterNd():
             outputs=(self.out_gm), flowtable=[self.tiling_gm], config=opt_config)
 
         tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num,
-                                        "updates_size": self.updates_dtype_bytes_size,
-                                        "indices_size": self.indices_dtype_bytes_size,
-                                        "support_atomic": self.support_atomic})
+                                                            "updates_size": self.updates_dtype_bytes_size,
+                                                            "indices_size": self.indices_dtype_bytes_size,
+                                                            "support_atomic": self.support_atomic})
+
 
 # pylint: disable=unused-argument,invalid-name
 @register_operator("ScatterNd")

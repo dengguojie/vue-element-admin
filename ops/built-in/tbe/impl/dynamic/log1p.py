@@ -18,7 +18,7 @@ log1p
 from functools import reduce as reduce_ins
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
@@ -76,8 +76,8 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """
     dtype = input_x.dtype
     shape_in = input_x.shape
-    cloud_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vlog", "float32")
-    mini_check = tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32")
+    cloud_check = tbe_platform.api_check_support("te.lang.cce.vlog", "float32")
+    mini_check = tbe_platform.api_check_support("te.lang.cce.vadd", "float32")
     if dtype == "float16" and cloud_check:
         input_x = tbe.cast_to(input_x, "float32")
     if dtype == "float32" and (not cloud_check):

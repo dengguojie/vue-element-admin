@@ -20,7 +20,7 @@ gelu_grad
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
@@ -67,8 +67,8 @@ def tanh_compute(input_x, output_y, kernel_name="tanh"):
 
     has_improve_precision = False
     if input_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                    "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp",
+                                           "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
 
@@ -108,7 +108,6 @@ def _math_four_compute(placeholders):
 
 
 def _result2_compute(placeholders):
-
     """
     placeholders: data_x
     return: result
@@ -157,7 +156,7 @@ def _result_grad_compute(placeholders):
     mul_result2_3 = tbe.vmul(result2, result3)
 
     # compute res1 = res/x = f1 = x*(0.5*(1+tanh_math_four_result))
-    mul_compute_1 =  tbe.vadds(tanh_math_four_result, 1)
+    mul_compute_1 = tbe.vadds(tanh_math_four_result, 1)
     mul_compute_2 = tbe.vmuls(mul_compute_1, 0.5)
 
     res_grad = tbe.vadd(mul_compute_2, mul_result2_3)
@@ -196,8 +195,8 @@ def gelu_grad_compute(input_dy, input_x, input_y,
 
     has_improve_precision = False
     if input_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp",
-                                                    "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vexp",
+                                           "float32"):
         input_dy = tbe.cast_to(input_dy, "float32")
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
@@ -221,7 +220,6 @@ def gelu_grad_compute(input_dy, input_x, input_y,
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-
 def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     """
     algorithm: gelu_grad
@@ -252,7 +250,7 @@ def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     dy_dtype = input_dy.get("dtype").lower()
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
-    check_list =("float16", "float32")
+    check_list = ("float16", "float32")
     para_check.check_dtype(dy_dtype, check_list, param_name="input_dy")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")

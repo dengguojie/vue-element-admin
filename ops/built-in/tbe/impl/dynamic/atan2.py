@@ -34,7 +34,7 @@ atan2
 
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -128,7 +128,7 @@ def _atan_compute(input_x):
     shape = input_x.shape
     dtype = input_x.dtype
     if dtype == "float16" and \
-        tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
     abs_data = tbe.vabs(input_x)
 
@@ -221,7 +221,7 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     x = tbe.broadcast(x, shape_broadcast)
 
     if dtype_y == "float16" and \
-        tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         x = tbe.cast_to(x, "float32")
 
@@ -235,7 +235,7 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     res_x_lt_zero = tbe.vmuls(mask[CONST_ZERO], tvm.const(CONST_PI, y.dtype))
 
     if x.dtype == res.dtype and \
-        tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", x.dtype):
+            tbe_platform.api_check_support("te.lang.cce.vcmpsel", x.dtype):
         res = tbe.vcmpsel(x, tvm.const(CONST_ZERO, x.dtype), 'eq', y_cmp_zero, res)
     else:
         tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO, x.dtype), shape_broadcast)
@@ -251,7 +251,7 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
 
 @register_operator("Atan2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, 
+                            para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def atan2(x1, x2, y, kernel_name="atan2"):
@@ -292,7 +292,7 @@ def atan2(x1, x2, y, kernel_name="atan2"):
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
-    config = {"name": kernel_name, 
+    config = {"name": kernel_name,
               "tensor_list": tensors,
               "print_ir": False,
               "bool_storage_as_1bit": False}

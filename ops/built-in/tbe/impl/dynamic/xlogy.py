@@ -21,7 +21,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 

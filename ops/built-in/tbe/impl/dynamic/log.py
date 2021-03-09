@@ -20,7 +20,7 @@ from functools import reduce as reduceIns
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
@@ -92,13 +92,13 @@ def log_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
             x_scale_and_shift = tbe.vadds(x_scale_and_shift, tvm.const(shift, dtype=dtype))
 
         if dtype == "float32" and \
-            not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+                not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
             x_scale_and_shift = tbe.cast_to(x_scale_and_shift, "float16")
 
         x_log = tbe.vlog(x_scale_and_shift)
 
         if dtype == "float32" and \
-            not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
+                not tbe_platform.api_check_support("te.lang.cce.vlog", "float32"):
             x_log = tbe.cast_to(x_log, "float32")
 
     if not _isclose(base_scale, 1.0):
@@ -109,7 +109,7 @@ def log_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name=
 
 @register_operator("Log")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
-                 para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def log(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
     """
     calculating data

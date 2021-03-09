@@ -15,7 +15,7 @@
 """
 dynamic adam_apply_one_with_decay
 """
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -130,7 +130,7 @@ def sqrt_compute(x, kernel_name="sqrt"):
     """
     input_dtype = x.dtype
     has_improve_precision = False
-    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vsqrt", "float32"):
+    if input_dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vsqrt", "float32"):
         x = tbe.cast_to(x, "float32")
         has_improve_precision = True
 
@@ -443,13 +443,13 @@ def adam_apply_one_with_decay(input0,
                   "const_input_mul", "const_input_mul1", "const_input_mul2",
                   "const_input_mul3", "const_input_mul4", "data_input_add2"]
 
-    shape0, shape1, shape2, shape3, shape4,\
+    shape0, shape1, shape2, shape3, shape4, \
     shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, \
     shapey = _check_broadcast_shape(input0, input1, input2, input3, input4,
                                     const_mul_x, const_mul1_x, const_mul2_x,
                                     const_mul3_x, const_mul4_x, add2_y)
 
-    #num 0
+    # num 0
     idx = NUM_ZERO
     dynamic_inputs = []
     if DYNAMIC_NUM not in shape0:
@@ -460,7 +460,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(input0)
         dynamic_inputs[-1]["shape"] = shape0
 
-    #num 1
+    # num 1
     idx += 1
     if DYNAMIC_NUM not in shape1:
         data_inputs[idx] = tvm.placeholder(shape1,
@@ -470,7 +470,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(input1)
         dynamic_inputs[-1]["shape"] = shape1
 
-    #num 2
+    # num 2
     idx += 1
     if DYNAMIC_NUM not in shape2:
         data_inputs[idx] = tvm.placeholder(shape2,
@@ -480,7 +480,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(input2)
         dynamic_inputs[-1]["shape"] = shape2
 
-    #num 3
+    # num 3
     idx += 1
     if DYNAMIC_NUM not in shape3:
         data_inputs[idx] = tvm.placeholder(shape3,
@@ -490,7 +490,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(input3)
         dynamic_inputs[-1]["shape"] = shape3
 
-    #num 4
+    # num 4
     idx += 1
     if DYNAMIC_NUM not in shape4:
         data_inputs[idx] = tvm.placeholder(shape4,
@@ -500,7 +500,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(input4)
         dynamic_inputs[-1]["shape"] = shape4
 
-    #num 5
+    # num 5
     idx += 1
     if DYNAMIC_NUM not in shapecm0:
         data_inputs[idx] = tvm.placeholder(shapecm0,
@@ -510,7 +510,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(const_mul_x)
         dynamic_inputs[-1]["shape"] = shapecm0
 
-    #num 6
+    # num 6
     idx += 1
     if DYNAMIC_NUM not in shapecm1:
         data_inputs[idx] = tvm.placeholder(shapecm1,
@@ -520,7 +520,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(const_mul1_x)
         dynamic_inputs[-1]["shape"] = shapecm1
 
-    #num 7
+    # num 7
     idx += 1
     if DYNAMIC_NUM not in shapecm2:
         data_inputs[idx] = tvm.placeholder(shapecm2,
@@ -530,7 +530,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(const_mul2_x)
         dynamic_inputs[-1]["shape"] = shapecm2
 
-    #num 8
+    # num 8
     idx += 1
     if DYNAMIC_NUM not in shapecm3:
         data_inputs[idx] = tvm.placeholder(shapecm3,
@@ -540,7 +540,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(const_mul3_x)
         dynamic_inputs[-1]["shape"] = shapecm3
 
-    #num 9
+    # num 9
     idx += 1
     if DYNAMIC_NUM not in shapecm4:
         data_inputs[idx] = tvm.placeholder(shapecm4,
@@ -550,7 +550,7 @@ def adam_apply_one_with_decay(input0,
         dynamic_inputs.append(const_mul4_x)
         dynamic_inputs[-1]["shape"] = shapecm4
 
-    #num 10
+    # num 10
     idx += 1
     if DYNAMIC_NUM not in shapey:
         data_inputs[idx] = tvm.placeholder(shapey,

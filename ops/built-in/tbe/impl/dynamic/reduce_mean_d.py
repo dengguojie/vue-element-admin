@@ -18,7 +18,7 @@ dynamic reduce mean
 import collections
 
 from impl.util.platform_adapter import tbe
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
@@ -158,7 +158,7 @@ def reduce_mean_d(input_x, output_y, axes,
     schedules = []
     tensors = []
     ins = classify([input_x, input_axis], OpPatternMode.REDUCE,
-                                             {"keepdims": keepdims is True})
+                   {"keepdims": keepdims is True})
     for (_input_x, _axes) in ins:
         with tbe.compute():
             # not support 5HD

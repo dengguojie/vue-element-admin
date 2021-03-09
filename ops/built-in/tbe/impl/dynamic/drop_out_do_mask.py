@@ -17,7 +17,7 @@ drop_out_do_mask.py
 """
 # pylint: disable=too-many-arguments,too-few-public-methods,too-many-instance-attributes
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
@@ -39,6 +39,7 @@ class DropOutDoMask:
     Function: use to store dropoutdomask base parameters
     Modify: 2020-11-16
     """
+
     def __init__(self, var, mask, keep_prob, var_out, kernel_name):
         self.tik_instance = tik.Tik(tik.Dprofile)
         self.var_dtype = var.get("dtype").lower()
@@ -53,8 +54,8 @@ class DropOutDoMask:
             error_manager_vector.raise_err_inputs_dtype_not_equal("DropOutDoMask", "keep_prob", "var",
                                                                   self.keep_prob_dtype, self.var_dtype)
         self.kernel_name = kernel_name
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
         self.mask_pre_core = 16 if self.var_dtype == "float16" else 8
@@ -69,7 +70,7 @@ class DropOutDoMask:
         self.mask_gm = self.tik_instance.Tensor(self.mask_dtype, (MAX_INT32,), name="mask_gm", scope=tik.scope_gm)
         self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT32,), name="out_gm", scope=tik.scope_gm)
 
-        self.is_suport_vdiv = tbe_platform.cce_conf.api_check_support("tik.vdiv", self.keep_prob_dtype)
+        self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", self.keep_prob_dtype)
         # init ub
         self.var_ub = None
         self.tiling_ub = None
@@ -238,7 +239,8 @@ class DropOutDoMask:
                                    inputs=(self.var_gm, self.mask_gm, self.keep_prob_gm),
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
+        tbe_context.get_context().add_compile_info("vars",
+                                                   {"ub_size": self.ub_size_bytes, "core_num": self.ai_core_num})
 
 
 def _tik_fuc_vrec_newton(tik_instance, vrec_ub, origin_ub, do_len, newton_iteration=2, block_num=16):

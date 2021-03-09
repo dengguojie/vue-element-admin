@@ -17,14 +17,14 @@ dynamic max pooling
 """
 import te.lang.dynamic
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 # max int32
-MAX_INT32 = 2**31 - 1
+MAX_INT32 = 2 ** 31 - 1
 # tiling param num
 TILING_ARG_NUM = 24
 # reserved ub size
@@ -62,7 +62,7 @@ class MaxPool:
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.dtype_size = tbe_platform.cce_intrin.get_bit_len(self.dtype) // EIGHT_BIT
+        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // EIGHT_BIT
         self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE) // self.dtype_size
         # reduce need three buffer and open double buffer
         self.one_sixth_ub_ele = self.ub_ele // 6
@@ -796,7 +796,7 @@ class MaxPool:
         def _inner(ub_x, ub_y, ub_z, idx):
             offset_in = idx * self.input_h * self.input_w * C_ZERO + self.offset_gm
             offset_out = idx * self.output_h * self.output_w * C_ZERO + (
-                core_idx * self.one_core_ele + loop_idx * self.h_factor) * self.output_w * C_ZERO
+                    core_idx * self.one_core_ele + loop_idx * self.h_factor) * self.output_w * C_ZERO
             # vector dup and move in
             with self.tik_instance.new_stmt_scope(disable_sync=True):
                 self.tik_instance.data_move(ub_x[self.size_1], self.input_gm[offset_in], 0, self.nburst, self.burst_len,
@@ -915,7 +915,7 @@ class MaxPool:
             def _inner(ub_x, ub_y, ub_z, idx):
                 offset_in = idx * self.input_h * self.input_w * C_ZERO + self.offset_gm
                 offset_out = idx * self.output_h * self.output_w * C_ZERO + (
-                    core_idx * self.one_core_ele + h_idx) * self.output_w * C_ZERO + loop_idx * self.w_factor * C_ZERO
+                        core_idx * self.one_core_ele + h_idx) * self.output_w * C_ZERO + loop_idx * self.w_factor * C_ZERO
                 # vector dup and move in
                 with self.tik_instance.new_stmt_scope(disable_sync=True):
                     self.tik_instance.data_move(ub_x[self.offset_ub], self.input_gm[offset_in], 0, self.nburst,

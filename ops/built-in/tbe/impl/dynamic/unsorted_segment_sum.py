@@ -18,7 +18,7 @@ unsorted_segment_sum
 # pylint: disable=too-many-lines
 import te.lang.dynamic
 from impl.util.platform_adapter import tik
-from te import platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from . import unsorted_segment_sum_no_atomic
@@ -1172,7 +1172,7 @@ def _enable_atomic_add(tik_inst):
     -------
     None
     """
-    if platform.api_check_support("tik.set_atomic_add"):
+    if tbe_platform.api_check_support("tik.set_atomic_add"):
         tik_inst.set_atomic_add(1)
 
 
@@ -1188,7 +1188,7 @@ def _disable_atomic_add(tik_inst):
     -------
     None
     """
-    if platform.api_check_support("tik.set_atomic_add"):
+    if tbe_platform.api_check_support("tik.set_atomic_add"):
         tik_inst.set_atomic_add(0)
 
 
@@ -1204,7 +1204,7 @@ def _tik_get_ub_size(is_double_buffer=True):
     -------
     ub_size
     """
-    ub_size = platform.cce_conf.get_soc_spec(platform.cce_conf.UB_SIZE)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if is_double_buffer:
         return ub_size // 2
     return ub_size
@@ -1222,7 +1222,7 @@ def _tik_get_core_num():
     -------
     core num
     """
-    return platform.cce_conf.get_soc_spec(platform.cce_conf.CORE_NUM)
+    return tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
 def _tik_init_ub_tensor(tik_inst, ub_tensor, init_last_repeat_time, init_times):
@@ -1753,7 +1753,7 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_front_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_front_core - 1):
+                                    mov_times_gm2ub_front_part_front_core - 1):
                         # front part ids front part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar.ele_num_front_core + \
@@ -1775,20 +1775,20 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                             # visit ids
                             input_ub_offset = rows_index * obj_fp32_e_num_input_scalar.e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_front_core + rows_index])
+                                                     input_mov_tims_front_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_front_core + rows_index])
                             output_gm_offset = id_val_scalar * obj_fp32_e_num_input_scalar.e_num
                             _tik_atomic_add_ub2gm_by_id_last_axis_align(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_front_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_front_core - 1):
+                                    mov_times_gm2ub_front_part_front_core - 1):
                         # last part ids front part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar.ele_num_front_core + \
@@ -1810,16 +1810,16 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                             # visit ids
                             input_ub_offset = rows_index * obj_fp32_e_num_input_scalar.e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_front_core + rows_index])
+                                                     input_mov_tims_front_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_front_core + rows_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num
                             _tik_atomic_add_ub2gm_by_id_last_axis_align(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
             with tik_inst.if_scope(
                     ids_mov_times_front_core_index ==
@@ -1842,7 +1842,7 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_front_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_front_core - 1):
+                                    mov_times_gm2ub_last_part_front_core - 1):
                         # front part ids last part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar.ele_num_front_core + \
@@ -1865,9 +1865,9 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                             input_ub_offset = rows_index * \
                                               obj_fp32_e_num_input_scalar.e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_front_core + rows_index])
+                                                     input_mov_tims_last_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_front_core + rows_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar. \
                                                    e_num
@@ -1875,12 +1875,12 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_front_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_front_core - 1):
+                                    mov_times_gm2ub_last_part_front_core - 1):
                         # last part ids last part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -1909,9 +1909,9 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                             input_ub_offset = rows_index * \
                                               obj_fp32_e_num_input_scalar.e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_front_core + rows_index])
+                                                     input_mov_tims_last_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_front_core + rows_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar. \
                                                    e_num
@@ -1919,7 +1919,7 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         # last core
@@ -1952,7 +1952,7 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_last_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_last_core - 1):
+                                    mov_times_gm2ub_front_part_last_core - 1):
                         # front part ids front part last core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -1981,9 +1981,9 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                 obj_fp32_e_num_input_scalar. \
                                     e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_last_core + rows_index])
+                                                     input_mov_tims_front_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_last_core + rows_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar. \
                                                    e_num
@@ -1991,12 +1991,12 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_last_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_last_core - 1):
+                                    mov_times_gm2ub_front_part_last_core - 1):
                         # last part ids front part last core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -2025,9 +2025,9 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                               obj_fp32_e_num_input_scalar. \
                                                   e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_last_core + rows_index])
+                                                     input_mov_tims_front_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_last_core + rows_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar. \
                                                    e_num
@@ -2035,7 +2035,7 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
             with tik_inst.if_scope(
                     ids_mov_times_last_core_index ==
@@ -2061,7 +2061,7 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_last_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_last_core - 1):
+                                    mov_times_gm2ub_last_part_last_core - 1):
                         # front part ids last part last core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -2090,9 +2090,9 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                               obj_fp32_e_num_input_scalar. \
                                                   e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_last_core + rows_index])
+                                                     input_mov_tims_last_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_last_core + rows_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar. \
                                                    e_num
@@ -2100,12 +2100,12 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_last_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_last_core - 1):
+                                    mov_times_gm2ub_last_part_last_core - 1):
                         # last part ids last part last core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -2134,9 +2134,9 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                               obj_fp32_e_num_input_scalar. \
                                                   e_num
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_last_core + rows_index])
+                                                     input_mov_tims_last_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_last_core + rows_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar. \
                                                    e_num
@@ -2144,7 +2144,7 @@ def _tik_atomic_add_last_axis_align_small_e(block_index, tik_inst,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
 
 
@@ -2217,16 +2217,16 @@ def _tik_atomic_add_last_axis_one(
                 _tik_init_ub_tensor(
                     tik_inst, obj_ub_tensor.output_ub,
                     obj_fp32_output_init_input_scalar.
-                    last_repeat_time_front_part_front_core,
+                        last_repeat_time_front_part_front_core,
                     obj_fp32_output_init_input_scalar.
-                    init_times_front_part_front_core)
+                        init_times_front_part_front_core)
                 # ub2gm by id
                 _tik_atomic_add_ub2gm_by_id_last_axis_one(
                     tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                     obj_ub_tensor.output_ub, obj_gm_tensor.output_gm,
                     obj_fp32_e_num_input_scalar.e_ub2gm_front_burst_len,
                     obj_fp32_input_data_input_scalar.
-                    front_rows_front_part_front_core, fp32_ele_num_one_block,
+                        front_rows_front_part_front_core, fp32_ele_num_one_block,
                     id_val_scalar)
             with tik_inst.if_scope(
                     ids_mov_times_front_core_index ==
@@ -2263,16 +2263,16 @@ def _tik_atomic_add_last_axis_one(
                 _tik_init_ub_tensor(
                     tik_inst, obj_ub_tensor.output_ub,
                     obj_fp32_output_init_input_scalar.
-                    last_repeat_time_last_part_front_core,
+                        last_repeat_time_last_part_front_core,
                     obj_fp32_output_init_input_scalar.
-                    init_times_last_part_front_core)
+                        init_times_last_part_front_core)
                 # ub2gm by id
                 _tik_atomic_add_ub2gm_by_id_last_axis_one(
                     tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                     obj_ub_tensor.output_ub, obj_gm_tensor.output_gm,
                     obj_fp32_e_num_input_scalar.e_ub2gm_front_burst_len,
                     obj_fp32_input_data_input_scalar.
-                    front_rows_last_part_front_core, fp32_ele_num_one_block,
+                        front_rows_last_part_front_core, fp32_ele_num_one_block,
                     id_val_scalar)
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         # last core
@@ -2315,16 +2315,16 @@ def _tik_atomic_add_last_axis_one(
                 _tik_init_ub_tensor(
                     tik_inst, obj_ub_tensor.output_ub,
                     obj_fp32_output_init_input_scalar.
-                    last_repeat_time_front_part_last_core,
+                        last_repeat_time_front_part_last_core,
                     obj_fp32_output_init_input_scalar.
-                    init_times_front_part_last_core)
+                        init_times_front_part_last_core)
                 # ub2gm by id
                 _tik_atomic_add_ub2gm_by_id_last_axis_one(
                     tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                     obj_ub_tensor.output_ub, obj_gm_tensor.output_gm,
                     obj_fp32_e_num_input_scalar.e_ub2gm_front_burst_len,
                     obj_fp32_input_data_input_scalar.
-                    front_rows_front_part_last_core, fp32_ele_num_one_block,
+                        front_rows_front_part_last_core, fp32_ele_num_one_block,
                     id_val_scalar)
             with tik_inst.if_scope(
                     ids_mov_times_last_core_index ==
@@ -2361,16 +2361,16 @@ def _tik_atomic_add_last_axis_one(
                 _tik_init_ub_tensor(
                     tik_inst, obj_ub_tensor.output_ub,
                     obj_fp32_output_init_input_scalar.
-                    last_repeat_time_last_part_last_core,
+                        last_repeat_time_last_part_last_core,
                     obj_fp32_output_init_input_scalar.
-                    init_times_last_part_last_core)
+                        init_times_last_part_last_core)
                 # ub2gm by id
                 _tik_atomic_add_ub2gm_by_id_last_axis_one(
                     tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                     obj_ub_tensor.output_ub, obj_gm_tensor.output_gm,
                     obj_fp32_e_num_input_scalar.e_ub2gm_front_burst_len,
                     obj_fp32_input_data_input_scalar.
-                    front_rows_last_part_last_core, fp32_ele_num_one_block,
+                        front_rows_last_part_last_core, fp32_ele_num_one_block,
                     id_val_scalar)
 
 
@@ -2615,7 +2615,7 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor,
                 # cadd front part front core
                 # multi 64 part
                 with tik_inst.if_scope(obj_output_init_scalar.
-                                       init_times_front_part_front_core > 0):
+                                               init_times_front_part_front_core > 0):
                     last_axis_one_modify_multi(
                         tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                         obj_output_init_scalar.init_times_front_part_front_core,
@@ -2657,7 +2657,7 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor,
                 # cadd last part front core
                 # multi 64 part
                 with tik_inst.if_scope(obj_output_init_scalar.
-                                       init_times_last_part_front_core > 0):
+                                               init_times_last_part_front_core > 0):
                     last_axis_one_modify_multi(
                         tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                         obj_output_init_scalar.init_times_last_part_front_core,
@@ -2705,7 +2705,7 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor,
                 # cadd front part last core
                 # multi 64 part
                 with tik_inst.if_scope(obj_output_init_scalar.
-                                       init_times_front_part_last_core > 0):
+                                               init_times_front_part_last_core > 0):
                     last_axis_one_modify_multi(
                         tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                         obj_output_init_scalar.init_times_front_part_last_core,
@@ -2751,7 +2751,7 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor,
                 # cadd last part last core
                 # multi 64 part
                 with tik_inst.if_scope(obj_output_init_scalar.
-                                       init_times_last_part_last_core > 0):
+                                               init_times_last_part_last_core > 0):
                     last_axis_one_modify_multi(
                         tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                         obj_output_init_scalar.init_times_last_part_last_core,
@@ -2830,7 +2830,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_front_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_front_core - 1):
+                                    mov_times_gm2ub_front_part_front_core - 1):
                         # front part ids front part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -2864,20 +2864,20 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_front_part_front_core,
+                                last_repeat_time_front_part_front_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_front_part_front_core)
+                                init_times_front_part_front_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         front_rows_front_part_front_core) as \
                                 rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_front_core + rows_index])
+                                                     input_mov_tims_front_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_front_core + rows_index])
                             # align part
                             with tik_inst.if_scope(obj_fp32_e_num_input_scalar.
-                                                   e_ub2gm_front_burst_len > 0):
+                                                           e_ub2gm_front_burst_len > 0):
                                 input_ub_offset = rows_index * \
                                                   obj_fp32_output_init_input_scalar. \
                                                       last_axis_align_floor
@@ -2887,7 +2887,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -2912,7 +2912,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_front_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_front_core - 1):
+                                    mov_times_gm2ub_front_part_front_core - 1):
                         # last part ids front part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -2946,20 +2946,20 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_last_row_front_part_front_core,
+                                last_repeat_time_last_row_front_part_front_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_last_row_front_part_front_core)
+                                init_times_last_row_front_part_front_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         last_rows_front_part_front_core) as \
                                 rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_front_core + rows_index])
+                                                     input_mov_tims_front_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_front_core + rows_index])
                             # align part
                             with tik_inst.if_scope(obj_fp32_e_num_input_scalar.
-                                                   e_ub2gm_front_burst_len > 0):
+                                                           e_ub2gm_front_burst_len > 0):
                                 input_ub_offset = rows_index * \
                                                   obj_fp32_output_init_input_scalar. \
                                                       last_axis_align_floor
@@ -2969,7 +2969,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -3014,7 +3014,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_front_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_front_core - 1):
+                                    mov_times_gm2ub_last_part_front_core - 1):
                         # front part ids last part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -3048,20 +3048,20 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_last_part_front_core,
+                                last_repeat_time_last_part_front_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_last_part_front_core)
+                                init_times_last_part_front_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         front_rows_last_part_front_core) as \
                                 rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_front_core + rows_index])
+                                                     input_mov_tims_last_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_front_core + rows_index])
                             # align part
                             with tik_inst.if_scope(obj_fp32_e_num_input_scalar.
-                                                   e_ub2gm_front_burst_len > 0):
+                                                           e_ub2gm_front_burst_len > 0):
                                 input_ub_offset = rows_index * \
                                                   obj_fp32_output_init_input_scalar. \
                                                       last_axis_align_floor
@@ -3071,7 +3071,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -3095,7 +3095,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_front_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_front_core - 1):
+                                    mov_times_gm2ub_last_part_front_core - 1):
                         # last part ids last part front core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -3129,20 +3129,20 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_last_row_last_part_front_core,
+                                last_repeat_time_last_row_last_part_front_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_last_row_last_part_front_core)
+                                init_times_last_row_last_part_front_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         last_rows_last_part_front_core) as \
                                 rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_front_core + rows_index])
+                                                     input_mov_tims_last_part_front_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_front_core + rows_index])
                             # align part
                             with tik_inst.if_scope(obj_fp32_e_num_input_scalar.
-                                                   e_ub2gm_front_burst_len > 0):
+                                                           e_ub2gm_front_burst_len > 0):
                                 input_ub_offset = rows_index * \
                                                   obj_fp32_output_init_input_scalar. \
                                                       last_axis_align_floor
@@ -3152,7 +3152,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -3202,7 +3202,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_last_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_last_core - 1):
+                                    mov_times_gm2ub_front_part_last_core - 1):
                         # front part ids front part last core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -3236,20 +3236,20 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_front_part_last_core,
+                                last_repeat_time_front_part_last_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_front_part_last_core)
+                                init_times_front_part_last_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         front_rows_front_part_last_core) as \
                                 rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_last_core + rows_index])
+                                                     input_mov_tims_front_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_last_core + rows_index])
                             # align part
                             with tik_inst.if_scope(obj_fp32_e_num_input_scalar.
-                                                   e_ub2gm_front_burst_len > 0):
+                                                           e_ub2gm_front_burst_len > 0):
                                 input_ub_offset = rows_index * \
                                                   obj_fp32_output_init_input_scalar. \
                                                       last_axis_align_floor
@@ -3259,7 +3259,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -3283,7 +3283,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_front_part_last_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_front_part_last_core - 1):
+                                    mov_times_gm2ub_front_part_last_core - 1):
                         # last part ids front part last core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -3317,20 +3317,20 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_last_row_front_part_last_core,
+                                last_repeat_time_last_row_front_part_last_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_last_row_front_part_last_core)
+                                init_times_last_row_front_part_last_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         last_rows_front_part_last_core) as \
                                 rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_front_part_last_core + rows_index])
+                                                     input_mov_tims_front_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_front_part_last_core + rows_index])
                             # align part
                             with tik_inst.if_scope(obj_fp32_e_num_input_scalar.
-                                                   e_ub2gm_front_burst_len > 0):
+                                                           e_ub2gm_front_burst_len > 0):
                                 input_ub_offset = rows_index * \
                                                   obj_fp32_output_init_input_scalar. \
                                                       last_axis_align_floor
@@ -3340,7 +3340,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -3384,7 +3384,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_last_core_index <
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_last_core - 1):
+                                    mov_times_gm2ub_last_part_last_core - 1):
                         # front part ids last part last core
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
@@ -3418,17 +3418,17 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_last_part_last_core,
+                                last_repeat_time_last_part_last_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_last_part_last_core)
+                                init_times_last_part_last_core)
                         with tik_inst.for_range(0,
                                                 obj_fp32_input_data_input_scalar.
                                                         front_rows_last_part_last_core) as \
                                 rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_last_core + rows_index])
+                                                     input_mov_tims_last_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_last_core + rows_index])
                             # align part
                             with tik_inst.if_scope(
                                     obj_fp32_e_num_input_scalar. \
@@ -3442,7 +3442,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -3466,7 +3466,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                     with tik_inst.if_scope(
                             input_mov_tims_last_part_last_core_index ==
                             obj_fp32_input_data_input_scalar.
-                            mov_times_gm2ub_last_part_last_core - 1):
+                                    mov_times_gm2ub_last_part_last_core - 1):
                         input_offset_gm = block_index * \
                                           obj_fp32_input_data_input_scalar. \
                                               ele_num_front_core + \
@@ -3501,19 +3501,19 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                         _tik_init_ub_tensor(
                             tik_inst, obj_ub_tensor.output_ub,
                             obj_fp32_output_init_input_scalar.
-                            last_repeat_time_last_row_last_part_last_core,
+                                last_repeat_time_last_row_last_part_last_core,
                             obj_fp32_output_init_input_scalar.
-                            init_times_last_row_last_part_last_core)
+                                init_times_last_row_last_part_last_core)
                         with tik_inst.for_range(
                                 0, obj_fp32_input_data_input_scalar.
-                                last_rows_last_part_last_core) as rows_index:
+                                        last_rows_last_part_last_core) as rows_index:
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index *
-                                obj_fp32_input_data_input_scalar.
-                                front_rows_last_part_last_core + rows_index])
+                                                     input_mov_tims_last_part_last_core_index *
+                                                     obj_fp32_input_data_input_scalar.
+                                                 front_rows_last_part_last_core + rows_index])
                             # align part
                             with tik_inst.if_scope(obj_fp32_e_num_input_scalar.
-                                                   e_ub2gm_front_burst_len > 0):
+                                                           e_ub2gm_front_burst_len > 0):
                                 input_ub_offset = rows_index * \
                                                   obj_fp32_output_init_input_scalar. \
                                                       last_axis_align_floor
@@ -3523,7 +3523,7 @@ def _tik_atomic_add_last_axis_not_align_small_e(
                                     tik_inst, obj_ub_tensor.input_ub,
                                     obj_gm_tensor.output_gm,
                                     obj_fp32_e_num_input_scalar.
-                                    e_ub2gm_front_burst_len, input_ub_offset,
+                                        e_ub2gm_front_burst_len, input_ub_offset,
                                     output_gm_offset)
                             # last part
                             input_ub_offset = rows_index * \
@@ -3620,7 +3620,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index])
+                                                     input_mov_tims_front_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3629,7 +3629,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -3654,7 +3654,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index])
+                                                     input_mov_tims_front_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3664,7 +3664,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
             with tik_inst.if_scope(
                     ids_mov_times_front_core_index ==
@@ -3713,7 +3713,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index])
+                                                     input_mov_tims_last_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3722,7 +3722,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -3745,7 +3745,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index])
+                                                     input_mov_tims_last_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3754,7 +3754,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         # last core
@@ -3810,7 +3810,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index])
+                                                     input_mov_tims_front_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3819,7 +3819,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -3845,7 +3845,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index])
+                                                     input_mov_tims_front_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3855,7 +3855,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
             with tik_inst.if_scope(
                     ids_mov_times_last_core_index ==
@@ -3906,7 +3906,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index])
+                                                     input_mov_tims_last_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3916,7 +3916,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -3941,7 +3941,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index])
+                                                     input_mov_tims_last_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -3950,7 +3950,7 @@ def _tik_atomic_add_last_axis_align_big_e(block_index, tik_inst, obj_gm_tensor,
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
 
 
@@ -4029,7 +4029,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index])
+                                                     input_mov_tims_front_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4039,7 +4039,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -4063,7 +4063,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_front_core_index])
+                                                     input_mov_tims_front_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4072,7 +4072,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
                             vadd_mask = obj_fp32_output_init_input_scalar.last_part_vadd_mask
                             with tik_inst.if_scope(vadd_mask > 0):
@@ -4143,7 +4143,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index])
+                                                     input_mov_tims_last_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4153,7 +4153,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -4176,7 +4176,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_front_core_index])
+                                                     input_mov_tims_last_part_front_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4185,7 +4185,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
                             vadd_mask = obj_fp32_output_init_input_scalar.last_part_vadd_mask
                             with tik_inst.if_scope(vadd_mask > 0):
@@ -4254,7 +4254,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index])
+                                                     input_mov_tims_front_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4263,7 +4263,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -4289,7 +4289,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_front_part_last_core_index])
+                                                     input_mov_tims_front_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4298,7 +4298,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
                             vadd_mask = obj_fp32_output_init_input_scalar.last_part_vadd_mask
                             with tik_inst.if_scope(vadd_mask > 0):
@@ -4367,7 +4367,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index])
+                                                     input_mov_tims_last_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4376,7 +4376,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_front_burst_len, input_ub_offset,
+                                    e_ub2gm_front_burst_len, input_ub_offset,
                                 output_gm_offset)
                         with tik_inst.if_scope(
                                 e_mov_index ==
@@ -4401,7 +4401,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 input_offset_ub, input_n_burst, input_burst_len)
                             input_ub_offset = 0
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[
-                                input_mov_tims_last_part_last_core_index])
+                                                     input_mov_tims_last_part_last_core_index])
                             output_gm_offset = id_val_scalar * \
                                                obj_fp32_e_num_input_scalar.e_num + \
                                                e_mov_index * \
@@ -4411,7 +4411,7 @@ def _tik_atomic_add_last_axis_not_align_big_e(
                                 tik_inst, obj_ub_tensor.input_ub,
                                 obj_gm_tensor.output_gm,
                                 obj_fp32_e_num_input_scalar.
-                                e_ub2gm_last_burst_len, input_ub_offset,
+                                    e_ub2gm_last_burst_len, input_ub_offset,
                                 output_gm_offset)
                             vadd_mask = obj_fp32_output_init_input_scalar.last_part_vadd_mask
                             with tik_inst.if_scope(vadd_mask > 0):

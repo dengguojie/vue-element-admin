@@ -16,9 +16,8 @@
 nms_with_mask
 """
 
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
@@ -84,7 +83,7 @@ def _cal_max_boxes_num():
     ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     # output shape is [N,5], including x1,y1,x2,y2,scores
     burst_size = BURST_PROPOSAL_NUM * int32_size + BURST_PROPOSAL_NUM * uint8_size + \
-        BURST_PROPOSAL_NUM * VALID_COLUMN_NUM * fp16_size
+                 BURST_PROPOSAL_NUM * VALID_COLUMN_NUM * fp16_size
     # compute shape is [N,8]
     selected_size_const = ELEMENT_NUM * fp16_size + fp16_size + uint16_size
     # intermediate calculation results
@@ -134,8 +133,8 @@ def _get_src_tensor(ib):
     """
     one_scalar = ib.Scalar(dtype="float16", name="one_scalar", init_value=1.0)
     zero_scalar = ib.Scalar(dtype="float16", name="zero_scalar", init_value=0.0)
-    src0_ub = ib.Tensor("float16", (BURST_PROPOSAL_NUM, ), name="src0_ub", scope=tik.scope_ubuf)
-    src1_ub = ib.Tensor("float16", (BURST_PROPOSAL_NUM, ), name="src1_ub", scope=tik.scope_ubuf)
+    src0_ub = ib.Tensor("float16", (BURST_PROPOSAL_NUM,), name="src0_ub", scope=tik.scope_ubuf)
+    src1_ub = ib.Tensor("float16", (BURST_PROPOSAL_NUM,), name="src1_ub", scope=tik.scope_ubuf)
     ib.vector_dup(128, src0_ub, zero_scalar, 1, 1, 8)
     ib.vector_dup(128, src1_ub, one_scalar, 1, 1, 8)
 
@@ -225,14 +224,14 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                               scope=tik.scope_gm)
 
     # address is 32B aligned
-    out_index = tik_instance.Tensor("int32", (_ceiling(proposal_num_align16, ELEMENT_NUM), ),
+    out_index = tik_instance.Tensor("int32", (_ceiling(proposal_num_align16, ELEMENT_NUM),),
                                     name="out_index",
                                     scope=tik.scope_gm)
-    out_mask = tik_instance.Tensor("uint8", (_ceiling(proposal_num_align16, CONFIG_DATA_ALIGN), ),
+    out_mask = tik_instance.Tensor("uint8", (_ceiling(proposal_num_align16, CONFIG_DATA_ALIGN),),
                                    name="out_mask",
                                    scope=tik.scope_gm)
-    output_index_ub = tik_instance.Tensor("int32", (BURST_PROPOSAL_NUM, ), name="output_index_ub", scope=tik.scope_ubuf)
-    output_mask_ub = tik_instance.Tensor("uint8", (BURST_PROPOSAL_NUM, ), name="output_mask_ub", scope=tik.scope_ubuf)
+    output_index_ub = tik_instance.Tensor("int32", (BURST_PROPOSAL_NUM,), name="output_index_ub", scope=tik.scope_ubuf)
+    output_mask_ub = tik_instance.Tensor("uint8", (BURST_PROPOSAL_NUM,), name="output_mask_ub", scope=tik.scope_ubuf)
     output_proposals_ub = tik_instance.Tensor("float16", (BURST_PROPOSAL_NUM, VALID_COLUMN_NUM),
                                               name="output_proposals_ub",
                                               scope=tik.scope_ubuf)
@@ -251,30 +250,30 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                                                         name="selected_reduced_proposals_ub",
                                                         scope=tik.scope_ubuf)
     # init middle selected area
-    selected_area_ub = tik_instance.Tensor("float16", (proposal_num_align16, ),
+    selected_area_ub = tik_instance.Tensor("float16", (proposal_num_align16,),
                                            name="selected_area_ub",
                                            scope=tik.scope_ubuf)
     # init middle sup_vec
-    sup_vec_ub = tik_instance.Tensor("uint16", (proposal_num_align16, ), name="sup_vec_ub", scope=tik.scope_ubuf)
+    sup_vec_ub = tik_instance.Tensor("uint16", (proposal_num_align16,), name="sup_vec_ub", scope=tik.scope_ubuf)
     tik_instance.vector_dup(16, sup_vec_ub[0], 1, 1, 1, 8)
 
     # init nms tensor
-    temp_area_ub = tik_instance.Tensor("float16", (BURST_PROPOSAL_NUM, ), name="temp_area_ub", scope=tik.scope_ubuf)
+    temp_area_ub = tik_instance.Tensor("float16", (BURST_PROPOSAL_NUM,), name="temp_area_ub", scope=tik.scope_ubuf)
     temp_iou_ub = tik_instance.Tensor("float16", (proposal_num_align16, RPN_PROPOSAL_NUM),
                                       name="temp_iou_ub",
                                       scope=tik.scope_ubuf)
     temp_join_ub = tik_instance.Tensor("float16", (proposal_num_align16, RPN_PROPOSAL_NUM),
                                        name="temp_join_ub",
                                        scope=tik.scope_ubuf)
-    temp_sup_matrix_ub = tik_instance.Tensor("uint16", (proposal_num_align16, ),
+    temp_sup_matrix_ub = tik_instance.Tensor("uint16", (proposal_num_align16,),
                                              name="temp_sup_matrix_ub",
                                              scope=tik.scope_ubuf)
-    temp_sup_vec_ub = tik_instance.Tensor("uint16", (BURST_PROPOSAL_NUM, ),
+    temp_sup_vec_ub = tik_instance.Tensor("uint16", (BURST_PROPOSAL_NUM,),
                                           name="temp_sup_vec_ub",
                                           scope=tik.scope_ubuf)
 
     if support_vreduce and support_v4dtrans:
-        output_mask_f16 = tik_instance.Tensor("float16", (BURST_PROPOSAL_NUM, ),
+        output_mask_f16 = tik_instance.Tensor("float16", (BURST_PROPOSAL_NUM,),
                                               name="output_mask_f16",
                                               scope=tik.scope_ubuf)
         data_zero, data_one = _get_src_tensor(tik_instance)
@@ -285,7 +284,7 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
 
         # init v200 reduce param
         nms_tensor_pattern = tik_instance.Tensor(dtype="uint16",
-                                                 shape=(ELEMENT_NUM, ),
+                                                 shape=(ELEMENT_NUM,),
                                                  name="nms_tensor_pattern",
                                                  scope=tik.scope_ubuf)
         # init ori coord
@@ -436,7 +435,7 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
     tik_instance.BuildCCE(kernel_name=kernel_name_var,
                           inputs=[proposals],
                           outputs=[ret, out_index, out_mask],
-                          flowtable=(tiling_gm, ),
+                          flowtable=(tiling_gm,),
                           output_files_path=None,
                           enable_l2=False)
     return tik_instance
@@ -492,8 +491,8 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
                                                           "box_scores.shape", input_shape)
 
     tik_instance = tik.Tik()
-    tiling_gm = tik_instance.Tensor(DTYPE_INT32, (TILING_PARAMS_NUM, ), name="tiling_gm", scope=tik.scope_gm)
-    tiling_ub = tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM, ), name="tiling_ub", scope=tik.scope_ubuf)
+    tiling_gm = tik_instance.Tensor(DTYPE_INT32, (TILING_PARAMS_NUM,), name="tiling_gm", scope=tik.scope_gm)
+    tiling_ub = tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
     tik_instance.data_move(tiling_ub, tiling_gm, 0, 1, TILING_PARAMS_NUM // BLOCK_INT32, 0, 0)
     boxes_num_scalar = tik_instance.Scalar(dtype="int32", name="boxes_num_scalar")
     boxes_num_scalar.set_as(tiling_ub[0])

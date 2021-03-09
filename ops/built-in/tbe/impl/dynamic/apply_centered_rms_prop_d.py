@@ -48,7 +48,7 @@ apply_centered_rms_prop_d
     [2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
@@ -110,7 +110,7 @@ def apply_centered_rms_prop_d_compute(var,
 
     inp_dtype = var.dtype
     if inp_dtype == "float16" and \
-            tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+            tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         var = tbe.cast_to(var, "float32")
         mg = tbe.cast_to(mg, "float32")
         ms = tbe.cast_to(ms, "float32")

@@ -15,7 +15,6 @@
 """
 truncate_mod
 """
-import te.platform as tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm

@@ -17,10 +17,10 @@ pad_common
 """
 import math
 from impl.util.platform_adapter import tik
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 
 # maximum of gm
-MAX_INT32 = 2**31 - 1
+MAX_INT32 = 2 ** 31 - 1
 # byte of int32, int64
 INT32_BYTE = 4
 INT64_BYTE = 8
@@ -57,9 +57,8 @@ def malloc_tiling_scalar(tik_instance, dtype, name, num):
 
 
 def _init(buf, scalar_list, begin_idx, length):
-
     for i, _ in enumerate(range(length)):
-        scalar_list[i].set_as(buf[begin_idx+i])
+        scalar_list[i].set_as(buf[begin_idx + i])
 
 
 def init_params(obj):
@@ -170,11 +169,11 @@ def make_dict(num0, num1, list0, list1):
     """
     in_dict = {}
     for key, value in enumerate(list0):
-        in_dict.setdefault(value, [key*num0, num0])
+        in_dict.setdefault(value, [key * num0, num0])
 
     length = len(list0)
     for key, value in enumerate(list1):
-        in_dict.setdefault(value, [length+key*num1, num1])
+        in_dict.setdefault(value, [length + key * num1, num1])
 
     return in_dict
 
@@ -183,6 +182,7 @@ class PadInit:
     """
         Function: use to store concat base parameters
     """
+
     def __init__(self, padding, dtype, kernel_name, tik_obj, fuse_mark):
         """
         Function: store pad_d's parameters of compilation
@@ -191,7 +191,7 @@ class PadInit:
         self.ori_padding = padding.copy()
         self.padding = padding.copy()
         self.kernel_name = kernel_name
-        self.num_bit = tbe_platform.cce_intrin.get_bit_len(self.dtype) // 8
+        self.num_bit = tbe_platform.get_bit_len(self.dtype) // 8
         self.fuse_mark = fuse_mark
 
         self.mask = 128
@@ -328,7 +328,7 @@ class PadInit:
         # last param
         self.tiling_arg_kind = 25 + 11
         self.tiling_arg_num = self.axis_amount * 25 + 11
-        self.tiling_buf_size = math.ceil(self.tiling_arg_num/INT64_BLOCK) * INT64_BLOCK
+        self.tiling_buf_size = math.ceil(self.tiling_arg_num / INT64_BLOCK) * INT64_BLOCK
 
         # "Param":list represent begin idx of the param and length in tiling_buf
         num0, num1 = 1, self.axis_amount
@@ -350,7 +350,7 @@ class PadInit:
         set buf tensor(UB)
         """
         self.tiling_buf = tik_instance.Tensor("int64",
-                                              (self.tiling_buf_size, ),
+                                              (self.tiling_buf_size,),
                                               name="tiling_buf",
                                               scope=tik.scope_ubuf)
 
@@ -358,22 +358,22 @@ class PadInit:
         ub_byte = self.max_ub_size - tiling_args_byte
         self.buf_size = ub_byte // self.num_bit // self.mask * self.mask
         self.buf = tik_instance.Tensor(self.dtype,
-                                       (self.buf_size, ),
+                                       (self.buf_size,),
                                        name="buf",
                                        scope=tik.scope_ubuf)
         self.help_buf = tik_instance.Tensor(self.dtype,
-                                            (16, ), name="help_buf",
+                                            (16,), name="help_buf",
                                             scope=tik.scope_ubuf)
 
     def set_src_dst_gm(self, tik_instance):
         """
         set tiling, input, output tensor(gm)
         """
-        self.tiling_gm = tik_instance.Tensor("int64", (self.tiling_buf_size, ),
+        self.tiling_gm = tik_instance.Tensor("int64", (self.tiling_buf_size,),
                                              name="tiling_gm", scope=tik.scope_gm)
 
-        self.input_gm = tik_instance.Tensor(self.dtype, (MAX_INT32, ),
+        self.input_gm = tik_instance.Tensor(self.dtype, (MAX_INT32,),
                                             name="input_gm", scope=tik.scope_gm)
 
-        self.output_gm = tik_instance.Tensor(self.dtype, (MAX_INT32, ),
+        self.output_gm = tik_instance.Tensor(self.dtype, (MAX_INT32,),
                                              name="output_gm", scope=tik.scope_gm)

@@ -33,7 +33,7 @@ dynamic elu
 import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te import platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -60,6 +60,7 @@ def _elu_computer_precision(data, dtype):
     negative_data = tbe.vmins(data, scalar_zero)
     positive_data = tbe.vmaxs(data, scalar_zero)
     return negative_data, positive_data
+
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("Elu", op_mode="dynamic", support_fusion=False)
@@ -88,7 +89,7 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     dtype = data.dtype
 
     has_improve_precision = False
-    if tbe_platform.cce_conf.api_check_support("te.lang.cce.vexp", "float32"):
+    if tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
     if dtype.lower() == "float16" and has_improve_precision:
         data = tbe.cast_to(data, "float32")
@@ -137,7 +138,7 @@ def elu(x, y, alpha=1.0, kernel_name="elu"):
     input_dtype = x.get("dtype").lower()
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="x")
-    if not tbe_platform.cce_conf.api_check_support("te.lang.cce.sum", "float32") and input_dtype == "float32":
+    if not tbe_platform.api_check_support("te.lang.cce.sum", "float32") and input_dtype == "float32":
         error_info = {}
         error_info['errCode'] = 'E80008'
         error_info['param_name'] = 'x'
@@ -156,8 +157,8 @@ def elu(x, y, alpha=1.0, kernel_name="elu"):
             x_shape = shape_util.variable_shape([_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, x_shape[0])
-            data_input = tvm.placeholder(fuseshape, dtype = input_dtype,
-                                         name = "data_input")
+            data_input = tvm.placeholder(fuseshape, dtype=input_dtype,
+                                         name="data_input")
             res = elu_compute(data_input, y, alpha, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():

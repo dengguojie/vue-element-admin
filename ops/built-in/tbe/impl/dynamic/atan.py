@@ -33,7 +33,7 @@ atan
 """
 from impl.util import util_compute
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -41,7 +41,6 @@ import functools
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
-
 
 CONST_POS_ONE = 1.0
 CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
@@ -127,7 +126,7 @@ def atan_compute(x, y, kernel_name="atan"):
     dtype = x.dtype
     shape = x.shape
 
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
     abs_data = tbe.vabs(x)
 

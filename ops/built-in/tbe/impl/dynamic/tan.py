@@ -18,7 +18,7 @@ dynamic tan
 import functools
 
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -167,7 +167,7 @@ def tan(input_x, output_y, kernel_name="tan"):
                 fuseshape,
                 name="data_input",
                 dtype=dtype_input
-                )
+            )
             res = tan_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])
         with tvm.target.cce():
@@ -177,5 +177,5 @@ def tan(input_x, output_y, kernel_name="tan"):
         "print_ir": False,
         "name": kernel_name,
         "tensor_list": [data_input, res]
-        }
+    }
     tbe.build(schedules, config)

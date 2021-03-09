@@ -37,7 +37,6 @@ import operator
 import functools
 import math
 from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tvm

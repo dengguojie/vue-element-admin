@@ -30,7 +30,7 @@ bessel_i0e
   Constraint :
     [1] All : shape size limit is 2147483648.
 """
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify
@@ -82,7 +82,7 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     dtype_input = x.dtype
 
     # chose the type of data in begin
-    if dtype_input == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+    if dtype_input == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         x = tbe.cast_to(x, "float32")
     abs_data = tbe.vabs(x)
 
@@ -120,6 +120,7 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
         after_res = tbe.cast_to(after_res, "float16")
 
     return after_res
+
 
 @register_operator("BesselI0e")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

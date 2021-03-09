@@ -17,21 +17,11 @@
 """
 avg_pool
 """
-import math
 
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import tbe
-import te.platform as tbe_platform
-import te.lang.dynamic as dynamic
 from impl.dynamic.conv2d import conv2d
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import shape_util
-from te.platform.cce_policy import get_L1_info
 from te.utils.error_manager import error_manager_cube as err_man_cube
-from te.utils.error_manager import error_manager_util as err_man
 from impl.util import util_select_op_base
-from impl.util import util_conv2d
-from impl.util.util_cube_dynamic import Conv2dParaProcess
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
