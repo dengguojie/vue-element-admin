@@ -21,7 +21,6 @@ bool BiasTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
                    OpRunInfo& run_info) {
     CHECK((op_info.count("boardcast_bias_shape") > 0),
           "op [%s] : compile info not contain [boardcast_bias_shape]", op_type.c_str());
-    GELOGD("op [%s] Enter BIASTILING inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
     std::vector<int64_t> boardcast_bias_shape = op_info["boardcast_bias_shape"];
 
@@ -30,16 +29,20 @@ bool BiasTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     CHECK(!op_paras.inputs[0].tensor.empty(), "op [%s] : op_paras.inputs[0].tensor cannot be empty", op_type.c_str());
 
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
+    const std::vector<int64_t> input_shape_bias = op_paras.inputs[1].tensor[0].shape;
 
-    //print debug
-    for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
-        GELOGD("BIASTILING boardcast_bias_shape i=%d value=%d", i, boardcast_bias_shape[i]);
-    }
-
-    CHECK(input_shape_x.size() == boardcast_bias_shape.size(), "op [%s] : input_shape_x dims size need same with boardcast_bias",
+    CHECK(input_shape_x.size() == boardcast_bias_shape.size(),
+          "op [%s] : input_shape_x dims size need same with boardcast_bias",
           op_type.c_str());
-    for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
-        boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_x[i] : boardcast_bias_shape[i];
+
+    if (input_shape_x.size() == input_shape_bias.size()) {
+        for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
+            boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_bias[i] : boardcast_bias_shape[i];
+        }
+    } else {
+        for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
+            boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_x[i] : boardcast_bias_shape[i];
+        }
     }
 
     TeOpParas op_paras_tmp = op_paras;
