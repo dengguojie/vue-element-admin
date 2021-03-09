@@ -6094,37 +6094,34 @@ VERIFY_FUNC_REG(AdaptiveAvgPool2d, AdaptiveAvgPool2dVerify);
 
 // ------------AdaptiveAvgPool2dGrad Op Begin----------------
 IMPLEMT_INFERFUNC(AdaptiveAvgPool2dGrad, AdaptiveAvgPool2dGradInferShape) {
-  OP_LOGI(op.GetName().c_str(), " AdaptiveAvgPool2dGrad inferShape begin!");
-  // get orig_input_shape
-  std::vector<int64_t> ori_shape;
-  if (GRAPH_SUCCESS != op.GetAttr("orig_input_shape", ori_shape)) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr orig_input_shape failed!");
-    return GRAPH_FAILED;
-  }
-  // get output size
-  if (ori_shape.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "length of orig_input_shape must be 4");
-    return GRAPH_FAILED;
-  }
+    // get orig_input_shape
+    std::vector<int64_t> ori_shape;
+    if (GRAPH_SUCCESS != op.GetAttr("orig_input_shape", ori_shape)) {
+        OP_LOGE(op.GetName().c_str(), "GetOpAttr orig_input_shape failed!");
+        return GRAPH_FAILED;
+    }
 
-  TensorDesc output_grad = op.GetOutputDesc("output_grad");
-  DataType input_dtype = op.GetInputDesc("input_grad").GetDataType();
-  Shape output_shape(ori_shape);
-  output_grad.SetShape(output_shape);
-  output_grad.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("output_grad", output_grad);
-  return GRAPH_SUCCESS;
+    TensorDesc output_grad = op.GetOutputDesc("output_grad");
+    DataType input_dtype = op.GetInputDesc("input_grad").GetDataType();
+    Shape output_shape(ori_shape);
+    output_grad.SetShape(output_shape);
+    output_grad.SetDataType(input_dtype);
+    (void)op.UpdateOutputDesc("output_grad", output_grad);
+    return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(AdaptiveAvgPool2dGrad, AdaptiveAvgPool2dGradVerify) {
-  auto input_tensor_desc = op.GetInputDesc("input_grad");
-  auto grad_input_shape = input_tensor_desc.GetShape();
-  std::vector<int64_t> dims_input = grad_input_shape.GetDims();
-  if (dims_input.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "length of input_grad must be 4");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
+    std::vector<int64_t> dims_input = op.GetInputDesc("input_grad").GetShape().GetDims();
+    std::vector<int64_t> ori_shape;
+    if (GRAPH_SUCCESS != op.GetAttr("orig_input_shape", ori_shape)) {
+        OP_LOGE(op.GetName().c_str(), "GetOpAttr orig_input_shape failed!");
+        return GRAPH_FAILED;
+    }
+    if (dims_input.size() != ori_shape.size()) {
+        OP_LOGE(op.GetName().c_str(), "The shape of grad and orig_input must be same!");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(AdaptiveAvgPool2dGrad, AdaptiveAvgPool2dGradInferShape);
