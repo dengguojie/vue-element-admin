@@ -57,6 +57,13 @@ case7 = {"params": [{"shape": (1, 1), "dtype": "float32", "format": "NCHW", "ori
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case8 = {"params": [{"shape": (1, 1, 304, 64, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 304, 64, 8),"ori_format": "NHWC"},
+                    {"shape": (1, 5, 304, 64, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 304, 64, 72),"ori_format": "NHWC"},
+                    [[0, 0],[0, 0],[0, 0],[32, 32]]],
+         "case_name": "pad_d_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -65,6 +72,20 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+
+
+def test_op_select_format():
+    """
+    test_op_select_format
+    """
+    from impl.pad_d import op_select_format
+    op_select_format({"shape": (1, 304, 64, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 304, 64, 8),"ori_format": "NHWC"},
+                     {"shape": (1, 304, 64, 72), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 304, 64, 72),"ori_format": "NHWC"},
+                     [[0, 0],[0, 0],[0, 0],[32, 32]],
+                     "test_pad_op_select_format_case_1")
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 
 def calc_expect_func(x, res, paddings):
@@ -116,7 +137,19 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1,), "dtype": "int32", 
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
 
+ut_case.add_precision_case("all", {"params": [{"shape": (1, 304, 64, 8), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 304, 64, 8),"ori_format": "NHWC", "param_type": "input"},
+                                              {"shape": (1, 304, 64, 72), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 304, 64, 72),"ori_format": "NHWC", "param_type": "output"},
+                                              [[0, 0],[0, 0],[0, 0],[32, 32]]],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
 
+ut_case.add_precision_case("all", {"params": [{"shape": (1, 304, 64, 8), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 304, 64, 8),"ori_format": "NHWC", "param_type": "input"},
+                                              {"shape": (1, 304, 64, 72), "dtype": "float32", "format": "NHWC", "ori_shape": (1, 304, 64, 72),"ori_format": "NHWC", "param_type": "output"},
+                                              [[0, 0],[0, 0],[0, 0],[32, 32]]],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
 # ============ auto gen ["Ascend910"] test cases end =================
 
 if __name__ == '__main__':

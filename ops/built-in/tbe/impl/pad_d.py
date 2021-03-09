@@ -2079,6 +2079,49 @@ def _pattern_align(shape, paddings, dtype):
     return True, in_shape, in_paddings
 
 
+def check_support_5hd(input_x,
+                      paddings):
+    """ Check whether 5HD is supported. 
+
+    Parameters
+    ----------
+    input_x : dict
+        shape and dtype of input
+    paddings: list or tuple.
+        For each dimension D of input, paddings[D, 0] indicates how many
+        values to add
+        before the contents of tensor in that dimension, and paddings[D, 1]
+        indicates
+        how many values to add after the contents of tensor in that dimension.
+
+    Returns
+    is_support_5hd: true or false
+    dtype_base: base type for ND
+    dtype_5hd: 5hd type for NHWC
+    """
+    is_support_5hd = False
+    dtype = input_x.get("dtype").lower()
+    input_ori_shape = input_x.get("ori_shape")
+    input_ori_format = input_x.get("ori_format")
+
+    if input_ori_format == "NHWC" and len(input_ori_shape) == 4:
+        is_support_5hd = paddings[0][0] == paddings[0][1] == \
+                         paddings[3][0] == paddings[3][1] == 0
+        if paddings[0][0] == paddings[0][1] == \
+            paddings[1][0] == paddings[1][1] == \
+            paddings[2][0] == paddings[2][1] == 0:
+            if dtype in ("float16", "float", "float32"):
+                if paddings[3][0] % 16 == 0:
+                    is_support_5hd = True
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        dtype_base = ["float16", "int32"]
+        dtype_5hd = ["float16"]
+    else:
+        dtype_base = ["float16", "float", "int32"]
+        dtype_5hd = ["float16", "float32"]
+    return is_support_5hd, dtype_base, dtype_5hd
+
+
 def op_select_format(input_x,
                      output_x,
                      paddings,
@@ -2104,23 +2147,7 @@ def op_select_format(input_x,
     -------
     None.
     """
-    is_support_5hd = False
-    dtype = input_x.get("dtype").lower()
-    input_ori_shape = input_x.get("ori_shape")
-    input_ori_format = input_x.get("ori_format")
-
-    if input_ori_format == "NHWC" and len(input_ori_shape) == 4:
-        flag = paddings[0][0] == paddings[0][1] == \
-               paddings[3][0] == paddings[3][1] == 0
-        if flag:
-            is_support_5hd = True
-
-    dtype_base = [
-        "float16", "float", "int32"
-    ]
-    dtype_5hd = [
-        "float16", "float32"
-    ]
+    is_support_5hd, dtype_base, dtype_5hd = check_support_5hd(input_x, paddings)
     dtype_base_out = dtype_base.copy()
     format_base_out = ["ND"] * len(dtype_base)
 
@@ -2176,12 +2203,17 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     para_check.check_dtype(dtype, check_list_dtype, param_name="input_x")
     input_format = input_x.get("format")
     ori_format = input_x.get("ori_format")
-    if input_format == "NC1HWC0" and ori_format == "NHWC" and dtype in ["float16", "float32"]:
-        paddings = [[0, 0], [0, 0], [paddings[1][0], paddings[1][1]], [paddings[2][0], paddings[2][1]], [0, 0]]
+    if input_format == "NC1HWC0" and ori_format == "NHWC":
+        if dtype == "float16":
+            paddings = [[0, 0], [paddings[3][0] // 16, paddings[3][1] // 16], [paddings[1][0], paddings[1][1]],
+                        [paddings[2][0], paddings[2][1]], [0, 0]]
+        elif dtype == "float32":
+            paddings = [[0, 0], [paddings[3][0] // 8, paddings[3][1] // 8], [paddings[1][0], paddings[1][1]],
+                        [paddings[2][0], paddings[2][1]], [0, 0]]
 
     if len(paddings) is not len(shape):
         rule_desc = "Paddings and input_x'shape should have the same length."
-        param_value = "%d,%d"%(len(paddings), len(shape))
+        param_value = "%d, %d" % (len(paddings), len(shape))
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
                                                           "paddings,input_x", param_value)
     for padding in paddings:
