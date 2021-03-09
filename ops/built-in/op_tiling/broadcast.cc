@@ -636,16 +636,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
     ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(0));
     return true;
   }
-  try {
-    run_info.tiling_key = static_cast<int32_t>(key);
-    int status = op_info.at("push_status");
-    if (status == 0) {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
-    }
-  } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get push_status error. Error message: %s", e.what());
-    return false;
-  }
+  run_info.tiling_key = static_cast<int32_t>(key);
 
   V_CHECK_GE(key, 0,
              OP_LOGE(op_type.c_str(), "Tiling key error, it is [%d], please check it", key),

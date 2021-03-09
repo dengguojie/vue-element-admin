@@ -70,6 +70,6 @@ TEST_F(BiasTiling, Bias_tiling_test_1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "221000000 2 12 ");
+            "2 12 ");
 }
 

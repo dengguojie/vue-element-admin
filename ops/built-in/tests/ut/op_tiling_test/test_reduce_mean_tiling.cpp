@@ -66,7 +66,7 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "-1000500 1 1 1 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 ");
 }
 
 TEST_F(ReduceMeanTiling, ReduceMeanTiling2) {
@@ -104,7 +104,7 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "-400 7 2 8 8 1056964608 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "7 2 8 8 1056964608 ");
 }
 
 TEST_F(ReduceMeanTiling, ReduceMeanTiling3) {
@@ -142,5 +142,5 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling3) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "-400 7 2 16 16 14336 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "7 2 16 16 14336 ");
 }

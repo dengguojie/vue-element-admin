@@ -72,6 +72,6 @@ TEST_F(ScaleTiling, Scale_tiling_test_1) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   std::cout << "ScaleTiling tiling_data:" << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "210000000 1 1 ");
+            "1 1 ");
 }
 

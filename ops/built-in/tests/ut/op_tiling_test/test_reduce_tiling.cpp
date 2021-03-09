@@ -66,7 +66,7 @@ TEST_F(ReduceTiling, ReduceTiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "-1000500 1 1 1 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 ");
 }
 
 TEST_F(ReduceTiling, ReduceTiling2) {
@@ -104,7 +104,7 @@ TEST_F(ReduceTiling, ReduceTiling2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10 78 25600 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "78 25600 ");
 }
 
 TEST_F(ReduceTiling, ReduceTiling3) {
@@ -142,7 +142,7 @@ TEST_F(ReduceTiling, ReduceTiling3) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2147483647 2 128 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 128 ");
 }
 
 TEST_F(ReduceTiling, ReduceTiling4) {

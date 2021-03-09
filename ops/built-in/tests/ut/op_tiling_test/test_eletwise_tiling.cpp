@@ -75,7 +75,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 25);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 5824 4 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "5824 4 2 ");
 }
 
 TEST_F(EletwiseTiling, Eletwise_tiling2) {
@@ -113,7 +113,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "210000000 35937 1152 1152 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "35937 1152 1152 ");
 }
 
 TEST_F(EletwiseTiling, Eletwise_tiling3) {
@@ -151,7 +151,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling3) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "210010000 268435456 8388608 8192 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "268435456 8388608 8192 ");
 }
 
 TEST_F(EletwiseTiling, Eletwise_tiling_mul1) {
@@ -196,7 +196,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling_mul1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 25);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "212000001 100 1 1860 1 4 4 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "100 1 1860 1 4 4 ");
 }
 
 TEST_F(EletwiseTiling, Eletwise_tiling4) {
@@ -525,48 +525,48 @@ TEST_F(EletwiseTiling, Eletwise_tiling11) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "-2147483648 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "");
 }
 
 TEST_F(EletwiseTiling, Eletwise_tiling12) {
-using namespace optiling;
-std::string op_name = "AutoTiling";
-auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  using namespace optiling;
+  std::string op_name = "AutoTiling";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-// dynamic real div const tiling
-std::string compileInfo = R"({"_flag_info": [true],"_base_info": { "000": [ 262144, 2, 3, 32 ] }, "_broadcast_axis": [false], "_fusion_index": [[0], [1], [2]], "_pattern": "ElemWise", "push_status": 0})";
-std::vector<int64_t> inputA{6643712,};
-std::vector<int64_t> inputB{6643712,};
-std::vector<int64_t> output{6643712,};
-std::string dtype = "float16";
+  // dynamic real div const tiling
+  std::string compileInfo = R"({"_flag_info": [true],"_base_info": { "000": [ 262144, 2, 3, 32 ] }, "_broadcast_axis": [false], "_fusion_index": [[0], [1], [2]], "_pattern": "ElemWise", "push_status": 0})";
+  std::vector<int64_t> inputA{6643712,};
+  std::vector<int64_t> inputB{6643712,};
+  std::vector<int64_t> output{6643712,};
+  std::string dtype = "float16";
 
-TeOpTensor tensor_inputA;
-tensor_inputA.shape = inputA;
-tensor_inputA.dtype = dtype;
-TeOpTensor tensor_inputB;
-tensor_inputB.shape = inputB;
-tensor_inputB.dtype = dtype;
-TeOpTensor tensor_output;
-tensor_output.shape = output;
-tensor_output.dtype = dtype;
-TeOpTensorArg tensor_argA;
-tensor_argA.tensor.push_back(tensor_inputA);
-tensor_argA.arg_type = TA_SINGLE;
-TeOpTensorArg tensor_argB;
-tensor_argB.tensor.push_back(tensor_inputB);
-tensor_argB.arg_type = TA_SINGLE;
-TeOpTensorArg tensor_arg;
-tensor_arg.tensor.push_back(tensor_output);
-tensor_arg.arg_type = TA_SINGLE;
-TeOpParas opParas;
-opParas.inputs.push_back(tensor_argA);
-opParas.inputs.push_back(tensor_argB);
-opParas.outputs.push_back(tensor_arg);
-opParas.op_type = op_name;
-OpCompileInfo op_compile_info;
-op_compile_info.str = compileInfo;
-op_compile_info.key = "Eletwise_tiling12";
-OpRunInfo runInfo;
-ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = dtype;
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = dtype;
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = dtype;
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "Eletwise_tiling12";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
 }

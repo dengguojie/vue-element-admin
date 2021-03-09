@@ -69,7 +69,7 @@ TEST_F(BiasAddTiling, BiasAdd_tiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "210000000 4 4 4 ");
+            "4 4 4 ");
 }
 
 TEST_F(BiasAddTiling, BiasAdd_tiling2) {
@@ -111,6 +111,6 @@ TEST_F(BiasAddTiling, BiasAdd_tiling2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "221000001 3996001 4 124876 10407 ");
+            "3996001 4 124876 10407 ");
 }
 

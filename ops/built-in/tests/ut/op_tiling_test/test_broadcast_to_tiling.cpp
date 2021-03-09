@@ -80,6 +80,6 @@ TEST_F(BroadcastToTiling, BroadcastTo_tiling_test_1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "0 3 1 ");
+            "3 1 ");
 }
 

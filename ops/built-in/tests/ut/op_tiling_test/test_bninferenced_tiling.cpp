@@ -84,5 +84,5 @@ TEST_F(BNInferenceDTiling, BNInferenceDTiling_test_1) {
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   std::cout << "BNInferenceDTiling tiling_data:" << to_string(runInfo.tiling_data) << std::endl;
 
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 2 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 ");
 }

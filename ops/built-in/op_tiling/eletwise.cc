@@ -210,16 +210,8 @@ bool Eletwise::WriteTilingData(OpRunInfo& run_info) const {
     }
     return true;
   }
-  try {
-    run_info.tiling_key = static_cast<int32_t>(key);
-    int status = op_info.at("push_status");
-    if (status == 0) {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
-    }
-  } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get push_status error. Error message: %s", e.what());
-    return false;
-  }
+
+  run_info.tiling_key = static_cast<int32_t>(key);
   std::string str_key = "210000000";
   if (!use_special_pattern) {
     str_key = "0";
@@ -432,16 +424,7 @@ bool WriteConstTiling(const std::string& op_type, const nlohmann::json& op_info,
   OP_LOGD(op_type.c_str(), "tiling key:%lld", key);
   OP_LOGD(op_type.c_str(), "tiling block_dims:%lld", block_dims);
   run_info.block_dim = static_cast<uint32_t>(block_dims);
-  try {
-    run_info.tiling_key = static_cast<int32_t>(key);
-    int status = op_info.at("push_status");
-    if (status == 0) {
-      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(key));
-    }
-  } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get push_status error. Error message: %s", e.what());
-    return false;
-  }
+  run_info.tiling_key = static_cast<int32_t>(key);
   return true;
 }
 

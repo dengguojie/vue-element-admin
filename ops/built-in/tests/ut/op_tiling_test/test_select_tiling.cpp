@@ -71,7 +71,7 @@ TEST_F(SelectTiling, Select_tiling1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "210000000 16 16 16 ");
+            "16 16 16 ");
 }
 
 
@@ -116,6 +116,6 @@ TEST_F(SelectTiling, Select_tiling2) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
-            "210000000 256 256 256 ");
+            "256 256 256 ");
 }
 

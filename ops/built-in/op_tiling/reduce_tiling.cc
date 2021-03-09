@@ -198,10 +198,6 @@ bool Reduce::ConstInputProcPost() {
     run_info.block_dim = op_info.at("_block_dims").at(pattern_str).get<std::int32_t>();
     run_info.clear_atomic = op_info.at("_atomic_flags").at(pattern_str).get<bool>();
     run_info.tiling_key = pattern;
-    int status = op_info.at("push_status");
-    if (status == 0) {
-      ByteBufferPut(run_info.tiling_data, pattern);
-    }
   } catch (const std::exception &e) {
     OP_LOGE(op_type.c_str(), "Func: ConstInputProcPost get error message. Error message: %s", e.what());
     return false;
@@ -828,19 +824,10 @@ bool Reduce::Init() {
 
 bool Reduce::WriteTilingData() {
   if (exit_zero_axis) {
-    try {
-      int status = op_info.at("push_status");
-      if (status == 0) {
-        ByteBufferPut(run_info.tiling_data, (int32_t)zero_tiling_key);
-      }
-      ByteBufferPut(run_info.tiling_data, (int32_t)fusion_dim_value);
-      ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
-      run_info.block_dim = (int32_t)1;
-      run_info.tiling_key = (int32_t)zero_tiling_key;
-    } catch (const std::exception &e) {
-      OP_LOGE(op_type.c_str(), "get push status error. Error message: %s", e.what());
-      return false;
-    }
+    ByteBufferPut(run_info.tiling_data, (int32_t)fusion_dim_value);
+    ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
+    run_info.block_dim = (int32_t)1;
+    run_info.tiling_key = (int32_t)zero_tiling_key;
     return true;
   }
 
@@ -863,16 +850,7 @@ bool Reduce::WriteTilingData() {
   // tiling_key
   run_info.block_dim = tilingInfo.block_dim;
   int32_t tiling_key = CalcTilingKey();
-  try {
-    run_info.tiling_key = tiling_key;
-    int status = op_info.at("push_status");
-    if (status == 0) {
-      ByteBufferPut(run_info.tiling_data, tiling_key);
-    }
-  } catch (const std::exception &e) {
-    OP_LOGE(op_type.c_str(), "get push_status error. Error message: %s", e.what());
-    return false;
-  }
+  run_info.tiling_key = tiling_key;
 
   // pure dma_copy, must skip "1".
   uint32_t offset = 0;
