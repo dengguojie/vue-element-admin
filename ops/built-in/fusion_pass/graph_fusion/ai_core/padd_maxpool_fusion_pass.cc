@@ -33,6 +33,7 @@
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace ge;
 namespace fe {
@@ -86,6 +87,8 @@ Status PaddMaxPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   ge::GeTensorDesc output_desc = maxpool_desc->GetOutputDesc(0);
   ge::GeShape input_shape = input_desc.GetShape();
   ge::Format input_format = input_desc.GetFormat();
+  FUSION_PASS_CHECK(IsUnknownShape(input_shape.GetDims()), OP_LOGI(FUSED_OP_TYPE.c_str(), "Padd is dynamic."),
+                    return NOT_CHANGED);
 
   // get op
   Operator op_pad = ge::OpDescUtils::CreateOperatorFromNode(pad_node);
