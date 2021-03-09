@@ -77,6 +77,11 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::ScatterND, TensorScatterUpdate, ScatterNDV1
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Dropout, Dropout, DropoutV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Add, Add, AddV11);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Sigmoid, Sigmoid, SigmoidV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Tile, Tile, TileV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Sub, Sub, SubV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Sqrt, Sqrt, SqrtV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Div, RealDiv, DivV11);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::11::Abs, Abs, AbsV11);
 
 //onnx::9
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Acos, Acos, AcosV9);
@@ -118,7 +123,11 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Expand, Expand, ExpandV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Dropout, Dropout, DropoutV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Add, Add, AddV9);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Sigmoid, Sigmoid, SigmoidV9);
-
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Tile, Tile, TileV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Sub, Sub, SubV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Sqrt, Sqrt, SqrtV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Div, RealDiv, DivV9);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::9::Abs, Abs, AbsV9);
 
 //onnx::12
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Acos, Acos, AcosV12);
@@ -161,7 +170,11 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Dropout, Dropout, DropoutV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::GreaterOrEqual, GreaterEqual, GreaterOrEqualV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Add, Add, AddV12);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Sigmoid, Sigmoid, SigmoidV12);
-
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Tile, Tile, TileV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Sub, Sub, SubV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Sqrt, Sqrt, SqrtV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Div, RealDiv, DivV12);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::12::Abs, Abs, AbsV12);
 
 //onnx::13
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Acos, Acos, AcosV13);
@@ -203,4 +216,9 @@ REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Expand, Expand, ExpandV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Dropout, Dropout, DropoutV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Add, Add, AddV13);
 REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Sigmoid, Sigmoid, SigmoidV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Tile, Tile, TileV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Sub, Sub, SubV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Sqrt, Sqrt, SqrtV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Div, RealDiv, DivV13);
+REGISTER_CUSTOM_ONNX_OP(ai.onnx::13::Abs, Abs, AbsV13);
 }  // namespace domi

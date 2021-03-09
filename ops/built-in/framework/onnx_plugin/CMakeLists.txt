@@ -21,7 +21,6 @@ protobuf_generate(opp _proto_cc _proto_h ${_proto_srcs})
 
 # the list of source files
 set(_onnx_plugins
-  abs_plugin.cc
   addcmul_plugin.cc
   adaptive_max_pool2d_plugin.cc
   ascend_anti_quant_plugin.cc
@@ -34,7 +33,6 @@ set(_onnx_plugins
   batch_multi_class_non_max_suppression_plugin.cc
   concat_plugin.cc
   conv2d_plugin.cc
-  div_plugin.cc
   gather_plugin.cc
   gemm_plugin.cc
   global_average_pool_plugin.cc
@@ -48,9 +46,6 @@ set(_onnx_plugins
   relu_plugin.cc
   reshape_plugin.cc
   shape_plugin.cc
-  sqrt_plugin.cc
-  sub_plugin.cc
-  tile_plugin.cc
   topk_plugin.cc
   unsqueeze_plugin.cc
   argmax_plugin.cc
