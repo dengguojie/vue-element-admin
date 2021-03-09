@@ -93,6 +93,9 @@ set(_onnx_plugins
   affine_grid_plugin.cc
   reduceL2_plugin.cc
   clip_plugin.cc
+  hard_sigmoid_plugin.cc
+  lp_normalization_plugin.cc
+  reduce_sum_square_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include

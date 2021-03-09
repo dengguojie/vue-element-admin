@@ -25,29 +25,29 @@
 
 class HardSigmoidTest : public testing::Test {
 protected:
-    static void SetUpTestCase() {
-        std::cout << "HardShrink test SetUp" << std::endl;
+  static void SetUpTestCase() {
+    std::cout << "HardShrink test SetUp" << std::endl;
 }
 
-    static void TearDownTestCase() {
-        std::cout << "HardShrink test TearDown" << std::endl;
-    }
+  static void TearDownTestCase() {
+    std::cout << "HardShrink test TearDown" << std::endl;
+  }
 };
 
 TEST_F(HardSigmoidTest, hard_sigmoid_test_case_1) {
-    ge::op::HardSigmoid hard_sigmoid_op;
-    ge::TensorDesc tensorDesc;
-    ge::Shape shape({2, 3, 4});
-    tensorDesc.SetDataType(ge::DT_FLOAT16);
-    tensorDesc.SetShape(shape);
+  ge::op::HardSigmoid hard_sigmoid_op;
+  ge::TensorDesc tensorDesc;
+  ge::Shape shape({2, 3, 4});
+  tensorDesc.SetDataType(ge::DT_FLOAT16);
+  tensorDesc.SetShape(shape);
 
-    hard_sigmoid_op.UpdateInputDesc("input_x", tensorDesc);
+  hard_sigmoid_op.UpdateInputDesc("input_x", tensorDesc);
+  
+  auto ret = hard_sigmoid_op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-    auto ret = hard_sigmoid_op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-    auto output_desc = hard_sigmoid_op.GetOutputDesc("output_y");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
-    std::vector<int64_t> expected_output_shape = {2, 3, 4};
-    EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+  auto output_desc = hard_sigmoid_op.GetOutputDesc("output_y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {2, 3, 4};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }

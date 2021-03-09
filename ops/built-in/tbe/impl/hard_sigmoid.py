@@ -19,7 +19,7 @@ import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
-
+import te.platform as tbe_platform
 
 # pylint: disable=unused-argument
 @fusion_manager.register("hard_sigmoid")
@@ -42,15 +42,37 @@ def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmo
     """
     dtype = input_x.dtype
     shape = input_x.shape
-    if dtype != "float32":
+    mul_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vmuls", "float32")
+    if dtype != "float32" and mul_support_fp32:
         input_x = tbe.cast_to(input_x, "float32")
-    one_tensor = tbe.broadcast(tvm.const(1, input_x.dtype), shape)
-    zero_tensor = tbe.broadcast(tvm.const(0, input_x.dtype), shape)
-    alpha_x = tbe.vmuls(input_x, alpha)
-    alpha_x_beta = tbe.vadds(alpha_x, beta)
+    elif dtype != "float16" and not mul_support_fp32:
+        cast_support_f322f16 = tbe_platform.api_check_support("te.lang.cce.cast_to", "f322f16")
+        cast_support_s322f16 = tbe_platform.api_check_support("te.lang.cce.cast_to", "s322f16")
+        if cast_support_f322f16 and dtype == "float32" or  cast_support_s322f16 and dtype == "int32":
+            input_x = tbe.cast_to(input_x, "float16")
+        else:  
+            raise RuntimeError("Type of input x must be float16")
+
+
+    alpha_x = tbe.vmuls(input_x, tvm.const(alpha, input_x.dtype))
+    alpha_x_beta = tbe.vadds(alpha_x, tvm.const(beta, input_x.dtype))
+    
+    vcmpsel_support_fp32 = tbe_platform.api_check_support("te.lang.cce.vcmpsel", "float32")
+    if alpha_x_beta.dtype != "float32" and vcmpsel_support_fp32:
+        alpha_x_beta = tbe.cast_to(alpha_x_beta, "float32")
+    elif alpha_x_beta.dtype != "float16" and not vcmpsel_support_fp32:
+        cast_support_f322f16 = tbe_platform.api_check_support("te.lang.cce.cast_to", "f322f16")
+        if cast_support_f322f16:
+            alpha_x_beta = tbe.cast_to(alpha_x_beta, "float16")
+        else:
+            raise RuntimeError("Type of input x must be float16")   
+
+    one_tensor = tbe.broadcast(tvm.const(1, alpha_x_beta.dtype), shape)
+    zero_tensor = tbe.broadcast(tvm.const(0, alpha_x_beta.dtype), shape)
     result1 = tbe.vcmpsel(alpha_x_beta, one_tensor, 'ge', one_tensor, alpha_x_beta)
-    result0 = tbe.vcmpsel(result1, zero_tensor, 'ge', result1, zero_tensor)
-    result = tbe.cast_to(result0, dtype)
+    result = tbe.vcmpsel(result1, zero_tensor, 'ge', result1, zero_tensor)
+    if dtype != result.dtype:
+        result = tbe.cast_to(result, dtype)
     return result
 
 

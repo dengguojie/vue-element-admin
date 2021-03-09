@@ -2815,9 +2815,9 @@ INFER_FUNC_REG(ClipByNormNoDivSum, ClipByNormNoDivSumInferShape);
 
 // ------------SquareSumV1 Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
-  auto shape = op.GetInputDesc("input_x").GetShape();
-  DataType input_dtype = op.GetInputDesc("input_x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("output1");
+  auto shape = op.GetInputDesc("x").GetShape();
+  DataType input_dtype = op.GetInputDesc("x").GetDataType();
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
   std::vector<int64_t> shapeVector = shape.GetDims();
   int64_t dimNum = shape.GetDimNum();
   std::vector<int64_t> axis;
@@ -2867,6 +2867,11 @@ IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
   Shape oShape(oShapeVector);
   tensordesc_output.SetShape(oShape);
   tensordesc_output.SetDataType(input_dtype);
+
+  if(op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Update output failed");
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
