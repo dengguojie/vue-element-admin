@@ -17,7 +17,6 @@ padD
 """
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import error_manager_vector
-import te.lang.dynamic
 from impl.dynamic import pad_align
 from impl.dynamic import pad_not_align
 from impl.dynamic import pad_common

@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,too-many-arguments
-@register_operator_compute("SmoothL1LossGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("SmoothL1LossGrad", op_mode="dynamic", support_fusion=True)
 def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma, kernel_name):
     """
     calculating data

@@ -29,7 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=locally-disabled,too-many-arguments
-@register_operator_compute("BNInferGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BNInferGrad", op_mode="dynamic", support_fusion=True)
 def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
                           epsilon, kernel_name="bn_infer_grad"):
     """

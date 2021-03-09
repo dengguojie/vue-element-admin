@@ -16,7 +16,6 @@
 dynamic space_to_depth
 """
 # pylint: disable=unused-import
-import te.lang.dynamic
 from impl.util.platform_adapter import tbe_platform
 from impl.dynamic.transpose import Transpose
 from impl.util.platform_adapter import tik

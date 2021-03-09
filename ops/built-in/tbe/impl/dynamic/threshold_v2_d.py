@@ -16,7 +16,6 @@
 threshold_v2_d
 """
 
-from te.lang.cce.te_compute.elewise_compute import vcmpsel as _vcmpsel
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
@@ -27,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-@register_operator_compute("ThresholdV2D", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ThresholdV2D", op_mode="dynamic", support_fusion=True)
 # pylint: disable=unused-argument,too-many-locals,invalid-name
 def threshold_v2_d_compute(x, y, threshold, value,
                            kernel_name="threshold_v2_d_cce"):
@@ -61,7 +60,7 @@ def threshold_v2_d_compute(x, y, threshold, value,
     threshold = tvm.const(threshold, "float32")
     value = tvm.const(value, "float32")
 
-    data_res = _vcmpsel(x, threshold, operation='gt', slhs=x, srhs=value)
+    data_res = tbe.vcmpsel(x, threshold, operation='gt', slhs=x, srhs=value)
     if has_improve_precision:
         data_res = tbe.cast_to(data_res, dtype_x)
     return data_res

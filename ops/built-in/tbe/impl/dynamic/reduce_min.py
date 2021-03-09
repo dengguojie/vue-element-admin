@@ -25,7 +25,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=unused-argument,invalid-name
-@register_operator_compute("ReduceMin", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ReduceMin", op_mode="dynamic", support_fusion=True)
 def reduce_min_compute(x, axes, y, keepdims=None,
                        kernel_name="reduce_min"):
     """

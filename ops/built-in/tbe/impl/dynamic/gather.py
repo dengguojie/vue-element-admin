@@ -16,7 +16,6 @@
 gather_d
 """
 from . import gather_v2
-import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 

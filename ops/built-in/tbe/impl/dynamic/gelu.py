@@ -42,7 +42,7 @@ def _tanh_parameter_compute(placeholders):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-@register_operator_compute("Gelu", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Gelu", op_mode="dynamic", support_fusion=True)
 def gelu_compute(input_x, output_y, kernel_name="gelu"):
     """
     mathematical formula of gelu(x):

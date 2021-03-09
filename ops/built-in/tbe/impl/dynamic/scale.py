@@ -17,7 +17,6 @@ dynamic scale
 """
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
@@ -276,7 +275,7 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     for x_tensor in input_tensor:
         if x_tensor is not None:
             l1_fusion_type = -1
-            if fusion_manager.get_build_cfg() != "disable":
+            if tbe_platform.fusion_manager.get_build_cfg() != "disable":
                 l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
                     if "L1_fusion_type" in x_tensor.op.attrs else -1
                 if l1_fusion_type == 1:
@@ -426,7 +425,7 @@ def _fused_scale_bias_compute(x, scale, bias):
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@register_operator_compute("Scale", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Scale", op_mode="dynamic", support_fusion=True)
 def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob, kernel_name="scale"):
     """
     algorithm: Scale

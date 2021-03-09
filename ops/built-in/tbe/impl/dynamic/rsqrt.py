@@ -45,7 +45,7 @@ from impl.util.platform_adapter import register_operator_compute
 CONST_ONE = 1.0
 
 
-@register_operator_compute("Rsqrt", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Rsqrt", op_mode="dynamic", support_fusion=True)
 # pylint: disable=unused-argument,too-many-locals,invalid-name
 def rsqrt_compute(x, y, kernel_name="rsqrt_cce"):
     """

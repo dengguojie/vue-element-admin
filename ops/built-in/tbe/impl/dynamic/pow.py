@@ -166,7 +166,7 @@ def _negative_compute(input_x, input_y):
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("Pow", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Pow", op_mode="dynamic", support_fusion=True)
 def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
     """
     pow compute

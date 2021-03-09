@@ -49,7 +49,7 @@ NUM_ONE = 1
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
-@register_operator_compute("AcosGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("AcosGrad", op_mode="dynamic", support_fusion=True)
 def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
     do acos_grad compute with sqrt and div

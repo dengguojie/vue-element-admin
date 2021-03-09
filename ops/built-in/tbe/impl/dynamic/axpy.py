@@ -147,7 +147,7 @@ def _infer_shape(format_pattern, x, y):
     return shape_x, shape_y
 
 
-@register_operator_compute("Axpy", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Axpy", op_mode="dynamic", support_fusion=True)
 def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     """
     calculating data

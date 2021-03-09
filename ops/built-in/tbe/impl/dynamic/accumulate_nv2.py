@@ -33,7 +33,7 @@ NUM_ONE = 1
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
-@register_operator_compute("AccumulateNV2", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("AccumulateNV2", op_mode="dynamic", support_fusion=True)
 def _accumulate_nv2_compute(input_x, output_y, num, kernel_name='accumulate_nv2'):
     """
     Process accumulate_nv2 operator.

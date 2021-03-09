@@ -56,7 +56,7 @@ def _pow(data, index):
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name,too-many-locals
-@register_operator_compute("ApplyFtrlD", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ApplyFtrlD", op_mode="dynamic", support_fusion=True)
 def apply_ftrl_d_compute(var,
                          accum,
                          linear,

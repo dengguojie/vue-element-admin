@@ -54,7 +54,7 @@ def _pow(data_x, data_y):
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=invalid-name,too-many-locals, too-many-statements
-@register_operator_compute("ApplyFtrlV2D", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ApplyFtrlV2D", op_mode="dynamic", support_fusion=True)
 def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
                             lr_power, var_out, accum_out, linear_out,
                             kernel_name='apply_ftrl_v2_d'):

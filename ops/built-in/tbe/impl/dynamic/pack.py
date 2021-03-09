@@ -16,7 +16,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 pack
 """
 
-import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.dynamic.concat_v2_d import concat_v2_d
 from impl.util.platform_adapter import register_operator

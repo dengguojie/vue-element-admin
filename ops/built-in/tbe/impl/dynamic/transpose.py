@@ -14,7 +14,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 transpose
 """
 
-import te.lang.dynamic
 from impl.util.platform_adapter import tvm
 from te.tvm import make as _make
 from te.tvm import expr as _expr

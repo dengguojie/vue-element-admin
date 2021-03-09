@@ -16,7 +16,6 @@
 split
 """
 from __future__ import absolute_import
-import te.lang.dynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator

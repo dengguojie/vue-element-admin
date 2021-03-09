@@ -45,7 +45,7 @@ SCALER_FP16_MIN = 2 ** (-15)
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("Erfc", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Erfc", op_mode="dynamic", support_fusion=True)
 def erfc_compute(input_x, output_y, kernel_name="erfc"):
     """
     compute erfc

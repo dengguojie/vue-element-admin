@@ -16,7 +16,6 @@
 unsorted_segment
 """
 # pylint: disable=too-many-lines
-import te.lang.dynamic
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
@@ -1089,7 +1088,7 @@ class UnsortedSegment(object):
                                             BYTE_BLOCK, 0, 0)
 
             def _scalar_set(key, input_scalar_index):
-                if isinstance(key, te.tik.api.tik_scalar.Scalar):
+                if isinstance(key, tik.api.tik_scalar.Scalar):
                     key.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
                 return input_scalar_index + 1
 

@@ -20,7 +20,6 @@ not_equal
 from __future__ import absolute_import
 
 from impl.util.platform_adapter import tvm
-from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -42,7 +41,7 @@ SCALAR_MUL_FP16 = 2 ** (12)
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("NotEqual", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("NotEqual", op_mode="dynamic", support_fusion=True)
 def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     """
     compute for not_equal

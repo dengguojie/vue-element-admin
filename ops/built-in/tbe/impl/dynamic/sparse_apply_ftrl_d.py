@@ -15,7 +15,6 @@
 """
 dynamic sparse_apply_ftrl_d
 """
-import te.lang.dynamic
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check

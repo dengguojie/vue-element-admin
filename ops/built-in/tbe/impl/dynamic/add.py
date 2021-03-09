@@ -30,7 +30,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 SIZE_SIXTEEN = 16
 
 # pylint: disable=too-many-locals,unused-variable,invalid-name
-@register_operator_compute("Add", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Add", op_mode="dynamic", support_fusion=True)
 def add_fusion_compute(input_x, input_y, output_z, kernel_name="add"):
     """
     add_fusion_compute

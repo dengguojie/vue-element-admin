@@ -16,7 +16,6 @@
 dynamic batch_to_space
 """
 # pylint: disable=unused-import
-import te.lang.dynamic
 from impl.dynamic.batch_to_space_nd import BatchToSpaceND
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector

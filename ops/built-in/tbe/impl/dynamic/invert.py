@@ -28,7 +28,7 @@ from impl.util.platform_adapter import register_operator
 
 
 # pylint: disable=locally-disabled,unused-argument
-@register_operator_compute("Invert", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Invert", op_mode="dynamic", support_fusion=True)
 def invert_compute(input_x, output_y, kernel_name="invert"):
     """Flips all bits elementwise.
 

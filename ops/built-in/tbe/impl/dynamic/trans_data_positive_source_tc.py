@@ -15,7 +15,6 @@
 """
 trans_data_positive_source_tc
 """
-import te.lang.dynamic
 from impl.util.platform_adapter import tik
 from impl import trans_data_common_func as tdc
 from impl.util.platform_adapter import tbe_context

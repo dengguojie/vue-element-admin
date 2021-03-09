@@ -148,7 +148,7 @@ def _expm1_mini_compute(mini_res, input_x, shape):
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
-@register_operator_compute("Expm1", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Expm1", op_mode="dynamic", support_fusion=True)
 def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
     algorithm: expm1

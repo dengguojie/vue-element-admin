@@ -37,7 +37,7 @@ def _broadcast_shape_check(input_shape, predict_shape):
         raise RuntimeError("input_shape can't be broadcast to predict_shape")
 
 
-@register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=True)
 def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
                                                       dout, weight, pos_weight,
                                                       predict_bool, reduction="mean"):

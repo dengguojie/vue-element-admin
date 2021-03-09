@@ -164,7 +164,7 @@ def _result_grad_compute(placeholders):
     return res_grad
 
 
-@register_operator_compute("GeluGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("GeluGrad", op_mode="dynamic", support_fusion=True)
 def gelu_grad_compute(input_dy, input_x, input_y,
                       output_z, kernel_name="gelu_grad"):
     """

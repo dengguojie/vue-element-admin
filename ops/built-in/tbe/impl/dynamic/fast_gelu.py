@@ -34,7 +34,7 @@ CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals,unused-variable
-@register_operator_compute("FastGelu", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("FastGelu", op_mode="dynamic", support_fusion=True)
 def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     mathematical formula of fast_gelu(x):

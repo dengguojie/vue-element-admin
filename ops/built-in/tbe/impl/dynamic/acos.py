@@ -97,7 +97,7 @@ def _taylor_compute(data_x, x_square=None):
 # pylint: disable=too-many-arguments,unused-argument
 # pylint: disable=too-many-locals
 # pylint: disable=unused-argument,invalid-name
-@register_operator_compute("Acos", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Acos", op_mode="dynamic", support_fusion=True)
 def acos_compute(x, y, kernel_name="acos"):
     """
     do element-wise acos compute using asin op

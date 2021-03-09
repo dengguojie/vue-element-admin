@@ -17,10 +17,8 @@ trans_data_negative_target_tc
 """
 
 from __future__ import absolute_import
-import te.lang.dynamic
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 from .. import trans_data_common_func as tdc
 from impl.util.platform_adapter import tbe_context
 

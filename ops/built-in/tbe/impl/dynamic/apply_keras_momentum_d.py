@@ -28,7 +28,7 @@ from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals
-@register_operator_compute("ApplyKerasMomentumD", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ApplyKerasMomentumD", op_mode="dynamic", support_fusion=True)
 def apply_keras_momentum_d_compute(var,
                                    accum,
                                    lr,

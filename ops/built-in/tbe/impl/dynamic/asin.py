@@ -93,7 +93,7 @@ def _taylor_compute(data_x, x_square=None):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
-@register_operator_compute("asin", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("asin", op_mode="dynamic", support_fusion=True)
 def asin_compute(x, y, kernel_name="asin"):
     """
     do element-wise asin compute

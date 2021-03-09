@@ -15,8 +15,6 @@
 """
 concat_offset.py
 """
-import te.lang.dynamic
-from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator

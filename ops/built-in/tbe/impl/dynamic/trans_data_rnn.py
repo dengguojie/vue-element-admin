@@ -17,17 +17,10 @@ trans_data_rnn
 """
 from __future__ import absolute_import
 import math
-import te.lang.dynamic
-import re as func_re
-from topi.cce import util
 from impl import common_util
 from impl.util.platform_adapter import para_check
-from functools import reduce as func_reduce
 from impl.util.platform_adapter import tik
 from impl import constant_util as constant
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from impl.util.platform_adapter import error_manager_vector as error_manager
 from .. import trans_data_common_func as tdc
 from impl.util.platform_adapter import tbe_context
 

@@ -18,7 +18,6 @@ bias
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
-from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
@@ -246,7 +245,7 @@ def _check_dtype(dtype_x, dtype_bias):
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-@register_operator_compute("bias", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("bias", op_mode="dynamic", support_fusion=True)
 def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias"):
     """
     calculating data

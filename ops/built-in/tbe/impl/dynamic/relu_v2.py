@@ -48,7 +48,7 @@ CONST_ZERO = 0
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
-@register_operator_compute("ReluV2", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ReluV2", op_mode="dynamic", support_fusion=True)
 def relu_v2_compute(x, y, mask, kernel_name="relu_v2"):
     """
     Algrithm : relu_v2(x) = x and 1 when x > 0 , else 0, 0

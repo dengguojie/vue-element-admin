@@ -40,7 +40,7 @@ SCALAR_NEGATIVE_ONE = -1
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=invalid-name
-@register_operator_compute("Selu", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Selu", op_mode="dynamic", support_fusion=True)
 def selu_compute(input_x, y, kernel_name="selu"):
     """
     Computes scaled exponential linear: `scale * alpha * (exp(features) - 1)`

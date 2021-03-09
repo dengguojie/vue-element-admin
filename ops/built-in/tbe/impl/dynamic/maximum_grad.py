@@ -137,7 +137,7 @@ def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
     return result_dx, result_dy
 
 
-@register_operator_compute("MaximumGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("MaximumGrad", op_mode="dynamic", support_fusion=True)
 def maximum_grad_compute(data_x, data_y, data_dz, y1, y2, grad_x, grad_y,
                          kernel_name="maximum_grad"):
     """

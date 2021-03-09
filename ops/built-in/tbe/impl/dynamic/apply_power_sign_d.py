@@ -97,7 +97,7 @@ def _compute_process(input_list):
 
 
 # pylint: disable=locally-disabled, too-many-arguments, unused-argument
-@register_operator_compute("ApplyPowerSignD", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ApplyPowerSignD", op_mode="dynamic", support_fusion=True)
 def apply_power_sign_d_compute(var,
                                m,
                                lr,

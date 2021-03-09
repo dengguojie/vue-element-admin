@@ -33,7 +33,7 @@ VALUE_ONE = 1
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # pylint: disable=too-many-locals, invalid-name, unused-argument
 # pylint: disable=unused-variable
-@register_operator_compute("SelectV2", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("SelectV2", op_mode="dynamic", support_fusion=True)
 def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
     """
     compute for select_v2

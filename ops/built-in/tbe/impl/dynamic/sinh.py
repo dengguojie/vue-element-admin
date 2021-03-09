@@ -36,7 +36,7 @@ SCALAR_TWO = 2
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("Sinh", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Sinh", op_mode="dynamic", support_fusion=True)
 def sinh_compute(input_data, output_data, kernel_name="sinh"):
     """
     algorithm: sinh

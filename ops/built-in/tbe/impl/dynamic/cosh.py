@@ -36,7 +36,7 @@ SCALAR_TWO = 2
 
 
 # pylint: disable=locally-disabled,unused-argument
-@register_operator_compute("Cosh", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Cosh", op_mode="dynamic", support_fusion=True)
 def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
     """
     algorithm: cosh

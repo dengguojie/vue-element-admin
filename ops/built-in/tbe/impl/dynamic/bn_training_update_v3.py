@@ -16,10 +16,9 @@ http://www.apache.org/licenses/LICENSE-2.0
 dynamic bn_training_update_v3
 """
 
-import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te.platform import log
+from impl.util.platform_adapter import log
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
@@ -155,7 +154,7 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     return res
 
 
-@register_operator_compute("BnTrainingUpdate", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BnTrainingUpdate", op_mode="dynamic", support_fusion=True)
 def bn_training_update_v3_fusion_compute(x, sum, square_sum, scale, offset,
                                          y, batch_mean, batch_variance,
                                          reserve_1, reserve_2, epsilon,
@@ -316,7 +315,7 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
     log.debug("input_sum shape: " + str(shape_sum))
 
     # compute
-    with te.op.compute():
+    with tbe.compute():
         in_x = tvm.placeholder(shape_x, name="x", dtype=dtype_x)
         in_sum = tvm.placeholder(shape_sum, name="sum", dtype=dtype_sum)
         in_sqrsum = tvm.placeholder(shape_sum, name="sqrsum", dtype=dtype_sum)

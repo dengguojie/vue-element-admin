@@ -48,7 +48,7 @@ TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("Xlogy", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Xlogy", op_mode="dynamic", support_fusion=True)
 def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     """
     algorithm: xlogy

@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=too-many-locals,unused-argument
-@register_operator_compute("ThresholdGradV2D", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ThresholdGradV2D", op_mode="dynamic", support_fusion=True)
 def threshold_grad_v2_d_compute(input_gradients, input_features,
                                 threshold, output_backprops,
                                 kernel_name="threshold_grad_v2_d"):

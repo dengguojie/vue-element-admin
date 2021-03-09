@@ -31,7 +31,7 @@ SCALAR_ONE = 1
 
 
 # pylint: disable=locally-disabled,unused-argument
-@register_operator_compute("Inv", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Inv", op_mode="dynamic", support_fusion=True)
 def inv_compute(input_x, output_y, kernel_name="inv"):
     """
     compute inv

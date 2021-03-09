@@ -118,7 +118,7 @@ def _sinh_repeat_with_sqrt(data):
 
 
 # pylint: disable=unused-argument
-@register_operator_compute("AcoshGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("AcoshGrad", op_mode="dynamic", support_fusion=True)
 def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
     do acosh_grad compute

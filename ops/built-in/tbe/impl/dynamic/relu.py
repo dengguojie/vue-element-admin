@@ -34,7 +34,7 @@ CONST_ZERO = 0
 
 
 # pylint: disable=invalid-name,unused-argument,redefined-argument-from-local
-@register_operator_compute("Relu", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Relu", op_mode="dynamic", support_fusion=True)
 def relu_fusion_compute(input_x, output_y, kernel_name="relu"):
     """
     relu_fusion_compute

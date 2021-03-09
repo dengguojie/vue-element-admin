@@ -22,7 +22,6 @@ from enum import unique
 
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
-from te.platform import cce_build
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -513,7 +512,8 @@ class Unpack:
             self.compile_vars[case.get("key").value] = [var.get_name() for var in tvm_vars]
 
         build_config_items = {"parse_ddr_args": True, "build_fatbin": True}
-        build_config = cce_build.build_config_update_list(cce_build.dynamic_build_config, build_config_items)
+        build_config = tbe_platform.cce_build.build_config_update_list(tbe_platform.cce_build.dynamic_build_config,
+                                                                       build_config_items)
 
         with build_config:
             tvm.build(self.sch_list, self.arg_list, rules=self.rules, target="cce", name=self.kernel_name)

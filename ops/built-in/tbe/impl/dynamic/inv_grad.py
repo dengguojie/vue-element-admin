@@ -31,7 +31,7 @@ SCALAR_NEGATIVE_ONE = -1
 
 
 # pylint: disable=locally-disabled,unused-argument
-@register_operator_compute("InvGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("InvGrad", op_mode="dynamic", support_fusion=True)
 def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     """
     compute inv_grad

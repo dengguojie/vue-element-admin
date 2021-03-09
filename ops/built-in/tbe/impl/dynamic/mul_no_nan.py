@@ -17,7 +17,6 @@ dynamic mul_no_nan
 """
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
-from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import OpPatternMode
@@ -27,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
-@register_operator_compute("mul_no_nan", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("mul_no_nan", op_mode="dynamic", support_fusion=True)
 def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     """
     calculating data

@@ -23,6 +23,7 @@ from tbe import tik as tbe_tik
 from tbe import tvm as tbe_tvm
 from tbe.common import platform
 from tbe.common.platform import platform_info
+from tbe.common.utils import log as tbe_log
 from te.platform.fusion_manager import fusion_manager as tbe_fusion_manager
 import te.platform.cce_build as tbe_cce_build
 
@@ -280,5 +281,6 @@ operation = tbe_operation
 tik = tbe_tik
 tvm = tbe_tvm
 tbe_context = platform_tbe.common.context
+log = tbe_log
 # pylint: disable=invalid-name
 tbe_platform = PlatformApi

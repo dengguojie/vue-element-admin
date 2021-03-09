@@ -42,7 +42,7 @@ MAX_CONST_HALF = 2 ** 12
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
-@register_operator_compute("Xdivy", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Xdivy", op_mode="dynamic", support_fusion=True)
 def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
     """
     xdivy compute

@@ -18,7 +18,7 @@ dynamic bn_training_reduce
 import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from te.platform import log
+from impl.util.platform_adapter import log
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util import fusion_util
@@ -68,7 +68,7 @@ def bn_training_reduce_compute(x, sum, square_sum,
     return res
 
 
-@register_operator_compute("BnTrainingReduce", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BnTrainingReduce", op_mode="dynamic", support_fusion=True)
 def bn_training_reduce_fusion_compute(x, sum, square_sum,
                                       kernel_name="bn_training_reduce"):
     """
@@ -149,7 +149,7 @@ def bn_training_reduce(x, sum, square_sum,
     shape_x = shape_util.variable_shape([x])[0]
 
     # compute
-    with te.op.compute():
+    with tbe.compute():
         data_input = tvm.placeholder(shape_x, name="data_input", dtype=dtype)
         res = bn_training_reduce_compute(data_input, sum, square_sum,
                                          kernel_name=kernel_name)

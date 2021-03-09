@@ -21,7 +21,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
-from te.platform.fusion_manager import fusion_manager
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -43,7 +43,7 @@ def get_fusion_params(x_tensor, y):
     """
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
     l1_fusion_type = -1
-    if fusion_manager.get_build_cfg() != "disable":
+    if tbe_platform.fusion_manager.get_build_cfg() != "disable":
         l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
             if "L1_fusion_type" in x_tensor.op.attrs else -1
         if l1_fusion_type == 1:
@@ -81,7 +81,7 @@ def get_fusion_params(x_tensor, y):
     return fusion_params
 
 
-@register_operator_compute("leaky_relu", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("leaky_relu", op_mode="dynamic", support_fusion=True)
 def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """
     compute for caffe_relu_layer_cce
@@ -132,7 +132,7 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
     para_check.check_dtype(dtype, check_list, param_name="x")
 
     l1_fusion_type = -1
-    if fusion_manager.get_build_cfg() != "disable":
+    if tbe_platform.fusion_manager.get_build_cfg() != "disable":
         l1_fusion_type = x.get("L1_fusion_type", -1)
         if l1_fusion_type == 1:
             error_manager_vector.raise_err_specific_reson("leaky_relu",

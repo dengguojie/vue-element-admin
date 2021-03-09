@@ -93,7 +93,7 @@ def _dimension_index(data_mod, ind):
 
 
 # pylint: disable=locally-disabled,unused-argument,invalid-name
-@register_operator_compute("DataFormatDimMap", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("DataFormatDimMap", op_mode="dynamic", support_fusion=True)
 def _data_format_dim_map_compute(x,
                                  y,
                                  src_format='NHWC',

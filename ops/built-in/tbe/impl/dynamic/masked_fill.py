@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals
-@register_operator_compute("MaskedFill", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("MaskedFill", op_mode="dynamic", support_fusion=True)
 def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
     """
     calculating masked_fill

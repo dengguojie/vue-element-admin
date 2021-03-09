@@ -44,7 +44,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
-@register_operator_compute("ApplyGradientDescent", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("ApplyGradientDescent", op_mode="dynamic", support_fusion=True)
 def apply_gradient_descent_compute(var,
                                    alpha,
                                    delta,

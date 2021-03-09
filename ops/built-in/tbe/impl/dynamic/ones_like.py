@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
-@register_operator_compute("OnesLike", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("OnesLike", op_mode="dynamic", support_fusion=True)
 def ones_like_compute(input_x, output_y, kernel_name="ones_like"):
     """
     Given a tensor, this operation returns a tensor of the same

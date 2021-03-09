@@ -31,7 +31,7 @@ TWO_PI = 2 * 3.14159265358979
 
 
 # pylint: disable=locally-disabled, unused-argument
-@register_operator_compute("Cos", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Cos", op_mode="dynamic", support_fusion=True)
 def cos_compute(input_x, output_y, kernel_name="cos"):
     """
     algorithm: cos

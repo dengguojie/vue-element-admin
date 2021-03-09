@@ -27,7 +27,7 @@ C0 = 16
 
 
 # pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
-@register_operator_compute("avg_pool_1d", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("avg_pool_1d", op_mode="dynamic", support_fusion=True)
 def avg_pool_1d_compute(x,
                         div,
                         out_dict,

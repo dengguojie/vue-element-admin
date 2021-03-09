@@ -37,7 +37,7 @@ CONST_1 = 1
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals
-@register_operator_compute("FastGeluGrad", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("FastGeluGrad", op_mode="dynamic", support_fusion=True)
 def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: fast_gelu_grad

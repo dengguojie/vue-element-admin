@@ -50,7 +50,7 @@ CONST_LIMIT = 15.0 / 4
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals,
-@register_operator_compute("BesselI0e", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BesselI0e", op_mode="dynamic", support_fusion=True)
 def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     """
     Algrithm:

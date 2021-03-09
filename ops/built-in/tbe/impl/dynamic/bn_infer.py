@@ -91,7 +91,7 @@ def _check_dtype(dtype_x, dtype_scale, dtype_offset,
 
 # pylint: disable=locally-disabled,invalid-name,too-many-arguments
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
-@register_operator_compute("BNInfer", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BNInfer", op_mode="dynamic", support_fusion=True)
 def bn_infer_compute(x, scale, offset, mean, variance,
                      y, epsilon, kernel_name="bn_inf"):
     """

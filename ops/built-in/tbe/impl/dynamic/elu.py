@@ -63,7 +63,7 @@ def _elu_computer_precision(data, dtype):
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-@register_operator_compute("Elu", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("Elu", op_mode="dynamic", support_fusion=True)
 def elu_compute(x, y, alpha, kernel_name="elu"):
     """
     do element-wise elu compute

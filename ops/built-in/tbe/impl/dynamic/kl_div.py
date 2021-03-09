@@ -32,7 +32,7 @@ from impl.util.platform_adapter import OpImplMode
 
 
 # pylint: disable=too-many-arguments,unused-argument,too-many-locals
-@register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=True)
 def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size, kernel_name="kl_div"):
     """
     Parameters
