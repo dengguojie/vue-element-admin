@@ -53,6 +53,7 @@ from .relu6_d import relu6_d
 from .adam_apply_one_assign import adam_apply_one_assign
 from .sigmoid_cross_entropy_with_logits_grad_v2 import sigmoid_cross_entropy_with_logits_grad_v2
 from .add import add
+from .rsqrt_grad import rsqrt_grad
 from .inv import inv
 from .gelu import gelu
 from .smooth_l1_loss_grad import smooth_l1_loss_grad
