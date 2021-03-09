@@ -122,7 +122,8 @@ TEST_F(Conv3DBackpropInputTiling, Conv3d_bp_input_tiling_dynamic_dhw_repo_range)
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 24 24 92 92 128 128 ");
+  EXPECT_EQ(runInfo.tiling_key, 10000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "24 24 92 92 128 128 ");
 }
 
 
@@ -171,7 +172,8 @@ TEST_F(Conv3DBackpropInputTiling, Conv3d_bp_input_tiling_dynamic_dhw_cost_range)
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 4);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10001 24 24 92 92 128 128 ");
+  EXPECT_EQ(runInfo.tiling_key, 10001);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "24 24 92 92 128 128 ");
 }
 
 TEST_F(Conv3DBackpropInputTiling, Conv3d_bp_input_tiling_dynamic_batch) {
@@ -219,6 +221,6 @@ TEST_F(Conv3DBackpropInputTiling, Conv3d_bp_input_tiling_dynamic_batch) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
-  std::cout << to_string(runInfo.tiling_data) << std::endl;
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 24 24 92 92 128 128 ");
+  EXPECT_EQ(runInfo.tiling_key, 10000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "24 24 92 92 128 128 ");
 }

@@ -74,5 +74,6 @@ TEST_F(DeConvlutionTiling, DeConvlution_tiling_dynamic_hw) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 1 16 16 16 16 ");
+  EXPECT_EQ(runInfo.tiling_key, 10000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 16 16 16 16 ");
 }

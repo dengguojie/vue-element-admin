@@ -76,7 +76,8 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_tiling_dynamic_nhw) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 1 16 16 16 16 ");
+  EXPECT_EQ(runInfo.tiling_key, 10000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 16 16 16 16 ");
 }
 
 TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_dynamic_None) {
@@ -124,5 +125,6 @@ TEST_F(Conv2DBackpropInputTiling, Conv2d_bp_input_dynamic_None) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 1 ");
+  EXPECT_EQ(runInfo.tiling_key, 10000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 ");
 }

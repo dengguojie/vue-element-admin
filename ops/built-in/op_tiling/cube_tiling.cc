@@ -316,10 +316,6 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
       OP_LOGD(op_type.c_str(), "get tiling_id: %s", tiling_id.c_str());
       run_info.block_dim = static_cast<uint32_t>(compile_info["block_dim"][tiling_id]);
       run_info.tiling_key = std::stoi(tiling_id);
-      int status = compile_info["push_status"];
-      if (status == 0) {
-        ByteBufferPut(run_info.tiling_data, run_info.tiling_key);
-      }
 
       UpdateRunInfo(dynamic_mode, input_shape, output_shape, run_info);
       return true;

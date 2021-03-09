@@ -61,16 +61,7 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
   GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, n, h, w, outH, outW);
 
-  try {
-    runInfo.tiling_key = tilingID;
-    int status = opCompileInfo["push_status"];
-    if (status == 0) {
-      ByteBufferPut(runInfo.tiling_data, tilingID);
-    }
-  } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get push_status error. Error message: %s", opType.c_str(), e.what());
-    return false;
-  }
+  runInfo.tiling_key = tilingID;
   std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
 
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {

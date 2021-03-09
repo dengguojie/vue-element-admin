@@ -241,16 +241,7 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
   }
 
   run_info.block_dim = static_cast<int32_t>(compile_info["block_dim"][tiling_id]);
-  try {
-    run_info.tiling_key = stoi(tiling_id);
-    int status = compile_info["push_status"];
-    if (status == 0) {
-      ByteBufferPut(run_info.tiling_data, stoi(tiling_id));
-    }
-  } catch (const std::exception &e) {
-    GE_LOGE("op [%s]: get push_status error. Error message: %s", op_type.c_str(), e.what());
-    return false;
-  }
+  run_info.tiling_key = stoi(tiling_id);
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(m));
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(k));
   ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(n));

@@ -87,7 +87,8 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_w)
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 56 56 ");
+  EXPECT_EQ(runInfo.tiling_key, 10000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "56 56 ");
 }
 
 TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
@@ -143,5 +144,6 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "10000 32 ");
+  EXPECT_EQ(runInfo.tiling_key, 10000);
+  EXPECT_EQ(to_string(runInfo.tiling_data), "32 ");
 }
