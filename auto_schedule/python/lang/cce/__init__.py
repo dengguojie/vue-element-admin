@@ -88,7 +88,6 @@ from .te_compute.depthwise_conv2d_compute import depthwise_conv2d_compute
 from .te_compute.conv_compute import check_conv_shape
 from .te_compute.conv_compute import conv_compress
 from .te_compute.conv_compute import is_support_v200
-from .te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from .te_compute.max_pool2d_3_2_fusion_compute import max_pool_compute
 from .te_compute.dim_conv import compute_four2five
 from .te_compute.dim_conv import compute_five2four

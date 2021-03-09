@@ -20,7 +20,7 @@ from enum import Enum
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.compute.conv_compute import is_support_v200
 from tbe.dsl.compute.conv_compute import is_support_v220
-from te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
+from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import MaxPoolParam
 from tbe.dsl.static_schedule import util
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
