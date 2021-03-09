@@ -37,6 +37,17 @@ AICPU_PROJECT_INI_INPUT = './msopst/golden/base_case/golden_output/aicpu' \
 AICPU_CASE_JSON_GOLDEN_OUTPUT = './msopst/golden/base_case/golden_output' \
                                 '/aicpu/json'
 
+OPTIONAL_INI_INPUT = './msopst/golden/base_case/input/Pooling.ini'
+OPTIONAL_ST_GOLDEN_OUTPUT = './msopst/golden/base_case/' \
+                            'golden_output/optional_input'
+
+ST_GOLDEN_OP_CASE_JSON_INPUT = './msopst/golden/base_case/input' \
+                               '/Pooling_case_20210225145706.json'
+ST_GOLDEN_OP_CASE_JSON_OUTPUT = './msopst/golden/base_case' \
+                                '/golden_output/gen_optional_acl_prj/Pooling'
+
+MSOPST_CONF_INI = './msopst/golden/base_case/input/msopst.ini'
+
 
 class NumpyArrar:
     def tofile(self, file_path):
@@ -326,6 +337,32 @@ class TestUtilsMethods(unittest.TestCase):
                 msopst.main()
         self.assertTrue(test_utils.check_file_context(
             ST_OUTPUT, AICPU_CASE_JSON_GOLDEN_OUTPUT))
+
+    # -------AR: paramType = optional create case.json---------
+    def test_create_case_json_form_option_ini_compare_success(self):
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'create', '-i', OPTIONAL_INI_INPUT,
+                '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                msopst.main()
+        self.assertTrue(test_utils.check_file_context(
+            ST_OUTPUT, OPTIONAL_ST_GOLDEN_OUTPUT))
+
+    # -------AR: paramType = optional run case.json---------
+    def test_gen_optional_acl_src_code_success(self):
+        test_utils.clear_out_path(ST_OUTPUT)
+        args = ['msopst', 'run', '-i', ST_GOLDEN_OP_CASE_JSON_INPUT, '-soc',
+                'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
+        with pytest.raises(SystemExit):
+            with mock.patch('sys.argv', args):
+                with mock.patch(
+                        'op_test_frame.st.interface.utils'
+                        '.check_path_valid'):
+                    msopst.main()
+        pooling_output = os.path.join(ST_OUTPUT, 'Pooling')
+        self.assertTrue(test_utils.check_file_context(
+            pooling_output, ST_GOLDEN_OP_CASE_JSON_OUTPUT))
 
 
 if __name__ == '__main__':

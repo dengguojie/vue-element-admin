@@ -1,0 +1,119 @@
+[
+    {
+        "case_name": "Test_Pooling_001",
+        "op": "Pooling",
+        "input_desc": [
+            {
+                "format": [
+                    "NC1HWC0"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "x"
+            },
+            {
+                "format": [
+                    "UNDEFINED"
+                ],
+                "type": [
+                    "UNDEFINED"
+                ],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "matrix"
+            },
+            {
+                "format": [
+                    "UNDEFINED"
+                ],
+                "type": [
+                    "UNDEFINED"
+                ],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "name": "bias"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "NC1HWC0"
+                ],
+                "type": [
+                    "float16"
+                ],
+                "shape": [],
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "window",
+                "type": "list_int",
+                "value": null
+            },
+            {
+                "name": "stride",
+                "type": "list_int",
+                "value": null
+            },
+            {
+                "name": "mode",
+                "type": "int",
+                "value": null
+            },
+            {
+                "name": "offset_x",
+                "type": "int",
+                "value": 0
+            },
+            {
+                "name": "pad",
+                "type": "list_int",
+                "value": null
+            },
+            {
+                "name": "global_pooling",
+                "type": "bool",
+                "value": null
+            },
+            {
+                "name": "ceil_mode",
+                "type": "int",
+                "value": null
+            },
+            {
+                "name": "dilation",
+                "type": "list_int",
+                "value": null
+            }
+        ]
+    }
+]
