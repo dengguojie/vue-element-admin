@@ -50,6 +50,7 @@ from impl import fractal_z_3d_2_ndhwc
 from impl import zng_2_nchw_hwcn
 from impl import nchw_2_fractal_z_g
 from impl import hwcn_2_fractal_z_g
+from impl import trans_data_positive_source_ntc
 
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
@@ -139,7 +140,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
                                         dst_format, kernel_name)
     elif src_format.upper() == "NCHW" \
             and ((dst_format.upper() == "FRACTAL_ZN" or dst_format.upper() == "FRACTAL_Z") and groups == 1):
-        nchw_hwcn_zn.nchw_hwcn_zn(src, dst, src_format, dst_format, kernel_name)
+        trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
     elif src_format.upper() == "NCHW" \
             and ((dst_format.upper() == "FRACTAL_ZN" or dst_format.upper() == "FRACTAL_Z") and groups > 1):
         nchw_2_fractal_z_g.nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name)

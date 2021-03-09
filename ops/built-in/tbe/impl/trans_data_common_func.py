@@ -44,7 +44,7 @@ MASK_64 = 64
 # mask value for float16
 MASK_128 = 128
 # max int64 value
-MAX_INT64_VALUE = 2 ** 63 - 1
+MAX_INT64_VALUE = 2 ** 62 - 1
 # used for vnchwconv
 ADDR_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 # vnchwconv line count
@@ -254,9 +254,9 @@ def get_dtype_len(in_dtype):
 
     if temp_dtype in ("int8", "uint8"):
         byte_len = 1
-    elif temp_dtype in ("float16", "int16", "uint16", "bool"):
+    elif temp_dtype in ("float16", "int16", "uint16"):
         byte_len = 2
-    elif temp_dtype in ("float32", "int32", "uint32", "float"):
+    elif temp_dtype in ("float32", "int32", "uint32"):
         byte_len = 4
     elif temp_dtype in ("int64", "uint64"):
         byte_len = 8
