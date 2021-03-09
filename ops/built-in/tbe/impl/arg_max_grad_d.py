@@ -25,9 +25,7 @@ from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 
 
-# define bits num of a byte
-MIN_BITS_NUM_8 = 8
-
+# pylint: disable=invalid-name,unused-argument,too-many-statements
 @fusion_manager.register("arg_max_grad_d")
 def arg_max_grad_d_compute(var, indices, updates, assist, y, dimension=0, kernel_name="arg_max_grad_d"):
     """
@@ -36,11 +34,8 @@ def arg_max_grad_d_compute(var, indices, updates, assist, y, dimension=0, kernel
     data_shape = y.get("shape")
     data_indices = tbe.broadcast(indices, data_shape)
     data_updates = tbe.broadcast(updates, data_shape)
-    
-    if data_shape[-1] % MIN_BITS_NUM_8 == 0:
-        data_eq = tbe.vcmp(data_indices, assist, 'eq', 'bit')
-    else:
-        data_eq = tbe.vcmp(data_indices, assist, 'eq', 'bool')
+
+    data_eq = tbe.vcmp(data_indices, assist, 'eq', 'bool')
     res = tbe.vsel(data_eq, data_updates, var)
     return res
 
@@ -132,13 +127,7 @@ def arg_max_grad_d(var, indices, updates, assist, y, dimension=0, kernel_name="a
         schedule = generic.auto_schedule(res)
 
     # operator build
-    var_shape = var.get("shape")
-    if var_shape[-1] % MIN_BITS_NUM_8 == 0:
-        config = {"name": kernel_name,
-                  "tensor_list": [data_var, data_indexs, data_updates, data_assist, res],
-                  "bool_storage_as_1bit":True}
-    else:
-        config = {"name": kernel_name,
-                  "tensor_list": [data_var, data_indexs, data_updates, data_assist, res],
-                  "bool_storage_as_1bit":False}
+    config = {"name": kernel_name,
+              "tensor_list": [data_var, data_indexs, data_updates, data_assist, res],
+              "bool_storage_as_1bit":False}
     tbe.cce_build_code(schedule, config)
