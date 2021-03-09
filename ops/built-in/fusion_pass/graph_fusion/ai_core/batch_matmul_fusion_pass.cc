@@ -79,35 +79,48 @@ bool BatchMatmulFusionPass::CheckIsNeedFusion(ge::NodePtr& fused_node) const {
 Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::NodePtr& fused_node,
                                                ge::NodePtr& new_node) {
   ge::OpDescPtr new_desc = nullptr;
-  FUSION_PASS_MAKE_SHARED((new_desc = std::make_shared<ge::OpDesc>("MatMul", "MatMul")), return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((new_desc = std::make_shared<ge::OpDesc>(fused_node->GetName() + "_MatMul", "MatMul")),
+                          return INTERNAL_ERROR);
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(fused_node);
 
   auto input_desc = op.GetInputDesc(0);
   ge::GeShape input_shape(input_desc.GetShape().GetDims());
+  ge::GeShape origin_input_shape(input_desc.GetOriginShape().GetDims());
   ge::Format data_format = input_desc.GetFormat();
   ge::DataType data_type = input_desc.GetDataType();
   auto ret = new_desc->AddInputDesc(GeTensorDesc(input_shape, data_format, data_type));
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "CreateMulNode AddInputDesc one fail."), return FAILED);
   auto new_input_desc1 = new_desc->GetInputDesc(0);
-  new_input_desc1.SetOriginShape(input_shape);
+  new_input_desc1.SetOriginShape(origin_input_shape);
+  new_input_desc1.SetOriginDataType(data_type);
+  new_input_desc1.SetOriginFormat(input_desc.GetOriginFormat());
   new_desc->UpdateInputDesc(0, new_input_desc1);
 
   auto input_desc1 = op.GetInputDesc(1);
   ge::GeShape input_shape1(input_desc1.GetShape().GetDims());
+  ge::GeShape origin_input_shape1(input_desc1.GetOriginShape().GetDims());
   ge::Format data_format1 = input_desc1.GetFormat();
   ge::DataType data_type1 = input_desc1.GetDataType();
   ret = new_desc->AddInputDesc(GeTensorDesc(input_shape1, data_format1, data_type1));
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "CreateMulNode AddinputDesc two fail."), return FAILED);
   auto new_input_desc2 = new_desc->GetInputDesc(1);
-  new_input_desc2.SetOriginShape(input_shape1);
+  new_input_desc2.SetOriginShape(origin_input_shape1);
+  new_input_desc2.SetOriginDataType(data_type1);
+  new_input_desc2.SetOriginFormat(input_desc1.GetOriginFormat());
   new_desc->UpdateInputDesc(1, new_input_desc2);
 
   auto output_desc = op.GetOutputDesc(0);
   ge::GeShape output_shape(output_desc.GetShape().GetDims());
+  ge::GeShape origin_output_shape(output_desc.GetOriginShape().GetDims());
   ge::Format output_format = output_desc.GetFormat();
   ge::DataType output_dtype = output_desc.GetDataType();
   ret = new_desc->AddOutputDesc(GeTensorDesc(output_shape, output_format, output_dtype));
   FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "CreateMulNode AddoutputDesc fail."), return FAILED);
+  auto new_output_desc = new_desc->GetOutputDesc(0);
+  new_output_desc.SetOriginShape(origin_output_shape);
+  new_output_desc.SetOriginDataType(output_dtype);
+  new_output_desc.SetOriginFormat(output_desc.GetOriginFormat());
+  new_desc->UpdateOutputDesc(0, new_output_desc);
   new_node = graph.AddNode(new_desc);
   Operator new_op = ge::OpDescUtils::CreateOperatorFromNode(new_node);
   new_op.SetAttr("transpose_x1", false);
