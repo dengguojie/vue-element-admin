@@ -1634,7 +1634,8 @@ VERIFY_FUNC_REG(BiasAdd, BiasAddVerify);
 
 // -------------------BitwiseAnd----------------------------
 IMPLEMT_COMMON_INFERFUNC(BitwiseAndInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y") == false) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
