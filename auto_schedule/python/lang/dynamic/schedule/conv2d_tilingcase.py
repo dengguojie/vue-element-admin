@@ -21,7 +21,7 @@ from collections import OrderedDict
 
 from tbe.tvm.expr import Expr
 from tbe.tvm import schedule as tvm
-from te.platform import cce_conf
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling.get_tiling import get_tiling
 
 from tbe.dsl.base.operation import register_tiling_case
@@ -145,7 +145,7 @@ class Conv2dTiling(CubeTilingOp):
             handle block_dim
             """
             tiling["block_dim"] = [1, 1, 1, 1]
-            device_core_num = cce_conf.get_soc_spec("CORE_NUM")
+            device_core_num = get_soc_spec("CORE_NUM")
             if (self.a_info[0] > 1) and (device_core_num > 1):
                 if self.a_info[0] <= device_core_num:
                     tiling["block_dim"][0] = self.a_info[0]

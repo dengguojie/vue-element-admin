@@ -9,13 +9,13 @@ provide common function used by conv2d
 
 import math
 import te.platform as tbe_platform
-from te.utils import para_check
-from te import tvm
-from te.platform import cce_conf
-from te.platform import CUBE_MKN
+from tbe import tvm
+from tbe.common.utils import para_check
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import CUBE_MKN
+from tbe.common.utils.errormgr import error_manager_cube as err_man
 from topi.cce import util
 from topi.cce.util import check_load3d_w_out_1_support
-from te.utils.error_manager import error_manager_cube as err_man
 
 
 PAD_SHAPE_DIM = 2
@@ -74,7 +74,7 @@ def is_support_v200():
     True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
     False: Other version
     """
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SOC_VERSION")
     if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
@@ -188,7 +188,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
         Check for not bigger than L1 size.
         """
-        l1_buffer_size = cce_conf.get_soc_spec("L1_SIZE")
+        l1_buffer_size = get_soc_spec("L1_SIZE")
         l1_fusion_type = fusion_para.get("l1_fusion_type")
         if l1_fusion_type in (0, 1):
             pass
@@ -581,8 +581,8 @@ def calc_para_from_dict(inputs, weights, strides, pads,
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, int), (list, int),
-                       int, int, str, str, str, str,
-                       bool, str, int, int, dict, dict, int)
+                             int, int, str, str, str, str,
+                             bool, str, int, int, dict, dict, int)
 def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
                               in_dtype, w_dtype, res_dtype, offset_w_dtype,
                               bias, kernel_name, dilateh=1, dilatew=1,
@@ -701,17 +701,17 @@ def conv_layer_cce_shape_calc(shape_in, shape_w, in_dtype, \
     None
 
     """
-    block_size_k = tbe_platform.CUBE_MKN[in_dtype]['mac'][1]
+    block_size_k = CUBE_MKN[in_dtype]['mac'][1]
     if optim_dict["c0_optim_flg"] and optim_dict["use_v200_c04_flg"] \
-            and tbe_platform.get_soc_spec("SOC_VERSION") in \
+            and get_soc_spec("SOC_VERSION") in \
             ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
         block_size_k = 4
     fmap_shape_nc1hwc0 = (shape_in[0], c1in_ori_align,
                           shape_in[2], shape_in[3], block_size_k)
 
     out_channel, _, filter_h, filter_w = shape_w
-    block_size_k = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
-    block_size_n = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
+    block_size_k = CUBE_MKN[w_dtype]['mac'][1]
+    block_size_n = CUBE_MKN[w_dtype]['mac'][2]
     if optim_dict["c0_optim_flg"]:
         filter_shape_frac_z = ((4 * filter_h * filter_w + block_size_k - 1) \
                                // block_size_k,
@@ -904,6 +904,6 @@ def use_v200_c04_check(shape_fm, shape_filter, params):
     use_v200_c04_flg = False
     strides, pads, dilations, data_format = params[5], params[6], params[7], params[9]
     minimum_load_L1 = _get_minimum_load_L1(shape_fm, shape_filter, strides, pads, dilations, data_format)
-    if minimum_load_L1 < tbe_platform.get_soc_spec("L1_SIZE"):
+    if minimum_load_L1 < get_soc_spec("L1_SIZE"):
         use_v200_c04_flg = True
     return use_v200_c04_flg

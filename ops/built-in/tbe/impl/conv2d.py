@@ -18,12 +18,15 @@ conv2d
 from __future__ import absolute_import
 import math
 import json
-from te import tvm
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_cube as err_man
+from tbe import tvm
+from tbe.dsl import auto_schedule
+from tbe.dsl import build
+from tbe.dsl.compute.conv_compute import conv
+from tbe.common.register import register_op_compute
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.utils import para_check
+from tbe.common.utils import shape_util
+from tbe.common.utils.errormgr import error_manager_cube as err_man
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 
@@ -67,12 +70,12 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
             c0_optim_flg = False
         # format NC1HWC0_C04 can only be used at first conv layer
         # for those soc using NC1HWC0_C04, ensure is_first_layer == 1
-        if not inputs.get("is_first_layer") and tbe_platform.get_soc_spec("SOC_VERSION") \
+        if not inputs.get("is_first_layer") and get_soc_spec("SOC_VERSION") \
                 in ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
             c0_optim_flg = False
         if c0_optim_flg:
             use_v200_c04_flag = False
-            if tbe_platform.get_soc_spec("SOC_VERSION") in \
+            if get_soc_spec("SOC_VERSION") in \
                     ("Ascend710", "Ascend615", "Ascend610", "Hi3796CV300CS", "SD3403"):
                 use_v200_c04_flag = util_conv2d.use_v200_c04_check(shape_fm, shape_filter, params)
             if use_v200_c04_flag:
@@ -145,7 +148,7 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
     return util_select_op_base.get_dynamic_param_in_json(param_list)
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("conv2d")
+@register_op_compute("conv2d", op_mode="static", support_fusion=True)
 def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
                    dilations, groups=1, data_format='NCHW', offset_x=0,
                    kernel_name="conv2d", options=None):
@@ -189,7 +192,7 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
         inputs, weights, bias, offset_w, strides, \
         pads, dilations, offset_x, groups, kernel_name, data_format, options)
 
-    res = tbe.conv(inputs, weights, para_dict, optim_dict)
+    res = conv(inputs, weights, para_dict, optim_dict)
 
     return res
 
@@ -413,29 +416,29 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
             bias_tensor = tvm.placeholder((cout_ori * groups,), name='bias_tensor',
                                           dtype=res_dtype)
             tensor_list.append(bias_tensor)
-        conv_res = tbe.conv(data, weight,
-                            para_dict={"bias_tensor": bias_tensor,
-                                       "offset_w_tensor": offset_w_tensor,
-                                       "pad_h": padh, "pad_w": padw,
-                                       "stride_h": strideh, "stride_w": stridew,
-                                       "dilate_h": dilateh, "dilate_w": dilatew,
-                                       "filter_h": filter_h, "filter_w": filter_w,
-                                       "offset_x": offset_x, "groups": groups,
-                                       "res_dtype": res_dtype,
-                                       "fusion_para": fusion_para,
-                                       "kernel_name": kernel_name,
-                                       "group": groups,
-                                       "enlarge": enlarge,
-                                       "c1_opt": c1_opt,
-                                       "cout1_opt": cout1_opt,
-                                       "group_opt": group_opt,
-                                       "a_shape": fmap_shape_nc1hwc0,
-                                       "weight_fracz_shape": filter_shape_frac_z,
-                                       "weight_ori_shape_nchw": weight_ori_shape_nchw,},
-                            optim_dict=optim_dict,
-                            dsl_flag=False)
+        conv_res = conv(data, weight,
+                        para_dict={"bias_tensor": bias_tensor,
+                                   "offset_w_tensor": offset_w_tensor,
+                                   "pad_h": padh, "pad_w": padw,
+                                   "stride_h": strideh, "stride_w": stridew,
+                                   "dilate_h": dilateh, "dilate_w": dilatew,
+                                   "filter_h": filter_h, "filter_w": filter_w,
+                                   "offset_x": offset_x, "groups": groups,
+                                   "res_dtype": res_dtype,
+                                   "fusion_para": fusion_para,
+                                   "kernel_name": kernel_name,
+                                   "group": groups,
+                                   "enlarge": enlarge,
+                                   "c1_opt": c1_opt,
+                                   "cout1_opt": cout1_opt,
+                                   "group_opt": group_opt,
+                                   "a_shape": fmap_shape_nc1hwc0,
+                                   "weight_fracz_shape": filter_shape_frac_z,
+                                   "weight_ori_shape_nchw": weight_ori_shape_nchw,},
+                        optim_dict=optim_dict,
+                        dsl_flag=False)
         tensor_list.append(conv_res)
-        sch = tbe.auto_schedule(conv_res)
+        sch = auto_schedule(conv_res)
 
     config = {
         "print_ir": need_print,
@@ -444,7 +447,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         "tensor_list": tensor_list
     }
 
-    tbe.cce_build_code(sch, config)
+    build(sch, config)
 
 def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                         groups=1, data_format='NCHW', offset_x=0, kernel_name="conv2d"):
