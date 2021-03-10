@@ -92,6 +92,7 @@ set(_onnx_plugins
   hard_sigmoid_plugin.cc
   lp_normalization_plugin.cc
   reduce_sum_square_plugin.cc
+  gather_elements_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
