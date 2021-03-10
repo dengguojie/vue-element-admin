@@ -22,6 +22,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util import util_common
 
 
 # pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local
@@ -47,11 +48,19 @@ def mul_compute(input1, input2, output, kernel_name="mul"):
     x0_shape = shape_util.shape_to_list(input1.shape)
     x1_shape = shape_util.shape_to_list(input2.shape)
     x0_shape, x1_shape, y_shape = shape_util.broadcast_shapes(x0_shape, x1_shape,
-                                                   param_name_input1="input1",
-                                                   param_name_input2="input2")
+                                                              param_name_input1="input1",
+                                                              param_name_input2="input2")
+    input1_dtype = input1.dtype.lower()
+    if input1_dtype in ("uint8", "int8"):
+        input1 = tbe.cast_to(input1, "float32")
+        input2 = tbe.cast_to(input2, "float32")
+
     input1 = tbe.broadcast(input1, y_shape)
     input2 = tbe.broadcast(input2, y_shape)
     res = tbe.vmul(input1, input2)
+
+    if input1_dtype in ("uint8", "int8"):
+        res = util_common.uint8_int8_overflow_proc(res, input1_dtype)
 
     return res
 
@@ -68,10 +77,10 @@ def mul(input1, input2, output, kernel_name="mul"):
     ----------
     input1 : dict
         include ori_shape, shape, ori_format, format, dtype and range
-        dtype only support float16, float32, int32
+        dtype only support float16, float32, int32, uint8, int8
     input2 : dict
         include ori_shape, shape, ori_format, format, dtype and range
-        dtype only support float16, float32, int32
+        dtype only support float16, float32, int32, uint8, int8
     output: dict
         include ori_shape, shape, ori_format, format, dtype and range
         shape must be broadcast shape of input
@@ -86,7 +95,7 @@ def mul(input1, input2, output, kernel_name="mul"):
     # check dtype
     dtype_x1 = input1.get("dtype").lower()
     dtype_x2 = input2.get("dtype").lower()
-    check_list = ("float16", "float32", "int32")
+    check_list = ("float16", "float32", "int32", "uint8", "int8")
     para_check.check_dtype(dtype_x1, check_list, param_name="input1")
     para_check.check_dtype(dtype_x2, check_list, param_name="input2")
     para_check.check_elewise_shape_range([input1, input1], support_broadcast=True)

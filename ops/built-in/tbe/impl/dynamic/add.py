@@ -24,6 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.util import util_common
 
 # General limitation of the reduce size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -78,9 +79,17 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
                                     param_name_input1="input_x",
                                     param_name_input2="input_y")
 
+    x_dtype = input_x.dtype.lower()
+    if x_dtype in ("uint8", "int8"):
+        input_x = tbe.cast_to(input_x, "float16")
+        input_y = tbe.cast_to(input_y, "float16")
+
     input_x = tbe.broadcast(input_x, shape_max)
     input_y = tbe.broadcast(input_y, shape_max)
     res = tbe.vadd(input_x, input_y)
+
+    if x_dtype in ("uint8", "int8"):
+        res = util_common.uint8_int8_overflow_proc(res, x_dtype)
 
     return res
 
@@ -96,9 +105,9 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     Parameters
     ----------
     input_x : dict
-       including shape, dtype and range, only support float16, float32, int32
+       including shape, dtype and range, only support float16, float32, int32, uint8, int8
     input_y : dict
-       including shape, dtype and range, only support float16, float32, int32
+       including shape, dtype and range, only support float16, float32, int32, uint8, int8
     output_z: dict
        shape should be broadcast shape of input, and type equals to input
     kernel_name : str
@@ -112,7 +121,7 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     # check input tensor data_type
     x_dtype = input_x.get("dtype").lower()
     y_dtype = input_y.get("dtype").lower()
-    check_list = ("float16", "float32", "int32")
+    check_list = ("float16", "float32", "int32", "uint8", "int8")
     para_check.check_dtype(x_dtype, check_list, param_name="input_x")
     para_check.check_dtype(y_dtype, check_list, param_name="input_y")
     para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)

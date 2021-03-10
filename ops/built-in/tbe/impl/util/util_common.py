@@ -423,6 +423,7 @@ def tensor_mod_int(x, y):
     x_float = tbe.vmuls(x, y_rec)
     x_floor = high_precision_floor(x_float)
     x_int = tbe.vmuls(x_floor, y)
+    x_int = tbe.cast_to(x_int, x.dtype.lower())
     x = tbe.vsub(x, x_int)
     return x
 
