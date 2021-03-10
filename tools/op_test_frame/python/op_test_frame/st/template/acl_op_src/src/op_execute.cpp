@@ -209,6 +209,5 @@ bool OpExecute(OpTestDesc &opDesc, uint32_t deviceId = 0)
         return false;
     }
 
-    (void) aclrtResetDevice(deviceId);
     return true;
 }

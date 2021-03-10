@@ -12,6 +12,7 @@
 #include <string>
 
 #include "op_test.h"
+#include "acl/acl.h"
 namespace OpTest {
 using namespace std::chrono;
 
@@ -104,6 +105,7 @@ int UnitTest::Run()
 
     std::cout << "[PASSED] " << (runCount_ - failedCount_) << " tests."<<std::endl;
     std::cout << "[FAILED] " << failedCount_ << " tests." << std::endl;
+    (void)aclFinalize();
     return 0;
 }
 

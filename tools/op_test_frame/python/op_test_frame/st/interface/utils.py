@@ -57,6 +57,8 @@ ACL_TEST_GEN_ERROR = 255
 BOTH_GEN_AND_RUN_ACL_PROJ = 0
 ONLY_GEN_WITHOUT_RUN_ACL_PROJ = 1
 ONLY_RUN_WITHOUT_GEN_ACL_PROJ = 2
+ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE = 3
+BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE = 4
 
 WRITE_FLAGS = os.O_WRONLY | os.O_CREAT
 WRITE_MODES = stat.S_IWUSR | stat.S_IRUSR
@@ -81,6 +83,7 @@ ONLY_RUN_WITHOUT_GEN = 'only_run_without_gen'
 ASCEND_GLOBAL_LOG_LEVEL = 'ascend_global_log_level'
 ASCEND_SLOG_PRINT_TO_STDOUT = 'ascend_slog_print_to_stdout'
 ATC_SINGLEOP_ADVANCE_OPTION = 'atc_singleop_advance_option'
+PERFORMACE_MODE = 'performance_mode'
 
 SPACE = ' '
 EMPTY = ''
@@ -604,3 +607,33 @@ def fix_name_lower_with_under(name):
         else:
             fix_name += name_str
     return fix_name
+
+
+class ScanFile(object):
+    """
+    The class for scanning path to get subdirectories.
+    """
+    def __init__(self, directory, prefix=None):
+        self.directory = directory
+        self.prefix = prefix
+
+    def scan_subdirs(self):
+        """
+        scan the specified path to get the list of subdirectories.
+        :return: list of subdirectories
+        """
+        files_list = []
+        if os.path.exists(self.directory):
+            files = os.listdir(self.directory)
+            for file in files:
+                file_path = os.path.join(self.directory, file)
+                if os.path.isdir(file_path):
+                    dir_info = os.path.split(file_path)
+                    if self.prefix:
+                        if dir_info[1].startswith(self.prefix):
+                            files_list.append(dir_info[1])
+                    else:
+                        files_list.append(dir_info[1])
+        else:
+            print_error_log("scanned directory does not exist:" + self.directory)
+        return files_list

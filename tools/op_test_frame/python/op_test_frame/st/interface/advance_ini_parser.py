@@ -16,18 +16,21 @@ class AdvanceIniArgs:
     """
     Class for Load Advance Ini.
     """
+
     def __init__(self):
         self.only_gen_without_run = 'False'
         self.only_run_without_gen = 'False'
         self.ascend_global_log_level = '3'
         self.ascend_slog_print_to_stdout = '0'
         self.atc_singleop_advance_option = ""
+        self.performance_mode = 'False'
 
 
 class AdvanceIniParser:
     """
     Class for Advance Ini Parser.
     """
+
     def __init__(self, config_file):
         self.config_file = config_file
         self.advance_ini_args = AdvanceIniArgs()
@@ -37,7 +40,8 @@ class AdvanceIniParser:
             utils.ONLY_RUN_WITHOUT_GEN: self._init_run_flag,
             utils.ASCEND_GLOBAL_LOG_LEVEL: self._init_log_level_env,
             utils.ASCEND_SLOG_PRINT_TO_STDOUT: self._init_slog_flag_env,
-            utils.ATC_SINGLEOP_ADVANCE_OPTION: self._init_atc_advance_cmd
+            utils.ATC_SINGLEOP_ADVANCE_OPTION: self._init_atc_advance_cmd,
+            utils.PERFORMACE_MODE: self._init_performance_mode_flag
         }
 
     def _init_gen_flag(self):
@@ -117,6 +121,22 @@ class AdvanceIniParser:
         atc_advance_args_list = atc_advance_args.split()
         self.advance_ini_args.atc_singleop_advance_option = atc_advance_args_list
 
+    def _init_performance_mode_flag(self):
+        """
+        get value of performance_mode.
+        """
+        if not self.config.has_option(
+                utils.ADVANCE_SECTION, utils.PERFORMACE_MODE):
+            return
+        get_performance_mode_flag = self.config.get(
+            utils.ADVANCE_SECTION, utils.PERFORMACE_MODE)
+        if get_performance_mode_flag in utils.TRUE_OR_FALSE_LIST:
+            self.advance_ini_args.performance_mode = get_performance_mode_flag
+        else:
+            utils.print_warn_log(
+                'The performance_mode option should be True or False, '
+                'please modify it in %s file.' % self.config_file)
+
     def get_advance_args_option(self):
         """
         get advance config option.
@@ -151,10 +171,15 @@ class AdvanceIniParser:
         """
         only_gen = self.advance_ini_args.only_gen_without_run
         only_run = self.advance_ini_args.only_run_without_gen
+        performance_mode = self.advance_ini_args.performance_mode
         if only_gen == 'True':
             return utils.ONLY_GEN_WITHOUT_RUN_ACL_PROJ
         if only_run == 'True':
+            if performance_mode == 'True':
+                return utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE
             return utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ
+        if performance_mode == 'True':
+            return utils.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE
         return utils.BOTH_GEN_AND_RUN_ACL_PROJ
 
     def get_env_value(self):
@@ -169,3 +194,9 @@ class AdvanceIniParser:
         get atc advance cmd.
         """
         return self.advance_ini_args.atc_singleop_advance_option
+
+    def get_performance_mode_flag(self):
+        if self.advance_ini_args.performance_mode not in utils.TRUE_OR_FALSE_LIST or \
+                self.advance_ini_args.performance_mode == utils.TRUE_OR_FALSE_LIST[1]:
+            return False
+        return True

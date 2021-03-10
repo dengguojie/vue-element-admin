@@ -132,14 +132,16 @@ def _gen_build_convert_run(args, report):
     get_advance_args = AdvanceIniParser(args.config_file)
     get_advance_args.get_advance_args_option()
     acl_mode = get_advance_args.get_mode_flag()
-    if acl_mode == utils.BOTH_GEN_AND_RUN_ACL_PROJ:
+    if acl_mode == utils.BOTH_GEN_AND_RUN_ACL_PROJ or \
+            acl_mode == utils.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE:
         # gen op project and build & convert & execute the project.
         case_list = _generate_op_project(args, report, False)
         _runner_and_compare(args, case_list, report, get_advance_args)
     elif acl_mode == utils.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
         # only gen op project.
         _generate_op_project(args, report, False)
-    elif acl_mode == utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ:
+    elif acl_mode == utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ or \
+            acl_mode == utils.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE:
         # only build & convert & execute the project.
         # when the report is input,should avoid update the report
         global abnormal_termination
