@@ -3886,7 +3886,7 @@ class CceConvOp:
             else:
                 if strideh_opti_flag:
                     fmap_h = (fmap_h - 1) // stride_h + 1
-                al1_m = fmap_h * fmap_w
+                al1_m = ceil(fmap_h * fmap_w, fmap_c0)
                 al1_bound = al1_m * fmap_c1 * fmap_c0
 
             return al1_bound
