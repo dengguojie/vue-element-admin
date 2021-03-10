@@ -666,12 +666,19 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
     return GRAPH_FAILED;
   }
 
-  const int64_t image_size_dim_value = op.get_input_desc_image_size().GetShape().GetDim(0);
-  const int64_t bounding_boxes_dim2_value = op.get_input_desc_bounding_boxes().GetShape().GetDim(2);
-  if ((image_size_dim_value != 3) || (bounding_boxes_dim2_value != 4)) {
+  int64_t image_size_unused_dim;
+  int64_t bounding_boxes_unused_dim2;
+  const int64_t kImageSizeDimValue = op.get_input_desc_image_size().GetShape().GetDim(0);
+  const int64_t kBoundingBoxesDim2Value = op.get_input_desc_bounding_boxes().GetShape().GetDim(2);
+  if (WithValue(kImageSizeDimValue, 3, image_size_unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(),
-            "First dimention of input image_size must be 3 and third dimention of "
-            "input bounding_boxes must be 4");
+            "First dimention of input image_size must be 3, real dim is %lld", kImageSizeDimValue);
+    return GRAPH_FAILED;
+  }
+
+  if (WithValue(kBoundingBoxesDim2Value, 4, bounding_boxes_unused_dim2, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(),
+            "Third dimention of input bounding_boxes must be 4, real dim is %lld", kBoundingBoxesDim2Value);
     return GRAPH_FAILED;
   }
 
