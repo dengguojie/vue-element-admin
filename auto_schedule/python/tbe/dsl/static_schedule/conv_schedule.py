@@ -25,11 +25,9 @@ from tbe.dsl.static_schedule import util
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.tiling.tiling_helper import TILING_INSTANCE
 from tbe import tvm
-from te import platform as cce
-from te.platform import cce_conf
-from te.platform import CUBE_MKN
-from te.platform import cce_util
-from te.platform import get_soc_spec
+from tbe.common.platform import platform_info as cce
+from tbe.common.platform import CUBE_MKN
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.register import set_fusion_buildcfg
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 
@@ -604,32 +602,6 @@ def check_quantfuse_doubleout(tensor_list, sch):
     return tensor_list
 
 
-def reset_mask_insn(i_b, type_, bits=128, mask_func=None):
-    """
-    caculate the mask, and set vector mask
-
-    Parameters
-    ----------
-    param i_b: ir builder
-
-    param type_: the type of mask dst
-
-    param bits: the bit of mask, default : 128
-
-    Returns
-    -------
-    """
-    # argmin/argmax has his own set_mask func
-    if mask_func is not None:
-        mask1, mask2 = mask_func(bits)
-    else:
-        mask1, mask2 = cce_util.set_mask(bits)
-
-    i_b.emit(tvm.call_extern(
-        type_, "set_vector_mask", tvm.const(mask1, dtype="uint64"),
-        tvm.const(mask2, dtype="uint64")))
-
-
 def check_feature_map(tiling_new, al1_factor, axis_sequence):
     """
     check whether feature_map is overload
@@ -783,9 +755,9 @@ class CceConvOp:
                                "elewise_single_cast": "vector_auto",
                                "elewise_single_exp": "vector_auto",
                                "elewise_single_log": "vector_auto"}
-        self._l1_size = cce_conf.get_soc_spec("L1_SIZE")
-        self._corenum = cce_conf.get_soc_spec("CORE_NUM")
-        self._ub_size = cce_conf.get_soc_spec("UB_SIZE")
+        self._l1_size = get_soc_spec("L1_SIZE")
+        self._corenum = get_soc_spec("CORE_NUM")
+        self._ub_size = get_soc_spec("UB_SIZE")
         self.unzip_parameters = {"weight_zip_flag": False,
                                  "max_block_size": 32*1024,
                                  "compact_mode_index_size": 8,
@@ -1155,7 +1127,7 @@ class CceConvOp:
 
                 """
                 if self.unzip_parameters.get("weight_zip_flag") and \
-                        cce_conf.get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
+                        get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
                     compress_fusion_flag = self.unzip_parameters.get(
                         "compress_flag")
                     compress_fusion_flag = compress_fusion_flag << \
@@ -1403,7 +1375,7 @@ class CceConvOp:
 
                 tiling["AL1_shape"] = [1, 1]
                 if self.unzip_parameters.get("weight_zip_flag") and \
-                        cce_conf.get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
+                        get_soc_spec("SOC_VERSION") == "Hi3796CV300ES":
                     tiling["BL1_shape"] = [1]
                 else:
                     tiling["BL1_shape"] = None
@@ -1580,7 +1552,7 @@ class CceConvOp:
 
                     """
                     if self.unzip_parameters.get("weight_zip_flag") and \
-                            cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+                            get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                         compress_fusion_flag = self.unzip_parameters.get("compress_flag")
                         compress_fusion_flag = compress_fusion_flag << WEIGHT_UNZIP_FUSION_TYPE_BIT
                         fusion_type_new = fusion_type + compress_fusion_flag
@@ -5707,8 +5679,8 @@ class CceConvOp:
                 _reform_emit_insn_optimize()
             elif lop["op"] == "cast_i8_ub":
                 round_mode_emit_insn = 'vector_conv_%s' % self._lhisi_dequant_quant_para['quant_round'].value.lower()
-                if cce_conf.get_soc_spec("SOC_VERSION") == "Ascend310" or \
-                        "Ascend910" in cce_conf.get_soc_spec("SOC_VERSION") or _is_depthwise_scene():
+                if get_soc_spec("SOC_VERSION") == "Ascend310" or \
+                        "Ascend910" in get_soc_spec("SOC_VERSION") or _is_depthwise_scene():
                     round_mode_emit_insn = 'vector_conv'
                 self._schedule[cache_buffer].emit_insn(tensorize_axis, round_mode_emit_insn)
             elif lop["op"] == "conv_virtual_res":

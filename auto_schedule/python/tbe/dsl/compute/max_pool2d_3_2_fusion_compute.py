@@ -18,7 +18,7 @@ max_pool_v200
 from __future__ import division
 import math
 from tbe import tvm
-from te.platform import cce_conf
+from tbe.common.platform.platform_info import get_soc_spec
 
 
 class MaxPoolParam:
@@ -66,7 +66,7 @@ def _is_support_v200():
     True:  Ascend610/Ascend710/Hi3796CV300CS version
     False: Other version
     """
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SOC_VERSION")
     if soc_version in ("Ascend710", "Ascend610", "Hi3796CV300CS", "SD3403"):
         return True
     return False
