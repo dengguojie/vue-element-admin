@@ -101,6 +101,6 @@ TEST_F(ResizeNearestNeighborV2Tiling, resize_nearest_neighbor_tiling_2) {
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "100000 16 1 1000 1000 999 999 1 8 4 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "100000 16 1 1000 1000 999 999 2 4 4 ");
 }
 

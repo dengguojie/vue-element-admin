@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-ut test for resize_nearest_neighbor_v2
+ut test: for resize_nearest_neighbor_v2
 """
 
 from op_test_frame.ut import OpUT

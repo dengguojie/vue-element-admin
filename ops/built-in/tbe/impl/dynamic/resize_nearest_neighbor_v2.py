@@ -311,13 +311,23 @@ class ResizeNearestNeighbor:
         with self.tik_instance.if_scope(tik.all(self.core_weight_num < w_loop_sigment, self.core_weight_num > 0)):
             w_loop_sigment.set_as(self.core_weight_num)
 
-        w_loop_num = self.core_weight_num // w_loop_sigment
-        w_tail_num = self.core_weight_num % w_loop_sigment
-        nc_max_segment = self.ub_max_num // (w_loop_sigment * self.images_shape_c0)
-        nc_loop = self.core_nc_num // nc_max_segment
-        nc_tail = self.core_nc_num % nc_max_segment
+        w_loop_num = self.tik_instance.Scalar("int32", name="w_loop_num")
+        w_tail_num = self.tik_instance.Scalar("int32", name="w_tail_num")
+        nc_max_segment = self.tik_instance.Scalar("int32", name="nc_max_segment")
+        nc_loop = self.tik_instance.Scalar("int32", name="nc_loop")
+        nc_tail = self.tik_instance.Scalar("int32", name="nc_tail")
+
+        w_loop_num.set_as(self.core_weight_num // w_loop_sigment)
+        w_tail_num.set_as(self.core_weight_num % w_loop_sigment)
+        nc_max_segment.set_as(self.ub_max_num // (w_loop_sigment * self.images_shape_c0))
+        nc_loop.set_as(self.core_nc_num // nc_max_segment)
+        nc_tail.set_as(self.core_nc_num % nc_max_segment)
 
         if is_big_to_small:
+            # when nc_loop == 0, do not check the size of input_w * nc for nc_max_segment
+            # so change nc_max_segment = 0
+            with self.tik_instance.if_scope(nc_loop == 0):
+                nc_max_segment.set_as(0)
             # mean: if input_w // output_w > 4, the input_w can not save in l1
             # will modify w_loop_sigment base on input
             w_input_output_rate = (self.tiling_in_weight + self.tiling_out_weight - 1) // self.tiling_out_weight
@@ -325,12 +335,12 @@ class ResizeNearestNeighbor:
             _max_nc_w_in_l1 = self.ub_max_num * 4 // self.images_shape_c0
             with self.tik_instance.if_scope(self.tiling_out_weight * 4 < self.tiling_in_weight):
                 with self.tik_instance.if_scope(tik.any(w_loop_input_sigment * nc_tail > _max_nc_w_in_l1,
-                                                        w_loop_input_sigment * nc_loop > _max_nc_w_in_l1)):
+                                                        w_loop_input_sigment * nc_max_segment > _max_nc_w_in_l1)):
                     w_loop_sigment.set_as(w_loop_sigment * 4 // w_input_output_rate)
                     with self.tik_instance.if_scope(w_loop_sigment < 1):
                         w_loop_sigment.set_as(1)
-                    w_loop_num = self.core_weight_num // w_loop_sigment
-                    w_tail_num = self.core_weight_num % w_loop_sigment
+                    w_loop_num.set_as(self.core_weight_num // w_loop_sigment)
+                    w_tail_num.set_as(self.core_weight_num % w_loop_sigment)
 
         scalar_idx_fp32 = self.tik_instance.Scalar("float32", name="scalar_idx_fp32")
         # vconv start idx from int32 scalar to fp32 scalar
