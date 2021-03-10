@@ -104,7 +104,7 @@ class OPFile(metaclass=ABCMeta):
                                                 right_braces=utils.RIGHT_BRACES)
         # create dir and write
         plugin_path = os.path.join(plugin_dir, prefix + "_" +
-                                   self.op_info.fix_op_type + "_plugin.cpp")
+                                   self.op_info.fix_op_type + "_plugin.cc")
         utils.make_dirs(plugin_dir)
         utils.write_files(plugin_path, p_str)
 
@@ -115,7 +115,7 @@ class OPFile(metaclass=ABCMeta):
                                              right_braces=utils.RIGHT_BRACES)
         # create dir and write
         plugin_path = os.path.join(plugin_dir, prefix + "_" +
-                                   self.op_info.fix_op_type + "_plugin.cpp")
+                                   self.op_info.fix_op_type + "_plugin.cc")
         utils.make_dirs(plugin_dir)
         utils.write_files(plugin_path, p_str)
 
@@ -205,7 +205,7 @@ class OPFile(metaclass=ABCMeta):
             right_braces=utils.RIGHT_BRACES)
         ir_cpp_dir = os.path.join(self.output_path, "op_proto")
         ir_cpp_path = os.path.join(ir_cpp_dir, self.op_info.fix_op_type +
-                                   ".cpp")
+                                   ".cc")
         utils.make_dirs(ir_cpp_dir)
         utils.write_files(ir_cpp_path, cpp_str)
 

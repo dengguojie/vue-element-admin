@@ -134,7 +134,7 @@ fi
 
 # STEP 1, Check plugin files and proto files
 # Check for caffe_plugin files, If there is no plugin file, do not compile caffe proto.
-caffe_plugin_cpp_files_num=$(ls $project_path/framework/caffe_plugin/*.cpp 2> /dev/null | wc -l)
+caffe_plugin_cpp_files_num=$(ls $project_path/framework/caffe_plugin/*.cc 2> /dev/null | wc -l)
 if [[ "$caffe_plugin_cpp_files_num" == 0 ]];then
   log "[INFO] No caffe plugin files."
 fi  # endif compile caffe proto
