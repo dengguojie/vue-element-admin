@@ -100,6 +100,7 @@ from .less import less
 from .less_equal import less_equal
 from .floor_div import floor_div
 from .fast_gelu_grad import fast_gelu_grad
+from .smooth_l1_loss import smooth_l1_loss
 from .gelu_grad import gelu_grad
 from .fused_mul_apply_momentum import fused_mul_apply_momentum
 from .apply_keras_momentum_d import apply_keras_momentum_d

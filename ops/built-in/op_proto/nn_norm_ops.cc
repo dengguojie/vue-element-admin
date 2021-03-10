@@ -167,17 +167,11 @@ COMMON_INFER_FUNC_REG(Roll, RollInferShape);
 
 // ----------------SmoothL1Loss-------------------
 IMPLEMT_COMMON_INFERFUNC(SmoothL1LossInferShape) {
-  auto input_type = op.GetInputDesc("predict").GetDataType();
-  auto input_shape = op.GetInputDesc("predict").GetShape();
-
-  TensorDesc td = op.GetOutputDesc("loss");
-  td.SetShape(input_shape);
-  td.SetDataType(input_type);
-  (void)op.UpdateOutputDesc("loss", td);
-
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "predict", {"loss"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(SmoothL1Loss, SmoothL1LossInferShape);
 // ----------------SmoothL1Loss END-------------------
 
