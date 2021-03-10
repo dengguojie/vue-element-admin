@@ -908,7 +908,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         run_success = True
         err_trace = None
         try:
-            case_info.test_func(run_soc_version)
+            case_res = case_info.test_func(run_soc_version)
+            if not case_res:
+                run_success = False
+                err_trace = '%s return Failed!!' % case_info.case_name
         except BaseException as _:  # pylint: disable=broad-except
             run_success = False
             err_trace = get_trace_info()

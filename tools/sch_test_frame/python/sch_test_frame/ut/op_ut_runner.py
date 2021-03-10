@@ -318,7 +318,7 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
 
     if cov_report and len(multiprocess_run_args) > 0:
         total_cov_data_file = os.path.join(cov_report_path, ".coverage")
-        cov = coverage.Coverage(source="impl", data_file=total_cov_data_file)
+        cov = coverage.Coverage(source="tbe.dsl", data_file=total_cov_data_file)
         combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in os.listdir(cov_combine_dir)]
         cov.combine(combine_files)
         cov.save()
