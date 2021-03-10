@@ -317,9 +317,13 @@ IMPLEMT_VERIFIER(ApplyAdagradD, ApplyAdagradDVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdagradDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ApplyAdagradD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
+  OP_LOGI(op.GetName().c_str(), "Enter ApplyCenteredRMSPropD op_proto inferfunction!");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "accum", {"accum"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
