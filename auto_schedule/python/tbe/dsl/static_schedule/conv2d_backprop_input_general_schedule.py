@@ -1044,8 +1044,8 @@ def general_schedule(
         else:
             # batch and group is 1, other axes full load
             al1_tilling_k = kernel_h * kernel_w * cou1_g * al1_co0
-            al1_tilling_m = _ceil(c_l0c_hw,
-                                  cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
+            al1_tilling_m = 1 if l0c_multi_group_flag else _ceil(c_l0c_hw,
+                cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
         bl1_tilling_g = 1
         if tiling.get("BL1_shape") != []:
             bl1_tilling_k, bl1_tilling_n, _, bl1_tilling_g = tiling.get("BL1_shape")
@@ -1053,7 +1053,7 @@ def general_schedule(
             if w_trans_flag:
                 # [G*Cout1*Hk*Wk, cin1, cin0, cout0]: bl1_co1, bl1_k1, _, bl1_co0
                 bl1_tilling_k = bl1_co0 * bl1_co1 // g_after
-                bl1_tilling_n = bl1_k1 // cl0_tiling_nc
+                bl1_tilling_n = 1 if l0c_multi_group_flag else bl1_k1 // cl0_tiling_nc
             else:
                 # [G*Cin1*Hk*Wk, cou1, cou0, cin0]: bl1_k1, bl1_co1,bl1_co0,_
                 bl1_tilling_k = kernel_h * kernel_w * bl1_co0 * bl1_co1
@@ -2166,8 +2166,9 @@ def general_schedule(
     def _bind_core():
         axs = sch_agent[c_ddr].get_active_scopes()
         ax_g, ax_ni, ax_ci, ax_hw, _ = axs
+        # g, c both relate to BL1[0], must in the inner of fuse_bind_axis
         ax_core = sch_agent[c_ddr].bind_core(
-            [ax_g, ax_ni, ax_ci, ax_hw], [group_dim, batch_dim, n_dim, m_dim])
+            [ax_ni, ax_hw, ax_g, ax_ci], [batch_dim, m_dim, group_dim, n_dim])
         ax_core_in = sch_agent[c_ddr].get_superkernel_axis_pragma()
         sch_agent.root_stage_at(c_ddr, ax_core)
         blocks = batch_dim * group_dim * n_dim * m_dim
