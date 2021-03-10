@@ -24,6 +24,7 @@ set(_optiling_files
   bias.cc
   bias_add.cc
   bninference_d.cc
+  bn_reduce_grad.cc
   concat.cc
   concat_offset.cc
   conv2d_backprop_filter.cc
