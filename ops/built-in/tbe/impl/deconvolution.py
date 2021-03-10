@@ -237,7 +237,7 @@ def get_op_support_info(x,  # pylint: disable=invalid-name,R0913,R0914,W0613
                         strides,
                         pads,
                         dilations=(1, 1, 1, 1),
-                        group=1,
+                        groups=1,
                         data_format="NCHW",
                         offset_x=0,
                         kernel_name="deconvolution"):

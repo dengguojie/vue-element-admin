@@ -568,22 +568,13 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
         w_value = dedy_w * stride_w
 
-        if fmap_w > c0_size:
-            h_value_max = filter_h_dilation + 1
-        elif c0_size % fmap_w == 0:
-            h_value_max = filter_h_dilation + c0_size // fmap_w - 1
-        else:
-            h_value_max = filter_h_dilation + c0_size // fmap_w + 1
-
-        a_l1_size = h_value_max * w_value *\
-                    c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype)
+        a_l1_size = w_value * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype)
         if _is_conv1d_situation():
             load3d_stride = 1
             a_l1_m_length = (c0_size - 1) * load3d_stride + filter_w_dilation
             a_l1_size = a_l1_m_length *\
                         c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype)
-        b_l1_size = filter_h_dilation * filter_w_dilation *\
-                    c0_size * c0_size_k * BIT_RATIO_DICT.get(filter_dtype)
+        b_l1_size = filter_w * c0_size * c0_size_k * BIT_RATIO_DICT.get(filter_dtype)
         if fusion_para.get("l1_fusion_type") != -1:
             a_l1_size = _l1fusion_size_limit(a_l1_size)
         l1_size = get_soc_spec("L1_SIZE")

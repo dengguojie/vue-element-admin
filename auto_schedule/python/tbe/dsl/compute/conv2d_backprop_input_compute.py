@@ -523,29 +523,11 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         if not dy_w:
             return
         c0_size_k = cce_params.CUBE_MKN[filters.dtype]["mac"][1]
-        bl1_size = (
-            filter_h_dilation
-            * filter_w_dilation
-            * cce_params.C0_SIZE
-            * c0_size_k
-            * BIT_RATIO_DICT.get(filters.dtype)
-        )
+        bl1_size = filter_w * cce_params.C0_SIZE * c0_size_k * BIT_RATIO_DICT.get(filters.dtype)
 
         al1_w_value = dy_w * stride_w
+        al1_size = al1_w_value * c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
 
-        if dx_w > cce_params.C0_SIZE:
-            al1_h_value = filter_h_dilation + 1
-        elif cce_params.C0_SIZE % dx_w == 0:
-            al1_h_value = filter_h_dilation + cce_params.C0_SIZE // dx_w - 1
-        else:
-            al1_h_value = filter_h_dilation + cce_params.C0_SIZE // dx_w + 1
-
-        al1_size = (
-            al1_h_value
-            * al1_w_value
-            * c0_size_k
-            * BIT_RATIO_DICT.get(out_backprop.dtype)
-        )
         if _is_conv1d_situation():
             load3d_stride = 1
             a_l1_m_length = (dy_c0 - 1) * load3d_stride + filter_w_dilation

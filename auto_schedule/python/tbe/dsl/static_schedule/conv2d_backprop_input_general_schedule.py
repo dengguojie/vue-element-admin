@@ -758,22 +758,22 @@ def general_schedule(
             }
             if atype in bit_dir.keys():
                 k_al0 = bit_dir[atype]
-                k_al1 = k_w * k_h * k_al0
+                k_al1 = k_w * k_al0
             else:
                 # defaut value 32
                 k_al1 = 32
                 k_al0 = 32
 
             if btype in bit_dir.keys():
-                k_bl1 = bit_dir[btype]
                 k_bl0 = bit_dir[btype]
+                k_bl1 = k_bl0 * k_w
             else:
                 # defaut value 32
                 k_bl1 = 32
                 k_bl0 = 32
 
             if stride_h > 1 or stride_w > 1:
-                tiling["AUB_shape"] = [k_w * k_h * 16, 1, 1, 1]
+                tiling["AUB_shape"] = [k_w * bit_dir[atype], 1, 1, 1]
                 tiling["BUB_shape"] = None
             else:
                 tiling["AUB_shape"] = None
@@ -1586,9 +1586,14 @@ def general_schedule(
             if w_trans_flag:
                 tiling_ori_bl1 = bl1_tilling_g * bl1_tilling_k // _k0, l1_nb, _n0, _k0
             else:
+                tiling_ori_bl1_k = bl1_tilling_k // (kernel_h * kernel_w * 16)
+                tiling_ori_bl1_n = l1_nb * kernel_h * kernel_w
+                if tiling_ori_bl1_k == 0:
+                    tiling_ori_bl1_k = 1
+                    tiling_ori_bl1_n = l1_nb * kernel_w * (bl1_tilling_k // kernel_w // 16)
                 tiling_ori_bl1 = (
-                    l1_nb * kernel_h * kernel_w,
-                    bl1_tilling_k // (kernel_h * kernel_w * 16),
+                    tiling_ori_bl1_n,
+                    tiling_ori_bl1_k,
                     16,
                     16
                 )
@@ -1642,6 +1647,9 @@ def general_schedule(
                 else:
                     aub_h = aub_tiling_m
                     aub_w = filling_w
+                ub_shape_k = aub_tiling_k // (kernel_h * kernel_w * 16)
+                if ub_shape_k == 0:
+                    ub_shape_k = 1
                 ub_shape = [
                     1,
                     aub_tiling_k // (kernel_h * kernel_w * 16),
