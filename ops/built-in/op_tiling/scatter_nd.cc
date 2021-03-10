@@ -31,6 +31,9 @@
 namespace optiling {
 
 const int64_t BLOCK_SIZE = 32;
+const int64_t OUT_SPECIAL_DIM_0 = 640000;
+const int64_t OUT_SPECIAL_DIM_1 = 1;
+const int64_t OUT_SPECIAL_DIM_2 = 80;
 // 32b aligned, ub can store all updatesNum, float32 atomic
 const int64_t TILING_MODE_1 = 1;
 // 32b aligned, ub can't store all updatesNum, float32 atomic
@@ -61,6 +64,10 @@ const int64_t TILING_MODE_13 = 13;
 const int64_t TILING_MODE_14 = 14;
 // updateDataNum is more than 1 block, not atomic, and more than updateubnum
 const int64_t TILING_MODE_15 = 15;
+// high perf branch, updateDataNum is less than 1 block
+const int64_t TILING_MODE_16 = 16;
+// high perf branch, updateDataNum is 32b aligned
+const int64_t TILING_MODE_17 = 17;
 
 struct ScatterNdTilingParams {
   int64_t tilingMode;
@@ -85,6 +92,12 @@ struct ScatterNdTilingParams {
   int64_t varEachCoreSetZeroLastNum;
   int64_t varLastCoreSetZeroLoopNum;
   int64_t varLastCoreSetZeroLastNum;
+  int64_t indicesEachCoreData;
+  int64_t indicesLastCoreData;
+  int64_t eachCoreIndicesLoopNum;
+  int64_t eachCoreIndicesLastNum;
+  int64_t lastCoreIndicesLoopNum;
+  int64_t lastCoreIndicesLastNum;
 };
 
 void InitRunningParams(ScatterNdTilingParams& params) {
@@ -109,6 +122,12 @@ void InitRunningParams(ScatterNdTilingParams& params) {
   params.varEachCoreSetZeroLastNum = 0;
   params.varLastCoreSetZeroLoopNum = 0;
   params.varLastCoreSetZeroLastNum = 0;
+  params.indicesEachCoreData = 0;
+  params.indicesLastCoreData = 0;
+  params.eachCoreIndicesLoopNum = 0;
+  params.eachCoreIndicesLastNum = 0;
+  params.lastCoreIndicesLoopNum = 0;
+  params.lastCoreIndicesLastNum = 0;
 }
 
 void CalAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t indicesNum, int64_t updatesNum,
@@ -211,6 +230,25 @@ void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t v
   }
 }
 
+void CalScatterNdHighPerfBranchParams(ScatterNdTilingParams& runParams, int64_t indicesNum, int64_t coreNum,
+                                      int64_t ubSize, int64_t updateDataNum, int64_t updatesDataEachBlock,
+                                      int64_t indicesSize) {
+  int64_t halfUbSize = ubSize / 2;
+  runParams.tilingMode = TILING_MODE_16;
+  runParams.updatesDataNum = updateDataNum;
+  runParams.indicesEachCoreData = ceil(float(indicesNum) / coreNum);
+  runParams.coreNum = ceil(float(indicesNum) / runParams.indicesEachCoreData);
+  runParams.indicesLastCoreData = indicesNum - runParams.indicesEachCoreData * (runParams.coreNum - 1);
+  runParams.eachCoreIndicesLoopNum = runParams.indicesEachCoreData / (halfUbSize / indicesSize);
+  runParams.eachCoreIndicesLastNum = runParams.indicesEachCoreData % (halfUbSize / indicesSize);
+  runParams.lastCoreIndicesLoopNum = runParams.indicesLastCoreData / (halfUbSize / indicesSize);
+  runParams.lastCoreIndicesLastNum = runParams.indicesLastCoreData % (halfUbSize / indicesSize);
+
+  if (updateDataNum % updatesDataEachBlock == 0) {
+    runParams.tilingMode = TILING_MODE_17;
+  }
+}
+
 void SetRuningParams(const ScatterNdTilingParams& params, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, params.tilingMode);
   ByteBufferPut(runInfo.tiling_data, params.indiceStep);
@@ -236,33 +274,45 @@ void SetRuningParams(const ScatterNdTilingParams& params, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, params.varEachCoreSetZeroLastNum);
   ByteBufferPut(runInfo.tiling_data, params.varLastCoreSetZeroLoopNum);
   ByteBufferPut(runInfo.tiling_data, params.varLastCoreSetZeroLastNum);
+  ByteBufferPut(runInfo.tiling_data, params.indicesEachCoreData);
+  ByteBufferPut(runInfo.tiling_data, params.indicesLastCoreData);
+  ByteBufferPut(runInfo.tiling_data, params.eachCoreIndicesLoopNum);
+  ByteBufferPut(runInfo.tiling_data, params.eachCoreIndicesLastNum);
+  ByteBufferPut(runInfo.tiling_data, params.lastCoreIndicesLoopNum);
+  ByteBufferPut(runInfo.tiling_data, params.lastCoreIndicesLastNum);
 }
 
-void PrintTilingParams(const ScatterNdTilingParams& params) {
-  GELOGD("op [ScatterNdTiling] : tilingMode=%ld.", params.tilingMode);
-  GELOGD("op [ScatterNdTiling] : indiceStep=%ld.", params.indiceStep);
-  GELOGD("op [ScatterNdTiling] : coreNum=%ld.", params.coreNum);
-  GELOGD("op [ScatterNdTiling] : updatesDataNum=%ld.", params.updatesDataNum);
-  GELOGD("op [ScatterNdTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
-  GELOGD("op [ScatterNdTiling] : indicesLastNum=%ld.", params.indicesLastNum);
-  GELOGD("op [ScatterNdTiling] : updatesNum=%ld.", params.updatesNum);
-  GELOGD("op [ScatterNdTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
-  GELOGD("op [ScatterNdTiling] : updatesLastNum=%ld.", params.updatesLastNum);
-  GELOGD("op [ScatterNdTiling] : varNum=%ld.", params.varNum);
-  GELOGD("op [ScatterNdTiling] : varLoopNum=%ld.", params.varLoopNum);
-  GELOGD("op [ScatterNdTiling] : varLastNum=%ld.", params.varLastNum);
-  GELOGD("op [ScatterNdTiling] : varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
-  GELOGD("op [ScatterNdTiling] : varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
-  GELOGD("op [ScatterNdTiling] : maxIndice=%ld.", params.maxIndice);
-  GELOGD("op [ScatterNdTiling] : varEachCoreData=%ld.", params.varEachCoreData);
-  GELOGD("op [ScatterNdTiling] : indicesLastDim=%ld.", params.indicesLastDim);
+void PrintTilingParams(const std::string& opType, const ScatterNdTilingParams& params) {
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : tilingMode=%ld.", params.tilingMode);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : indiceStep=%ld.", params.indiceStep);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : coreNum=%ld.", params.coreNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : updatesDataNum=%ld.", params.updatesDataNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : indicesLastNum=%ld.", params.indicesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : updatesNum=%ld.", params.updatesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : updatesLastNum=%ld.", params.updatesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varNum=%ld.", params.varNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varLoopNum=%ld.", params.varLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varLastNum=%ld.", params.varLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : maxIndice=%ld.", params.maxIndice);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varEachCoreData=%ld.", params.varEachCoreData);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : indicesLastDim=%ld.", params.indicesLastDim);
   for (size_t i = 0; i < params.varOffSet.size(); i++) {
-    GELOGD("op [ScatterNdTiling] : varOffSet[%ld]=%ld.", i, params.varOffSet[i]);
+    OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varOffSet[%ld]=%ld.", i, params.varOffSet[i]);
   }
-  GELOGD("op [ScatterNdTiling] : varEachCoreSetZeroLoopNum=%ld.", params.varEachCoreSetZeroLoopNum);
-  GELOGD("op [ScatterNdTiling] : varEachCoreSetZeroLastNum=%ld.", params.varEachCoreSetZeroLastNum);
-  GELOGD("op [ScatterNdTiling] : varLastCoreSetZeroLoopNum=%ld.", params.varLastCoreSetZeroLoopNum);
-  GELOGD("op [ScatterNdTiling] : varLastCoreSetZeroLastNum=%ld.", params.varLastCoreSetZeroLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varEachCoreSetZeroLoopNum=%ld.", params.varEachCoreSetZeroLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varEachCoreSetZeroLastNum=%ld.", params.varEachCoreSetZeroLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varLastCoreSetZeroLoopNum=%ld.", params.varLastCoreSetZeroLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varLastCoreSetZeroLastNum=%ld.", params.varLastCoreSetZeroLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : indicesEachCoreData=%ld.", params.indicesEachCoreData);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : indicesLastCoreData=%ld.", params.indicesLastCoreData);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : eachCoreIndicesLoopNum=%ld.", params.eachCoreIndicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : eachCoreIndicesLastNum=%ld.", params.eachCoreIndicesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : lastCoreIndicesLoopNum=%ld.", params.lastCoreIndicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : lastCoreIndicesLastNum=%ld.", params.lastCoreIndicesLastNum);
 }
 
 bool CheckScatterNdTensorShape(const std::string& opType, std::vector<int64_t> indicesShape,
@@ -348,6 +398,18 @@ bool GetScatterNdCompileParams(const std::string& opType, const nlohmann::json& 
   return true;
 }
 
+bool CheckScatterNdHighPerfShape(std::vector<int64_t> outShape, std::vector<int64_t> indicesShape) {
+  if (indicesShape.size() != 2 || outShape.size() != 2 || indicesShape[1] != 1) {
+    return false;
+  }
+
+  if ((outShape[0] == OUT_SPECIAL_DIM_0 && outShape[1] == OUT_SPECIAL_DIM_1) ||
+      (outShape[0] == OUT_SPECIAL_DIM_0 && outShape[1] == OUT_SPECIAL_DIM_2)) {
+    return true;
+  }
+  return false;
+}
+
 bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
                      OpRunInfo& runInfo) {
   using namespace ge;
@@ -418,9 +480,9 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
                                             (outShape.size() - indicesShape.back()), 1, std::multiplies<int>());
   }
 
-  GELOGD("op [ScatterNdTiling] : varNum=%ld.", varNum);
-  GELOGD("op [ScatterNdTiling] : indicesNum=%ld.", indicesNum);
-  GELOGD("op [ScatterNdTiling] : updatesNum=%ld.", updatesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : varNum=%ld.", varNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : indicesNum=%ld.", indicesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterNdTiling] : updatesNum=%ld.", updatesNum);
 
   if (updateDataNum < updatesDataEachBlock) {
     runParams.coreNum = 1;
@@ -436,8 +498,13 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   }
 
   if (supportAtomic == 1 && input_dtype == "float32") {
-    CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize,
-                                updatesSize, indicesSize, updatesDataEachBlock);
+    if (CheckScatterNdHighPerfShape(outShape, indicesShape)) {
+      CalScatterNdHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum,
+                                       updatesDataEachBlock, indicesSize);
+    } else {
+      CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize,
+                                   updatesSize, indicesSize, updatesDataEachBlock);
+    }
   } else {
     CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
                                     runParams.coreNum, updatesSize, indicesSize, updatesDataEachBlock,
@@ -446,7 +513,7 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
 
   SetRuningParams(runParams, runInfo);
 
-  PrintTilingParams(runParams);
+  PrintTilingParams(opType, runParams);
 
   runInfo.block_dim = runParams.coreNum;
   std::vector<int64_t> workspace;

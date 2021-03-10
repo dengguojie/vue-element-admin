@@ -25,7 +25,7 @@ from impl.util.platform_adapter import tbe_context
 # max int64 value
 MAX_INT64_VALUE = 2 ** 64 - 1
 # tiling param num
-TILING_ARG_NUM = 28
+TILING_ARG_NUM = 36
 # reserved ub size
 RESERVED_UB_SIZE = 8 * 1024
 # 8 bit
@@ -180,6 +180,12 @@ class ScatterNd():
         self.var_each_core_set_zero_last_num = self.tik_instance.Scalar("int64", name="var_each_core_set_zero_last_num")
         self.var_last_core_set_zero_loop_num = self.tik_instance.Scalar("int64", name="var_last_core_set_zero_loop_num")
         self.var_last_core_set_zero_last_num = self.tik_instance.Scalar("int64", name="var_last_core_set_zero_last_num")
+        self.indices_each_core_data = self.tik_instance.Scalar("int64", name="indices_each_core_data")
+        self.indices_last_core_data = self.tik_instance.Scalar("int64", name="indices_last_core_data")
+        self.each_core_indices_loop_num = self.tik_instance.Scalar("int64", name="each_core_indices_loop_num")
+        self.each_core_indices_last_num = self.tik_instance.Scalar("int64", name="each_core_indices_last_num")
+        self.last_core_indices_loop_num = self.tik_instance.Scalar("int64", name="last_core_indices_loop_num")
+        self.last_core_indices_last_num = self.tik_instance.Scalar("int64", name="last_core_indices_last_num")
 
         self.tiling_mode.set_as(self.tiling_ub[0])
         self.indice_step.set_as(self.tiling_ub[1])
@@ -202,6 +208,12 @@ class ScatterNd():
         self.var_each_core_set_zero_last_num.set_as(self.tiling_ub[25])
         self.var_last_core_set_zero_loop_num.set_as(self.tiling_ub[26])
         self.var_last_core_set_zero_last_num.set_as(self.tiling_ub[27])
+        self.indices_each_core_data.set_as(self.tiling_ub[28])
+        self.indices_last_core_data.set_as(self.tiling_ub[29])
+        self.each_core_indices_loop_num.set_as(self.tiling_ub[30])
+        self.each_core_indices_last_num.set_as(self.tiling_ub[31])
+        self.last_core_indices_loop_num.set_as(self.tiling_ub[32])
+        self.last_core_indices_last_num.set_as(self.tiling_ub[33])
 
     def init_ub_tensor(self):
         """
@@ -285,7 +297,7 @@ class ScatterNd():
                 with self.tik_instance.else_scope():
                     self.var_read_index.set_as(self.var_read_index + self.indices_tmp)
 
-    def move_indices(self, indices_in_index, indice_num):
+    def move_indices(self, indices_in_index, indice_num, mode):
         """
         Move indices, choose branch
 
@@ -304,38 +316,36 @@ class ScatterNd():
                                     indices_burst_len, 0, 0)
         indices_in_index = indices_in_index // self.indices_last_dim
 
-        if tbe_platform.api_check_support("tik.set_atomic_add") and self.updates_dtype == "float32":
-            with self.tik_instance.if_scope(self.tiling_mode == 1):
-                self.traversing_updates_32b_aligned_and_ub_enough_atomic(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 2):
-                self.circulate_indices(indices_in_index, indice_num, 2)
-            with self.tik_instance.if_scope(self.tiling_mode == 3):
-                self.traversing_updates_single_core_and_ub_enough_atomic(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 4):
-                self.traversing_updates_single_core_and_ub_not_enough_atomic(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 5):
-                self.circulate_indices(indices_in_index, indice_num, 5)
-        else:
-            with self.tik_instance.if_scope(self.tiling_mode == 6):
-                self.traversing_32b_aligned_ub_store_all_var_and_update(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 7):
-                self.traversing_32b_aligned_ub_store_all_var(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 8):
-                self.traversing_32b_aligned_ub_store_all_update(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 9):
-                self.circulate_indices_not_atomic(indices_in_index, indice_num, 9)
-            with self.tik_instance.if_scope(self.tiling_mode == 10):
-                self.traversing_less_than_one_block_single_core_var_and_update(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 11):
-                self.traversing_less_than_one_block_single_core_var(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 12):
-                self.traversing_less_than_one_block_single_core_update(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 13):
-                self.traversing_less_than_one_block_ub_not_enough(indices_in_index, indice_num)
-            with self.tik_instance.if_scope(self.tiling_mode == 14):
-                self.circulate_indices_not_atomic(indices_in_index, indice_num, 14)
-            with self.tik_instance.if_scope(self.tiling_mode == 15):
-                self.circulate_indices_not_atomic(indices_in_index, indice_num, 15)
+        if mode == 1:
+            self.traversing_updates_32b_aligned_and_ub_enough_atomic(indices_in_index, indice_num)
+        if mode == 2:
+            self.circulate_indices(indices_in_index, indice_num, 2)
+        if mode == 3:
+            self.traversing_updates_single_core_and_ub_enough_atomic(indices_in_index, indice_num)
+        if mode == 4:
+            self.traversing_updates_single_core_and_ub_not_enough_atomic(indices_in_index, indice_num)
+        if mode == 5:
+            self.circulate_indices(indices_in_index, indice_num, 5)
+        if mode == 6:
+            self.traversing_32b_aligned_ub_store_all_var_and_update(indices_in_index, indice_num)
+        if mode == 7:
+            self.traversing_32b_aligned_ub_store_all_var(indices_in_index, indice_num)
+        if mode == 8:
+            self.traversing_32b_aligned_ub_store_all_update(indices_in_index, indice_num)
+        if mode == 9:
+            self.circulate_indices_not_atomic(indices_in_index, indice_num, 9)
+        if mode == 10:
+            self.traversing_less_than_one_block_single_core_var_and_update(indices_in_index, indice_num)
+        if mode == 11:
+            self.traversing_less_than_one_block_single_core_var(indices_in_index, indice_num)
+        if mode == 12:
+            self.traversing_less_than_one_block_single_core_update(indices_in_index, indice_num)
+        if mode == 13:
+            self.traversing_less_than_one_block_ub_not_enough(indices_in_index, indice_num)
+        if mode == 14:
+            self.circulate_indices_not_atomic(indices_in_index, indice_num, 14)
+        if mode == 15:
+            self.circulate_indices_not_atomic(indices_in_index, indice_num, 15)
 
     def circulate_indices(self, indices_in_index, indice_num, mode):
         """
@@ -1207,7 +1217,7 @@ class ScatterNd():
         self.out_gm_vector_dup_zero(var_num)
         self.tik_instance.data_move(self.out_gm[var_in_index], self.var_ub, 0, 1, self.var_burst_len, 0, 0)
 
-    def traversing_indices(self):
+    def traversing_indices(self, mode):
         """
         Traversing the index in the indices
 
@@ -1222,10 +1232,73 @@ class ScatterNd():
         max_indices_ub_num = self.indices_ub_num // self.indices_last_dim * self.indices_last_dim
 
         with self.tik_instance.for_range(0, self.indices_loop_num) as indices_loop_index:
-            self.move_indices(indices_loop_index * max_indices_ub_num, max_indices_ub_num)
+            self.move_indices(indices_loop_index * max_indices_ub_num, max_indices_ub_num, mode)
 
         with self.tik_instance.if_scope(self.indices_last_num > 0):
-            self.move_indices(self.indices_loop_num * max_indices_ub_num, self.indices_last_num)
+            self.move_indices(self.indices_loop_num * max_indices_ub_num, self.indices_last_num, mode)
+
+    def traversing_indices_deepfm(self, mode):
+        """
+        Traversing the index in the indices for deepfm
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        with self.tik_instance.if_scope(self.core_loop_index < self.core_num - 1):
+            with self.tik_instance.for_range(0, self.each_core_indices_loop_num) as indices_loop_index:
+                self.deepfm_perf(self.core_loop_index * self.indices_each_core_data + indices_loop_index *
+                                 self.indices_ub_num, self.indices_ub_num, mode)
+            with self.tik_instance.if_scope(self.each_core_indices_last_num > 0):
+                self.deepfm_perf(self.core_loop_index * self.indices_each_core_data + self.each_core_indices_loop_num *
+                                 self.indices_ub_num, self.each_core_indices_last_num, mode)
+        with self.tik_instance.if_scope(self.core_loop_index == self.core_num - 1):
+            with self.tik_instance.for_range(0, self.last_core_indices_loop_num) as indices_loop_index:
+                self.deepfm_perf(self.core_loop_index * self.indices_each_core_data + indices_loop_index *
+                                 self.indices_ub_num, self.indices_ub_num, mode)
+            with self.tik_instance.if_scope(self.last_core_indices_last_num > 0):
+                self.deepfm_perf(self.core_loop_index * self.indices_each_core_data + self.last_core_indices_loop_num *
+                                 self.indices_ub_num, self.last_core_indices_last_num, mode)
+
+    def deepfm_perf(self, indices_in_index, indice_num, mode):
+        """
+        Move indices, deepfm branch
+
+        Parameters
+        ----------
+        indices_in_index: int32
+            Indices index on GM
+        indice_num: int32
+            the number of indexes in the indices on UB
+        Returns
+        -------
+        None
+        """
+        indices_burst_len = ceil_div(indice_num, self.indices_data_each_block)
+        self.tik_instance.data_move(self.indices_ub, self.indices_gm[indices_in_index], 0, 1,
+                                    indices_burst_len, 0, 0)
+
+        with self.tik_instance.for_range(0, indice_num) as indices_ub_index:
+            self.var_read_index.set_as(self.indices_ub[indices_ub_index])
+            self.var_read_index.set_as(self.var_read_index * self.update_data_num)
+            updates_read_index = (indices_in_index + indices_ub_index) * self.update_data_num
+            if mode == 16:
+                self.tik_instance.data_move(self.updates_tile_ub, self.updates_gm[updates_read_index], 0, 1, 1, 0, 0)
+                self.tik_instance.vec_muls(self.updates_data_each_block, self.zero_ub, self.updates_tile_ub, 0, 1, 8, 8)
+                self.tik_instance.vec_add(self.update_data_num, self.zero_ub, self.zero_ub,
+                                          self.updates_tile_ub, 1, 8, 8, 8)
+                self.tik_instance.set_atomic_add(1)
+                self.tik_instance.data_move(self.out_gm[self.var_read_index], self.zero_ub, 0, 1, 1, 0, 0)
+                self.tik_instance.set_atomic_add(0)
+            if mode == 17:
+                self.tik_instance.data_move(self.updates_ub, self.updates_gm[updates_read_index], 0, 1, 10, 0, 0)
+                self.tik_instance.set_atomic_add(1)
+                self.tik_instance.data_move(self.out_gm[self.var_read_index], self.updates_ub, 0, 1, 10, 0, 0)
+                self.tik_instance.set_atomic_add(0)
 
     def scatter_nd_compute_tiling(self):
         """
@@ -1242,17 +1315,88 @@ class ScatterNd():
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
             self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub",
                                                       scope=tik.scope_ubuf)
-            self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 7, 0, 0)
+            self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 9, 0, 0)
             self.tiling_args()
 
-            with self.tik_instance.if_scope(self.core_num > 1):
-                with self.tik_instance.if_scope(core_index < self.core_num):
+            if tbe_platform.api_check_support("tik.set_atomic_add") and self.updates_dtype == "float32":
+                with self.tik_instance.if_scope(self.tiling_mode == 1):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(1)
+                with self.tik_instance.if_scope(self.tiling_mode == 2):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(2)
+                with self.tik_instance.if_scope(self.tiling_mode == 3):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.traversing_indices(3)
+                with self.tik_instance.if_scope(self.tiling_mode == 4):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.traversing_indices(4)
+                with self.tik_instance.if_scope(self.tiling_mode == 5):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(5)
+                with self.tik_instance.if_scope(self.tiling_mode == 16):
                     self.init_ub_tensor()
                     self.core_loop_index.set_as(core_index)
-                    self.traversing_indices()
-            with self.tik_instance.else_scope():
-                self.init_ub_tensor()
-                self.traversing_indices()
+                    self.traversing_indices_deepfm(16)
+                with self.tik_instance.if_scope(self.tiling_mode == 17):
+                    self.init_ub_tensor()
+                    self.core_loop_index.set_as(core_index)
+                    self.traversing_indices_deepfm(17)
+            else:
+                with self.tik_instance.if_scope(self.tiling_mode == 6):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(6)
+                with self.tik_instance.if_scope(self.tiling_mode == 7):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(7)
+                with self.tik_instance.if_scope(self.tiling_mode == 8):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(8)
+                with self.tik_instance.if_scope(self.tiling_mode == 9):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(9)
+                with self.tik_instance.if_scope(self.tiling_mode == 10):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.traversing_indices(10)
+                with self.tik_instance.if_scope(self.tiling_mode == 11):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.traversing_indices(11)
+                with self.tik_instance.if_scope(self.tiling_mode == 12):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.traversing_indices(12)
+                with self.tik_instance.if_scope(self.tiling_mode == 13):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.traversing_indices(13)
+                with self.tik_instance.if_scope(self.tiling_mode == 14):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(14)
+                with self.tik_instance.if_scope(self.tiling_mode == 15):
+                    with self.tik_instance.if_scope(core_index < self.core_num):
+                        self.init_ub_tensor()
+                        self.core_loop_index.set_as(core_index)
+                        self.traversing_indices(15)
 
     def scatter_nd_operator(self):
         """

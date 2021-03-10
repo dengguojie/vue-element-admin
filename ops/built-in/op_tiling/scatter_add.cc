@@ -31,6 +31,10 @@
 namespace optiling {
 
 const int64_t BLOCK_SIZE = 32;
+const int64_t OUT_SPECIAL_DIM_0 = 163623;
+const int64_t OUT_SPECIAL_DIM_1 = 1;
+const int64_t OUT_SPECIAL_DIM_2 = 80;
+const int64_t OUT_SPECIAL_DIM_3 = 21340;
 // 32b aligned, ub can store all updatesNum, float32 atomic
 const int64_t TILING_MODE_1 = 1;
 // 32b aligned, ub can't store all updatesNum, float32 atomic
@@ -61,6 +65,10 @@ const int64_t TILING_MODE_13 = 13;
 const int64_t TILING_MODE_14 = 14;
 // updateDataNum is more than 1 block, not atomic, and more than updateubnum
 const int64_t TILING_MODE_15 = 15;
+// high perf branch, updateDataNum is less than 1 block
+const int64_t TILING_MODE_16 = 16;
+// high perf branch, updateDataNum is 32b aligned
+const int64_t TILING_MODE_17 = 17;
 
 struct ScatterAddTilingParams {
   int64_t tilingMode;
@@ -79,6 +87,12 @@ struct ScatterAddTilingParams {
   int64_t varLastCoreBurstLen;
   int64_t maxIndice;
   int64_t varEachCoreData;
+  int64_t indicesEachCoreData;
+  int64_t indicesLastCoreData;
+  int64_t eachCoreIndicesLoopNum;
+  int64_t eachCoreIndicesLastNum;
+  int64_t lastCoreIndicesLoopNum;
+  int64_t lastCoreIndicesLastNum;
 };
 
 void InitRunningParams(ScatterAddTilingParams& params) {
@@ -98,6 +112,12 @@ void InitRunningParams(ScatterAddTilingParams& params) {
   params.varLastCoreBurstLen = 0;
   params.maxIndice = 0;
   params.varEachCoreData = 0;
+  params.indicesEachCoreData = 0;
+  params.indicesLastCoreData = 0;
+  params.eachCoreIndicesLoopNum = 0;
+  params.eachCoreIndicesLastNum = 0;
+  params.lastCoreIndicesLoopNum = 0;
+  params.lastCoreIndicesLastNum = 0;
 }
 
 void CalAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t indicesNum, int64_t updatesNum,
@@ -121,7 +141,7 @@ void CalAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t ind
   } else {
       if (updateDataNum < varDataEachBlock) {
         if (updateSizeByte <= halfUbSize) {
-          runParams.tilingMode = TILING_MODE_3;
+          runParams.tilingMode = TILING_MODE_4;
           runParams.updatesLoopNum = updatesNum / (halfUbSize / varSize);
           runParams.updatesLastNum = updatesNum % (halfUbSize / varSize);
         } else {
@@ -193,6 +213,25 @@ void CalNotAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t 
   }
 }
 
+void CalScatterAddHighPerfBranchParams(ScatterAddTilingParams& runParams, int64_t indicesNum, int64_t coreNum,
+                                       int64_t ubSize, int64_t updateDataNum, int64_t varDataEachBlock,
+                                       int64_t indicesSize) {
+  int64_t halfUbSize = ubSize / 2;
+  runParams.tilingMode = TILING_MODE_16;
+  runParams.updatesDataNum = updateDataNum;
+  runParams.indicesEachCoreData = ceil(float(indicesNum) / coreNum);
+  runParams.coreNum = ceil(float(indicesNum) / runParams.indicesEachCoreData);
+  runParams.indicesLastCoreData = indicesNum - runParams.indicesEachCoreData * (runParams.coreNum - 1);
+  runParams.eachCoreIndicesLoopNum = runParams.indicesEachCoreData / (halfUbSize / indicesSize);
+  runParams.eachCoreIndicesLastNum = runParams.indicesEachCoreData % (halfUbSize / indicesSize);
+  runParams.lastCoreIndicesLoopNum = runParams.indicesLastCoreData / (halfUbSize / indicesSize);
+  runParams.lastCoreIndicesLastNum = runParams.indicesLastCoreData % (halfUbSize / indicesSize);
+
+  if (updateDataNum % varDataEachBlock == 0) {
+    runParams.tilingMode = TILING_MODE_17;
+  }
+}
+
 void SetRuningParams(const ScatterAddTilingParams& params, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, params.tilingMode);
   ByteBufferPut(runInfo.tiling_data, params.indiceStep);
@@ -210,29 +249,42 @@ void SetRuningParams(const ScatterAddTilingParams& params, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, params.varLastCoreBurstLen);
   ByteBufferPut(runInfo.tiling_data, params.maxIndice);
   ByteBufferPut(runInfo.tiling_data, params.varEachCoreData);
+  ByteBufferPut(runInfo.tiling_data, params.indicesEachCoreData);
+  ByteBufferPut(runInfo.tiling_data, params.indicesLastCoreData);
+  ByteBufferPut(runInfo.tiling_data, params.eachCoreIndicesLoopNum);
+  ByteBufferPut(runInfo.tiling_data, params.eachCoreIndicesLastNum);
+  ByteBufferPut(runInfo.tiling_data, params.lastCoreIndicesLoopNum);
+  ByteBufferPut(runInfo.tiling_data, params.lastCoreIndicesLastNum);
 }
 
-void PrintTilingParams(const ScatterAddTilingParams& params) {
-  GELOGD("op [ScatterAddTiling] : tilingMode=%ld. ", params.tilingMode);
-  GELOGD("op [ScatterAddTiling] : indiceStep=%ld. ", params.indiceStep);
-  GELOGD("op [ScatterAddTiling] : coreNum=%ld. ", params.coreNum);
-  GELOGD("op [ScatterAddTiling] : updatesDataNum=%ld.", params.updatesDataNum);
-  GELOGD("op [ScatterAddTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
-  GELOGD("op [ScatterAddTiling] : indicesLastNum=%ld.", params.indicesLastNum);
-  GELOGD("op [ScatterAddTiling] : updatesNum=%ld.", params.updatesNum);
-  GELOGD("op [ScatterAddTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
-  GELOGD("op [ScatterAddTiling] : updatesLastNum=%ld.", params.updatesLastNum);
-  GELOGD("op [ScatterAddTiling] : varNum=%ld.", params.varNum);
-  GELOGD("op [ScatterAddTiling] : varLoopNum=%ld.", params.varLoopNum);
-  GELOGD("op [ScatterAddTiling] : varLastNum=%ld.", params.varLastNum);
-  GELOGD("op [ScatterAddTiling] : varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
-  GELOGD("op [ScatterAddTiling] : varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
-  GELOGD("op [ScatterAddTiling] : maxIndice=%ld.", params.maxIndice);
-  GELOGD("op [ScatterAddTiling] : varEachCoreData=%ld.", params.varEachCoreData);
+void PrintTilingParams(const std::string& opType, const ScatterAddTilingParams& params) {
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : tilingMode=%ld. ", params.tilingMode);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : indiceStep=%ld. ", params.indiceStep);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : coreNum=%ld. ", params.coreNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : updatesDataNum=%ld.", params.updatesDataNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : indicesLoopNum=%ld.", params.indicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : indicesLastNum=%ld.", params.indicesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : updatesNum=%ld.", params.updatesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : updatesLastNum=%ld.", params.updatesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varNum=%ld.", params.varNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varLoopNum=%ld.", params.varLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varLastNum=%ld.", params.varLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varEachCoreBurstLen=%ld.", params.varEachCoreBurstLen);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varLastCoreBurstLen=%ld.", params.varLastCoreBurstLen);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : maxIndice=%ld.", params.maxIndice);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varEachCoreData=%ld.", params.varEachCoreData);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : indicesEachCoreData=%ld.", params.indicesEachCoreData);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : indicesLastCoreData=%ld.", params.indicesLastCoreData);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : eachCoreIndicesLoopNum=%ld.", params.eachCoreIndicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : eachCoreIndicesLastNum=%ld.", params.eachCoreIndicesLastNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : lastCoreIndicesLoopNum=%ld.", params.lastCoreIndicesLoopNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : lastCoreIndicesLastNum=%ld.", params.lastCoreIndicesLastNum);
 }
 
-bool CheckScatterAddShape(const std::string& opType, std::vector<int64_t> varShape, std::vector<int64_t> indicesShape,
-                          std::vector<int64_t> updatesShape, std::vector<int64_t> outShape) {
+bool CheckScatterAddShape(const std::string& opType, const std::vector<int64_t>& varShape,
+                          const std::vector<int64_t>& indicesShape, const std::vector<int64_t>& updatesShape,
+                          const std::vector<int64_t>& outShape) {
   if (varShape != outShape) {
     ge::OpsOneInputShapeErrReport("ScatterAdd", "var", "the length of var must be same as the length of output");
     OP_LOGE(opType.c_str(), "[ScatterAddTiling] : var_out's shape must be the same as var's shape.");
@@ -262,6 +314,7 @@ bool GetScatterAddCompileParams(const std::string& opType, const nlohmann::json&
                                 int64_t& ubSize, int64_t& varSize, int64_t& indicesSize, int64_t& supportAtomic) {
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
+
   if (allVars.count("core_num") == 0) {
     ge::OpsGetCompileParamsErrReport(opType.c_str(), "core_num");
     OP_LOGE(opType.c_str(), "op [ScatterAddTiling] : GetCompileParams, get core_num error");
@@ -298,6 +351,20 @@ bool GetScatterAddCompileParams(const std::string& opType, const nlohmann::json&
   supportAtomic = allVars["support_atomic"].get<std::int64_t>();
 
   return true;
+}
+
+bool CheckScatterAddHighPerfShape(std::vector<int64_t> varShape, std::vector<int64_t> indicesShape) {
+  if (indicesShape.size() != 1 || varShape.size() != 2) {
+    return false;
+  }
+
+  if ((varShape[0] == OUT_SPECIAL_DIM_0 && varShape[1] == OUT_SPECIAL_DIM_1) ||
+      (varShape[0] == OUT_SPECIAL_DIM_0 && varShape[1] == OUT_SPECIAL_DIM_2) ||
+      (varShape[0] == OUT_SPECIAL_DIM_3 && varShape[1] == OUT_SPECIAL_DIM_1) ||
+      (varShape[0] == OUT_SPECIAL_DIM_3 && varShape[1] == OUT_SPECIAL_DIM_2)) {
+    return true;
+  }
+  return false;
 }
 
 bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
@@ -361,11 +428,11 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
   int64_t dataNumOneRepeat = 0;
 
-  GELOGD("op [ScatterAddTiling] : varNum=%ld.", varNum);
-  GELOGD("op [ScatterAddTiling] : indicesNum=%ld.", indicesNum);
-  GELOGD("op [ScatterAddTiling] : updatesNum=%ld.", updatesNum);
-  GELOGD("op [ScatterAddTiling] : updateDataNum=%ld.", updateDataNum);
-  GELOGD("op [ScatterAddTiling] : maxIndice=%ld.", maxIndice);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varNum=%ld.", varNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : indicesNum=%ld.", indicesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : updatesNum=%ld.", updatesNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : updateDataNum=%ld.", updateDataNum);
+  OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : maxIndice=%ld.", maxIndice);
 
   if (updateDataNum < varDataEachBlock) {
     runParams.coreNum = 1;
@@ -381,8 +448,15 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   }
 
   if (supportAtomic == 1 && input_dtype == "float32") {
-    CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize,
-                                 varSize, indicesSize, varDataEachBlock);
+    if (CheckScatterAddHighPerfShape(varShape, indicesShape)) {
+      CalScatterAddHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum,
+                                        varDataEachBlock, indicesSize);
+    } else {
+      runParams.indiceStep = ceil(float(maxIndice) / coreNum);
+      runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
+      CalAtomicBranchRunningParams(runParams, indicesNum, updatesNum, updateDataNum, ubSize,
+                                   varSize, indicesSize, varDataEachBlock);
+    }
   } else {
     CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
                                     runParams.coreNum, varSize, indicesSize, varDataEachBlock, dataNumOneRepeat);
@@ -390,7 +464,7 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
 
   SetRuningParams(runParams, runInfo);
 
-  PrintTilingParams(runParams);
+  PrintTilingParams(opType, runParams);
 
   runInfo.block_dim = runParams.coreNum;
   std::vector<int64_t> workspace;
