@@ -17,6 +17,7 @@ try:
     import re
     import importlib
     from . import utils
+    from . import dynamic_handle
     from .model_parser import get_model_nodes
 except ImportError as import_error:
     sys.exit(
@@ -630,6 +631,10 @@ class CaseGenerator:
                 if 'attr' not in base_case:
                     base_case['attr'] = []
                 base_case['attr'].append(self._make_attr(key, value))
+        # check operator exist dynamic shape.
+        dynamic_shape_support = self.op_info.get('dynamicShapeSupport')
+        dynamic_handle.is_dynamic_shape_update_desc_list(
+            dynamic_shape_support, base_case)
         self._check_desc_valid(base_case, 'output_desc')
 
         # generate base case from model

@@ -16,6 +16,7 @@ try:
     from . import st_report
     from . import op_st_case_info
     from op_test_frame.common import op_status
+    from . import dynamic_handle
 except ImportError as import_error:
     sys.exit(
         "[data_generator] Unable to import module: %s." % str(import_error))
@@ -149,6 +150,9 @@ class DataGenerator:
                     dtype = utils.DTYPE_TO_MINDSPORE_MAP[input_desc.get('type')]
                 else:
                     dtype = utils.DTYPE_TO_NUMPY_MAP[input_desc.get('type')]
+                # consider dynamic shape scenario
+                shape_list = dynamic_handle.replace_shape_to_typical_shape(
+                    input_desc)
                 file_path = os.path.join(
                     self.output_path,
                     case_name + '_input_' + str(index) + '.bin')
@@ -160,7 +164,7 @@ class DataGenerator:
                         utils.OP_TEST_GEN_WRITE_FILE_ERROR)
                 try:
                     data = self.gen_data(
-                            input_desc['shape'], range_min, range_max, dtype,
+                            shape_list, range_min, range_max, dtype,
                             input_desc['data_distribute'])
                 except MemoryError as error:
                     utils.print_warn_log(

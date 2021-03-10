@@ -78,6 +78,17 @@ FOLDER_MASK = 0o700
 TYPE_UNDEFINED = "UNDEFINED"
 ADVANCE_SECTION = 'RUN'
 
+INPUT_DESC = 'input_desc'
+OUTPUT_DESC = 'output_desc'
+# dynamic shape scenario add keys as follows
+SHAPE_RANGE = 'shape_range'
+TYPICAL_SHAPE = 'typical_shape'
+# Two dynamic scenarios: shape value is -1 or -2
+SHAPE_DYNAMIC_SCENARIOS_ONE = -1
+SHAPE_DYNAMIC_SCENARIOS_TWO = -2
+# dynamic shape scenario, shape_range default value.
+SHAPE_RANGE_DEFAULT_VALUE = [[1, -1]]
+
 ONLY_GEN_WITHOUT_RUN = 'only_gen_without_run'
 ONLY_RUN_WITHOUT_GEN = 'only_run_without_gen'
 ASCEND_GLOBAL_LOG_LEVEL = 'ascend_global_log_level'

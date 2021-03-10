@@ -19,6 +19,7 @@ try:
     from . import op_st_case_info
     from ..template import code_snippet
     from op_test_frame.common import op_status
+    from . import dynamic_handle
 except (ImportError,) as import_error:
     sys.exit(
         "[acl_op_generator]Unable to import module: %s." % str(import_error))
@@ -44,6 +45,10 @@ def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
         if desc_dic.get('name'):
             res_desc_dic.update(
                 {'name': desc_dic.get('name')})
+        # Add shape_range in acl.json for dynamic shape of operators
+        if desc_dic.get(utils.SHAPE_RANGE):
+            res_desc_dic.update(
+                {utils.SHAPE_RANGE: desc_dic.get(utils.SHAPE_RANGE)})
         tmp_dic[key_desc].append(res_desc_dic)
 
 
@@ -102,6 +107,9 @@ def _create_exact_testcase_content(testcase_struct, device_id):
     input_data_type_list = []
     input_format_list = []
     for input_desc_dic in testcase_struct['input_desc']:
+        # consider dynamic shape scenario
+        input_shape = dynamic_handle.replace_shape_to_typical_shape(
+            input_desc_dic)
         if input_desc_dic.get('format') in utils.OPTIONAL_TYPE_LIST or \
                 input_desc_dic.get('type') == utils.TYPE_UNDEFINED:
             input_desc_dic['shape'] = []
@@ -109,7 +117,7 @@ def _create_exact_testcase_content(testcase_struct, device_id):
             input_data_type_list.append("DT_UNDEFINED")
             input_format_list.append("UNDEFINED")
         else:
-            input_shape_list.append(input_desc_dic['shape'])
+            input_shape_list.append(input_shape)
             input_data_type_list.append(input_desc_dic['type'])
             input_format_list.append(input_desc_dic['format'])
 
@@ -137,7 +145,10 @@ def _create_exact_testcase_content(testcase_struct, device_id):
     output_data_type_list = []
     output_format_list = []
     for output_desc_dic in testcase_struct['output_desc']:
-        output_shape_list.append(output_desc_dic['shape'])
+        # consider dynamic shape scenario
+        output_shape = dynamic_handle.replace_shape_to_typical_shape(
+            output_desc_dic)
+        output_shape_list.append(output_shape)
         output_data_type_list.append(output_desc_dic['type'])
         output_format_list.append(output_desc_dic['format'])
 

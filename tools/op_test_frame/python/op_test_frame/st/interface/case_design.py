@@ -15,6 +15,7 @@ try:
     from . import utils
     from . import st_report
     from . import op_st_case_info
+    from . import dynamic_handle
 except ImportError as import_error:
     sys.exit("[case_design] Unable to import module: %s." % str(import_error))
 
@@ -123,6 +124,9 @@ class CaseDesign:
                     % (range_value, self.current_json_path))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+        # consider shape_range allow[1, -1] in dynamic shape scenario.
+        if range_value[0] == 1 and range_value[1] == -1:
+            return
         if range_value[1] < range_value[0]:
             utils.print_error_log(
                 'In %s the maximum value is less than the minimum value '
@@ -261,10 +265,12 @@ class CaseDesign:
                     'file %s.' % (shape, self.current_json_path))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
-            if dim <= 0:
+            if dim < utils.SHAPE_DYNAMIC_SCENARIOS_TWO:
                 utils.print_error_log(
-                    'The value(%s) of "shape" must be greater than 0. Please '
-                    'modify it in file %s.' % (shape, self.current_json_path))
+                    'The value(%s) of "shape" must be greater than %s. Please '
+                    'modify it in file %s.'
+                    % (shape, utils.SHAPE_DYNAMIC_SCENARIOS_TWO,
+                       self.current_json_path))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
 
@@ -302,6 +308,29 @@ class CaseDesign:
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_INVALID_DATA_ERROR)
         return ori_filed_list
+
+    def _get_dynamic_shape_info(self, op_key, op_desc, one_op_dict):
+        """
+        get dynamic shape info: typical_shape/shape_range
+        """
+        if not dynamic_handle.check_not_dynamic_shape(op_desc.get('shape')):
+            return
+        typical_shape_list = self._check_list_list_valid(
+            op_desc, utils.TYPICAL_SHAPE, op_key)
+        for item in typical_shape_list:
+            dynamic_handle.check_typical_shape_valid(
+                item, self.current_json_path)
+        one_op_dict.update({
+            utils.TYPICAL_SHAPE: typical_shape_list})
+        if op_desc.get(utils.SHAPE_RANGE):
+            shape_range_list_list = []
+            shape_range_list = self._check_list_list_valid(
+                op_desc, utils.SHAPE_RANGE, op_key)
+            shape_range_list_list.append(shape_range_list)
+            for item in shape_range_list:
+                self._check_range_value_valid(item)
+            one_op_dict.update({
+                utils.SHAPE_RANGE: shape_range_list_list})
 
     def _make_input_desc_list(self, json_obj):
         input_desc_list = []
@@ -347,6 +376,12 @@ class CaseDesign:
                                   'shape': shape_list,
                                   'value_range': value_range_list,
                                   'data_distribute': data_distribute_list}
+            # check whether the shape is dynamic.
+            if input_desc.get(
+                    utils.TYPICAL_SHAPE) is not None:
+                self._get_dynamic_shape_info(
+                    INPUT_DESC, input_desc, one_input_desc)
+
             input_desc_list.append(one_input_desc)
             for item in one_input_desc.values():
                 if len(item) > 1:
@@ -420,6 +455,12 @@ class CaseDesign:
             else:
                 one_output_desc = {'format': format_list, 'type': type_list,
                                    'shape': shape_list}
+            # check whether the shape is dynamic.
+            if output_desc.get(
+                    utils.TYPICAL_SHAPE) is not None:
+                self._get_dynamic_shape_info(
+                    OUTPUT_DESC, output_desc, one_output_desc)
+
             output_desc_list.append(one_output_desc)
             for item in one_output_desc.values():
                 if len(item) > 1:
@@ -493,16 +534,22 @@ class CaseDesign:
         if cur_params.get('type') == utils.TYPE_UNDEFINED:
             cur_params['format'] = utils.TYPE_UNDEFINED
 
-    def _cross_tensor(self, tensor_list, cross_key_list):
+    def _cross_tensor(self, tensor_list, op_cross_key_list):
         total_case_list = []
         for tensor in tensor_list:
             cross_list = []
             case_list = []
+            cross_key_list = [key for key in op_cross_key_list]
+            if tensor.get(utils.SHAPE_RANGE):
+                dynamic_handle.add_key_in_cross_key_list(cross_key_list)
             if tensor.get('ori_format') and tensor.get('ori_shape'):
                 ori_field_cross_key_list, result_cross_list = combine_ori_field_to_cross(tensor, cross_key_list)
                 for case in result_cross_list:
                     cur_params = {ori_field_cross_key_list[x]: case[x] for x, _ in
                                   enumerate(ori_field_cross_key_list)}
+                    if cur_params.get('shape'):
+                        dynamic_handle.set_typical_shape_in_cur_params(
+                            cur_params, tensor)
                     case_list.append(cur_params)
                 total_case_list.append(case_list)
             else:
@@ -513,6 +560,9 @@ class CaseDesign:
                     cur_params = {cross_key_list[x]: case[x] for x, _ in
                                   enumerate(cross_key_list)}
                     self._check_cur_params_undefined(cur_params)
+                    if cur_params.get('shape'):
+                        dynamic_handle.set_typical_shape_in_cur_params(
+                            cur_params, tensor)
                     case_list.append(cur_params)
                 total_case_list.append(case_list)
         return total_case_list
