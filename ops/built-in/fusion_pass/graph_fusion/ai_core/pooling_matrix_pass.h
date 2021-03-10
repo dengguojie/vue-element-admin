@@ -36,16 +36,16 @@ class PoolingFusionPass : public PatternFusionBasePass {
 
  private:
   Status AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode, vector<int64_t> pad, vector<int64_t>& dimInfo,
-                  vector<int64_t> window, vector<int64_t> stride, std::string& recode);
+                  vector<int64_t> window, vector<int64_t> stride, std::string& recode, bool isInt8);
   ge::NodePtr AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode);
   Status Calc4DWeight(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
                       const int8_t* filterInt8Data, std::unique_ptr<int32_t[]>& weightInt8Temp);
-  Status DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr poolingNode, vector<ge::NodePtr>& fusionNodes);
+  Status DoBiasOptimize(ge::ComputeGraph& graph, ge::NodePtr poolingNode, vector<ge::NodePtr>& fusionNodes,
+                        int64_t& windowH, int64_t& windowW, int64_t& inputC);
   Status GetWeightOfConv(const std::string& opName, const int8_t* filterInt8Data,
                          const std::vector<int64_t>& filterDims, std::unique_ptr<int32_t[]>& weightInt8OutParam);
   bool IsMeanValueAllEqual(vector<int64_t> input, vector<int64_t> window, vector<int64_t> stride, vector<int64_t> pad,
                            int64_t ceil_mode);
-
   const string FUSED_OP_TYPE = "Pooling";
   unordered_map<string, ge::NodePtr> mulConstNode;
   unordered_map<string, ge::NodePtr> poolConstNode;
