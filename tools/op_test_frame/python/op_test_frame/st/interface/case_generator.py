@@ -577,6 +577,9 @@ class CaseGenerator:
             input_format = ["UNDEFINED"]
             input_dtype = ["UNDEFINED"]
         else:
+            if value.get('paramType') == 'dynamic':
+                # dynamic input has "name": input_name0
+                input_name = "".join([input_name, '0'])
             input_format = [] if len(value['format']) == 0 else \
                 list(set(value['format'].split(',')))
             input_dtype = [] if len(value['dtype']) == 0 else \

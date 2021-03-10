@@ -27,6 +27,7 @@ except (ImportError,) as import_error:
 
 def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
     tmp_dic[key_desc] = []
+    input_name_list = []
     for desc_dic in testcase_struct.get(key_desc):
         if desc_dic.get('ori_format') is not None and \
                 desc_dic.get('ori_shape') is not None:
@@ -41,8 +42,16 @@ def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
                 'format': desc_dic.get('format'),
                 'type': desc_dic.get('type'),
                 'shape': desc_dic.get('shape')}
-        # Add name field for input*.paramType = optional scenarios
-        if desc_dic.get('name'):
+        # Add name field for input*.paramType = optional or dynamic scenarios.
+        input_name = desc_dic.get('name')
+        if input_name is not None:
+            # check the input_desc has the same name.
+            if input_name in input_name_list:
+                utils.print_error_log(
+                    "The input name: (%s) has already exist." % input_name)
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_INVALID_INPUT_NAME_ERROR)
+            input_name_list.append(input_name)
             res_desc_dic.update(
                 {'name': desc_dic.get('name')})
         # Add shape_range in acl.json for dynamic shape of operators
