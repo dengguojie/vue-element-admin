@@ -17,11 +17,11 @@ conv2d DSL interface.
 """
 from __future__ import division
 import math
-from tbe import tvm
-from te.platform import cce_conf
-from te.platform import CUBE_MKN
 from topi.cce import util
 from topi.cce.util import check_load3d_w_out_1_support
+from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.base.operation import get_te_var
 from tbe.tvm.dsl_source_info import source_info_decorator
@@ -71,7 +71,7 @@ def is_support_v200():
     True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
     False: Other version
     """
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SOC_VERSION")
     if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
@@ -86,7 +86,7 @@ def is_support_v220():
     True: Ascend920A version.
     False: other version.
     """
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SOC_VERSION")
     if soc_version == "Ascend920":
         return True
     return False
@@ -202,7 +202,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
         Check for not bigger than L1 size.
         """
-        l1_buffer_size = cce_conf.get_soc_spec("L1_SIZE")
+        l1_buffer_size = get_soc_spec("L1_SIZE")
         l1_fusion_type = fusion_para.get("l1_fusion_type")
         if l1_fusion_type in (0, 1):
             pass
@@ -1143,7 +1143,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                                                lambda *index:
                                                mean_matrix(*index).astype(res_dtype),
                                                name="mean_matrix_fp16")
-                if "Ascend310" in cce_conf.get_soc_spec("SOC_VERSION"):
+                if "Ascend310" in get_soc_spec("SOC_VERSION"):
                     mean_matrix_rec = tvm.compute(mean_matrix_shape,
                                                   lambda *index:
                                                   1/mean_matrix_fp16(*index),
@@ -2143,7 +2143,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if "mad_dtype" not in para_dict:
             if weight.dtype == "int8":
                 mad_dtype = "int32"
-            elif cce_conf.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+            elif get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 mad_dtype = "float16"
             else:
                 mad_dtype = "float32"
