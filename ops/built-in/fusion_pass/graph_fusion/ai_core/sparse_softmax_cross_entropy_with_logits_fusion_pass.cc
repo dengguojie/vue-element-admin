@@ -114,7 +114,10 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
       OneHotNode == nullptr,
       OP_LOGE(FUSED_OP_TYPE.c_str(), "OneHotNode fusionNode:%s is null, fusion failed.", OneHotNode->GetName().c_str()),
       return PARAM_INVALID);
-
+  ge::OpDescPtr onehot_desc = OneHotNode->GetOpDesc();
+  FUSION_PASS_CHECK(!CheckOpSupported(onehot_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Onehot not supported."),
+                    return NOT_CHANGED);
+  
   // Construct pointer value(input2 of onehot--->Default value 1)
   ge::GeTensorPtr assitPtr2 = nullptr;
   vector<int64_t> on_value;
@@ -311,6 +314,9 @@ Status SparseSoftMaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
               fusedNode->GetName().c_str(), SoftMaxNode->GetName().c_str());
     }
   }
+  ge::OpDescPtr soft_desc = SoftMaxNode->GetOpDesc();
+  FUSION_PASS_CHECK(!CheckOpSupported(soft_desc), OP_LOGI(FUSED_OP_TYPE.c_str(), "SoftMax not supported."),
+                    return NOT_CHANGED);
 
   // To break off fusedNode all InControlAnchor
   if (fusedNode->GetInControlAnchor() != nullptr) {
