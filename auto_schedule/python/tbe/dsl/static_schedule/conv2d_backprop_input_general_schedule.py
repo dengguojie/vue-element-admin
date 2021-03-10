@@ -1652,7 +1652,7 @@ def general_schedule(
                     ub_shape_k = 1
                 ub_shape = [
                     1,
-                    aub_tiling_k // (kernel_h * kernel_w * 16),
+                    ub_shape_k,
                     aub_h,
                     aub_w + kernel_w - 1,
                     al1_co0

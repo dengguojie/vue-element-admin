@@ -16,6 +16,7 @@
 mmad schedule
 """
 from __future__ import absolute_import
+import functools
 from math import ceil
 
 import te.platform.cce_params as cce
@@ -308,14 +309,28 @@ def get_l1fusion_device_core_num(is_l1fusion):
     return device_core_num
 
 
+def _check_scalar(elemwise_tensors):
+    if len(elemwise_tensors) != 1 or "broadcast" not in elemwise_tensors[0].op.name:
+        return False
+    if elemwise_tensors[0].op.input_tensors:
+        input_tensor = elemwise_tensors[0].op.input_tensors[0]
+        if functools.reduce(lambda x, y: x*y, input_tensor.shape).value != 1:
+            return False
+        else:
+            return True
+    else:
+        return False
+
+
 def _get_ub_res_byte(_get_out_tensors_width, dequant_activation_tensor,
-                     fusion_ele, res, ub_res_byte):
+                     fusion_ele, res, ub_res_byte, elemwise_tensors):
     """
     calculate res ub byte by width
     """
+    scalar_flag = _check_scalar(elemwise_tensors)
     if fusion_ele or dequant_activation_tensor:
         width = _get_out_tensors_width(res)
-        if ub_res_byte < width * 2:
+        if ub_res_byte < width * 2 and not scalar_flag:
             ub_res_byte = width * 2
     return ub_res_byte
 
@@ -1425,7 +1440,7 @@ def mmad_schedule(res, sch_list):
     ub_res_byte = get_scope_byte_size(tensor_c_ub, tensor_c_ub_fract)
     ub_res_byte = _get_ub_res_byte(_get_out_tensors_width,
                                    dequant_activation_tensor, fusion_ele, res,
-                                   ub_res_byte)
+                                   ub_res_byte, elemwise_tensors)
 
     if gemv_flag:
         tmp = a_ub_byte  # pylint: disable=R1712
@@ -2551,7 +2566,10 @@ def mmad_schedule(res, sch_list):
                     insn = 'dma_copy'
                 if insn is None:
                     insn = 'vector_auto'
-                sch[ten_in].emit_insn(ten_in.op.axis[0], insn)
+                if "broadcast" in ten_in.op.name:
+                    sch[ten_in].compute_inline()
+                else:
+                    sch[ten_in].emit_insn(ten_in.op.axis[0], insn)
 
             if gm_ub is not None:
                 sch[tensor_c_gm].emit_insn(gm_instn, 'dma_copy')
