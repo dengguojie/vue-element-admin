@@ -25,6 +25,8 @@ from te.utils import shape_util
 from te.platform.cce_policy import get_L1_info
 from te.utils.error_manager import error_manager_util as err_man
 from impl.util import util_select_op_base
+from impl.conv2d import conv2d
+from impl.conv2d import conv2d_compute
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVG_KERNEL_SIZE = 20 # maximum ksieze
@@ -91,7 +93,6 @@ def get_op_support_info(x, filter, bias, y, ksize, strides,
     get the avgpool split
     """
     format_x = x.get("format")
-    input_shape = x.get("shape")
 
     if data_format in ("NHWC",):
         ksize_h = ksize[1]
@@ -448,103 +449,6 @@ def _avg_pool_global_compute(x, y, ksize, strides,
     return res
 
 
-def _tensor_list_compute(tensor_in, filter, bias, y, ksize, strides, padding, data_format,
-                         offset_x, attr, input_shape, kernel_name):
-    """
-    Parameters
-    ----------
-    tensor_in : placeholder, shape and dtype of input_data, only support float16 or int8
-
-    filter : dict, optional input, shape and dtype of input_data, only support float16 or int8
-
-    bias : dict, optional input, shape and dtype of input_data, only support int32
-
-    y : dict, shape and dtype of output_data, only support float16 or int32
-
-    ksize : list or tuple, the window of avgpooling, only support avgpooling
-            in H or W
-
-    strides : list or tuple, the stride of avgpooling window, only support
-              avgpooling in H or W
-
-    padding : str, the mode of padding, support padding and not padding
-
-    data_format : str, default = "NHWC"
-
-    offset_x : int, quantization parameter
-
-    attr : dict, l1 fusion parameter
-
-    input_shape : list or tuple, input shape
-
-    kernel_name : cce kernel name, default value is "avg_pool_cce"
-
-    Returns
-    -------
-    res and placeholder of tensor list
-    """
-
-    # filter is not None, deepwise branch
-    if filter is not None:
-        out_dtype = y.get("dtype")
-        shape_x = input_shape
-        input_h = shape_x[2]
-        input_w = shape_x[3]
-        dilations = (1, 1)
-        dsl_flag = False
-        if data_format in ("NHWC",):
-            ksize_h = ksize[1]
-            ksize_w = ksize[2]
-            hw = ksize_h * ksize_w
-            window = [ksize[1], ksize[2]]
-            stride = [strides[1], strides[2]]
-        else:
-            ksize_h = ksize[2]
-            ksize_w = ksize[3]
-            hw = ksize_h * ksize_w
-            window = [ksize[2], ksize[3]]
-            stride = [strides[2], strides[3]]
-        pad = _pad_compute(padding, input_h, input_w, stride, window, dilations)
-        filter_shape = filter.get("shape")
-        filter_dtype = filter.get("dtype").lower()
-        filter_c1 = filter_shape[0] / hw
-        if filter_dtype in("float16", "float32"):
-            filter_shape_5d = filter_c1, ksize_h, ksize_w, filter_shape[2], \
-                              filter_shape[3]
-        else:
-            # filter shape: C1HWNCoC0,N=1,Co=32,c0=32
-            filter_shape_5d = filter_shape[0], ksize_h, ksize_w, 32, \
-                              32
-        filter_in = tvm.placeholder(filter_shape_5d, name="filter_in",
-                                    dtype=filter_dtype, attrs=attr)
-        bias_tensor = None
-        # bias is not None quantitative scenario
-        if bias is not None:
-            bias_shape = bias.get("shape")
-            bias_tensor = tvm.placeholder(bias_shape,
-                                          name='bias_tensor',
-                                          dtype=out_dtype.lower())
-
-
-        res = tbe.te_compute.depthwise_conv2d_compute(
-            tensor_in, filter_in, out_dtype.lower(), stride, pad, dilations, {
-                "bias_tensor": bias_tensor, "dsl_flag": dsl_flag,
-                "offset_x": offset_x}, None, kernel_name)
-
-
-        tensor_list = [tensor_in, filter_in, res]
-        if bias_tensor is not None:
-            tensor_list = [tensor_in, filter_in, bias_tensor, res]
-
-    # filter is None, pooling branch
-    else:
-        res = _avg_pool_global_compute(tensor_in, y, ksize, strides, padding,
-                                       data_format, False, kernel_name)
-        tensor_list = [tensor_in, res]
-
-    return res, tensor_list
-
-
 # pylint: disable=unnecessary-lambda,redefined-builtin,too-many-locals
 # pylint: disable=unnecessary-lambda,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("avg_pool")
@@ -573,7 +477,6 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
     -------
     Calculation result
     """
-    out_dtype = y.get("dtype")
     output_shape = y.get("ori_shape")
     # create window and stride for pooling2d
     # check  parameter
@@ -583,26 +486,26 @@ def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
         window = [ksize[1], ksize[2]]
         stride = [strides[1], strides[2]]
         output_w = output_shape[2]
+        inputc = x.op.attrs['ori_shape'][3].value
     else:
         window = [ksize[2], ksize[3]]
         stride = [strides[2], strides[3]]
         output_w = output_shape[3]
+        inputc = x.op.attrs['ori_shape'][1].value
 
     shape_x = x.shape
     input_h = shape_x[2]
     input_w = shape_x[3]
-    dilations = (1, 1)
-    dsl_flag = True
+    dilations = (1, 1, 1, 1)
+
     pad = _pad_compute(padding, input_h, input_w, stride, window, dilations)
 
     if filter is None:
         res = _avg_pool_global_compute(x, y, ksize, strides, padding, data_format,
                                       is_fused_compute=True, kernel_name=kernel_name)
     else:
-        l1_fusion_para = _avgpool_conv2d_fusion_para(x, y)
-        res = tbe.te_compute.depthwise_conv2d_compute(x, filter, out_dtype.lower(), stride, pad, dilations,
-                                                      {"bias_tensor": bias, "dsl_flag": dsl_flag,
-                                                       "offset_x": offset_x}, l1_fusion_para, kernel_name)
+        res = conv2d_compute(x, filter, bias, None, y, strides, pad, dilations, groups=inputc,
+                             data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
 
     return res
 
@@ -654,34 +557,53 @@ def avg_pool(x, filter, bias, y, ksize, strides,
     # check others parameter
     _avg_pool_check_rule(input_shape, input_dtype, output_dtype, ksize, strides,
                          data_format, kernel_name)
+    if filter is not None:
+        input_h = input_shape[2]
+        input_w = input_shape[3]
+        input_ori_shape = x.get("ori_shape")
+        dilations = (1, 1, 1, 1)
+        if data_format in ("NHWC",):
+            window = [ksize[1], ksize[2]]
+            stride = [strides[1], strides[2]]
+            inputc = input_ori_shape[3]
+        else:
+            window = [ksize[2], ksize[3]]
+            stride = [strides[2], strides[3]]
+            inputc = input_ori_shape[1]
+        pad = _pad_compute(padding, input_h, input_w, stride, window, dilations)
+        filter_n = inputc
+        offset_w = None
+        conv2d(x, filter, bias, offset_w, y, strides, pad, dilations,
+               groups=filter_n, data_format=data_format, offset_x=offset_x,
+               kernel_name=kernel_name)
+    else:
+        # set tensor attrs, during L1 fusion these attrs will assign by te_fusion
+        addr_type = x.get("addr_type", 0)
+        valid_shape = x.get("valid_shape", [])
+        slice_offset = x.get("slice_offset", [])
+        split_index = x.get("split_index", 0)
+        l1_fusion_type = x.get("L1_fusion_type", -1)
+        attr = {"addr_type": addr_type,
+                "valid_shape": valid_shape,
+                "slice_offset": slice_offset,
+                "split_index": split_index,
+                "L1_fusion_type": l1_fusion_type}
+        is_l1fusion = l1_fusion_type in (0, 1)
+        # create tensor_in
+        tensor_in = tvm.placeholder(input_shape, name="tensor_in",
+                                    dtype=input_dtype, attrs=attr)
+        res = _avg_pool_global_compute(tensor_in, y, ksize, strides,
+                                       padding, data_format, False, kernel_name)
+        tensor_list = [tensor_in, res]
+        # schedule
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
 
-    # set tensor attrs, during L1 fusion these attrs will assign by te_fusion
-    addr_type = x.get("addr_type", 0)
-    valid_shape = x.get("valid_shape", [])
-    slice_offset = x.get("slice_offset", [])
-    split_index = x.get("split_index", 0)
-    l1_fusion_type = x.get("L1_fusion_type", -1)
-    attr = {"addr_type": addr_type,
-            "valid_shape": valid_shape,
-            "slice_offset": slice_offset,
-            "split_index": split_index,
-            "L1_fusion_type": l1_fusion_type}
-    is_l1fusion = l1_fusion_type in (0, 1)
-    # create tensor_in
-    tensor_in = tvm.placeholder(input_shape, name="tensor_in",
-                                dtype=input_dtype, attrs=attr)
-    res, tensor_list = _tensor_list_compute(tensor_in, filter, bias, y, ksize, strides, padding, data_format,
-                                            offset_x, attr, input_shape, kernel_name)
+        # build
+        config = {"print_ir": False,
+                  "need_build": False,
+                  "name": kernel_name,
+                  "tensor_list": tensor_list,
+                  "l1_fusion_option": is_l1fusion}
 
-    # schedule
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
-
-    # build
-    config = {"print_ir": False,
-              "need_build": False,
-              "name": kernel_name,
-              "tensor_list": tensor_list,
-              "l1_fusion_option": is_l1fusion}
-
-    tbe.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)

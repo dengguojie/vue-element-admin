@@ -18,6 +18,9 @@ avg_pool_v2
 import te.lang.cce as tbe
 from te import tvm
 from te.utils import para_check
+import te.platform as tbe_platform
+from impl.conv2d import conv2d
+from impl.conv2d import conv2d_compute
 
 
 AVGV2_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
@@ -414,6 +417,82 @@ def _calculate_pads(padding, input_h, input_w, stride_h, stride_w, ksize_h, ksiz
     return pad
 
 
+# pylint: disable=unnecessary-lambda,redefined-builtin,too-many-locals
+# pylint: disable=unnecessary-lambda,too-many-statements
+@tbe_platform.fusion_manager.fusion_manager.register("avg_pool_v2")
+def avg_pool_v2_compute(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
+                        data_format="NCHW", global_pooling=False, ceil_mode=False,
+                        exclusive=True, kernel_name="avg_pool_v2",
+                        impl_mode="high_performance"):
+    """
+    algorithm: avg_pool_V2
+    calculating the average pooling
+
+    Parameters
+    ----------
+    x : placeholder, shape and dtype of input_data, only support float16 or int8
+    filter : optional input, only support float16 or int8
+    bias : optional input, only support int32
+    y : dict, shape and dtype of output_data, only support float16
+    ksize : list or tuple, the window of avgpooling, only support avgpooling
+            in H or W
+    strides : list or tuple, the stride of avgpooling window, only support
+              avgpooling in H or W
+    padding : str, the mode of padding, support padding and not padding
+    data_format : str, default = "NCHW"
+    kernel_name : kernel name, default value is "avg_pool_V2"
+
+    Returns
+    -------
+    Calculation result
+    """
+    input_shape = list(x.shape)
+    input_h = input_shape[2]
+    input_w = input_shape[3]
+    if data_format in ("NHWC",):
+        ksize_h = int(ksize[1])
+        ksize_w = int(ksize[2])
+        stride_h = int(strides[1])
+        stride_w = int(strides[2])
+        window = [ksize_h, ksize_w]
+        stride = [stride_h, stride_w]
+        inputc = x.op.attrs['ori_shape'][3].value
+    else:
+        ksize_h = int(ksize[2])
+        ksize_w = int(ksize[3])
+        stride_h = int(strides[2])
+        stride_w = int(strides[3])
+        inputc = x.op.attrs['ori_shape'][1].value
+
+    if global_pooling:
+        ksize = list(ksize)
+        if data_format in ("NHWC",):
+            ksize[1] = input_h
+            ksize[2] = input_w
+        else:
+            ksize[2] = input_h
+            ksize[3] = input_w
+        padding = 'VALID'
+
+    if list(pads) == [0, 0, 0, 0] and ksize_h == input_h and ksize_w == input_w:
+        if padding == "CALCULATED":
+            padding = 'VALID'
+        if padding == "SAME" and stride_h == input_h and stride_w == input_w:
+            padding = 'VALID'
+
+    if filter is not None:
+        dilations = (1, 1, 1, 1)
+        pad = _calculate_pads(padding, input_h, input_w, stride_h, stride_w, ksize_h, ksize_w,
+                              dilations, pads, ceil_mode)
+        _check_pads(pad, ksize_h, ksize_w)
+        res = conv2d_compute(x, filter, None, None, y, strides, pad, dilations, groups=inputc,
+                             data_format=data_format, offset_x=0, kernel_name=kernel_name)
+    else:
+        res = avg_pool_v2_compute1(x, y, ksize, strides, padding, data_format, False, kernel_name, impl_mode)
+
+    return res
+
+
 def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHWC",
                          is_fused_compute=True, kernel_name="avg_pool_v2",
                          impl_mode="high_performance"):
@@ -449,11 +528,11 @@ def avg_pool_v2_compute1(x, y, ksize, strides, padding="VALID", data_format="NHW
     """
     # create window and stride for pooling2d
     if data_format in ("NHWC",):
-        window = [ksize[1], ksize[2]]
-        stride = [strides[1], strides[2]]
+        window = [int(ksize[1]), int(ksize[2])]
+        stride = [int(strides[1]), int(strides[2])]
     else:
-        window = [ksize[2], ksize[3]]
-        stride = [strides[2], strides[3]]
+        window = [int(ksize[2]), int(ksize[3])]
+        stride = [int(strides[2]), int(strides[3])]
 
     window = list(window)
     stride = list(stride)
@@ -539,6 +618,7 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
     """
     # get shape&dtype
     input_shape = x.get("shape")
+    input_ori_shape = x.get("ori_shape")
     input_dtype = x.get("dtype")
     input_dtype = input_dtype.lower()
     output_dtype = y.get("dtype")
@@ -569,16 +649,13 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
         ksize_w = ksize[2]
         stride_h = strides[1]
         stride_w = strides[2]
+        inputc = input_ori_shape[3]
     else:
         ksize_h = ksize[2]
         ksize_w = ksize[3]
         stride_h = strides[2]
         stride_w = strides[3]
-    stride = [stride_h, stride_w]
-
-    # compute
-    # create tensor_in
-    tensor_in = tvm.placeholder(input_shape, name="tensor_in", dtype=input_dtype, attrs=attr)
+        inputc = input_ori_shape[1]
 
     if global_pooling:
         ksize = list(ksize)
@@ -597,40 +674,30 @@ def avg_pool_v2(x, filter, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
             padding = 'VALID'
 
     if filter is not None:
-        filter_shape = filter.get("shape")
-        filter_dtype = filter.get("dtype").lower()
-
-        filter_shape_5d = filter_shape[0], ksize_h, ksize_w, 16, 16
-
-        filter_in = tvm.placeholder(filter_shape_5d, name="filter_in", dtype=filter_dtype, attrs=attr)
-
-        dilations = (1, 1)
-        dsl_flag = False
-
+        dilations = (1, 1, 1, 1)
         pad = _calculate_pads(padding, input_h, input_w, stride_h, stride_w, ksize_h, ksize_w,
                               dilations, pads, ceil_mode)
 
         _check_pads(pad, ksize_h, ksize_w)
-
-        res = tbe.te_compute.depthwise_conv2d_compute(
-            tensor_in, filter_in, output_dtype.lower(), stride, pad, dilations,
-            {"bias_tensor": None, "dsl_flag": dsl_flag, "offset_x": 0}, None, kernel_name)
-
-        tensor_list = [tensor_in, filter_in, res]
+        filter_n = inputc
+        conv2d(x, filter, None, None, y, strides, pad, dilations,
+               groups=filter_n, data_format=data_format, offset_x=0,
+               kernel_name=kernel_name)
     else:
+        tensor_in = tvm.placeholder(input_shape , name="tensor_in", dtype=input_dtype, attrs=attr)
         res = avg_pool_v2_compute1(tensor_in, y, ksize, strides, padding, data_format, False, kernel_name, impl_mode)
 
         tensor_list = [tensor_in, res]
 
-    # schedule
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
+        # schedule
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
 
-    # build
-    config = {"print_ir": False,
-              "need_build": False,
-              "name": kernel_name,
-              "tensor_list": tensor_list,
-              "l1_fusion_option": is_l1fusion}
+        # build
+        config = {"print_ir": False,
+                  "need_build": False,
+                  "name": kernel_name,
+                  "tensor_list": tensor_list,
+                  "l1_fusion_option": is_l1fusion}
 
-    tbe.cce_build_code(sch, config)
+        tbe.cce_build_code(sch, config)

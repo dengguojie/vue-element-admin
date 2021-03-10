@@ -1,8 +1,11 @@
 # # -*- coding:utf-8 -*-
 import sys
 import numpy as np
+import te
+from te import tvm
 from op_test_frame.ut import BroadcastOpUT
 from op_test_frame.common import precision_info
+
 
 ut_case = BroadcastOpUT("avg_pool_v2")
 
@@ -122,294 +125,61 @@ def calc_expect_func(x, filter, y, ksize, strides, padding_mode, pads, data_form
 
 
 # [TODO] coding cases here
-ut_case.add_precision_case("all", {
+ut_case.add_case("Ascend910A", {
     "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
                 "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2),
+               {"dtype": "float16", "format": "FRACTAL_Z", "ori_format": "NCHW", "ori_shape": (16,1,2,2), "shape": (64,1,16,16),"param_type": "input"},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16),"param_type": "output"},
+               [1,1,2,2],
+               [1,1,2,2],
                "VALID",
-               (0,0,0,0),
+               [0,0,0,0],
                "NCHW",
                False,
                False,
                True],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(50, 50)
+    "expect": "success",
+    "support_expect": True
 })
 
-ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
+ut_case.add_case("Ascend910A", {
+    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC", "shape": (1, 8, 32, 32, 16), "ori_shape": (1, 32, 32, 128),"param_type": "input"},
                None,
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2),
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC", "ori_shape": (1,16,16,16), "shape": (1,1,16,16,16),"param_type": "output"},
+               [1,2,2,1],
+               [1,2,2,1],
                "SAME",
-               (0,0,0,0),
-               "NCHW",
-               True,
-               False,
-               True],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(50, 50)
-})
-
-ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               None,
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16),
-                "param_type": "output"},
-               (1,1,3,3),
-               (1,1,3,3),
-               "SAME",
-               (0,0,0,0),
-               "NCHW",
-               False,
-               False,
-               True],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(50, 50)
-})
-
-ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2),
-               "CALCULATED",
-               (1,1,1,1),
-               "NCHW",
-               False,
-               False,
-               True],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(50, 50)
-})
-
-ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,3,3,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,3,3), np.float16), (1,3,3,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,1,3,3),
-               (1,1,2,2),
-               "CALCULATED",
-               (1,1,1,1),
-               "NCHW",
-               False,
-               True,
-               True],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(50, 50)
-})
-
-ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2),
-               "SAME",
-               (0,0,0,0),
-               "NCHW",
-               False,
-               False,
-               True],
-    "calc_expect_func": calc_expect_func,
-    "precision_standard": precision_info.PrecisionStandard(50, 50)
-})
-
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2),
-               "SAME",
-               (0,0,0,0,0),
-               "NCHW",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
-
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,1,2,2,0),
-               (1,1,2,2),
-               "SAME",
-               (0,0,0,0),
-               "NCHW",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
-
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,2,2,2),
-               (1,1,2,2),
-               "SAME",
-               (0,0,0,0),
-               "NCHW",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
-
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2,0),
-               "SAME",
-               (0,0,0,0),
-               "NCHW",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
-
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,2,2,2),
-               "SAME",
-               (0,0,0,0),
-               "NCHW",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
-
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,2,2,1,0),
-               (1,2,2,1),
-               "SAME",
-               (0,0,0,0),
+               [0,0,0,0],
                "NHWC",
                False,
                False,
                True],
-    "expect": RuntimeError
-})
+    "expect": "success",
+    "support_expect": True})
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,2,2,2),
-               (1,2,2,1),
-               "SAME",
-               (0,0,0,0),
-               "NHWC",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,2,2,1),
-               (1,2,2,1,0),
-               "SAME",
-               (0,0,0,0),
-               "NHWC",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
-                "param_type": "output"},
-               (1,2,2,1),
-               (1,2,2,2),
-               "SAME",
-               (0,0,0,0),
-               "NHWC",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
+#ut_case.add_precision_case("Ascend910A", {
+    #"params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
+             #   "param_type": "input"},
+             #  {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
+             #   "value": NCHW2C1HWNCOC0(np.ones((1,16,2,2), np.float16), (1,2,2,1,16,16), np.float16),
+              #  "param_type": "input"},
+              # {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,1,2,2,16),
+              #  "param_type": "output"},
+             #  (1,1,2,2),
+             #  (1,1,2,2),
+          #     "SAME",
+         #      (0,0,0,0),
+        #       "NCHW",
+     #          False,
+     #          False,
+    #           True],
+   # "calc_expect_func": calc_expect_func,
+ #   "precision_standard": precision_info.PrecisionStandard(50, 50)
+#})
 
-ut_case.add_case("all", {
+ut_case.add_case("Ascend910A", {
     "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
                 "param_type": "input"},
                {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
@@ -421,50 +191,16 @@ ut_case.add_case("all", {
                (1,1,2,2),
                "SAME",
                (0,0,0,0),
-               "6D",
-               False,
-               False,
-               True],
-    "expect": RuntimeError
-})
-
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2),
-               "CALCULATED",
-               (1,1,0,0),
                "NCHW",
                False,
-               True,
+               False,
                True],
-    "expect": RuntimeError
+    "expect": ZeroDivisionError
 })
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,3,3), "shape": (1,1,3,3,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "C1HWNCoC0", "ori_format": "NCHW", "ori_shape": (1,16,2,2), "shape": (1,2,2,1,16,16),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16),
-                "param_type": "output"},
-               (1,1,2,2),
-               (1,1,2,2),
-               "CALCULATED",
-               (0,0,1,1),
-               "NCHW",
-               False,
-               True,
-               True],
-    "expect": RuntimeError
-})
+
 from impl.avg_pool_v2 import check_supported
-
+from impl.avg_pool_v2 import avg_pool_v2_compute
 def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
     None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
@@ -479,5 +215,15 @@ def test_check_support(test_arg):
     None,{"shape": (1, 3, 3, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 3, 3, 256),"ori_format": "ND", "param_type": "output"},
     [1,255,21,1],[1,4,4,1],"VALIED",[0,0,0,0],"NHWC")
 
-
+def test_avg_pool_v2_compute(test_arg):
+    a=tvm.placeholder((1, 8, 12, 12, 16), name="fmap", dtype="float16", attrs={"ori_shape":(1, 12, 12, 128), "format":"NC1HWC0", "ori_format":"NHWC","shape":(1, 8, 12, 12, 16)})
+    out={"dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC", "ori_shape": (1,1,1,128), "shape": (1,8,1,1,16)}
+    avg_pool_v2_compute(a,None,out,[1,12,12,1],[1,1,1,1],"VALID",(0,0,0,0),"NHWC",True,False,True)
+                        
+                        
+    b=tvm.placeholder((1,1,3,3,16), name="fmap", dtype="float16", attrs={"shape":(1,1,3,3,16),"ori_shape":(1,16,3,3), "format":"NC1HWC0", "ori_format":"NCHW"})
+    c=tvm.placeholder((4,1,16,16), name="filter", dtype="float16", attrs={"shape":(4,1,16,16),"ori_shape":(16,1,2,2), "format":"FRACTAL_Z", "ori_format":"NCHW"})
+    out1={"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16)}
+    avg_pool_v2_compute(b,c,out1,[1,1,2,2],[1,1,2,2],"VALID",(0,0,0,0),"NCHW",False,False,True)
 ut_case.add_cust_test_func(test_func=test_check_support)
+ut_case.add_cust_test_func(test_func=test_avg_pool_v2_compute)

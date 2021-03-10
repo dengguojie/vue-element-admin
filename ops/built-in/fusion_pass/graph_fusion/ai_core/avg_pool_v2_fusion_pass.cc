@@ -328,7 +328,7 @@ bool CheckGlobal(const string& padding, int64_t inputH, int64_t inputW, int64_t 
   return false;
 }
 
-Status GenerateFilterFP16(const int64_t size, const float areaFactor, uint16_t& output1) {
+Status GenerateFilterFP16V2(const int64_t size, const float areaFactor, uint16_t& output1) {
   uint16_t* output = &output1;
   fp16_t t;
   t.val = areaFactor;
@@ -453,7 +453,9 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     OP_LOGI(FUSED_OP_TYPE.c_str(), "ksize_h or ksize_w aicore not support");
     return NOT_CHANGED;
   }
-
+  FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(avgPoolNode->GetOpDesc(), "groups", inputC),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "set groups attr failed"),
+                    return FAILED);
   // get pre node of pooling
   ge::InDataAnchorPtr poolingAnchorPtr0 = avgPoolNode->GetInDataAnchor(0);
   ge::OutDataAnchorPtr preAnchorPtr0 = poolingAnchorPtr0->GetPeerOutAnchor();
@@ -467,16 +469,19 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                     return PARAM_INVALID);
 
   Status ret;
+  ret = NnSet(matrixSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  vector<int64_t> assitDimInfoOrigin = {inputC, 1, ksizeH, ksizeW};
   if (!exclusive || padding == "VALID") {
     float areaFactor = 1.0 / (ksizeH * ksizeW);
     // generate one matrix
-    ret = GenerateFilterFP16(matrixSize, areaFactor, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    ret = GenerateFilterFP16V2(matrixSize, areaFactor, *inputAssit.get());
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
   } else if (padding == "SAME") {
     float areaFactor = 1.0;
     // generate one matrix
-    ret = GenerateFilterFP16(matrixSize, areaFactor, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    ret = GenerateFilterFP16V2(matrixSize, areaFactor, *inputAssit.get());
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
     // judge for unknown shape
     int64_t mulC = 0;
     vector<int64_t> dimMul = avgPoolNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
@@ -487,7 +492,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
         mulC = dimMul[1];
       }
       if (PatternFusionUtil::IsUnknownShape(mulC)) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
     }
@@ -501,7 +506,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     for (size_t i = 0; i <= 3; i++) {
       auto dim = dimOut[i];
       if (PatternFusionUtil::IsUnknownShape(dim)) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
     }
@@ -510,8 +515,8 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   } else if (padding == "CALCULATED") {
     float areaFactor = 1.0;
     // generate one matrix
-    ret = GenerateFilterFP16(matrixSize, areaFactor, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+    ret = GenerateFilterFP16V2(matrixSize, areaFactor, *inputAssit.get());
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
     // judge for unknown shape
     int64_t mulC = 0;
     vector<int64_t> dimMul = avgPoolNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
@@ -522,7 +527,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
         mulC = dimMul[1];
       }
       if (PatternFusionUtil::IsUnknownShape(mulC)) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
     }
@@ -546,9 +551,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     OP_LOGE(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
     return PARAM_INVALID;
   }
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16 failed."), return ret);
-
-  vector<int64_t> assitDimInfoOrigin = {1, inputC, ksizeH, ksizeW};
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
 
   GeTensorDesc tensorDesc;
   ge::GeShape assitShape(assitDimInfoOrigin);
