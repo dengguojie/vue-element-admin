@@ -57,15 +57,7 @@ static bool CheckOnnxAttr(const ge::onnx::NodeProto *p_node) {
 
 static bool CheckOnnxAttrValue(const ge::onnx::NodeProto *p_node) {
   for (const auto &attr : p_node->attribute()) {
-    if (attr.name() == "group") {
-      const bool b_valide =
-          (attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1);
-      if (!b_valide) {
-        ReportErr("ConvTransPose", "only group == 1 is supported now.",
-                  "E50058");
-        return false;
-      }
-    } else if (attr.name() == "dilations") {
+    if (attr.name() == "dilations") {
       const bool b_valide = (attr.ints(0) == 1 && attr.ints(1) == 1);
       if (!b_valide) {
         ReportErr("ConvTransPose", "only dilations == 1 is supported now.",
