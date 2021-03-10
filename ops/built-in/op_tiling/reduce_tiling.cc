@@ -791,6 +791,10 @@ bool Reduce::Init() {
           data_addr++;
         }
       }
+      // clear reduce_axis_ori when shape of input axis is (0, )
+      if (size == 0) {
+        reduce_axis_ori.clear();
+      }
     } else {
       // axis_known
       reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();

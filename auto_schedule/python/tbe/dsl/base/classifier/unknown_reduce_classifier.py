@@ -126,8 +126,8 @@ class UnknownReduceClassifier:
                     "axis_dtype": self.axis_type
                 }
                 ret.append([input_x, input_axis])
-        # if reduce dim has 1, should append pure move case
-        if any(x == 1 for x in self.input_x["shape"]) and list(self.n_shape) != [1, ]:
+        # if ret is none or reduce dim has 1, should append pure move case
+        if not ret or (any(x == 1 for x in self.input_x["shape"]) and list(self.n_shape) != [1, ]):
             input_x = {
                 "shape": [1] + [util.combine_dim(self.n_shape)],
                 "range": [(1, 1)] + [util.combine_range(self.n_ranges)],
