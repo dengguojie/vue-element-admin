@@ -15,9 +15,12 @@
 #include <fstream>
 #include <exception>
 #include <vector>
+#include "Eigen/Core"
 
 const std::string ktestcaseFilePath =
     "../../../../../../../ops/built-in/tests/ut/aicpu_test/testcase/";
+
+bool ReadFile(std::string file_name, Eigen::half output[], uint64_t size);
 
 template<typename T>
 bool ReadFile(std::string file_name, std::vector<T> &output) {

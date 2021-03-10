@@ -38,20 +38,20 @@ bool ReadFile(std::string file_name, std::vector<bool> &output) {
   try {
     std::ifstream in_file{file_name};
     if (!in_file.is_open()) {
-        std::cout << "open file: " << file_name << " failed." <<std::endl;
-        return false;
+      std::cout << "open file: " << file_name << " failed." <<std::endl;
+      return false;
     }
     bool tmp;
     std::string read_str;
     while (in_file >> read_str) {
-        if (StringToBool(read_str, tmp)) {
-          output.push_back(tmp);
-        }
+      if (StringToBool(read_str, tmp)) {
+        output.push_back(tmp);
+      }
     }
     in_file.close();
   } catch (std::exception &e) {
-      std::cout << "read file " << file_name << " failed, "
-                << e.what() << std::endl;
+    std::cout << "read file " << file_name << " failed, "
+              << e.what() << std::endl;
     return false;
   }
   return true;
@@ -62,25 +62,102 @@ bool ReadFile(std::string file_name, bool output[], uint64_t size) {
   try {
     std::ifstream in_file{file_name};
     if (!in_file.is_open()) {
-        std::cout << "open file: " << file_name << " failed." <<std::endl;
-        return false;
+      std::cout << "open file: " << file_name << " failed." <<std::endl;
+      return false;
     }
     bool tmp;
     std::string read_str;
     uint64_t index = 0;
     while (in_file >> read_str) {
-        if (StringToBool(read_str, tmp)) {
-          if (index >= size) {
-            break;
-          }
-          output[index] = tmp;
-          index++;
+      if (StringToBool(read_str, tmp)) {
+        if (index >= size) {
+          break;
         }
+        output[index] = tmp;
+        index++;
+      }
     }
     in_file.close();
   } catch (std::exception &e) {
-      std::cout << "read file " << file_name << " failed, "
-                << e.what() << std::endl;
+    std::cout << "read file " << file_name << " failed, "
+              << e.what() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+template<>
+bool ReadFile(std::string file_name, int8_t output[], uint64_t size) {
+  try {
+    std::ifstream in_file{file_name};
+    if (!in_file.is_open()) {
+      std::cout << "open file: " << file_name << " failed." <<std::endl;
+      return false;
+    }
+    int32_t tmp;
+    uint64_t index = 0;
+    while (in_file >> tmp) {
+      if (index >= size) {
+        break;
+      }
+      output[index] = static_cast<int8_t>(tmp);
+      index++;
+    }
+    in_file.close();
+  } catch (std::exception &e) {
+    std::cout << "read file " << file_name << " failed, "
+              << e.what() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+template<>
+bool ReadFile(std::string file_name, uint8_t output[], uint64_t size) {
+  try {
+    std::ifstream in_file{file_name};
+    if (!in_file.is_open()) {
+      std::cout << "open file: " << file_name << " failed." <<std::endl;
+      return false;
+    }
+    uint32_t tmp;
+    uint64_t index = 0;
+    while (in_file >> tmp) {
+      if (index >= size) {
+        break;
+      }
+      output[index] = static_cast<uint8_t>(tmp);
+      index++;
+    }
+    in_file.close();
+  } catch (std::exception &e) {
+    std::cout << "read file " << file_name << " failed, "
+              << e.what() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool ReadFile(std::string file_name, Eigen::half output[], uint64_t size) {
+  try {
+    std::ifstream in_file{file_name};
+    if (!in_file.is_open()) {
+      std::cout << "open file: " << file_name << " failed." <<std::endl;
+      return false;
+    }
+    float tmp;
+    uint64_t index = 0;
+    while (in_file >> tmp) {
+      if (index >= size) {
+        break;
+      }
+      output[index] = static_cast<Eigen::half>(tmp);
+      index++;
+    }
+    in_file.close();
+  } catch (std::exception &e) {
+    std::cout << "read file " << file_name << " failed, "
+              << e.what() << std::endl;
     return false;
   }
   return true;

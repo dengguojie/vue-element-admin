@@ -98,16 +98,19 @@ build_cann() {
   fi
   logging "Start build host target. CMake Args: ${CMAKE_ARGS}"
 
-  mk_dir "${CMAKE_HOST_PATH}"
-  cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
-  make ${VERBOSE} -j${THREAD_NUM}
+  if [[ "$ST_TEST" == "FALSE" ]]; then
+    mk_dir "${CMAKE_HOST_PATH}"
+    cd "${CMAKE_HOST_PATH}" && cmake ${CMAKE_ARGS} ../..
+    make ${VERBOSE} -j${THREAD_NUM}
+  fi
+  if [[ "$UT_TEST" == "FALSE" ]]; then
+    CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device"
 
-  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device"
-
-  logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
-  mk_dir "${CMAKE_DEVICE_PATH}"
-  cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
-  make ${VERBOSE} -j${THREAD_NUM}
+    logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
+    mk_dir "${CMAKE_DEVICE_PATH}"
+    cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
+    make ${VERBOSE} -j${THREAD_NUM}
+  fi
 
   logging "CANN build success!"
 }

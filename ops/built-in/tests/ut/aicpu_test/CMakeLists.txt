@@ -141,6 +141,7 @@ target_link_libraries(cpu_kernels_llt
 set(_cpu_kernels_ut_files
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/node_def_builder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_read_file.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../utils/aicpu_test_utils.cpp
   testcase/common/src/attr_value_utest.cpp
   testcase/common/src/context_utest.cpp
   testcase/common/src/cpu_kernels_register_utest.cpp

@@ -31,7 +31,7 @@ class TEST_ADAPTER_MAX_POOL2D_UT : public testing::Test {};
     out_base_type output1[out_data_num] = {(out_base_type)0};                                          \
     CREATE_NODEDEF(shapes, data_types, input, output0, output1, list_out);                                 \
     RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
-    EXPECT_EQ(CompareFloatResult<base_type>(output0, expect_output0, out_data_num), true);                 \
+    EXPECT_EQ(CompareResult<base_type>(output0, expect_output0, out_data_num), true);                 \
     EXPECT_EQ(CompareResult<out_base_type>(output1, expect_output1, out_data_num), true);                 \
   }
 

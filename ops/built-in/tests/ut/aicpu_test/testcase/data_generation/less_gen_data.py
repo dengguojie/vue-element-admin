@@ -78,7 +78,10 @@ def config(execute_type):
         )
     return session_config
 
-def gen_random_data_2d(data_files):
+def gen_random_data_int32():
+    data_files=["less/data/less_data_input1_1.txt",
+                "less/data/less_data_input2_1.txt",
+                "less/data/less_data_output1_1.txt"]
     np.random.seed(23457)
     shape_x1 = [6, 12]
     shape_x2 = [12]
@@ -93,12 +96,15 @@ def gen_random_data_2d(data_files):
     write_file_txt(data_files[2], data, fmt="%s")
     # read_data = read_file_txt_to_boll(data_files[2])
 
-def gen_random_data_3d(data_files):
+def gen_random_data_int64():
+    data_files=["less/data/less_data_input1_2.txt",
+                "less/data/less_data_input2_2.txt",
+                "less/data/less_data_output1_2.txt"]
     np.random.seed(23457)
     shape_x1 = [13, 10, 4]
     shape_x2 = [13, 10, 4]
-    a = gen_data_file(data_files[0], shape_x1, np.int32, "randint", 0, 10)
-    b = gen_data_file(data_files[1], shape_x2, np.int32, "randint", 0, 10)
+    a = gen_data_file(data_files[0], shape_x1, np.int32, "randint", -10000, 10000)
+    b = gen_data_file(data_files[1], shape_x2, np.int32, "randint", -10000, 10000)
 
     x1 = tf.compat.v1.placeholder(tf.int32, shape=shape_x1)
     x2 = tf.compat.v1.placeholder(tf.int32, shape=shape_x2)
@@ -108,7 +114,10 @@ def gen_random_data_3d(data_files):
     write_file_txt(data_files[2], data, fmt="%s")
     # read_data = read_file_txt_to_boll(data_files[2])
 
-def gen_random_data_float(data_files):
+def gen_random_data_float():
+    data_files=["less/data/less_data_input1_3.txt",
+                "less/data/less_data_input2_3.txt",
+                "less/data/less_data_output1_3.txt"]
     np.random.seed(23457)
     shape_x1 = [15, 12, 30]
     shape_x2 = [15, 12, 30]
@@ -123,7 +132,10 @@ def gen_random_data_float(data_files):
     write_file_txt(data_files[2], data, fmt="%s")
     # read_data = read_file_txt_to_boll(data_files[2])
 
-def gen_random_data_double(data_files):
+def gen_random_data_double():
+    data_files=["less/data/less_data_input1_4.txt",
+                "less/data/less_data_input2_4.txt",
+                "less/data/less_data_output1_4.txt"]
     np.random.seed(3457)
     shape_x1 = [7, 12, 30]
     shape_x2 = [7, 12, 30]
@@ -138,20 +150,84 @@ def gen_random_data_double(data_files):
     write_file_txt(data_files[2], data, fmt="%s")
     # read_data = read_file_txt_to_boll(data_files[2])
 
+def gen_random_data_int8():
+    data_files=["less/data/less_data_input1_5.txt",
+                "less/data/less_data_input2_5.txt",
+                "less/data/less_data_output1_5.txt"]
+    np.random.seed(3457)
+    shape_x1 = [7, 12]
+    shape_x2 = [12]
+    a = gen_data_file(data_files[0], shape_x1, np.int8, "randint", -100, 100)
+    b = gen_data_file(data_files[1], shape_x2, np.int8, "randint", -100, 100)
+
+    x1 = tf.compat.v1.placeholder(tf.int8, shape=shape_x1)
+    x2 = tf.compat.v1.placeholder(tf.int8, shape=shape_x2)
+    re = tf.less(x1, x2)
+    with tf.compat.v1.Session(config=config('cpu')) as session:
+        data = session.run(re, feed_dict={x1:a, x2:b})
+    write_file_txt(data_files[2], data, fmt="%s")
+    # read_data = read_file_txt_to_boll(data_files[2])
+
+def gen_random_data_uint8():
+    data_files=["less/data/less_data_input1_6.txt",
+                "less/data/less_data_input2_6.txt",
+                "less/data/less_data_output1_6.txt"]
+    np.random.seed(3457)
+    shape_x1 = [7, 12]
+    shape_x2 = [12]
+    a = gen_data_file(data_files[0], shape_x1, np.uint8, "randint", 0, 200)
+    b = gen_data_file(data_files[1], shape_x2, np.uint8, "randint", 0, 200)
+
+    x1 = tf.compat.v1.placeholder(tf.uint8, shape=shape_x1)
+    x2 = tf.compat.v1.placeholder(tf.uint8, shape=shape_x2)
+    re = tf.less(x1, x2)
+    with tf.compat.v1.Session(config=config('cpu')) as session:
+        data = session.run(re, feed_dict={x1:a, x2:b})
+    write_file_txt(data_files[2], data, fmt="%s")
+    # read_data = read_file_txt_to_boll(data_files[2])
+
+def gen_random_data_int16():
+    data_files=["less/data/less_data_input1_7.txt",
+                "less/data/less_data_input2_7.txt",
+                "less/data/less_data_output1_7.txt"]
+    np.random.seed(3457)
+    shape_x1 = [12, 6]
+    shape_x2 = [6]
+    a = gen_data_file(data_files[0], shape_x1, np.int16, "randint", 0, 6000)
+    b = gen_data_file(data_files[1], shape_x2, np.int16, "randint", 0, 6000)
+
+    x1 = tf.compat.v1.placeholder(tf.int16, shape=shape_x1)
+    x2 = tf.compat.v1.placeholder(tf.int16, shape=shape_x2)
+    re = tf.less(x1, x2)
+    with tf.compat.v1.Session(config=config('cpu')) as session:
+        data = session.run(re, feed_dict={x1:a, x2:b})
+    write_file_txt(data_files[2], data, fmt="%s")
+    # read_data = read_file_txt_to_boll(data_files[2])
+
+def gen_random_data_float16():
+    data_files=["less/data/less_data_input1_8.txt",
+                "less/data/less_data_input2_8.txt",
+                "less/data/less_data_output1_8.txt"]
+    np.random.seed(3457)
+    shape_x1 = [12, 130]
+    shape_x2 = [12, 130]
+    a = gen_data_file(data_files[0], shape_x1, np.float16, "randint", 0, 2000)
+    b = gen_data_file(data_files[1], shape_x2, np.float16, "randint", 0, 2000)
+
+    x1 = tf.compat.v1.placeholder(tf.float16, shape=shape_x1)
+    x2 = tf.compat.v1.placeholder(tf.float16, shape=shape_x2)
+    re = tf.less(x1, x2)
+    with tf.compat.v1.Session(config=config('cpu')) as session:
+        data = session.run(re, feed_dict={x1:a, x2:b})
+    write_file_txt(data_files[2], data, fmt="%s")
+    # read_data = read_file_txt_to_boll(data_files[2])
+
 def run():
-    data_files=["less/data/less_data_input1_1.txt",
-                "less/data/less_data_input2_1.txt",
-                "less/data/less_data_output1_1.txt",
-                "less/data/less_data_input1_2.txt",
-                "less/data/less_data_input2_2.txt",
-                "less/data/less_data_output1_2.txt",
-                "less/data/less_data_input1_3.txt",
-                "less/data/less_data_input2_3.txt",
-                "less/data/less_data_output1_3.txt",
-                "less/data/less_data_input1_4.txt",
-                "less/data/less_data_input2_4.txt",
-                "less/data/less_data_output1_4.txt"]
-    gen_random_data_2d([data_files[0], data_files[1], data_files[2]])
-    gen_random_data_3d([data_files[3], data_files[4], data_files[5]])
-    gen_random_data_float([data_files[6], data_files[7], data_files[8]])
-    gen_random_data_double([data_files[9], data_files[10], data_files[11]])
+    gen_random_data_int32()
+    gen_random_data_int64()
+    gen_random_data_float()
+    gen_random_data_double()
+    gen_random_data_int8()
+    gen_random_data_uint8()
+    gen_random_data_int16()
+    gen_random_data_float16()
