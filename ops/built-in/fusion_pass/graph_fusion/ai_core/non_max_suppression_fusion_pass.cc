@@ -177,16 +177,11 @@ namespace fe {
             }
             DataType dtype = op.GetInputDesc("max_output_size").GetDataType();
             GetConstValue(op, maxOuputSizeTensor, dtype, sizeTensorList);
-            // 更新节点的值
+            // update op input origin type
             int index = fuseDesc->GetInputIndexByName("max_output_size");
             GeTensorDescPtr output_tensor_desc = fuseDesc->MutableInputDesc(index);
             output_tensor_desc->SetOriginDataType(ge::DT_INT32);
             output_tensor_desc->SetDataType(ge::DT_INT32);
-            vector<ge::GeTensorPtr> output_tensor_ptr = ge::OpDescUtils::MutableWeights(fusedNode);
-            output_tensor_ptr[index]->SetData(reinterpret_cast<uint8_t *>(sizeTensorList.data()),
-                                                sizeTensorList.size() * sizeof(int32_t));
-        } else {
-            OP_LOGW("NonMaxSuppressionPass", "GetConstInputs of max_output_size failed, maybe there is no max output size");
         }
         Format inputFormat = fuseDesc->GetInputDesc("boxes").GetFormat();
         vector<int64_t> indexShape = fuseDesc->GetInputDesc("scores").GetShape().GetDims();
