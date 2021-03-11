@@ -22,6 +22,8 @@ from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
 from impl.util import util_select_op_base
+from tbe.dsl import broadcast
+from tbe.dsl.compute.gemm_compute import batchmatmul_fusedmuladd_reshape_nd2nz
 from tbe.dsl.compute.gemm_compute import batchmatmul_fusedmuladd_reshape
 
 SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
@@ -474,7 +476,11 @@ def fusion_mul_add_compute(data_input0, data_input1, data_input2,
         data_input0, data_input1 = data_input1, data_input0
 
     if batch_matmul_flag_lhs or batch_matmul_flag_rhs:
-        data_input1, data_input2 = batchmatmul_fusedmuladd_reshape(data_input0, data_input1, data_input2)
+        data_input1, data_input2, shape_max, batch_shape = batchmatmul_fusedmuladd_reshape_nd2nz(
+            data_input0, data_input1, data_input2)
+        data_input1 = broadcast(data_input1, shape_max)
+        data_input2 = broadcast(data_input2, shape_max)
+        data_input1, data_input2 = batchmatmul_fusedmuladd_reshape(data_input0, data_input1, data_input2, batch_shape)
         mul_result = tbe.vmul(data_input0, data_input1)
         res = tbe.vadd(mul_result, data_input2)
     else:

@@ -34,4 +34,7 @@ def calc_conv3d(outs, option=None):
         "please replace it with the func tbe.dsl.unify_schedule.conv3d_tilingcase",
         DeprecationWarning)
     from tbe.dsl.unify_schedule.conv3d_tilingcase import calc_conv3d
-    return calc_conv3d(outs, option)
+    if option:
+        return calc_conv3d(outs, option)
+    else:
+        return calc_conv3d(outs)

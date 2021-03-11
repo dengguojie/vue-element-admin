@@ -20,7 +20,7 @@ import functools
 
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te import tvm
+from tbe import tvm
 from te.utils import para_check
 from impl import batch_matmul_vector
 from te.utils.error_manager import error_manager_vector

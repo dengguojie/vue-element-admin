@@ -34,4 +34,7 @@ def calc_matmul(outs, option=None):
         "please replace it with the func tbe.dsl.unify_schedule.gemm_tilingcase",
         DeprecationWarning)
     from tbe.dsl.unify_schedule.gemm_tilingcase import calc_matmul
-    return calc_matmul(outs, option)
+    if option:
+        return calc_matmul(outs, option)
+    else:
+        return calc_matmul(outs)

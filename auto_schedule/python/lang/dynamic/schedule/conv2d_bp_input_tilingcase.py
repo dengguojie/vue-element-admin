@@ -34,4 +34,7 @@ def calc_conv2dbp_input(outs, option=None):
         "please replace it with the func tbe.dsl.unify_schedule.conv2d_bp_input_tilingcase",
         DeprecationWarning)
     from tbe.dsl.unify_schedule.conv2d_bp_input_tilingcase import calc_conv2dbp_input
-    return calc_conv2dbp_input(outs, option)
+    if option:
+        return calc_conv2dbp_input(outs, option)
+    else:
+        return calc_conv2dbp_input(outs)

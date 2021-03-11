@@ -23,4 +23,7 @@ def calc_conv2dbp_filter(outs, option=None):
         "please replace it with the func tbe.dsl.unify_schedule.conv2d_bp_filter_tilingcase",
         DeprecationWarning)
     from tbe.dsl.unify_schedule.conv2d_bp_filter_tilingcase import calc_conv2dbp_filter
-    return calc_conv2dbp_filter(outs, option)
+    if option:
+        return calc_conv2dbp_filter(outs, option)
+    else:
+        return calc_conv2dbp_filter(outs)

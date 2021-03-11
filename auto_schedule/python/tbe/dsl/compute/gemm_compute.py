@@ -21,7 +21,6 @@ from enum import Enum
 import tbe.common.platform as tbe_platform
 import tbe.common.utils as tbe_utils
 from tbe.common.utils.errormgr import error_manager_util
-from tbe.dsl import broadcast
 from tbe.dsl.base.operation import in_dynamic
 from tbe.dsl.compute.mmad_compute import matmul
 from tbe.dsl.compute.util import check_input_tensor_shape
@@ -551,7 +550,7 @@ def gemm(tensor_a, tensor_b, para_dict):
 
 
 @tbe_utils.para_check.check_input_type(Tensor, Tensor, Tensor)
-def batchmatmul_fusedmuladd_reshape(batch_matmul_output, data_input1, data_input2):
+def batchmatmul_fusedmuladd_reshape_nd2nz(batch_matmul_output, data_input1, data_input2):
     """
     reshape batchmatmul+fusedmuladd ubfusion inputs tensors
 
@@ -564,10 +563,10 @@ def batchmatmul_fusedmuladd_reshape(batch_matmul_output, data_input1, data_input
 
     Returns result
     """
-    shape_0 = shape_util.shape_to_list(batch_matmul_output.shape)
-    shape_1 = shape_util.shape_to_list(data_input1.shape)
-    shape_2 = shape_util.shape_to_list(data_input2.shape)
-    batch_shape = shape_util.shape_to_list(batch_matmul_output.op.attrs["batch_shape"])
+    shape_0 = tbe_utils.shape_util.shape_to_list(batch_matmul_output.shape)
+    shape_1 = tbe_utils.shape_util.shape_to_list(data_input1.shape)
+    shape_2 = tbe_utils.shape_util.shape_to_list(data_input2.shape)
+    batch_shape = tbe_utils.shape_util.shape_to_list(batch_matmul_output.op.attrs["batch_shape"])
     shape_max = batch_shape + shape_0[-4:]
     if data_input1.op.attrs["format"] != "FRACTAL_NZ" and shape_1[-1] != 1:
         input1_ndim = shape_1[-1]
@@ -585,10 +584,27 @@ def batchmatmul_fusedmuladd_reshape(batch_matmul_output, data_input1, data_input
             lambda *indice: data_input2(*indice[0:2], 0, indice[-4] * 16 + indice[-1]),
             name="broadcast_nz_mul",
             tag="broadcast_nz_mul")
-    data_input1 = broadcast(data_input1, shape_max)
-    data_input2 = broadcast(data_input2, shape_max)
+    return data_input1, data_input2, shape_max, batch_shape
 
+
+@tbe_utils.para_check.check_input_type(Tensor, Tensor, Tensor, list)
+def batchmatmul_fusedmuladd_reshape(batch_matmul_output, data_input1, data_input2, batch_shape):
+    """
+    reshape batchmatmul+fusedmuladd ubfusion inputs tensors
+
+    Parameters:
+    batch_matmul_output: the tensor of batchmatmul result
+
+    data_input1: the tensor of mul
+
+    data_input2: the tensor of add
+
+    batch_shape: the shape of  batch
+
+    Returns result
+    """
     # trans the batch_shape to 1 dim
+    shape_0 = tbe_utils.shape_util.shape_to_list(batch_matmul_output.shape)
     if len(batch_shape) == BATCH_LENGTH_1:
         data_input1 = tvm.compute(shape_0, lambda *indice: data_input1(indice[0], *indice[-4:]),
                                   name="broadcast_mul",
@@ -757,7 +773,7 @@ def _get_tensor_c_ub(  # pylint: disable=too-many-arguments
     if dst_dtype == "float16" and l0c_support_fp32:
         tensor_c_ub = tvm.compute(
             tensor_c_ub_temp.shape,
-            lambda *indices: shape_util.cast(
+            lambda *indices: tbe_utils.shape_util.cast(
                 tensor_c_ub_temp(*indices),
                 dtype="float16"
             ),
@@ -972,14 +988,14 @@ class GEMMCompute:
 
             tensor_alpha_ub = tvm.compute(
                 self.tensor_alpha.shape,
-                lambda *indices: shape_util.cast(
+                lambda *indices: tbe_utils.shape_util.cast(
                     tensor_alpha_temp_ub(*indices), dtype="float32"
                 ),
                 name="tensor_alpha_ub"
             )
             tensor_beta_ub = tvm.compute(
                 self.tensor_beta.shape,
-                lambda *indices: shape_util.cast(
+                lambda *indices: tbe_utils.shape_util.cast(
                     tensor_beta_temp_ub(*indices), dtype="float32"
                 ),
                 name="tensor_beta_ub"
@@ -1398,7 +1414,7 @@ class GEMMCompute:
             if tensor_beta_ub.dtype == "float32" and tensor_bias_ub.dtype == "float16":
                 tensor_float32_bias_ub = tvm.compute(
                     tensor_bias_ub.shape,
-                    lambda *indices: shape_util.cast(
+                    lambda *indices: tbe_utils.shape_util.cast(
                         tensor_bias_ub(*indices), dtype="float32"
                     ),
                     name="tensor_float32_bias_ub"
@@ -1480,7 +1496,7 @@ class GEMMCompute:
                     )
                 tensor_a_normalize_ub = tvm.compute(
                     gm_a_shape_normalize,
-                    lambda *indices: shape_util.cast(
+                    lambda *indices: tbe_utils.shape_util.cast(
                         tensor_a_normalize_ub(*indices), "float16"
                     ),
                     name="tensor_a_float16_normalize_ub"
@@ -1572,7 +1588,7 @@ class GEMMCompute:
                         )
                         tensor_float16_a_ub = tvm.compute(
                             gm_a_shape_normalize,
-                            lambda *indices: shape_util.cast(
+                            lambda *indices: tbe_utils.shape_util.cast(
                                 tensor_a_ub(*indices), "float16"
                             ),
                             name="tensor_float16_a_ub"
@@ -1643,7 +1659,7 @@ class GEMMCompute:
                                 )
                             tensor_a_normalize_ub = tvm.compute(
                                 gm_a_shape_normalize,
-                                lambda *indices: shape_util.cast(
+                                lambda *indices: tbe_utils.shape_util.cast(
                                     tensor_a_normalize_ub(*indices), "float16"
                                 ),
                                 name="tensor_a_float16_normalize_ub"
@@ -1802,7 +1818,7 @@ class GEMMCompute:
                     )
                 tensor_b_normalize_ub = tvm.compute(
                     gm_b_shape_normalize,
-                    lambda *indices: shape_util.cast(
+                    lambda *indices: tbe_utils.shape_util.cast(
                         tensor_b_normalize_ub(*indices), "float16"
                     ),
                     name="tensor_b_float16_normalize_ub"
@@ -1869,7 +1885,7 @@ class GEMMCompute:
                     )
                     tensor_float16_b_ub = tvm.compute(
                         self.tensor_b.shape,
-                        lambda *indices: shape_util.cast(
+                        lambda *indices: tbe_utils.shape_util.cast(
                             tensor_b_ub(*indices), "float16"
                         ),
                         name="tensor_float16_b_ub"
@@ -1960,7 +1976,7 @@ class GEMMCompute:
                     )
                 tensor_b_normalize_ub = tvm.compute(
                     gm_b_shape_normalize,
-                    lambda *indices: shape_util.cast(
+                    lambda *indices: tbe_utils.shape_util.cast(
                         tensor_b_normalize_ub(*indices), "float16"
                     ),
                     name="tensor_b_float16_normalize_ub"
@@ -2162,13 +2178,13 @@ class GEMMCompute:
                 if self.tensor_bias.dtype == "float16" and l0c_support_fp32 == 1:
                     if GEMMComputeParam.batch_a:
                         tensor_bias_l0c = tvm.compute(
-                            self.out_shape, lambda b, i, j, k, l: shape_util.cast(
+                            self.out_shape, lambda b, i, j, k, l: tbe_utils.shape_util.cast(
                                 tensor_beta_bias_ub[i * self.block_out + l], dtype="float32"),
                                 name="tensor_bias_l0c"
                         )
                     else:
                         tensor_bias_l0c = tvm.compute(
-                            self.out_shape, lambda i, j, k, l: shape_util.cast(
+                            self.out_shape, lambda i, j, k, l: tbe_utils.shape_util.cast(
                                 tensor_beta_bias_ub[i * self.block_out + l], dtype="float32"),
                                 name="tensor_bias_l0c"
                         )

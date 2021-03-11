@@ -24,3 +24,10 @@ from .constants import Pattern, INSN_MAPPING, SUPPORT_SCALAR_INSNS, BROADCAST_IN
     VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, TERNARY_INSNS, NEED_EXTENT_NODE_INSNS, VCMP_INSNS
 from .unify_auto_schedule import build
 from .unify_auto_schedule import schedule_cce
+
+from tbe.dsl.unify_schedule.constants import Pattern
+from tbe.dsl.unify_schedule import conv2d_bp_input_tilingcase, conv2d_bp_input_schedule
+from tbe.dsl.unify_schedule import conv2d_bp_filter_tilingcase, cube_schedule
+from tbe.dsl.unify_schedule import conv3d_schedule, conv3d_tilingcase
+from tbe.dsl.unify_schedule import conv3d_bp_input_schedule, conv3d_bp_input_tilingcase
+from tbe.dsl.unify_schedule import gemm_tilingcase
