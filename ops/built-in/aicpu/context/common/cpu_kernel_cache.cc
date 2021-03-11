@@ -120,11 +120,6 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
                          "Get input[%zu] failed.", i)
     input->SetData(reinterpret_cast<void *>(
         static_cast<uintptr_t>(io_addrs_[addr_index])));
-    int64_t calc_data_size = input->CalcDataSizeByShape();
-    uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
-    input->SetDataSize(data_size);
-    KERNEL_LOG_INFO("Set input[%zu] addr[%llu] success.", i,
-                    io_addrs_[addr_index]);
 
     if (unknown_shape_) {
       std::vector<int64_t> dims;
@@ -134,6 +129,12 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
                            "Get input[%zu] shape failed.", i)
       shape->SetDimSizes(dims);
     }
+
+    int64_t calc_data_size = input->CalcDataSizeByShape();
+    uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
+    input->SetDataSize(data_size);
+    KERNEL_LOG_INFO("Set input[%zu] addr[%llu] success.", i,
+                    io_addrs_[addr_index]);
   }
 
   for (size_t i = 0; i < ctx.GetOutputsSize(); i++, addr_index++) {
@@ -142,11 +143,6 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
                          "Get output[%zu] failed.", i)
     output->SetData(reinterpret_cast<void *>(
         static_cast<uintptr_t>(io_addrs_[addr_index])));
-    int64_t calc_data_size = output->CalcDataSizeByShape();
-    uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
-    output->SetDataSize(data_size);
-    KERNEL_LOG_INFO("Set output[%zu] addr[%llu] success.", i,
-                    io_addrs_[addr_index]);
 
     if (unknown_shape_) {
       std::vector<int64_t> dims;
@@ -156,6 +152,12 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
                            "Get output[%zu] shape failed.", i)
       shape->SetDimSizes(dims);
     }
+
+    int64_t calc_data_size = output->CalcDataSizeByShape();
+    uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
+    output->SetDataSize(data_size);
+    KERNEL_LOG_INFO("Set output[%zu] addr[%llu] success.", i,
+                    io_addrs_[addr_index]);
   }
   KERNEL_LOG_INFO("Update tensor info success.");
   return KERNEL_STATUS_OK;
