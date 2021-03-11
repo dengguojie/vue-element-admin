@@ -59,6 +59,7 @@ Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("MatMulV2")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::Gemm",
+                   "ai.onnx::10::Gemm",
                    "ai.onnx::11::Gemm",
                    "ai.onnx::12::Gemm",
                    "ai.onnx::13::Gemm"})

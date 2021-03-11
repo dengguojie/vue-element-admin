@@ -57,8 +57,9 @@ Status ParseParamsGather(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("GatherV2D")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::Gather")
     .OriginOpType({"ai.onnx::9::Gather",
+                   "ai.onnx::10::Gather",
+                   "ai.onnx::11::Gather",
                    "ai.onnx::12::Gather",
                    "ai.onnx::13::Gather"})
     .ParseParamsFn(ParseParamsGather)

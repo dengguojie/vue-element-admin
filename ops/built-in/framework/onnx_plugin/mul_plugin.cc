@@ -41,8 +41,9 @@ Status ParseParamsMul(const Message* op_src, ge::Operator& op_dest) {
 // register Mul op info to GE
 REGISTER_CUSTOM_OP("Mul")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::Mul")
     .OriginOpType({"ai.onnx::9::Mul",
+                   "ai.onnx::10::Mul",
+                   "ai.onnx::11::Mul",
                    "ai.onnx::12::Mul",
                    "ai.onnx::13::Mul"})
     .ParseParamsFn(ParseParamsMul)

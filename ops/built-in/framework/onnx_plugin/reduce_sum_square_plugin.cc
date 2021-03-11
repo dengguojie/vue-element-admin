@@ -55,9 +55,12 @@ Status parse_params_reduce_sum_square(const Message* op_src, ge::Operator& op_de
 // register ReduceSumSquare op info to GE
 REGISTER_CUSTOM_OP("SquareSumV1")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::1::ReduceSumSquare")
-  .OriginOpType("ai.onnx::11::ReduceSumSquare")
-  .OriginOpType("ai.onnx::13::ReduceSumSquare")
+  .OriginOpType({"ai.onnx::1::ReduceSumSquare",
+                 "ai.onnx::9::ReduceSumSquare",
+                 "ai.onnx::10::ReduceSumSquare",
+                 "ai.onnx::11::ReduceSumSquare",
+                 "ai.onnx::12::ReduceSumSquare",
+                 "ai.onnx::13::ReduceSumSquare"})
   .ParseParamsFn(parse_params_reduce_sum_square)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

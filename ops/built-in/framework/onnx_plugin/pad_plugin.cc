@@ -117,7 +117,8 @@ static Status ParseOpToGraphPad(const Operator& op, Graph& graph)
 
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::9::Pad")
+  .OriginOpType({"ai.onnx::9::Pad",
+                 "ai.onnx::10::Pad"})
   .ParseParamsFn(parse_params_pad_v9)
   .ParseOpToGraphFn(ParseOpToGraphPad)
   .ImplyType(ImplyType::TVM);

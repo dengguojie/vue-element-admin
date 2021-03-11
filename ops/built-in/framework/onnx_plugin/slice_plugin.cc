@@ -67,7 +67,8 @@ Status ParseParamSliceV9(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("StridedSliceD")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::9::Slice")
+  .OriginOpType({"ai.onnx::9::Slice",
+                 "ai.onnx::10::Slice"})
   .ParseParamsFn(ParseParamSliceV9)
   .ImplyType(ImplyType::TVM);
 

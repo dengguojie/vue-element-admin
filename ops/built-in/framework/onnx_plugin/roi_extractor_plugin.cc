@@ -86,7 +86,10 @@ Status ParseParamsRoiExtractor(const Message* op_src, ge::Operator& op_dest) {
 // register op info to GE
 REGISTER_CUSTOM_OP("RoiExtractor")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::RoiExtractor")
+    .OriginOpType({"ai.onnx::9::RoiExtractor",
+                   "ai.onnx::10::RoiExtractor",
+                   "ai.onnx::11::RoiExtractor",
+                   "ai.onnx::12::RoiExtractor"})
     .ParseParamsFn(ParseParamsRoiExtractor)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

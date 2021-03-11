@@ -64,7 +64,9 @@ Status ParseParamsResize(const Message *op_src, ge::Operator &op_dst) {
 
 REGISTER_CUSTOM_OP("Resize")
   .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::11::Resize",
+  .OriginOpType({"ai.onnx::9::Resize",
+                 "ai.onnx::10::Resize",
+                 "ai.onnx::11::Resize",
                  "ai.onnx::12::Resize"})
   .ParseParamsFn(ParseParamsResize)
   .ImplyType(ImplyType::TVM);

@@ -36,7 +36,10 @@ Status ParseParamsCelu(const Message* op_src, ge::Operator& op_dest) {
 // register Celu op info to GE
 REGISTER_CUSTOM_OP("Celu")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::12::Celu")
+  .OriginOpType({"ai.onnx::9::Celu",
+                 "ai.onnx::10::Celu",
+                 "ai.onnx::11::Celu",
+                 "ai.onnx::12::Celu"})
   .ParseParamsFn(ParseParamsCelu)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

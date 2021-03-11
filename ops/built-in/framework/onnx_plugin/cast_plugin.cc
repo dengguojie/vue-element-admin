@@ -104,6 +104,7 @@ Status ParseParamsCast(const Message *op_src, ge::Operator &op_dst) {
 REGISTER_CUSTOM_OP("Cast")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::9::Cast",
+                 "ai.onnx::10::Cast",
                  "ai.onnx::11::Cast",
                  "ai.onnx::12::Cast",
                  "ai.onnx::13::Cast"})

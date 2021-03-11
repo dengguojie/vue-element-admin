@@ -113,7 +113,8 @@ REGISTER_CUSTOM_OP("PartitionedCall")
 
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::9::Min")
+    .OriginOpType({"ai.onnx::9::Min",
+                   "ai.onnx::10::Min"})
     .ParseParamsFn(ParseParamsMinCallV9)
     .ParseOpToGraphFn(ParseOpToGraphMin)
     .ImplyType(ImplyType::TVM);

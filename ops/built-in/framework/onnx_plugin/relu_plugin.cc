@@ -40,10 +40,11 @@ Status ParseParamsRelu(const Message* op_origin, ge::Operator& op_dest) {
 // register ReLU op info to GE
 REGISTER_CUSTOM_OP("Relu")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::Relu")
-	  .OriginOpType({"ai.onnx::9::Relu",
-	                 "ai.onnx::12::Relu",
-				           "ai.onnx::13::Relu"})
+    .OriginOpType({"ai.onnx::9::Relu",
+                   "ai.onnx::10::Relu",
+                   "ai.onnx::11::Relu",
+                   "ai.onnx::12::Relu",
+                   "ai.onnx::13::Relu"})
     .ParseParamsFn(ParseParamsRelu)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

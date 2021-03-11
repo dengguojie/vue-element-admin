@@ -170,6 +170,7 @@ Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
 REGISTER_CUSTOM_OP("Conv2D")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::Conv",
+                   "ai.onnx::10::Conv",
                    "ai.onnx::11::Conv",
                    "ai.onnx::12::Conv",
                    "ai.onnx::13::Conv"})

@@ -38,6 +38,7 @@ Status ParseParamsSum(const Message* op_src, ge::Operator& op_dest) {
 REGISTER_CUSTOM_OP("AccumulateNV2")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::9::Sum",
+                 "ai.onnx::10::Sum",
                  "ai.onnx::11::Sum",
                  "ai.onnx::12::Sum",
                  "ai.onnx::13::Sum"})

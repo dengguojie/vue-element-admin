@@ -57,7 +57,10 @@ Status ParseParamsCommonLSTM(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("CommonLSTM")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::LSTM")
+    .OriginOpType({"ai.onnx::9::LSTM",
+                   "ai.onnx::10::LSTM",
+                   "ai.onnx::11::LSTM",
+                   "ai.onnx::12::LSTM"})
     .ParseParamsFn(ParseParamsCommonLSTM)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

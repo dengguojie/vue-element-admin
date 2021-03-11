@@ -48,8 +48,9 @@ Status ParseParamsGatherElements(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("GatherElements")
     .FrameworkType(ONNX)
-    .OriginOpType({"ai.onnx::11::GatherElements",
-                   "ai.onnx::9::GatherElements",
+    .OriginOpType({"ai.onnx::9::GatherElements",
+                   "ai.onnx::10::GatherElements",
+                   "ai.onnx::11::GatherElements",
                    "ai.onnx::12::GatherElements",
                    "ai.onnx::13::GatherElements"})
     .ParseParamsFn(ParseParamsGatherElements)

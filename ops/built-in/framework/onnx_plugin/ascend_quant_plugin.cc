@@ -72,7 +72,10 @@ Status ParseParamsAscendQuant(const Message* op_src, ge::Operator& op_dest) {
 // register AscendQuant op info to GE
 REGISTER_CUSTOM_OP("AscendQuant")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::AscendQuant")
+    .OriginOpType({"ai.onnx::9::AscendQuant",
+                   "ai.onnx::10::AscendQuant",
+                   "ai.onnx::11::AscendQuant",
+                   "ai.onnx::12::AscendQuant"})
     .ParseParamsFn(ParseParamsAscendQuant)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

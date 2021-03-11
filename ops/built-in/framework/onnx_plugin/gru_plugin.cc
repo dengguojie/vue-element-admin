@@ -47,7 +47,10 @@ Status ParseParamsCommonGRU(const Message *op_src, ge::Operator &op_dest) {
 
 REGISTER_CUSTOM_OP("CommonGRU")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::GRU")
+    .OriginOpType({"ai.onnx::9::GRU",
+                   "ai.onnx::10::GRU",
+                   "ai.onnx::11::GRU",
+                   "ai.onnx::12::GRU"})
     .ParseParamsFn(ParseParamsCommonGRU)
     .ImplyType(ImplyType::TVM);
 

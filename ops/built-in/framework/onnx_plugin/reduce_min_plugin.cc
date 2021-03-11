@@ -90,9 +90,10 @@ static Status ParseOpToGraphReduceMin(const ge::Operator& op, Graph& graph) {
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::ReduceMin",
-                  "ai.onnx::11::ReduceMin",
-                  "ai.onnx::12::ReduceMin",
-                  "ai.onnx::13::ReduceMin"})
+                   "ai.onnx::10::ReduceMin",
+                   "ai.onnx::11::ReduceMin",
+                   "ai.onnx::12::ReduceMin",
+                   "ai.onnx::13::ReduceMin"})
     .ParseParamsFn(ParseParamsReduceMin)
     .ParseOpToGraphFn(ParseOpToGraphReduceMin)
     .ImplyType(ImplyType::TVM);

@@ -49,8 +49,12 @@ Status parse_params_hard_sigmoid(const Message* op_src, ge::Operator& op_dest) {
 // register HardSigmoid op info to GE
 REGISTER_CUSTOM_OP("HardSigmoid")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::1::HardSigmoid")
-  .OriginOpType("ai.onnx::6::HardSigmoid")
+  .OriginOpType({"ai.onnx::1::HardSigmoid",
+                 "ai.onnx::6::HardSigmoid",
+                 "ai.onnx::9::HardSigmoid",
+                 "ai.onnx::10::HardSigmoid",
+                 "ai.onnx::11::HardSigmoid",
+                 "ai.onnx::12::HardSigmoid"})
   .ParseParamsFn(parse_params_hard_sigmoid)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

@@ -36,7 +36,10 @@ Status ParseParamsElu(const Message* op_src, ge::Operator& op_dest) {
 // register Elu op info to GE
 REGISTER_CUSTOM_OP("Elu")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::Elu")
+  .OriginOpType({"ai.onnx::9::Elu",
+                 "ai.onnx::10::Elu",
+                 "ai.onnx::11::Elu",
+                 "ai.onnx::12::Elu"})
   .ParseParamsFn(ParseParamsElu)
   .ImplyType(ImplyType::TVM);
 }  // namespace domi

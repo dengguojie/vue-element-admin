@@ -115,7 +115,8 @@ Status ParseParamsClipV11(const Message* op_src, ge::Operator& op_dest) {
 // register Clip op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::9::Clip")
+    .OriginOpType({"ai.onnx::9::Clip",
+                   "ai.onnx::10::Clip"})
     .ParseParamsFn(ParseParamsClipV9)
     .ParseOpToGraphFn(ParseOpToGraphClip)
     .ImplyType(ImplyType::TVM);

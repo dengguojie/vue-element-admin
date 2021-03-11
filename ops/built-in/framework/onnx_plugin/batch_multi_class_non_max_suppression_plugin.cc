@@ -52,7 +52,10 @@ Status ParseParamsBatchMultiClassNMS(const Message* op_src, ge::Operator& op_des
 // register BatchMultiClassNMS op info to GE
 REGISTER_CUSTOM_OP("BatchMultiClassNonMaxSuppression")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::BatchMultiClassNMS")
+    .OriginOpType({"ai.onnx::9::BatchMultiClassNMS",
+                   "ai.onnx::10::BatchMultiClassNMS",
+                   "ai.onnx::11::BatchMultiClassNMS",
+                   "ai.onnx::12::BatchMultiClassNMS"})
     .ParseParamsFn(ParseParamsBatchMultiClassNMS)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

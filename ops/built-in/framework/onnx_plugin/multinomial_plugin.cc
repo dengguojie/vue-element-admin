@@ -134,7 +134,8 @@ REGISTER_CUSTOM_OP("PartitionedCall")
 
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::9::Multinomial")
+  .OriginOpType({"ai.onnx::9::Multinomial",
+                 "ai.onnx::10::Multinomial"})
   .ParseParamsFn(ParseParamsMultinomialCallV9)
   .ParseOpToGraphFn(ParseOpToGraphMultinomial)
   .ImplyType(ImplyType::TVM);

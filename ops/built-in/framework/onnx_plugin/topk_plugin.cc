@@ -47,7 +47,10 @@ Status ParseParamsTopK(const Message* op_src, ge::Operator& op_dest) {
 
 REGISTER_CUSTOM_OP("TopK")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::TopK")
+    .OriginOpType({"ai.onnx::9::TopK",
+                   "ai.onnx::10::TopK",
+                   "ai.onnx::11::TopK",
+                   "ai.onnx::12::TopK"})
     .ParseParamsFn(ParseParamsTopK)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

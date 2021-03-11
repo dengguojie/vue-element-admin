@@ -163,7 +163,8 @@ REGISTER_CUSTOM_OP("PartitionedCall")
 
 REGISTER_CUSTOM_OP("PartitionedCall")
   .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::9::Flatten")
+  .OriginOpType({"ai.onnx::9::Flatten",
+                 "ai.onnx::10::Flatten"})
   .ParseParamsFn(ParseParamsFlattenV9)
   .ParseOpToGraphFn(ParseOpToGraphFlatten)
   .ImplyType(ImplyType::TVM);

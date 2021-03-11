@@ -46,6 +46,7 @@ Status ParseParamsSoftmax(const Message *op_src, ge::Operator &op_dest) {
 REGISTER_CUSTOM_OP("SoftmaxV2")
   .FrameworkType(ONNX)
   .OriginOpType({"ai.onnx::9::Softmax",
+                 "ai.onnx::10::Softmax",
                  "ai.onnx::11::Softmax",
                  "ai.onnx::12::Softmax"})
   .ParseParamsFn(ParseParamsSoftmax)

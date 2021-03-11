@@ -100,10 +100,11 @@ static Status ParseOpToGraphArgMin(const Operator& op, Graph& graph) {
 // register ArgMin op info to GE
 REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::ArgMin")
     .OriginOpType({"ai.onnx::9::ArgMin",
-                  "ai.onnx::12::ArgMin",
-                  "ai.onnx::13::ArgMin"})
+                   "ai.onnx::10::ArgMin",
+                   "ai.onnx::11::ArgMin",
+                   "ai.onnx::12::ArgMin",
+                   "ai.onnx::13::ArgMin"})
     .ParseParamsFn(ParseParamsArgMin)
     .ParseOpToGraphFn(ParseOpToGraphArgMin)
     .ImplyType(ImplyType::TVM);

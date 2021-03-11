@@ -87,7 +87,10 @@ Status ParseParamsMeanVarianceNormalization(const Message* op_src, ge::Operator&
 
 REGISTER_CUSTOM_OP("MVNV2")
     .FrameworkType(ONNX)
-    .OriginOpType("ai.onnx::11::MeanVarianceNormalization")
+    .OriginOpType({"ai.onnx::9::MeanVarianceNormalization",
+                   "ai.onnx::10::MeanVarianceNormalization",
+                   "ai.onnx::11::MeanVarianceNormalization",
+                   "ai.onnx::12::MeanVarianceNormalization"})
     .ParseParamsFn(ParseParamsMeanVarianceNormalization)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
