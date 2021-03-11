@@ -61,6 +61,17 @@ class TEST_TOPK_UT : public testing::Test {};
       .Attr("sorted", true)                                                    \
       .Attr("largest", false)                                                  \
       .Attr("dim", -1);
+  
+#define CREATE_NODEDEF3(shapes, data_types, datas)                              \
+  auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef();             \
+  NodeDefBuilder(node_def.get(), "TopK", "TopK")                               \
+      .Input({"x", data_types[0], shapes[0], datas[0]})                        \
+      .Input({"k", data_types[1], shapes[1], datas[1]})                        \
+      .Output({"values", data_types[2], shapes[2], datas[2]})                  \
+      .Output({"indices", data_types[3], shapes[3], datas[3]})                 \
+      .Attr("sorted", true)                                                    \
+      .Attr("largest", true)                                                   \
+      .Attr("dim", -2);
 
 #define ADD_CASE(base_type, aicpu_type)                                        \
   TEST_F(TEST_TOPK_UT, TestTopK_##aicpu_type##_LARGEST) {                      \
@@ -109,8 +120,34 @@ class TEST_TOPK_UT : public testing::Test {};
     for (int i = 0; i < 7; i++) {                                              \
       EXPECT_EQ(output_value[i], output_expect[i].value);                      \
       EXPECT_EQ(output_index[i], output_expect[i].index);                      \
+    }                                                                          \  
+  }                                                                            \
+  TEST_F(TEST_TOPK_UT, TestTopK_##aicpu_type##_SECOND_LAST_DIM) {              \
+    vector<DataType> data_types = {aicpu_type, DT_INT32, aicpu_type, DT_INT32};\
+    vector<vector<int64_t>> shapes = {{2, 3, 4}, {}, {2, 2, 4}, {2, 2, 4}};    \
+    base_type input[24];                                                       \
+    for (int i = 0; i < 24; i++) {                                             \
+      input[i] = base_type(i + 1);                                             \
     }                                                                          \
-  }
+    base_type output_value_expect[16] =                                        \
+    {base_type(9), base_type(10), base_type(11), base_type(12),                \
+     base_type(5), base_type(6), base_type(7), base_type(8),                   \
+     base_type(21), base_type(22), base_type(23), base_type(24),               \
+     base_type(17), base_type(18), base_type(19), base_type(20)};              \
+    int32_t output_index_expect[16] =                                          \
+    {2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1};                          \
+    int32_t k = 2;                                                             \
+    base_type output_value[16] = {(base_type)0};                               \
+    int32_t output_index[16] = {0};                                            \
+    vector<void *> datas = {(void *)input, (void *)&k, (void *)output_value,   \
+                            (void *)output_index};                             \
+    CREATE_NODEDEF3(shapes, data_types, datas);                                \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
+    for (int i = 0; i < 16; i++) {                                             \
+      EXPECT_EQ(output_value[i], output_value_expect[i]);                      \
+      EXPECT_EQ(output_index[i], output_index_expect[i]);                      \
+    }                                                                          \
+  } 
 
 ADD_CASE(Eigen::half, DT_FLOAT16)
 
