@@ -198,7 +198,7 @@ Status AdaptiveAvgPoolGradFusionPass::CreateVectorMulWeightNode(ge::NodePtr &vmu
     ge::GeTensorDesc desc;
     this->SetTensorDesc(desc, weight_dims, ge::DT_FLOAT16, ge::FORMAT_ND);
     ge::GeTensorPtr weight_ptr =
-        std::make_shared<ge::GeTensor>(desc, reinterpret_cast<uint8_t *>(data.get()), size * sizeof(float));
+        std::make_shared<ge::GeTensor>(desc, reinterpret_cast<uint8_t *>(data.get()), size * sizeof(uint16_t));
     if (!weight_ptr) {
         OP_LOGE(FUSED_OP_TYPE.c_str(), "create weight failed.");
         return FAILED;
@@ -276,7 +276,7 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddVectorMulNode(ge::NodePtr avgpool_
     vector<int64_t> shape_vec = {this->input_dims[INDEX_N] * this->input_dims[INDEX_H] * this->input_dims[INDEX_W]};
     ge::GeShape inputShape(shape_vec);
     x_desc.SetShape(inputShape);
-    x_desc.SetDataType(ge::DT_FLOAT);
+    x_desc.SetDataType(ge::DT_FLOAT16);
     mul_op_desc->AddInputDesc("x", x_desc);
 
     ge::GeTensorDesc out_tensor_desc;
@@ -306,11 +306,9 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddLeftMatmulNode(ge::NodePtr avgpool
                             return nullptr);
 
     // add input desc
-    ge::GeTensorDesc x_desc = mul_node->GetOpDesc()->GetOutputDesc(0).Clone();
     vector<int64_t> input_shape_vec = {this->input_dims[INDEX_N], this->input_dims[INDEX_H], this->input_dims[INDEX_W]};
-    ge::GeShape input_shape(input_shape_vec);
-    x_desc.SetShape(input_shape);
-    x_desc.SetDataType(ge::DT_FLOAT16);
+    ge::GeTensorDesc x_desc;
+    this->SetTensorDesc(x_desc, input_shape_vec, ge::DT_FLOAT16, ge::FORMAT_ND);
     matmul_op_desc->AddInputDesc("x", x_desc);
 
     // Add output desc. For example, GradNode inShape:[3,5,6]
