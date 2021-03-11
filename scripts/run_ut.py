@@ -23,19 +23,23 @@ cur_dir = os.path.realpath(__file__)
 
 def main(argv):
     del argv
-    pr_changed_files = os.path.realpath(FLAGS.pr_changed_file)
-    with open(pr_changed_files) as pr_f:
-        lines = pr_f.readlines()
-
     sch_tag = 0
     ops_tag = 0
-    for line in lines:
-        line = line.strip()
-        if line.startswith(os.path.join("auto_schedule", "python")) or   \
-                line.startswith(os.path.join("tools", "sch_test_frame")):
-            sch_tag = 1
-        else:
-            ops_tag = 1
+    pr_changed_files = FLAGS.pr_changed_file
+    if not pr_changed_files or not str(pr_changed_files).strip():
+        ops_tag = 1
+    else:
+        pr_changed_files = os.path.realpath(FLAGS.pr_changed_file)
+        with open(pr_changed_files) as pr_f:
+            lines = pr_f.readlines()
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith(os.path.join("auto_schedule", "python")) or   \
+                    line.startswith(os.path.join("tools", "sch_test_frame")):
+                sch_tag = 1
+            else:
+                ops_tag = 1
 
     params_dict = {
         "--soc_version=": FLAGS.soc_version,
