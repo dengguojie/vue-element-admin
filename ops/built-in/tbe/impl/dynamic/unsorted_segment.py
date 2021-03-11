@@ -19,7 +19,8 @@ unsorted_segment
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
-
+from te.utils.error_manager import error_manager_vector
+from te.tik.api import tik_scalar
 ONE_BLOCK_E = 1
 ONE_DIV_E = 2
 SMALL_E = 3
@@ -129,7 +130,7 @@ def _get_dtype_min_val(dtype):
     """
     get dtype min val
     """
-    val_list = {'float16': -65500,
+    val_list = {'float16': -65536,
                 'float32': -(2 - 2 ** -23) * 2 ** 127 + 1,
                 'int32': -(2 ** 31),
                 'uint32': 0}
@@ -140,7 +141,7 @@ def _get_dtype_max_val(dtype):
     """
     get dtype max val
     """
-    val_list = {'float16': 65500,
+    val_list = {'float16': 65536,
                 'float32': (2 - 2 ** -23) * 2 ** 127,
                 'int32': (2 ** 31 - 1),
                 'uint32': (2 ** 32)}
@@ -511,9 +512,6 @@ class UnsortedSegmentTiling(object):
                 select_keys_mark[i] = 0
             if self.segment_ids_max <= self.ids_once_num and key["big_iid"]:
                 select_keys_mark[i] = 0
-            if self.segment_ids_min > self.ids_once_num // 3 * 2 and self.segment_ids_max > self.ids_once_num \
-                    and not key["big_iid"]:
-                select_keys_mark[i] = 0
 
             if isinstance(obj_scalar.e_num, int):
                 e_vector_num = _ceil_div(obj_scalar.e_num, self.mask)
@@ -539,14 +537,18 @@ class UnsortedSegmentTiling(object):
                     select_keys_mark[i] = 0
                 if self.e_num_max <= self.e_max_by_stride and key["e_level"] == BIG_E:
                     select_keys_mark[i] = 0
-                if self.e_num_min > self.e_max_by_stride // 5 * 4 and self.e_num_max > self.e_max_by_stride \
-                        and key["e_level"] != BIG_E:
+
+                if self.e_num_min >= self.mask and key["e_level"] == ONE_DIV_E:
                     select_keys_mark[i] = 0
 
-                if self.e_num_min >= self.mask and (key["e_level"] == ONE_BLOCK_E or key["e_level"] == ONE_DIV_E):
+                if self.e_num_min >= self.ele_num_per_block and key["e_level"] == ONE_BLOCK_E:
                     select_keys_mark[i] = 0
 
                 if self.e_num_max < self.mask and key["e_level"] == BIG_E:
+                    select_keys_mark[i] = 0
+
+                if self.e_num_max < self.ele_num_per_block and (
+                        key["e_level"] == SMALL_E or key["e_level"] == ONE_DIV_E):
                     select_keys_mark[i] = 0
 
             if self.e_num_min > self.mask * self.core_num // 2 and key["div_oid"]:
@@ -767,10 +769,9 @@ class TikTemplate(object):
         with self.tik_inst.for_range(0, num_segments_part, name="segment_index") as segment_index:
             with self.tik_inst.for_range(0, self.obj_scalar.e_out_param.last, name="ele_i") as ele_i:
                 out_index = segment_index * self.obj_scalar.e_out_param.last + ele_i
-                with self.tik_inst.if_scope(out_index < num_segments_part_front):
-                    self.obj_ub_tensor.output_ub[out_index].set_as(
-                        self.obj_ub_tensor.output_ub[segment_index * self.obj_scalar.e_num_part_ub_num + ele_i])
-                with self.tik_inst.else_scope():
+                self.obj_ub_tensor.output_ub[out_index].set_as(
+                    self.obj_ub_tensor.output_ub[segment_index * self.obj_scalar.e_num_part_ub_num + ele_i])
+                with self.tik_inst.if_scope(out_index >= num_segments_part_front):
                     align_ub[out_index - num_segments_part_front].set_as(
                         self.obj_ub_tensor.output_ub[segment_index * self.obj_scalar.e_num_part_ub_num + ele_i])
 
@@ -784,9 +785,8 @@ class TikTemplate(object):
                     num_segments_part_front = 0
                 _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm,
                                                self.obj_ub_tensor.output_ub, output_offset_gm, 0, 1, output_lenburst)
-                output_offset_gm = output_offset_gm + num_segments_part_front
-                _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm, align_ub, output_offset_gm,
-                                               0, 1, 1)
+                _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm, align_ub,
+                                               output_offset_gm + num_segments_part_front, 0, 1, 1)
             with self.tik_inst.else_scope():
                 _tik_mov_output_ub2gm_continue(self.tik_inst, self.obj_gm_tensor.output_gm,
                                                self.obj_ub_tensor.output_ub, output_offset_gm, 0, 1, 1)
@@ -1077,7 +1077,38 @@ class UnsortedSegment(object):
                 obj_scalar.num_segments.set_as(self.obj_ub_tensor.num_segments_ub[0])
 
         with self.tik_instance.new_stmt_scope():
-            if dynamic_mode:
+            scalar_list = [
+                obj_scalar.select_key,
+                obj_scalar.e_out_loop_param.times,
+                obj_scalar.e_out_loop_param.front,
+                obj_scalar.e_out_loop_param.last,
+                obj_scalar.ids_param.times,
+                obj_scalar.ids_param.front,
+                obj_scalar.ids_param.last,
+                obj_scalar.e_out_param.times,
+                obj_scalar.e_out_param.front,
+                obj_scalar.e_out_param.last,
+                obj_scalar.num_segments_param.times,
+                obj_scalar.num_segments_param.front,
+                obj_scalar.num_segments_param.last,
+                obj_scalar.num_segments_loop_param.times,
+                obj_scalar.num_segments_loop_param.front,
+                obj_scalar.num_segments_loop_param.last,
+                obj_scalar.e_num_part_ub_num,
+                obj_scalar.e_num,
+                obj_scalar.repeat_time_front_part,
+                obj_scalar.repeat_time_last_part,
+                obj_scalar.align_scalar,
+                obj_scalar.e_lenBurst_front,
+                obj_scalar.e_lenBurst_last,
+                obj_scalar.ids_last_burst_len]
+
+            scalar_in_list = False
+            for ele in scalar_list:
+                if isinstance(ele, tik_scalar.Scalar):
+                    scalar_in_list = True
+
+            if scalar_in_list:
                 self.obj_ub_tensor.tiling_ub = self.tik_instance.Tensor(
                     TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,), name="tiling_ub",
                     scope=tik.scope_ubuf)
@@ -1087,46 +1118,20 @@ class UnsortedSegment(object):
                                             TILING_PARAMS_NUM * BYTE_INT32 // \
                                             BYTE_BLOCK, 0, 0)
 
-            def _scalar_set(key, input_scalar_index):
-                if isinstance(key, tik.api.tik_scalar.Scalar):
-                    key.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
-                return input_scalar_index + 1
-
-            # common params
             index = 0
-            index = _scalar_set(obj_scalar.select_key, index)
-            index = _scalar_set(obj_scalar.e_out_loop_param.times, index)
-            index = _scalar_set(obj_scalar.e_out_loop_param.front, index)
-            index = _scalar_set(obj_scalar.e_out_loop_param.last, index)
-            index = _scalar_set(obj_scalar.ids_param.times, index)
-            index = _scalar_set(obj_scalar.ids_param.front, index)
-            index = _scalar_set(obj_scalar.ids_param.last, index)
-            index = _scalar_set(obj_scalar.e_out_param.times, index)
-            index = _scalar_set(obj_scalar.e_out_param.front, index)
-            index = _scalar_set(obj_scalar.e_out_param.last, index)
-            index = _scalar_set(obj_scalar.num_segments_param.times, index)
-            index = _scalar_set(obj_scalar.num_segments_param.front, index)
-            index = _scalar_set(obj_scalar.num_segments_param.last, index)
-            index = _scalar_set(obj_scalar.num_segments_loop_param.times, index)
-            index = _scalar_set(obj_scalar.num_segments_loop_param.front, index)
-            index = _scalar_set(obj_scalar.num_segments_loop_param.last, index)
-            index = _scalar_set(obj_scalar.e_num_part_ub_num, index)
-            index = _scalar_set(obj_scalar.e_num, index)
-            index = _scalar_set(obj_scalar.repeat_time_front_part, index)
-            index = _scalar_set(obj_scalar.repeat_time_last_part, index)
-            index = _scalar_set(obj_scalar.align_scalar, index)
-            index = _scalar_set(obj_scalar.e_lenBurst_front, index)
-            index = _scalar_set(obj_scalar.e_lenBurst_last, index)
-            index = _scalar_set(obj_scalar.ids_last_burst_len, index)
+            for ele in scalar_list:
+                if isinstance(ele, tik_scalar.Scalar):
+                    ele.set_as(self.obj_ub_tensor.tiling_ub[index])
+                index = index + 1
 
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
 
             tp = TikTemplate(block_index, self.tik_instance, self.input_dtype, self.obj_gm_tensor, self.obj_ub_tensor,
                              self.obj_tiling, self.instruction)
-            if isinstance(obj_scalar.select_key, dict):
-                scalar_select_key = obj_scalar.select_key["select_key"]
+            if isinstance(self.obj_tiling.obj_scalar.select_key, dict):
+                scalar_select_key = self.obj_tiling.obj_scalar.select_key["select_key"]
             else:
-                scalar_select_key = obj_scalar.select_key
+                scalar_select_key = self.obj_tiling.obj_scalar.select_key
 
             ids_once_num = self.obj_tiling.ids_once_num
 
@@ -1387,6 +1392,19 @@ def unsorted_segment(x_dict, segment_ids_dict, num_segments_dict, y_dict,
     -------
     compile info
     """
+    if dynamic_mode:
+        def _cmp_as_list(a, b):
+            if len(a) != len(b):
+                return False
+            for i, ele in enumerate(a):
+                if list(ele) != list(b[i]):
+                    return False
+            return True
+
+        if not _cmp_as_list(x_dict['range'][:len(segment_ids_dict['range'])], segment_ids_dict['range']):
+            error_manager_vector.raise_err_specific_reson(kernel_name, "range of segment_ids_dict cannot fit x_dict!")
+        if not _cmp_as_list(x_dict['range'][len(segment_ids_dict['range']):], y_dict['range'][1:]):
+            error_manager_vector.raise_err_specific_reson(kernel_name, "range of y_dict cannot fit x_dict!")
 
     obj = UnsortedSegment(x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name, instruction)
     obj.unsorted_segment(dynamic_mode)

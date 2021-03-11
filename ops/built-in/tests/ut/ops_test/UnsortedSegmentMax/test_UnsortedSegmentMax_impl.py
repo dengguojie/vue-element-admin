@@ -35,5 +35,7 @@ ut_case.add_case("Ascend910A", gen_dynamic_unsorted_case([4, 31, 4], [[4, 4], [3
 ut_case.add_case("Ascend910A", gen_dynamic_unsorted_case([2, -1], [[2, 2], [13, 256]],
                                                          -1, [[256, 512]], "float16", "success"))
 
+ut_case.add_case("Ascend910A", gen_dynamic_unsorted_case([1, -1], [[1, 1], [5, 15]],
+                                                         -1, [[72, 72]], "float16", "success"))
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
