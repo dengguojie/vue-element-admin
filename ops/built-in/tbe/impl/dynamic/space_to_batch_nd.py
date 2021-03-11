@@ -462,7 +462,7 @@ class SpaceToBatchND:
             with self.tik_instance.for_range(0, core_ele) as ele_idx:
                 with self.tik_instance.for_range(0, self.block_d) as idx_bd:
                     with self.tik_instance.for_range(0, self.block_h) as idx_bh:
-                        with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                        with self.tik_instance.for_range(0, self.input_b) as idx_b:
                             ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
                                                             name="ub_a",
                                                             scope=tik.scope_ubuf)
@@ -490,7 +490,7 @@ class SpaceToBatchND:
             with self.tik_instance.for_range(0, core_ele) as ele_idx:
                 with self.tik_instance.for_range(0, self.block_d) as idx_bd:
                     with self.tik_instance.for_range(0, self.block_h) as idx_bh:
-                        with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                        with self.tik_instance.for_range(0, self.input_b) as idx_b:
                             ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
                                                             name="ub_a",
                                                             scope=tik.scope_ubuf)
@@ -556,7 +556,7 @@ class SpaceToBatchND:
                 with self.tik_instance.for_range(0, self.block_d) as idx_bd:
                     with self.tik_instance.for_range(0, self.output_h) as idx_oh:
                         with self.tik_instance.for_range(0, self.block_h) as idx_bh:
-                            with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                            with self.tik_instance.for_range(0, self.input_b) as idx_b:
                                 ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 4,),
                                                                 name="ub_a",
                                                                 scope=tik.scope_ubuf)
@@ -586,7 +586,7 @@ class SpaceToBatchND:
                 with self.tik_instance.for_range(0, self.block_d) as idx_bd:
                     with self.tik_instance.for_range(0, self.output_h) as idx_oh:
                         with self.tik_instance.for_range(0, self.block_h) as idx_bh:
-                            with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                            with self.tik_instance.for_range(0, self.input_b) as idx_b:
                                 ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_ele // 2,),
                                                                 name="ub_a",
                                                                 scope=tik.scope_ubuf)
@@ -607,7 +607,7 @@ class SpaceToBatchND:
                     with self.tik_instance.for_range(0, self.output_h) as idx_oh:
                         with self.tik_instance.for_range(0, self.block_h) as idx_bh:
                             with self.tik_instance.for_range(0, self.block_w) as idx_bw:
-                                with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                                with self.tik_instance.for_range(0, self.input_b) as idx_b:
                                     with self.tik_instance.for_range(0, self.channel_one) as c_idx:
                                         flag_d = (core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd
                                         flag_h = idx_oh * self.block_h + idx_bh
@@ -657,7 +657,7 @@ class SpaceToBatchND:
                         with self.tik_instance.for_range(0, self.block_h) as idx_bh:
                             with self.tik_instance.for_range(0, self.output_w) as idx_ow:
                                 with self.tik_instance.for_range(0, self.block_w) as idx_bw:
-                                    with self.tik_instance.for_range(0, self.output_b) as idx_b:
+                                    with self.tik_instance.for_range(0, self.input_b) as idx_b:
                                         with self.tik_instance.for_range(0, self.channel_one) as c_idx:
                                             flag_d = (core_idx * self.one_core_ele + ele_idx) * self.block_d + idx_bd
                                             flag_h = idx_oh * self.block_h + idx_bh

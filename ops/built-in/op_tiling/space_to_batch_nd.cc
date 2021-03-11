@@ -56,7 +56,7 @@ struct TilingParam {
 };
 
 static void PrintTilingParam(const TilingParam& param) {
-  OP_LOGD("SpaceToBatchNDTiling ",
+  OP_LOGD("SpaceToBatchNDTiling",
           "(tiling_mode,act_core_num,one_core_ele,last_core_ele,input_b,block_d,block_h,block_w,pads_f,pads_a,pads_t,"
           "pads_b,pads_l,pads_r,input_d,channel_one,input_h,input_w,channel_zero,output_b,output_d,output_h,output_w):"
           "(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)",
@@ -136,7 +136,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.input_w = input_shape[4];
     param.channel_zero = input_shape[5];
     param.output_b = param.input_b * param.block_d * param.block_h * param.block_w;
-    param.output_d = (param.input_d + param.pads_b + param.pads_a) / param.block_d;
+    param.output_d = (param.input_d + param.pads_f + param.pads_a) / param.block_d;
     param.output_h = (param.input_h + param.pads_t + param.pads_b) / param.block_h;
     param.output_w = (param.input_w + param.pads_l + param.pads_r) / param.block_w;
   }

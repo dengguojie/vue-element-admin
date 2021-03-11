@@ -79,7 +79,7 @@ static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
 }
 
 static void PrintParam(const TilingParam& param) {
-  OP_LOGD("ArgMaxV2Tiling ",
+  OP_LOGD("ArgOpsTiling",
           "(tiling_mode,first_dim_size,axis_size,last_dim_size,act_core_num,one_core_ele,"
           "last_core_ele,align_num,axis_size_one_time,loop_times,tail_size,one_core_segment_loop,"
           "one_core_segment_tail,one_core_segment_tail_data,one_core_offset,last_core_segment_loop,"
@@ -135,9 +135,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     int32_t core_number = core_num;
     if (param.first_dim_size < 8)
       core_number = 1;
-    int32_t core_segment = param.first_dim_size / core_number;
-    if (core_segment == 0)
-      core_segment = 1;
+    int32_t core_segment = GetCeilInt(param.first_dim_size, core_number);
     core_segment = GetCeilInt(core_segment, 8) * 8;
 
     param.one_core_ele = core_segment;
@@ -156,7 +154,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
 
     // select branch
     if (dtype == "float16" && param.axis_size < MAX_SEGMENT_LEN) {
-      param.tiling_mode = 0;  // compute_argmax_last_axis_copy_one_time->do_argmax_last_axis_fp16_copy_one_time
+      param.tiling_mode = 0;  // compute_argxxx_last_axis_copy_one_time->do_argxxx_last_axis_fp16_copy_one_time
       if (param.axis_size <= data_each_vector * 2) {
         param.align_num = GetAlignNum(param.axis_size, data_each_block);
         // calc axis size one time: the size one move can copy to ub at core_segment
@@ -178,21 +176,21 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
         param.one_core_segment_tail = param.one_core_ele % axis_size_one_time;
         param.last_core_segment_loop = param.last_core_ele / axis_size_one_time;
         param.last_core_segment_tail = param.last_core_ele % axis_size_one_time;
-        // compute_argmax_last_axis_fp16_more_dims
+        // compute_argxxx_last_axis_fp16_more_dims
         if (param.axis_size >= data_each_vector) {
-          param.tiling_mode = 1;  // do_argmax_last_axis_fp16_more_vector
+          param.tiling_mode = 1;  // do_argxxx_last_axis_fp16_more_vector
         } else {
-          param.tiling_mode = 2;  // do_argmax_last_axis_fp16_less_vector
+          param.tiling_mode = 2;  // do_argxxx_last_axis_fp16_less_vector
         }
       }
-    } else {  // compute_argmax_last_axis
+    } else {  // compute_argxxx_last_axis
       // tiling at last dim
       param.loop_times = param.axis_size / segment;
       param.tail_size = param.axis_size % segment;
       if (dtype == "float16") {
-        param.tiling_mode = 3;  // do_argmax_last_axis_fp16_default
+        param.tiling_mode = 3;  // do_argxxx_last_axis_fp16_default
       } else {
-        param.tiling_mode = 4;  // do_argmax_last_axis_fp32
+        param.tiling_mode = 4;  // do_argxxx_last_axis_fp32
       }
     }
   } else {  // arg at not last dim
@@ -213,9 +211,9 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.last_dim_size = last_dim_size;
 
     if ((param.first_dim_size >= core_num) || (param.first_dim_size >= param.last_dim_size) ||
-        (param.last_dim_size < data_each_block)) {  // compute_argmax_not_last_axis_cut_by_first_dim
+        (param.last_dim_size < data_each_block)) {  // compute_argxxx_not_last_axis_cut_by_first_dim
       // calc core number at first_dim
-      param.one_core_ele = (param.first_dim_size + core_num - 1) / core_num;
+      param.one_core_ele = GetCeilInt(param.first_dim_size, core_num);
       param.act_core_num = param.first_dim_size / param.one_core_ele;
       if (param.first_dim_size % param.one_core_ele != 0) {
         param.act_core_num = param.act_core_num + 1;
@@ -226,8 +224,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.one_core_segment_tail = param.last_dim_size % MAX_SEGMENT_LEN;
       param.one_core_segment_tail_data = param.one_core_segment_tail;
       if (param.one_core_segment_tail % data_each_block != 0 && param.one_core_segment_loop != 0) {
-        param.one_core_segment_tail_data =
-            GetCeilInt(param.one_core_segment_tail, data_each_block) * data_each_block + data_each_block;
+        param.one_core_segment_tail_data = GetCeilInt(param.one_core_segment_tail, data_each_block) * data_each_block;
         param.one_core_offset = param.one_core_segment_tail - param.one_core_segment_tail_data;
       }
       param.last_core_segment_loop = param.one_core_segment_loop;
@@ -250,14 +247,12 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
         if (param.last_dim_size % data_each_block == 0 && block_align_num <= 4 * 8)
           param.tiling_mode = 7;
       }
-    } else {  // compute_argmax_not_last_axis_cut_by_last_dim
+    } else {  // compute_argxxx_not_last_axis_cut_by_last_dim
       // calc core number at last_dim
       int32_t core_number = core_num;
       if (param.last_dim_size < data_each_vector)
         core_number = 1;
-      int32_t core_segment = param.last_dim_size / core_number;
-      if (core_segment == 0)
-        core_segment = 1;
+      int32_t core_segment = GetCeilInt(param.last_dim_size, core_number);
       core_segment = GetCeilInt(core_segment, data_each_vector) * data_each_vector;
 
       param.one_core_ele = core_segment;
@@ -359,6 +354,8 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
   run_info.block_dim = param.act_core_num;
   vector<int64_t> workspace;
   run_info.workspaces = workspace;
+
+  OP_LOGI(op_type.c_str(), "ArgOpsTiling run success.");
   return true;
 }
 

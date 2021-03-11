@@ -56,7 +56,7 @@ struct TilingParam {
 };
 
 static void PrintTilingParam(const TilingParam& param) {
-  OP_LOGD("BatchToSpaceNDTiling ",
+  OP_LOGD("BatchToSpaceNDTiling",
           "(tiling_mode,act_core_num,one_core_ele,last_core_ele,input_b,block_d,block_h,block_w,crops_f,crops_a,"
           "crops_t,crops_b,crops_l,crops_r,input_d,channel_one,input_h,input_w,channel_zero,output_b,output_d,output_h,"
           "output_w):(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)",

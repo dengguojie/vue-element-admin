@@ -78,8 +78,8 @@ def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"
     output_format = "ND, ND"
     ori_shape = input_x.get("ori_shape")
     ori_format = input_x.get("ori_format")
-    if ori_format in ("HWCN",) and len(
-            ori_shape) == 4 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and attr1 == [0, 1, 2, 3]:
+    if ori_format in ("HWCN",) and len(ori_shape) == 4 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and list(
+            attr1) == [0, 1, 2, 3]:
         dtype = "float16, float, float16, float"
         input_format = "ND, ND, FRACTAL_Z, FRACTAL_Z"
         output_format = "ND, ND, ND, ND"

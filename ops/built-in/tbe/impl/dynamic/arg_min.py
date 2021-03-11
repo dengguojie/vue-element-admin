@@ -118,7 +118,7 @@ class Argmin():
         self.segment_loop = self.tik_instance.Scalar("int32", name="segment_loop")
         self.segment_tail = self.tik_instance.Scalar("int32", name="segment_tail")
         self.segment_tail_data = self.tik_instance.Scalar("int32", name="segment_tail_data")
-        self.offset = self.tik_instance.Scalar("int32", name="offset")
+        self.offset_data = self.tik_instance.Scalar("int32", name="offset_data")
 
     def init_gm_tensor(self):
         """Init gm tensor
@@ -281,7 +281,7 @@ class Argmin():
         self.tik_instance.data_move(self.result_gm[gm_out_offset], ub_c, 0, 1, nbust_len_out, 0, 0)
 
     def compute_argmin_not_last_axis_cut_by_first_dim(self, first_idx, segment_loop, segment_tail, segment_tail_data,
-                                                      offset, func):
+                                                      offset_data, func):
         """compute when cut by first_dim
         """
         # charge function
@@ -306,15 +306,16 @@ class Argmin():
             with self.tik_instance.else_scope():
                 with self.tik_instance.if_scope(segment_tail_data % 8 == 0):
                     gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
-                                   MAX_SEGMENT_LEN + offset
-                    gm_out_offset = first_idx * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN + offset
+                                   MAX_SEGMENT_LEN + offset_data
+                    gm_out_offset = first_idx * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN + offset_data
+                    not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
                 with self.tik_instance.else_scope():
                     gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN
                     gm_out_offset = first_idx * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN
-                not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
+                    not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
 
     def compute_argmin_not_last_axis_cut_by_last_dim(self, in_offset, out_offset, segment_loop, segment_tail,
-                                                     segment_tail_data, offset, func):
+                                                     segment_tail_data, offset_data, func):
         """compute when cut by last_dim
         """
         # charge function
@@ -326,8 +327,8 @@ class Argmin():
             not_last_axis_fuc(MAX_SEGMENT_LEN, gm_in_offset, gm_out_offset)
 
         with self.tik_instance.if_scope(segment_tail != 0):
-            gm_in_offset = in_offset + MAX_SEGMENT_LEN * segment_loop - offset
-            gm_out_offset = out_offset + MAX_SEGMENT_LEN * segment_loop - offset
+            gm_in_offset = in_offset + MAX_SEGMENT_LEN * segment_loop - offset_data
+            gm_out_offset = out_offset + MAX_SEGMENT_LEN * segment_loop - offset_data
             not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
 
     def compute_argmin_last_axis_fp16_less_vector(self, core_idx, segment_loop, segment_tail):
@@ -913,13 +914,13 @@ class Argmin():
                     self.segment_loop.set_as(self.one_core_segment_loop)
                     self.segment_tail.set_as(self.one_core_segment_tail)
                     self.segment_tail_data.set_as(self.one_core_segment_tail_data)
-                    self.offset.set_as(self.one_core_offset)
+                    self.offset_data.set_as(self.one_core_offset)
                 with self.tik_instance.else_scope():
                     self.core_ele.set_as(self.last_core_ele)
                     self.segment_loop.set_as(self.last_core_segment_loop)
                     self.segment_tail.set_as(self.last_core_segment_tail)
                     self.segment_tail_data.set_as(self.last_core_segment_tail_data)
-                    self.offset.set_as(self.last_core_offset)
+                    self.offset_data.set_as(self.last_core_offset)
 
                 if self.dtype_x == "float32":
                     # calc core at first dim and tiling at last dim and fp32 and arg last dim
@@ -933,7 +934,8 @@ class Argmin():
                                 first_idx = core_idx * self.one_core_ele + ele_idx
                                 self.compute_argmin_not_last_axis_cut_by_first_dim(first_idx, self.segment_loop,
                                                                                    self.segment_tail,
-                                                                                   self.segment_tail_data, self.offset,
+                                                                                   self.segment_tail_data,
+                                                                                   self.offset_data,
                                                                                    self.do_not_last_fp32)
                     # calc core at last dim and tiling at last dim and fp32 and arg not last dim
                     with self.tik_instance.if_scope(self.tiling_mode == 8):
@@ -943,7 +945,8 @@ class Argmin():
                                 offset_out = ele_idx * self.last_dim_size + core_idx * self.one_core_ele
                                 self.compute_argmin_not_last_axis_cut_by_last_dim(offset_in, offset_out,
                                                                                   self.segment_loop, self.segment_tail,
-                                                                                  self.segment_tail_data, self.offset,
+                                                                                  self.segment_tail_data,
+                                                                                  self.offset_data,
                                                                                   self.do_not_last_fp32)
 
                 if self.dtype_x == "float16":
@@ -973,7 +976,8 @@ class Argmin():
                                 first_idx = core_idx * self.one_core_ele + ele_idx
                                 self.compute_argmin_not_last_axis_cut_by_first_dim(first_idx, self.segment_loop,
                                                                                    self.segment_tail,
-                                                                                   self.segment_tail_data, self.offset,
+                                                                                   self.segment_tail_data,
+                                                                                   self.offset_data,
                                                                                    self.do_not_last_fp16_default)
                     # calc core at first dim and tiling at last dim and fp16 high performance and arg not last dim
                     with self.tik_instance.if_scope(self.tiling_mode == 7):
@@ -991,7 +995,8 @@ class Argmin():
                                 offset_out = ele_idx * self.last_dim_size + core_idx * self.one_core_ele
                                 self.compute_argmin_not_last_axis_cut_by_last_dim(offset_in, offset_out,
                                                                                   self.segment_loop, self.segment_tail,
-                                                                                  self.segment_tail_data, self.offset,
+                                                                                  self.segment_tail_data,
+                                                                                  self.offset_data,
                                                                                   self.do_not_last_fp16_default)
 
     def argmin_compute(self):
