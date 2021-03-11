@@ -369,6 +369,34 @@ INFER_FUNC_REG(Normalize, NormalizeInfer);
 VERIFY_FUNC_REG(Normalize, NormalizeVerify);
 //------------------------Normalize---------------------------
 
+//----------------------Renorm begin------------------------
+IMPLEMT_COMMON_INFERFUNC(RenormInferShape) {
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    DataType predict_dtype = op.GetInputDesc("x").GetDataType();
+    Format predict_format = op.GetInputDesc("x").GetFormat();
+    ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+    int64_t dim;
+    op.GetAttr("dim", dim);
+    for (int64_t i = 0; i < output_shape.GetDimNum(); i++) {
+        if (i != dim) {
+            output_shape.SetDim(i, 1);
+        }
+    }
+    output_desc.SetDataType(predict_dtype);
+    output_desc.SetFormat(predict_format);
+    output_desc.SetShape(output_shape);
+    (void)op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Renorm, RenormVerify) {
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Renorm, RenormInferShape);
+VERIFY_FUNC_REG(Renorm, RenormVerify);
+//----------------------Renorm end------------------------
+
 // ----------------------LayerNormGrad------------------------
 IMPLEMT_COMMON_INFERFUNC(LayerNormGradInferShape) {
   TensorDesc td_output_pd_x = op.GetOutputDesc("pd_x");
