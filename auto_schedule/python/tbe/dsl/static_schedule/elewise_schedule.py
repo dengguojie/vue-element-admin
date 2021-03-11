@@ -742,7 +742,7 @@ class CceOp:
         # get device_core_num
         device_core_num = \
             cceconf.get_soc_spec("CORE_NUM")
-        if device_core_num == 1:
+        if device_core_num == 1 and not cceconf.is_lhisi_version():
             self._need_enable_muticore = False
         else:
             self._block_dim = device_core_num
