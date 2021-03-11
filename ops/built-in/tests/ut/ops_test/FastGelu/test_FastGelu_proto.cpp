@@ -29,10 +29,10 @@ class fast_gelu : public testing::Test {
   }
 };
 
-TEST_F(fast_gelu, fast_gelu_infershape_test){
+TEST_F(fast_gelu, fast_gelu_infershape_test) {
   ge::op::FastGelu op;
-  
-  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 16},{1, 16}};
+
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{1, 16}, {1, 16}};
 
   auto tensor_desc = create_desc_shape_range({-1, -1},
                                              ge::DT_FLOAT16, ge::FORMAT_ND,
@@ -41,8 +41,6 @@ TEST_F(fast_gelu, fast_gelu_infershape_test){
   op.UpdateInputDesc("x", tensor_desc);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-  float negative_slope = 0.0;
-  op.SetAttr("negative_slope", negative_slope);
 
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
@@ -50,8 +48,8 @@ TEST_F(fast_gelu, fast_gelu_infershape_test){
   std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 
-  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
-  std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{1,16},{1,16}};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 16}, {1, 16}};
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }

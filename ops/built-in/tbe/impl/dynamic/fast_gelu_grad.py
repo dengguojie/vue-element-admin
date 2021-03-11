@@ -15,15 +15,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 fast_gelu grad
 """
-
-import operator
-import functools
-
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import error_manager_vector
 
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -38,7 +33,8 @@ CONST_1 = 1
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # pylint: disable=too-many-locals
 @register_operator_compute("FastGeluGrad", op_mode="dynamic", support_fusion=True)
-def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", impl_mode=OpImplMode.HIGH_PERFORMANCE):
+def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_grad",
+                           impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     algorithm: fast_gelu_grad
     calculating: dy*res'
@@ -131,19 +127,12 @@ def fast_gelu_grad(input_dy, input_x, output_z, kernel_name="fast_gelu_grad", im
     input_dtype = input_dy.get("dtype").lower()
     check_list = ("float16", "float32")
     para_check.check_dtype(input_dtype, check_list, param_name="input_dy")
-    shape_dy = list(shape_dy)
-    shape_x = list(shape_x)
-    if not operator.eq(shape_dy, shape_x):
-        error_detail = "all input shape must be equal"
-        error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "shape_dy", "shape_x", error_detail)
 
     ins = classify([input_dy, input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_input_dy, _input_x) in ins:
         with tbe.compute():
             dy_shape, x_shape = shape_util.variable_shape([_input_dy, _input_x])
-            fuseshape = [1]
-            fuseshape[0] = functools.reduce(lambda x, y: x * y, dy_shape)
 
             tensor_dy = tvm.placeholder(dy_shape, input_dtype, "tensor_dy")
             tensor_x = tvm.placeholder(x_shape, input_dtype, "tensor_x")
