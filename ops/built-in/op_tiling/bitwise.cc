@@ -71,4 +71,6 @@ OpRunInfo& run_info) {
 
 // register tiling interface of the BitwiseAnd op.
 REGISTER_OP_TILING_FUNC_BUFFERED(BitwiseAnd, BitwiseTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BitwiseOr, BitwiseTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BitwiseXor, BitwiseTiling);
 }  // namespace optiling

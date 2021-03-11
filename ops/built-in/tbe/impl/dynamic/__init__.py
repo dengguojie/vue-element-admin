@@ -244,3 +244,5 @@ from .elu_grad import elu_grad
 from .bessel_i0e import bessel_i0e
 from .bessel_i1e import bessel_i1e
 from .bitwise_and import bitwise_and
+from .bitwise_or import bitwise_or
+from .bitwise_xor import bitwise_xor

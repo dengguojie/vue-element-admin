@@ -1646,7 +1646,8 @@ COMMON_INFER_FUNC_REG(BitwiseAnd, BitwiseAndInferShape);
 
 // ---------------------BitwiseOr----------------------------
 IMPLEMT_COMMON_INFERFUNC(BitwiseOrInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y") == false) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1657,7 +1658,8 @@ COMMON_INFER_FUNC_REG(BitwiseOr, BitwiseOrInferShape);
 
 // -----------------------BitwiseXor-------------------------
 IMPLEMT_COMMON_INFERFUNC(BitwiseXorInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y") == false) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
