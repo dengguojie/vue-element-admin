@@ -70,15 +70,15 @@ def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop,
         is_cast = True
         grads = tbe.cast_to(grads, "float32")
 
-    data_adds = tbe.vadds(batch_variance, epsilon)
-    data_rsqrt = tbe.vsqrt(data_adds)
-    shape_var = shape_util.shape_to_list(batch_variance.shape)
-    data_cast = tbe.broadcast(tvm.const(1, "float32"), shape_var)
-    data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
+    scale_broadcast = tbe.broadcast(scale, shape_x)
+    batch_variance_broadcast = tbe.broadcast(batch_variance, shape_x)
 
-    scale_mul = tbe.vmul(scale, data_rsqrts)
-    scale_mul_broadcast = tbe.broadcast(scale_mul, shape_x)
-    res = tbe.vmul(scale_mul_broadcast, grads)
+    data_adds = tbe.vadds(batch_variance_broadcast, epsilon)
+    data_rsqrt = tbe.vsqrt(data_adds)
+    data_rsqrts = tbe.vrec(data_rsqrt)
+
+    scale_mul = tbe.vmul(scale_broadcast, data_rsqrts)
+    res = tbe.vmul(scale_mul, grads)
     if is_cast:
         res = tbe.cast_to(res, "float16")
 
@@ -170,7 +170,7 @@ def bn_infer_grad(grads, scale, batch_variance,
     para_check.check_dtype(input_scale_dtype, ("float32",), param_name="scale")
     para_check.check_dtype(batch_variance_dtype, ("float32",), param_name="batch_variance")
 
-    ins = classify([grads, scale, batch_variance], OpPatternMode.ELEWISE)
+    ins = classify([grads, scale, batch_variance], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_grads, _scale, _batch_variance) in ins:
         with tbe.compute():
