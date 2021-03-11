@@ -61,7 +61,7 @@ bool DepthwiseConv2DTiling(const std::string& opType, const TeOpParas& opParas, 
 
   GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, n, h, w, outH, outW);
 
-  ByteBufferPut(runInfo.tiling_data, tilingID);
+  runInfo.tiling_key = tilingID;
   std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
 
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {

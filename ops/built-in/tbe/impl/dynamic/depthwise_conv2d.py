@@ -23,7 +23,7 @@ from impl.dynamic.conv2d import conv2d
 
 NONETYPE = type(None)
 
-@tbe_register.register_op_compute("depthwise_conv2d", op_mode="dynamic", support_fusion=True)
+@tbe_register.register_op_compute("DepthwiseConv2D", op_mode="dynamic", support_fusion=True)
 @para_check.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
                              (tuple, list), (tuple, list), (tuple, list),
                              int, str, int, str, str)
@@ -80,7 +80,7 @@ def depthwise_compute(fmap,
     return out
 
 
-@tbe_register.register_operator("depthwise_conv2d")
+@tbe_register.register_operator("DepthwiseConv2D")
 @para_check.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
                              (tuple, list), (tuple, list), (tuple, list),
                              str, int, str)

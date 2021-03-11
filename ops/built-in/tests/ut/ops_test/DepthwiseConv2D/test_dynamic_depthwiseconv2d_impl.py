@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("DepthwiseConv2d", "impl.dynamic.depthwise_conv2d", "depthwise_conv2d")
+ut_case = OpUT("DepthwiseConv2D", "impl.dynamic.depthwise_conv2d", "depthwise_conv2d")
 
 depthwise_conv2d_dynamic_ut_testcase = [
     # ============ success =====================
