@@ -254,7 +254,7 @@ void SetRunningMode1011Params(const TransDataMode1011Param& runParams, OpRunInfo
   ByteBufferPut(runInfo.tiling_data, runParams.coreStepOut);
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpStepIn);
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndStepIn); 
+  ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndStepIn);
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpUnit);
   ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepIn);
   ByteBufferPut(runInfo.tiling_data, runParams.vncLineSize);

@@ -201,27 +201,37 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
   if (srcFormat == "ND" && dstFormat == "FRACTAL_NZ") {
     realSrcFormat = "HNC";
     realDstFormat = "HCNT";
+    int64_t axisN;
+    int64_t axisH;
+    int64_t axisC;
     if (inShape.size() == 1) {
-      inShapeNew.push_back(1);
-      inShapeNew.push_back(1);
-      inShapeNew.push_back(inShape[0]);
+      axisH = 1;
+      axisN = 1;
+      axisC = inShape[0];
     } else if (inShape.size() == 2) {
-      inShapeNew.push_back(1);
-      inShapeNew.push_back(inShape[0]);
-      inShapeNew.push_back(inShape[1]);
+      axisH = 1;
+      axisN = inShape[0];
+      axisC = inShape[1];
     } else {
       int64_t shapeSize = 1;
       for (size_t i = 0; i < inShape.size() - 2; i++) {
         shapeSize *= inShape[i];
       }
-      inShapeNew.push_back(shapeSize);
-      inShapeNew.push_back(inShape[inShape.size() - 2]);
-      inShapeNew.push_back(inShape[inShape.size() - 1]);
+      axisH = shapeSize;
+      axisN = inShape[inShape.size() - 2];
+      axisC = inShape[inShape.size() - 1];
     }
-    outShapeNew = inShapeNew;
-    outShapeNew[outShapeNew.size() - 2] = (inShapeNew[inShapeNew.size() - 1] + CUBE_SIZE - 1) / CUBE_SIZE;
-    outShapeNew[outShapeNew.size() - 1] = (inShapeNew[inShapeNew.size() - 2] + CUBE_SIZE - 1) / CUBE_SIZE * CUBE_SIZE;
-    outShapeNew.push_back(CUBE_SIZE);
+    inShapeNew.push_back(axisH);
+    inShapeNew.push_back(axisN);
+    inShapeNew.push_back(axisC);
+    int64_t axisC0 = c0Len;
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    int64_t axisNi = NI_16;
+    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+    outShapeNew.push_back(axisH);
+    outShapeNew.push_back(axisC1);
+    outShapeNew.push_back(axisNo * axisNi);
+    outShapeNew.push_back(axisC0);
   }
 
   if (srcFormat == "NC1HWC0" && dstFormat == "NCHW") {
