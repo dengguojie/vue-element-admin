@@ -42,7 +42,7 @@ def conv3d_dw(x, out_backprop, filter_size, para_dict):
     -------
     result tensor of conv3d_backprop_filter compute
     """
-    warnings.warn("te.lang.cce.te_compute.conv3d_backprop_filter_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.conv3d_backprop_filter_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv3d_backprop_filter_compute",
         DeprecationWarning)
     from tbe.dsl.compute.conv3d_backprop_filter_compute import conv3d_dw

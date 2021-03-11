@@ -17,28 +17,30 @@
 """
 Schedule of depthwise conv2d.
 """
-from te.utils.error_manager import error_manager_util
+from tbe.common.buildcfg import set_L1_info
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.dsl.compute import cube_util
+from tbe.dsl.compute.depthwise_conv2d_compute import DepthwiseConv2dParam
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.tiling.tiling_query import tiling_query
-from te.tvm.schedule import create_schedule
-from te.tvm import api as tvm
-from te.platform import cce_params
-from te.platform import cce_conf
-from te.platform import cce_policy
+from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.static_schedule.util import L1CommonParam
-from tbe.dsl.compute.depthwise_conv2d_compute import DepthwiseConv2dParam
+from tbe.tvm import api as tvm
+from tbe.tvm.schedule import create_schedule
+
 
 TILING_HO_TIMES = 16
 
-BLOCK_SIZE = cce_params.BLOCK_REDUCE
+BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
 FP16_SIZE = 2
 DOUBLE_BUFFER = 2
-L1_MEM_LIMIT = cce_conf.get_soc_spec(cce_conf.L1_SIZE)
+L1_MEM_LIMIT = tbe_platform_info.get_soc_spec(tbe_platform.L1_SIZE)
 RESHAPE_BATCH_SIZE_IN_L1 = 1
 BATCH_SIZE_IN_L1 = 1
 SPLIT_SLOT_TO_BE_FILL_BY_COMPUTE_AT = 1
-CUBE_M_SIZE_CELL = cce_conf.get_soc_spec(cce_conf.L0B_SIZE) // DOUBLE_BUFFER // FP16_SIZE // BLOCK_SIZE
+CUBE_M_SIZE_CELL = tbe_platform_info.get_soc_spec(tbe_platform.L0B_SIZE) // DOUBLE_BUFFER // FP16_SIZE // BLOCK_SIZE
 
 SMALL_FEATURE_MAP_SIZE = 14
 BATCH_TILING_FACTOR = 32
@@ -675,13 +677,13 @@ def _tiling_fetch_all(fmap_shape,
         "kernel_name": kernel_name.value
     }
 
-    soc_version = cce_conf.get_soc_spec("SOC_VERSION")
-    l1_size = cce_conf.get_soc_spec("L1_SIZE")
+    soc_version = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")
     soc_version_list = ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]
     if l1_fusion_type == -1 and l1_size != 512 * 1024 and soc_version in soc_version_list:
-        cce_policy.set_L1_info("op_L1_space", 512 * 1024)
+        set_L1_info("op_L1_space", 512 * 1024)
     elif l1_fusion_type == -1 and l1_size != 1024 * 1024 and soc_version not in soc_version_list:
-        cce_policy.set_L1_info("op_L1_space", 1024 * 1024)
+        set_L1_info("op_L1_space", 1024 * 1024)
     tiling = get_tiling(info_dict)
     return tiling
 
@@ -1187,7 +1189,7 @@ def _elewise_deq_sigmoid_mul(out, tensor_dict):
     tensor_dict["rec_4"] = tensor_dict["rec_5"].op.input_tensors[0]
     tensor_dict["add_2"] = tensor_dict["rec_4"].op.input_tensors[0]
     tensor_dict["rec_3"] = tensor_dict["rec_4"].op.input_tensors[1]
-    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
         tensor_dict["rec_2"] = tensor_dict["rec_3"].op.input_tensors[0]
         tensor_dict["rec_1"] = tensor_dict["rec_2"].op.input_tensors[0]
         tensor_dict["rec_0"] = tensor_dict["rec_1"].op.input_tensors[0]
@@ -1215,7 +1217,7 @@ def _elewise_deq_sigmoid_mul_online(out, tensor_dict):
     tensor_dict["rec_4"] = tensor_dict["rec_5"].op.input_tensors[0]
     tensor_dict["add_2"] = tensor_dict["rec_4"].op.input_tensors[0]
     tensor_dict["rec_3"] = tensor_dict["rec_4"].op.input_tensors[1]
-    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
         tensor_dict["rec_2"] = tensor_dict["rec_3"].op.input_tensors[0]
         tensor_dict["rec_1"] = tensor_dict["rec_2"].op.input_tensors[0]
         tensor_dict["rec_0"] = tensor_dict["rec_1"].op.input_tensors[0]
@@ -1394,11 +1396,11 @@ def _check_broadcast(tensor_dict, sch, attrs_dict):
     check broadcast
     """
     if tensor_dict["flag_is_broadcast"]:
-        float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+        float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                 [tensor_dict["broadcast_tensor_0"]])
         sch[tensor_dict["broadcast_tensor_0"]].compute_inline()
     else:
-        float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+        float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                 [attrs_dict["mul_ubuf"]])
     return float16_mul_input_ubuf, sch
 
@@ -1409,35 +1411,35 @@ def _set_sch_int32_phase1_dequant(tensor_dict, out, buf, sch):
     """
     dequant_ubuf, deq_reg_ubuf, requant_ubuf, req_reg_ubuf, bias_ub = buf
     if tensor_dict["flag_is_write_select"]:
-        sch[tensor_dict["write_select"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["write_select"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["write_select"]].compute_inline()
     if tensor_dict["flag_is_dequant"]:
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf, tensor_dict["dequant1"])
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf, tensor_dict["dequant1"])
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
-        dequant_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
+        dequant_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
     elif tensor_dict["flag_is_dequant2"]:
-        sch[tensor_dict["dequant2"]].set_scope(cce_params.scope_ubuf)
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf,
+        sch[tensor_dict["dequant2"]].set_scope(tbe_platform_info.scope_ubuf)
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf,
                                       (tensor_dict["dequant1"], tensor_dict["dequant2"]))
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["dequant1"]].compute_inline()
     elif tensor_dict["flag_is_requant"]:
-        sch[tensor_dict["data_transfer"]].set_scope(cce_params.scope_ubuf)
-        req_reg_ubuf = sch.cache_read(tensor_dict["vreq_reg"], cce_params.scope_ubuf, tensor_dict["requant"])
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["data_transfer"]].set_scope(tbe_platform_info.scope_ubuf)
+        req_reg_ubuf = sch.cache_read(tensor_dict["vreq_reg"], tbe_platform_info.scope_ubuf, tensor_dict["requant"])
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        sch[tensor_dict["requant"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["requant"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["requant"]].compute_inline()
 
     if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-        bias_ub = sch.cache_read(tensor_dict["bias_gm"], cce_params.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
-        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["mad_bias"]].set_scope(cce_params.scope_cc)
-        sch[tensor_dict["mad_after_bias"]].set_scope(cce_params.scope_cc)
+        bias_ub = sch.cache_read(tensor_dict["bias_gm"], tbe_platform_info.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
+        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["mad_bias"]].set_scope(tbe_platform_info.scope_cc)
+        sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform_info.scope_cc)
     if tensor_dict["flag_is_requant"]:
         return deq_reg_ubuf, req_reg_ubuf, bias_ub, dequant_ubuf, requant_ubuf, sch
     return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
@@ -1447,42 +1449,42 @@ def _set_sch_int32_phase1_deq(tensor_dict, attrs_dict, sch, bias_ub):
     """
     set_sch_int32_phase1_dequant_quant flag is dequant_sqrt
     """
-    deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf,
+    deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf,
                                   (tensor_dict["dequant1"], tensor_dict["dequant2"]))
-    sch[tensor_dict["cast_i8_ub"]].set_scope(cce_params.scope_ubuf)
-    sch[tensor_dict["reform_by_vadds"]].set_scope(cce_params.scope_ubuf)
-    sch[tensor_dict["input_ub"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["cast_i8_ub"]].set_scope(tbe_platform_info.scope_ubuf)
+    sch[tensor_dict["reform_by_vadds"]].set_scope(tbe_platform_info.scope_ubuf)
+    sch[tensor_dict["input_ub"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["input_ub"]].compute_inline()
-    sch[tensor_dict["quant_remove_pad"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["quant_remove_pad"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["quant_remove_pad"]].compute_inline()
     if tensor_dict["flag_is_write_select"]:
-        sch[tensor_dict["write_select"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["write_select"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["write_select"]].compute_inline()
     if tensor_dict["flag_is_quant_relu6_dequant"]:
-        sch[tensor_dict["min"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["min"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["min"]].compute_inline()
-        sch[tensor_dict["max"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["max"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["max"]].compute_inline()
     elif tensor_dict["flag_is_quant_mul_dequant"]:
-        sch[tensor_dict["mul_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["mul_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["mul_res"]].compute_inline()
-        mul_ubuf = sch.cache_write(tensor_dict["mul_res"], cce_params.scope_ubuf)
+        mul_ubuf = sch.cache_write(tensor_dict["mul_res"], tbe_platform_info.scope_ubuf)
         attrs_dict["mul_ubuf"] = mul_ubuf
         float16_mul_input_ubuf, sch = _check_broadcast(tensor_dict, sch, attrs_dict)
 
         tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
-    sch[tensor_dict["dequant2"]].set_scope(cce_params.scope_ubuf)
-    sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["dequant2"]].set_scope(tbe_platform_info.scope_ubuf)
+    sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["dequant1"]].compute_inline()
     sch[tensor_dict["dequant2"]].compute_inline()
-    sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["depthwise_res"]].compute_inline()
     sch[tensor_dict["mad_ubuf"]].compute_inline()
     if tensor_dict["flag_is_dequant_bias"]:
-        bias_ub = sch.cache_read(tensor_dict["bias_gm"], cce_params.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
-        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["mad_bias"]].set_scope(cce_params.scope_cc)
-        sch[tensor_dict["mad_after_bias"]].set_scope(cce_params.scope_cc)
+        bias_ub = sch.cache_read(tensor_dict["bias_gm"], tbe_platform_info.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
+        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["mad_bias"]].set_scope(tbe_platform_info.scope_cc)
+        sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform_info.scope_cc)
     return deq_reg_ubuf, sch, bias_ub
 
 
@@ -1494,38 +1496,38 @@ def _set_sch_int32_phase1_dequant_quant(tensor_dict, attrs_dict, buf, sch):
     if tensor_dict["flag_is_dequant_sqrt"] and not tensor_dict["flag_is_quant_sqrt"]:
         deq_reg_ubuf, sch, bias_ub = _set_sch_int32_phase1_deq(tensor_dict, attrs_dict, sch, bias_ub)
     elif not tensor_dict["flag_is_dequant_sqrt"] and not tensor_dict["flag_is_quant_sqrt"]:
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf, tensor_dict["dequant1"])
-        sch[tensor_dict["cast_i8_ub"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["reform_by_vadds"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["input_ub"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["quant_remove_pad"]].set_scope(cce_params.scope_ubuf)
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf, tensor_dict["dequant1"])
+        sch[tensor_dict["cast_i8_ub"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["reform_by_vadds"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["input_ub"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["quant_remove_pad"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["quant_remove_pad"]].compute_inline()
         if tensor_dict["flag_is_write_select"]:
-            sch[tensor_dict["write_select"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["write_select"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["write_select"]].compute_inline()
         if tensor_dict["flag_is_quant_relu6_dequant"]:
-            sch[tensor_dict["min"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["min"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["min"]].compute_inline()
-            sch[tensor_dict["max"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["max"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["max"]].compute_inline()
         elif tensor_dict["flag_is_quant_mul_dequant"]:
-            sch[tensor_dict["mul_res"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["mul_res"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["mul_res"]].compute_inline()
-            mul_ubuf = sch.cache_write(tensor_dict["mul_res"], cce_params.scope_ubuf)
+            mul_ubuf = sch.cache_write(tensor_dict["mul_res"], tbe_platform_info.scope_ubuf)
             attrs_dict["mul_ubuf"] = mul_ubuf
             float16_mul_input_ubuf, sch = _check_broadcast(tensor_dict, sch, attrs_dict)
 
             tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
-        sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["dequant1"]].compute_inline()
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
         sch[tensor_dict["mad_ubuf"]].compute_inline()
         if tensor_dict["flag_is_dequant_bias"]:
-            bias_ub = sch.cache_read(tensor_dict["bias_gm"], cce_params.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
-            sch[tensor_dict["mad_bias_ub_brc"]].set_scope(cce_params.scope_ubuf)
-            sch[tensor_dict["mad_bias"]].set_scope(cce_params.scope_cc)
-            sch[tensor_dict["mad_after_bias"]].set_scope(cce_params.scope_cc)
+            bias_ub = sch.cache_read(tensor_dict["bias_gm"], tbe_platform_info.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
+            sch[tensor_dict["mad_bias_ub_brc"]].set_scope(tbe_platform_info.scope_ubuf)
+            sch[tensor_dict["mad_bias"]].set_scope(tbe_platform_info.scope_cc)
+            sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform_info.scope_cc)
     else:
         dict_args = {
             'errCode': 'E67003',
@@ -1542,63 +1544,63 @@ def _set_sch_int32_phase1_dequant_mul(tensor_dict, attrs_dict, out, buf, sch):
     """
     dequant_ubuf, deq_reg_ubuf, _, _, bias_ub = buf
     if tensor_dict["flag_is_write_select"] is True:
-        sch[tensor_dict["write_select"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["write_select"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["write_select"]].compute_inline()
         out = out.op.input_tensors[0]
 
     if tensor_dict["flag_is_dequant_mul"]:
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf, tensor_dict["dequant1"])
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf, tensor_dict["dequant1"])
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        mul_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        mul_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
         sch[mul_ubuf].compute_inline()
 
         attrs_dict["mul_ubuf"] = mul_ubuf
         if tensor_dict["flag_is_broadcast"]:
-            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                     [tensor_dict["broadcast_tensor_0"]])
             sch[tensor_dict["broadcast_tensor_0"]].compute_inline()
         else:
-            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                     [attrs_dict["mul_ubuf"]])
         tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
-        sch[tensor_dict["dequant_remove_pad"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant_remove_pad"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["dequant_remove_pad"]].compute_inline()
-        sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["mad_ubuf"]].compute_inline()
-        dequant_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        dequant_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
         sch[dequant_ubuf].compute_inline()
     elif tensor_dict["flag_is_dequant2_mul"]:
-        sch[tensor_dict["dequant2"]].set_scope(cce_params.scope_ubuf)
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf,
+        sch[tensor_dict["dequant2"]].set_scope(tbe_platform_info.scope_ubuf)
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf,
                                       (tensor_dict["dequant1"], tensor_dict["dequant2"]))
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        mul_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        mul_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
         sch[mul_ubuf].compute_inline()
         attrs_dict["mul_ubuf"] = mul_ubuf
 
         if tensor_dict["flag_is_broadcast"]:
-            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                     [tensor_dict["broadcast_tensor_0"]])
             sch[tensor_dict["broadcast_tensor_0"]].compute_inline()
         else:
-            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+            float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                     [attrs_dict["mul_ubuf"]])
 
         tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
-        sch[tensor_dict["dequant2_remove_pad"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant2_remove_pad"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["dequant2_remove_pad"]].compute_inline()
-        sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["mad_ubuf"]].compute_inline()
         sch[tensor_dict["dequant1"]].compute_inline()
-        sch[tensor_dict["dequant2"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant2"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["dequant2"]].compute_inline()
     if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-        bias_ub = sch.cache_read(tensor_dict["bias_gm"], cce_params.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
-        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["mad_bias"]].set_scope(cce_params.scope_cc)
-        sch[tensor_dict["mad_after_bias"]].set_scope(cce_params.scope_cc)
+        bias_ub = sch.cache_read(tensor_dict["bias_gm"], tbe_platform_info.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
+        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["mad_bias"]].set_scope(tbe_platform_info.scope_cc)
+        sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform_info.scope_cc)
 
     return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
 
@@ -1607,48 +1609,48 @@ def _set_sch_int32_phase1_dequant2_sigmoid_mul(tensor_dict, attrs_dict, out, sch
     """
     set_sch_int32_phase1_dequant2_sigmoid_mul
     """
-    sch[tensor_dict["dequant2"]].set_scope(cce_params.scope_ubuf)
-    deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf,
+    sch[tensor_dict["dequant2"]].set_scope(tbe_platform_info.scope_ubuf)
+    deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf,
                                   (tensor_dict["dequant1"], tensor_dict["dequant2"]))
-    sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["depthwise_res"]].compute_inline()
-    mul_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+    mul_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
     sch[mul_ubuf].compute_inline()
     attrs_dict["mul_ubuf"] = mul_ubuf
-    float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+    float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                             [attrs_dict["mul_ubuf"]])
     tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
-    sch[tensor_dict["rec_7"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["rec_7"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["rec_7"]].compute_inline()
-    sch[tensor_dict["rec_6"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["rec_6"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["rec_6"]].compute_inline()
-    sch[tensor_dict["rec_5"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["rec_5"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["rec_5"]].compute_inline()
-    sch[tensor_dict["rec_4"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["rec_4"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["rec_4"]].compute_inline()
-    sch[tensor_dict["rec_3"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["rec_3"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["rec_3"]].compute_inline()
-    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
-        sch[tensor_dict["rec_2"]].set_scope(cce_params.scope_ubuf)
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+        sch[tensor_dict["rec_2"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_2"]].compute_inline()
-        sch[tensor_dict["rec_1"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_1"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_1"]].compute_inline()
-        sch[tensor_dict["rec_0"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_0"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_0"]].compute_inline()
-        sch[tensor_dict["rec_n"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_n"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_n"]].compute_inline()
-    sch[tensor_dict["muls"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["muls"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["muls"]].compute_inline()
-    sch[tensor_dict["exp"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["exp"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["exp"]].compute_inline()
-    sch[tensor_dict["add_2"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["add_2"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["add_2"]].compute_inline()
-    sch[tensor_dict["dequant2_remove_pad"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["dequant2_remove_pad"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["dequant2_remove_pad"]].compute_inline()
-    sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["mad_ubuf"]].compute_inline()
     sch[tensor_dict["dequant1"]].compute_inline()
-    sch[tensor_dict["dequant2"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["dequant2"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["dequant2"]].compute_inline()
     return deq_reg_ubuf, tensor_dict, sch
 
@@ -1659,116 +1661,116 @@ def _set_sch_int32_phase1_dequant_sigmoid_mul(tensor_dict, attrs_dict, out, buf,
     """
     dequant_ubuf, deq_reg_ubuf, _, _, bias_ub = buf
     if tensor_dict["flag_is_dequant_sigmoid_mul"]:
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf, tensor_dict["dequant1"])
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf, tensor_dict["dequant1"])
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        mul_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        mul_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
         sch[mul_ubuf].compute_inline()
         attrs_dict["mul_ubuf"] = mul_ubuf
-        float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+        float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                 [attrs_dict["mul_ubuf"]])
         tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
-        sch[tensor_dict["rec_7"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_7"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_7"]].compute_inline()
-        sch[tensor_dict["rec_6"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_6"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_6"]].compute_inline()
-        sch[tensor_dict["rec_5"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_5"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_5"]].compute_inline()
-        sch[tensor_dict["rec_4"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_4"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_4"]].compute_inline()
-        sch[tensor_dict["rec_3"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["rec_3"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["rec_3"]].compute_inline()
-        if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
-            sch[tensor_dict["rec_2"]].set_scope(cce_params.scope_ubuf)
+        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+            sch[tensor_dict["rec_2"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_2"]].compute_inline()
-            sch[tensor_dict["rec_1"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_1"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_1"]].compute_inline()
-            sch[tensor_dict["rec_0"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_0"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_0"]].compute_inline()
-            sch[tensor_dict["rec_n"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_n"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_n"]].compute_inline()
-        sch[tensor_dict["muls"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["muls"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["muls"]].compute_inline()
-        sch[tensor_dict["exp"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["exp"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["exp"]].compute_inline()
-        sch[tensor_dict["add_2"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["add_2"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["add_2"]].compute_inline()
-        sch[tensor_dict["dequant_remove_pad"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant_remove_pad"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["dequant_remove_pad"]].compute_inline()
-        sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["mad_ubuf"]].compute_inline()
-        dequant_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        dequant_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
         sch[dequant_ubuf].compute_inline()
     elif tensor_dict["flag_is_dequant2_sigmoid_mul"]:
         deq_reg_ubuf, tensor_dict, sch = _set_sch_int32_phase1_dequant2_sigmoid_mul(tensor_dict, attrs_dict, out, sch)
     if tensor_dict["depthwise_res"].op.attrs['bias_flag'].value == 1:
-        bias_ub = sch.cache_read(tensor_dict["bias_gm"], cce_params.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
-        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["mad_bias"]].set_scope(cce_params.scope_cc)
-        sch[tensor_dict["mad_after_bias"]].set_scope(cce_params.scope_cc)
+        bias_ub = sch.cache_read(tensor_dict["bias_gm"], tbe_platform_info.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
+        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["mad_bias"]].set_scope(tbe_platform_info.scope_cc)
+        sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform_info.scope_cc)
     return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
 
 
 def _set_sch_int32_phase1_deqaunt_power_eltwise(tensor_dict, buf, sch):
     dequant_ubuf, deq_reg_ubuf, _, _, bias_ub = buf
-    sch[tensor_dict["cast_i8_ub"]].set_scope(cce_params.scope_ubuf)
-    sch[tensor_dict["reform_by_vadds"]].set_scope(cce_params.scope_ubuf)
-    sch[tensor_dict["input_ub"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["cast_i8_ub"]].set_scope(tbe_platform_info.scope_ubuf)
+    sch[tensor_dict["reform_by_vadds"]].set_scope(tbe_platform_info.scope_ubuf)
+    sch[tensor_dict["input_ub"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["input_ub"]].compute_inline()
-    sch[tensor_dict["quant_remove_pad"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["quant_remove_pad"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["quant_remove_pad"]].compute_inline()
     if tensor_dict["flag_is_eltwisce_case"] == "0":
-        sch[tensor_dict["mul_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["mul_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["mul_res"]].compute_inline()
     elif tensor_dict["flag_is_eltwisce_case"] == "1":
-        sch[tensor_dict["eltwise_max"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["eltwise_max"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["eltwise_max"]].compute_inline()
     elif tensor_dict["flag_is_eltwisce_case"] == "1_2":
-        sch[tensor_dict["eltwise_add"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["eltwise_add"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["eltwise_add"]].compute_inline()
-        sch[tensor_dict["eltwise_mul_left"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["eltwise_mul_left"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["eltwise_mul_left"]].compute_inline()
-        sch[tensor_dict["eltwise_mul_right"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["eltwise_mul_right"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["eltwise_mul_right"]].compute_inline()
     else:
-        sch[tensor_dict["eltwise_add"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["eltwise_add"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["eltwise_add"]].compute_inline()
-    sch[tensor_dict["power1_add"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["power1_add"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["power1_add"]].compute_inline()
-    sch[tensor_dict["power1_mul"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["power1_mul"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["power1_mul"]].compute_inline()
-    sch[tensor_dict["relu_min"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["relu_min"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["relu_min"]].compute_inline()
-    sch[tensor_dict["relu_max"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["relu_max"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["relu_max"]].compute_inline()
-    sch[tensor_dict["power0_add"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["power0_add"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["power0_add"]].compute_inline()
-    sch[tensor_dict["power0_mul"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["power0_mul"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["power0_mul"]].compute_inline()
 
     if tensor_dict["flag_is_dequant2_power_eltwise"]:
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf,
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf,
                                       (tensor_dict["dequant1"], tensor_dict["dequant2"]))
-        sch[tensor_dict["dequant2"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["dequant2"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["dequant2"]].compute_inline()
 
     else:
-        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], cce_params.scope_ubuf, tensor_dict["dequant1"])
+        deq_reg_ubuf = sch.cache_read(tensor_dict["deq_reg"], tbe_platform_info.scope_ubuf, tensor_dict["dequant1"])
 
-    sch[tensor_dict["dequant1"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["dequant1"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["dequant1"]].compute_inline()
-    sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["depthwise_res"]].compute_inline()
-    sch[tensor_dict["mad_ubuf"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["mad_ubuf"]].set_scope(tbe_platform_info.scope_ubuf)
     sch[tensor_dict["mad_ubuf"]].compute_inline()
     if tensor_dict["flag_is_dequant_bias"]:
-        bias_ub = sch.cache_read(tensor_dict["bias_gm"], cce_params.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
-        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["mad_bias"]].set_scope(cce_params.scope_cc)
-        sch[tensor_dict["mad_after_bias"]].set_scope(cce_params.scope_cc)
+        bias_ub = sch.cache_read(tensor_dict["bias_gm"], tbe_platform_info.scope_ubuf, [tensor_dict["mad_bias_ub_brc"]])
+        sch[tensor_dict["mad_bias_ub_brc"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["mad_bias"]].set_scope(tbe_platform_info.scope_cc)
+        sch[tensor_dict["mad_after_bias"]].set_scope(tbe_platform_info.scope_cc)
 
     if tensor_dict["flag_is_write_select"]:
-        sch[tensor_dict["write_select"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["write_select"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["write_select"]].compute_inline()
     return deq_reg_ubuf, bias_ub, dequant_ubuf, sch
 
@@ -1891,7 +1893,7 @@ def _sch_flag_is_dequant2(sch, tensor_dict, attrs_dict, res_cut_dict):
         sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-        if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
@@ -1940,7 +1942,7 @@ def _sch_flag_is_dequant(sch, tensor_dict, attrs_dict, res_cut_dict):
         sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
         sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-        if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+        if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
             sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
             sch[tensor_dict["rec_0"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
@@ -2085,7 +2087,7 @@ def _emit_insn_dequant1(tensor_dict, sch):
     """
     emit_insn_dequant1
     """
-    if cce_conf.is_v200_version_new():
+    if cube_util.is_v200_version_new():
         sch[tensor_dict["dequant1"]].emit_insn(sch[tensor_dict["dequant1"]].op.axis[3], 'dma_copy')
     else:
         sch[tensor_dict["dequant1"]].pragma(sch[tensor_dict["dequant1"]].op.axis[3], 'deq_scale', 'vector')
@@ -2180,7 +2182,7 @@ def _flag_is_dequant_sigmoid_mul(tensor_dict, sch, attrs_dict):
         sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0], 'vector_auto')
         sch[attrs_dict["bias_ub"]].emit_insn(sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
     sch[attrs_dict["deq_reg_ubuf"]].emit_insn(sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
-    if cce_conf.is_v200_version_new():
+    if cube_util.is_v200_version_new():
         sch[tensor_dict["dequant1"]].emit_insn(sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
     else:
         if tensor_dict['sca_vec_flag'] == 0:
@@ -2194,7 +2196,7 @@ def _flag_is_dequant_sigmoid_mul(tensor_dict, sch, attrs_dict):
     sch[tensor_dict["rec_5"]].emit_insn(sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
     sch[tensor_dict["rec_4"]].emit_insn(sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
     sch[tensor_dict["rec_3"]].emit_insn(sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
-    if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+    if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
         sch[tensor_dict["rec_2"]].emit_insn(sch[tensor_dict["rec_2"]].op.axis[0], 'vector_auto')
         sch[tensor_dict["rec_1"]].emit_insn(sch[tensor_dict["rec_1"]].op.axis[0], 'vector_auto')
         sch[tensor_dict["rec_0"]].emit_insn(sch[tensor_dict["rec_0"]].op.axis[0], 'vector_auto')
@@ -2217,7 +2219,7 @@ def _flag_is_dequant_mul(tensor_dict, sch, attrs_dict):
         sch[tensor_dict["mad_bias_ub_brc"]].emit_insn(sch[tensor_dict["mad_bias_ub_brc"]].op.axis[0], 'vector_auto')
         sch[attrs_dict["bias_ub"]].emit_insn(sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
     sch[attrs_dict["deq_reg_ubuf"]].emit_insn(sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
-    if cce_conf.is_v200_version_new():
+    if cube_util.is_v200_version_new():
         sch[tensor_dict["dequant1"]].emit_insn(sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
     else:
         if tensor_dict['sca_vec_flag'] == 0:
@@ -2241,7 +2243,7 @@ def _flag_is_dequant_power_eltwise(tensor_dict, sch, attrs_dict):
         sch[attrs_dict["bias_ub"]].emit_insn(sch[attrs_dict["bias_ub"]].op.axis[0], 'dma_copy')
     sch[attrs_dict["deq_reg_ubuf"]].emit_insn(sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
 
-    if cce_conf.is_v200_version_new():
+    if cube_util.is_v200_version_new():
         sch[tensor_dict["dequant1"]].emit_insn(sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
     else:
         if tensor_dict['sca_vec_flag'] == 0:
@@ -2288,7 +2290,7 @@ def _phase3_avoid_complexity(tensor_dict, sch, attrs_dict):
     phase3 avoid complexity
     """
     sch[attrs_dict["deq_reg_ubuf"]].emit_insn(sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
-    if cce_conf.is_v200_version_new():
+    if cube_util.is_v200_version_new():
         sch[tensor_dict["dequant1"]].emit_insn(sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
     else:
         if tensor_dict['sca_vec_flag'] == 0:
@@ -2312,7 +2314,7 @@ def _emit_insn_phase3(tensor_dict, sch, attrs_dict):
     if tensor_dict["flag_is_dequant"]:
         sch[attrs_dict["dequant_ubuf"]].emit_insn(sch[attrs_dict["dequant_ubuf"]].op.axis[0], 'dma_copy')
         sch[attrs_dict["deq_reg_ubuf"]].emit_insn(sch[attrs_dict["deq_reg_ubuf"]].op.axis[0], 'dma_copy')
-        if cce_conf.is_v200_version_new():
+        if cube_util.is_v200_version_new():
             sch[tensor_dict["dequant1"]].emit_insn(sch[tensor_dict["dequant1"]].op.axis[0], 'dma_copy')
         else:
             if tensor_dict['sca_vec_flag'] == 0:
@@ -2323,7 +2325,7 @@ def _emit_insn_phase3(tensor_dict, sch, attrs_dict):
         sch = _phase3_avoid_complexity(tensor_dict, sch, attrs_dict)
     elif tensor_dict["flag_is_requant"]:
         sch[attrs_dict["req_reg_ubuf"]].emit_insn(sch[attrs_dict["req_reg_ubuf"]].op.axis[0], 'dma_copy')
-        if cce_conf.is_v200_version_new():
+        if cube_util.is_v200_version_new():
             sch[tensor_dict["data_transfer"]].emit_insn(sch[tensor_dict["data_transfer"]].op.axis[3], 'dma_copy')
         else:
             if tensor_dict['sca_vec_flag'] == 0:
@@ -2362,7 +2364,7 @@ def _set_sch_int32_phase3(tensor_dict, sch, attrs_dict, res_cut_dict, out):
                 sch[tensor_dict["rec_5"]].emit_insn(sch[tensor_dict["rec_5"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_4"]].emit_insn(sch[tensor_dict["rec_4"]].op.axis[0], 'vector_auto')
                 sch[tensor_dict["rec_3"]].emit_insn(sch[tensor_dict["rec_3"]].op.axis[0], 'vector_auto')
-                if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+                if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
                     sch[tensor_dict["rec_2"]].emit_insn(sch[tensor_dict["rec_2"]].op.axis[0],
                                                         'vector_auto')
                     sch[tensor_dict["rec_1"]].emit_insn(sch[tensor_dict["rec_1"]].op.axis[0],
@@ -2419,46 +2421,46 @@ def _avoid_complexity_mul(out, tensor_dict, attrs_dict, sch):
             "flag_is_dequant2_sigmoid_mul"] and not tensor_dict["flag_is_dequant_mul"] and not tensor_dict[
                 "flag_is_dequant2_mul"]:
         if tensor_dict["flag_is_sigmoid_mul"]:
-            sch[tensor_dict["rec_7"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_7"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_7"]].compute_inline()
-            sch[tensor_dict["rec_6"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_6"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_6"]].compute_inline()
-            sch[tensor_dict["rec_5"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_5"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_5"]].compute_inline()
-            sch[tensor_dict["rec_4"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_4"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_4"]].compute_inline()
-            sch[tensor_dict["rec_3"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["rec_3"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["rec_3"]].compute_inline()
-            if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
-                sch[tensor_dict["rec_2"]].set_scope(cce_params.scope_ubuf)
+            if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
+                sch[tensor_dict["rec_2"]].set_scope(tbe_platform_info.scope_ubuf)
                 sch[tensor_dict["rec_2"]].compute_inline()
-                sch[tensor_dict["rec_1"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_dict["rec_1"]].set_scope(tbe_platform_info.scope_ubuf)
                 sch[tensor_dict["rec_1"]].compute_inline()
-                sch[tensor_dict["rec_0"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_dict["rec_0"]].set_scope(tbe_platform_info.scope_ubuf)
                 sch[tensor_dict["rec_0"]].compute_inline()
-                sch[tensor_dict["rec_n"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_dict["rec_n"]].set_scope(tbe_platform_info.scope_ubuf)
                 sch[tensor_dict["rec_n"]].compute_inline()
-            sch[tensor_dict["muls"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["muls"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["muls"]].compute_inline()
-            sch[tensor_dict["exp"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["exp"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["exp"]].compute_inline()
-            sch[tensor_dict["add_2"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["add_2"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["add_2"]].compute_inline()
-            sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["depthwise_res"]].compute_inline()
-            mul_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+            mul_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
             attrs_dict["mul_ubuf"] = mul_ubuf
         else:
-            sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
             sch[tensor_dict["depthwise_res"]].compute_inline()
-            mul_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+            mul_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
             attrs_dict["mul_ubuf"] = mul_ubuf
             if tensor_dict["flag_is_broadcast"]:
-                float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+                float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                         [tensor_dict["broadcast_tensor_0"]])
                 sch[tensor_dict["broadcast_tensor_0"]].compute_inline()
             else:
-                float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], cce_params.scope_ubuf,
+                float16_mul_input_ubuf = sch.cache_read(tensor_dict["float16_mul_input_tensor"], tbe_platform_info.scope_ubuf,
                                                         [attrs_dict["mul_ubuf"]])
 
             tensor_dict["float16_mul_input_ubuf"] = float16_mul_input_ubuf
@@ -2481,8 +2483,8 @@ def _l1_fusion_phase1(sch, tensor_dict):
     if valid_shape:
         tensor_dict["fmap_valid_shape"] = valid_shape
     if int(input_mem_type) == 1:
-        sch[tensor_dict["fmap"]].set_scope(cce_params.scope_cbuf_fusion)
-        a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], cce_params.scope_cbuf_fusion,
+        sch[tensor_dict["fmap"]].set_scope(tbe_platform_info.scope_cbuf_fusion)
+        a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], tbe_platform_info.scope_cbuf_fusion,
                                         [tensor_dict["im2col_row_major"]])
 
         if valid_shape:
@@ -2498,13 +2500,13 @@ def _l1_fusion_phase1(sch, tensor_dict):
     else:
         if l1_fusion_type in (0, 1):
             if valid_shape:
-                sch[tensor_dict["fusion_fmap_select"]].set_scope(cce_params.scope_cbuf_fusion)
+                sch[tensor_dict["fusion_fmap_select"]].set_scope(tbe_platform_info.scope_cbuf_fusion)
                 a_cbuf_nc1hwc0 = tensor_dict["fusion_fmap_select"]
             else:
-                a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], cce_params.scope_cbuf_fusion,
+                a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], tbe_platform_info.scope_cbuf_fusion,
                                                 [tensor_dict["im2col_row_major"]])
         else:
-            a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], cce_params.scope_cbuf,
+            a_cbuf_nc1hwc0 = sch.cache_read(tensor_dict["fmap"], tbe_platform_info.scope_cbuf,
                                             [tensor_dict["im2col_row_major"]])
     return sch, a_cbuf_nc1hwc0
 
@@ -2559,28 +2561,28 @@ def _set_sch_ph1(out, sch, tensor_dict, attrs_dict, mad_dtype):
     if "addr_type" in out.op.attrs:
         out_addr_type = int(out.op.attrs["addr_type"])
         if out_addr_type == 1:
-            sch[out].set_scope(cce_params.scope_cbuf_fusion)
+            sch[out].set_scope(tbe_platform_info.scope_cbuf_fusion)
             tensor_dict["output_memory_type"] = 1
     if True in [tensor_dict["flag_is_dequant"], tensor_dict["flag_is_dequant2"], tensor_dict["flag_is_requant"]]:
         sch[tensor_dict["mad_ubuf"]].compute_inline()
     if tensor_dict["bias_flag"]:
-        bias_ubuf = sch.cache_read(tensor_dict["bias_tensor"], cce_params.scope_ubuf, [tensor_dict["bias_add"]])
+        bias_ubuf = sch.cache_read(tensor_dict["bias_tensor"], tbe_platform_info.scope_ubuf, [tensor_dict["bias_add"]])
         attrs_dict["bias_ubuf"] = bias_ubuf
-        sch[bias_ubuf].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["bias_add"]].set_scope(cce_params.scope_ubuf)
+        sch[bias_ubuf].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["bias_add"]].set_scope(tbe_platform_info.scope_ubuf)
     if out.op.tag in ["elewise_single_relu", "elewise_single_lrelu"]:
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        relu_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        relu_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
         attrs_dict["relu_ubuf"] = relu_ubuf
     if out.op.tag == "elewise_binary_mul":
         tensor_dict, attrs_dict, sch = _avoid_complexity_mul(out, tensor_dict, attrs_dict, sch)
     if out.op.tag == "elewise_single_VS_min":
-        sch[tensor_dict["max_0"]].set_scope(cce_params.scope_ubuf)
-        sch[tensor_dict["depthwise_res"]].set_scope(cce_params.scope_ubuf)
+        sch[tensor_dict["max_0"]].set_scope(tbe_platform_info.scope_ubuf)
+        sch[tensor_dict["depthwise_res"]].set_scope(tbe_platform_info.scope_ubuf)
         sch[tensor_dict["max_0"]].compute_inline()
         sch[tensor_dict["depthwise_res"]].compute_inline()
-        relu_ubuf = sch.cache_write(out, cce_params.scope_ubuf)
+        relu_ubuf = sch.cache_write(out, tbe_platform_info.scope_ubuf)
         attrs_dict["relu_ubuf"] = relu_ubuf
     c_0 = C0_16
     if mad_dtype == "int32":
@@ -2629,20 +2631,20 @@ def _get_sch_cache(sch, tensor_dict):
     """
     get schedule cache
     """
-    a_cbuf_row_major = sch.cache_write(tensor_dict["im2col_row_major"], cce_params.scope_cbuf)
+    a_cbuf_row_major = sch.cache_write(tensor_dict["im2col_row_major"], tbe_platform_info.scope_cbuf)
     sch[tensor_dict["im2col_row_major"]].compute_inline()
-    a_ca = sch.cache_write(tensor_dict["im2col_fractal"], cce_params.scope_ca)
+    a_ca = sch.cache_write(tensor_dict["im2col_fractal"], tbe_platform_info.scope_ca)
     sch[tensor_dict["im2col_fractal"]].compute_inline()
 
-    b_cbuf = sch.cache_read(tensor_dict["filter_buf"], cce_params.scope_cbuf, [tensor_dict["filter_reshape"]])
-    b_cb = sch.cache_write(tensor_dict["filter_reshape"], cce_params.scope_cb)
+    b_cbuf = sch.cache_read(tensor_dict["filter_buf"], tbe_platform_info.scope_cbuf, [tensor_dict["filter_reshape"]])
+    b_cb = sch.cache_write(tensor_dict["filter_reshape"], tbe_platform_info.scope_cb)
     sch[tensor_dict["filter_reshape"]].compute_inline()
 
-    mad_cc = sch.cache_write(tensor_dict["mad"], cce_params.scope_cc)
+    mad_cc = sch.cache_write(tensor_dict["mad"], tbe_platform_info.scope_cc)
     sch[tensor_dict["mad"]].compute_inline()
 
     mad_dtype = mad_cc.dtype
-    sch[tensor_dict["mad_ubuf"]].set_scope(cce_params.scope_ubuf)
+    sch[tensor_dict["mad_ubuf"]].set_scope(tbe_platform_info.scope_ubuf)
     return a_cbuf_row_major, a_ca, b_cbuf, b_cb, mad_cc, mad_dtype, sch
 
 
@@ -2713,7 +2715,7 @@ def _relu_mul_handle(out, sch, attrs_dict, tensor_dict, res_cut_dict):
                 sch[tensor_dict["rec_5"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_4"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
                 sch[tensor_dict["rec_3"]].compute_at(sch[attrs_dict["out"]], res_cut_dict["res_mcut_iio"])
-                if cce_conf.is_v200_version_new() or cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
+                if cube_util.is_v200_version_new() or tbe_platform_info.get_soc_spec("SOC_VERSION") == "Ascend910":
                     sch[tensor_dict["rec_2"]].compute_at(sch[attrs_dict["out"]],
                                                          res_cut_dict["res_mcut_iio"])
                     sch[tensor_dict["rec_1"]].compute_at(sch[attrs_dict["out"]],
@@ -2841,9 +2843,9 @@ def depthwise_conv2d_schedule(out):
     attrs_dict, tensor_dict = _prepare_tensor_attrs(out, input_mem_type, output_mem_type, l1_fusion_type, l1_valid_size)
 
     if "relu" in tensor_dict["im2col_row_major"].op.input_tensors[0].name:
-        pre_relu_ubuf = sch.cache_read(tensor_dict["fmap"], cce_params.scope_ubuf, [tensor_dict["relu_0"]])
-        pre_relu_cbuf = sch.cache_read(tensor_dict["relu_0"], cce_params.scope_cbuf, [tensor_dict["im2col_row_major"]])
-        sch[tensor_dict["relu_0"]].set_scope(cce_params.scope_ubuf)
+        pre_relu_ubuf = sch.cache_read(tensor_dict["fmap"], tbe_platform_info.scope_ubuf, [tensor_dict["relu_0"]])
+        pre_relu_cbuf = sch.cache_read(tensor_dict["relu_0"], tbe_platform_info.scope_cbuf, [tensor_dict["im2col_row_major"]])
+        sch[tensor_dict["relu_0"]].set_scope(tbe_platform_info.scope_ubuf)
         fmp_shape = tensor_dict["fmap"].op.shape
     else:
         sch, a_cbuf_nc1hwc0 = _l1_fusion_phase1(sch, tensor_dict)
@@ -3066,7 +3068,7 @@ def depthwise_conv2d_schedule(out):
     sch[a_ca].emit_insn(a_ca.op.axis[1], 'im2col')
     sch[b_cbuf].emit_insn(b_cbuf.op.axis[0], 'dma_copy')
     sch[b_cb].emit_insn(b_cb.op.axis[0], 'dma_copy')
-    mad_dict = {"mad_pattern": cce_params.CONV_MODE, "k_outer": [mad_cc_kcut_o]}
+    mad_dict = {"mad_pattern": tbe_platform.CONV_MODE, "k_outer": [mad_cc_kcut_o]}
     if ((True in [
             tensor_dict["flag_is_dequant2"], tensor_dict["flag_is_dequant"], tensor_dict["flag_is_requant"],
             tensor_dict["flag_is_dequant_mul"], tensor_dict["flag_is_dequant_sigmoid_mul"],
@@ -3144,20 +3146,20 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
     fmap_transpose = feature_col.op.input_tensors[0]
     fmap = fmap_transpose.op.input_tensors[0]
 
-    fmap_cbuf_nc1hwc0 = sch.cache_write(fmap_transpose, cce_params.scope_cbuf)
+    fmap_cbuf_nc1hwc0 = sch.cache_write(fmap_transpose, tbe_platform_info.scope_cbuf)
     sch[fmap_transpose].compute_inline()
-    fmap_cbuf_row_major = sch.cache_write(feature_col, cce_params.scope_cbuf)
+    fmap_cbuf_row_major = sch.cache_write(feature_col, tbe_platform_info.scope_cbuf)
     sch[feature_col].compute_inline()
-    fmap_cb = sch.cache_write(feature_col_pad, cce_params.scope_cb)
+    fmap_cb = sch.cache_write(feature_col_pad, tbe_platform_info.scope_cb)
     sch[feature_col_pad].compute_inline()
-    dout_cbuf = sch.cache_write(dout_transpose, cce_params.scope_cbuf)
+    dout_cbuf = sch.cache_write(dout_transpose, tbe_platform_info.scope_cbuf)
     sch[dout_transpose].compute_inline()
-    dout_ca = sch.cache_write(dout_fractal, cce_params.scope_ca)
+    dout_ca = sch.cache_write(dout_fractal, tbe_platform_info.scope_ca)
     sch[dout_fractal].compute_inline()
-    mad_ubuf = sch.cache_write(mad_res, cce_params.scope_ubuf)
+    mad_ubuf = sch.cache_write(mad_res, tbe_platform_info.scope_ubuf)
     sch[mad_res].compute_inline()
-    mad_cc = sch.cache_write(mad_ubuf, cce_params.scope_cc)
-    depthwise_dfilter_ubuf = sch.cache_write(depthwise_dfilter, cce_params.scope_ubuf)
+    mad_cc = sch.cache_write(mad_ubuf, tbe_platform_info.scope_cc)
+    depthwise_dfilter_ubuf = sch.cache_write(depthwise_dfilter, tbe_platform_info.scope_ubuf)
     sch[depthwise_dfilter].compute_inline()
 
     fmap_shape = [int(i.value) for i in fmap.shape]
@@ -3343,7 +3345,7 @@ def depthwise_conv2d_backprop_filter_d_schedule(depthwise_dfilter_res):
 
     sch[mad_ubuf].emit_insn(mad_ubuf.op.axis[0], 'dma_copy')
     mad_dict = {
-        "mad_pattern": cce_params.CONV_MODE,
+        "mad_pattern": tbe_platform.CONV_MODE,
         'k_outer': [block_batch_o, block_batch_i, block_h_o, mad_cc_ak1_l1o, mad_cc_bk1_l1o, mad_cc_k1_l0o]
     }
     sch[mad_cc].emit_insn(mad_cc_m1_l0i, 'mad', mad_dict)
@@ -3464,21 +3466,21 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
     dout_dilated = dout_col.op.input_tensors[0]
     dout = dout_dilated.op.input_tensors[0]
 
-    dout_ubuf = sch.cache_read(dout, cce_params.scope_ubuf, [dout_dilated])
-    dout_cbuf_nc1hwc0 = sch.cache_write(dout_dilated, cce_params.scope_cbuf)
-    dout_dilated_ubuf = sch.cache_write(dout_cbuf_nc1hwc0, cce_params.scope_ubuf)
-    dout_cbuf_row_major = sch.cache_write(dout_col, cce_params.scope_cbuf)
+    dout_ubuf = sch.cache_read(dout, tbe_platform_info.scope_ubuf, [dout_dilated])
+    dout_cbuf_nc1hwc0 = sch.cache_write(dout_dilated, tbe_platform_info.scope_cbuf)
+    dout_dilated_ubuf = sch.cache_write(dout_cbuf_nc1hwc0, tbe_platform_info.scope_ubuf)
+    dout_cbuf_row_major = sch.cache_write(dout_col, tbe_platform_info.scope_cbuf)
     sch[dout_dilated].compute_inline()
     sch[dout_col].compute_inline()
-    dout_ca = sch.cache_write(dout_col_pad, cce_params.scope_ca)
+    dout_ca = sch.cache_write(dout_col_pad, tbe_platform_info.scope_ca)
     sch[dout_col_pad].compute_inline()
 
-    weight_cbuf = sch.cache_read(weight, cce_params.scope_cbuf, [weight_rotated])
-    weight_cb = sch.cache_write(weight_rotated, cce_params.scope_cb)
+    weight_cbuf = sch.cache_read(weight, tbe_platform_info.scope_cbuf, [weight_rotated])
+    weight_cb = sch.cache_write(weight_rotated, tbe_platform_info.scope_cb)
     sch[weight_rotated].compute_inline()
 
-    mad_cc = sch.cache_write(mad_res, cce_params.scope_cc)
-    mad_ubuf = sch.cache_write(dx_cast, cce_params.scope_ubuf)
+    mad_cc = sch.cache_write(mad_res, tbe_platform_info.scope_cc)
+    mad_ubuf = sch.cache_write(dx_cast, tbe_platform_info.scope_ubuf)
     sch[mad_res].compute_inline()
     sch[dx_cast].compute_inline()
 
@@ -3603,7 +3605,7 @@ def depthwise_conv2d_backprop_input_d_schedule(dx_res):
             sch[weight_cbuf].emit_insn(weight_cbuf.op.axis[0], 'dma_copy')
         sch[weight_cb].emit_insn(weight_cb.op.axis[3], 'dma_copy')
         sch[mad_ubuf].emit_insn(mad_ubuf_ncut_i_n, 'dma_copy')
-        mad_dict = {"mad_pattern": cce_params.CONV_MODE, "k_outer": mad_cc_kcut_o}
+        mad_dict = {"mad_pattern": tbe_platform.CONV_MODE, "k_outer": mad_cc_kcut_o}
         sch[mad_cc].emit_insn(mad_cc_ncut_i_n, 'mad', mad_dict)
         sch[dx_res].emit_insn(conv_ncut_i, 'dma_copy')
 

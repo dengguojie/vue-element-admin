@@ -18,16 +18,16 @@ gemm schedule
 from enum import Enum
 from functools import reduce  # pylint: disable=C0302
 
-from te.platform import cce_conf
-from te.platform import cce_params
-from te.platform.cce_build import build_config
-from te.lang.cce.boost_schedule_kit import Compare
-from te.lang.cce.boost_schedule_kit import ScheduleAgent
-from tbe.dsl.base.operation import in_dynamic
-from tbe.dsl.base.operation import get_te_var
+from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common.buildcfg import build_config
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
-from tbe import tvm
+from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.base.operation import in_dynamic
+from tbe.dsl.boost_schedule_kit import Compare
+from tbe.dsl.boost_schedule_kit import ScheduleAgent
 
 
 class Params:
@@ -51,15 +51,15 @@ class Params:
     }
     ops_mode = "fp16fp16"
     ops_format_mode = "ND"
-    block_in = cce_params.BLOCK_IN
-    block_reduce = cce_params.BLOCK_REDUCE
-    block_out = cce_params.BLOCK_OUT
+    block_in = tbe_platform.BLOCK_IN
+    block_reduce = tbe_platform.BLOCK_REDUCE
+    block_out = tbe_platform.BLOCK_OUT
     CONST_AL1_SHAPE_DIM = 4
     CONST_BL1_SHAPE_DIM = 4
-    UB_SPACE_SIZE = cce_conf.get_soc_spec("UB_SIZE")
-    L1_SPACE_SIZE = cce_conf.get_soc_spec("L1_SIZE")
-    L0_SPACE_SIZE = cce_conf.get_soc_spec("L0A_SIZE")
-    L0C_SPACE_SIZE = cce_conf.get_soc_spec("L0C_SIZE")
+    UB_SPACE_SIZE = tbe_platform_info.get_soc_spec("UB_SIZE")
+    L1_SPACE_SIZE = tbe_platform_info.get_soc_spec("L1_SIZE")
+    L0_SPACE_SIZE = tbe_platform_info.get_soc_spec("L0A_SIZE")
+    L0C_SPACE_SIZE = tbe_platform_info.get_soc_spec("L0C_SIZE")
     SOC_VERSION = "Ascend310"
     TENSOR_MAP = {}
     TILING = {}
@@ -93,7 +93,7 @@ class Params:
         :return: IR process
         """
         if self.DEBUG_IR:
-            with build_config:
+            with build_config():
                 start = process + " IR start"
                 end = process + " IR end\n"
                 sch = sch.normalize()
@@ -129,19 +129,19 @@ def _get_ops_mode():
         Params.ops_format_mode = "Nz"
     if a_type == "float16" and c_type == "float16":
         Params.ops_mode = "fp16fp16"
-        Params.block_reduce = cce_params.BLOCK_REDUCE
+        Params.block_reduce = tbe_platform.BLOCK_REDUCE
     elif a_type == "float16" and c_type == "float32":
         Params.ops_mode = "fp16fp32"
-        Params.block_reduce = cce_params.BLOCK_REDUCE
+        Params.block_reduce = tbe_platform.BLOCK_REDUCE
     elif a_type == "int8" and c_type == "int32":
         Params.ops_mode = "int8int32"
-        Params.block_reduce = cce_params.BLOCK_REDUCE_INT8
+        Params.block_reduce = tbe_platform.BLOCK_REDUCE_INT8
     elif a_type == "int8" and c_type == "float32":
         if _is_int82fp32_nd():
             Params.ops_mode = "fp16fp32"
         else:
             Params.ops_mode = "int8fp32"
-        Params.block_reduce = cce_params.BLOCK_REDUCE
+        Params.block_reduce = tbe_platform.BLOCK_REDUCE
     else:
         args_dict = {
             "errCode": "E60114",
@@ -438,26 +438,26 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
             )
             if  _is_int82fp32_nd():
                 sch[Params.TENSOR_MAP["tensor_a_float16_normalize_ub"]].set_scope(
-                    cce_params.scope_ubuf
+                    tbe_platform_info.scope_ubuf
                 )
                 sch[Params.TENSOR_MAP["tensor_b_float16_normalize_ub"]].set_scope(
-                    cce_params.scope_ubuf
+                    tbe_platform_info.scope_ubuf
                 )
 
         # tensor in aicore
         Params.TENSOR_MAP["c_ub"] = all_tensor.get("tensor_c_ub")
         if Params.TENSOR_MAP["c_ub"] is not None:
-            sch[Params.TENSOR_MAP["c_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["c_ub"]].set_scope(tbe_platform_info.scope_ubuf)
         Params.TENSOR_MAP["a_l0a"] = all_tensor.get("tensor_a_l0a")
-        sch[Params.TENSOR_MAP["a_l0a"]].set_scope(cce_params.scope_ca)
+        sch[Params.TENSOR_MAP["a_l0a"]].set_scope(tbe_platform_info.scope_ca)
         Params.TENSOR_MAP["a_l1"] = all_tensor.get("tensor_a_l1")
-        sch[Params.TENSOR_MAP["a_l1"]].set_scope(cce_params.scope_cbuf)
+        sch[Params.TENSOR_MAP["a_l1"]].set_scope(tbe_platform_info.scope_cbuf)
         Params.TENSOR_MAP["b_l0b"] = all_tensor.get("tensor_b_l0b")
-        sch[Params.TENSOR_MAP["b_l0b"]].set_scope(cce_params.scope_cb)
+        sch[Params.TENSOR_MAP["b_l0b"]].set_scope(tbe_platform_info.scope_cb)
         Params.TENSOR_MAP["b_l1"] = all_tensor.get("tensor_b_l1")
-        sch[Params.TENSOR_MAP["b_l1"]].set_scope(cce_params.scope_cbuf)
+        sch[Params.TENSOR_MAP["b_l1"]].set_scope(tbe_platform_info.scope_cbuf)
         Params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c")
-        sch[Params.TENSOR_MAP["c_l0c"]].set_scope(cce_params.scope_cc)
+        sch[Params.TENSOR_MAP["c_l0c"]].set_scope(tbe_platform_info.scope_cc)
         Params.TENSOR_MAP["bias_ub"] = all_tensor.get("tensor_bias_ub")
 
         if Params.fusion_type == FusionType.DEFAULT_MODE:
@@ -471,97 +471,97 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
                 Params.TENSOR_MAP["bias"] = Params.TENSOR_MAP["bias_ub"].op.input_tensors[0]
         if Params.MAT_MUL:
             if Params.TENSOR_MAP["bias_ub"] is not None:
-                sch[Params.TENSOR_MAP["bias_ub"]].set_scope(cce_params.scope_ubuf)
+                sch[Params.TENSOR_MAP["bias_ub"]].set_scope(tbe_platform_info.scope_ubuf)
                 Params.TENSOR_MAP["bias_l0c"] = all_tensor.get("tensor_bias_l0c")
-                sch[Params.TENSOR_MAP["bias_l0c"]].set_scope(cce_params.scope_cc)
+                sch[Params.TENSOR_MAP["bias_l0c"]].set_scope(tbe_platform_info.scope_cc)
                 Params.TENSOR_MAP["c_add_bias"] = all_tensor.get("tensor_c_add_bias")
-                sch[Params.TENSOR_MAP["c_add_bias"]].set_scope(cce_params.scope_cc)
+                sch[Params.TENSOR_MAP["c_add_bias"]].set_scope(tbe_platform_info.scope_cc)
         else:
-            sch[Params.TENSOR_MAP["bias_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["bias_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["beta_bias_ub"] = all_tensor.get("tensor_beta_bias_ub")
-            sch[Params.TENSOR_MAP["beta_bias_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["beta_bias_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["beta_ub"] = all_tensor.get("tensor_beta_ub")
-            sch[Params.TENSOR_MAP["beta_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["beta_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["alpha_ub"] = all_tensor.get("tensor_alpha_ub")
-            sch[Params.TENSOR_MAP["alpha_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["alpha_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["alpha_c_ub"] = all_tensor.get("tensor_alpha_c_ub")
-            sch[Params.TENSOR_MAP["alpha_c_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["alpha_c_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["c_before_mul_ub"] = all_tensor.get("tensor_c_before_mul_ub")
-            sch[Params.TENSOR_MAP["c_before_mul_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["c_before_mul_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["c_ub_temp"] = all_tensor.get("tensor_c_ub_temp")
-            sch[Params.TENSOR_MAP["c_ub_temp"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["c_ub_temp"]].set_scope(tbe_platform_info.scope_ubuf)
 
     def _init_fp16_fp16_tensor():
         if Params.ops_mode == "fp16fp16" and not Params.MAT_MUL:
             Params.TENSOR_MAP["float32_bias_ub"] = all_tensor.get(
                 "tensor_float32_bias_ub"
             )
-            sch[Params.TENSOR_MAP["float32_bias_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["float32_bias_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["beta_temp_ub"] = all_tensor.get("tensor_beta_temp_ub")
-            sch[Params.TENSOR_MAP["beta_temp_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["beta_temp_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["alpha_temp_ub"] = all_tensor.get("tensor_alpha_temp_ub")
-            sch[Params.TENSOR_MAP["alpha_temp_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["alpha_temp_ub"]].set_scope(tbe_platform_info.scope_ubuf)
 
         if Params.ops_format_mode == "ND":
             Params.TENSOR_MAP["a_normalize_ub"] = all_tensor.get(
                 "tensor_a_normalize_ub"
             )
-            sch[Params.TENSOR_MAP["a_normalize_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["a_normalize_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["a_fract_k_ub"] = all_tensor.get("a_fract_k")
-            sch[Params.TENSOR_MAP["a_fract_k_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["a_fract_k_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["b_normalize_ub"] = all_tensor.get(
                 "tensor_b_normalize_ub"
             )
-            sch[Params.TENSOR_MAP["b_normalize_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["b_normalize_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["b_fract_ub"] = all_tensor.get("b_fract")
-            sch[Params.TENSOR_MAP["b_fract_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["b_fract_ub"]].set_scope(tbe_platform_info.scope_ubuf)
 
             Params.TENSOR_MAP["b_transpose_only"] = all_tensor.get("b_transpose_only")
             Params.TENSOR_MAP["b_transpose_zero"] = all_tensor.get("b_transpose_zero")
             Params.TENSOR_MAP["b_after_process"] = all_tensor.get("b_after_process")
             if Params.TENSOR_MAP["b_transpose_only"] is not None:
                 sch[Params.TENSOR_MAP["b_transpose_only"]].set_scope(
-                    cce_params.scope_ubuf
+                    tbe_platform_info.scope_ubuf
                 )
                 sch[Params.TENSOR_MAP["b_transpose_zero"]].set_scope(
-                    cce_params.scope_ubuf
+                    tbe_platform_info.scope_ubuf
                 )
                 sch[Params.TENSOR_MAP["b_after_process"]].set_scope(
-                    cce_params.scope_ubuf
+                    tbe_platform_info.scope_ubuf
                 )
 
             if Params.ops_mode == "int8int32":
                 Params.TENSOR_MAP["b_transpose"] = all_tensor.get("b_transpose")
                 if Params.TENSOR_MAP["b_transpose"] is not None:
                     sch[Params.TENSOR_MAP["b_transpose"]].set_scope(
-                        cce_params.scope_ubuf
+                        tbe_platform_info.scope_ubuf
                     )
                 Params.TENSOR_MAP["a_transpose"] = all_tensor.get("a_transpose")
                 if Params.TENSOR_MAP["a_transpose"] is not None:
                     sch[Params.TENSOR_MAP["a_transpose"]].set_scope(
-                        cce_params.scope_ubuf
+                        tbe_platform_info.scope_ubuf
                     )
 
     def _init_int8_fp32_tensor():
         if Params.ops_mode == "int8fp32" and not Params.MAT_MUL:
             Params.TENSOR_MAP["a_ub"] = all_tensor.get("tensor_a_ub")
-            sch[Params.TENSOR_MAP["a_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["a_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["float16_a_ub"] = all_tensor.get("tensor_float16_a_ub")
-            sch[Params.TENSOR_MAP["float16_a_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["float16_a_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["zz_a_ub"] = all_tensor.get("tensor_zz_a_ub")
-            sch[Params.TENSOR_MAP["zz_a_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["zz_a_ub"]].set_scope(tbe_platform_info.scope_ubuf)
 
             Params.TENSOR_MAP["b_ub"] = all_tensor.get("tensor_b_ub")
-            sch[Params.TENSOR_MAP["b_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["b_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["float16_b_ub"] = all_tensor.get("tensor_float16_b_ub")
-            sch[Params.TENSOR_MAP["float16_b_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["float16_b_ub"]].set_scope(tbe_platform_info.scope_ubuf)
             Params.TENSOR_MAP["zn_b_ub"] = all_tensor.get("tensor_zn_b_ub")
-            sch[Params.TENSOR_MAP["zn_b_ub"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["zn_b_ub"]].set_scope(tbe_platform_info.scope_ubuf)
 
     def _init_fract_tensor():
         if "tensor_bias_ub_fract" in all_tensor and not Params.MAT_MUL:
             Params.TENSOR_MAP["bias_ub_fract"] = all_tensor.get("tensor_bias_ub_fract")
-            sch[Params.TENSOR_MAP["bias_ub_fract"]].set_scope(cce_params.scope_ubuf)
+            sch[Params.TENSOR_MAP["bias_ub_fract"]].set_scope(tbe_platform_info.scope_ubuf)
 
     def _init_map():
         # fill in dimmap
@@ -585,18 +585,18 @@ def _set_data_layout(res, sch):  # pylint: disable=too-many-statements
             Params.fusion_type = FusionType.ELEWISE_FUSION
             ub_list = list()
             input_list = list()
-            output_ub = sch.cache_write(res, cce_params.scope_ubuf)
+            output_ub = sch.cache_write(res, tbe_platform_info.scope_ubuf)
             ub_list.append(output_ub)
             for key, value in all_tensor.items():
                 if (not value.op.input_tensors and leaf_tensor[key].op.name not in
                         ("tensor_a_l1", "tensor_b_l1", "tensor_bias_ub")):
                     if res != leaf_tensor[key]:
-                        input_ub = sch.cache_read(value, cce_params.scope_ubuf, leaf_tensor[key])
+                        input_ub = sch.cache_read(value, tbe_platform_info.scope_ubuf, leaf_tensor[key])
                     else:
-                        input_ub = sch.cache_read(value, cce_params.scope_ubuf, output_ub)
+                        input_ub = sch.cache_read(value, tbe_platform_info.scope_ubuf, output_ub)
                     input_list.append(input_ub)
                 elif "elewise" in value.op.tag and res != value:
-                    sch[value].set_scope(cce_params.scope_ubuf)
+                    sch[value].set_scope(tbe_platform_info.scope_ubuf)
                     ub_list.append(value)
                 elif "broadcast" in value.op.tag or key == "tensor_c_gm":
                     sch[value].compute_inline()
@@ -673,8 +673,8 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
             if l1_k % Params.block_reduce != 0:
                 args_dict = {
                     "errCode": "E60114",
-                    "reason": "l1_k can not be divided by BLOCK_REDUCE",
-                    "value": "l1_k = {}, BLOCK_REDUCE "
+                    "reason": "l1_k can not be divided by tbe_platform.BLOCK_REDUCE",
+                    "value": "l1_k = {}, tbe_platform.BLOCK_REDUCE "
                     "= {}".format(l1_k, Params.block_reduce)
                 }
                 raise RuntimeError(
@@ -685,7 +685,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
                     l1_k
                     * l1_mn
                     * Params.TILING.get("CL0_matrix")[1]
-                    * cce_params.BLOCK_IN
+                    * tbe_platform.BLOCK_IN
                     * data_size
                 )
 
@@ -694,7 +694,7 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
                     l1_k
                     * l1_mn
                     * Params.TILING.get("CL0_matrix")[0]
-                    * cce_params.BLOCK_OUT
+                    * tbe_platform.BLOCK_OUT
                     * data_size
                 )
             if isdouble == 2:
@@ -915,16 +915,16 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
                 full_ab = [
                     cl0_matrix[1],
                     l0_matrix[0],
-                    cce_params.CUBE_MKN[dtype]["mac"][0],
-                    cce_params.CUBE_MKN[dtype]["mac"][1],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][0],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][1],
                     1
                 ]
             else:
                 full_ab = [
                     cl0_matrix[1],
                     k_dim,
-                    cce_params.CUBE_MKN[dtype]["mac"][0],
-                    cce_params.CUBE_MKN[dtype]["mac"][1],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][0],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][1],
                     1
                 ]
         elif instr == "B":
@@ -932,16 +932,16 @@ def _get_tiling(kernel_name):  # pylint: disable=too-many-statements
                 full_ab = [
                     l0_matrix[1],
                     cl0_matrix[0],
-                    cce_params.CUBE_MKN[dtype]["mac"][2],
-                    cce_params.CUBE_MKN[dtype]["mac"][1],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][2],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][1],
                     1
                 ]
             else:
                 full_ab = [
                     k_dim,
                     cl0_matrix[0],
-                    cce_params.CUBE_MKN[dtype]["mac"][2],
-                    cce_params.CUBE_MKN[dtype]["mac"][1],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][2],
+                    tbe_platform.CUBE_MKN[dtype]["mac"][1],
                     1
                 ]
         else:
@@ -2015,25 +2015,25 @@ def _set_data_layout_cv_split(res, sch):
 
     Params.TENSOR_MAP["c_gm"] = res
     Params.TENSOR_MAP["a_l0a"] = all_tensor.get("tensor_a_matrix")
-    sch[Params.TENSOR_MAP["a_l0a"]].set_scope(cce_params.scope_ca)
+    sch[Params.TENSOR_MAP["a_l0a"]].set_scope(tbe_platform_info.scope_ca)
     Params.TENSOR_MAP["b_l0b"] = all_tensor.get("tensor_b_matrix")
-    sch[Params.TENSOR_MAP["b_l0b"]].set_scope(cce_params.scope_cb)
+    sch[Params.TENSOR_MAP["b_l0b"]].set_scope(tbe_platform_info.scope_cb)
 
     Params.TENSOR_MAP["a_placehold"] = all_tensor.get("tensor_a")
     Params.TENSOR_MAP["b_placehold"] = all_tensor.get("tensor_b")
 
     if "tensor_a_fract" in all_tensor and "tensor_b_fract" in all_tensor:
         Params.TENSOR_MAP["a_l1"] = all_tensor.get("tensor_a_fract")
-        sch[Params.TENSOR_MAP["a_l1"]].set_scope(cce_params.scope_cbuf)
+        sch[Params.TENSOR_MAP["a_l1"]].set_scope(tbe_platform_info.scope_cbuf)
         Params.TENSOR_MAP["b_l1"] = all_tensor.get("tensor_b_fract")
-        sch[Params.TENSOR_MAP["b_l1"]].set_scope(cce_params.scope_cbuf)
+        sch[Params.TENSOR_MAP["b_l1"]].set_scope(tbe_platform_info.scope_cbuf)
         Params.cv_split_nd_in_flag = True
     else:
         Params.TENSOR_MAP["a_l1"] = sch.cache_read(Params.TENSOR_MAP["a_placehold"],
-                                                   cce_params.scope_cbuf,
+                                                   tbe_platform_info.scope_cbuf,
                                                    [Params.TENSOR_MAP["a_l0a"]])
         Params.TENSOR_MAP["b_l1"] = sch.cache_read(Params.TENSOR_MAP["b_placehold"],
-                                                   cce_params.scope_cbuf,
+                                                   tbe_platform_info.scope_cbuf,
                                                    [Params.TENSOR_MAP["b_l0b"]])
         Params.cv_split_nd_in_flag = False
 
@@ -2041,9 +2041,9 @@ def _set_data_layout_cv_split(res, sch):
 
     if "tensor_c_gm" in all_tensor:
         Params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c_matrix")
-        sch[Params.TENSOR_MAP["c_l0c"]].set_scope(cce_params.scope_cc)
+        sch[Params.TENSOR_MAP["c_l0c"]].set_scope(tbe_platform_info.scope_cc)
     else:
-        Params.TENSOR_MAP["c_l0c"] = sch.cache_write(Params.TENSOR_MAP["c_gm"], cce_params.scope_cc)
+        Params.TENSOR_MAP["c_l0c"] = sch.cache_write(Params.TENSOR_MAP["c_gm"], tbe_platform_info.scope_cc)
 
     _get_ops_mode()
     _init_map()
@@ -2185,7 +2185,7 @@ def _atomic_add(sch, res):
     batch_outer, batch_inner = sch[res].split(res.op.reduce_axis[0], nparts = block_dim_batch)
     res_after = res
     res_ub = sch.rfactor(res, batch_outer)
-    sch[res_ub].set_scope(cce_params.scope_ubuf)
+    sch[res_ub].set_scope(tbe_platform_info.scope_ubuf)
     # put reduce axis first
     sch[res_after].reorder(sch[res_after].op.reduce_axis[0], *sch[res_after].op.axis)
     sch[res_ub].reorder(sch[res_ub].op.reduce_axis[0], *sch[res_ub].op.axis[1:])
@@ -2198,12 +2198,12 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
     res: tensor
     sch_list: list of schedule
     """
-    Params.UB_SPACE_SIZE = cce_conf.get_soc_spec("UB_SIZE")
-    Params.L1_SPACE_SIZE = cce_conf.get_soc_spec("L1_SIZE")
-    Params.L0_SPACE_SIZE = cce_conf.get_soc_spec("L0A_SIZE")
-    Params.L0C_SPACE_SIZE = cce_conf.get_soc_spec("L0C_SIZE")
-    Params.SOC_VERSION = cce_conf.get_soc_spec("SOC_VERSION")
-    Params.cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    Params.UB_SPACE_SIZE = tbe_platform_info.get_soc_spec("UB_SIZE")
+    Params.L1_SPACE_SIZE = tbe_platform_info.get_soc_spec("L1_SIZE")
+    Params.L0_SPACE_SIZE = tbe_platform_info.get_soc_spec("L0A_SIZE")
+    Params.L0C_SPACE_SIZE = tbe_platform_info.get_soc_spec("L0C_SIZE")
+    Params.SOC_VERSION = tbe_platform_info.get_soc_spec("SOC_VERSION")
+    Params.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     sch = sch_list[0]
     if in_dynamic():
@@ -2539,10 +2539,10 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             sch[c_l0c].buffer_align(
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN[c_l0c.dtype]["mac"][0]),
-                (1, cce_params.CUBE_MKN[c_l0c.dtype]["mac"][2]),
+                (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][0]),
+                (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][2]),
                 (1, 1),
-                (1, cce_params.CUBE_MKN[c_l0c.dtype]["mac"][1])
+                (1, tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][1])
             )
 
         def _l0a_process():
@@ -2584,8 +2584,8 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             sch[a_l0a].buffer_align(
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN[a_l0a.dtype]["mac"][0]),
-                (1, cce_params.CUBE_MKN[a_l0a.dtype]["mac"][0])
+                (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][0]),
+                (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][0])
             )
 
         def _l0b_process():
@@ -2736,7 +2736,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             l1_ma = al1_tiling_m * al0_tiling_ma
             l1_ka = (al1_tiling_k + al0_tiling_k0 - 1) // al0_tiling_k0
 
-            aub_tiling_k0 = cce_params.CUBE_MKN[a_fract_k_ub.dtype]["mac"][1]
+            aub_tiling_k0 = tbe_platform.CUBE_MKN[a_fract_k_ub.dtype]["mac"][1]
             aub_tiling_m0 = 16
 
             a_ub_ori_shape = list(i.value for i in a_fract_k_ub.shape)
@@ -2856,7 +2856,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             l1_nb = bl1_tiling_n * bl0_tiling_nb
             l1_kb = (bl1_tiling_k + bl0_tiling_k0 - 1) // bl0_tiling_k0
 
-            bub_tiling_k0 = cce_params.CUBE_MKN[b_fract_ub.dtype]["mac"][1]
+            bub_tiling_k0 = tbe_platform.CUBE_MKN[b_fract_ub.dtype]["mac"][1]
             bub_tiling_n0 = 16
 
             b_ub_ori_shape = list(i.value for i in b_fract_ub.shape)
@@ -3255,8 +3255,8 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             c_gap_value = (Params.block_out + 1) * Params.block_in
             aub_k, aub_m, _, _ = tiling.get("AUB_shape")
             bub_k, bub_n, _, _ = tiling.get("BUB_shape")
-            aub_m *= cce_params.BLOCK_IN
-            bub_n *= cce_params.BLOCK_OUT
+            aub_m *= tbe_platform.BLOCK_IN
+            bub_n *= tbe_platform.BLOCK_OUT
 
             # the data stride in ub
             a_align_value = (aub_m + gap_value) if a_trans else (aub_k + gap_value)
@@ -3312,8 +3312,8 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             a_db = all_double_buffer.get("AUB_pbuffer")
             b_db = all_double_buffer.get("BUB_pbuffer")
             c_db = all_double_buffer.get("CUB_pbuffer")
-            aub_m *= cce_params.BLOCK_IN
-            bub_n *= cce_params.BLOCK_OUT
+            aub_m *= tbe_platform.BLOCK_IN
+            bub_n *= tbe_platform.BLOCK_OUT
 
             # get fused num for compute use UB size
             a_fused_num, b_fused_num, c_fused_num = _get_tiling_params(a_trans, b_trans)
@@ -3636,7 +3636,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
 
         def _fix_pipe_bias_process():
             bias_l1 = sch.cache_read(
-                fix_pipe_bias, cce_params.scope_cbuf, [c_l0c])
+                fix_pipe_bias, tbe_platform_info.scope_cbuf, [c_l0c])
             bias_fix_pipe = sch.cache_read(bias_l1, "local.FB", [c_l0c])
             sch[bias_fix_pipe].compute_at(sch[c_l0c], bl0_n_outer)
             sch[bias_l1].compute_at(sch[c_l0c], bl0_n_outer)
@@ -4058,7 +4058,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 and not small_ub_flag
                 and not Params.cube_vector_split):
                 mad_dict = {
-                    "mad_pattern": cce_params.GEMM_MODE,
+                    "mad_pattern": tbe_platform.GEMM_MODE,
                     "k_outer": [
                         reduce_axis_serial[0],
                         reduce_axis_serial[1],
@@ -4069,7 +4069,7 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
                 }
             else:
                 mad_dict = {
-                    "mad_pattern": cce_params.GEMM_MODE,
+                    "mad_pattern": tbe_platform.GEMM_MODE,
                     "k_outer": [
                         reduce_axis_serial[0],
                         reduce_axis_serial[1],
@@ -4181,11 +4181,11 @@ def gemm_schedule(res, sch_list, dynamic_para=None):  # pylint: disable=r0914, r
             return bl1_bound
 
         if Params.is_dynamic:
-            sch.disable_allocate(cce_params.scope_cbuf)
-            sch.disable_allocate(cce_params.scope_ca)
-            sch.disable_allocate(cce_params.scope_cb)
-            sch.disable_allocate(cce_params.scope_cc)
-            sch.disable_allocate(cce_params.scope_ubuf)
+            sch.disable_allocate(tbe_platform_info.scope_cbuf)
+            sch.disable_allocate(tbe_platform_info.scope_ca)
+            sch.disable_allocate(tbe_platform_info.scope_cb)
+            sch.disable_allocate(tbe_platform_info.scope_cc)
+            sch.disable_allocate(tbe_platform_info.scope_ubuf)
 
             # get l1 bound
             sch[a_l1].set_storage_bound(_get_al1_bound())

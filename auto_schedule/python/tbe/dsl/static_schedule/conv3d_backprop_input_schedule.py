@@ -15,7 +15,6 @@
 """
 CceConv3dBackpropInputOp
 """
-import te.platform as tbe_platform
 from tbe.dsl.static_schedule import conv3d_backprop_input_general_schedule
 
 
@@ -63,6 +62,5 @@ class CceConv3dBackpropInputOp(object):   # pylint: disable=R0903
         """
         self._res_tensor = res
         self._spec_node_list = spec_node_list
-        tbe_platform.cce_params.jump_expand_flag = True
         sch = conv3d_backprop_input_general_schedule.general_schedule(res, sch_list, tiling_case, var_range)
         return sch

@@ -18,15 +18,13 @@ gemm_compute
 import math
 from enum import Enum
 
-from te.platform import cce_conf
-from te.platform import cce_params
-from tbe.dsl import broadcast
-from tbe.dsl.compute.util import check_input_tensor_shape
-from tbe.dsl.compute.mmad_compute import matmul
-from tbe.dsl.base.operation import in_dynamic
-from tbe.common.utils import para_check
-from tbe.common.utils import shape_util
+import tbe.common.platform as tbe_platform
+import tbe.common.utils as tbe_utils
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl import broadcast
+from tbe.dsl.base.operation import in_dynamic
+from tbe.dsl.compute.mmad_compute import matmul
+from tbe.dsl.compute.util import check_input_tensor_shape
 from tbe.tvm import api as tvm
 from tbe.tvm.tensor import Tensor
 
@@ -91,16 +89,16 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
         shape_bias = [_get_value(i) for i in tensor_bias.shape]
 
     if (in_a_dtype in ("uint8", "int8")) and in_b_dtype == "int8":
-        k_block_size = cce_params.BLOCK_REDUCE_INT8
+        k_block_size = tbe_platform.BLOCK_REDUCE_INT8
     else:
-        k_block_size = cce_params.BLOCK_REDUCE
+        k_block_size = tbe_platform.BLOCK_REDUCE
 
     if dst_dtype == "int32" and len(shape_bias) == 2:
         for index, value in enumerate(shape_bias):
             if index == 0:
-                block = cce_params.BLOCK_IN
+                block = tbe_platform.BLOCK_IN
             else:
-                block = cce_params.BLOCK_OUT
+                block = tbe_platform.BLOCK_OUT
             shape_bias[index] = ((value + block - 1) // block) * block
 
     def _check_dtype():
@@ -295,7 +293,7 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 args_dict = {
                     "errCode": "E60104",
                     "expected_value": "{} or {}".format(
-                        cce_params.BLOCK_REDUCE_INT8, cce_params.BLOCK_REDUCE
+                        tbe_platform.BLOCK_REDUCE_INT8, tbe_platform.BLOCK_REDUCE
                     ),
                     "value": "{}".format(a_block_reduce)
                 }
@@ -303,35 +301,35 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
 
-            if a_block_in not in (cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN):
+            if a_block_in not in (tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_IN):
                 args_dict = {
                     "errCode": "E60103",
                     "expected_value": "{} or {}".format(
-                        cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN
+                        tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_IN
                     ),
                     "value": "{}".format(a_block_in)
                 }
                 raise RuntimeError(
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
-            if a_block_in == cce_params.BLOCK_VECTOR:
+            if a_block_in == tbe_platform.BLOCK_VECTOR:
                 is_vector_a = True
-                if m_shape != cce_params.BLOCK_VECTOR:
+                if m_shape != tbe_platform.BLOCK_VECTOR:
                     args_dict = {
                         "errCode": "E60114",
                         "reason": "when block_in of a is {}, m_shape of a should be {}".format(
-                            cce_params.BLOCK_VECTOR, cce_params.BLOCK_VECTOR
+                            tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_VECTOR
                         ),
                         "value": "{}".format(m_shape)
                     }
                     raise RuntimeError(
                         args_dict, error_manager_util.get_error_message(args_dict)
                     )
-                if km_shape % (cce_params.BLOCK_IN) != 0:
+                if km_shape % (tbe_platform.BLOCK_IN) != 0:
                     args_dict = {
                         "errCode": "E60114",
                         "reason": "k should be multiple of {}".format(
-                            cce_params.BLOCK_IN * k_block_size
+                            tbe_platform.BLOCK_IN * k_block_size
                         ),
                         "value": "k = {}".format(km_shape)
                     }
@@ -374,7 +372,7 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 args_dict = {
                     "errCode": "E60106",
                     "expected_value": "{} or {}".format(
-                        cce_params.BLOCK_REDUCE_INT8, cce_params.BLOCK_REDUCE
+                        tbe_platform.BLOCK_REDUCE_INT8, tbe_platform.BLOCK_REDUCE
                     ),
                     "value": "{}".format(b_block_reduce)
                 }
@@ -382,18 +380,18 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
 
-            if b_block_out not in (cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN):
+            if b_block_out not in (tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_IN):
                 args_dict = {
                     "errCode": "E60105",
                     "expected_value": "{} or {}".format(
-                        cce_params.BLOCK_VECTOR, cce_params.BLOCK_IN
+                        tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_IN
                     ),
                     "value": "{}".format(b_block_out)
                 }
                 raise RuntimeError(
                     args_dict, error_manager_util.get_error_message(args_dict)
                 )
-            if b_block_out == cce_params.BLOCK_VECTOR:
+            if b_block_out == tbe_platform.BLOCK_VECTOR:
                 is_gemv = True
                 if is_vector_a:
                     args_dict = {
@@ -408,18 +406,18 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                     args_dict = {
                         "errCode": "E60114",
                         "reason": "when block_out of b is {}, n_shape of b should be {}".format(
-                            cce_params.BLOCK_VECTOR, cce_params.BLOCK_VECTOR
+                            tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_VECTOR
                         ),
                         "value": "{}".format(n_shape)
                     }
                     raise RuntimeError(
                         args_dict, error_manager_util.get_error_message(args_dict)
                     )
-                if kn_shape % (cce_params.BLOCK_IN) != 0:
+                if kn_shape % (tbe_platform.BLOCK_IN) != 0:
                     args_dict = {
                         "errCode": "E60114",
                         "reason": "k should be multiple of {}".format(
-                            cce_params.BLOCK_IN * k_block_size
+                            tbe_platform.BLOCK_IN * k_block_size
                         ),
                         "value": "k = {}".format(kn_shape)
                     }
@@ -499,9 +497,9 @@ def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
         Return: None
         """
         n_shape = shape_b[0] if trans_b else shape_b[1]
-        if format_b == "ND" and (n_shape % cce_params.BLOCK_OUT != 0):
+        if format_b == "ND" and (n_shape % tbe_platform.BLOCK_OUT != 0):
             reason = ("When the input format is ND, "
-                      "the n direction must be aligned to {}.".format(cce_params.BLOCK_OUT))
+                      "the n direction must be aligned to {}.".format(tbe_platform.BLOCK_OUT))
             args_dict = {
                 "errCode": "E60108",
                 "op_name": "GEMM",
@@ -521,7 +519,7 @@ def _get_value(shape_object):
     return shape_object.value if hasattr(shape_object, "value") else shape_object
 
 
-@para_check.check_input_type(Tensor, Tensor, dict)
+@tbe_utils.para_check.check_input_type(Tensor, Tensor, dict)
 def gemm(tensor_a, tensor_b, para_dict):
     """
     algorithm: gemm and matmul
@@ -552,7 +550,7 @@ def gemm(tensor_a, tensor_b, para_dict):
     return result
 
 
-@para_check.check_input_type(Tensor, Tensor, Tensor)
+@tbe_utils.para_check.check_input_type(Tensor, Tensor, Tensor)
 def batchmatmul_fusedmuladd_reshape(batch_matmul_output, data_input1, data_input2):
     """
     reshape batchmatmul+fusedmuladd ubfusion inputs tensors
@@ -700,12 +698,12 @@ def _get_block(dtype):
             block_out
     """
     if dtype == "float16":
-        block_reduce = cce_params.BLOCK_REDUCE
+        block_reduce = tbe_platform.BLOCK_REDUCE
     else:
-        block_reduce = cce_params.BLOCK_REDUCE_INT8
+        block_reduce = tbe_platform.BLOCK_REDUCE_INT8
 
-    block_in = cce_params.BLOCK_IN
-    block_out = cce_params.BLOCK_OUT
+    block_in = tbe_platform.BLOCK_IN
+    block_out = tbe_platform.BLOCK_OUT
     return block_reduce, block_in, block_out
 
 
@@ -1025,7 +1023,7 @@ class GEMMCompute:
         ---------------------------------
         Return: out_dtype
         """
-        l0c_support_fp32 = cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32")
+        l0c_support_fp32 = tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32")
         def _out_dtype():
             if self.in_a_dtype == "float16" and self.in_b_dtype == "float16":
                 if self.dst_dtype not in ("float16", "float32"):
@@ -1126,9 +1124,9 @@ class GEMMCompute:
             origin_bias_shape = bias_shape.copy()
             for index, value in enumerate(bias_shape):
                 if index == 0:
-                    block = cce_params.BLOCK_IN
+                    block = tbe_platform.BLOCK_IN
                 else:
-                    block = cce_params.BLOCK_OUT
+                    block = tbe_platform.BLOCK_OUT
                 bias_shape[index] = ((value + block - 1) // block) * block
         else:
             origin_bias_shape = None
@@ -2130,9 +2128,9 @@ class GEMMCompute:
             tensor_c_gm
         """
 
-        l0c_support_fp32 = cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32")
+        l0c_support_fp32 = tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32")
 
-        if self.block_in != cce_params.BLOCK_VECTOR:  # gemm
+        if self.block_in != tbe_platform.BLOCK_VECTOR:  # gemm
             # define mad compute
             if GEMMComputeParam.batch_a:
                 tensor_c = tvm.compute(

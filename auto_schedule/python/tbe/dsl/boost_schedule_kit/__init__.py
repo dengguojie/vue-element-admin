@@ -13,25 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-gemm tiling case
+boost schedule kit
 """
-import warnings
-
-
-def calc_matmul(outs, option=None):
-    """
-    tiling_case func for dynamic shape matmul
-
-    Parameters
-    ----------
-    outs: tvm tensor or list of tvm tensor, results for tvm compute
-
-    Returns
-    -------
-    list of dict, each dict for a tiling case
-    """
-    warnings.warn("te.lang.dynamic.schedule.gemm_tilingcase is expired, "
-        "please replace it with the func tbe.dsl.unify_schedule.gemm_tilingcase",
-        DeprecationWarning)
-    from tbe.dsl.unify_schedule.gemm_tilingcase import calc_matmul
-    return calc_matmul(outs, option)
+from .util import Compare, enhance_check_tiling
+from .schedule_agent import ScheduleAgent

@@ -19,14 +19,14 @@ from __future__ import absolute_import
 import functools
 from math import ceil
 
-import te.platform.cce_params as cce
-import te.platform.cce_conf as conf
-from te.platform import get_soc_spec
-from te.platform.cce_conf import CceProductParams as pver
-from te.platform.fusion_manager import fusion_manager
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.context import get_context
+from tbe.dsl.compute import cube_util
 from tbe.dsl.instrinsic import cce_emitinsn_params
+from tbe.dsl.static_schedule import util
 import tvm
-from . import util
+
 
 DTYPE_WIDTH_MAP = {"uint64": 4,
                    "float16": 1,
@@ -114,7 +114,7 @@ def _add_res_ub(dequant_activation_tensor, res, sch):
     """
     for tensor in dequant_activation_tensor:
         if tensor == res:
-            res_ub = sch.cache_write(res, cce.scope_ubuf)
+            res_ub = sch.cache_write(res, tbe_platform_info.scope_ubuf)
             dequant_activation_tensor.remove(tensor)
             dequant_activation_tensor.append(res_ub)
 
@@ -136,7 +136,7 @@ def _get_header_tensor_in_dequant_ew_fusion(dequant_activation_tensor,
                 comm_2_elwt[common_tensor] = [ten_i]
     for common_tensor, ten_in_list in comm_2_elwt.items():
         common_tensor_ub = sch.cache_read(
-            common_tensor, cce.scope_ubuf, ten_in_list)
+            common_tensor, tbe_platform_info.scope_ubuf, ten_in_list)
         header_ub_tensors.append(common_tensor_ub)
     dequant_activation_tensor += header_ub_tensors
     return header_ub_tensors
@@ -196,8 +196,8 @@ def get_batch_factors(tensor_a_shape,  # pylint: disable=too-many-arguments
     else:
         batch = 0
     if batch in (0, 1):
-        block_in = cce.BLOCK_IN
-        block_out = cce.BLOCK_OUT
+        block_in = tbe_platform.BLOCK_IN
+        block_out = tbe_platform.BLOCK_OUT
         if m_shape != 1:
             core_inner_m = (((m_shape + block_in - 1) // block_in +
                              (m_factors - 1)) // m_factors) * block_in
@@ -305,7 +305,7 @@ def get_l1fusion_device_core_num(is_l1fusion):
     if is_l1fusion:
         device_core_num = 1
     else:
-        device_core_num = conf.getValue("Device_core_num")
+        device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
     return device_core_num
 
 
@@ -397,22 +397,6 @@ def get_perfect_core_num(m_shape,  # pylint: disable=too-many-locals
     return m_factor, n_factor
 
 
-def is_lhisi_cs_version():
-    """
-    check if 3796CS version
-    -------
-
-    Returns
-    -------
-    True: 3796CS version
-    False: Other version
-    """
-    soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version in ["Hi3796CV300CS", "SD3403"]:
-        return True
-    return False
-
-
 def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
     """
     get knowledge tiling for matmul schedule
@@ -424,7 +408,7 @@ def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
     shape_args = (m_shape, k_shape, n_shape, b_trans_val, ub_res_byte)
 
     shape_map = {}
-    core_num = get_soc_spec("CORE_NUM")
+    core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
     if core_num == DOUBLE_VALUE:
         if is_b_nz:
             shape_map = get_shape_map()
@@ -469,7 +453,7 @@ def get_knowledge_core(shape_mkn_args, m_factors, n_factors):
     m_factors, n_factors, value of m, n core split
     """
     shape_map = {}
-    core_num = get_soc_spec("CORE_NUM")
+    core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
     if core_num == CORE_NUM_THRITY:
         shape_map = get_core_map()
 
@@ -484,7 +468,7 @@ def update_op_pattern(fractal_a, fractal_b):
     only support frac+frac for elementwise fusion
     """
     if not fractal_a or not fractal_b:
-        fusion_manager.set_current_op_pattern("Opaque")
+        get_context().add_build_res("pattern", "Opaque")
 
 
 def set_overload_flag(overload_flag, current_op, pragma_axis):
@@ -608,7 +592,7 @@ def get_tensor_reuse(batch, core_inner_m, k_shape, core_inner_n,
     tensor_a = 0
     tensor_b = 0
 
-    size = get_soc_spec("L1_SIZE") // dtype_byte // 2
+    size = tbe_platform_info.get_soc_spec("L1_SIZE") // dtype_byte // 2
     n_max_num = ((core_inner_n + n_l1_shape - 1) // n_l1_shape) * n_l1_shape
 
     m_max_num = ((core_inner_m + m_l1_shape - 1) // m_l1_shape) * m_l1_shape
@@ -806,7 +790,7 @@ def set_compress_info(sch,  # pylint: disable=R0913, R0914
     if out_axis is None:
         raise RuntimeError("compress index axis is None, it's error.")
 
-    engine, ratios, channel, mode = get_soc_spec("UNZIP")
+    engine, ratios, channel, mode = tbe_platform_info.get_soc_spec("UNZIP")
     frac_size = 512
 
     index_shape = compress_index.shape
@@ -922,7 +906,7 @@ def mmad_schedule(res, sch_list):
         if 'trans_b' in tensor_b.op.attrs:
             trans_b = tensor_b.op.attrs['trans_b'].value
         is_l1fusion = l1_fusion_type in (0, 1)
-        size = get_soc_spec("L1_SIZE")
+        size = tbe_platform_info.get_soc_spec("L1_SIZE")
         if size == 0 and is_l1fusion:
             if trans_b:
                 raise RuntimeError(
@@ -1061,7 +1045,7 @@ def mmad_schedule(res, sch_list):
 
     do_cache_write_flag = dequant_nd_fract and not quant_fusion
     if do_cache_write_flag:
-        tensor_c_ub_fract = sch.cache_write(res, cce.scope_ubuf)
+        tensor_c_ub_fract = sch.cache_write(res, tbe_platform_info.scope_ubuf)
 
     matmul_end_tensor = tensor_c_gm
     if tensor_c_gm is None:
@@ -1219,11 +1203,11 @@ def mmad_schedule(res, sch_list):
         tensor_a_l1_workspace = None
         if input_l1_flag == 1:
             if tensor_a_ub is not None:
-                tensor_a_l1_workspace = sch.cache_read(tensor_a, cce.scope_cbuf_fusion, tensor_a_ub)
+                tensor_a_l1_workspace = sch.cache_read(tensor_a, tbe_platform_info.scope_cbuf_fusion, tensor_a_ub)
             elif tensor_a_l1 is not None and not l1_fusion_and_l1_size_0:
-                tensor_a_l1_workspace = sch.cache_read(tensor_a, cce.scope_cbuf_fusion, tensor_a_l1)
+                tensor_a_l1_workspace = sch.cache_read(tensor_a, tbe_platform_info.scope_cbuf_fusion, tensor_a_l1)
             elif tensor_a_l0a is not None and l1_fusion_and_l1_size_0:
-                tensor_a_l1_workspace = sch.cache_read(tensor_a, cce.scope_cbuf_fusion, tensor_a_l1)
+                tensor_a_l1_workspace = sch.cache_read(tensor_a, tbe_platform_info.scope_cbuf_fusion, tensor_a_l1)
         return tensor_a_l1_workspace
 
     tensor_a_l1_workspace = _get_tensor_a_l1_workspace(l1_fusion_and_l1_size_0)
@@ -1257,11 +1241,11 @@ def mmad_schedule(res, sch_list):
     b_l1_inline_flag = _fc_tensor_b_l1_inline()
 
     if gevm_flag or gemv_flag:
-        block_in = cce.BLOCK_VECTOR
-        mad_pattern = cce.GEVM_MODE
+        block_in = tbe_platform.BLOCK_VECTOR
+        mad_pattern = tbe_platform.GEVM_MODE
     else:
-        mad_pattern = cce.GEMM_MODE
-        block_in = cce.BLOCK_IN
+        mad_pattern = tbe_platform.GEMM_MODE
+        block_in = tbe_platform.BLOCK_IN
 
     l0_tensor_len_a = len(tensor_a_l0a.shape)
     l0_tensor_len_b = len(tensor_b_l0b.shape)
@@ -1269,14 +1253,14 @@ def mmad_schedule(res, sch_list):
     tensor_len_b = len(tensor_b_l1.shape)
     tensor_len_c = len(tensor_c.shape)
 
-    block_out = cce.BLOCK_OUT
+    block_out = tbe_platform.BLOCK_OUT
 
     out_dtype = tensor_c.dtype
 
     def _get_block_reduce(out_dtype):
         if out_dtype in ("float16", "float32"):
-            return cce.BLOCK_REDUCE
-        return cce.BLOCK_REDUCE_INT8
+            return tbe_platform.BLOCK_REDUCE
+        return tbe_platform.BLOCK_REDUCE_INT8
 
     block_reduce = _get_block_reduce(out_dtype)
 
@@ -1451,7 +1435,7 @@ def mmad_schedule(res, sch_list):
     if dequant_fusion or tensor_c_ub.op.attrs['scale_drq'].value == "ENABLE":
         # quant parameter is fixed float16, it's 2 bytes
         # just support scalar now, not support vector yet
-        ub_reserve_buff = cce.BLOCK_OUT * 2
+        ub_reserve_buff = tbe_platform.BLOCK_OUT * 2
 
     def _is_need_n_cut_even(date_transfer_fusion, core_inner_n):
         if not date_transfer_fusion:
@@ -1501,7 +1485,7 @@ def mmad_schedule(res, sch_list):
         src_shape, m_l0_shape, k_l0_shape, n_l0_shape)
 
     l0c_enable_db = True
-    l0c_size = get_soc_spec("L0C_SIZE")
+    l0c_size = tbe_platform_info.get_soc_spec("L0C_SIZE")
     if m_l0_shape * n_l0_shape * l0c_byte * DOUBLE_VALUE > l0c_size:
         l0c_enable_db = False
 
@@ -1596,40 +1580,40 @@ def mmad_schedule(res, sch_list):
         set all tensors buffer scope
         """
         if in_addr_type == 1:
-            set_tensor_scope(tensor_a, cce.scope_cbuf_fusion)
-        set_tensor_scope(tensor_a_l1, cce.scope_cbuf)
-        set_tensor_scope(tensor_b_l1, cce.scope_cbuf)
+            set_tensor_scope(tensor_a, tbe_platform_info.scope_cbuf_fusion)
+        set_tensor_scope(tensor_a_l1, tbe_platform_info.scope_cbuf)
+        set_tensor_scope(tensor_b_l1, tbe_platform_info.scope_cbuf)
 
         def __res_set_scope():
             if out_addr_type == 1:
-                set_tensor_scope(res, cce.scope_cbuf_fusion)
+                set_tensor_scope(res, tbe_platform_info.scope_cbuf_fusion)
 
         __res_set_scope()
 
-        set_tensor_scope(tensor_a_ub, cce.scope_ubuf)
-        set_tensor_scope(tensor_b_ub, cce.scope_ubuf)
-        set_tensor_scope(tensor_a_ub_fract, cce.scope_ubuf)
-        set_tensor_scope(tensor_b_ub_fract, cce.scope_ubuf)
-        set_tensor_scope(tensor_c_ub_fract, cce.scope_ubuf)
+        set_tensor_scope(tensor_a_ub, tbe_platform_info.scope_ubuf)
+        set_tensor_scope(tensor_b_ub, tbe_platform_info.scope_ubuf)
+        set_tensor_scope(tensor_a_ub_fract, tbe_platform_info.scope_ubuf)
+        set_tensor_scope(tensor_b_ub_fract, tbe_platform_info.scope_ubuf)
+        set_tensor_scope(tensor_c_ub_fract, tbe_platform_info.scope_ubuf)
 
-        set_tensor_scope(tensor_a_l0a, cce.scope_ca)
-        set_tensor_scope(tensor_b_l0b, cce.scope_cb)
-        set_tensor_scope(tensor_c, cce.scope_cc)
-        set_tensor_scope(tensor_c_ub, cce.scope_ubuf)
+        set_tensor_scope(tensor_a_l0a, tbe_platform_info.scope_ca)
+        set_tensor_scope(tensor_b_l0b, tbe_platform_info.scope_cb)
+        set_tensor_scope(tensor_c, tbe_platform_info.scope_cc)
+        set_tensor_scope(tensor_c_ub, tbe_platform_info.scope_ubuf)
 
         if dequant_fusion:
             if sqrt_flag:
-                sch[tensor_sqrt].set_scope(cce.scope_ubuf)
+                sch[tensor_sqrt].set_scope(tbe_platform_info.scope_ubuf)
             for tensor in dequant_activation_tensor:
-                sch[tensor].set_scope(cce.scope_ubuf)
+                sch[tensor].set_scope(tbe_platform_info.scope_ubuf)
             for tensor_list in tensor_fusion_list:
-                sch[tensor_list].set_scope(cce.scope_ubuf)
+                sch[tensor_list].set_scope(tbe_platform_info.scope_ubuf)
         for tensor in fusion_list:
-            sch[tensor].set_scope(cce.scope_ubuf)
+            sch[tensor].set_scope(tbe_platform_info.scope_ubuf)
         if is_with_bias:
-            sch[tensor_bias_ub].set_scope(cce.scope_ubuf)
-            sch[tensor_bias_l0c].set_scope(cce.scope_cc)
-            sch[tensor_c_add_bias].set_scope(cce.scope_cc)
+            sch[tensor_bias_ub].set_scope(tbe_platform_info.scope_ubuf)
+            sch[tensor_bias_l0c].set_scope(tbe_platform_info.scope_cc)
+            sch[tensor_c_add_bias].set_scope(tbe_platform_info.scope_cc)
 
         gm_ub = None
         ele_header_ub_tensors = []
@@ -1639,14 +1623,14 @@ def mmad_schedule(res, sch_list):
         _gen_in_out_tensor_map(res, in_out_tensor_map)
         # multi output fusion with elementwise
         if fusion_ele and tensor_c_gm in res_ori:
-            gm_ub = sch.cache_read(tensor_c_gm, cce.scope_ubuf,
+            gm_ub = sch.cache_read(tensor_c_gm, tbe_platform_info.scope_ubuf,
                                    in_out_tensor_map[tensor_c_gm])
 
         tensor_ele_ub = []
         header_tensors = list(set(header_tensors))
         for ten_i in header_tensors:
             if in_out_tensor_map[ten_i][0] not in matmul_tensors:
-                ele_ub = sch.cache_read(ten_i, cce.scope_ubuf,
+                ele_ub = sch.cache_read(ten_i, tbe_platform_info.scope_ubuf,
                                         in_out_tensor_map[ten_i])
                 tensor_ele_ub.append(ele_ub)
                 ele_header_ub_tensors.append(ele_ub)
@@ -1670,7 +1654,7 @@ def mmad_schedule(res, sch_list):
                 axpy_and_parent.append([ten_i, ten_i.op.input_tensors[1]])
 
         for ten_i in elemwise_tensors:
-            ele_ub = sch.cache_write(ten_i, cce.scope_ubuf)
+            ele_ub = sch.cache_write(ten_i, tbe_platform_info.scope_ubuf)
             for index, (axpy, parent) in enumerate(axpy_and_parent):
                 if ten_i == axpy:
                     axpy_and_parent[index][0] = ele_ub
@@ -1719,7 +1703,7 @@ def mmad_schedule(res, sch_list):
                                                     (unchanged, block_out),
                                                     (unchanged, block_out))
         # single batch
-        if block_in != cce.BLOCK_VECTOR:
+        if block_in != tbe_platform.BLOCK_VECTOR:
             if len(tensor_c.shape) == 4:
                 if tensor_a_ub is not None:
                     sch[tensor_a_ub].buffer_align((unchanged, block_in),
@@ -1901,7 +1885,7 @@ def mmad_schedule(res, sch_list):
 
     def _requant_fusion_proc():
         tensor_drq = requant_scale.op.input_tensors[1]
-        tensor_drq_ub = sch.cache_read(tensor_drq, cce.scope_ubuf,
+        tensor_drq_ub = sch.cache_read(tensor_drq, tbe_platform_info.scope_ubuf,
                                        [requant_scale])
         sch[tensor_drq_ub].emit_insn(tensor_drq_ub.op.axis[0],
                                      'dma_copy')
@@ -1913,10 +1897,10 @@ def mmad_schedule(res, sch_list):
     def _dequant_fusion_proc(axis_block):
         tensor_drq = dequant_tensor.op.input_tensors[1]
         if sqrt_flag:
-            c_ub = sch.cache_read(tensor_drq, cce.scope_ubuf,
+            c_ub = sch.cache_read(tensor_drq, tbe_platform_info.scope_ubuf,
                                   [dequant_tensor, tensor_sqrt])
         else:
-            c_ub = sch.cache_read(tensor_drq, cce.scope_ubuf,
+            c_ub = sch.cache_read(tensor_drq, tbe_platform_info.scope_ubuf,
                                   [dequant_tensor])
         sch[c_ub].emit_insn(c_ub.op.axis[0], 'dma_copy')
         if axis_block is not None:
@@ -1924,7 +1908,7 @@ def mmad_schedule(res, sch_list):
 
         dequant_emit_axis, deq_scale_mode = (1, "vector") \
             if "vector" in dequant_tensor.op.tag else (0, "scalar")
-        if pver().is_ng1_version() or is_lhisi_cs_version():
+        if cube_util.is_ng1_version() or cube_util.is_lhisi_cs_version():
             sch[dequant_tensor].emit_insn(
                 dequant_tensor.op.axis[dequant_emit_axis], 'dma_copy')
         else:
@@ -1981,7 +1965,7 @@ def mmad_schedule(res, sch_list):
         -------
         instruction
         """
-        if pver().is_mini_version():
+        if cube_util.is_mini_version():
             emit_insn_str = "vector_conv"
         else:
             if round_mode == "Round":
@@ -2129,7 +2113,7 @@ def mmad_schedule(res, sch_list):
                 if fusion_ele:
                     if gm_ub is None:
                         sch[tensor_c_gm].compute_inline()
-                    res_ub = sch.cache_write(res, cce.scope_ubuf)
+                    res_ub = sch.cache_write(res, tbe_platform_info.scope_ubuf)
                     elemwise_tensors.append(res_ub)
 
                 m_factor, n_factor, m_part_cnt, n_part_cnt = get_block_split_factor(
@@ -2297,7 +2281,7 @@ def mmad_schedule(res, sch_list):
 
             if fusion_ele:
                 sch[tensor_c_gm].compute_inline()
-                res_ub = sch.cache_write(res, cce.scope_ubuf)
+                res_ub = sch.cache_write(res, tbe_platform_info.scope_ubuf)
                 elemwise_tensors.append(res_ub)
 
             res_len = len(res.shape)
@@ -2484,7 +2468,7 @@ def mmad_schedule(res, sch_list):
             if tensor_c_ub.op.attrs['scale_drq'].value == "ENABLE":
                 # tensor_drq is second input for tensor_c_ub
                 tensor_drq = tensor_c_ub.op.input_tensors[1]
-                c_ub = sch.cache_read(tensor_drq, cce.scope_ubuf, [tensor_c_ub])
+                c_ub = sch.cache_read(tensor_drq, tbe_platform_info.scope_ubuf, [tensor_c_ub])
                 emit_insn_func(sch, c_ub, c_ub.op.axis[0], 'dma_copy')
                 if axis_block is not None:
                     sch[c_ub].compute_at(sch[res], axis_block)

@@ -15,12 +15,13 @@
 """
 conv3d backprop input general compute.
 """
-import te.platform as tbe_platform
-from tbe.dsl.compute import conv3d_backprop_input_cube_util as conv3d_dx_utils
+from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from tbe.dsl.compute import cube_util
-from tbe import tvm
+from tbe.dsl.compute import conv3d_backprop_input_cube_util as conv3d_dx_utils
 from tbe.tvm.intrin import abs as tvm_abs
 
 
@@ -309,9 +310,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         dx_ddr: dx tensor in ddr
         """
         c_dtype = "float32"
-        if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                        "Hi3796CV300CS",
-                                                        "SD3403"):
+        if tbe_platform_info.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             c_dtype = "float16"
         dx_col = super(DeConvPattern, self).generate_c(dy_col,
                                                        w_col,

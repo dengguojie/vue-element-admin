@@ -18,14 +18,16 @@ conv3d compute
 import copy
 import warnings
 
-import te.platform as tbe_platform
-from tbe.dsl.compute import cube_util
-from tbe.dsl.compute import util as te_util
-from tbe.dsl.base.operation import get_te_var
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from tbe.common.utils import shape_util
 from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common import utils as tbe_utils
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils.errormgr import error_manager_cube as cube_err
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.compute import util as compute_util
+from tbe.dsl.compute import cube_util
+
 
 _OP_TAG = "conv3d_"
 _TENSOR_MAP = {}
@@ -123,7 +125,7 @@ def _cube_3d_compute(fmap,
     _TENSOR_MAP["fmap"] = fmap
     _TENSOR_MAP["filter"] = weight
 
-    fmap_shape = shape_util.shape_to_list(fmap.shape)
+    fmap_shape = tbe_utils.shape_util.shape_to_list(fmap.shape)
     batch_size = fmap_shape[0]
     fmap_d = fmap_shape[1]
     fmap_c1 = fmap_shape[2]
@@ -287,7 +289,7 @@ def _cube_3d_compute(fmap,
                         attrs=attrs_dict)
 
     _TENSOR_MAP["c_ub"] = c_ub
-    dim_map1 = _im2col_dim(shape_util.shape_to_list(fuse_fmap_tensor.shape),
+    dim_map1 = _im2col_dim(tbe_utils.shape_util.shape_to_list(fuse_fmap_tensor.shape),
                            shape_filter_ncdhw, list(pads), list(stride_dhw),
                            list(dilation_dhw), config)
     dim_map_copy = _DIM_MAP.copy()
@@ -407,7 +409,7 @@ def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
     -------
     new tensor
     """
-    fmap_shape = shape_util.shape_to_list(fmap.shape)
+    fmap_shape = tbe_utils.shape_util.shape_to_list(fmap.shape)
     batch_size = fmap_shape[0]
     fmap_d = fmap_shape[1]
     fmap_c1 = fmap_shape[2]
@@ -426,7 +428,7 @@ def _mad_by_load2d(mad_shape, fmap, weight, config, mad_dtype, pads, stride_d,
         name=_OP_TAG + "al1_load2d")
     _TENSOR_MAP["al1_load2d"] = al1_load2d
 
-    hw_dim = te_util.int_ceil_div(fmap_h * fmap_w,
+    hw_dim = compute_util.int_ceil_div(fmap_h * fmap_w,
                                   tbe_platform.CUBE_MKN[fmap.dtype]["mac"][0])
 
     shape_al0_load2d = (real_g, batch_size * fmap_d, hw_dim, cin1_g,
@@ -602,7 +604,7 @@ def _bias_add(in_tensor0, in_tensor1, attrs={}):
     in_tensor0+in_tensor1 tensor
     """
     dim_map = {}
-    dim_map["out_img_shape"] = shape_util.shape_to_list(in_tensor0.shape)
+    dim_map["out_img_shape"] = tbe_utils.shape_util.shape_to_list(in_tensor0.shape)
     _NAME_INDEX[0] += 1
 
     with tvm.tag_scope('conv_vector_bias_add'):
@@ -821,7 +823,7 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
                 'Chip Design demand w_out must >=2 when h_out != 1')
 
     # check for not bigger than L1
-    l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
+    l1_buffer_size = tbe_platform_info.get_soc_spec("L1_SIZE")
     m_bit_ratio = {"float16": 2, "int8": 1}
     point_per_w = ((fmap_w - filter_dilated_w) +
                    pad_w[0] + pad_w[1]) // stride_dhw[2] + 1
@@ -1016,7 +1018,7 @@ def conv3d(x, filter, filter_size, para_dict):
     # for tiling
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
-    fmap_shape_ndc1hwc0 = shape_util.shape_to_list(x.shape)
+    fmap_shape_ndc1hwc0 = tbe_utils.shape_util.shape_to_list(x.shape)
     fmap_n, fmap_d, fmap_c1, fmap_h, fmap_w, fmap_c0 = fmap_shape_ndc1hwc0
     fmap_shape_ndc1hwc0 = [fmap_n, fmap_d, cin1_g, fmap_h, fmap_w, fmap_c0]
     shape_w_ndc1hwc0 = [cout_g, filter_d, cin1_g, filter_h, filter_w,

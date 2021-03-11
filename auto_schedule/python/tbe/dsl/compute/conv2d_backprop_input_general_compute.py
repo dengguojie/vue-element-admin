@@ -15,18 +15,15 @@
 """
 conv2d backprop input general compute.
 """
-from te.platform import cce_conf
-from te.platform import cce_params
-from tbe.dsl.compute.cube_util import ConvDslPattern
-from tbe.dsl.compute.cube_util import CubeDslPattern
-from tbe.dsl.compute.cube_util import shape_to_list
-from tbe.dsl.compute.cube_util import GroupDictKeys
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.compute import cube_util
 from tbe.tvm import api as tvm
 from tbe.tvm.intrin import abs as tvm_abs
 
 
-class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
+class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
     """
     class of convolution back propagation
 
@@ -78,15 +75,15 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         self._output_shape = output_shape
         self._kernel_name = kernel_name
         _, _, self._dilate_h, self._dilate_w = dilations
-        self.m_0, _, _ = cce_params.CUBE_MKN["float16"]["mac"]
+        self.m_0, _, _ = tbe_platform.CUBE_MKN["float16"]["mac"]
         self._offset_x = offset_x
         self._fusion_para = fusion_para
         self._var_map = var_map
         self._group_dict = group_dict
-        self._real_g = self._group_dict.get(GroupDictKeys.g_extend)
-        self._cou1_g = self._group_dict.get(GroupDictKeys.dy_c1_extend)
-        self._cin1_g = self._group_dict.get(GroupDictKeys.dx_c1_extend)
-        self._cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self._real_g = self._group_dict.get(cube_util.GroupDictKeys.g_extend)
+        self._cou1_g = self._group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
+        self._cin1_g = self._group_dict.get(cube_util.GroupDictKeys.dx_c1_extend)
+        self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
         """
@@ -214,7 +211,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         valid_shape = fusion_para.get("valid_shape")
         slice_offset = fusion_para.get("slice_offset")
 
-        dy_batch, kernel_cout1, dy_h, dy_w, kernel_cout0 = shape_to_list(dy_ddr.shape)
+        dy_batch, kernel_cout1, dy_h, dy_w, kernel_cout0 = cube_util.shape_to_list(dy_ddr.shape)
         stride_h, stride_w = self._stride_h, self._stride_w
 
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
@@ -323,7 +320,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         new_pad = (pad_up_before, pad_down_after,
                    pad_left_before, pad_right_after)
 
-        pat_conv = ConvDslPattern(
+        pat_conv = cube_util.ConvDslPattern(
             kernel_h,
             kernel_w,
             new_stride,
@@ -363,7 +360,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         """
 
         if kernels.dtype == "int8":
-            w_k1, kernel_cin1, kernel_cin0, w_k0 = shape_to_list(kernels.shape)
+            w_k1, kernel_cin1, kernel_cin0, w_k0 = cube_util.shape_to_list(kernels.shape)
             shape_w_l0b = (self._real_g,
                            w_k1//self._real_g,
                            kernel_cin1,
@@ -381,7 +378,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
                 _kernel_elem_func(indices, kernels), name="w_col", tag="inverse_trans_dma"
             )
         else:
-            w_k1, kernel_cout1, kernel_cout0, w_k0 = shape_to_list(kernels.shape)
+            w_k1, kernel_cout1, kernel_cout0, w_k0 = cube_util.shape_to_list(kernels.shape)
             kernel_h, kernel_w = self._kernel_h, self._kernel_w
             if w_k1 % (kernel_h * kernel_w) != 0:
                 dict_args = dict()
@@ -437,20 +434,16 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
         def _add_bias_in_ub(in_tensor0, in_tensor1):
             c_add_vector = tvm.compute(
                 in_tensor0.shape,
-                lambda *indice: in_tensor0(*indice)
-                + in_tensor1(
-                    indice[1] * cce_params.CUBE_MKN[in_tensor0.dtype]["mac"][2]
-                    + indice[3]
-                ),
-                name="bias_add_vector"
-            )
+                lambda *indice: in_tensor0(*indice) + in_tensor1(indice[1] * tbe_platform.CUBE_MKN[
+                    in_tensor0.dtype]["mac"][2] + indice[3]),
+                name="bias_add_vector")
             return c_add_vector
 
         dy_col = tensor_a
         w_col = tensor_b
 
         res_c_type = "float32"
-        if not cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32"):
+        if not tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32"):
             res_c_type = "float16"
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
             res_c_type = "int32"
@@ -463,7 +456,7 @@ class DeConvPattern(CubeDslPattern):  # pylint: disable=R0902
             dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x
         )
         # mad dx shape
-        dx_g, dx_batch, dx_c1, dx_hw, dx_c0 = shape_to_list(dx_col.shape)
+        dx_g, dx_batch, dx_c1, dx_hw, dx_c0 = cube_util.shape_to_list(dx_col.shape)
 
         # real dx shape
         _, dx_cin1, dx_h, dx_w, dx_cin0 = self._output_shape

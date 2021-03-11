@@ -60,7 +60,7 @@ def depthwise_conv2d_compute(fmap,
     depthwise_res : result tensor
        forward depthwise result of out
     """
-    warnings.warn("te.lang.cce.te_compute.depthwise_conv2d_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.depthwise_conv2d_compute is expired, "
         "please replace it with the func tbe.dsl.compute.depthwise_conv2d_compute",
         DeprecationWarning)
     from tbe.dsl.compute.depthwise_conv2d_compute import depthwise_conv2d_compute
@@ -110,7 +110,7 @@ def depthwise_conv2d_backprop_filter_d_compute(fmap,
     depthwise_dfilter_res: tvm tensor
         the tensor of output.
     """
-    warnings.warn("te.lang.cce.te_compute.depthwise_conv2d_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.depthwise_conv2d_compute is expired, "
         "please replace it with the func tbe.dsl.compute.depthwise_conv2d_compute",
         DeprecationWarning)
     from tbe.dsl.compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_filter_d_compute
@@ -152,7 +152,7 @@ def depthwise_conv2d_backprop_input_d_compute(input_shape,
     dx_res: compute of the gradients of depthwise convolution
             with respect to the input
     """
-    warnings.warn("te.lang.cce.te_compute.depthwise_conv2d_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.depthwise_conv2d_compute is expired, "
         "please replace it with the func tbe.dsl.compute.depthwise_conv2d_compute",
         DeprecationWarning)
     from tbe.dsl.compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute

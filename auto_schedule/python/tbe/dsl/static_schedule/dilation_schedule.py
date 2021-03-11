@@ -15,12 +15,12 @@
 """
 dilation schedule
 """
-import te.platform as tbe_platform
-from te.platform import cce_params
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.dilation_compute import calc_minimum_ub
 from tbe.dsl.compute.dilation_compute import calc_space_of_ub
 from tbe.dsl.compute.dilation_compute import get_first_axis_need_dilate
-from tbe.common.utils.errormgr import error_manager_util
 
 
 def _get_tiling_factor(shape, dilations, dtype):
@@ -33,7 +33,7 @@ def _get_tiling_factor(shape, dilations, dtype):
     """
     first_dilate_axis = get_first_axis_need_dilate(dilations)
     minimum_ub = calc_minimum_ub(shape, dilations, dtype)
-    ub_size = tbe_platform.get_soc_spec("UB_SIZE")
+    ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
     if minimum_ub > ub_size:
         args_dict = {
             "errCode": "E60038",
@@ -65,9 +65,9 @@ def _get_buffer_align_param(dilations, dtype):
     :return: buffer_align params
     """
     res = [(1, 1)] * (len(dilations) - 1)
-    align_num = cce_params.BLOCK_REDUCE
+    align_num = tbe_platform.BLOCK_REDUCE
     if dtype == "int8":
-        align_num = cce_params.BLOCK_REDUCE_INT8
+        align_num = tbe_platform.BLOCK_REDUCE_INT8
     res.append((1, align_num))
     return res
 
@@ -120,9 +120,9 @@ def dilation_schedule(res, sch_list):
     # set scope and buffer_align
     sch[ub_x].buffer_align(*_get_buffer_align_param(dilations, dtype))
     sch[ub_dilated_x].buffer_align(*_get_buffer_align_param(dilations, dtype))
-    sch[ub_x].set_scope(cce_params.scope_ubuf)
-    sch[padding_default].set_scope(cce_params.scope_ubuf)
-    sch[ub_dilated_x].set_scope(cce_params.scope_ubuf)
+    sch[ub_x].set_scope(tbe_platform_info.scope_ubuf)
+    sch[padding_default].set_scope(tbe_platform_info.scope_ubuf)
+    sch[ub_dilated_x].set_scope(tbe_platform_info.scope_ubuf)
 
     # get split params, split and compute_at
     shape_ub_x = [i.value for i in ub_x.shape]

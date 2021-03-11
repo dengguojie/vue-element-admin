@@ -19,18 +19,13 @@ conv2d backprop filter schudule.
 from __future__ import absolute_import
 from __future__ import print_function
 
-from te.platform.cce_params import scope_ubuf
-from te.platform.cce_params import scope_ca
-from te.platform.cce_params import scope_cb
-from te.platform.cce_params import scope_cc
-from te.platform.cce_params import scope_cbuf
-from te.platform.cce_conf import get_soc_spec
 from tbe import tvm
-from tbe.dsl.compute.cube_util import shape_to_list
-from tbe.dsl.static_schedule.util import parse_tbe_compile_para
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.conv2d_backprop_filter_compute import DynamicConv2dBpFilterParams
+from tbe.dsl.compute import cube_util
+from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
 
 # for debug, delete before publish
@@ -106,11 +101,11 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         self.need_tensorize = need_tensorize
         self.need_pragma = need_pragma
         self.spec_node_list = []
-        self.cube_vector_split = get_soc_spec("CUBE_VECTOR_SPLIT")
-        self.l1_size = get_soc_spec("L1_SIZE")  # L1 size
-        self._corenum = get_soc_spec("CORE_NUM")
-        self._loc_size = get_soc_spec("L0C_SIZE")
-        self._lob_size = get_soc_spec("L0B_SIZE")
+        self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self.l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")  # L1 size
+        self._corenum = tbe_platform_info.get_soc_spec("CORE_NUM")
+        self._loc_size = tbe_platform_info.get_soc_spec("L0C_SIZE")
+        self._lob_size = tbe_platform_info.get_soc_spec("L0B_SIZE")
 
     def schedule(self,  # pylint: disable=R0914,R0915
                  res, spec_node_list, sch_list, dynamic_para=None):
@@ -366,11 +361,11 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             # will be dropped
             res_ddr = res_cc
             res_cc = sch.rfactor(res_ddr, fused_atomic_write)
-            sch[res_cc].set_scope(scope_cc)
+            sch[res_cc].set_scope(tbe_platform_info.scope_cc)
             if self.cube_vector_split:
                 res_ub = None
             else:
-                res_ub = sch.cache_read(res_cc, scope_ubuf, [res_ddr])
+                res_ub = sch.cache_read(res_cc, tbe_platform_info.scope_ubuf, [res_ddr])
             return res_cc, res_ub, res_ddr, ub_reduce, ddr_reduce
 
         def _full_k_check():
@@ -982,16 +977,16 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         real_g = group_dict["real_g"].value
 
         batch_grads, c1_grads, height_grads, width_grads, c0_grads \
-            = shape_to_list(grads.shape)
+            = cube_util.shape_to_list(grads.shape)
         grads_shape = [batch_grads, cout_g // c0_grads,
                        height_grads, width_grads, c0_grads]
         batch_fmap, c1_fmap, height_fmap, width_fmap, c0_fmap \
-            = shape_to_list(fmap.shape)
+            = cube_util.shape_to_list(fmap.shape)
         fmap_shape = [batch_fmap, cin1_g, height_fmap, width_fmap, c0_fmap]
         grads_matrix_batch, grads_matrix_c1, \
-        grads_matrix_howo, grads_matrix_c0 = shape_to_list(grads_matrix.shape)
-        _, fkk, _, _ = shape_to_list(dw_cc.shape)
-        _, _, hw_pad_1, _, _, _ = shape_to_list(fmap_fractal.shape)
+        grads_matrix_howo, grads_matrix_c0 = cube_util.shape_to_list(grads_matrix.shape)
+        _, fkk, _, _ = cube_util.shape_to_list(dw_cc.shape)
+        _, _, hw_pad_1, _, _, _ = cube_util.shape_to_list(fmap_fractal.shape)
 
         stride_height, stride_width, pad_up, pad_down, pad_left, \
         pad_right, kernel_height, kernel_width, dilation_height, \
@@ -1077,11 +1072,11 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         block_dim_cout, block_dim_cin, block_dim_group \
             = _get_block_dim()
 
-        sch[grads_matrix].set_scope(scope_cbuf)
+        sch[grads_matrix].set_scope(tbe_platform_info.scope_cbuf)
         sch[grads_matrix].storage_align(
             sch[grads_matrix].op.axis[1], CUBE_MUL_SHAPE, 0)
 
-        sch[grads_fractal].set_scope(scope_ca)
+        sch[grads_fractal].set_scope(tbe_platform_info.scope_ca)
         sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
                                         (1, CUBE_DIM), (1, CUBE_DIM))
 
@@ -1094,7 +1089,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             #                               kernel_width,
             #                               C0_fmap)
             if not self.dynamic_mode:
-                fmap_l1 = sch.cache_read(fmap, scope_cbuf, [fmap_matrix])
+                fmap_l1 = sch.cache_read(fmap, tbe_platform_info.scope_cbuf, [fmap_matrix])
                 if not flag_conv1d_case:
                     sch[fmap_matrix].buffer_align((1, 1),
                                                 (width_grads, width_grads),
@@ -1117,9 +1112,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             sch[fmap_matrix].storage_align(
                 sch[fmap_matrix].op.axis[1], CUBE_MUL_SHAPE, 0)
 
-        sch[fmap_matrix].set_scope(scope_cbuf)
+        sch[fmap_matrix].set_scope(tbe_platform_info.scope_cbuf)
 
-        sch[fmap_fractal].set_scope(scope_cb)
+        sch[fmap_fractal].set_scope(tbe_platform_info.scope_cb)
         sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
                                        (1, CUBE_DIM), (1, CUBE_DIM))
 
@@ -1663,12 +1658,12 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
         def _dynamic_memory_management():
             # disable_allocate
-            sch.disable_allocate(scope_cbuf)
-            sch.disable_allocate(scope_ca)
-            sch.disable_allocate(scope_cb)
-            sch.disable_allocate(scope_cc)
+            sch.disable_allocate(tbe_platform_info.scope_cbuf)
+            sch.disable_allocate(tbe_platform_info.scope_ca)
+            sch.disable_allocate(tbe_platform_info.scope_cb)
+            sch.disable_allocate(tbe_platform_info.scope_cc)
             if not self.cube_vector_split:
-                sch.disable_allocate(scope_ubuf)
+                sch.disable_allocate(tbe_platform_info.scope_ubuf)
 
             # mem_unique
             sch[grads_matrix].mem_unique()

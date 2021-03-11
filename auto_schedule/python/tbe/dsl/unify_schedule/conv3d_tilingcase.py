@@ -21,16 +21,16 @@ import math
 from collections import OrderedDict
 from functools import reduce
 
-import te.platform as tbe_platform
-from tbe.dsl.compute.conv3d_compute import Conv3DParam
-from tbe.dsl.compute import util as te_util
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
-from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils as utils
-from tbe.dsl.unify_schedule.constants import Pattern
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.tiling.get_tiling import get_tiling
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import get_te_var
-from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.compute import util as te_util
+from tbe.dsl.compute.conv3d_compute import Conv3DParam
+from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
+from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
+from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils as utils
+from tbe.dsl.unify_schedule.constants import Pattern
 from tbe import tvm
 from tbe.tvm.expr import Expr
 
@@ -152,7 +152,7 @@ class Conv3dTiling(CubeTilingOp):
             avoid cyclomatic complexity, handle block_dim
             """
             tiling["block_dim"] = [1, 1, 1, 1]
-            device_core_num = tbe_platform.cce_conf.get_soc_spec("CORE_NUM")
+            device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if (self.a_info[0] > 1) and (device_core_num > 1):
                 if self.a_info[0] <= device_core_num:
                     tiling["block_dim"][0] = self.a_info[0]
@@ -238,7 +238,7 @@ class Conv3dTiling(CubeTilingOp):
                 reduce(lambda x, y: x * y, new_block_dims)
         if tiling["AL0_matrix"][2] == VALID_TILING_NUM:
             batch_size = self.a_info[0]
-            device_core_num = tbe_platform.get_soc_spec("CORE_NUM")
+            device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if te_util.get_and_res(batch_size > 1, device_core_num > 1):
                 if batch_size <= device_core_num:
                     block_dims = batch_size
@@ -456,7 +456,7 @@ class Conv3dTiling(CubeTilingOp):
         """
 
         if "batch_n" in self.var_map:
-            core_num = tbe_platform.cce_conf.get_soc_spec("CORE_NUM")
+            core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if batch >= core_num:
                 return core_num, -1
             if core_num == N_BASE:

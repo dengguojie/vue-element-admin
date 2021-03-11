@@ -15,12 +15,11 @@
 """
 CceConv2dBackpropInputOp
 """
-from te.platform import cce_conf
-from te.platform import cce_params
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.conv2d_backprop_input_compute import DeconvParam
 from tbe.dsl.static_schedule.conv2d_backprop_input_general_schedule import general_schedule
 from tbe.dsl.static_schedule.conv2d_backprop_input_opti_schedule import opti_schedule
-from tbe.common.utils.errormgr import error_manager_util
 
 
 class CceConv2dBackpropInputOp:  # pylint: disable=R0903
@@ -77,14 +76,13 @@ class CceConv2dBackpropInputOp:  # pylint: disable=R0903
         self._res_tensor = res
         self._spec_node_list = spec_node_list
 
-        cce_params.jump_expand_flag = True
 
         def _check_l1_buffer():
             al1_size = DeconvParam.al1_size
             bl1_size = DeconvParam.bl1_size
             if res.dtype == "int8":
                 bl1_size *= 2
-                if al1_size + bl1_size > cce_conf.get_soc_spec("L1_SIZE"):
+                if al1_size + bl1_size > tbe_platform_info.get_soc_spec("L1_SIZE"):
                     dict_args = dict()
                     dict_args["errCode"] = "E60026"
                     raise RuntimeError(

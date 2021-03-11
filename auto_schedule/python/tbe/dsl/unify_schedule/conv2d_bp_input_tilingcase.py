@@ -19,16 +19,15 @@ import copy
 from collections import OrderedDict
 from functools import reduce
 
-from te.platform import cce_conf
-from te.platform import get_soc_spec
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams
 from tbe.dsl.dynamic.unify_schedule.cube_tilingcase import TilingSelection
 from tbe.dsl.dynamic.unify_schedule.cube_tilingcase import CubeTilingOp
 from tbe.dsl.dynamic.unify_schedule.cube_tilingcase import TilingUtils as utils
 from tbe.dsl.dynamic.unify_schedule.constants import Pattern
-from tbe.dsl.base.operation import register_tiling_case
-from tbe.dsl.base.operation import get_te_var
-from tbe.common.tiling.get_tiling import get_tiling
 from tbe.tvm.expr import Expr
 
 
@@ -139,7 +138,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
         cub_db_flag = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
         cub_dtype_bit = BIT_RATIO_DICT.get(self.c_type)
         cub_size = (reduce(lambda x, y: x * y, tiling.get("CUB_matrix")) * cub_db_flag * cub_dtype_bit)
-        ub_size_limit = cce_conf.get_soc_spec("UB_SIZE")
+        ub_size_limit = tbe_platform_info.get_soc_spec("UB_SIZE")
         if (self.stride_h > 1 or self.stride_w > 1):
             if tiling.get("AUB_shape"):
                 aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
@@ -253,7 +252,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
                               * tiling_in.get("manual_pingpong_buffer").get("CUB_pbuffer")
                               * BIT_RATIO_DICT.get(self.c_type))
                 tiling_k_aub = tiling_in.get("AUB_shape")[0] // (self.b_info[2] * self.b_info[3])
-                m_aub_max = ((get_soc_spec("UB_SIZE") - cub_buffer)
+                m_aub_max = ((tbe_platform_info.get_soc_spec("UB_SIZE") - cub_buffer)
                              // BIT_RATIO_DICT.get(self.a_type)
                              // tiling_in.get("manual_pingpong_buffer").get("AUB_pbuffer")
                              // tiling_k_aub / (1 + 1 / self.stride_w))

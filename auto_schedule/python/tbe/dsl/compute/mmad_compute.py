@@ -21,16 +21,15 @@ from __future__ import absolute_import
 from functools import reduce as functools_reduce
 from functools import wraps
 
-import te.platform.cce_params as cce
-import te.platform.cce_conf as cce_conf
-from tbe.dsl.compute.util import check_input_tensor_shape
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.common.utils.shape_util import shape_to_list
-from tbe.common.utils import para_check
-from tbe.common.testing.dsl_source_info import source_info_decorator
-# pylint: disable=import-error, ungrouped-imports
-import topi
 from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common import utils as tbe_utils
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.testing.dsl_source_info import source_info_decorator
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.compute import cube_util
+from tbe.dsl.compute import util as compute_util
+import topi
 
 
 def _elecnt_of_shape(shape):
@@ -73,8 +72,8 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
     in_a_dtype = tensor_a.dtype
     in_b_dtype = tensor_b.dtype
 
-    check_input_tensor_shape(tensor_a)
-    check_input_tensor_shape(tensor_b)
+    compute_util.check_input_tensor_shape(tensor_a)
+    compute_util.check_input_tensor_shape(tensor_b)
 
     shape_a = [i.value for i in tensor_a.shape]
     shape_b = [i.value for i in tensor_b.shape]
@@ -217,9 +216,9 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
     if tensor_bias is not None:
         shape_bias = [i.value for i in tensor_bias.shape]
 
-    k_block_size = cce.BLOCK_REDUCE
+    k_block_size = tbe_platform.BLOCK_REDUCE
     if (in_a_dtype in ("uint8", "int8")) and in_b_dtype == "int8":
-        k_block_size = cce.BLOCK_REDUCE_INT8
+        k_block_size = tbe_platform.BLOCK_REDUCE_INT8
 
     def _check_dst_dtype(dst_dtype):
         dst_dtype_check_list = ["float16", "float32", "int32", "int8"]
@@ -243,11 +242,11 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             m_shape = shape_a[shape_len_a - 1]
             km_shape = shape_a[shape_len_a - 2]
             # non 16 multi result in buffer not align while transport
-            if m_shape != cce.BLOCK_VECTOR and m_shape % cce.BLOCK_IN != 0:
+            if m_shape != tbe_platform.BLOCK_VECTOR and m_shape % tbe_platform.BLOCK_IN != 0:
                 dict_args = {
                     'errCode': 'E61001',
                     'reason': "for ND input, shape_m must be {} or {} " \
-                        "multi when A transport".format(cce.BLOCK_VECTOR, cce.BLOCK_IN)
+                        "multi when A transport".format(tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_IN)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         else:
@@ -279,29 +278,29 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             dict_args = {
                 'errCode': 'E61001',
                 'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
-                    cce.BLOCK_IN, cce.BLOCK_VECTOR)
+                    tbe_platform.BLOCK_IN, tbe_platform.BLOCK_VECTOR)
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-        if a_block_in not in (cce.BLOCK_VECTOR, cce.BLOCK_IN):
+        if a_block_in not in (tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_IN):
             dict_args = {
                 'errCode': 'E61001',
                 'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
-                    cce.BLOCK_IN, cce.BLOCK_VECTOR)
+                    tbe_platform.BLOCK_IN, tbe_platform.BLOCK_VECTOR)
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-        if a_block_in == cce.BLOCK_VECTOR:
+        if a_block_in == tbe_platform.BLOCK_VECTOR:
             is_vector_a = True
-            if m_shape != cce.BLOCK_VECTOR:
+            if m_shape != tbe_platform.BLOCK_VECTOR:
                 dict_args = {
                     'errCode': 'E61001',
                     'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
-                        cce.BLOCK_IN, cce.BLOCK_VECTOR)
+                        tbe_platform.BLOCK_IN, tbe_platform.BLOCK_VECTOR)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-            if km_shape % (cce.BLOCK_IN) != 0:
+            if km_shape % (tbe_platform.BLOCK_IN) != 0:
                 dict_args = {
                     'errCode': 'E61001',
-                    'reason': "for fractal gevm input,K should be multiple of {}.".format(cce.BLOCK_IN * k_block_size)
+                    'reason': "for fractal gevm input,K should be multiple of {}.".format(tbe_platform.BLOCK_IN * k_block_size)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
@@ -316,10 +315,10 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             kn_shape = shape_b[shape_len_b - 2]
             n_shape = shape_b[shape_len_b - 1]
 
-        if n_shape != 1 and n_shape % cce.BLOCK_IN != 0:
+        if n_shape != 1 and n_shape % tbe_platform.BLOCK_IN != 0:
             dict_args = {
                 'errCode': 'E61001',
-                'reason': "input shape N should be multiple of {} or 1.".format(cce.BLOCK_IN)
+                'reason': "input shape N should be multiple of {} or 1.".format(tbe_platform.BLOCK_IN)
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
@@ -342,11 +341,11 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-        if b_block_out not in (cce.BLOCK_VECTOR, cce.BLOCK_IN):
+        if b_block_out not in (tbe_platform.BLOCK_VECTOR, tbe_platform.BLOCK_IN):
             raise RuntimeError(
                 "for fractal input,tensor_b's shape last 2 dim must be %d or %d"
-                % (cce.BLOCK_IN, cce.BLOCK_VECTOR))
-        if b_block_out == cce.BLOCK_VECTOR:
+                % (tbe_platform.BLOCK_IN, tbe_platform.BLOCK_VECTOR))
+        if b_block_out == tbe_platform.BLOCK_VECTOR:
             is_gemv = True
             if is_vector_a:
                 dict_args = {
@@ -358,14 +357,14 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
                 dict_args = {
                     'errCode': 'E61001',
                     'reason': "for fractal input,tensor_a's shape last 2 dim must be {} or {}.".format(
-                        cce.BLOCK_IN, cce.BLOCK_VECTOR)
+                        tbe_platform.BLOCK_IN, tbe_platform.BLOCK_VECTOR)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
-            if kn_shape % (cce.BLOCK_IN) != 0:
+            if kn_shape % (tbe_platform.BLOCK_IN) != 0:
                 dict_args = {
                     'errCode': 'E61001',
                     'reason': "for fractal gemv input,K should be multiple of {}.".format(
-                        cce.BLOCK_IN*k_block_size)
+                        tbe_platform.BLOCK_IN*k_block_size)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
             # gemv u8/s8 is transed to gevm(s8/u8), s8/u8 is not support for mad intri
@@ -399,16 +398,16 @@ def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R09
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         if n_shape == 1:
-            if kn_shape % (cce.BLOCK_IN*cce.BLOCK_IN) != 0:
+            if kn_shape % (tbe_platform.BLOCK_IN*tbe_platform.BLOCK_IN) != 0:
                 dict_args = {
                     'errCode': 'E61001',
-                    'reason': "input shape K should be multiple of {}.".format(cce.BLOCK_IN * cce.BLOCK_IN)
+                    'reason': "input shape K should be multiple of {}.".format(tbe_platform.BLOCK_IN * tbe_platform.BLOCK_IN)
                 }
                 raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         elif km_shape % k_block_size != 0:
             dict_args = {
                 'errCode': 'E61001',
-                'reason': "input shape K should be multiple of {}.".format(cce.BLOCK_IN)
+                'reason': "input shape K should be multiple of {}.".format(tbe_platform.BLOCK_IN)
             }
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
         is_gemv = n_shape == 1
@@ -718,7 +717,7 @@ def _get_compress_tensor_compute(tensor_src, comp_index, op_name):
     """
     get compress tensor compute
     """
-    _, _, _, compress_mode = cce_conf.get_soc_spec("UNZIP")
+    _, _, _, compress_mode = tbe_platform_info.get_soc_spec("UNZIP")
     comp_size = 8 if compress_mode == 1 else 2
 
     tile_k_value = tvm.var("tile_L1_k", dtype="int32")
@@ -829,14 +828,14 @@ def _get_batch_dims(attrs):
     """
     batch_dims = attrs.get("batch_shape")
     if batch_dims is not None:
-        batch_dims = shape_to_list(batch_dims)
+        batch_dims = tbe_utils.shape_to_list(batch_dims)
     else:
         batch_dims = list()
     return batch_dims
 
 
 @source_info_decorator()
-@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str, str, float, float, str,
+@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str, str, float, float, str,
                              (type(None), tvm.tensor.Tensor), (type(None), dict), (type(None), str),
                              (type(None), tvm.tensor.Tensor), (type(None), dict), str)
 def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
@@ -909,7 +908,7 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     compress_index: index for compressed wights, None means not compress wights
     Returns None
     """
-    cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
     if cube_vector_split:
         result = _matmul_cv_split(tensor_a=tensor_a,
                                   tensor_b=tensor_b,
@@ -1045,7 +1044,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     tensor_b.op.attrs['trans_b'] = trans_b
 
     l0c_support_fp32 = 1
-    support_type = cce_conf.getValue("Intrinsic_mmad")
+    support_type = tbe_platform.getValue("Intrinsic_mmad")
     if "f162f32" not in support_type:
         l0c_support_fp32 = 0
     # used for inner_product and ascend_dequant UB fusion
@@ -1111,13 +1110,13 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
     def _get_block_reduce():
         if in_a_dtype == "float16":
-            return cce.BLOCK_REDUCE
-        return cce.BLOCK_REDUCE_INT8
+            return tbe_platform.BLOCK_REDUCE
+        return tbe_platform.BLOCK_REDUCE_INT8
 
     block_reduce = _get_block_reduce()
 
-    block_in = cce.BLOCK_IN
-    block_out = cce.BLOCK_OUT
+    block_in = tbe_platform.BLOCK_IN
+    block_out = tbe_platform.BLOCK_OUT
 
     gm_a_shape_normalize = []
     if trans_a:
@@ -1213,9 +1212,9 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                        (9216, 4096), (4096, 1008)]
 
         if m_shape == 1 and vm_shape == 1:
-            block_in_ori = cce.BLOCK_VECTOR
+            block_in_ori = tbe_platform.BLOCK_VECTOR
             if km_shape % block_in == 0:
-                block_in = cce.BLOCK_VECTOR
+                block_in = tbe_platform.BLOCK_VECTOR
                 if not is_fractal and \
                         (km_shape*block_reduce, n_shape_ori) in m_16_shapes:
                     block_in = block_in_val
@@ -1225,7 +1224,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         is_fractal_a, m_shape, vm_shape, km_shape, n_shape*vn_shape, block_in)
 
     if n_shape == 1 and vn_shape == 1:
-        block_out = cce.BLOCK_VECTOR
+        block_out = tbe_platform.BLOCK_VECTOR
 
     def _check_reduce_shape():
         if km_shape != kn_shape:
@@ -1331,7 +1330,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         offset_x = 0
         offset_w = 0
 
-        if cce_conf.is_v200_version_new():
+        if cube_util.is_v200_version_new():
             if dtype_a in ("uint8", "int8"):
                 if attrs_dict.get("offset_x") is not None:
                     offset_x = attrs_dict.get("offset_x")
@@ -1364,7 +1363,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
         optmt_c = 1
 
     # not gemv
-    if block_out != cce.BLOCK_VECTOR:  # pylint: disable=too-many-nested-blocks
+    if block_out != tbe_platform.BLOCK_VECTOR:  # pylint: disable=too-many-nested-blocks
         if tensor_a_length in (2, 4):
             l0c_shape = (
                 int(n_shape), int(m_shape), int(block_in), int(block_out))
@@ -1598,7 +1597,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             lambda i, j, k, l: tensor_b_l1[j, i, k, l],
                             name='tensor_b_l0b')
 
-            if block_in != cce.BLOCK_VECTOR:  # gemm
+            if block_in != tbe_platform.BLOCK_VECTOR:  # gemm
                 # define mad compute
                 tensor_c = tvm.compute(
                     l0c_shape, lambda nb, mb, mp, np: tvm.sum(
@@ -1946,7 +1945,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
                         tensor_a_l0a_shape = (
                             batch_shape, m_shape, km_shape, block_in, block_reduce)
-                        if block_in != cce.BLOCK_VECTOR:
+                        if block_in != tbe_platform.BLOCK_VECTOR:
                             def lambda_func(batch, i, j, k, l): return tensor_a_l1[
                                 batch, i, j, l, k]
                         else:
@@ -1964,7 +1963,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                             name='tensor_a_l1')
                         tensor_a_l0a_shape = (
                             batch_shape, m_shape, km_shape, block_in, block_reduce)
-                        if block_in != cce.BLOCK_VECTOR:
+                        if block_in != tbe_platform.BLOCK_VECTOR:
                             def lambda_func(batch, i, j, k, l): return tensor_a_l1[
                                 batch, j, i, l, k]
                         else:
@@ -2145,7 +2144,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
                     tensor_b_l0b = __get_tensor_l0b_for_trans_and_not_fractal()
 
-            if block_in != cce.BLOCK_VECTOR:
+            if block_in != tbe_platform.BLOCK_VECTOR:
                 # define mad compute
                 def __get_tensor_c_for_not_block_in_vector():
                     if tensor_b_length in (2, 4):
@@ -2303,7 +2302,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
                 tensor_c = __get_tensor_c_for_block_in_vector()
 
                 # define reduce
-                orig_shape = shape_to_list(tensor_c.shape)
+                orig_shape = tbe_utils.shape_to_list(tensor_c.shape)
                 orig_shape[-2] = block_in
 
                 if tensor_bias is not None:
@@ -2974,7 +2973,7 @@ def _matmul_compute( # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
 
             tensor_c = __get_tensor_c()
             # define reduce
-            orig_shape = shape_to_list(tensor_c.shape)
+            orig_shape = tbe_utils.shape_to_list(tensor_c.shape)
             orig_shape[-2] = block_out
 
             if tensor_bias is not None:
@@ -3123,7 +3122,7 @@ def _get_tensor_c_out_dtype(tensor_a, tensor_b, dst_dtype):
 
     l0c_support_fp32 = 1
 
-    support_type = cce_conf.getValue("Intrinsic_mmad")
+    support_type = tbe_platform.getValue("Intrinsic_mmad")
     if "f162f32" not in support_type:
         l0c_support_fp32 = 0
     if in_a_dtype == "float16" and in_b_dtype == "float16":
@@ -3161,7 +3160,7 @@ def _get_block_in_value():
     block in value
 
     """
-    return cce.BLOCK_IN
+    return tbe_platform.BLOCK_IN
 
 
 def _get_block_out_value():
@@ -3176,7 +3175,7 @@ def _get_block_out_value():
     block out value
 
     """
-    return cce.BLOCK_OUT
+    return tbe_platform.BLOCK_OUT
 
 
 def _get_block_reduce_value(tensor_dtype):
@@ -3193,9 +3192,9 @@ def _get_block_reduce_value(tensor_dtype):
 
     """
     if tensor_dtype == "float16":
-        block_reduce = cce.BLOCK_REDUCE
+        block_reduce = tbe_platform.BLOCK_REDUCE
     else:
-        block_reduce = cce.BLOCK_REDUCE_INT8
+        block_reduce = tbe_platform.BLOCK_REDUCE_INT8
     return block_reduce
 
 
@@ -3220,7 +3219,7 @@ def _update_gevm_block_in(m_shape, vm_shape, km_shape, block_in_ori):
     """
     block_in = block_in_ori
     if m_shape == 1 and vm_shape == 1 and km_shape % block_in == 0:
-        block_in = cce.BLOCK_VECTOR
+        block_in = tbe_platform.BLOCK_VECTOR
     return block_in
 
 
@@ -3243,7 +3242,7 @@ def _update_gevm_block_out(n_shape, vn_shape, block_out_ori):
     """
     block_out = block_out_ori
     if n_shape == 1 and vn_shape == 1:
-        block_out = cce.BLOCK_VECTOR
+        block_out = tbe_platform.BLOCK_VECTOR
     return block_out
 
 
@@ -3447,7 +3446,7 @@ def _is_gemv_mode(block_out):
     bool : true or false
 
     """
-    if block_out != cce.BLOCK_VECTOR:
+    if block_out != tbe_platform.BLOCK_VECTOR:
         return False
     return True
 
@@ -3465,7 +3464,7 @@ def _is_gevm_mode(block_in):
     bool : true or false
 
     """
-    if block_in != cce.BLOCK_VECTOR:
+    if block_in != tbe_platform.BLOCK_VECTOR:
         return False
     return True
 
@@ -3494,8 +3493,8 @@ def _get_core_factor(m_var, n_var):
     core_inner_m = m_shape
     core_inner_n = n_shape
 
-    block_in = cce.BLOCK_IN
-    block_out = cce.BLOCK_OUT
+    block_in = tbe_platform.BLOCK_IN
+    block_out = tbe_platform.BLOCK_OUT
     if m_shape != 1:
         core_inner_m = (((m_shape + block_in - 1) // block_in +
                          (m_factors - 1)) // m_factors) * block_in
@@ -3600,7 +3599,7 @@ def _get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
     n_factor : n axis split factor
     """
     frac_size = 16
-    core_num = cce_conf.getValue("Device_core_num")
+    core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
     m_axis_outer = (m_shape + frac_size - 1) // frac_size
     if m_shape == 1:
         m_axis_outer = 1
@@ -3657,7 +3656,7 @@ def _get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
     return m_factor, n_factor
 
 
-@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
+@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
                              str, float, float, str, (type(None), tvm.tensor.Tensor),
                              (type(None), dict), (type(None), str))
 def get_matmul_performance_format(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
@@ -3887,9 +3886,9 @@ class MatMulCompute:
         self.src_dtype = tensor_a.dtype
         self.dst_dtype = dst_dtype
         self.kernel_name = kernel_name
-        self.block_in = cce.BLOCK_IN
-        self.block_out = cce.BLOCK_OUT
-        self.block_reduce = cce.BLOCK_REDUCE
+        self.block_in = tbe_platform.BLOCK_IN
+        self.block_out = tbe_platform.BLOCK_OUT
+        self.block_reduce = tbe_platform.BLOCK_REDUCE
         self.matrix_type = "float32"
         self.format_out = format_out
 
@@ -4098,7 +4097,7 @@ class MatMulCompute:
         format_a = self.format_a
 
         if self.src_dtype == "int8":
-            self.block_reduce = cce.BLOCK_REDUCE_INT8
+            self.block_reduce = tbe_platform.BLOCK_REDUCE_INT8
 
         if self.format_out is None:
             if format_a == "ND":

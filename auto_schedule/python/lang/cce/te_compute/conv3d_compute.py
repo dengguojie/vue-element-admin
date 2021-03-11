@@ -36,7 +36,7 @@ def conv3d(x, filter, filter_size, para_dict):
     -------
     tensor : res
     """
-    warnings.warn("te.lang.cce.te_compute.conv3d_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.conv3d_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv3d_compute",
         DeprecationWarning)
     from tbe.dsl.compute.conv3d_compute import conv3d

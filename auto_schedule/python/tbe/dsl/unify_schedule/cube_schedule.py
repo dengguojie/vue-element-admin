@@ -15,15 +15,15 @@
 """
 cube schedule
 """
-from tbe.dsl.unify_schedule.constants import Pattern
+from tbe import tvm
+from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
-from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import \
-    CceConv2dBackpropInputOp
 from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule import \
     CceConv2dBackpropFilterOp
+from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import \
+    CceConv2dBackpropInputOp
 from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule
-from tbe.dsl.base.operation import register_schedule
-from tbe import tvm
+from tbe.dsl.unify_schedule.constants import Pattern
 
 
 @register_schedule(pattern=Pattern.CONV2D_BACKPROP_FILTER)

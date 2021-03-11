@@ -26,7 +26,7 @@ def dilation_compute(tensor_x, dilations, pads=None, padding_value=0.0):
     :param pads: list or tuple or None
     :param padding_value: float
     """
-    warnings.warn("te.lang.cce.te_compute.dilation_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.dilation_compute is expired, "
         "please replace it with the func tbe.dsl.compute.dilation_compute",
         DeprecationWarning)
     from tbe.dsl.compute.dilation_compute import dilation_compute

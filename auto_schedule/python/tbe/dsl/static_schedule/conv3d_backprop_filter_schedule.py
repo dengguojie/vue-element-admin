@@ -15,13 +15,13 @@
 """
 conv3d backprop filter schudule.
 """
-import te.platform as tbe_platform
-from tbe.dsl.compute import util as te_util
+from tbe import tvm
+from tbe.common.buildcfg import build_config
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from tbe import tvm
-
+from tbe.dsl.compute import util as compute_util
 
 _CUBE_DIM = 16
 _FLOAT16_SIZE = 2
@@ -41,8 +41,7 @@ def _print_ir_conv(process, sch):
     :return: IR process
     ---------------------------------------------------------------
     """
-    from te.platform.cce_build import build_config
-    with build_config:
+    with build_config():
         sch1 = sch.normalize()
         start = process + " IR start"
         end = process + " IR end\n"
@@ -247,14 +246,14 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 else:
                     bl1_min_byte = (kernel_height + stride_height) * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
             else:
-                bl1_align_factor = te_util.int_ceil_div(_CUBE_DIM, width_grads)
+                bl1_align_factor = compute_util.int_ceil_div(_CUBE_DIM, width_grads)
                 if _CUBE_DIM % width_grads == 0:
                     bl1_min_byte = (kernel_height + (bl1_align_factor-1)
                                     * stride_height) * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
                 else:
                     bl1_min_byte = (kernel_height +
                                     bl1_align_factor * stride_height) * width_fmap * _CUBE_DIM * _FLOAT16_SIZE
-            l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
+            l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")  # L1 size
             if (al1_min_byte + bl1_min_byte) > l1_size:
                 cube_err.raise_err_attr_range_invalid("conv3d",
                     "(,{}]".format(l1_size),
@@ -284,8 +283,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             # will be dropped
             res_ddr = res_cc
             res_cc = sch.rfactor(res_ddr, fused_atomic_write)
-            sch[res_cc].set_scope(tbe_platform.scope_cc)
-            res_ub = sch.cache_read(res_cc, tbe_platform.scope_ubuf, [res_ddr])
+            sch[res_cc].set_scope(tbe_platform_info.scope_cc)
+            res_ub = sch.cache_read(res_cc, tbe_platform_info.scope_ubuf, [res_ddr])
             return res_cc, res_ub, res_ddr, ub_reduce, ddr_reduce
 
         def _full_k_check():
@@ -305,7 +304,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             if (tiling.get("BL1_shape") and tiling.get("BL1_shape")[1] > 1 and
                     tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1]
                     % (kernel_height * kernel_width) != 0):
-                tiling["BL1_shape"][1] = te_util.align(
+                tiling["BL1_shape"][1] = compute_util.align(
                     tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1],
                     kernel_height * kernel_width) // tiling.get("BL0_matrix")[1]
 
@@ -314,12 +313,12 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             if not tiling["AL0_matrix"]:
                 full_k_l0a = 1
             else:
-                full_k_l0a = tiling["AL0_matrix"][1] // te_util.int_ceil_div(hw_pad_1, block_dim_hw)
+                full_k_l0a = tiling["AL0_matrix"][1] // compute_util.int_ceil_div(hw_pad_1, block_dim_hw)
 
             if not tiling["BL0_matrix"]:
                 full_k_l0b = 1
             else:
-                full_k_l0b = tiling["BL0_matrix"][0] // te_util.int_ceil_div(hw_pad_1, block_dim_hw)
+                full_k_l0b = tiling["BL0_matrix"][0] // compute_util.int_ceil_div(hw_pad_1, block_dim_hw)
 
             return full_k_l0a, full_k_l0b
 
@@ -340,8 +339,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             # nparts N, nparts M
             # dw_tiling_nparts only describe the nparts from single core to L0
             dw_tiling_nparts = [
-                te_util.int_ceil_div(fkk // block_dim_cin, dw_tiling_factor[0]),
-                te_util.int_ceil_div(te_util.int_ceil_div(c1_grads, dw_tiling_factor[1]),
+                compute_util.int_ceil_div(fkk // block_dim_cin, dw_tiling_factor[0]),
+                compute_util.int_ceil_div(compute_util.int_ceil_div(c1_grads, dw_tiling_factor[1]),
                                      block_dim_cout)
                 ]
 
@@ -350,8 +349,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 tiling["CUB_matrix"][0], tiling["CUB_matrix"][1]
             ]
             dw_ub_tiling_nparts = [
-                te_util.int_ceil_div(dw_tiling_factor[0], dw_ub_tiling_factor[0]),
-                te_util.int_ceil_div(dw_tiling_factor[1], dw_ub_tiling_factor[1])
+                compute_util.int_ceil_div(dw_tiling_factor[0], dw_ub_tiling_factor[0]),
+                compute_util.int_ceil_div(dw_tiling_factor[1], dw_ub_tiling_factor[1])
             ]
 
             # only support loading one batch to L1 at a time for now
@@ -734,11 +733,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         else:
             block_dim_g = 1
 
-        sch[grads_matrix].set_scope(tbe_platform.scope_cbuf)
+        sch[grads_matrix].set_scope(tbe_platform_info.scope_cbuf)
         sch[grads_matrix].storage_align(sch[grads_matrix].op.axis[1],
                                         _CUBE_MUL_SHAPE, 0)
 
-        sch[grads_fractal].set_scope(tbe_platform.scope_ca)
+        sch[grads_fractal].set_scope(tbe_platform_info.scope_ca)
         sch[grads_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
                                         (1, _CUBE_DIM), (1, _CUBE_DIM))
 
@@ -749,7 +748,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         #                               kernel_width,
         #                               C0_fmap)
         if not load2d_flag:
-            sch[fmap_l1].set_scope(tbe_platform.scope_cbuf)
+            sch[fmap_l1].set_scope(tbe_platform_info.scope_cbuf)
             sch[fmap_matrix].buffer_align(
                 (1, 1), (1, 1), (width_grads, width_grads), (1, 1),
                 (kernel_height, kernel_height), (kernel_width, kernel_width),
@@ -758,9 +757,9 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             sch[fmap_matrix].storage_align(sch[fmap_matrix].op.axis[1],
                                            _CUBE_MUL_SHAPE, 0)
 
-        sch[fmap_matrix].set_scope(tbe_platform.scope_cbuf)
+        sch[fmap_matrix].set_scope(tbe_platform_info.scope_cbuf)
 
-        sch[fmap_fractal].set_scope(tbe_platform.scope_cb)
+        sch[fmap_fractal].set_scope(tbe_platform_info.scope_cb)
         sch[fmap_fractal].buffer_align((1, 1), (1, 1), (1, 1), (1, 1),
                                        (1, _CUBE_DIM), (1, _CUBE_DIM))
 
@@ -802,8 +801,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 else:
                     nc_cc = kernel_depth * cin1_g * kernel_width * kernel_height // block_dim_cin
 
-                factor_kw = te_util.int_ceil_div(kernel_width, nc_cc)
-                factor_kh = te_util.int_ceil_div(kernel_width * kernel_height, nc_cc) // factor_kw
+                factor_kw = compute_util.int_ceil_div(kernel_width, nc_cc)
+                factor_kh = compute_util.int_ceil_div(kernel_width * kernel_height, nc_cc) // factor_kw
 
                 c_fmap_l1_out, c_fmap_l1_at = sch[dw_ddr].split(c_fmap_l1_ori, factor_kw)
 
@@ -945,7 +944,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     if k_bl1 % width_grads == 0:
                         step = k_bl1 // width_grads
                     else:
-                        step = te_util.int_ceil_div(k_bl1, width_grads) + 1
+                        step = compute_util.int_ceil_div(k_bl1, width_grads) + 1
                 extent_h = (step - 1) * stride_height + (kernel_height - 1) * dilation_height + 1
                 if extent_h < height_fmap:
                     sch[fmap_l1].buffer_tile(

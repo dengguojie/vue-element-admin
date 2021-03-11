@@ -56,7 +56,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     ----------
     dx_ddr: dE/dX tensor
     """
-    warnings.warn("te.lang.cce.te_compute.conv2d_backprop_input_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.conv2d_backprop_input_compute is expired, "
         "please replace it with the func tbe.dsl.compute.conv2d_backprop_input_compute",
         DeprecationWarning)
     from tbe.dsl.compute.conv2d_backprop_input_compute import conv2d_backprop_input_compute

@@ -15,13 +15,14 @@
 """
 conv3d backprop input general schedule.
 """
-import te.platform as tbe_platform
-from tbe.dsl.compute import util as te_util
-from tbe.dsl.compute.cube_util import shape_to_list
+from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from tbe import tvm
+from tbe.dsl.compute import util as compute_util
+from tbe.dsl.compute import cube_util
 
 
 _NUM_3 = 3
@@ -166,7 +167,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     def _aub_process():
         aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
         aub_tiling_k_factor, aub_tiling_m_factor = aub_tiling_k // (kernel_h * kernel_w * 16), aub_tiling_m
-        _, _, _, _, aub_w, _ = shape_to_list(a_filling.shape)
+        _, _, _, _, aub_w, _ = cube_util.shape_to_list(a_filling.shape)
         a_l1_k_outer, a_l1_k_inner = sch[a_l1].split(sch[a_l1].op.axis[2], factor=aub_tiling_k_factor)
         a_l1_h_outer, a_l1_h_inner = sch[a_l1].split(sch[a_l1].op.axis[3], factor=aub_tiling_m_factor)
         a_l1_w_outer, a_l1_w_inner = sch[a_l1].split(sch[a_l1].op.axis[4], factor=aub_w)
@@ -322,13 +323,13 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         c_ub_vn = tensor_map.get("c_ub_vn")
         c_fill_zero = tensor_map.get("c_fill_zero")
         c_ub = tensor_map.get("c_ub")
-        sch[c_fill_zero].set_scope(tbe_platform.scope_ubuf)
-        sch[c_ub_vn].set_scope(tbe_platform.scope_ubuf)
+        sch[c_fill_zero].set_scope(tbe_platform_info.scope_ubuf)
+        sch[c_ub_vn].set_scope(tbe_platform_info.scope_ubuf)
         c_col = tensor_map.get("c_col")
         a_col = tensor_map.get("a_col")
         b_col = tensor_map.get("b_col")
         b_l1 = tensor_map.get("b_l1")
-        sch[b_l1].set_scope(tbe_platform.scope_cbuf)
+        sch[b_l1].set_scope(tbe_platform_info.scope_cbuf)
         b_ddr = b_l1.op.input_tensors[0]  # weight in ddr
         kernel_d, kernel_h, kernel_w = list(i.value for i in c_ddr.op.attrs["kernels"])
         if not var_map:
@@ -371,9 +372,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         tensor_attr['stride_w'] = stride_w
         tensor_attr['stride_h'] = stride_h
         # dataflow management
-        sch[b_col].set_scope(tbe_platform.scope_cb)
+        sch[b_col].set_scope(tbe_platform_info.scope_cb)
         if stride_h == 1 and stride_w == 1:
-            sch[a_l1].set_scope(tbe_platform.scope_cbuf)
+            sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
             tensor_map['a_l1'] = a_l1
             if dsl_flag:
                 tensor_map['a_filling'] = tensor_map['elewise_mul']
@@ -382,23 +383,23 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 tensor_map['a_ub'] = tensor_map['elewise_mul']
             else:
                 if not var_map:
-                    a_ub = sch.cache_read(a_ddr, tbe_platform.scope_ubuf, [a_filling])
+                    a_ub = sch.cache_read(a_ddr, tbe_platform_info.scope_ubuf, [a_filling])
                     tensor_map['a_ub'] = a_ub
                 else:
-                    sch[a_vn].set_scope(tbe_platform.scope_ubuf)
+                    sch[a_vn].set_scope(tbe_platform_info.scope_ubuf)
             # generate a_zero in ub
-            sch[a_zero].set_scope(tbe_platform.scope_ubuf)
-            sch[a_filling].set_scope(tbe_platform.scope_ubuf)
+            sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
+            sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
             # dma : a_filling ub------>L1
-            sch[a_l1].set_scope(tbe_platform.scope_cbuf)
+            sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
 
-        sch[a_col_before].set_scope(tbe_platform.scope_cbuf)
-        sch[a_col].set_scope(tbe_platform.scope_ca)
+        sch[a_col_before].set_scope(tbe_platform_info.scope_cbuf)
+        sch[a_col].set_scope(tbe_platform_info.scope_ca)
 
-        sch[c_col].set_scope(tbe_platform.scope_cc)
-        sch[c_ub].set_scope(tbe_platform.scope_ubuf)
-        padding = shape_to_list(a_col_before.op.attrs["padding"])
-        output_shape = shape_to_list(c_ddr.op.attrs["output_shape"])
+        sch[c_col].set_scope(tbe_platform_info.scope_cc)
+        sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
+        padding = cube_util.shape_to_list(a_col_before.op.attrs["padding"])
+        output_shape = cube_util.shape_to_list(c_ddr.op.attrs["output_shape"])
         tensor_attr['padding'] = padding
         tensor_attr['output_shape'] = output_shape
         tensor_attr['stride_d'] = stride_d
@@ -418,13 +419,13 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     def _tiling_l1_process():
         if tiling.get("AL1_shape"):
             al1_tiling_k, al1_tiling_m, _, _ = tiling.get("AL1_shape")
-            if (al1_tiling_k == kernel_h * kernel_w * cout1_g * al1_co0 and al1_tiling_m == te_util.int_ceil_div(
+            if (al1_tiling_k == kernel_h * kernel_w * cout1_g * al1_co0 and al1_tiling_m == compute_util.int_ceil_div(
                 c_l0c_hw, (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0]*cl0_tiling_mc))):
                 tiling["AL1_shape"] = []
         else:
             # batch = 1 other axes full load
             al1_tiling_k = kernel_h * kernel_w * cout1_g * al1_co0
-            al1_tiling_m = te_util.align(c_l0c_hw, (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] *
+            al1_tiling_m = compute_util.align(c_l0c_hw, (tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] *
                                          cl0_tiling_mc * m_dim))
         if tiling.get("BL1_shape"):
             bl1_tiling_k, bl1_tiling_n, _, bl1_tiling_kdparts = tiling.get("BL1_shape")
@@ -457,8 +458,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         return d_factor
 
     def _dfactor_dynamic(var_map):
-        ext = te_util.align((al0_tiling_dfactor - 1), stride_d)
-        estimate_d = te_util.align((bl0_tiling_kd - 1), stride_d) + ext + 1
+        ext = compute_util.align((al0_tiling_dfactor - 1), stride_d)
+        estimate_d = compute_util.align((bl0_tiling_kd - 1), stride_d) + ext + 1
         if "dedy_d" in var_map:
             d_factor = tvm.min(estimate_d, dy_depth)
         else:
@@ -470,7 +471,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         right = 0
         max_dis = 0
 
-        for x in range(1, te_util.int_ceil_div(cddr_h * cddr_w, howo_size)):
+        for x in range(1, compute_util.int_ceil_div(cddr_h * cddr_w, howo_size)):
             m_length = x * howo_size
             right = m_length // wo_l1
             distance = right - left + 1 if (m_length % wo_l1 != 0) else right - left
@@ -501,7 +502,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         h_l1 = _get_h_l1(howo_size)
         dy_l1_size = d_factor * dy_cout1 * h_l1 * wo_l1 * c0_size * 2
 
-        if (dy_l1_size + b_l1_size) > tbe_platform.get_soc_spec("L1_SIZE"):
+        if (dy_l1_size + b_l1_size) > tbe_platform_info.get_soc_spec("L1_SIZE"):
             return True
 
         return False
@@ -513,11 +514,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         d_factor = _get_dfactor()
 
         dedy_ub_size = (d_factor * aub_tiling_k_factor * dy_w * c0_size * 2 *
-                        te_util.int_ceil_div(aub_tiling_m_factor, stride_h))
+                        compute_util.int_ceil_div(aub_tiling_m_factor, stride_h))
         dy_filing_size = d_factor * aub_tiling_k_factor * aub_tiling_m_factor * (dy_w * stride_w) * c0_size * 2
         c_ub_size = cub_tiling_nc_factor * cub_tiling_mc_factor * c0_size**2 * cub_pbuffer * 2
 
-        ub_size = tbe_platform.get_soc_spec("UB_SIZE")
+        ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
         if (dedy_ub_size * (fused_num + 1) + dy_filing_size + c_ub_size) > ub_size:
             return True
 
@@ -536,7 +537,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     def _do_compute_at():
         m_dim = tiling['block_dim'][2]
         howo_out = cddr_h * cddr_w
-        howo_deep_outer = te_util.int_ceil_div(howo_out, m_dim)
+        howo_deep_outer = compute_util.int_ceil_div(howo_out, m_dim)
         howo_m_outer = al1_tiling_m * al0_tiling_ma * al0_tiling_m0
 
         if var_map:
@@ -837,7 +838,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             if op["op"] in tag_map.keys():
                 tensor_map[tag_map[op["op"]]] = op["dst_buffer"]
             if "conv3d_backprop_input_" not in op["op"] and op["op"] != "c_ddr":
-                sch[op["dst_buffer"]].set_scope(tbe_platform.scope_ubuf)
+                sch[op["dst_buffer"]].set_scope(tbe_platform_info.scope_ubuf)
 
         for op in color_op.input_ops:
             if op["op"] in tag_map.keys():
@@ -850,7 +851,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                     tmp_read_map.append(nop["dst_buffer"])
             if tmp_read_map:
                 tmp_cache_buffer = sch.cache_read(op["dst_buffer"],
-                                                  tbe_platform.scope_ubuf,
+                                                  tbe_platform_info.scope_ubuf,
                                                   list(set(tmp_read_map)))
                 op["cache_buffer"] = tmp_cache_buffer
 
@@ -922,7 +923,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     cout1_g = cout_g // tbe_platform.CUBE_MKN[b_ddr.dtype]["mac"][2]
 
     padu, padd, padl, padr = padding
-    pad_head, pad_tail = shape_to_list(c_ddr.op.attrs["depth_pad"])
+    pad_head, pad_tail = cube_util.shape_to_list(c_ddr.op.attrs["depth_pad"])
     tensor_attr['pad_head'] = pad_head
     tensor_attr['pad_tail'] = pad_tail
     if not var_map:
@@ -931,8 +932,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         kernel_h = tensor_attr.get("kernel_h")
         kernel_w = tensor_attr.get("kernel_w")
 
-    _, _, _, ho_l1, wo_l1, _ = shape_to_list(a_l1.shape)
-    img_shape = shape_to_list(a_ddr.shape)
+    _, _, _, ho_l1, wo_l1, _ = cube_util.shape_to_list(a_l1.shape)
+    img_shape = cube_util.shape_to_list(a_ddr.shape)
     _, dy_depth, dy_cout1, _, dy_w, _ = img_shape
     b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 = list(i.value for i in b_ddr.shape)
 
@@ -993,10 +994,10 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     cub_pbuffer = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
     al1_pbuffer, bl1_pbuffer, bl0_pbuffer = _redefine_doublebuffer()
 
-    _, _, al1_co1, _, _, al1_co0 = shape_to_list(a_l1.shape)
-    _, _, _, _, c_l0c_hw, _ = shape_to_list(c_col.shape)
+    _, _, al1_co1, _, _, al1_co0 = cube_util.shape_to_list(a_l1.shape)
+    _, _, _, _, c_l0c_hw, _ = cube_util.shape_to_list(c_col.shape)
     _, _, bl1_k1, bl1_co1, bl1_co0, _ = list(i.value for i in b_l1.shape)
-    a_col_shape = shape_to_list(a_col.shape)
+    a_col_shape = cube_util.shape_to_list(a_col.shape)
     _, a_col_batch, _, a_col_ma, a_col_ka, _, _ = a_col_shape
     cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, _, _, _ = tiling.get("CUB_matrix")
     cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, _, _, _ = tiling.get("CL0_matrix")
@@ -1123,9 +1124,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
     def _n_buffer_tile():
         _, n_dim, m_dim, _ = tiling["block_dim"]
         group_dim = tiling["g_dim"]
-        bl1_outer_size = te_util.int_ceil_div(cin1_g, n_dim) // bl1_tiling_n // cl0_tiling_nc
+        bl1_outer_size = compute_util.int_ceil_div(cin1_g, n_dim) // bl1_tiling_n // cl0_tiling_nc
         bl1_inner_size = bl1_tiling_n
-        g_size = te_util.int_ceil_div(real_g, group_dim)
+        g_size = compute_util.int_ceil_div(real_g, group_dim)
 
         if blocks != 1:
             block_n = blockidx // m_dim % n_dim
@@ -1186,7 +1187,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 al1_h, al1_w = _get_al1_m_extent(al1_m)
                 al1_bound = al1_c * al1_h * al1_w * d_factor
             else:
-                al1_m = te_util.int_ceil_div(a_l1.shape[3] * a_l1.shape[4], cl0_tiling_m0) * cl0_tiling_m0
+                al1_m = compute_util.int_ceil_div(a_l1.shape[3] * a_l1.shape[4], cl0_tiling_m0) * cl0_tiling_m0
                 al1_c = al1_co1 * al1_co0
                 al1_bound = al1_c * al1_m * d_factor 
                 al1_h, al1_w = a_l1.shape[3], a_l1.shape[4]
@@ -1200,7 +1201,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 aub_co1 = aub_tiling_k // (kernel_h * kernel_w * aub_co0)
                 aub_filling_w = dy_w * stride_w
                 aub_h = (aub_tiling_m + stride_h - 1) // stride_h
-                al1_m = te_util.int_ceil_div(a_l1.shape[3] * a_l1.shape[4], cl0_tiling_m0) * cl0_tiling_m0
+                al1_m = compute_util.int_ceil_div(a_l1.shape[3] * a_l1.shape[4], cl0_tiling_m0) * cl0_tiling_m0
                 if len(tiling["AL1_shape"]) != 0:
                     multi_m_al1 = tiling["AL1_shape"][1]
                     al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
@@ -1238,11 +1239,11 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
             sch.set_var_range(a_ddr.shape[0], *var_range.get("batch_n"))
             sch.set_var_range(output_shape[0], *var_range.get("batch_n"))
 
-        sch.disable_allocate(tbe_platform.scope_cbuf)
-        sch.disable_allocate(tbe_platform.scope_ca)
-        sch.disable_allocate(tbe_platform.scope_cb)
-        sch.disable_allocate(tbe_platform.scope_cc)
-        sch.disable_allocate(tbe_platform.scope_ubuf)
+        sch.disable_allocate(tbe_platform_info.scope_cbuf)
+        sch.disable_allocate(tbe_platform_info.scope_ca)
+        sch.disable_allocate(tbe_platform_info.scope_cb)
+        sch.disable_allocate(tbe_platform_info.scope_cc)
+        sch.disable_allocate(tbe_platform_info.scope_ubuf)
 
         sch[a_l1].mem_unique()
         sch[a_col].mem_unique()

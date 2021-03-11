@@ -15,15 +15,11 @@
 """
 conv2d_backprop_input_opti_compute
 """
-from te.platform import cce_conf
-from te.platform import cce_params
-from tbe.dsl.compute.cube_util import ConvDslPattern
-from tbe.dsl.compute.cube_util import CubeDslPattern
-from tbe.dsl.compute.cube_util import is_support_v200
-from tbe.dsl.compute.cube_util import shape_to_list
-from tbe.dsl.compute.cube_util import GroupDictKeys
-from tbe.dsl.compute.util import int_ceil_div
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.compute import cube_util
+from tbe.dsl.compute.util import int_ceil_div
 from tbe.tvm import api as tvm
 
 
@@ -31,7 +27,7 @@ from tbe.tvm import api as tvm
 BRC_STANDARD_BLOCK_SIZE = 16
 
 
-class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
+class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R0902
     """
     class of convolution back propagation for kernelsize1 pattern
 
@@ -93,7 +89,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                                     stride_w, kernel_h, kernel_w)
             raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
-        self._m0 = cce_params.CUBE_MKN["float16"]["mac"][0]
+        self._m0 = tbe_platform.CUBE_MKN["float16"]["mac"][0]
         self._output_shape = output_shape
         self._stride_h, self._stride_w = strides
         _, _, self._kernel_h, self._kernel_w = kernel_size
@@ -104,12 +100,12 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         self._offset_x = offset_x
         self._pad = pad
         self._group_dict = group_dict
-        self._g_extend = self._group_dict.get(GroupDictKeys.g_extend)
-        self._extend = self._group_dict.get(GroupDictKeys.multiple_extend)
-        self._dx_c1_extend = self._group_dict.get(GroupDictKeys.dx_c1_extend)
-        self._dy_c1_extend = self._group_dict.get(GroupDictKeys.dy_c1_extend)
-        self._groups_ori = self._group_dict.get(GroupDictKeys.groups)
-        self._cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self._g_extend = self._group_dict.get(cube_util.GroupDictKeys.g_extend)
+        self._extend = self._group_dict.get(cube_util.GroupDictKeys.multiple_extend)
+        self._dx_c1_extend = self._group_dict.get(cube_util.GroupDictKeys.dx_c1_extend)
+        self._dy_c1_extend = self._group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
+        self._groups_ori = self._group_dict.get(cube_util.GroupDictKeys.groups)
+        self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _get_dilate_tensor(  # pylint:disable=R0913,R0914
         self,
@@ -211,7 +207,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
 
         DeConvKernelSize1Pattern.fusion_para = self._fusion_para
         DeConvKernelSize1Pattern.dedy = dedy
-        batch_dim, co1_dim, ho_dim, wo_dim, co0_dim = shape_to_list(dedy.shape)
+        batch_dim, co1_dim, ho_dim, wo_dim, co0_dim = cube_util.shape_to_list(dedy.shape)
 
         self._img_h = ho_dim
         self._img_w = wo_dim
@@ -228,7 +224,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         from_ddr_flag = bool(input_mem == 0 and l1_fusion_type != -1)
         h_offset = slice_offset[2] if slice_offset else 0
         if from_l1_flag:
-            pat_conv = ConvDslPattern(
+            pat_conv = cube_util.ConvDslPattern(
                 kernel_h=1,
                 kernel_w=1,
                 stride=[1, 1],
@@ -247,7 +243,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                 lambda n, co1, h, w, co0: dedy(n, co1, h + h_offset, w, co0),
                 name=dedy.name + "_col"
             )
-            pat_conv = ConvDslPattern(
+            pat_conv = cube_util.ConvDslPattern(
                 kernel_h=1,
                 kernel_w=1,
                 stride=[1, 1],
@@ -423,17 +419,13 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         def _add_bias_in_ub(in_tensor0, in_tensor1):
             c_add_vector = tvm.compute(
                 in_tensor0.shape,
-                lambda *indice: in_tensor0(*indice)
-                + in_tensor1(
-                    indice[1] * cce_params.CUBE_MKN[in_tensor0.dtype]["mac"][2]
-                    + indice[3]
-                ),
-                name="bias_add_vector"
-            )
+                lambda *indice: in_tensor0(*indice) + in_tensor1(indice[1] * tbe_platform.CUBE_MKN[
+                    in_tensor0.dtype]["mac"][2] + indice[3]),
+                name="bias_add_vector")
             return c_add_vector
 
         def _inner_generate_mmad(matrix_a, matrix_b):  # pylint:disable=R0914
-            g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = shape_to_list(matrix_a.shape)
+            g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = cube_util.shape_to_list(matrix_a.shape)
             g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = list(i.value for i in matrix_b.shape)
             if bk1_dim != k1_dim or bk0_dim != k0_dim:
                 dict_args = dict()
@@ -447,14 +439,14 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
             if matrix_a.dtype == "int8" and matrix_b.dtype == "int8":
                 c_type = "int32"
                 mode = "s8"
-            elif cce_conf.intrinsic_check_support("Intrinsic_mmad", "f162f32"):
+            elif tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32"):
                 c_type = "float32"
                 mode = "f162f32"
             else:
                 c_type = "float16"
                 mode = "f162f16"
 
-            offset_x = self._offset_x if is_support_v200() else 0
+            offset_x = self._offset_x if cube_util.is_support_v200() else 0
             mmad = tvm.compute(
                 shape_c,
                 lambda g_index, n_index, co1_index, m_index, co0_index: tvm.sum(
@@ -483,7 +475,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
                 shape_c = mmad.shape
                 bias_ub_brc_shape = list(shape_c)
                 bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // BRC_STANDARD_BLOCK_SIZE
-                co_k = cce_params.CUBE_MKN[tensor_bias.dtype]["mac"][2]
+                co_k = tbe_platform.CUBE_MKN[tensor_bias.dtype]["mac"][2]
                 bias_ub_brc = tvm.compute(
                     bias_ub_brc_shape,
                     lambda *indices:
@@ -510,7 +502,7 @@ class DeConvKernelSize1Pattern(CubeDslPattern):  # pylint:disable=R0902
         res_c = _add_bias_in_l0c(res_c, tensor_bias)
 
         batch_dx_img, c1_dx_img, h_dx_img, w_dx_img, c0_dx_img = self._output_shape
-        group_l0c, batch_l0c, co1_l0c, m_l0c, co0_l0c = shape_to_list(
+        group_l0c, batch_l0c, co1_l0c, m_l0c, co0_l0c = cube_util.shape_to_list(
             res_c.shape)
         if not (batch_dx_img == batch_l0c and
                 c0_dx_img == co0_l0c and

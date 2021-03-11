@@ -17,17 +17,15 @@ conv2d backprop input DSL interface.
 """
 from inspect import currentframe
 
-from te.platform import cce_conf
-from te.platform import cce_params
+from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common import utils as tbe_utils
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
 from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
-from tbe.dsl.compute.cube_util import check_pad_zero
-from tbe.dsl.compute.cube_util import shape_to_list
-from tbe.dsl.compute.cube_util import GroupDictKeys
 from tbe.dsl.base.operation import get_te_var
-from tbe.common.utils import para_check
-from tbe.common.utils.errormgr import error_manager_util
-from tbe import tvm
 from tbe.tvm.tensor import Tensor
 
 
@@ -288,11 +286,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         # limitation by chip:
         # Ascend910 load3d not support
         # when only fmap w after padding equals to filter w
-        if (
-            cce_conf.CceProductParams().is_cloud_version()
-            and dx_h_after_pad != filter_h
-            and dx_w_after_pad == filter_w
-        ):
+        if (cube_util.is_cloud_version() and dx_h_after_pad != filter_h and dx_w_after_pad == filter_w):
             return False
         return True
 
@@ -302,13 +296,13 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             return True
         return False
 
-    g_extend = group_dict.get(GroupDictKeys.g_extend)
-    dx_c1_extend = group_dict.get(GroupDictKeys.dx_c1_extend)
-    dy_c1_extend = group_dict.get(GroupDictKeys.dy_c1_extend)
-    dx_c_ori = group_dict.get(GroupDictKeys.dx_c_ori)
-    filter_c_ori = group_dict.get(GroupDictKeys.filter_c_ori)
-    groups = group_dict.get(GroupDictKeys.groups)
-    filter_ori_format = group_dict.get(GroupDictKeys.filter_ori_format)
+    g_extend = group_dict.get(cube_util.GroupDictKeys.g_extend)
+    dx_c1_extend = group_dict.get(cube_util.GroupDictKeys.dx_c1_extend)
+    dy_c1_extend = group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
+    dx_c_ori = group_dict.get(cube_util.GroupDictKeys.dx_c_ori)
+    filter_c_ori = group_dict.get(cube_util.GroupDictKeys.filter_c_ori)
+    groups = group_dict.get(cube_util.GroupDictKeys.groups)
+    filter_ori_format = group_dict.get(cube_util.GroupDictKeys.filter_ori_format)
     var_map = DeconvParam.var_map
 
     valid_dtype_dict = {}
@@ -321,12 +315,12 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
 
     # begin to fetch params
     if filters.dtype == "int8":
-        filter_cout1, _, filter_cin0, filter_cout0 = shape_to_list(filters.shape)
+        filter_cout1, _, filter_cin0, filter_cout0 = cube_util.shape_to_list(filters.shape)
         filter_cout1 = filter_cout1 / filter_sizes[2] / filter_sizes[3] / g_extend
     else:
-        _, filter_cout1, filter_cout0, filter_cin0 = shape_to_list(filters.shape)
+        _, filter_cout1, filter_cout0, filter_cin0 = cube_util.shape_to_list(filters.shape)
 
-    dy_batch, dy_c1, dy_h, dy_w, dy_c0 = shape_to_list(out_backprop.shape)
+    dy_batch, dy_c1, dy_h, dy_w, dy_c0 = cube_util.shape_to_list(out_backprop.shape)
     filter_cout, filter_cin, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
     stride_h, stride_w = strides
@@ -336,8 +330,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     dx_h_after_pad = dx_h + pad_up + pad_down
     dx_w_after_pad = dx_w + pad_left + pad_right
-    _, dedy_k0, _ = cce_params.CUBE_MKN[out_backprop.dtype]["mac"]
-    _, w_k0, w_n0 = cce_params.CUBE_MKN[filters.dtype]["mac"]
+    _, dedy_k0, _ = tbe_platform.CUBE_MKN[out_backprop.dtype]["mac"]
+    _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filters.dtype]["mac"]
 
     filter_cout = (filter_cout + w_k0 - 1) // w_k0 * w_k0
 
@@ -443,21 +437,11 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         _check_variable_range(dx_w, dx_hw_min, dx_hw_max, "dx_w")
         _check_equal_rule(dx_batch, dy_batch, "dx_batch", "dy_batch")
 
-        _check_equal_rule(
-            (dx_h_after_pad - filter_h_dilation) // stride_h + 1,
-            dy_h,
-            "(dx_h_after_pad - filter_h_dilation) \
-                // stride_h + 1",
-            "dy_h"
-        )
+        _check_equal_rule((dx_h_after_pad - filter_h_dilation) // stride_h + 1, dy_h,
+                          "(dx_h_after_pad - filter_h_dilation) // stride_h + 1", "dy_h")
 
-        _check_equal_rule(
-            (dx_w_after_pad - filter_w_dilation) // stride_w + 1,
-            dy_w,
-            "(dx_w_after_pad - filter_w_dilation) \
-                // stride_w + 1",
-            "dy_h"
-        )
+        _check_equal_rule((dx_w_after_pad - filter_w_dilation) // stride_w + 1, dy_w,
+                          "(dx_w_after_pad - filter_w_dilation) // stride_w + 1", "dy_h")
 
         _check_equal_rule(dx_c_ori, filter_c_ori, "dx_cin", "filter_cin")
     # strides
@@ -519,11 +503,11 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             dy_w = dedy_w_bound[1]
         else:
             dx_w = input_sizes[3]
-            dy_w = shape_to_list(out_backprop.shape)[3]
+            dy_w = cube_util.shape_to_list(out_backprop.shape)[3]
         if not dy_w:
             return
-        c0_size_k = cce_params.CUBE_MKN[filters.dtype]["mac"][1]
-        bl1_size = filter_w * cce_params.C0_SIZE * c0_size_k * BIT_RATIO_DICT.get(filters.dtype)
+        c0_size_k = tbe_platform.CUBE_MKN[filters.dtype]["mac"][1]
+        bl1_size = filter_w * tbe_platform.C0_SIZE * c0_size_k * BIT_RATIO_DICT.get(filters.dtype)
 
         al1_w_value = dy_w * stride_w
         al1_size = al1_w_value * c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
@@ -538,7 +522,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             al1_size = _l1fusion_size_limit(al1_size)
         DeconvParam.al1_size = al1_size
         DeconvParam.bl1_size = bl1_size
-        if al1_size + bl1_size > cce_conf.get_soc_spec("L1_SIZE"):
+        if al1_size + bl1_size > tbe_platform_info.get_soc_spec("L1_SIZE"):
             dict_args = dict()
             dict_args["errCode"] = "E60026"
             raise RuntimeError(
@@ -562,8 +546,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
                     dict_args, error_manager_util.get_error_message(dict_args)
                 )
 
-        _, dedy_k0, _ = cce_params.CUBE_MKN[out_backprop.dtype]["mac"]
-        _, w_k0, w_n0 = cce_params.CUBE_MKN[filters.dtype]["mac"]
+        _, dedy_k0, _ = tbe_platform.CUBE_MKN[out_backprop.dtype]["mac"]
+        _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filters.dtype]["mac"]
 
         if "batch_n" in var_map:
             dy_batch_upper, dx_batch_upper = batch_n_bound[1], batch_n_bound[1]
@@ -582,9 +566,8 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
             dedy_size = dy_batch_upper * dy_c1 * dy_h_upper * dy_w_upper * dy_c0
             _check_64bits_limitation(fmap_size, dtype=res_dtype)
             _check_64bits_limitation(dedy_size, dtype=out_backprop.dtype)
-        filter_size = (
-                          _align(dy_c1_extend, w_k0) * _align(dx_c1_extend, w_n0)
-                      ) * filter_h * filter_w * g_extend
+        filter_size = (_align(dy_c1_extend, w_k0) *
+                       _align(dx_c1_extend, w_n0)) * filter_h * filter_w * g_extend
         _check_64bits_limitation(filter_size, dtype=filters.dtype)
 
     if "dx_h" not in var_map and "dx_w" not in var_map:
@@ -612,7 +595,7 @@ def _get_var_map(out_backprop):
     return var_map
 
 
-@para_check.check_input_type(Tensor, Tensor, (list, tuple), (list, tuple), dict)
+@tbe_utils.para_check.check_input_type(Tensor, Tensor, (list, tuple), (list, tuple), dict)
 def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_sizes, para_dict):
     """
     DSL interface of conv2d backprop input
@@ -679,18 +662,18 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         }
 
     if group_dict is None:
-        group_dict = {GroupDictKeys.g_extend: 1,
-                      GroupDictKeys.multiple_extend: 1,
-                      GroupDictKeys.groups: 1,
-                      GroupDictKeys.dx_c1_extend: ceil(input_sizes[1],
-                                                       cce_params.C0_SIZE),
-                      GroupDictKeys.dy_c1_extend: shape_to_list(out_backprop.shape)[1],
-                      GroupDictKeys.dx_c_ori: input_sizes[1],
-                      GroupDictKeys.dy_c_ori: filter_sizes[0],
-                      GroupDictKeys.filter_batch_ori: filter_sizes[0],
-                      GroupDictKeys.filter_c_ori: filter_sizes[1],
-                      GroupDictKeys.filter_ori_format: "NCHW"
-                      }
+        group_dict = {
+            cube_util.GroupDictKeys.g_extend: 1,
+            cube_util.GroupDictKeys.multiple_extend: 1,
+            cube_util.GroupDictKeys.groups: 1,
+            cube_util.GroupDictKeys.dx_c1_extend: ceil(input_sizes[1], tbe_platform.C0_SIZE),
+            cube_util.GroupDictKeys.dy_c1_extend: cube_util.shape_to_list(out_backprop.shape)[1],
+            cube_util.GroupDictKeys.dx_c_ori: input_sizes[1],
+            cube_util.GroupDictKeys.dy_c_ori: filter_sizes[0],
+            cube_util.GroupDictKeys.filter_batch_ori: filter_sizes[0],
+            cube_util.GroupDictKeys.filter_c_ori: filter_sizes[1],
+            cube_util.GroupDictKeys.filter_ori_format: "NCHW"
+        }
 
     caller_name = currentframe().f_back.f_back.f_code.co_name
 
@@ -699,23 +682,11 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     # 2) In quantified fusion scene, convert to general strategy for increasing
     # bias in l0c
     def _is_switch_to_general_scheme():
-        if (
-            tensor_bias is not None
-            and filters.dtype == "int8"
-            and out_backprop.dtype == "int8"
-            and (strides[0] > 1 or strides[1] > 1)
-        ):
-            if caller_name.endswith("_compute") or (
-                1 + strides[0] * strides[1]
-            ) * shape_to_list(out_backprop.shape)[3] * cce_params.CUBE_MKN[res_dtype][
-                "mac"
-            ][
-                2
-            ] * BIT_RATIO_DICT[
-                res_dtype
-            ] > cce_conf.get_soc_spec(
-                "UB_SIZE"
-            ):
+        if (tensor_bias is not None and filters.dtype == "int8" and out_backprop.dtype == "int8"
+                and (strides[0] > 1 or strides[1] > 1)):
+            opti_strategy = (1 + strides[0] * strides[1]) * cube_util.shape_to_list(
+                out_backprop.shape)[3] * tbe_platform.CUBE_MKN[res_dtype]["mac"][2] * BIT_RATIO_DICT[res_dtype]
+            if caller_name.endswith("_compute") or opti_strategy > tbe_platform_info.get_soc_spec("UB_SIZE"):
                 return True
         return False
 
@@ -723,40 +694,36 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
 
     switch_to_general_scheme = _is_switch_to_general_scheme()
 
-    _check_input_params(
-        filters,
-        out_backprop,
-        filter_sizes,
-        input_sizes,
-        strides,
-        padding,
-        dilations,
-        res_dtype,
-        offset_w,
-        group_dict,
-        fusion_para=fusion_para,
-        switch_to_general_scheme=switch_to_general_scheme
-    )
+    _check_input_params(filters,
+                        out_backprop,
+                        filter_sizes,
+                        input_sizes,
+                        strides,
+                        padding,
+                        dilations,
+                        res_dtype,
+                        offset_w,
+                        group_dict,
+                        fusion_para=fusion_para,
+                        switch_to_general_scheme=switch_to_general_scheme)
 
     out_channel, in_channel, filter_h, filter_w = filter_sizes
     dx_batch, dx_c, dx_h, dx_w = input_sizes
 
-    _, dx_k0, dx_n0 = cce_params.CUBE_MKN[res_dtype]["mac"]
+    _, dx_k0, dx_n0 = tbe_platform.CUBE_MKN[res_dtype]["mac"]
     shape_dx = (dx_batch, ceil(dx_c, dx_n0), dx_h, dx_w, dx_n0)
 
-    shape_dy = shape_to_list(out_backprop.shape)
-    g_extend = group_dict.get(GroupDictKeys.g_extend)
-    dy_c1_extend = group_dict.get(GroupDictKeys.dy_c1_extend)
-    dx_c1_extend = group_dict.get(GroupDictKeys.dx_c1_extend)
+    shape_dy = cube_util.shape_to_list(out_backprop.shape)
+    g_extend = group_dict.get(cube_util.GroupDictKeys.g_extend)
+    dy_c1_extend = group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
+    dx_c1_extend = group_dict.get(cube_util.GroupDictKeys.dx_c1_extend)
     dy_6gd_shape = [g_extend, shape_dy[0], dy_c1_extend] + shape_dy[2:]
     dx_6gd_shape = [g_extend, shape_dx[0], dx_c1_extend] + list(shape_dx)[2:]
 
     DynamicConv2dBpInputParams.tiling_info_dict = {
         "op_type": "conv2d_backprop_input",
         "A_shape": dy_6gd_shape[1:],
-        "B_shape": [dy_c1_extend * dx_k0,
-                    dx_c1_extend,
-                    filter_h, filter_w, dx_n0],
+        "B_shape": [dy_c1_extend * dx_k0, dx_c1_extend, filter_h, filter_w, dx_n0],
         "C_shape": dx_6gd_shape[1:],
         "A_dtype": out_backprop.dtype,
         "B_dtype": filters.dtype,
@@ -772,7 +739,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         "strideW_expand": strides[1],
         "dilationH": dilations[2],
         "dilationW": dilations[3],
-        "group": group_dict.get(GroupDictKeys.g_extend),
+        "group": group_dict.get(cube_util.GroupDictKeys.g_extend),
         "bias_flag": False,
         "fused_double_operand_num": 0,
         "in_fm_memory_type": [],
@@ -784,12 +751,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     }
     DynamicConv2dBpInputParams.var_map = DeconvParam.var_map
 
-    if (
-        filter_h == 1
-        and filter_w == 1
-        and check_pad_zero(padding)
-        and not switch_to_general_scheme
-    ):
+    if (filter_h == 1 and filter_w == 1 and cube_util.check_pad_zero(padding)
+            and not switch_to_general_scheme):
         pattc = DeConvKernelSize1Pattern(
             filter_sizes,
             strides=strides,

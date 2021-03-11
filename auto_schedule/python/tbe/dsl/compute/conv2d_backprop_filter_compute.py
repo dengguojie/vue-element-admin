@@ -20,16 +20,15 @@ from __future__ import print_function
 
 from functools import reduce
 
-from te.platform import cce_params
-from te.platform.cce_conf import intrinsic_check_support
-from te.platform.cce_conf import get_soc_spec
-from tbe.dsl.base.operation import get_te_var
-from tbe.dsl.compute.cube_util import shape_to_list
-from tbe.common.utils import para_check
+from tbe.common import platform as tbe_platform
+from tbe.common import utils as tbe_utils
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.compute import cube_util
 from tbe.tvm import api as tvm
-from tbe.tvm.expr import Var
 from tbe.tvm.expr import IntImm
+from tbe.tvm.expr import Var
 from tbe.tvm.tensor import Tensor
 
 
@@ -229,8 +228,8 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.optag = "conv2d_backprop_filter"
 
         # 5HD shape
-        self.shape_grads_5hd = shape_to_list(self.grads.shape)
-        self.shape_x_5hd = shape_to_list(self.fmap.shape)
+        self.shape_grads_5hd = cube_util.shape_to_list(self.grads.shape)
+        self.shape_x_5hd = cube_util.shape_to_list(self.fmap.shape)
 
         self.shapelist['grads_5hd'] = self.shape_grads_5hd
         self.shapelist['fmap_5hd'] = self.shape_x_5hd
@@ -249,9 +248,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         DynamicConv2dBpFilterParams.dynamic_mode = self.dynamic_mode
         DynamicConv2dBpFilterParams.tiling_info_dict = {
             "op_type": 'conv2d_backprop_filter',
-            "A_shape": shape_to_list(self.grads.shape),
-            "B_shape": shape_to_list(self.fmap.shape),
-            "C_shape": shape_to_list([
+            "A_shape": cube_util.shape_to_list(self.grads.shape),
+            "B_shape": cube_util.shape_to_list(self.fmap.shape),
+            "C_shape": cube_util.shape_to_list([
                 _ceil_div(self.weight_shape[0], BLOCK_SIZE) * BLOCK_SIZE,
                 _ceil_div(self.weight_shape[1], BLOCK_SIZE),
                 self.weight_shape[2], self.weight_shape[3], BLOCK_SIZE]),
@@ -312,7 +311,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             dict_args["expected_dtype_list"] = "float16"
             dict_args["dtype"] = self.grads_dtype
             error_manager_util.raise_runtime_error(dict_args)
-        if not intrinsic_check_support("Intrinsic_mmad", "f162f32") and \
+        if not tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32") and \
                 self.res_dtype != "float16":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
@@ -320,7 +319,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             dict_args["expected_dtype_list"] = "float16 for lhisi"
             dict_args["dtype"] = self.res_dtype
             error_manager_util.raise_runtime_error(dict_args)
-        if intrinsic_check_support("Intrinsic_mmad", "f162f32") and \
+        if tbe_platform.intrinsic_check_support("Intrinsic_mmad", "f162f32") and \
                 self.res_dtype != "float32":
             dict_args = dict()
             dict_args["errCode"] = "E60005"
@@ -385,7 +384,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             # limitation by chip:
             # load3d instruction not support out_w = 1
             # only Ascend310 and Hi3796CS can support
-            if get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"] \
+            if tbe_platform_info.get_soc_spec("SOC_VERSION") not in ["Ascend310", "Hi3796CV300CS", "SD3403"] \
                     and self.shape_grads_5hd[2] != 1 \
                     and self.shape_grads_5hd[3] == 1:
                 self.flag_load3d_special_case = True
@@ -570,32 +569,26 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         calculate the params of group convlution
 
         """
-        c0_size = cce_params.C0_SIZE
         groups = self.group
         cout, cin, _, _ = self.weight_shape
         fmap_c = cin * groups
-
-        mag_factor0 = lcm(fmap_c // groups,
-                          c0_size) // (fmap_c // groups)
-        mag_factor1 = lcm(cout // groups,
-                          c0_size) // (cout // groups)
+        c0_size = tbe_platform.C0_SIZE
+        mag_factor0 = lcm(fmap_c // groups, c0_size) // (fmap_c // groups)
+        mag_factor1 = lcm(cout // groups, c0_size) // (cout // groups)
         mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
 
-        cin1_g = (
-                    mag_factor * fmap_c // groups + c0_size - 1
-                 ) // c0_size
-        cout_g = (
-                    mag_factor * cout // groups + c0_size - 1
-                 ) // c0_size * c0_size
+        cin1_g = (mag_factor * fmap_c // groups + c0_size - 1) // c0_size
+        cout_g = (mag_factor * cout // groups + c0_size - 1) // c0_size * c0_size
 
-        group_dict = {"real_g": (groups + mag_factor - 1) // mag_factor,
-                      "mag_factor": mag_factor,
-                      "cin1_g": cin1_g,
-                      "cout_g": cout_g,
-                      "cin_ori": fmap_c,
-                      "cout_ori": cout}
+        group_dict = {
+            "real_g": (groups + mag_factor - 1) // mag_factor,
+            "mag_factor": mag_factor,
+            "cin1_g": cin1_g,
+            "cout_g": cout_g,
+            "cin_ori": fmap_c,
+            "cout_ori": cout
+        }
         self.group_dict = group_dict
-
 
     def _deconv_dw_access(self):
         """
@@ -1216,7 +1209,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                                   'dilation': self.dilation,
                                   'kernel_size': self.weight_shape})
 
-@para_check.check_input_type(Tensor, Tensor, (list, tuple), dict)
+@tbe_utils.para_check.check_input_type(Tensor, Tensor, (list, tuple), dict)
 def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dict):
     """
     the DSL interface of conv2d backprop filter compute

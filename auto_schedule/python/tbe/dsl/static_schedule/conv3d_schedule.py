@@ -15,13 +15,15 @@
 """
 Schedule of conv3d.
 """
-import te.platform as tbe_platform
 from tbe import tvm
-from tbe.dsl.compute import conv3d_compute
-from tbe.dsl.compute import util as te_util
-from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.compute import conv3d_compute
+from tbe.dsl.compute import util as compute_util
+
 
 # tiling check
 _TILING_L1_SHAPE_DIM = 4
@@ -110,7 +112,7 @@ class CceConv3dOp:
             tiling["BL1_shape"] = None
 
         if tiling["BL1_shape"] is not None:
-            bl1 = sch.cache_read(weight, tbe_platform.scope_cbuf, [c_col])
+            bl1 = sch.cache_read(weight, tbe_platform_info.scope_cbuf, [c_col])
         else:
             # tiling["BL1_shape"] is not None ---> weight from OUT To l0b directly
             bl1 = weight
@@ -137,7 +139,7 @@ class CceConv3dOp:
         if tiling["AL1_shape"]:
             al1_factor = [
                 equivalent_k // tiling["AL1_shape"][0],
-                te_util.int_ceil_div(c_factor[1], tiling["AL1_shape"][1])
+                compute_util.int_ceil_div(c_factor[1], tiling["AL1_shape"][1])
             ]
         else:
             al1_factor = [1, 1]
@@ -153,8 +155,8 @@ class CceConv3dOp:
             if len(tiling["BL1_shape"]) == 1:
                 tiling["BL1_shape"] = tiling["BL1_shape"] + [1]
             bl1_factor = [
-                te_util.int_ceil_div(equivalent_k, tiling["BL1_shape"][0]),
-                te_util.int_ceil_div(c_factor[0], tiling["BL1_shape"][1])
+                compute_util.int_ceil_div(equivalent_k, tiling["BL1_shape"][0]),
+                compute_util.int_ceil_div(c_factor[0], tiling["BL1_shape"][1])
             ]
         else:
             bl1_factor = [1, tiling["block_dim"][1]]
@@ -412,7 +414,7 @@ class CceConv3dOp:
             if (("conv3d" not in lop["op"] or
                  (self.dsl_flag and (lop["op"] == "conv3d_C"))) and
                 lop['dst_buffer'] not in spec_node_list):
-                self._schedule[lop["dst_buffer"]].set_scope(tbe_platform.scope_ubuf)
+                self._schedule[lop["dst_buffer"]].set_scope(tbe_platform_info.scope_ubuf)
         for lop in self.input_ops:  # not for A, B, DeqScale, ReqScale,
             if "conv3d" in lop["op"]:
                 continue
@@ -423,7 +425,7 @@ class CceConv3dOp:
             for nop in lop["next_op"]:
                 tmp_read_map.append(nop["dst_buffer"])
             tmp_cache_buffer = self._schedule.cache_read(
-                lop["dst_buffer"], tbe_platform.scope_ubuf,
+                lop["dst_buffer"], tbe_platform_info.scope_ubuf,
                 list(set(tmp_read_map)))
             lop["cache_buffer"] = tmp_cache_buffer
 
@@ -522,7 +524,7 @@ class CceConv3dOp:
 
         matrix_cab = ["CL0_matrix", "AL0_matrix", "BL0_matrix"]
         for index0, index1 in zip(matrix_list[0:3], matrix_cab):
-            if te_util.get_and_res(tiling[index0], tiling[index1]):
+            if compute_util.get_and_res(tiling[index0], tiling[index1]):
                 if tiling[index0][0] != tiling[index1][1]:
                     cube_err.raise_err_specific('conv3d',
                         "tiling['%s'][0] must equal to tiling['%s'][1]" % (index0, index1))
@@ -659,7 +661,7 @@ class CceConv3dOp:
                 (((kernel_h - 1) * dilationh + 1) * ((kernel_w - 1) * dilationw + 1) *
                 tbe_platform.CUBE_MKN[w_dtype]['mac'][1]))
 
-        if te_util.get_or_res(tiling_new["BL1_shape"] == [],
+        if compute_util.get_or_res(tiling_new["BL1_shape"] == [],
                               tiling_new["BL1_shape"] is None):
             tiling["BL1_shape"] = tiling_new["BL1_shape"]
         else:
@@ -673,12 +675,12 @@ class CceConv3dOp:
         tiling["scale_drq_split_flag"] = False
         tiling["bias_split_flag"] = False
 
-        if te_util.get_or_res(tiling_ok_flag is False,
+        if compute_util.get_or_res(tiling_ok_flag is False,
                               conv3d_compute.Conv3DParam.tiling_query_param["default_tiling"]):
             tiling = {}
             config = tbe_platform.CUBE_MKN[w_dtype]
             ci0 = config['mac'][1]
-            l1_buffer_size = tbe_platform.get_soc_spec("L1_SIZE")
+            l1_buffer_size = tbe_platform_info.get_soc_spec("L1_SIZE")
             m_bit_length = {
                 "float32": 32,
                 "float16": 16,
@@ -729,8 +731,8 @@ class CceConv3dOp:
                 'UBG_pbuffer': 1,
             }
             tiling["block_dim"] = [1, 1, 1]
-            device_core_num = tbe_platform.get_soc_spec("CORE_NUM")
-            if te_util.get_and_res(batch_size > 1, device_core_num > 1):
+            device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+            if compute_util.get_and_res(batch_size > 1, device_core_num > 1):
                 if batch_size <= device_core_num:
                     tiling["block_dim"][0] = batch_size
                 else:
@@ -1069,13 +1071,13 @@ class CceConv3dOp:
         al1 = buffer_dict["al1"]
         if not l0a_load2d_flag and not self.var_map:
             fmap_col_before = buffer_dict["fmap_col_before"]
-        if te_util.get_and_res(l0a_load2d_flag, nbuffer_flag_al1):
+        if compute_util.get_and_res(l0a_load2d_flag, nbuffer_flag_al1):
             al1_compute_axis = compute_axis["k_outer_outer_inner_outer"]
             compute_stage = stage[0]
             al1_allocate_axis = allocate_axis[index_axis[index]]
             allocate_stage = stage[index]
-            run_flag = te_util.get_and_res(index == 1, reorder_flag)
-            if te_util.get_or_res(run_flag, index == 2):
+            run_flag = compute_util.get_and_res(index == 1, reorder_flag)
+            if compute_util.get_or_res(run_flag, index == 2):
                 al1_run_once_axis = [
                     run_once_axis["c_outer_outer_inner"],
                     run_once_axis["c_outer_outer_outer_inner"]
@@ -1103,7 +1105,7 @@ class CceConv3dOp:
 
         if not self.var_map:
             do_num = al1.op.axis[0].dom.extent.value
-            if te_util.get_and_res(cyclebuffer_flag, do_num != 1):
+            if compute_util.get_and_res(cyclebuffer_flag, do_num != 1):
                 cyclebuffer_factor = self._tensor_map["d_out"] // self._tensor_map["d_dim"]
                 expr = tvm.select(tvm.convert(cyclebuffer_factor) == 1,
                                   al1.op.axis[0].var,
@@ -1207,7 +1209,6 @@ class CceConv3dOp:
         True for sucess, False for no schedule
         """
         opti_flag = False
-        tbe_platform.cce_params.jump_expand_flag = True
 
         tensor_map = self._tensor_map
         dim_map = self._dim_map
@@ -1281,7 +1282,7 @@ class CceConv3dOp:
                 al0 = tensor_map["al0_load2d"]
                 sch[_al1].storage_align(sch[_al1].op.axis[1], 256, 0)
                 _fmap_col = al0
-                sch[_al1].set_scope(tbe_platform.scope_cbuf)
+                sch[_al1].set_scope(tbe_platform_info.scope_cbuf)
                 _fuse_fmap_tensor = 0
                 _fmap_col_before = 0
             else:
@@ -1292,9 +1293,9 @@ class CceConv3dOp:
                     sch[_fmap_col_before].buffer_align(
                         (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
                         (1, tbe_platform.CUBE_MKN[_fmap_col_before.dtype]["mac"][1]))
-                    sch[_fmap_col_before].set_scope(tbe_platform.scope_cbuf)
+                    sch[_fmap_col_before].set_scope(tbe_platform_info.scope_cbuf)
                 _fmap_col = tensor_map["fmap_im2col_fractal_res"]
-                sch[_fuse_fmap_tensor].set_scope(tbe_platform.scope_cbuf)
+                sch[_fuse_fmap_tensor].set_scope(tbe_platform_info.scope_cbuf)
                 _al1 = _fuse_fmap_tensor
             return _fuse_fmap_tensor, _fmap_col_before, _fmap_col, _al1
 
@@ -1306,10 +1307,10 @@ class CceConv3dOp:
             c_col_bias = tensor_map["c_col_bias"]
             bias_ub_brc = tensor_map["bias_ub_brc"]
 
-            sch[bias_l0c].set_scope(tbe_platform.scope_cc)
-            sch[c_col_bias].set_scope(tbe_platform.scope_cc)
-            sch[bias_ub_brc].set_scope(tbe_platform.scope_ubuf)
-            bias_ub = sch.cache_read(bias, tbe_platform.scope_ubuf,
+            sch[bias_l0c].set_scope(tbe_platform_info.scope_cc)
+            sch[c_col_bias].set_scope(tbe_platform_info.scope_cc)
+            sch[bias_ub_brc].set_scope(tbe_platform_info.scope_ubuf)
+            bias_ub = sch.cache_read(bias, tbe_platform_info.scope_ubuf,
                                      [bias_ub_brc])
 
         sch[c_ub].buffer_align((1, 1), (1, 1),
@@ -1317,7 +1318,7 @@ class CceConv3dOp:
                                (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2]))
         # for fusion vector
         if self.dsl_flag:
-            res_ub = sch.cache_write(res, tbe_platform.scope_ubuf)
+            res_ub = sch.cache_write(res, tbe_platform_info.scope_ubuf)
             self.output_ops[0]["tensorize_axis"] = \
                 self._schedule[res_ub].op.axis[0]
             self.output_ops[0]["dst_buffer"] = res_ub
@@ -1333,15 +1334,15 @@ class CceConv3dOp:
         filter_matrix[1] = filter_matrix[1] // tiling["block_dim"][1]
 
         bl1 = self._weight_to_bl1(tiling, filter_matrix, weight, c_col)
-        bl0 = sch.cache_read(bl1, tbe_platform.scope_cb, [c_col])
+        bl0 = sch.cache_read(bl1, tbe_platform_info.scope_cb, [c_col])
 
-        sch[c_col].set_scope(tbe_platform.scope_cc)
-        sch[c_ub].set_scope(tbe_platform.scope_ubuf)
+        sch[c_col].set_scope(tbe_platform_info.scope_cc)
+        sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
 
         compute_at_buffer = []
         compute_at_axis = []
 
-        sch[fmap_col].set_scope(tbe_platform.scope_ca)
+        sch[fmap_col].set_scope(tbe_platform_info.scope_ca)
 
         factor_m = tiling["AL0_matrix"][0]
         factor_k = tiling["AL0_matrix"][1]
@@ -1378,16 +1379,16 @@ class CceConv3dOp:
 
         n_0 = config["mac"][2]
         c_factor = [
-            te_util.int_ceil_div(self._tensor_map["group_dict"]["cout_g"] // n_0,
+            compute_util.int_ceil_div(self._tensor_map["group_dict"]["cout_g"] // n_0,
                                  c_tiling_factor[0]),
-            te_util.int_ceil_div(dim_map["out_img_shape"][-2],
+            compute_util.int_ceil_div(dim_map["out_img_shape"][-2],
                                  c_tiling_factor[1])
         ]
 
         c_ub_tiling_factor = tiling["CUB_matrix"]
         c_ub_factor = [
-            te_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
-            te_util.int_ceil_div(c_tiling_factor[1],
+            compute_util.int_ceil_div(c_tiling_factor[0], c_ub_tiling_factor[0]),
+            compute_util.int_ceil_div(c_tiling_factor[1],
                                  c_ub_tiling_factor[1] * c_ub_tiling_factor[2])
         ]
 
@@ -1767,17 +1768,17 @@ class CceConv3dOp:
                 al1_m = fmap_hi * fmap_wi
                 if l0a_load2d_flag:
                     align_util = 16
-                    al1_m = te_util.align(al1_m, align_util)
+                    al1_m = compute_util.align(al1_m, align_util)
                 return al1_m * fmap_c1 * fmap_c0 * kernel_d
 
         if self.var_map:
             sch[al1].set_storage_bound(_get_al1_bound())
             # disable_allocate
-            sch.disable_allocate(tbe_platform.scope_cbuf)
-            sch.disable_allocate(tbe_platform.scope_ca)
-            sch.disable_allocate(tbe_platform.scope_cb)
-            sch.disable_allocate(tbe_platform.scope_cc)
-            sch.disable_allocate(tbe_platform.scope_ubuf)
+            sch.disable_allocate(tbe_platform_info.scope_cbuf)
+            sch.disable_allocate(tbe_platform_info.scope_ca)
+            sch.disable_allocate(tbe_platform_info.scope_cb)
+            sch.disable_allocate(tbe_platform_info.scope_cc)
+            sch.disable_allocate(tbe_platform_info.scope_ubuf)
 
             # mem_unique
             sch[al1].mem_unique()

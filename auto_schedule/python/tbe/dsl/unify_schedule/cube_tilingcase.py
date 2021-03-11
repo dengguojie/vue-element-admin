@@ -24,10 +24,11 @@ from collections import defaultdict
 from collections import deque
 from abc import abstractmethod
 
-from te.platform import cce_conf
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.dsl.base.operation import add_compile_info
 from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Expr
-from tbe.dsl.base.operation import add_compile_info
+
 
 C0_SIZE = 16
 W_DELTA = 1
@@ -62,7 +63,7 @@ class CubeTilingOp:
         get batch covering range
         """
         if "batch_n" in paras.get("var_map"):
-            core_num = cce_conf.get_soc_spec("CORE_NUM")
+            core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
             if batch >= core_num:
                 return core_num, TilingUtils.NHW_MAX
             if core_num == TilingUtils.N_BASE:
@@ -207,8 +208,6 @@ class TilingSelection:
                 tiling_cases = batch_func(target_area)
             elif self.op.dynamic_mode in ("dynamic_mkn", "dynamic_mknb"):
                 tiling_cases = self._calc_matmul(target_area)
-            elif self.op.dynamic_mode == "dynamic_dhw":
-                tiling_cases = self._calc_dhw(target_area)
             else:
                 raise RuntimeError("Only dynamic_hw/dynamic_batch "
                                    "is supported")
@@ -228,20 +227,20 @@ class TilingSelection:
         if self.op.op_type == "conv2d":
             block_dims = tiling["block_dim"]
             block_nums = block_dims[0] * block_dims[1] * block_dims[2]
-            if block_nums < cce_conf.get_soc_spec("CORE_NUM"):
+            if block_nums < tbe_platform_info.get_soc_spec("CORE_NUM"):
                 if seed["A_shape"][0] > 1 and block_dims[0] < seed["A_shape"][0] and \
-                    seed["A_shape"][0] * block_dims[1] * block_dims[2] <= cce_conf.get_soc_spec("CORE_NUM"):
+                    seed["A_shape"][0] * block_dims[1] * block_dims[2] <= tbe_platform_info.get_soc_spec("CORE_NUM"):
                     tiling["block_dim"][0] = seed["A_shape"][0]
                     block_dims = tiling["block_dim"]
             if tiling["BL0_matrix"] and tiling["BL1_shape"]:
                 co1 = (seed["B_shape"][0] + C0_SIZE - 1) // C0_SIZE
                 if block_dims[1] * tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2 < co1 and \
                     co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2) * block_dims[0] * \
-                    block_dims[2] <= cce_conf.get_soc_spec("CORE_NUM"):
+                    block_dims[2] <= tbe_platform_info.get_soc_spec("CORE_NUM"):
                     tiling["block_dim"][1] = co1 // (tiling["BL1_shape"][1] * tiling["BL0_matrix"][1] * 2)
                     block_dims = tiling["block_dim"]
             block_nums = block_dims[0] * block_dims[1] * block_dims[2]
-            if block_nums < cce_conf.get_soc_spec("CORE_NUM") and tiling["AL1_shape"]:
+            if block_nums < tbe_platform_info.get_soc_spec("CORE_NUM") and tiling["AL1_shape"]:
                 hout = self.op.get_output_h(seed["A_shape"][2])
                 wout = self.op.get_output_w(seed["A_shape"][3])
                 tmp = hout * wout // (tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1] * block_dims[2])
@@ -249,7 +248,7 @@ class TilingSelection:
                     tmp = tiling["AL0_matrix"][0] * C0_SIZE * tiling["AL1_shape"][1]
                     used_core_num = block_dims[0] * block_dims[1]
                     tiling["block_dim"][2] = min(
-                        (hout*wout + tmp - 1) // tmp, cce_conf.get_soc_spec("CORE_NUM") // used_core_num)
+                        (hout*wout + tmp - 1) // tmp, tbe_platform_info.get_soc_spec("CORE_NUM") // used_core_num)
 
         return tiling
 
@@ -477,8 +476,8 @@ class TilingSelection:
             seed_cnt = next(self.seed_cnt)
             tiling_block_dims = seed["tiling"]["block_dim"]
             block_nums = tiling_block_dims[0]*tiling_block_dims[1]*tiling_block_dims[2]
-            if block_nums < cce_conf.get_soc_spec("CORE_NUM"):
-                seed["tiling"]["block_dim"][0] = (cce_conf.get_soc_spec("CORE_NUM")
+            if block_nums < tbe_platform_info.get_soc_spec("CORE_NUM"):
+                seed["tiling"]["block_dim"][0] = (tbe_platform_info.get_soc_spec("CORE_NUM")
                 // (tiling_block_dims[1]*tiling_block_dims[2]))
             if self.op.op_type == "conv2d":
                 tiling = seed["tiling"]

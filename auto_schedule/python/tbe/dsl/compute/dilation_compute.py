@@ -19,10 +19,10 @@ import math
 import functools
 import operator
 
-import te.platform as tbe_platform
-from te.platform import cce_params
-from tbe.common.utils.errormgr import error_manager_util
 from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.utils.errormgr import error_manager_util
 
 
 def shape_align(shape, dtype):
@@ -32,7 +32,7 @@ def shape_align(shape, dtype):
     :param dtype: data type, support int8, float16, float32
     :return: list; aligned shape
     """
-    align_factor = cce_params.BLOCK_REDUCE_INT8 if dtype == "int8" else cce_params.BLOCK_REDUCE
+    align_factor = tbe_platform.BLOCK_REDUCE_INT8 if dtype == "int8" else tbe_platform.BLOCK_REDUCE
     res = [i for i in shape]
     res[-1] = math.ceil(res[-1] / align_factor) * align_factor
     return res
@@ -169,7 +169,7 @@ def _param_check(tensor_x, dilations):
             error_manager_util.get_error_message(args_dict)
         )
     ub_size_need = calc_minimum_ub(shape_x, dilations, dtype)
-    ub_size = tbe_platform.get_soc_spec("UB_SIZE")
+    ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
     if ub_size_need > ub_size:
         args_dict = {
             "errCode": "E60038",

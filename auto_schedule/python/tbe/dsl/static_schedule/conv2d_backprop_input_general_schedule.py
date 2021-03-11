@@ -16,20 +16,20 @@
 conv2d backprop input general schedule.
 """
 from functools import reduce
+
 from tbe import tvm
-from te.platform import cce_conf
-from te.platform import cce_params
-from te.lang.cce.boost_schedule_kit import Compare
-from te.lang.cce.boost_schedule_kit import ScheduleAgent
-from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
-from tbe.dsl.compute.cube_util import shape_to_list
-from tbe.dsl.compute.cube_util import GroupDictKeys
-from tbe.dsl.static_schedule.util import L1CommonParam
-from tbe.dsl.static_schedule.util import parse_tbe_compile_para
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
+from tbe.dsl.compute import cube_util
+from tbe.dsl.static_schedule.util import L1CommonParam
+from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 from tbe.tvm.schedule import InferBound
 from tbe.tvm.schedule import ScheduleOps
+from tbe.dsl.boost_schedule_kit import Compare
+from tbe.dsl.boost_schedule_kit import ScheduleAgent
 
 
 # default false
@@ -169,7 +169,7 @@ def general_schedule(
                         res_addr_type = 0
                     output_memory_type = [res_addr_type]
                     if res_addr_type == 1:
-                        sch[out_member].set_scope(cce_params.scope_cbuf_fusion)
+                        sch[out_member].set_scope(tbe_platform_info.scope_cbuf_fusion)
             else:
                 if "addr_type" in c_ddr.op.attrs:
                     res_addr_type = c_ddr.op.attrs["addr_type"].value
@@ -177,10 +177,10 @@ def general_schedule(
                     res_addr_type = 0
                 output_memory_type = [res_addr_type]
                 if res_addr_type == 1:
-                    sch[c_ddr].set_scope(cce_params.scope_cbuf_fusion)
+                    sch[c_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
         else:
             if out_mem == 1:
-                sch[c_ddr].set_scope(cce_params.scope_cbuf_fusion)
+                sch[c_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
             output_memory_type = [out_mem]
 
         return output_memory_type
@@ -194,7 +194,7 @@ def general_schedule(
     out_mem = _set_output_mem()
     fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
     fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
-    cube_vector_split = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
 
     def _get_var_map(var_range):
         """
@@ -240,7 +240,7 @@ def general_schedule(
         def _fetch_elewise_fusion():
             ub_list = []
             input_tensor_list = []
-            c_ub_res = sch.cache_write(deconv_res, cce_params.scope_ubuf)
+            c_ub_res = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
             for key, value in all_tensor.items():
                 if value.op.tag == "conv2d_backprop_input":
                     c_ub_cut = value
@@ -261,7 +261,7 @@ def general_schedule(
             ub_list = []
             input_cache_buffer = []
             if deconv_res.op.tag not in ("quant", "dequant_remove_pad"):
-                c_ub_res = sch.cache_write(deconv_res, cce_params.scope_ubuf)
+                c_ub_res = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
                 ub_list.append(c_ub_res)
             for key, value in all_tensor.items():
                 if key == "input_ub":
@@ -295,8 +295,8 @@ def general_schedule(
                 )
                 tensor_attr["kernel_h"] = int(kernel_h)
                 tensor_attr["kernel_w"] = int(kernel_w)
-            padding = shape_to_list(a_col_before.op.attrs["padding"])
-            dilations = shape_to_list(a_col_before.op.attrs["dilation"])
+            padding = cube_util.shape_to_list(a_col_before.op.attrs["padding"])
+            dilations = cube_util.shape_to_list(a_col_before.op.attrs["dilation"])
 
             tensor_map["c_col"] = c_col
             tensor_map["a_col"] = a_col
@@ -314,14 +314,15 @@ def general_schedule(
                     a_l1 = a_col_before.op.input_tensors[0]
                     dy_vn = a_l1.op.input_tensors[0]
                     a_zero = dy_vn.op.input_tensors[0]
-                    a_filling = dy_vn.op.input_tensors[1]
-                    a_ddr = a_filling.op.input_tensors[0]
-                    stride_h, stride_w = shape_to_list(a_filling.op.attrs["stride_expand"])
 
-                    sch[a_zero].set_scope(cce_params.scope_ubuf)
-                    sch[dy_vn].set_scope(cce_params.scope_ubuf)
-                    sch[a_filling].set_scope(cce_params.scope_ubuf)
-                    sch[a_l1].set_scope(cce_params.scope_cbuf)
+                    a_filling = dy_vn.op.input_tensors[1]
+                    a_ddr = dy_vn.op.input_tensors[1]
+                    stride_h, stride_w = cube_util.shape_to_list(a_filling.op.attrs["stride_expand"])
+
+                    sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
+                    sch[dy_vn].set_scope(tbe_platform_info.scope_ubuf)
+                    sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
+                    sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
                     tensor_map["a_l1"] = a_l1
                     tensor_map["a_filling"] = a_filling
                     tensor_map["dy_vn"] = dy_vn
@@ -330,7 +331,7 @@ def general_schedule(
                     a_ddr = a_col_before.op.input_tensors[0]  # dEdY in ddr
                     stride_h = 1
                     stride_w = 1
-                    a_l1 = sch.cache_read(a_ddr, cce_params.scope_cbuf, [a_col_before])
+                    a_l1 = sch.cache_read(a_ddr, tbe_platform_info.scope_cbuf, [a_col_before])
                     tensor_map["a_l1"] = a_l1
                 tensor_map["a_ddr"] = a_ddr
                 tensor_attr["stride_h"] = stride_h
@@ -347,45 +348,45 @@ def general_schedule(
                     tensor_map["a_filling"] = a_filling
                     tensor_map["a_zero"] = a_zero
                     # generate a_zero in ub
-                    sch[a_zero].set_scope(cce_params.scope_ubuf)
-                    sch[a_filling].set_scope(cce_params.scope_ubuf)
+                    sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
+                    sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
                     tensor_map["a_l1"] = a_l1
-                    sch[a_l1].set_scope(cce_params.scope_cbuf)
+                    sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
                     if valid_shape:
                         read_select = a_filling.op.input_tensors[0]
                         a_ddr = read_select.op.input_tensors[0]
                         if l1_fusion_type == 0 and input_mem[0] == 0:
-                            sch[read_select].set_scope(cce_params.scope_ubuf)
+                            sch[read_select].set_scope(tbe_platform_info.scope_ubuf)
                             tensor_map["a_ub"] = read_select
                         elif input_mem[0] == 1:
-                            sch[read_select].set_scope(cce_params.scope_ubuf)
+                            sch[read_select].set_scope(tbe_platform_info.scope_ubuf)
                             tensor_map["a_ub"] = read_select
-                            sch[a_ddr].set_scope(cce_params.scope_cbuf_fusion)
+                            sch[a_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
                         elif l1_fusion_type == 1:
-                            sch[read_select].set_scope(cce_params.scope_cbuf_fusion)
+                            sch[read_select].set_scope(tbe_platform_info.scope_cbuf_fusion)
                             tensor_map["a_l1_full"] = read_select
                             a_ub = sch.cache_read(
-                                read_select, cce_params.scope_ubuf, [a_filling]
+                                read_select, tbe_platform_info.scope_ubuf, [a_filling]
                             )
                             tensor_map["a_ub"] = a_ub
                     else:
                         a_ddr = a_filling.op.input_tensors[0]
                         if input_mem[0] == 0 and l1_fusion_type != 1:
                             a_ub = sch.cache_read(
-                                a_ddr, cce_params.scope_ubuf, [a_filling]
+                                a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
                             )
                         elif input_mem[0] == 1:
                             a_ub = sch.cache_read(
-                                a_ddr, cce_params.scope_ubuf, [a_filling]
+                                a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
                             )
-                            sch[a_ddr].set_scope(cce_params.scope_cbuf_fusion)
+                            sch[a_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
                         elif l1_fusion_type == 1:
                             a_l1_full = sch.cache_read(
-                                a_ddr, cce_params.scope_cbuf_fusion, [a_filling]
+                                a_ddr, tbe_platform_info.scope_cbuf_fusion, [a_filling]
                             )
                             tensor_map["a_l1_full"] = a_l1_full
                             a_ub = sch.cache_read(
-                                a_l1_full, cce_params.scope_ubuf, [a_filling]
+                                a_l1_full, tbe_platform_info.scope_ubuf, [a_filling]
                             )
                         tensor_map["a_ub"] = a_ub
                     if tensor_map.get("a_l1_full") is not None:
@@ -408,27 +409,27 @@ def general_schedule(
                         a_ddr = a_l1.op.input_tensors[0]
                         stride_h = 1
                         stride_w = 1
-                        sch[a_l1].set_scope(cce_params.scope_cbuf_fusion)
+                        sch[a_l1].set_scope(tbe_platform_info.scope_cbuf_fusion)
                     elif a_col_before.op.input_tensors[0].op.tag == "dy_l1_modify":
                         a_l1 = a_col_before.op.input_tensors[0]
                         a_ddr = a_l1.op.input_tensors[0]
                         stride_h = 1
                         stride_w = 1
-                        sch[a_l1].set_scope(cce_params.scope_cbuf)
+                        sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
                     else:
                         a_ddr = a_col_before.op.input_tensors[0]
                         stride_h = 1
                         stride_w = 1
                         if l1_fusion_type != -1:
                             a_l1 = sch.cache_read(
-                                a_ddr, cce_params.scope_cbuf_fusion, [a_col_before]
+                                a_ddr, tbe_platform_info.scope_cbuf_fusion, [a_col_before]
                             )
                         else:
                             a_l1 = sch.cache_read(
-                                a_ddr, cce_params.scope_cbuf, [a_col_before]
+                                a_ddr, tbe_platform_info.scope_cbuf, [a_col_before]
                             )
                         if input_mem[0] == 1:
-                            sch[a_ddr].set_scope(cce_params.scope_cbuf_fusion)
+                            sch[a_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
                     tensor_map["a_l1"] = a_l1
                     if input_mem[0] == 1 or l1_fusion_type == 1:
                         al1_shape = a_l1.shape
@@ -455,15 +456,15 @@ def general_schedule(
                 _fill_a_tensormap_dynamic()
             else:
                 _fill_a_tensormap()
-            b_l1 = sch.cache_read(b_ddr, cce_params.scope_cbuf, [b_col])
+            b_l1 = sch.cache_read(b_ddr, tbe_platform_info.scope_cbuf, [b_col])
             tensor_map["b_l1"] = b_l1
             # dataflow management
-            sch[b_col].set_scope(cce_params.scope_cb)
-            sch[a_col_before].set_scope(cce_params.scope_cbuf)
-            sch[a_col].set_scope(cce_params.scope_ca)
-            sch[c_col].set_scope(cce_params.scope_cc)
+            sch[b_col].set_scope(tbe_platform_info.scope_cb)
+            sch[a_col_before].set_scope(tbe_platform_info.scope_cbuf)
+            sch[a_col].set_scope(tbe_platform_info.scope_ca)
+            sch[c_col].set_scope(tbe_platform_info.scope_cc)
             if not cube_vector_split:
-                sch[c_ub].set_scope(cce_params.scope_ubuf)
+                sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
 
             return tensor_map
 
@@ -471,10 +472,10 @@ def general_schedule(
             # when add bias in ub
             bias_add_vector = tensor_map.get("bias_add_vector")
             if bias_add_vector is not None:
-                sch[bias_add_vector].set_scope(cce_params.scope_ubuf)
+                sch[bias_add_vector].set_scope(tbe_platform_info.scope_ubuf)
                 bias_tensor = bias_add_vector.op.input_tensors[1]
                 bias_ub = sch.cache_read(
-                    bias_tensor, cce_params.scope_ubuf, [bias_add_vector]
+                    bias_tensor, tbe_platform_info.scope_ubuf, [bias_add_vector]
                 )
                 tensor_map["bias_ub"] = bias_ub
 
@@ -483,9 +484,9 @@ def general_schedule(
                 c_add_bias = tensor_map.get("c_add_bias")
                 bias_l0c = tensor_map.get("bias_l0c")
                 bias_ub_brc = tensor_map.get("bias_ub_brc")
-                sch[c_add_bias].set_scope(cce_params.scope_cc)
-                sch[bias_l0c].set_scope(cce_params.scope_cc)
-                sch[bias_ub_brc].set_scope(cce_params.scope_ubuf)
+                sch[c_add_bias].set_scope(tbe_platform_info.scope_cc)
+                sch[bias_l0c].set_scope(tbe_platform_info.scope_cc)
+                sch[bias_ub_brc].set_scope(tbe_platform_info.scope_ubuf)
 
         def _bias_tensor():
             if c_ub.op.input_tensors[0].name == "c_add_bias":
@@ -495,7 +496,7 @@ def general_schedule(
                 bias_ub_brc = bias_l0c.op.input_tensors[0]
                 tensor_bias = bias_ub_brc.op.input_tensors[0]
                 bias_ub = sch.cache_read(
-                    tensor_bias, cce_params.scope_ubuf, [bias_ub_brc]
+                    tensor_bias, tbe_platform_info.scope_ubuf, [bias_ub_brc]
                 )
                 tensor_map["c_add_bias"] = c_add_bias
                 tensor_map["bias_l0c"] = bias_l0c
@@ -511,7 +512,7 @@ def general_schedule(
 
         def _ubtensor_setscope(ub_tensor_list, input_tensor_list, fusion_num, deq_list):
             for ub_tensor in ub_tensor_list:
-                sch[ub_tensor].set_scope(cce_params.scope_ubuf)
+                sch[ub_tensor].set_scope(tbe_platform_info.scope_ubuf)
                 if "dequant2" in ub_tensor.op.name:
                     deq_list.append(ub_tensor)
                 if deconv_res.op.tag != "quant":
@@ -523,7 +524,7 @@ def general_schedule(
 
             input_list = []
             for input_tensor_mem in input_tensor_list:
-                input_ub = sch.cache_read(input_tensor_mem[0], cce_params.scope_ubuf, input_tensor_mem[1])
+                input_ub = sch.cache_read(input_tensor_mem[0], tbe_platform_info.scope_ubuf, input_tensor_mem[1])
                 input_list.append(input_ub)
             tensor_map["input_tensor"] = input_list
             return fusion_num
@@ -534,28 +535,28 @@ def general_schedule(
                 fusion_param = 1 / 16
                 if "elewise_binary_add" in deconv_res.op.input_tensors[1].op.tag:
                     fusion_param += 1
-                    sch[vadd_res].set_scope(cce_params.scope_ubuf)
+                    sch[vadd_res].set_scope(tbe_platform_info.scope_ubuf)
                     vadd_tensor_ub = sch.cache_read(
-                        vadd_tensor, cce_params.scope_ubuf, [vadd_res]
+                        vadd_tensor, tbe_platform_info.scope_ubuf, [vadd_res]
                     )
                     tensor_map["vadd_tensor_ub"] = vadd_tensor_ub
-                sch[c_ub_cut].set_scope(cce_params.scope_ubuf)
-                mask_ub = sch.cache_read(mask, cce_params.scope_ubuf, [deconv_res])
-                c_ub_drelu = sch.cache_write(deconv_res, cce_params.scope_ubuf)
+                sch[c_ub_cut].set_scope(tbe_platform_info.scope_ubuf)
+                mask_ub = sch.cache_read(mask, tbe_platform_info.scope_ubuf, [deconv_res])
+                c_ub_drelu = sch.cache_write(deconv_res, tbe_platform_info.scope_ubuf)
                 tensor_map["mask_ub"] = mask_ub
                 tensor_map["c_ub_drelu"] = c_ub_drelu
             elif "requant_remove_pad" in deconv_res.op.tag:
                 deq = tensor_map.get("deq")
-                sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
-                deq_ub = sch.cache_read(deq, cce_params.scope_ubuf, tensor_map["c_ub"])
+                sch[tensor_map["c_ub"]].set_scope(tbe_platform_info.scope_ubuf)
+                deq_ub = sch.cache_read(deq, tbe_platform_info.scope_ubuf, tensor_map["c_ub"])
                 tensor_map["deq"] = deq_ub
-                sch[tensor_map["data_transfer"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_map["data_transfer"]].set_scope(tbe_platform_info.scope_ubuf)
                 sch[tensor_map["c_ub"]].compute_inline()
                 sch[tensor_map["c_ub"]].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
                 tensor_map["c_ub"] = tensor_map["data_transfer"]
             elif tensor_attr.get("quant_fuse"):
                 deq_list = [tensor_map["c_ub"]]
-                sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_map["c_ub"]].set_scope(tbe_platform_info.scope_ubuf)
                 ub_list = tensor_map["ub_list"]
                 input_tensor = tensor_map["input_tensor"]
                 if deconv_res.op.tag == "quant":
@@ -564,19 +565,19 @@ def general_schedule(
                     fusion_param = 0
                 fusion_param = _ubtensor_setscope(ub_list, input_tensor, fusion_param, deq_list)
                 deq = tensor_map.get("deq")
-                tensor_map["deq"] = sch.cache_read(deq, cce_params.scope_ubuf, deq_list)
+                tensor_map["deq"] = sch.cache_read(deq, tbe_platform_info.scope_ubuf, deq_list)
                 fusion_param += 0.125
             elif "elewise" in deconv_res.op.tag:
-                sch[tensor_map["c_ub"]].set_scope(cce_params.scope_ubuf)
+                sch[tensor_map["c_ub"]].set_scope(tbe_platform_info.scope_ubuf)
                 for ub_tensor in tensor_map["ub_list"]:
                     if len(ub_tensor.op.input_tensors) > 1:
                         fusion_param += 1
-                    sch[ub_tensor].set_scope(cce_params.scope_ubuf)
+                    sch[ub_tensor].set_scope(tbe_platform_info.scope_ubuf)
                 fusion_param = min(2, fusion_param)
                 input_list = []
                 for input_tensor in tensor_map["input_tensor_list"]:
                     input_ub = sch.cache_read(
-                        input_tensor[0], cce_params.scope_ubuf, input_tensor[1]
+                        input_tensor[0], tbe_platform_info.scope_ubuf, input_tensor[1]
                     )
                     input_list.append(input_ub)
                 tensor_map["input_tensor_list"] = input_list
@@ -659,7 +660,7 @@ def general_schedule(
             tensor_attr["output_shape"] = output_shape
         elif deconv_res.op.tag == "conv2d_backprop_input":
             c_ub = deconv_res.op.input_tensors[0]
-            output_shape = shape_to_list(deconv_res.op.attrs["output_shape"])
+            output_shape = cube_util.shape_to_list(deconv_res.op.attrs["output_shape"])
             group_dict = deconv_res.op.attrs["group_dict"]
             tensor_attr["group_dict"] = group_dict
             if c_ub.op.name == "bias_add_vector":
@@ -851,15 +852,15 @@ def general_schedule(
     n0_32_flag = tensor_attr.get("n0_32_flag")
     group_dict = tensor_attr.get("group_dict")
 
-    g_after = group_dict[GroupDictKeys.g_extend].value
-    cin1_g = group_dict[GroupDictKeys.dx_c1_extend].value
-    cou1_g = group_dict[GroupDictKeys.dy_c1_extend].value
+    g_after = group_dict[cube_util.GroupDictKeys.g_extend].value
+    cin1_g = group_dict[cube_util.GroupDictKeys.dx_c1_extend].value
+    cou1_g = group_dict[cube_util.GroupDictKeys.dy_c1_extend].value
 
     # fetch tiling
     padu, padd, padl, padr = padding
     # n, howo, c1, k_h, k_w, c0
     if not var_map:
-        _, howo_mad, _, kernel_h, kernel_w, _ = shape_to_list(a_col_before.shape)
+        _, howo_mad, _, kernel_h, kernel_w, _ = cube_util.shape_to_list(a_col_before.shape)
     else:
         kernel_h = tensor_attr.get("kernel_h")
         kernel_w = tensor_attr.get("kernel_w")
@@ -867,7 +868,7 @@ def general_schedule(
     output_shape_g = [g_after, output_shape[0], cin1_g] + output_shape[2:]
 
     def _get_img_shape():
-        img_shape = shape_to_list(a_ddr.shape)
+        img_shape = cube_util.shape_to_list(a_ddr.shape)
         if l1_fusion_type != -1 and valid_shape:
             img_shape = list(valid_shape)
         return img_shape
@@ -906,14 +907,14 @@ def general_schedule(
         else:
             # GCin1HkWk, Cout1, Cout0, Cin0
             b_ddr_n1, b_ddr_k1, b_ddr_k0, b_ddr_n0 \
-                = shape_to_list(b_ddr.shape)
+                = cube_util.shape_to_list(b_ddr.shape)
             # Cout, Cin1, Hk, Wk, Cin0
             filter_shape_g = (cou1_g * b_ddr_k0,
                               cin1_g,
                               kernel_h, kernel_w, b_ddr_n0)
         l0c_multi_group_flag = False
         if deconv_res.dtype == "int8":
-            if cin1_g % 2 == 1 and g_after >1:
+            if cin1_g % 2 == 1 and g_after > 1:
                 l0c_multi_group_flag = True
             else:
                 filter_shape_g[1] = (filter_shape_g[1] + 1) // 2 * 2
@@ -1037,7 +1038,7 @@ def general_schedule(
         if tiling.get("AL1_shape") != []:
             al1_tilling_k, al1_tilling_m, _, al1_tilling_g = tiling.get("AL1_shape")
             if (al1_tilling_k == kernel_h * kernel_w * cou1_g * al1_co0 and \
-               al1_tilling_m == _ceil(c_l0c_hw, cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc) \
+               al1_tilling_m == _ceil(c_l0c_hw, tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc) \
                and al1_tilling_g == 1
             ):
                 tiling["AL1_shape"] = []
@@ -1045,7 +1046,7 @@ def general_schedule(
             # batch and group is 1, other axes full load
             al1_tilling_k = kernel_h * kernel_w * cou1_g * al1_co0
             al1_tilling_m = 1 if l0c_multi_group_flag else _ceil(c_l0c_hw,
-                cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
+                tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc)
         bl1_tilling_g = 1
         if tiling.get("BL1_shape") != []:
             bl1_tilling_k, bl1_tilling_n, _, bl1_tilling_g = tiling.get("BL1_shape")
@@ -1141,7 +1142,7 @@ def general_schedule(
         # Check whether al1_tilling_m is fully loaded
         al1_m_full_load = False
         if al1_tilling_m == c_l0c_hw // (
-            cce_params.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc
+            tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] * cl0_tiling_mc
         ):
             al1_m_full_load = True
 
@@ -1221,16 +1222,16 @@ def general_schedule(
     l0c_pbuffer = tiling.get("manual_pingpong_buffer").get("CL0_pbuffer")
     cub_pbuffer = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
 
-    _, al1_co1, _, _, al1_co0 = shape_to_list(a_l1.shape)
-    _, _, _, c_l0c_hw, _ = shape_to_list(c_col.shape)
+    _, al1_co1, _, _, al1_co0 = cube_util.shape_to_list(a_l1.shape)
+    _, _, _, c_l0c_hw, _ = cube_util.shape_to_list(c_col.shape)
     if w_trans_flag:
         # G*Cout1*Hk*Wk, Cin1, Cin0, Cout0
         bl1_co1, bl1_k1, _, bl1_co0 = list(i.value for i in b_l1.shape)
     else:
         # G*Cin1*Hk*Wk, Cout1, Cout0, Cin0
-        bl1_k1, bl1_co1, bl1_co0, _ = shape_to_list(b_l1.shape)
+        bl1_k1, bl1_co1, bl1_co0, _ = cube_util.shape_to_list(b_l1.shape)
     c_col_k1, c_col_k0 = list(ax.dom.extent.value for ax in c_col.op.reduce_axis)
-    a_col_shape = shape_to_list(a_col.shape)
+    a_col_shape = cube_util.shape_to_list(a_col.shape)
     a_col_g, a_col_batch, a_col_ma, a_col_ka, _, _ = a_col_shape
 
     bl0_tiling_kb, bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_k0, bl0_tiling_g = _tiling_l0_process()
@@ -1317,7 +1318,7 @@ def general_schedule(
                 c_ub_nc_factor = 1
 
         # dx_batch, dx_cin1, dx_m, dx_cin0
-        op_shape = shape_to_list(c_ub.shape)
+        op_shape = cube_util.shape_to_list(c_ub.shape)
         if n0_32_flag is not None:
             affine_cub = (
                 1,
@@ -1343,16 +1344,16 @@ def general_schedule(
         sch[c_ub].buffer_align(
             (1, 1),
             (1, 1),
-            (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][0]),
-            (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][2])
+            (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
+            (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2])
         )
         if bias_add_vector is not None:
             sch_agent[c_ub].reused_by(bias_add_vector)
             sch[bias_add_vector].buffer_align(
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][0]),
-                (1, cce_params.CUBE_MKN[c_ub.dtype]["mac"][2])
+                (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][0]),
+                (1, tbe_platform.CUBE_MKN[c_ub.dtype]["mac"][2])
             )
 
         _fusion_cub_process()
@@ -1372,7 +1373,7 @@ def general_schedule(
         if cube_vector_split:
             sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
         else:
-            c_col_shape = shape_to_list(c_col.shape)
+            c_col_shape = cube_util.shape_to_list(c_col.shape)
 
             # c_col will attach on c_ub or c_ddr in dynamic shape by default
             if not var_map:
@@ -1395,7 +1396,7 @@ def general_schedule(
                 and "conv2d_backprop_input" in deconv_res.op.input_tensors[1].op.tag \
                 and out_of_order:
             align_buffer = 0
-            if (dx_h * dx_w) % cce_params.CUBE_MKN[c_col.dtype]["mac"][0] != 0:
+            if (dx_h * dx_w) % tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0] != 0:
                 align_buffer = reduce(lambda x, y: x * y, tiling["CUB_matrix"][1:4])
                 sch[mask_ub].bind_buffer(mask_ub.op.axis[1], align_buffer, 0)
             if DEBUG_MODE:
@@ -1405,10 +1406,10 @@ def general_schedule(
             (1, 1),
             (1, 1),
             (1, 1),
-            (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][0]),
-            (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][2]),
+            (1, tbe_platform.CUBE_MKN[c_col.dtype]["mac"][0]),
+            (1, tbe_platform.CUBE_MKN[c_col.dtype]["mac"][2]),
             (1, 1),
-            (1, cce_params.CUBE_MKN[c_col.dtype]["mac"][1])
+            (1, tbe_platform.CUBE_MKN[c_col.dtype]["mac"][1])
         )
 
     def _l0a_process():
@@ -1477,7 +1478,7 @@ def general_schedule(
                 bl0_tiling_n0,
                 bl0_tiling_k0
             )
-            b_col_shape = shape_to_list(b_col.shape)
+            b_col_shape = cube_util.shape_to_list(b_col.shape)
             status_ori = Compare.compare(tiling_ori_l0b, b_col_shape)
             status = Compare.compare(
                 [bl0_tiling_nb, bl0_tiling_n0, bl0_tiling_kb, bl0_tiling_k0],
@@ -1554,14 +1555,14 @@ def general_schedule(
                 (1, 1),
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN[a_col_before.dtype]["mac"][1])
+                (1, tbe_platform.CUBE_MKN[a_col_before.dtype]["mac"][1])
             )
 
     def _bl1_process():
         if tiling.get("BL1_shape") != []:
             l1_nb = bl1_tilling_n * bl0_tiling_nb
-            _, _k0, _n0 = cce_params.CUBE_MKN[b_l1.dtype]["mac"]
-            bl1_shape = shape_to_list(b_l1.shape)
+            _, _k0, _n0 = tbe_platform.CUBE_MKN[b_l1.dtype]["mac"]
+            bl1_shape = cube_util.shape_to_list(b_l1.shape)
             bl0_tiling_n0_temp = bl0_tiling_n0
             cl0_tiling_nc_temp = cl0_tiling_nc
             cl0_tiling_n0_temp = cl0_tiling_n0
@@ -1613,8 +1614,8 @@ def general_schedule(
                     sch_agent.attach_at(b_l1, c_col, affine_shape=l1b2l0c_affine_shape)
                 elif status == Compare.GREATE_EQ:
                     l1_nb = bl1_tilling_n * bl0_tiling_nb
-                    _, _, _n0 = cce_params.CUBE_MKN[b_l1.dtype]["mac"]
-                    if n0_32_flag is not None:   
+                    _, _, _n0 = tbe_platform.CUBE_MKN[b_l1.dtype]["mac"]
+                    if n0_32_flag is not None:
                         l1_nb = l1_nb * bl1_tilling_g // 2
                         _n0 *= 2
                     l1b2out_affine_shape = [1, None, l1_nb, cl0_tiling_m0, _n0]
@@ -1637,7 +1638,7 @@ def general_schedule(
     def _aub_process():
         if stride_h > 1 or stride_w > 1:
             aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
-            _, _, _, filling_w, _ = shape_to_list(a_filling.shape)
+            _, _, _, filling_w, _ = cube_util.shape_to_list(a_filling.shape)
             if aub_tiling_m == 0:
                 sch_agent.same_attach(a_filling, a_l1)
             else:
@@ -1773,7 +1774,7 @@ def general_schedule(
                 tensor_map["deq"].op.axis[0], "dma_copy"
             )
             deq_axis = deq_axis_mode[tensor_attr.get("deq_vector")][0]
-            if cce_conf.is_v200_version_new():
+            if cube_util.is_v200_version_new():
                 sch[tensor_map["c_ub"]].emit_insn(
                     tensor_map["c_ub"].op.axis[deq_axis], "dma_copy"
                 )
@@ -1791,15 +1792,15 @@ def general_schedule(
                     ndim = len(sch[ub_tensor].op.axis)
                     coo, _ = sch[ub_tensor].split(
                         sch[ub_tensor].op.axis[ndim - 1],
-                        cce_params.CUBE_MKN["float16"]["mac"][1]
+                        tbe_platform.CUBE_MKN["float16"]["mac"][1]
                     )
                     axis_list = sch[ub_tensor].op.axis[0:ndim - 1]
                     sch[ub_tensor].reorder(coo, *axis_list)
                     sch[ub_tensor].emit_insn(sch[ub_tensor].op.axis[2], "vector_auto")
                 elif ub_tensor.op.name == "cast_i8_ub":
                     if (
-                        cce_conf.is_v200_version_new()
-                        or cce_conf.CceProductParams().is_lhisi_version()
+                        cube_util.is_v200_version_new()
+                        or cube_util.is_lhisi_version()
                     ):
                         conv_mode = "vector_conv_{}".format(
                             tensor_attr.get("q_mode").lower()
@@ -1967,19 +1968,11 @@ def general_schedule(
 
         if bias_add_vector is not None:
             sch[bias_ub].emit_insn(sch[bias_ub].op.axis[0], "dma_copy")
-            sch[bias_add_vector].emit_insn(
-                sch[bias_add_vector].op.axis[0],
-                "vector_auto"
-            )
+            sch[bias_add_vector].emit_insn(sch[bias_add_vector].op.axis[0], "vector_auto")
 
-        if neg_src_stride and (
-            cce_conf.CceProductParams().is_cloud_version()
-            or cce_conf.is_v200_version_new()
-            or cce_conf.CceProductParams().is_lhisi_version()
-        ):
-            _, b_col_inner = sch_agent[b_col].split(
-                sch_agent[b_col].op.axis[1], factor=kernel_h * kernel_w
-            )
+        if neg_src_stride and (cube_util.is_cloud_version() or cube_util.is_v200_version_new()
+                               or cube_util.is_lhisi_version()):
+            _, b_col_inner = sch_agent[b_col].split(sch_agent[b_col].op.axis[1], factor=kernel_h * kernel_w)
             sch_agent[b_col].emit_insn(b_col_inner, "dma_copy")
         else:
             sch_agent[b_col].emit_insn(sch_agent[b_col].op.axis[2], "dma_copy")
@@ -2082,7 +2075,7 @@ def general_schedule(
         def _set_aub_bound(al1_h):
             _, _, _, dx_w, _ = output_shape
             if stride_h > 1 or stride_w > 1:
-                aub_co0 = cce_params.CUBE_MKN[c_col.dtype]["mac"][1]
+                aub_co0 = tbe_platform.CUBE_MKN[c_col.dtype]["mac"][1]
                 aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
                 aub_co1 = aub_tiling_k // (kernel_h * kernel_w * aub_co0)
                 if tiling.get("AL1_shape"):
@@ -2122,11 +2115,11 @@ def general_schedule(
             sch.set_var_range(a_ddr.shape[3], *var_range.get("dedy_w"))
             sch.set_var_range(output_shape[3], *var_range.get("dx_w"))
 
-        sch.disable_allocate(cce_params.scope_cbuf)
-        sch.disable_allocate(cce_params.scope_ca)
-        sch.disable_allocate(cce_params.scope_cb)
-        sch.disable_allocate(cce_params.scope_cc)
-        sch.disable_allocate(cce_params.scope_ubuf)
+        sch.disable_allocate(tbe_platform_info.scope_cbuf)
+        sch.disable_allocate(tbe_platform_info.scope_ca)
+        sch.disable_allocate(tbe_platform_info.scope_cb)
+        sch.disable_allocate(tbe_platform_info.scope_cc)
+        sch.disable_allocate(tbe_platform_info.scope_ubuf)
 
         sch[a_l1].mem_unique()
         sch[a_col].mem_unique()

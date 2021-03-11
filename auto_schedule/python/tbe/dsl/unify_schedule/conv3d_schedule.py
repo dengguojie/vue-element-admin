@@ -15,11 +15,11 @@
 """
 conv3d schedule
 """
-from te import platform as cceconf
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.static_schedule.conv3d_schedule import CceConv3dOp
 from tbe.dsl.static_schedule.cce_schedule import get_op_info
 from tbe.dsl.unify_schedule.constants import Pattern
-from tbe.dsl.base.operation import register_schedule
 from tbe.tvm import schedule as tvm
 
 
@@ -44,7 +44,7 @@ class Conv3dSchedule:
         self._tiling_case = tiling_case
 
         self._scope = "local.UB"
-        self._cce_conv_op = CceConv3dOp(cceconf.scope_ubuf, need_tensorize=True,
+        self._cce_conv_op = CceConv3dOp(tbe_platform_info.scope_ubuf, need_tensorize=True,
                                         need_pragma=True)
 
     def do_schedule(self):

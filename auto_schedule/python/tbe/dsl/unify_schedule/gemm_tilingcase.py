@@ -20,15 +20,15 @@ import copy
 import math
 from functools import reduce
 
-from te.platform import get_soc_spec
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.dsl.compute.gemm_compute import GEMMComputeParam
-from tbe.dsl.dynamic.unify_schedule.cube_tilingcase import TilingSelection
 from tbe.dsl.dynamic.unify_schedule.cube_tilingcase import CubeTilingOp
+from tbe.dsl.dynamic.unify_schedule.cube_tilingcase import TilingSelection
 from tbe.dsl.dynamic.unify_schedule.constants import Pattern
 from tbe.dsl.base.operation import add_compile_info
-from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.base.operation import register_tiling_case
 
 
 K_LEN = 2
@@ -250,7 +250,7 @@ class MatmulTiling(CubeTilingOp):
         is_bl1_double = tiling.get("manual_pingpong_buffer").get("BL1_pbuffer")
         # get no full load value
         mal1, kal1, kbl1, nbl1 = 0, 0, 0, 0
-        l1_size = get_soc_spec("L1_SIZE")
+        l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")
         if tiling["AL1_shape"]:
             mal1 = tiling["AL1_shape"][1] * tiling["CL0_matrix"][1] * BIT_DIR[self.a_type]
             kal1 = tiling["AL1_shape"][0]

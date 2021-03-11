@@ -17,12 +17,12 @@ conv3d backprop filter DSL interface.
 """
 import functools
 
-import te.platform as tbe_platform
-from tbe.dsl.compute import util as te_util
-from tbe.common.utils import para_check
+from tbe import tvm
+from tbe.common import utils as tbe_utils
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from tbe import tvm
+from tbe.dsl.compute import util as compute_util
 
 
 # fractal size, only support 16 for now
@@ -222,15 +222,13 @@ class Conv3dBackpropFilter:
 
         """
         # check of data type
-        para_check.check_dtype_rule(self.fmap_dtype, ('float16'), "fmap")
-        para_check.check_dtype_rule(self.grads_dtype, ('float16'), "grads")
-        is_lhisi_version = tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                                        "Hi3796CV300CS",
-                                                                        "SD3403")
+        tbe_utils.para_check.check_dtype_rule(self.fmap_dtype, ('float16'), "fmap")
+        tbe_utils.para_check.check_dtype_rule(self.grads_dtype, ('float16'), "grads")
+        is_lhisi_version = tbe_platform_info.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
         if is_lhisi_version:
-            para_check.check_dtype_rule(self.res_dtype, ('float16'), "res_dtype_lhisi")
+            tbe_utils.para_check.check_dtype_rule(self.res_dtype, ('float16'), "res_dtype_lhisi")
         else:
-            para_check.check_dtype_rule(self.res_dtype, ('float32'), "res_dtype")
+            tbe_utils.para_check.check_dtype_rule(self.res_dtype, ('float32'), "res_dtype")
 
         # check shape
         # each element must be positive int
@@ -242,10 +240,10 @@ class Conv3dBackpropFilter:
         _, fmap_depth, _, fmap_height, fmap_width, _ = self.shape_x_6hd
         _, kernel_depth, _, kernel_height, kernel_width = self.weight_shape
 
-        if te_util.int_ceil_div(self.weight_shape[0], 16) != self.shape_grads_6hd[2]:
+        if compute_util.int_ceil_div(self.weight_shape[0], 16) != self.shape_grads_6hd[2]:
             cube_err.raise_err_two_paras('E62504', 'conv3d_backprop_filter',
                     str(self.shape_grads_6hd[2]),
-                    str(te_util.int_ceil_div(self.weight_shape[0], 16)))
+                    str(compute_util.int_ceil_div(self.weight_shape[0], 16)))
 
         # individual range check
         _check_variable_range(grads_depth, 1, 4096,
@@ -896,7 +894,7 @@ class Conv3dBackpropFilter:
         return c_col
 
 
-@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
+@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
                              (list, tuple), (list, tuple), dict, (list, tuple),
                              str, str)
 def _conv3d_backprop_filter_compute(input_x,
@@ -954,7 +952,7 @@ def _conv3d_backprop_filter_compute(input_x,
     return deconv_dw_object.res_tensor
 
 
-@para_check.check_input_type(tvm.tensor.Tensor,
+@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor,
                              tvm.tensor.Tensor,
                              (list, tuple),
                              dict)

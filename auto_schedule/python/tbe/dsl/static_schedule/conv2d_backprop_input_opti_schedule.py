@@ -18,18 +18,16 @@ conv2d_backprop_input schedule
 from copy import deepcopy
 from functools import reduce  # pylint: disable=C0302
 
-from te.platform import cce_conf
-from te.platform import cce_params
 from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.conv2d_backprop_input_opti_compute import DeConvKernelSize1Pattern
-from tbe.dsl.compute.cube_util import calc_info_of_iter_vars
-from tbe.dsl.compute.cube_util import shape_to_list
-from tbe.dsl.compute.cube_util import GroupDictKeys
 from tbe.dsl.compute.util import int_ceil_div
 from tbe.dsl.static_schedule.util import L1CommonParam
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
-from tbe.common.tiling.get_tiling import get_tiling
-from tbe.common.utils.errormgr import error_manager_util
 
 
 # Don't modify,used in log_util
@@ -222,14 +220,14 @@ def _get_data_amount_l1(l1_shape, isdouble, l0c_multi_group_flag):
             data_amount_l1 = (
                 reduce(lambda x, y: x * y, DIM_MAP["A_matrix_dim"][2:])
                 // TILING["block_dim"][2]
-            ) * DIM_MAP[GroupDictKeys.dy_c1_extend]
+            ) * DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend]
         if l1_shape == "BL1_shape":
             data_amount_l1 = (
                 reduce(lambda x, y: x * y, DIM_MAP["B_matrix_dim"][1:])
                 // TILING["block_dim"][1]
             )
     else:
-        block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+        block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
         # if l0c_multi_group_flag and TILING.get(l1_shape) is [], l1 comput at l0c
         full_k = DIM_MAP["B_matrix_dim"][1] * block_k
         l1_k = TILING.get(l1_shape)[0] if TILING.get(l1_shape) else full_k
@@ -346,7 +344,7 @@ def _check_tilling_cub(strideh, stridew, cub_space, isdouble, is_conv1d_bool):
     """
 
     def _get_dilate_cub_size():
-        block_m, _, _ = cce_params.CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"]
+        block_m, _, _ = tbe_platform.CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"]
         if is_conv1d_bool:
             dilate_cub_size = (
                 (1 + stridew)
@@ -445,7 +443,7 @@ def _get_tiling_l0a_l0b(cl0_matrix, l0_matrix, instr):
     batch_l0 = 1
     g_l0 = 1
     if instr == "A":
-        block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("a_l0a").dtype][
+        block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("a_l0a").dtype][
             "mac"
         ]
         # l0_matrix is bl0_matrix:[kb, nb, n0, k0]
@@ -454,7 +452,7 @@ def _get_tiling_l0a_l0b(cl0_matrix, l0_matrix, instr):
         else:
             full_ab = [cl0_matrix[1], k_dim, block_m, block_k, batch_l0, g_l0]
     elif instr == "B":
-        block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l0b").dtype][
+        block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l0b").dtype][
             "mac"
         ]
         # l0_matrix is al0_matrix:[ma, ka, m0, k0]
@@ -469,7 +467,7 @@ def _get_tiling_l0a_l0b(cl0_matrix, l0_matrix, instr):
 
 
 def _check_tilinng_k_l1():
-    _, block_k, _ = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+    _, block_k, _ = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
     k_al1 = TILING.get("AL1_shape")[0]
     k_bl1 = TILING.get("BL1_shape")[0]
     if k_al1 % k_bl1 != 0 and k_bl1 % k_al1 != 0:
@@ -493,12 +491,12 @@ def _check_tiling_bl0_matrix(manual_pingpong_buffer, data_amount_l1b, l0c_multi_
             data_amount_l0b = data_amount_l1b
         else:
             data_amount_l0b = data_amount_l1b // TILING.get("BL1_shape")[3]
-        if data_amount_l0b > cce_conf.get_soc_spec("L0B_SIZE"):
+        if data_amount_l0b > tbe_platform_info.get_soc_spec("L0B_SIZE"):
             _raise_dx_opti_err("tiling size exceed L0B Buffer")
     else:
         _check_tilling_l0(
             "BL0_matrix",
-            cce_conf.get_soc_spec("L0B_SIZE"),
+            tbe_platform_info.get_soc_spec("L0B_SIZE"),
             manual_pingpong_buffer.get("BL0_pbuffer")
         )
         full_k1 = DIM_MAP["dy_c1_extend"]
@@ -553,7 +551,7 @@ def _check_and_set_default_tiling(tiling, atype, btype, l0c_multi_group_flag):
         if TENSOR_MAP.get("dilate_ub") is not None:
             # when mmad, the min unit of M is a fmp's w
             dy_w = DIM_MAP["img_shape"][3]
-            block_m = cce_params.CUBE_MKN[TENSOR_MAP.get("c_l0c").dtype]["mac"][0]
+            block_m = tbe_platform.CUBE_MKN[TENSOR_MAP.get("c_l0c").dtype]["mac"][0]
             # mc's calculation rule refor to auto tiling
             if dy_w % 16 == 0:
                 m_al0 = m_cl0 = dy_w // block_m
@@ -648,14 +646,14 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
             )
             if DeconvParam.get_para_map("l1_fusion_type") != -1:
                 data_amount_l1a = 0
-            if (int(data_amount_l1a) + int(data_amount_l1b)) > cce_conf.get_soc_spec("L1_SIZE"):
+            if (int(data_amount_l1a) + int(data_amount_l1b)) > tbe_platform_info.get_soc_spec("L1_SIZE"):
                 _raise_dx_opti_err("tiling size exceed L1 Buffer")
 
         if TILING.get("BL1_shape") and TILING.get("AL1_shape"):
             _check_tilinng_k_l1()
         return data_amount_l1b
 
-    _, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+    _, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
     # if filter dtype is int8, than channel block_size is 32
     if tensor.dtype == "int32" or fusion_type in (
         FUSION_DX_DEQUANT,
@@ -664,16 +662,16 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     ):
         # DIM_MAP["filter_shape"] : co_dim, ci_dim, _, _
         filter_shape_g = [
-            DIM_MAP[GroupDictKeys.dy_c1_extend] * block_k,
-            DIM_MAP[GroupDictKeys.dx_c1_extend],
+            DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] * block_k,
+            DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend],
             1,
             1,
             block_n]
     else:
         # DIM_MAP["filter_shape"] : ci_dim, co_dim, _, _
         filter_shape_g = [
-            DIM_MAP[GroupDictKeys.dy_c1_extend] * block_k,
-            DIM_MAP[GroupDictKeys.dx_c1_extend],
+            DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] * block_k,
+            DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend],
             1,
             1,
             block_n]
@@ -715,7 +713,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
                 "strideW_expand": stridew,
                 "dilationH": 1,
                 "dilationW": 1,
-                "group": DIM_MAP[GroupDictKeys.g_extend],
+                "group": DIM_MAP[cube_util.GroupDictKeys.g_extend],
                 "bias_flag": bias_flag,
                 "fused_double_operand_num": FUSION_TYPE_2_OPERAND_NUM.get(fusion_type),
                 "kernel_name": kernel_name.value,
@@ -772,7 +770,7 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
         _raise_dx_opti_err("tiling[AL0_matrix] can not be None or []")
     _check_tilling_l0(
         "AL0_matrix",
-        cce_conf.get_soc_spec("L0A_SIZE"),
+        tbe_platform_info.get_soc_spec("L0A_SIZE"),
         manual_pingpong_buffer.get("AL0_pbuffer")
     )
 
@@ -781,17 +779,17 @@ def _get_tiling(  # pylint: disable=R0913,R0914,R0915
     # check tilling in CL0
     _check_tilling_l0c(
         "CL0_matrix",
-        cce_conf.get_soc_spec("L0C_SIZE"),
+        tbe_platform_info.get_soc_spec("L0C_SIZE"),
         manual_pingpong_buffer.get("CL0_pbuffer")
     )
 
     # check tilling in CUB  attention:light when stride get  #########
-    cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
     if "dedy_h" not in var_map and "dedy_w" not in var_map and not cube_vector_split_flag:
         _check_tilling_cub(
             strideh,
             stridew,
-            cce_conf.get_soc_spec("UB_SIZE"),
+            tbe_platform_info.get_soc_spec("UB_SIZE"),
             manual_pingpong_buffer.get("CUB_pbuffer"),
             is_conv1d_bool
         )
@@ -954,7 +952,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             tensor_add_input_gm = tensor_add_left
 
         tensor_add_input_ub = sch.cache_read(
-            tensor_add_input_gm, cce_params.scope_ubuf, [tensor_add_res]
+            tensor_add_input_gm, tbe_platform_info.scope_ubuf, [tensor_add_res]
         )
         TENSOR_MAP["add_input_ub"] = tensor_add_input_ub
         return tensor_dx_gm
@@ -968,12 +966,12 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             deq_ub_read = [fusion_tensor_map.get("c_ub")]
             for elewise_tensor_mem in fusion_tensor_map.get("elewise_tensor", []):
                 if elewise_tensor_mem.op.tag != res.op.tag:
-                    sch[elewise_tensor_mem].set_scope(cce_params.scope_ubuf)
+                    sch[elewise_tensor_mem].set_scope(tbe_platform_info.scope_ubuf)
                 if "dequant2" in elewise_tensor_mem.op.name:
                     deq_ub_read.append(elewise_tensor_mem)
 
             deq_scale = fusion_tensor_map.get("deq")
-            deq_ub = sch.cache_read(deq_scale, cce_params.scope_ubuf, deq_ub_read)
+            deq_ub = sch.cache_read(deq_scale, tbe_platform_info.scope_ubuf, deq_ub_read)
             fusion_tensor_map["deq"] = deq_ub
 
             input_list = []
@@ -982,7 +980,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
                     input_tensor_des = input_tensor_mem[1]
                 else:
                     input_tensor_des = c_ub_res
-                input_tensor_ub = sch.cache_read(input_tensor_mem[0], cce_params.scope_ubuf, input_tensor_des)
+                input_tensor_ub = sch.cache_read(input_tensor_mem[0], tbe_platform_info.scope_ubuf, input_tensor_des)
                 input_list.append(input_tensor_ub)
             fusion_tensor_map["input_tensor"] =input_list
 
@@ -990,21 +988,21 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_ELEWISE)
             input_tensor_list = []
             ub_list = []
-            c_ub_res = sch.cache_write(res, cce_params.scope_ubuf)
+            c_ub_res = sch.cache_write(res, tbe_platform_info.scope_ubuf)
             all_tensor, leaf_tensor = _get_all_tensors(res)
             for key, value in all_tensor.items():
                 if value.op.tag == "conv2d_backprop_input_opti":
                     tensor_dx_gm = value
                     sch[value].compute_inline()
                 elif value.op.input_tensors:
-                    sch[value].set_scope(cce_params.scope_ubuf)
+                    sch[value].set_scope(tbe_platform_info.scope_ubuf)
                     ub_list.append(value)
                 else:
                     if leaf_tensor.get(key).op.tag == res.op.tag:
                         input_tensor_des = c_ub_res
                     else:
                         input_tensor_des = leaf_tensor.get(value.op.name)
-                    input_tensor_ub = sch.cache_read(value, cce_params.scope_ubuf, input_tensor_des)
+                    input_tensor_ub = sch.cache_read(value, tbe_platform_info.scope_ubuf, input_tensor_des)
                     input_tensor_list.append(input_tensor_ub)
             ub_list.append(c_ub_res)
             fusion_tensor_map["input_tensor_list"] = input_tensor_list
@@ -1018,12 +1016,12 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             FUSION_DX_REQUANT
         ):
             if res.op.tag != "dequant_remove_pad" and DeconvParam.get_para_map("FUSION_TYPE") == FUSION_DX_DEQUANT:
-                c_ub_res = sch.cache_write(res, cce_params.scope_ubuf)
+                c_ub_res = sch.cache_write(res, tbe_platform_info.scope_ubuf)
                 fusion_tensor_map["elewise_tensor"].append(c_ub_res)
 
             for tensor in fusion_tensor_map:
                 if tensor not in ("elewise_tensor", "input_tensor", "deq"):
-                    sch[fusion_tensor_map[tensor]].set_scope(cce_params.scope_ubuf)
+                    sch[fusion_tensor_map[tensor]].set_scope(tbe_platform_info.scope_ubuf)
 
             _handle_elewise_tensor()
             tensor_dx_gm = fusion_tensor_map["c_ub"].op.input_tensors[0]
@@ -1033,7 +1031,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             if "elewise_binary_add" in drelu_gm.op.input_tensors[1].op.tag:
                 DeconvParam.update_para_map("FUSION_TYPE", FUSION_DX_ADD_DRELU)
                 tensor_add_res = drelu_gm.op.input_tensors[1]
-                sch[tensor_add_res].set_scope(cce_params.scope_ubuf)
+                sch[tensor_add_res].set_scope(tbe_platform_info.scope_ubuf)
                 TENSOR_MAP["add_res_ub"] = tensor_add_res
                 tensor_dx_gm = _get_tensor_dx_gm(tensor_add_res)
             # dx+drelu
@@ -1042,11 +1040,11 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
                 tensor_dx_gm = drelu_gm.op.input_tensors[1]
 
             tensor_bitmask_gm = drelu_gm.op.input_tensors[0]
-            sch[tensor_dx_gm].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dx_gm].set_scope(tbe_platform_info.scope_ubuf)
             tensor_bitmask = sch.cache_read(
-                tensor_bitmask_gm, cce_params.scope_ubuf, [drelu_gm]
+                tensor_bitmask_gm, tbe_platform_info.scope_ubuf, [drelu_gm]
             )
-            tensor_drelu = sch.cache_write(drelu_gm, cce_params.scope_ubuf)
+            tensor_drelu = sch.cache_write(drelu_gm, tbe_platform_info.scope_ubuf)
 
             fusion_tensor_map["bitmask_ub"] = tensor_bitmask
             fusion_tensor_map["drelu_ub"] = tensor_drelu
@@ -1066,9 +1064,9 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             bias_add_vector = tensor_dx_gm.op.input_tensors[0]
             tensor_dilate_ub = bias_add_vector.op.input_tensors[0]
             tensor_bias = bias_add_vector.op.input_tensors[1]
-            sch[bias_add_vector].set_scope(cce_params.scope_ubuf)
+            sch[bias_add_vector].set_scope(tbe_platform_info.scope_ubuf)
             bias_ub = sch.cache_read(
-                tensor_bias, cce_params.scope_ubuf, [bias_add_vector]
+                tensor_bias, tbe_platform_info.scope_ubuf, [bias_add_vector]
             )
             TENSOR_MAP["bias_add_vector"] = bias_add_vector
             TENSOR_MAP["bias_ub"] = bias_ub
@@ -1080,23 +1078,23 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             and tensor_dilate_ub.op.tag == "conv2d_backprop_input_opti"
         ):
             TENSOR_MAP["dilate_ub"] = tensor_dilate_ub
-            sch[tensor_dilate_ub].set_scope(cce_params.scope_ubuf)
+            sch[tensor_dilate_ub].set_scope(tbe_platform_info.scope_ubuf)
             if var_map:
                 tensor_vn = tensor_dilate_ub.op.input_tensors[1]
                 TENSOR_MAP["tensor_vn"] = tensor_vn
-                sch[tensor_vn].set_scope(cce_params.scope_ubuf)
+                sch[tensor_vn].set_scope(tbe_platform_info.scope_ubuf)
                 tensor_cub = tensor_dilate_ub.op.input_tensors[0]
                 tensor_fillling_zero = tensor_vn.op.input_tensors[0]
                 TENSOR_MAP["tensor_fillling_zero"] = tensor_fillling_zero
-                sch[tensor_fillling_zero].set_scope(cce_params.scope_ubuf)
+                sch[tensor_fillling_zero].set_scope(tbe_platform_info.scope_ubuf)
                 tensor_fillling_one = tensor_vn.op.input_tensors[1]
                 TENSOR_MAP["tensor_fillling_one"] = tensor_fillling_one
-                sch[tensor_fillling_one].set_scope(cce_params.scope_ubuf)
+                sch[tensor_fillling_one].set_scope(tbe_platform_info.scope_ubuf)
             else:
                 tensor_cub = tensor_dilate_ub.op.input_tensors[0]
                 tensor_fillling_zero = tensor_dilate_ub.op.input_tensors[1]
                 TENSOR_MAP["tensor_fillling_zero"] = tensor_fillling_zero
-                sch[tensor_fillling_zero].set_scope(cce_params.scope_ubuf)
+                sch[tensor_fillling_zero].set_scope(tbe_platform_info.scope_ubuf)
         else:
             if tensor_dx_gm.op.input_tensors[0].op.name == "bias_add_vector":
                 tensor_cub = tensor_dilate_ub
@@ -1138,7 +1136,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
                         res_addr_type = 0
                     output_memory_type = [res_addr_type]
                     if res_addr_type == 1:
-                        sch[out_member].set_scope(cce_params.scope_cbuf_fusion)
+                        sch[out_member].set_scope(tbe_platform_info.scope_cbuf_fusion)
             else:
                 if "addr_type" in dex_res.op.attrs:
                     res_addr_type = dex_res.op.attrs["addr_type"].value
@@ -1146,10 +1144,10 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
                     res_addr_type = 0
                 output_memory_type = [res_addr_type]
                 if res_addr_type == 1:
-                    sch[dex_res].set_scope(cce_params.scope_cbuf_fusion)
+                    sch[dex_res].set_scope(tbe_platform_info.scope_cbuf_fusion)
         else:
             if out_mem == 1:
-                sch[dex_res].set_scope(cce_params.scope_cbuf_fusion)
+                sch[dex_res].set_scope(tbe_platform_info.scope_cbuf_fusion)
             output_memory_type = [out_mem]
         DeconvParam.update_para_map("output_memory_type", output_memory_type)
 
@@ -1161,9 +1159,9 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             a_l0a_before = a_l0a.op.input_tensors[0]
             dedy = a_l0a_before.op.input_tensors[0]
             dedy_col = sch.cache_read(
-                dedy, cce_params.scope_cbuf_fusion, [a_l0a_before]
+                dedy, tbe_platform_info.scope_cbuf_fusion, [a_l0a_before]
             )
-            sch[dedy].set_scope(cce_params.scope_cbuf_fusion)
+            sch[dedy].set_scope(tbe_platform_info.scope_cbuf_fusion)
             TENSOR_MAP["a_l0a_before"] = a_l0a_before
             al1_shape = dedy_col.shape
             sch[dedy_col].buffer_align(
@@ -1180,7 +1178,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             a_l0a_before = a_l0a.op.input_tensors[0]
             dedy_col = a_l0a_before.op.input_tensors[0]
             dedy = dedy_col.op.input_tensors[0]
-            sch[dedy_col].set_scope(cce_params.scope_cbuf_fusion)
+            sch[dedy_col].set_scope(tbe_platform_info.scope_cbuf_fusion)
             TENSOR_MAP["a_l0a_before"] = a_l0a_before
             if DeconvParam.get_para_map("l1_fusion_type") == 1:
                 al1_shape = dedy_col.shape
@@ -1194,7 +1192,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
         else:
             dedy_col = a_l0a.op.input_tensors[0]
             dedy = dedy_col.op.input_tensors[0]
-            sch[dedy_col].set_scope(cce_params.scope_cbuf)
+            sch[dedy_col].set_scope(tbe_platform_info.scope_cbuf)
             a_l0a_before = None
         return dedy_col, dedy, a_l0a_before
 
@@ -1204,7 +1202,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             storage_align_size = 512
 
         if DeconvParam.get_para_map("load3d_flag"):
-            sch[a_l0a_before].set_scope(cce_params.scope_cbuf)
+            sch[a_l0a_before].set_scope(tbe_platform_info.scope_cbuf)
             dx_w = DIM_MAP["img_shape"][3]
             sch[a_l0a_before].buffer_align(
                 (1, 1),
@@ -1212,7 +1210,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
                 (1, 1),
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN[a_l0a_before.dtype]["mac"][1])
+                (1, tbe_platform.CUBE_MKN[a_l0a_before.dtype]["mac"][1])
             )
         else:
             sch[dedy_col].storage_align(sch[dedy_col].op.axis[1], storage_align_size, 0)
@@ -1236,7 +1234,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
 
     _print_debug("dx fusion tag:", res.op.tag)
     tensor_dx_gm, TENSOR_MAP = _check_dx_fusion_type(res, TENSOR_MAP)
-    cube_vector_split_flag = cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
     DeconvParam.update_para_map("cube_vector_split_flag", cube_vector_split_flag)
     _get_l1_fusion_para()
     fusion_type = DeconvParam.get_para_map("FUSION_TYPE")
@@ -1263,7 +1261,7 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
             tensor_mmad = c_add_bias.op.input_tensors[1]
             bias_ub_brc = bias_l0c.op.input_tensors[0]
             tensor_bias = bias_ub_brc.op.input_tensors[0]
-            bias_ub = sch.cache_read(tensor_bias, cce_params.scope_ubuf, [bias_ub_brc])
+            bias_ub = sch.cache_read(tensor_bias, tbe_platform_info.scope_ubuf, [bias_ub_brc])
             TENSOR_MAP["c_add_bias"] = c_add_bias
             TENSOR_MAP["bias_l0c"] = bias_l0c
             TENSOR_MAP["bias_ub_brc"] = bias_ub_brc
@@ -1284,31 +1282,31 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
     if fusion_type in (FUSION_DX_DEQUANT, FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
         tensor_cub = TENSOR_MAP["c_ub"]
     if tensor_cub is not None:
-        sch[tensor_cub].set_scope(cce_params.scope_ubuf)
+        sch[tensor_cub].set_scope(tbe_platform_info.scope_ubuf)
         TENSOR_MAP["c_ub"] = tensor_cub
 
     # TO DO
     TENSOR_MAP["img_placehold"] = dedy
-    DIM_MAP["img_shape"] = shape_to_list(TENSOR_MAP["img_placehold"].shape)
+    DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["img_placehold"].shape)
 
     _al1_buffer_align()
 
     TENSOR_MAP["a_l1"] = dedy_col
-    sch[a_l0a].set_scope(cce_params.scope_ca)
+    sch[a_l0a].set_scope(tbe_platform_info.scope_ca)
 
-    l0a_m0, l0a_k0, _ = cce_params.CUBE_MKN[a_l0a.dtype]["mac"]
+    l0a_m0, l0a_k0, _ = tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"]
     sch[a_l0a].buffer_align((1, 1), (1, 1), (1, 1), (1, 1), (1, l0a_m0), (1, l0a_k0))
     TENSOR_MAP["a_l0a"] = a_l0a
     if TENSOR_MAP.get("c_add_bias") is not None:
-        sch[c_add_bias].set_scope(cce_params.scope_cc)
-        sch[bias_l0c].set_scope(cce_params.scope_cc)
-        sch[bias_ub_brc].set_scope(cce_params.scope_ubuf)
-    sch[weight_l1].set_scope(cce_params.scope_cbuf)
+        sch[c_add_bias].set_scope(tbe_platform_info.scope_cc)
+        sch[bias_l0c].set_scope(tbe_platform_info.scope_cc)
+        sch[bias_ub_brc].set_scope(tbe_platform_info.scope_ubuf)
+    sch[weight_l1].set_scope(tbe_platform_info.scope_cbuf)
     TENSOR_MAP["b_l1"] = weight_l1
-    sch[weight_l0].set_scope(cce_params.scope_cb)
+    sch[weight_l0].set_scope(tbe_platform_info.scope_cb)
     TENSOR_MAP["b_l0b"] = weight_l0
 
-    sch[tensor_mmad].set_scope(cce_params.scope_cc)
+    sch[tensor_mmad].set_scope(tbe_platform_info.scope_cc)
     TENSOR_MAP["c_l0c"] = tensor_mmad
     TENSOR_MAP["c_gm"] = dex_res
     TENSOR_MAP["filter_placehold"] = weight_l1.op.input_tensors[0]
@@ -1316,35 +1314,35 @@ def _set_data_layout(res, dex_res, sch, var_range):  # pylint: disable=R0914,R09
     # fill in dimmap
     DIM_MAP["group_dict"] =  tensor_dx_gm.op.attrs["group_dict"]
     group_dict_map = DIM_MAP["group_dict"]
-    DIM_MAP[GroupDictKeys.g_extend] = group_dict_map[GroupDictKeys.g_extend].value
-    DIM_MAP[GroupDictKeys.dy_c1_extend] = group_dict_map[GroupDictKeys.dy_c1_extend].value
-    DIM_MAP[GroupDictKeys.dx_c1_extend] = group_dict_map[GroupDictKeys.dx_c1_extend].value
-    DIM_MAP["out_img_shape"] = shape_to_list(res.shape)
-    DIM_MAP["img_shape"] = shape_to_list(TENSOR_MAP["img_placehold"].shape)
-    DIM_MAP["A_matrix_dim"] = shape_to_list(dedy_col.shape)
-    DIM_MAP["B_matrix_dim"] = shape_to_list(weight_l0.shape)
-    DIM_MAP["filter_shape"] = shape_to_list(weight_l1.op.input_tensors[0].shape)
-    DIM_MAP["dx_5D_shape"] = shape_to_list(tensor_dx_gm.op.attrs["dx_5D_shape"])
-    DIM_MAP["dx_6GD_shape"] = [DIM_MAP[GroupDictKeys.g_extend],
+    DIM_MAP[cube_util.GroupDictKeys.g_extend] = group_dict_map[cube_util.GroupDictKeys.g_extend].value
+    DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend] = group_dict_map[cube_util.GroupDictKeys.dy_c1_extend].value
+    DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend] = group_dict_map[cube_util.GroupDictKeys.dx_c1_extend].value
+    DIM_MAP["out_img_shape"] = cube_util.shape_to_list(res.shape)
+    DIM_MAP["img_shape"] = cube_util.shape_to_list(TENSOR_MAP["img_placehold"].shape)
+    DIM_MAP["A_matrix_dim"] = cube_util.shape_to_list(dedy_col.shape)
+    DIM_MAP["B_matrix_dim"] = cube_util.shape_to_list(weight_l0.shape)
+    DIM_MAP["filter_shape"] = cube_util.shape_to_list(weight_l1.op.input_tensors[0].shape)
+    DIM_MAP["dx_5D_shape"] = cube_util.shape_to_list(tensor_dx_gm.op.attrs["dx_5D_shape"])
+    DIM_MAP["dx_6GD_shape"] = [DIM_MAP[cube_util.GroupDictKeys.g_extend],
                                DIM_MAP["dx_5D_shape"][0],
-                               DIM_MAP[GroupDictKeys.dx_c1_extend]] + DIM_MAP["dx_5D_shape"][2:]
-    DIM_MAP["dy_6GD_shape"] = [DIM_MAP[GroupDictKeys.g_extend],
+                               DIM_MAP[cube_util.GroupDictKeys.dx_c1_extend]] + DIM_MAP["dx_5D_shape"][2:]
+    DIM_MAP["dy_6GD_shape"] = [DIM_MAP[cube_util.GroupDictKeys.g_extend],
                                DIM_MAP["img_shape"][0],
-                               DIM_MAP[GroupDictKeys.dy_c1_extend]]+ DIM_MAP["img_shape"][2:]
+                               DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend]]+ DIM_MAP["img_shape"][2:]
 
     if TENSOR_MAP.get("dilate_ub") is not None:
-        DIM_MAP["dilate_dim"] = shape_to_list(TENSOR_MAP["dilate_ub"].op.attrs["dilate"])
-        DIM_MAP["out_hwdim"] = shape_to_list(TENSOR_MAP["dilate_ub"].op.attrs["out_hw"])
+        DIM_MAP["dilate_dim"] = cube_util.shape_to_list(TENSOR_MAP["dilate_ub"].op.attrs["dilate"])
+        DIM_MAP["out_hwdim"] = cube_util.shape_to_list(TENSOR_MAP["dilate_ub"].op.attrs["out_hw"])
 
     if "batch_n" in var_map:
         sch.set_var_range(DIM_MAP["img_shape"][0], *var_range.get("batch_n"))
-        sch.set_var_range(shape_to_list(res.op.attrs["dx_5D_shape"])[0], *var_range.get("batch_n"))
+        sch.set_var_range(cube_util.shape_to_list(res.op.attrs["dx_5D_shape"])[0], *var_range.get("batch_n"))
     if "dedy_h" in var_map:
         sch.set_var_range(DIM_MAP["img_shape"][2], *var_range.get("dedy_h"))
-        sch.set_var_range(shape_to_list(res.op.attrs["dx_5D_shape"])[2], *var_range.get("dx_h"))
+        sch.set_var_range(cube_util.shape_to_list(res.op.attrs["dx_5D_shape"])[2], *var_range.get("dx_h"))
     if "dedy_w" in var_map:
         sch.set_var_range(DIM_MAP["img_shape"][3], *var_range.get("dedy_w"))
-        sch.set_var_range(shape_to_list(res.op.attrs["dx_5D_shape"])[3], *var_range.get("dx_w"))
+        sch.set_var_range(cube_util.shape_to_list(res.op.attrs["dx_5D_shape"])[3], *var_range.get("dx_w"))
 
     return tensor_dx_gm, var_map
 
@@ -1423,7 +1421,7 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, l0c_multi
         check_ifmc_flag = (mc_from_tiling // dedy_w * dedy_w * DIM_MAP["dilate_dim"][0] * DIM_MAP["dilate_dim"][1]
             <= CUB_BUFFER_LIMIT)
         max_n_is_hfactor = tvm.floordiv(
-            (cce_conf.get_soc_spec("UB_SIZE") - nc_factor * mc_factor * m0 * n0 * cub_db_flag * cub_dtype_bit)
+            (tbe_platform_info.get_soc_spec("UB_SIZE") - nc_factor * mc_factor * m0 * n0 * cub_db_flag * cub_dtype_bit)
             // (nc_factor * n0 * cub_db_flag * cub_dtype_bit * DIM_MAP["dilate_dim"][0]),
             DIM_MAP.get("out_hwdim")[1])
 
@@ -1450,7 +1448,7 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, l0c_multi
             # parts of k-axis from DDR to L1---need div by H*W
             al1_parts = [
                 int_ceil_div(
-                    DIM_MAP[GroupDictKeys.dy_c1_extend],
+                    DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend],
                     int_ceil_div(TILING["AL1_shape"][0], block_k)
                 ),
                 int_ceil_div(l0c_parts[1], TILING["AL1_shape"][1]),
@@ -1475,8 +1473,8 @@ def _get_aicore_tiling_factor(is_conv1d_bool, sch, var_map, var_range, l0c_multi
             ]
         return al1_parts, bl1_parts
 
-    block_m = cce_params.CUBE_MKN[TENSOR_MAP.get("c_l0c").dtype]["mac"][0]
-    block_k = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"][1]
+    block_m = tbe_platform.CUBE_MKN[TENSOR_MAP.get("c_l0c").dtype]["mac"][0]
+    block_k = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"][1]
     # get factor from l0c, ub to ddr
     mc_from_tiling = TILING["CL0_matrix"][1] * TILING["CL0_matrix"][2]
     l0c_tiling_factor = [TILING["CL0_matrix"][0], mc_from_tiling]
@@ -1755,7 +1753,7 @@ def _get_l0a_and_l0b_axis(  # pylint: disable=R0913,R0914
     reduce_out, reduce_inner = sch[c_l0c].op.reduce_axis
     al0_m_out, al0_m_inner = sch[c_l0c].split(
         new_c_col_axis[2],
-        al0_axis_factor[0] * cce_params.CUBE_MKN[c_l0c.dtype]["mac"][0]
+        al0_axis_factor[0] * tbe_platform.CUBE_MKN[c_l0c.dtype]["mac"][0]
     )
     bl0_n_outer, bl0_n_inner = sch[c_l0c].split(new_c_col_axis[1], bl0_axis_factor[1])
     # for reduce axis, al0 and b_l0b should be the same
@@ -1851,10 +1849,10 @@ def _check_quant_fusion_legal(fusion_type):
     :param fusion_type:  FUSION_DX_DEQUANT_QUANT or FUSION_DX_REQUANT
 
     """
-    block_m, block_k, block_n = cce_params.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
+    block_m, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
     min_n = DIM_MAP["dx_c1_extend"]
     min_l0b = min_n * block_k * block_n * DTYPE_BYTE_MAP[TENSOR_MAP.get("b_l0b").dtype]
-    if min_l0b > cce_conf.get_soc_spec("L0B_SIZE"):
+    if min_l0b > tbe_platform_info.get_soc_spec("L0B_SIZE"):
         _raise_dx_opti_err("The minimum data in l0b exceed buffer space, the fusion backs to single operator.")
     min_m = 1
     if TENSOR_MAP.get("dilate_ub") is not None:
@@ -1868,12 +1866,12 @@ def _check_quant_fusion_legal(fusion_type):
             min_m = int_ceil_div(dy_w, block_m) + 1
     group_l0c = 2
     min_l0c = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_l0c").dtype] * group_l0c
-    if min_l0c > cce_conf.get_soc_spec("L0C_SIZE"):
+    if min_l0c > tbe_platform_info.get_soc_spec("L0C_SIZE"):
         _raise_dx_opti_err("The minimum data in l0c exceed buffer space, the fusion backs to single operator.")
     _calc_double_op_num(fusion_type)
     min_ub = min_m * min_n * block_n * block_m * DTYPE_BYTE_MAP[TENSOR_MAP.get("c_gm").dtype] \
              * group_l0c * FUSION_TYPE_2_OPERAND_NUM[fusion_type]
-    if min_ub > cce_conf.get_soc_spec("UB_SIZE"):
+    if min_ub > tbe_platform_info.get_soc_spec("UB_SIZE"):
         _raise_dx_opti_err("The minimum data in ub exceed buffer space, the fusion backs to single operator.")
 
 def opti_schedule(
@@ -1895,7 +1893,7 @@ def opti_schedule(
     def _do_buffer_tile():
         def _get_cub_buffertile_m_min():
             # cub buffertile hw axis
-            block_m = cce_params.CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"][0]
+            block_m = tbe_platform.CUBE_MKN[TENSOR_MAP.get("c_ub").dtype]["mac"][0]
             mm_coefficient_factor = undilate_l0c_m
             moo_coefficient_unzero = int_ceil_div(
                 int_ceil_div(DIM_MAP["out_img_shape"][2], l0c_factor[1]), al1_parts[1]
@@ -2089,8 +2087,8 @@ def opti_schedule(
             sch[TENSOR_MAP["data_transfer"]].buffer_align(
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN["int8"]["mac"][0]),
-                (1, cce_params.CUBE_MKN["int8"]["mac"][0])
+                (1, tbe_platform.CUBE_MKN["int8"]["mac"][0]),
+                (1, tbe_platform.CUBE_MKN["int8"]["mac"][0])
             )
 
     def _attach_al1_bl1():
@@ -2191,7 +2189,7 @@ def opti_schedule(
         elif fusion_type == FUSION_DX_DRELU:
             sch[dx_output_ub].reused_by(fusion_dx_gm, drelu_ub)
         elif fusion_type == FUSION_DX_ELEWISE:
-            iv_c_gm = calc_info_of_iter_vars(sch[c_gm])
+            iv_c_gm = cube_util.calc_info_of_iter_vars(sch[c_gm])
             len_axis = iv_c_gm[-2][1].extent
             if FUSION_TYPE_2_OPERAND_NUM.get(fusion_type) < 1:
                 for ub_tensor in TENSOR_MAP["ub_list"]:
@@ -2219,7 +2217,7 @@ def opti_schedule(
                     ndim = len(sch[reform_ub].op.axis)
                     coo, _ = sch[reform_ub].split(
                         sch[reform_ub].op.axis[ndim - 1],
-                        cce_params.CUBE_MKN["float16"]["mac"][1]
+                        tbe_platform.CUBE_MKN["float16"]["mac"][1]
                     )
                     axis_list = sch[reform_ub].op.axis[0:ndim - 1]
                     sch[reform_ub].reorder(coo, *axis_list)
@@ -2261,31 +2259,21 @@ def opti_schedule(
             for tensor_name in TENSOR_MAP:
                 if tensor_name == "c_ub" and fusion_type != FUSION_DX_REQUANT:
                     axis_index = 2 if quan_para["deq_vector"] else 0
-                    if cce_conf.is_v200_version_new():
-                        sch[TENSOR_MAP[tensor_name]].emit_insn(
-                            TENSOR_MAP[tensor_name].op.axis[axis_index], "dma_copy"
-                        )
+                    if cube_util.is_v200_version_new():
+                        sch[TENSOR_MAP[tensor_name]].emit_insn(TENSOR_MAP[tensor_name].op.axis[axis_index],
+                                                               "dma_copy")
                     else:
                         emit = "vector" if axis_index == 2 else "scalar"
-                        sch[TENSOR_MAP[tensor_name]].pragma(
-                            TENSOR_MAP[tensor_name].op.axis[axis_index],
-                            "deq_scale",
-                            emit
-                        )
+                        sch[TENSOR_MAP[tensor_name]].pragma(TENSOR_MAP[tensor_name].op.axis[axis_index],
+                                                            "deq_scale", emit)
                 elif tensor_name == "input_ub" and quan_para["q_padding"]:
-                    sch[TENSOR_MAP[tensor_name]].emit_insn(
-                        TENSOR_MAP[tensor_name].op.axis[0], "dma_padding"
-                    )
+                    sch[TENSOR_MAP[tensor_name]].emit_insn(TENSOR_MAP[tensor_name].op.axis[0], "dma_padding")
                 elif tensor_name == "cast_i8_ub":
                     cast_i8_ub = TENSOR_MAP[tensor_name]
-                    round_mode_emit_insn = (
-                        "vector_conv_%s" % quan_para["q_round"].lower()
-                    )
-                    if cce_conf.CceProductParams().is_mini_version():
+                    round_mode_emit_insn = ("vector_conv_%s" % quan_para["q_round"].lower())
+                    if cube_util.is_mini_version():
                         round_mode_emit_insn = "vector_conv"
-                    sch[cast_i8_ub].emit_insn(
-                        cast_i8_ub.op.axis[0], round_mode_emit_insn
-                    )
+                    sch[cast_i8_ub].emit_insn(cast_i8_ub.op.axis[0], round_mode_emit_insn)
 
         if fusion_type in [FUSION_DX_ADD_DRELU, FUSION_DX_DRELU]:
             sch[bitmask_ub].emit_insn(bitmask_ub.op.axis[0], "dma_copy")
@@ -2534,11 +2522,11 @@ def opti_schedule(
         if ("dedy_h" in var_map or "dedy_w" in var_map) and dilate_ub is not None:
             _get_dilate_ub_bound()
         # disable_allocate
-        sch.disable_allocate(cce_params.scope_cbuf)
-        sch.disable_allocate(cce_params.scope_ca)
-        sch.disable_allocate(cce_params.scope_cb)
-        sch.disable_allocate(cce_params.scope_cc)
-        sch.disable_allocate(cce_params.scope_ubuf)
+        sch.disable_allocate(tbe_platform_info.scope_cbuf)
+        sch.disable_allocate(tbe_platform_info.scope_ca)
+        sch.disable_allocate(tbe_platform_info.scope_cb)
+        sch.disable_allocate(tbe_platform_info.scope_cc)
+        sch.disable_allocate(tbe_platform_info.scope_ubuf)
         # mem_unique
         sch[a_l1].mem_unique()
         sch[a_l0a].mem_unique()
@@ -2650,7 +2638,7 @@ def opti_schedule(
     al0_axis_factor, bl0_axis_factor, reduce_axis_factor = _get_mmad_factor()
     num_batch = DIM_MAP["img_shape"][0]
     _print_ir_conv("before split", sch)
-    g_extend = DIM_MAP[GroupDictKeys.g_extend]
+    g_extend = DIM_MAP[cube_util.GroupDictKeys.g_extend]
     # split and get axis of l0c, al1, bl1
     (
         batch_in_out_axis,
@@ -2789,15 +2777,15 @@ def opti_schedule(
             sch[c_ub].buffer_align(
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN["float16"]["mac"][0]),
-                (1, cce_params.CUBE_MKN["float16"]["mac"][0])
+                (1, tbe_platform.CUBE_MKN["float16"]["mac"][0]),
+                (1, tbe_platform.CUBE_MKN["float16"]["mac"][0])
             )
         if bias_add_vector_ub is not None and dilate_ub is None:
             sch[bias_add_vector_ub].buffer_align(
                 (1, 1),
                 (1, 1),
-                (1, cce_params.CUBE_MKN["float16"]["mac"][0]),
-                (1, cce_params.CUBE_MKN["float16"]["mac"][0])
+                (1, tbe_platform.CUBE_MKN["float16"]["mac"][0]),
+                (1, tbe_platform.CUBE_MKN["float16"]["mac"][0])
             )
 
     # double buffer
@@ -2810,7 +2798,7 @@ def opti_schedule(
     # preload
     if DeconvParam.get_para_map("DATA_AMOUNT_CUB") * (
         1 + 2 * FUSION_TYPE_2_OPERAND_NUM.get(fusion_type)
-    ) <= cce_conf.get_soc_spec("UB_SIZE"):
+    ) <= tbe_platform_info.get_soc_spec("UB_SIZE"):
         _print_debug("dx opti ub preload enable.")
         if fusion_type == FUSION_DX_DRELU:
             sch[bitmask_ub].double_buffer()

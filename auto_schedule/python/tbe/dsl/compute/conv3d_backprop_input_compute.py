@@ -15,15 +15,15 @@
 """
 conv3d backprop input DSL interface.
 """
-import te.platform as tbe_platform
-from tbe.dsl.compute import util as te_util
-from tbe.dsl.compute import conv3d_backprop_input_general_compute as conv3d_bp_gen_dx
-from tbe.dsl.base.operation import get_te_var
-from tbe.common.utils import para_check
-from tbe.common.utils import shape_util
+from tbe import tvm
+from tbe.common import platform as tbe_platform
+from tbe.common import utils as tbe_utils
+from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from tbe import tvm
+from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.compute import conv3d_backprop_input_general_compute as conv3d_bp_gen_dx
+from tbe.dsl.compute import util as compute_util
 
 
 # fmapH, fmapW must be in [1,4096]
@@ -62,7 +62,6 @@ _BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
 _DATA_SIZE_MAX = 9223372036854775807
 _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # align with 16 for chips
-_C0_SIZE = tbe_platform.C0_SIZE
 _BLOCK_SIZE = 16
 
 
@@ -82,7 +81,7 @@ def _get_var_map(out_backprop):
     return var_map
 
 
-@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
+@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (list, tuple),
                              (list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), str, str, dict, dict)
 def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
@@ -126,16 +125,16 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     """
     dx_batch, dx_d, dx_h, dx_w, dx_c = input_sizes
     _, _, config_n0 = tbe_platform.CUBE_MKN[res_dtype]['mac']
-    shape_dx = (dx_batch, dx_d, te_util.int_ceil_div(dx_c, config_n0), dx_h, dx_w, config_n0)
+    shape_dx = (dx_batch, dx_d, compute_util.int_ceil_div(dx_c, config_n0), dx_h, dx_w, config_n0)
 
     cout_g = group_dict["cout_g"]
     cin1_g = group_dict["cin1_g"]
     real_g = group_dict["real_g"]
-    dedy_shape = shape_util.shape_to_list(out_backprop.shape)
+    dedy_shape = tbe_utils.shape_util.shape_to_list(out_backprop.shape)
     dedy_shape[2] = cout_g // _BLOCK_SIZE
     _, _, filter_d, filter_h, filter_w = filter_sizes
     filter_frac_6d = [cout_g, filter_d, cin1_g, filter_h, filter_w, _BLOCK_SIZE]
-    input_sizes[-1] = te_util.align(dx_c, _BLOCK_SIZE)
+    input_sizes[-1] = compute_util.align(dx_c, _BLOCK_SIZE)
 
     if var_map:
         DynamicConv3dBpInputParams.tiling_info_dict = {
@@ -171,7 +170,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     return dx_ddr
 
 
-@para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
+@tbe_utils.para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
                              (list, tuple), (str, list, tuple),
                              (list, tuple), str, str, str, dict)
 def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
@@ -236,7 +235,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         aub_dedy_size_min = dedy_w_upper * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
         aub_filling_size_min = w_value * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
         cub_size_min = _BLOCK_SIZE * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
-        ub_size = tbe_platform.get_soc_spec("UB_SIZE")
+        ub_size = tbe_platform_info.get_soc_spec("UB_SIZE")
 
         if (aub_dedy_size_min + aub_filling_size_min + cub_size_min) > ub_size:
             dict_args = {
@@ -256,7 +255,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
 
         a_l1_size = h_value_max * w_value * ((filter_d_dilation - 2) // stride_d + 2) * _BLOCK_SIZE * 2
         b_l1_size = filter_h_dilation * filter_w_dilation * filter_d_dilation * _BLOCK_SIZE * _BLOCK_SIZE * 2
-        l1_size = tbe_platform.get_soc_spec("L1_SIZE")
+        l1_size = tbe_platform_info.get_soc_spec("L1_SIZE")
         if (a_l1_size + b_l1_size) > l1_size:
             dict_args = {
                 'errCode': 'E60026'
@@ -311,9 +310,9 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     filter_dtype = filter_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()
-    para_check.check_dtype_rule(filter_dtype, ('float16'), "filter")
-    para_check.check_dtype_rule(out_backprop_dtype, ('float16'), "out_backprop")
-    para_check.check_dtype_rule(res_dtype, ('float16'), "output")
+    tbe_utils.para_check.check_dtype_rule(filter_dtype, ('float16'), "filter")
+    tbe_utils.para_check.check_dtype_rule(out_backprop_dtype, ('float16'), "out_backprop")
+    tbe_utils.para_check.check_dtype_rule(res_dtype, ('float16'), "output")
 
     # the relation limits between shape
     shape_filter = list(shape_filter)
@@ -417,19 +416,19 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     _check_l1_limitation()
     # check shape size, 64 bits limitation
     # ===========================================================
-    fmap_size = (dedx_batch_upper * te_util.align(fmap_channel, _C0_SIZE) *
+    fmap_size = (dedx_batch_upper * compute_util.align(fmap_channel, tbe_platform.C0_SIZE) *
                  dedx_d_upper * dedx_h_upper * dedx_w_upper)
     dedy_size = (dedy_batch_upper * dedy_channel_aligned * dedy_d_upper *
                  dedy_h_upper * dedy_w_upper)
-    filter_size = te_util.align(filter_batch, _C0_SIZE) * te_util.align(
-        filter_channel, _C0_SIZE) * filter_depth * filter_h * filter_w
+    filter_size = compute_util.align(filter_batch, tbe_platform.C0_SIZE) * compute_util.align(
+        filter_channel, tbe_platform.C0_SIZE) * filter_depth * filter_h * filter_w
     _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
     _check_64bits_limitation("out_backprop", dedy_size,
                              dtype=out_backprop_dtype)
     _check_64bits_limitation("filter", filter_size, dtype=filter_dtype)
 
 
-@para_check.check_input_type(tvm.tensor.Tensor,
+@tbe_utils.para_check.check_input_type(tvm.tensor.Tensor,
                              tvm.tensor.Tensor,
                              (list, tuple),
                              (list, tuple),
@@ -472,8 +471,8 @@ def conv3d_dx(filter,
     filter_dtype = filter.dtype
     out_backprop_dtype = out_backprop.dtype
     group_dict = para_dict.get("group_dict", None)
-    
-    out_backprop_shape = shape_util.shape_to_list(out_backprop.shape)
+
+    out_backprop_shape = tbe_utils.shape_util.shape_to_list(out_backprop.shape)
     out_backprop_ndhwc = (out_backprop_shape[0],
                           out_backprop_shape[1],
                           out_backprop_shape[3],
@@ -485,7 +484,7 @@ def conv3d_dx(filter,
     if group_dict is None:
         group_dict["real_g"] = 1
         group_dict["cout_g"] = out_backprop_ndhwc[-1]
-        group_dict["cin1_g"] = te_util.int_ceil_div(filter_dhwcn[-2], _C0_SIZE)
+        group_dict["cin1_g"] = compute_util.int_ceil_div(filter_dhwcn[-2], tbe_platform.C0_SIZE)
     var_map = _get_var_map(out_backprop)
 
     _check_conv3dbp_input_params_in_dsl(filter_dhwcn, out_backprop_ndhwc, input_size, strides,

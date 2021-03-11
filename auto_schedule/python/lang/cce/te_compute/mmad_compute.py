@@ -98,7 +98,7 @@ def matmul(tensor_a,
     compress_index: index for compressed wights, None means not compress wights
     Returns None
     """
-    warnings.warn("te.lang.cce.te_compute.mmad_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.mmad_compute is expired, "
         "please replace it with the func tbe.dsl.compute.mmad_compute",
         DeprecationWarning)
     from tbe.dsl.compute.mmad_compute import matmul
@@ -146,7 +146,7 @@ def get_matmul_performance_format(tensor_a,
 
     Returns: tensor a format
     """
-    warnings.warn("te.lang.cce.te_compute.mmad_compute is expired, " \
+    warnings.warn("te.lang.cce.te_compute.mmad_compute is expired, "
         "please replace it with the func tbe.dsl.compute.mmad_compute",
         DeprecationWarning)
     from tbe.dsl.compute.mmad_compute import get_matmul_performance_format

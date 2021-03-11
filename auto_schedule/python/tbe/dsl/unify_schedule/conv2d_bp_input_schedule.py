@@ -15,11 +15,11 @@
 """
 conv2d schedule
 """
-from tbe.dsl.unify_schedule.constants import Pattern
+from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import CceConv2dBackpropInputOp
 from tbe.dsl.static_schedule.cce_schedule import get_op_info
-from tbe.dsl.base.operation import register_schedule
-from te.tvm import schedule as tvm
+from tbe.dsl.unify_schedule.constants import Pattern
+from tbe.tvm import schedule as tvm
 
 
 @register_schedule(pattern=Pattern.CONV2D_BACKPROP_INPUT)

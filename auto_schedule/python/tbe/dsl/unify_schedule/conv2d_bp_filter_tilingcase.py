@@ -20,15 +20,15 @@ from collections import OrderedDict
 from functools import reduce
 
 from tbe import tvm
-from tbe.dsl.unify_schedule.constants import Pattern
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
-from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils as utils
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.base.operation import get_te_var
+from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.compute.conv2d_backprop_filter_compute import \
     DynamicConv2dBpFilterParams as DynamicParams
-from tbe.dsl.base.operation import register_tiling_case
-from tbe.dsl.base.operation import get_te_var
-from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.unify_schedule.constants import Pattern
+from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
+from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
+from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils as utils
 
 
 H_RANGE = 4096
