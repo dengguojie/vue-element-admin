@@ -29,6 +29,38 @@ case2 = {"params": [{"shape": (1,4,23,111,16), "dtype": "float16", "format": "NH
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 
+from impl.max_pool import check_supported
+
+# pylint: disable=unused-argument,unused-variable
+def test_check_support(test_arg):
+    # input_x, output_y, output_argmax, ksize, strides, padding
+    res = check_supported(
+                    {"shape": (1,4,23,111,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 4, 23, 111, 16),"ori_format": "NHWC"},
+                    {"shape": (1,4,11,55,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 4, 11, 55, 16),"ori_format": "NHWC"},
+                    [1, 1, 3, 3],
+                    [1, 1, 2, 2],
+                    "VALID",
+                    "NCHW"
+                    "max_pool_check_support_case_001")
+    res = check_supported(
+                    {"shape": (1,3,35,49,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 35, 49, 16),"ori_format": "NHWC"},
+                    {"shape": (1,3,17,24,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 17, 24, 16),"ori_format": "NHWC"},
+                    [1, 16, 16, 1],
+                    [1, 16, 16, 1],
+                    "VALID",
+                    "NHWC"
+                    "max_pool_check_support_case_002")
+    res = check_supported(
+                    {"shape": (1,3,35,49,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 35, 49, 16),"ori_format": "NHWC"},
+                    {"shape": (1,3,17,24,16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 3, 17, 24, 16),"ori_format": "NHWC"},
+                    [1, 21, 21, 1],
+                    [1, 21, 21, 1],
+                    "SAME",
+                    "NHWC"
+                    "max_pool_check_support_case_003")
+
+ut_case.add_cust_test_func(test_func=test_check_support)
+
 #precision cases
 def NC1HWC02NCHW(fmi, fmi_shape, precise):
     if precise=='int8':
