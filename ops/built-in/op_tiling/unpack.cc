@@ -320,7 +320,7 @@ bool UnpackTiling(const std::string& op_type, const TeOpParas& op_paras, const n
   run_info.block_dim = actual_block_num;
   run_info.workspaces = {};
 
-  ByteBufferPut(run_info.tiling_data, key);
+  run_info.tiling_key = key;
   const auto& all_vars = op_info["vars"][std::to_string(key)];
 
   for (const auto& var : all_vars) {
