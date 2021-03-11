@@ -16,6 +16,7 @@
 elewise schedule
 """
 import copy
+import math
 from copy import deepcopy
 from typing import Optional
 
@@ -40,6 +41,7 @@ from .elewise_tilingcase import TilingStrategy
 BLOCK_SIZE_BYTE = 32
 MULTI_CORE_THRESHOLD = 1024
 ONE_DIM_ALIGN = 128
+UB_BANK_FACTOR = 512
 N_LAST_BROADCAST_THRESHOLD = 512
 
 # temp space for last axis broadcast use vtranspose
@@ -60,6 +62,7 @@ TYPE_DOUNDS = {
     4: (1, 16383),
     8: (1, 8191),
 }
+
 
 @register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
 def schedule(outs, tiling_case):
@@ -830,8 +833,16 @@ class ElewiseSchedule:
             tensor_space = tensor_space // 2
         self._tensor_space = tensor_space // BLOCK_SIZE_BYTE * BLOCK_SIZE_BYTE
 
+        # adjust storage bound by tiling handle one dime (128 align)
         if self._is_one_dim and self._tensor_space > ONE_DIM_ALIGN:
             self._tensor_space = self._tensor_space // ONE_DIM_ALIGN * ONE_DIM_ALIGN
+
+        # improve storage bound by bank conflict(only pure eletwise)
+        cpt_pattern = operation.get_context().get_current_compute()._operator._pattern
+        if cpt_pattern == Pattern.ELEMWISE and self._tensor_space > UB_BANK_FACTOR:
+            self._tensor_space = \
+                UB_BANK_FACTOR * 2 ** math.floor(math.log2(self._tensor_space / UB_BANK_FACTOR))
+
 
         sch = self._schedule
         tensors = self._pure_middle_tensors \
