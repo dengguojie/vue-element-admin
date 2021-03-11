@@ -801,5 +801,5 @@ TEST_F(TransDataTiling, TransData_tiling11) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string_int64(runInfo.tiling_data),
-            "1011 63232 4 1 3952 0 27104 32 13552 2 3952 0 247 3952 16 30976 30976 16 0 16 1 0 1 0 1 0 1 0 1 106 1 0 121 1 256 7 121 30976 ");
+            "1011 63232 4 1 3952 0 27104 32 13552 2 3952 3952 247 0 16 30976 30976 16 0 16 1 0 1 0 1 0 1 0 1 106 1 0 121 1 256 7 121 30976 ");
 }

@@ -44,7 +44,7 @@ def _vnchwconv_pad_c_c0_align(args):
     tik_inst, src_ub, ub_offset, vnc_col_size, pln_dst_cr_size, pl_c_size, c_mod_c0, c0_size, ele_per_block = args
     tensor_dtype = src_ub.dtype.lower()
     size_factor = tdc.get_dtype_factor(tensor_dtype)
-    if tensor_dtype in ("float32", "int8", "int32"):
+    if tensor_dtype in ("float32", "int8", "uint8", "int32", "uint32"):
         src_ub_casted = src_ub.reinterpret_cast_to("float16")
     else:
         src_ub_casted = src_ub
@@ -52,7 +52,7 @@ def _vnchwconv_pad_c_c0_align(args):
     vnc_col_len = vnc_col_size * size_factor
 
     # do hhc -> hch
-    if tensor_dtype != "int8":
+    if tensor_dtype not in ("int8", "uint8"):
         src_addr_list = [src_ub_casted[vnc_col_len * i] for i in tdc.ADDR_IDX_LIST]
         dst_addr_list = [src_ub_casted[ub_offset_casted + c0_size * i] for i in tdc.ADDR_IDX_LIST]
         repeat_cnt = tdc.ceil_div(pln_dst_cr_size * pl_c_size * size_factor, c0_size)
@@ -103,7 +103,7 @@ def _vnchwconv_pad_c_c0_align(args):
                            0, 1, tdc.ceil_div(pln_dst_cr_size * pl_c_size * tdc.C0_16, ele_per_block), 0, 0)
     with tik_inst.else_scope():  # pad c_mod_c0 to c0
         clean_len = pln_dst_cr_size * tdc.ceil_fill(pl_c_size, c0_size) * c0_size
-        if tensor_dtype == "int8":  # vector_dup does not support int8
+        if tensor_dtype in ("int8", "uint8"):  # vector_dup does not support int8
             src_ub_int32 = src_ub.reinterpret_cast_to("int32")
             tdc.clean_ubuf(tik_inst, src_ub_int32, 0, tdc.ceil_div(clean_len, 4))
         else:
@@ -169,13 +169,13 @@ def _gather_c0_for_out(args):
     tensor_dtype = src_ub.dtype.lower()
     size_factor = tdc.get_dtype_factor(tensor_dtype)
     ub_offset_casted = ub_offset * size_factor
-    if tensor_dtype in ("float32", "int8", "int32"):
+    if tensor_dtype in ("float32", "int8", "uint8", "int32", "uint32"):
         src_ub_casted = src_ub.reinterpret_cast_to("float16")
     else:
         src_ub_casted = src_ub
 
     src_c1_step = c1_idx * c0_size * c0_size * size_factor
-    if tensor_dtype != "int8":
+    if tensor_dtype not in ("int8", "uint8"):
         with tik_inst.for_range(0, size_factor) as factor_idx:
             src_factor_step = factor_idx * tdc.VNC_LINES * c0_size
             dst_factor_step = factor_idx * c0_size
@@ -281,7 +281,8 @@ def _func_transform_1010(tensor_args, tp_args):
                     in_ub_offset = 0
                     copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, dst_cr_step_in,
                                     vnc_line_cnt, ll_cr_size, pln_dst_cr_size, pl_c_size, vnc_col_size, ele_per_block)
-                    _copy_data_in_1010(copy_in_args)
+                    with tik_inst.new_stmt_scope(disable_sync=True):
+                        _copy_data_in_1010(copy_in_args)
 
                     vnc_args = (tik_inst, src_ub, ub_offset, vnc_col_size,
                                 pln_dst_cr_size, pl_c_size, c_mod_c0, c0_size, ele_per_block)
@@ -366,7 +367,7 @@ def _func_transform_1011(tensor_args, tp_args):
 
     tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block = tensor_args
     (ub_offset, used_core_cnt, mc_on_cl, core_step_in, core_step_out, dst_r2nd_lp_step_in, dst_r2nd_lp_step_out,
-     dst_r2nd_step_in, dst_r2nd_lp_unit, src_cl_lp_step_in, src_cl_lp_step_out, src_cl_lp_unit, vnc_col_size,
+     dst_r2nd_step_in, dst_r2nd_lp_unit, src_cl_lp_step_in, vnc_col_size, src_cl_lp_unit, src_cl_lp_step_out,
      c_lp_step_in, c_lp_step_out, c_step_out, c0_size, c_mod_c0, c_lp_unit, nlc_dst_r2nd_lp_cnt, nlc_dst_r2nd_left,
      nlc_src_cl_lp_cnt, nlc_src_cl_left, nlc_c_lp_cnt, nlc_c_left, lc_dst_r2nd_lp_cnt, lc_dst_r2nd_left,
      lc_src_cl_lp_cnt, lc_src_cl_left, lc_c_lp_cnt, lc_c_left, cl_out_idx_0_size, cl_out_idx_0_src_rsize,
@@ -402,7 +403,8 @@ def _func_transform_1011(tensor_args, tp_args):
                     in_ub_offset = 0
                     copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, vnc_line_cnt,
                                     dst_r2nd_step_in, pln_cl_size, pl_c_size, vnc_col_size, ele_per_block)
-                    _copy_data_in_1011(copy_in_args)
+                    with tik_inst.new_stmt_scope(disable_sync=True):
+                        _copy_data_in_1011(copy_in_args)
 
                     vnc_args = (tik_inst, src_ub, ub_offset, vnc_col_size,
                                 pln_cl_size, pl_c_size, c_mod_c0, c0_size, ele_per_block)

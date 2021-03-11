@@ -227,9 +227,9 @@ struct TransDataMode1011Param {
   int64_t dstR2ndStepIn;
   int64_t dstR2ndLpUnit;
   int64_t srcClLpStepIn;
-  int64_t srcClLpStepOut;
-  int64_t srcClLpUnit;
   int64_t vncLineSize;
+  int64_t srcClLpUnit;
+  int64_t srcClLpStepOut;
   int64_t cLpStepIn;
   int64_t cLpStepOut;
   int64_t cStepOut;

@@ -257,9 +257,9 @@ void SetRunningMode1011Params(const TransDataMode1011Param& runParams, OpRunInfo
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndStepIn); 
   ByteBufferPut(runInfo.tiling_data, runParams.dstR2ndLpUnit);
   ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepIn);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepOut);
-  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpUnit);
   ByteBufferPut(runInfo.tiling_data, runParams.vncLineSize);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpUnit);
+  ByteBufferPut(runInfo.tiling_data, runParams.srcClLpStepOut);
   ByteBufferPut(runInfo.tiling_data, runParams.cLpStepIn);
   ByteBufferPut(runInfo.tiling_data, runParams.cLpStepOut);
   ByteBufferPut(runInfo.tiling_data, runParams.cStepOut);
@@ -298,9 +298,9 @@ void PrintTilingMode1011Params(const std::string& opType, const TransDataMode101
   OP_LOGD(opType.c_str(), "dstR2ndStepIn=%d", params.dstR2ndStepIn);
   OP_LOGD(opType.c_str(), "dstR2ndLpUnit=%d", params.dstR2ndLpUnit);
   OP_LOGD(opType.c_str(), "srcClLpStepIn=%d", params.srcClLpStepIn);
-  OP_LOGD(opType.c_str(), "srcClLpStepOut=%d", params.srcClLpStepOut);
-  OP_LOGD(opType.c_str(), "srcClLpUnit=%d", params.srcClLpUnit);
   OP_LOGD(opType.c_str(), "vncLineSize=%d", params.vncLineSize);
+  OP_LOGD(opType.c_str(), "srcClLpUnit=%d", params.srcClLpUnit);
+  OP_LOGD(opType.c_str(), "srcClLpStepOut=%d", params.srcClLpStepOut);
   OP_LOGD(opType.c_str(), "cLpStepIn=%d", params.cLpStepIn);
   OP_LOGD(opType.c_str(), "cLpStepOut=%d", params.cLpStepOut);
   OP_LOGD(opType.c_str(), "cStepOut=%d", params.cStepOut);

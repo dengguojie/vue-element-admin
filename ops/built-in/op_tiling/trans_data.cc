@@ -457,7 +457,6 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   int64_t inputSize = 0;
   int64_t hiddenSize = 0;
   int64_t group = 1;
-  int64_t c0Len = GetC0Len(dType);
 
   bool flag = GetCompileParams(op_info, srcFormat, dstFormat, dType, ubSize, blockDim, inputSize, hiddenSize, group,
                                 opType);
@@ -465,7 +464,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     OP_LOGE("op[%s] TransDataTiling: GetCompileParams error.", opType.c_str());
     return false;
   }
-
+  int64_t c0Len = GetC0Len(dType);
   bool ret = CheckTensorShape(opType, ubSize, blockDim, outShape);
   if (!ret) {
     OP_LOGE(opType.c_str(), "op TransDataTiling: CheckTensor Failed.");
