@@ -132,17 +132,14 @@ COMMON_INFER_FUNC_REG(TanhGrad, TanhGradInferShape);
 // ----------------TanhGrad Op End-------------------
 
 // ----------------PRelu-------------------
-IMPLEMT_INFERFUNC(PRelu, PReluInferShape) {
-  auto outShape = op.GetInputDesc("x").GetShape();
-  auto outDtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc td = op.GetOutputDesc("y");
-  td.SetShape(outShape);
-  td.SetDataType(outDtype);
-  (void)op.UpdateOutputDesc("y", td);
-  return GRAPH_SUCCESS;
+IMPLEMT_COMMON_INFERFUNC(PReluInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
-INFER_FUNC_REG(PRelu, PReluInferShape);
+COMMON_INFER_FUNC_REG(PRelu, PReluInferShape);
 // ----------------PRelu End---------------
 
 // ----------------PReluGrad---------------

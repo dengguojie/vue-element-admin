@@ -249,3 +249,4 @@ from .bessel_i1e import bessel_i1e
 from .bitwise_and import bitwise_and
 from .bitwise_or import bitwise_or
 from .bitwise_xor import bitwise_xor
+from .prelu import prelu

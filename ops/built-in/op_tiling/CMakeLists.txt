@@ -51,6 +51,7 @@ set(_optiling_files
   nms_with_mask.cc
   pad_common.cc
   pad_d.cc
+  prelu.cc
   reduce_tiling.cc
   resize_nearest_neighbor_v2.cc
   resize_bilinear_v2_grad.cc
