@@ -280,6 +280,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     data_size = 2
     l0a_size = tbe_platform.get_soc_spec(tbe_platform.L0A_SIZE)
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
     out_w = out_shape[4]
     # compute dilation shape
@@ -316,6 +317,10 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     tile_dile_h_ub = max_h_in_ub * stride[0] - (stride[0] - 1)
     tile_hd = tile_dile_h_ub
     tile_input_h = tile_hd + dilated_pad_top + dilated_pad_bottom - k_height + 1
+    max_tile_input_h = l1_size // (input_w * BLOCK_SIZE * 2)
+    dout_l1_size = input_w * (k_height + stride[0]) * BLOCK_SIZE * 2
+    tile_k_o = dout_l1_size // l1_size + 1 if dout_l1_size > l1_size else 0
+    tile_input_h = min(tile_input_h, max_tile_input_h)
     # if tile_input_h > input_h, input_h no tiling
     if tile_input_h >= input_h:
         tile_input_h = input_h
@@ -330,7 +335,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     if res_l1 < input_h * input_w:
         res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
 
-    return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n
+    return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o
 
 
 # pylint: disable=too-many-locals,too-many-statements
@@ -394,17 +399,26 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     mad_res_shape = [int(i.value) for i in mad_res.shape]
     res_block_n, res_block_cgroup, _, _, _ = mad_res_shape
     #tiling
-    res_l1, _, tile_dile_h_ub, tile_m, tile_k, tile_n = _avg_pool_grad_tiling(input_w, input_h,
-                                                                              dout_shape, res, stride)
+    res_l1, _, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o = _avg_pool_grad_tiling(input_w, input_h,
+                                                                                        dout_shape, res, stride)
 
     mad_cc_n_cut_o, mad_cc_n_cut_i = s[mad_cc].split(mad_cc_axis_n, factor=1)
     mad_cc_mcut_o, mad_cc_mcut_i = s[mad_cc].split(mad_cc_axis_howomad, factor=tile_m)
     mad_cc_kcut_o, mad_cc_kcut_i = s[mad_cc].split(mad_cc.op.reduce_axis[0], factor=tile_k)
+    if tile_k_o != 0:
+        mad_cc_kcut_o_o, mad_cc_kcut_o_i = s[mad_cc].split(mad_cc_kcut_o, nparts=tile_k_o)
     mad_cc_ncut_o, mad_cc_ncut_i = s[mad_cc].split(mad_cc_axis_co1, factor=tile_n)
-    s[mad_cc].reorder(mad_cc_n_cut_o, mad_cc_axis_cg, mad_cc_ncut_o, mad_cc_mcut_o, mad_cc_kcut_o, mad_cc_n_cut_i,
-                      mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0, mad_cc_kcut_i, mad_cc.op.reduce_axis[1])
-    s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o)
-    s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o)
+    if tile_k_o != 0:
+        s[mad_cc].reorder(mad_cc_kcut_o_o, mad_cc_n_cut_o, mad_cc_axis_cg, mad_cc_ncut_o, mad_cc_mcut_o,
+                          mad_cc_kcut_o_i, mad_cc_n_cut_i,
+                          mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0, mad_cc_kcut_i, mad_cc.op.reduce_axis[1])
+        s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o_i)
+        s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o_i)
+    else:
+        s[mad_cc].reorder(mad_cc_n_cut_o, mad_cc_axis_cg, mad_cc_ncut_o, mad_cc_mcut_o, mad_cc_kcut_o, mad_cc_n_cut_i,
+                          mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0, mad_cc_kcut_i, mad_cc.op.reduce_axis[1])
+        s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o)
+        s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o)
 
     mad_ubuf_n_cut_o, mad_ubuf_n_cut_i = s[mad_ubuf].split(mad_ubuf_axis_n, factor=1)
     mad_ubuf_mcut_o, mad_ubuf_mcut_i = s[mad_ubuf].split(mad_ubuf_axis_howomad, factor=tile_m)
@@ -421,8 +435,12 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     s[mad_ubuf].buffer_align((1, 1), (1, 1), (1, 1), (1, block_size), (1, block_size))
     s[mad_ubuf].compute_at(s[res], conv_mcut_o)
     s[dout_cbuf_row_major].buffer_align((1, 1), (1, 1), (input_w, input_w), (1, 1), (1, 1), (1, 1), (1, block_size))
-    s[dout_cbuf_row_major].compute_at(s[res], conv_hcut_o)
-    s[dout_cbuf_nc1hwc0].compute_at(s[res], conv_hcut_o)
+    if tile_k_o != 0:
+        s[dout_cbuf_row_major].compute_at(s[mad_cc], mad_cc_kcut_o_o)
+        s[dout_cbuf_nc1hwc0].compute_at(s[mad_cc], mad_cc_kcut_o_o)
+    else:
+        s[dout_cbuf_row_major].compute_at(s[res], conv_hcut_o)
+        s[dout_cbuf_nc1hwc0].compute_at(s[res], conv_hcut_o)
     s[weight_cbuf].compute_at(s[res], conv_hcut_o)
     if not l1_load_kernel:
         s[weight_cbuf].compute_inline()
@@ -469,7 +487,9 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     s[weight_cbuf].emit_insn(weight_cbuf.op.axis[0], tbe_platform.DMA_COPY)
     s[weight_cb].emit_insn(weight_cb.op.axis[3], tbe_platform.DMA_COPY)
     s[mad_ubuf].emit_insn(mad_ubuf_n_cut_i, tbe_platform.DMA_COPY)
-    mad_dict = {"mad_pattern": tbe_platform.CONV_MODE, "k_outer": mad_cc_kcut_o}
+    mad_dict = {"mad_pattern": tbe_platform.CONV_MODE,
+                "k_outer": [mad_cc_kcut_o, mad_cc_kcut_o_o]} if tile_k_o != 0 else {
+        "mad_pattern": tbe_platform.CONV_MODE, "k_outer": mad_cc_kcut_o}
     s[mad_cc].emit_insn(mad_cc_n_cut_i, tbe_platform.MAD, mad_dict)
     s[res].emit_insn(conv_n_cut_i, tbe_platform.DMA_COPY)
 
