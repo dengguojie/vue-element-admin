@@ -33,7 +33,7 @@ namespace {
   const std::vector<std::string> kConv3DTransposeVarNames = {"batch_n", "dedy_d", "dedy_h", "dedy_w"};
 
   void GetVarNames(const std::string &op_type, std::vector<std::string> &vars) {
-    if (op_type == "Conv3D") {
+    if (op_type == "Conv3D" || op_type == "Conv3DBackpropFilter") {
       vars = kConv3DVarNames;
       return;
     }

@@ -30,6 +30,8 @@ from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Expr
 
 
+
+
 C0_SIZE = 16
 W_DELTA = 1
 H_LEN = 400
@@ -189,14 +191,16 @@ class TilingSelection:
                 if h_name in self.op.var_map or w_name in self.op.var_map or d_name in self.op.var_map:
                     tiling_cases = self._calc_ndhw([target_area.get(key) for key in target_area])
                 elif batch_name in self.op.var_map:
-                    tiling_cases = self._calc_batch([target_area.get("batch_n")])
+                    batch_func_map = {"conv3d_bp_filter": self._calc_batch_v2}
+                    batch_func = batch_func_map.get(self.op.op_type, self._calc_batch)
+                    tiling_cases = batch_func([target_area.get("batch_n")])
                 else:
                     raise RuntimeError("Only dynamic N/D/H/W is supported")
             return tiling_cases
 
         if self.op.op_type in ("conv2d", "conv2d_bp_input"):
             tiling_cases = _handle_dynamic_nhw()
-        elif self.op.op_type in ("conv3d_backprop_input", "convolution_3d"):
+        elif self.op.op_type in ("conv3d_backprop_input", "convolution_3d", "conv3d_bp_filter"):
             tiling_cases = _handle_dynamic_ndhw()
         else:
             add_compile_info("dynamic_mode", self.op.dynamic_mode)
@@ -387,10 +391,11 @@ class TilingSelection:
         for seed in repo_seeds:
             seed_ndhw = (seed[self.op.key][0], seed[self.op.key][1],
                         seed[self.op.key][2], seed[self.op.key][3])
-            if self.op.op_type in ("convolution_3d",):
+            if self.op.op_type in ("convolution_3d", "conv3d_bp_filter"):
                 # a shape format is ndc1hwc0
                 seed_ndhw = (seed[self.op.key][0], seed[self.op.key][1],
                             seed[self.op.key][3], seed[self.op.key][4])
+
             seed_range = self.op.get_tiling_range(seed['tiling'], seed[self.op.key])
             if seed_range[1] == -1:
                 seed_range[1] = tgt_area[1]

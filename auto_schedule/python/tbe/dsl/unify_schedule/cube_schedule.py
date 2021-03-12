@@ -15,6 +15,7 @@
 """
 cube schedule
 """
+
 from tbe import tvm
 from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
@@ -22,8 +23,20 @@ from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule import \
     CceConv2dBackpropFilterOp
 from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import \
     CceConv2dBackpropInputOp
+from tbe.dsl.static_schedule.conv3d_backprop_filter_schedule import \
+    CceConv3dBackpropFilterOp
 from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule
-from tbe.dsl.unify_schedule.constants import Pattern
+
+from . import Pattern
+
+
+@register_schedule(pattern=Pattern.CONV3D_BACKPROP_FILTER)
+def schedule(outs, tiling_case):
+    """
+    schedule for conv3d_backprop_filter op
+    """
+
+    return ConvSchedule(outs, tiling_case).do_conv3dbp_filter_schedule()
 
 
 @register_schedule(pattern=Pattern.CONV2D_BACKPROP_FILTER)
@@ -96,6 +109,15 @@ class ConvSchedule:
         self._schedule_op.schedule(
             self._outs[0], self._outs, [self._schedule],
             dynamic_para=dynamic_para)
+
+        return self._schedule
+
+    def do_conv3dbp_filter_schedule(self):
+        self._schedule_op = CceConv3dBackpropFilterOp(
+            self._scope, need_tensorize=True, need_pragma=True)
+        self._schedule_op.schedule(
+            self._outs[0], self._outs, [self._schedule],
+            dynamic_para=self._tiling_case)
 
         return self._schedule
 

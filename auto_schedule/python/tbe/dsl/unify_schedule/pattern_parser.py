@@ -88,6 +88,11 @@ CONV3D_BP_INPUT_COMPUTE = {
     "conv3d_backprop_input_c_ub"
 }
 
+CONV3D_BP_FILTER_COMPUTE = {
+    "conv3d_backprop_filterdw_ddr"
+}
+
+
 class ComputeType(Enum):
     """
     ComputeType
@@ -106,6 +111,7 @@ class ComputeType(Enum):
     CONV3D = auto()
     MAT_MUL = auto()
     SOFTMAX = auto()
+    CONV3D_BP_FILTER = auto()
 
 
 def _get_custom_pattern():
@@ -163,6 +169,8 @@ def _parse_pattern(outs):
         return Pattern.REDUCE
     if _is_softmax(compute_type_size_map):
         return Pattern.SOFTMAX
+    if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
+        return Pattern.CONV3D_BACKPROP_FILTER
 
     return Pattern.OPAQUE
 
@@ -246,7 +254,8 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (CONV2D_BP_INPUT_COMPUTE, ComputeType.CONV2D_BP_INPUT),
         (CONV2D_BP_FILTER_COMPUTE, ComputeType.CONV2D_BP_FILTER),
         (CONV3D_BP_INPUT_COMPUTE, ComputeType.CONV3D_BP_INPUT),
-        (MAT_MUL_COMPUTE, ComputeType.MAT_MUL)
+        (MAT_MUL_COMPUTE, ComputeType.MAT_MUL),
+        (CONV3D_BP_FILTER_COMPUTE, ComputeType.CONV3D_BP_FILTER)
     ]
     for insns, compute_type in insn_compute_type_mapping:
         if insn in insns:

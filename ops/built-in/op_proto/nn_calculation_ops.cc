@@ -6927,7 +6927,8 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
 }
 IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DBackpropFilter Infer Function!");
-
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+ 
   Tensor filter_sizes_tensor;
   if (GRAPH_SUCCESS != op.GetInputConstData("filter_size", filter_sizes_tensor)) {
     OP_LOGE(op.GetName().c_str(), "get filter_size tensor failed.");
@@ -6939,8 +6940,8 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
     return GRAPH_FAILED;
   }
   // get shape for output from filter_size
-  auto filter_sizes_desc = op.GetInputDesc("filter_size");
-  DataType dtype = filter_sizes_desc.GetDataType();
+  auto filter_sizes_desc = op_desc->MutableInputDesc("filter_size");
+  DataType dtype = filter_sizes_desc->GetDataType();
   std::vector<int64_t> filter_sizes;
   GetConstValue(filter_sizes_tensor, dtype, filter_sizes);
 
@@ -6957,9 +6958,10 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   }
 
   // set dtype of output desc
-  auto y_desc = op.GetOutputDesc("y");
-  auto out_backprop_dtype = op.GetInputDesc("out_backprop").GetDataType();
-  y_desc.SetDataType(out_backprop_dtype);
+  auto y_desc = op_desc->MutableOutputDesc("y");
+  auto out_backprop_desc = op_desc->MutableInputDesc("out_backprop");
+  auto out_backprop_dtype = out_backprop_desc->GetDataType();
+  y_desc->SetDataType(out_backprop_dtype);
   // set shape of output desc, filter_size should match the format of y
   std::vector<int64_t> y_shape;
   y_shape.push_back(filter_sizes[0]);
@@ -6967,25 +6969,35 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   y_shape.push_back(filter_sizes[2]);
   y_shape.push_back(filter_sizes[3]);
   y_shape.push_back(filter_sizes[4]);
-  y_desc.SetShape(ge::Shape(y_shape));
+  y_desc->SetShape(ge::GeShape(y_shape));
 
-  // update output desc
-  if (GRAPH_SUCCESS != op.UpdateOutputDesc("y", y_desc)) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dbpFilter";
-    err_map["param_name"] = "output_y";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+  auto x_desc = op_desc->MutableInputDesc("x");
+  std::vector<int64_t> x_sizes = x_desc->MutableShape().GetDims();
+  Format x_format = x_desc->GetFormat();
+  Format filter_format = y_desc->GetFormat();
+  std::vector<int64_t> out_backprop_sizes = out_backprop_desc->MutableShape().GetDims();
+
+  bool is_dynamic = false;
+  if (std::find(x_sizes.begin(), x_sizes.end(), -1) != x_sizes.end() ||
+      std::find(x_sizes.begin(), x_sizes.end(), -2) != x_sizes.end()) {
+      is_dynamic = true;
   }
-  std::vector<int64_t> x_sizes = op.GetInputDesc("x").GetShape().GetDims();
-  Format x_format = op.GetInputDesc("x").GetFormat();
-  Format filter_format = y_desc.GetFormat();
-  // update pads list by padding[SAME,VALID]
-  if (!SetPadListByPaddingConv3dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
-    OP_LOGE(op.GetName().c_str(), "update pads list by padding failed.");
-    return GRAPH_FAILED;
+
+  if (!is_dynamic) {
+    // update pads list by padding[SAME,VALID]
+    if (!SetPadListByPaddingConv3dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
+      OP_LOGE(op.GetName().c_str(), "update pads list by padding failed.");
+      return GRAPH_FAILED;
+    }
+  } else {
+    std::string pad_str;
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
+      op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+      OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0, 0, 0} when padding is VALID in dynamic_shape");
+    }
   }
   OP_LOGI(op.GetName().c_str(), "Leaving Conv3DBackpropFilter infer function!");
   return GRAPH_SUCCESS;
