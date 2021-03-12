@@ -74,7 +74,7 @@ TEST_F(concatv2d_fusion_test, concatv2d_fusion_test_1) {
     graph.SetInputs(inputs).SetOutputs(outputs);
     ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
     fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
-    fe::FusionPassTestUtils::RunGraphFusionPass("ZConcatv2dFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("AConcatv2dFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
 
     bool findConcatV2D = false;
     for (auto node: compute_graph_ptr->GetAllNodes()) {
