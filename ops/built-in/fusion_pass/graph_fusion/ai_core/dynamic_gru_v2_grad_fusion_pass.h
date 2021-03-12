@@ -54,6 +54,9 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
                              vector<ge::NodePtr>& newNodes, bool& failStatus);
   ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr hConcatNode, ge::NodePtr gruHiddenGradNode,
                                ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr AddTConcatNodeBack(const string& nodeName, const string& inputName, vector<int64_t> fzDims,
+                                 ge::NodePtr dynamicGRUGradNode, vector<ge::NodePtr>& srcNodes, ge::ComputeGraph& graph,
+                                 vector<ge::NodePtr>& newNodes, bool& failStatus);
   // for time_step = 1
   ge::NodePtr AddDwhMatmulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph,
                                vector<ge::NodePtr>& newNodes, bool& failStatus);
@@ -72,6 +75,12 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
   ge::NodePtr AddReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
                                const vector<int64_t>& axis, const string& nodeName, const string& indexName,
                                ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr GetConstNodeOne(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode, int anchorIndex,
+                              const vector<int64_t>& axis, const string& nodeName, ge::ComputeGraph& graph,
+                              vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr AddTMatMulNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
+                             ge::NodePtr constNode, const string& nodeName, ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
+                             bool& failStatus);
   ge::NodePtr AddTReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr inputNode,
                                 int anchorIndex,  const vector<int64_t>& axis, const string& nodeName,
                                 ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes, bool& failStatus);
@@ -79,6 +88,21 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
                             ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
   Status AddDbReduceSumNode(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dbxNode, ge::NodePtr dbhNode,
                             ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
+  ge::NodePtr AddTConcatNodeDnxBack(const string& nodeName, const string& inputName,
+                                    vector<int64_t> fzDims, ge::NodePtr dynamicGRUGradNode,
+                                    vector<ge::NodePtr>& srcNodes, ge::ComputeGraph& graph,
+                                    vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr AddDgateHSplitNodeBack(ge::NodePtr dynamicGRUGradNode,
+                                     ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph,
+                                     vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr AddDgateXConcatNodeBack(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dgateHSplitNode,
+                                      ge::NodePtr gruHiddenGradNode, ge::ComputeGraph& graph,
+                                      vector<ge::NodePtr>& newNodes, bool& failStatus);
+  Status AddDxtMatmulNodeBack(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dgateXConcatNode,
+                              ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes);
+  ge::NodePtr AddDwxMatmulNodeBack(ge::NodePtr dynamicGRUGradNode, ge::NodePtr dgateXConcatNode,
+                                   ge::ComputeGraph& graph, vector<ge::NodePtr>& newNodes,
+                                   bool& failStatus);
   const string FUSED_OP_TYPE = "GRUV2HiddenGradCell_Split_Concat_Matmul_Reduce";
   int64_t t_size = 0;
   int64_t batch = 0;
@@ -88,6 +112,7 @@ class DynamicGRUV2GradFusionPass : public PatternFusionBasePass {
   int64_t hidden_dim = 0;
   int64_t nzHiddenDim = 0;
   ge::DataType inputHType = ge::DT_FLOAT;
+  bool fusion_reduce = false;
 };
 }  // namespace fe
 
