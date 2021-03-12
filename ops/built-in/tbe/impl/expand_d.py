@@ -21,15 +21,10 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.shape_util import broadcast_shapes
 
-NUM_ONE = 1
-
 
 # pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("expand_d")
-def expand_compute(x,
-                   y,
-                   shape,
-                   kernel_name='expand_d'):
+def expand_compute(x, shape):
     """
     Process expand operator.
 
@@ -44,31 +39,14 @@ def expand_compute(x,
     -------
     output_tensor : tensor after expand.
     """
-    dtype = x.dtype
     shape_in = x.shape
 
     # te.lang.cce.broadcast supports float16, float32, int32.
-    # so convert int8, uint8 to float16
-    if dtype in ('int8', 'uint8'):
-        x = tbe.cast_to(x, 'float16')
-
-    python_shape_in = [int(x) for x in shape_in]
-    if list(python_shape_in) == list(shape):
-        if dtype == "int32":
-            # te.lang.cce.vmuls supports float16, float32. int8, uint8, int32 will
-            # be converted to float16. This will cause the data to be truncated.
-            # so use te.lang.cce.vmul.
-            value_one = tvm.const(NUM_ONE, dtype=dtype)
-            value_one_tensor = tbe.broadcast(value_one, shape)
-            output_tensor = tbe.vmul(x, value_one_tensor)
-        else:
-            output_tensor = tbe.vmuls(x, NUM_ONE)
+    if shape_in != shape:
+        output_tensor = tbe.broadcast(x, shape)
     else:
-        output_tensor = tbe.broadcast(x, shape, dtype)
+        output_tensor = x
 
-    # convert float16 back to int8, uint8
-    if dtype in ('int8', 'uint8'):
-        return tbe.cast_to(output_tensor, dtype, f1628IntegerFlag=True)
     return output_tensor
 
 
@@ -96,10 +74,9 @@ def _check_shape_compatibility(shape_in, shape):
     return comp_shape_in, comp_shape, shape_max
 
 
-def expand_d(x,
-             y,
-             shape,
-             kernel_name="expand_d"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
+                            para_check.KERNEL_NAME)
+def expand_d(x, y, shape, kernel_name="expand_d"):
     """
     Broadcast an array for a compatible shape.
 
@@ -121,11 +98,12 @@ def expand_d(x,
     shape_in = x.get('shape')
     para_check.check_shape(shape_in, param_name="x")
     para_check.check_shape(shape, param_name="shape")
+    para_check.check_kernel_name(kernel_name)
 
     compatible_shape_in, _, shape_max = _check_shape_compatibility(shape_in, shape)
     var = tvm.placeholder(compatible_shape_in, x_dtype, name='data_input')
 
-    res = expand_compute(var, y, shape_max, kernel_name)
+    res = expand_compute(var, shape_max)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
