@@ -7407,7 +7407,7 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     """
     input_ori_shape = x.get("ori_shape")
     input_ori_format = x.get("ori_format")
-    shape = x.get("shape")
+    shape = input_ori_shape
     hd_format_c0 = 16
     fz_format_n0 = 16
     nz_format_align = 16
