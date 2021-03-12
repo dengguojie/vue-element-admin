@@ -31,18 +31,18 @@ def case_one():
     onnx.save(model_def, "./test_pads_V9_case.onnx")
 
 
-def case_two():
+def pad_11_int32():
     # Create one input (ValueInfoProto)
-    X = helper.make_tensor_value_info('X', TensorProto.FLOAT, [3, 2])
+    X = helper.make_tensor_value_info('x', TensorProto.FLOAT, [3, 2])
     # Create one output (ValueInfoProto)
-    Y = helper.make_tensor_value_info('Y', TensorProto.FLOAT, [3, 4])
-    pads = helper.make_tensor('pads', TensorProto.INT32, [4], [0,2,0,0])
-    value = helper.make_tensor('value', TensorProto.INT32, [1],[0])
+    Y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [3, 4])
+    pads = helper.make_tensor('paddings', TensorProto.INT32, [4], [0,2,0,0])
+    value = helper.make_tensor('constant_values', TensorProto.INT32, [1],[0])
     # Create a node (NodeProto) - This is based on Pad-11
     node_def = helper.make_node(
     'Pad', # node name
-    inputs=['X','pads','value'], # inputs
-    outputs=['Y'], # outputs
+    inputs=['x','paddings','constant_values'], # inputs
+    outputs=['y'], # outputs
     )
     # Create the graph (GraphProto)
     graph_def = helper.make_graph(
@@ -53,11 +53,92 @@ def case_two():
     [pads,value],
     )
     # Create the model (ModelProto)
-    model_def = onnx.helper.make_model(graph_def, producer_name='zyx')
+    model_def = onnx.helper.make_model(graph_def, producer_name='zyw-onnx-padV3')
     model_def.opset_import[0].version = 11
-    onnx.save(model_def, "./test_pads_V11_case.onnx")
+    onnx.save(model_def, "./test_pads_V11_case_INT32.onnx")
+
+def pad_11_float():
+    # Create one input (ValueInfoProto)
+    X = helper.make_tensor_value_info('x', TensorProto.FLOAT, [3, 2])
+    # Create one output (ValueInfoProto)
+    Y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [3, 4])
+    pads = helper.make_tensor('paddings', TensorProto.INT32, [4], [0,2,0,0])
+    value = helper.make_tensor('constant_values', TensorProto.FLOAT, [1],[0])
+    # Create a node (NodeProto) - This is based on Pad-11
+    node_def = helper.make_node(
+    'Pad', # node name
+    inputs=['x','paddings','constant_values'], # inputs
+    outputs=['y'], # outputs
+    )
+    # Create the graph (GraphProto)
+    graph_def = helper.make_graph(
+    [node_def],
+    'test-model',
+    [X],
+    [Y],
+    [pads,value],
+    )
+    # Create the model (ModelProto)
+    model_def = onnx.helper.make_model(graph_def, producer_name='zyw-onnx-padV3')
+    model_def.opset_import[0].version = 11
+    onnx.save(model_def, "./test_pads_V11_case_float.onnx")
+
+def pad_11_double():
+    # Create one input (ValueInfoProto)
+    X = helper.make_tensor_value_info('x', TensorProto.FLOAT, [3, 2])
+    # Create one output (ValueInfoProto)
+    Y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [3, 4])
+    pads = helper.make_tensor('paddings', TensorProto.INT32, [4], [0,2,0,0])
+    value = helper.make_tensor('constant_values', TensorProto.DOUBLE, [1],[0])
+    # Create a node (NodeProto) - This is based on Pad-11
+    node_def = helper.make_node(
+    'Pad', # node name
+    inputs=['x','paddings','constant_values'], # inputs
+    outputs=['y'], # outputs
+    )
+    # Create the graph (GraphProto)
+    graph_def = helper.make_graph(
+    [node_def],
+    'test-model',
+    [X],
+    [Y],
+    [pads,value],
+    )
+    # Create the model (ModelProto)
+    model_def = onnx.helper.make_model(graph_def, producer_name='zyw-onnx-padV3')
+    model_def.opset_import[0].version = 11
+    onnx.save(model_def, "./test_pads_V11_case_double.onnx")
+
+def pad_11_int64():
+    # Create one input (ValueInfoProto)
+    X = helper.make_tensor_value_info('x', TensorProto.FLOAT, [3, 2])
+    # Create one output (ValueInfoProto)
+    Y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [3, 4])
+    pads = helper.make_tensor('paddings', TensorProto.INT32, [4], [0,2,0,0])
+    value = helper.make_tensor('constant_values', TensorProto.INT64, [1],[0])
+    # Create a node (NodeProto) - This is based on Pad-11
+    node_def = helper.make_node(
+    'Pad', # node name
+    inputs=['x','paddings','constant_values'], # inputs
+    outputs=['y'], # outputs
+    )
+    # Create the graph (GraphProto)
+    graph_def = helper.make_graph(
+    [node_def],
+    'test-model',
+    [X],
+    [Y],
+    [pads,value],
+    )
+    # Create the model (ModelProto)
+    model_def = onnx.helper.make_model(graph_def, producer_name='zyw-onnx-padV3')
+    model_def.opset_import[0].version = 11
+    onnx.save(model_def, "./test_pads_V11_case_INT64.onnx")
 
 
 if __name__ == "__main__":
     case_one()
-    case_two()
+    pad_11_float()
+    pad_11_int32()
+    pad_11_int64()
+    pad_11_double()

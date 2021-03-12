@@ -20,8 +20,8 @@ protected:
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
 
  private:
-  bool GetConstValue(const ge::Operator& op, const ge::Tensor& const_tensor, const ge::DataType& dtype,
-                     std::vector<int64_t>& const_data);
+  bool GetConstValue(const ge::Tensor &const_tensor, const ge::DataType &dtype,
+                     std::vector<int64_t> &const_data);
   bool AutoRemoveInput(ge::ComputeGraph &graph, ge::NodePtr &pad_node, ge::Operator &op,
                        const string input_name);
   Status PadMoveConsttoAttr(ge::ComputeGraph& graph, ge::NodePtr& pad_node);

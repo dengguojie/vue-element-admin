@@ -40,34 +40,51 @@ namespace fe {
 static const std::string PATTERN_PAD = "PadV3";
 static const char *PAD = "PadV3";
 
-bool PadV3FusionPass::GetConstValue(const Operator &op, const Tensor &const_tensor, const DataType &dtype,
-                                    std::vector<int64_t> &const_data)
+#define GET_CONST_DATA(DTYPE, TYPE, TENSOR, DATA)   \
+    case (DTYPE): { \
+        if (!GetConstDataTemplate<TYPE>(TENSOR, DATA)) { \
+            OP_LOGE(PAD, "get const_data failed"); \
+            return false; \
+        } \
+        break; \
+    } \
+
+template<typename T>
+bool GetConstDataTemplate(const ge::Tensor &const_tensor, std::vector<int64_t> &const_data)
 {
     size_t size = 0;
     uint8_t *const_data_ptr = (uint8_t *)const_tensor.GetData();
     if (const_data_ptr == nullptr) {
-        OP_LOGE(op.GetName().c_str(), "const_data_ptr is null");
+        OP_LOGE(PAD, "const_data_ptr is null");
         return false;
     }
-    if (dtype == ge::DT_INT32) {
-        size = const_tensor.GetSize() / sizeof(int32_t);
-        for (size_t i = 0; i < size; ++i) {
-          const_data.push_back((int32_t)((*((int32_t *)const_data_ptr + i))));
-          OP_LOGD(op.GetName().c_str(), "const data int32 fusion pass ====== %d",
-                  (int32_t)(*((int32_t *)const_data_ptr + i)));
-        }
-    } else if (dtype == ge::DT_INT64) {
-        size = const_tensor.GetSize() / sizeof(int64_t);
-        for (size_t i = 0; i < size; ++i) {
-          const_data.push_back(((int64_t)(*((int64_t *)const_data_ptr + i))));
-          OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d",
-                  (int64_t)(*((int64_t *)const_data_ptr + i)));
-        }
-    } else {
-        OP_LOGE(op.GetName().c_str(), "not support this type");
-        return false;
+    size = const_tensor.GetSize() / sizeof(T);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back(static_cast<int64_t>(*((T *)const_data_ptr + i)));
+      OP_LOGD(PAD, static_cast<int64_t>(*((T *)const_data_ptr + i)));
     }
     return true;
+}
+
+bool PadV3FusionPass::GetConstValue(const ge::Tensor &const_tensor, const DataType &dtype,
+                                    std::vector<int64_t> &const_data)
+{
+    switch (dtype) {
+        GET_CONST_DATA(DT_INT8, int8_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_INT16, int16_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_INT32, int32_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_INT64, int64_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_UINT8, uint8_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_UINT16, uint16_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_UINT32, uint32_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_UINT64, uint64_t, const_tensor, const_data)
+        GET_CONST_DATA(DT_FLOAT, float, const_tensor, const_data)
+        GET_CONST_DATA(DT_DOUBLE, double, const_tensor, const_data)
+        GET_CONST_DATA(DT_BOOL, bool, const_tensor, const_data)
+        default:
+            OP_LOGE(PAD, "get const_data failed");
+            return false;
+    }
 }
 
 vector<FusionPattern *> PadV3FusionPass::DefinePatterns()
@@ -128,7 +145,7 @@ Status PadV3FusionPass::PadMoveConsttoAttr(ge::ComputeGraph &graph, ge::NodePtr 
     DataType dtype = op.GetInputDesc("paddings").GetDataType();
 
     std::vector<int64_t> pad_value;
-    if (!GetConstValue(op, const_tensor, dtype, pad_value)) {
+    if (!GetConstValue(const_tensor, dtype, pad_value)) {
         OP_LOGE(op.GetName().c_str(), "Get Const Value failed ");
         return GRAPH_FAILED;
     };
@@ -155,7 +172,7 @@ Status PadV3FusionPass::PadMoveConsttoAttr(ge::ComputeGraph &graph, ge::NodePtr 
         dtype = op.GetInputDesc("constant_values").GetDataType();
 
         vector<int64_t> const_value;
-        if (!GetConstValue(op, const_tensor, dtype, const_value)) {
+        if (!GetConstValue(const_tensor, dtype, const_value)) {
             OP_LOGE(op.GetName().c_str(), "Get Const Value failed ");
             return GRAPH_FAILED;
         }
@@ -173,7 +190,6 @@ Status PadV3FusionPass::PadMoveConsttoAttr(ge::ComputeGraph &graph, ge::NodePtr 
 
 Status PadV3FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes)
 {
-    // get pad node and node-desc
     ge::NodePtr pad_node = GetNodeFromMapping(PATTERN_PAD, mapping);
     FUSION_PASS_CHECK(pad_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "pad_v3_node is null, fusion failed."),
                       return PARAM_INVALID);
