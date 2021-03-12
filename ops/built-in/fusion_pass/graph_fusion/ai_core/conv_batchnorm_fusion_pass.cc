@@ -110,6 +110,24 @@ Status ConvBatchnormFusionPass::CheckWeights(const ge::NodePtr bnNode) {
   return SUCCESS;
 }
 
+bool ConvBatchnormFusionPass::IsBatchNormMultiOutput(ge::NodePtr &destNode) {
+  if (destNode->GetType() != BATCHNORM) {
+    return false;
+  }
+  auto out_anchors_size = destNode->GetAllOutDataAnchorsSize();
+  if (out_anchors_size <= 1) {
+    return false;
+  }
+
+  for (int i = 1; i < (int)out_anchors_size; i++) {
+    if (destNode->GetOutDataAnchor(i) != nullptr &&
+        !destNode->GetOutDataAnchor(i)->GetPeerInDataAnchors().empty()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr convNode = GetNodeFromMapping(PATTERN_CONV, mapping);
   ge::NodePtr destNode = GetNodeFromMapping(PATTERN_BATCHNORM, mapping);
@@ -120,6 +138,11 @@ Status ConvBatchnormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   if (convNode->GetInDataNodes().at(1)->GetType() == QUANTWEIGHTROLLBACK) {
     return NOT_CHANGED;
   }
+
+  FUSION_PASS_CHECK(IsBatchNormMultiOutput(destNode),
+                                        OP_LOGW(FUSED_OP_TYPE.c_str(), "BN node's last 4 inputs is using by the following users.",
+                                        destNode->GetName().c_str()),
+                                        return NOT_CHANGED);
 
   FUSION_PASS_CHECK(CheckWeights(destNode) != SUCCESS,
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "BN node can not fusion, exit ConvBatchnormFusionPass."),

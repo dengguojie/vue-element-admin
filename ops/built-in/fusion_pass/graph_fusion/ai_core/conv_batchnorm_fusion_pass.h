@@ -32,6 +32,7 @@ class ConvBatchnormFusionPass : public ConvFusionPassBase {
 
  private:
   Status CheckWeights(const ge::NodePtr bnNode);
+  bool IsBatchNormMultiOutput(ge::NodePtr &destNode);
 
   const size_t BN_INFERENCE_D_WEIGHT_SIZE = 2;
   const size_t BATCHNORM_MAXIMUM_WEIGHT_SIZE = 4;

@@ -116,6 +116,31 @@ static Status GetDimSizes(const ge::GeTensorDesc &conv_input_tensor, int64_t &c)
   return SUCCESS;
 }
 
+bool PathExistsBetweenTwoNode(ge::NodePtr &from, ge::NodePtr &to) {
+  int count = 100;
+  ge::NodePtr parent_node;
+  auto input_nodes = to->GetInDataNodes();
+  if (input_nodes.empty()) {
+    return false;
+  }
+
+  parent_node = input_nodes.at(0);
+  while (parent_node != nullptr && count >= 0) {
+    count--;
+    if (parent_node == from) {
+      return true;
+    }
+    input_nodes = parent_node->GetInDataNodes();
+    if (input_nodes.empty()) {
+      return false;
+    } else {
+      parent_node = input_nodes.at(0);
+    }
+
+  }
+  return false;
+}
+
 Status ConvDoubleInFusionPass::GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do ConvDoubleInFusionPass.");
   bool use_common_rules_flag = true;
@@ -155,9 +180,11 @@ Status ConvDoubleInFusionPass::GetFusionNodes(const BufferFusionMapping &mapping
           continue;
         }
         if (conv_node_c_in > matched_conv_node_c_in) {
-          use_common_rules_flag = false;
-          EraseNodeFromMapping(mapping, fusion_nodes, OP_PATTERN_CONV);
-          fusion_nodes.push_back(each_conv_node);
+          if (!PathExistsBetweenTwoNode(each_conv_node, matched_conv_node[0])) {
+            use_common_rules_flag = false;
+            EraseNodeFromMapping(mapping, fusion_nodes, OP_PATTERN_CONV);
+            fusion_nodes.push_back(each_conv_node);
+          }
         }
       }
     }
