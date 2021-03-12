@@ -797,8 +797,18 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         return PARAM_INVALID);
     FUSION_PASS_CHECK(!CheckOpSupported(poolingDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
                       return NOT_CHANGED);
-    vector<ge::GeTensorPtr> weights = {assitPtr};
-    ge::OpDescUtils::SetWeights(poolingNode, weights);
+    ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(assitPtr);
+    FUSION_PASS_CHECK(const_opdesc == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
+                      return FAILED);
+    ge::NodePtr constNode = nullptr;
+    constNode = graph.AddNode(const_opdesc);
+    FUSION_PASS_CHECK(constNode == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
+                      return FAILED);
+    FUSION_PASS_CHECK(poolingNode->AddLinkFrom(1, constNode) != ge::GRAPH_SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
+                      return FAILED);
     auto constInputNodes = OpDescUtils::GetConstInputs(poolingNode);
     NodePtr constInput = nullptr;
     if (constInputNodes.size() != 0) {
@@ -883,8 +893,18 @@ Status PoolingFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
         return PARAM_INVALID);
     FUSION_PASS_CHECK(!CheckOpSupported(poolingDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
                       return NOT_CHANGED);
-    vector<ge::GeTensorPtr> weights = {assitPtr};
-    ge::OpDescUtils::SetWeights(poolingNode, weights);
+    ge::OpDescPtr const_opdesc = ge::OpDescUtils::CreateConstOp(assitPtr);
+    FUSION_PASS_CHECK(const_opdesc == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to create const op desc."),
+                      return FAILED);
+    ge::NodePtr constNode = nullptr;
+    constNode = graph.AddNode(const_opdesc);
+    FUSION_PASS_CHECK(constNode == nullptr,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
+                      return FAILED);
+    FUSION_PASS_CHECK(poolingNode->AddLinkFrom(1, constNode) != ge::GRAPH_SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to link const node with pooling node."),
+                      return FAILED);
     auto constInputNodes = OpDescUtils::GetConstInputs(poolingNode);
     NodePtr constInput = nullptr;
     if (constInputNodes.size() != 0) {
