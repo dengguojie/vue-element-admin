@@ -95,6 +95,7 @@ set(_optiling_files
   bias_add_grad.cc
   reduce_mean.cc
   softmax_tiling.cc
+  embedding_dense_grad.cc
 )
 
 set(_op_tiling_include

@@ -19,6 +19,7 @@ dynamic operator
 from __future__ import absolute_import as _abs
 from .avg_pool_1d import avg_pool_1d
 from .avg_pool import avg_pool
+from .embedding_dense_grad import embedding_dense_grad
 from .arg_max_v2 import arg_max_v2
 from .arg_min import arg_min
 from .broadcast_to import broadcast_to

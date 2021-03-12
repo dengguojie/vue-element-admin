@@ -740,44 +740,71 @@ VERIFY_FUNC_REG(DynamicGRUV2Grad, DynamicGRUV2GradVerify);
 bool InferShapeAndTypeEmbeddingDenseGrad(Operator &op,
                                          const string &input_name1,
                                          const string &input_name2,
-                                         const string &output_name) {
-  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
-  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
-  Format input_format = op.GetInputDesc(input_name1).GetFormat();
-  ge::Shape shapeX = op.GetInputDesc(input_name1).GetShape();
-  ge::Shape shapeY = op.GetInputDesc(input_name2).GetShape();
-  std::vector<int64_t> dims_x = shapeX.GetDims();
+                                         const string &output_name)
+{
+    TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+    DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+    Format input_format = op.GetInputDesc(input_name1).GetFormat();
+    ge::Shape shapeX = op.GetInputDesc(input_name1).GetShape();
+    std::vector<int64_t> dims_x = shapeX.GetDims();
 
-  int64_t num_weights_value = 0;
-  std::vector<int64_t> dim_vec;
-  op.GetAttr("num_weights", num_weights_value);
-  OP_LOGI(op.GetName().c_str(), "the attr num_weights is %d",
-          num_weights_value);
-  if (num_weights_value == 0) {
-    OP_LOGE(op.GetName().c_str(), "num_weights not be zero");
-    return false;
-  }
-  dim_vec.push_back(num_weights_value);
-  dim_vec.push_back(dims_x.back());
-  ge::Shape output_shape = ge::Shape(dim_vec);
-  v_output_desc.SetShape(output_shape);
-  v_output_desc.SetDataType(input_dtype);
-  v_output_desc.SetFormat(input_format);
-  CHECK(op.UpdateOutputDesc(output_name, v_output_desc) != GRAPH_SUCCESS,
-        OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
-  return true;
+    int64_t num_weights_value = 0;
+    std::vector<int64_t> dim_vec;
+    op.GetAttr("num_weights", num_weights_value);
+    OP_LOGI(op.GetName().c_str(), "the attr num_weights is %d",
+            num_weights_value);
+    if (num_weights_value == 0)
+    {
+        OP_LOGE(op.GetName().c_str(), "num_weights not be zero");
+        return false;
+    }
+    dim_vec.push_back(num_weights_value);
+    if (IsUnknownRankShape(dims_x))
+    {
+        dim_vec.push_back(-1);
+    }
+    else
+    {
+        dim_vec.push_back(dims_x.back());
+    }
+
+    ge::Shape output_shape = ge::Shape(dim_vec);
+    v_output_desc.SetShape(output_shape);
+    v_output_desc.SetDataType(input_dtype);
+    v_output_desc.SetFormat(input_format);
+    if (IsUnknown(dim_vec))
+    {
+        std::vector<std::pair<int64_t, int64_t>> input_range;
+        std::vector<std::pair<int64_t, int64_t>> output_shape_range;
+        op.GetInputDesc(input_name1).GetShapeRange(input_range);
+        if (input_range.empty())
+        {
+            output_shape_range = {{num_weights_value, num_weights_value}, {1, -1}};
+        }
+        else
+        {
+            output_shape_range = {{num_weights_value, num_weights_value}, input_range.back()};
+        }
+        v_output_desc.SetShapeRange(output_shape_range);
+    }
+    CHECK(op.UpdateOutputDesc(output_name, v_output_desc) != GRAPH_SUCCESS,
+          OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
+    return true;
 }
 
-IMPLEMT_VERIFIER(EmbeddingDenseGrad, EmbeddingDenseGradVerify) {
-  return GRAPH_SUCCESS;
+IMPLEMT_VERIFIER(EmbeddingDenseGrad, EmbeddingDenseGradVerify)
+{
+    return GRAPH_SUCCESS;
 }
 
 // Obtains the processing function of the output tensor description.
-IMPLEMT_COMMON_INFERFUNC(g_embeddingDenseGradInferShape) {
-  if (InferShapeAndTypeEmbeddingDenseGrad(op, "grad", "indices", "y")) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+IMPLEMT_COMMON_INFERFUNC(g_embeddingDenseGradInferShape)
+{
+    if (InferShapeAndTypeEmbeddingDenseGrad(op, "grad", "indices", "y"))
+    {
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
 }
 
 // Registered inferfunction
