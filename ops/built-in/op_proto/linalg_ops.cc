@@ -72,6 +72,43 @@ IMPLEMT_INFERFUNC(Cholesky, CholeskyInfer) {
 
 INFER_FUNC_REG(Cholesky, CholeskyInfer);
 
+IMPLEMT_INFERFUNC(Ger, GerInfer) {
+  DataType x_type = op.GetInputDesc("x").GetDataType();
+  DataType vec2_type = op.GetInputDesc("vec2").GetDataType();
+  if (x_type != DT_FLOAT16 && x_type != DT_FLOAT) {
+    OP_LOGE(op.GetName().c_str(), "Op Ger first input x's data type should be fp16 or fp32.");
+    return GRAPH_FAILED;
+  }
+  if (vec2_type != DT_FLOAT16 && vec2_type != DT_FLOAT) {
+    OP_LOGE(op.GetName().c_str(), "Op Ger first input x's data type should be fp16 or fp32.");
+    return GRAPH_FAILED;
+  }
+  if (x_type != vec2_type) {
+    OP_LOGE(op.GetName().c_str(), "Op Ger two inputs' data type doesn't match.");
+    return GRAPH_FAILED;
+  }
+  // size_t x_size_num = op.GetInputDesc("x").GetShape().GetDims().size();
+  // size_t vec2_size_num = op.GetInputDesc("vec2").GetShape().GetDims().size();
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  Shape vec2_shape = op.GetInputDesc("vec2").GetShape();
+  if (x_shape.GetDims().size() != 1 || vec2_shape.GetDims().size() != 1) {
+    OP_LOGE(op.GetName().c_str(), "The rank of both input should be one dimensional.");
+    return GRAPH_FAILED;
+  }
+
+  Shape y_shape;
+  Concatenate(x_shape, vec2_shape, y_shape);
+
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(Shape(y_shape));
+  y_desc.SetDataType(x_type);
+  op.UpdateOutputDesc("y", y_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(Ger, GerInfer);
+
 IMPLEMT_INFERFUNC(LogMatrixDeterminant, LogMatrixDeterminantInfer) {
   auto x_shape = op.get_input_desc_x().GetShape().GetDims();
   size_t size_num = x_shape.size();
