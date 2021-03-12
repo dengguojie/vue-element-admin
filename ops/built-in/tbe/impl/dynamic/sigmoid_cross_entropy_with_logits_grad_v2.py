@@ -193,13 +193,6 @@ def sigmoid_cross_entropy_with_logits_grad_v2(predict, target, dout, weight, pos
     target_dtype = target.get("dtype").lower()
     dout_dtype = dout.get("dtype").lower()
 
-    shape_predict = predict.get("shape")
-    shape_target = target.get("shape")
-    shape_dout = dout.get("shape")
-
-    _broadcast_shape_check(shape_target, shape_predict)
-    _broadcast_shape_check(shape_dout, shape_predict)
-
     shape_util.compare_tensor_dict_key(predict, target, "dtype")
     shape_util.compare_tensor_dict_key(predict, dout, "dtype")
 

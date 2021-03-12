@@ -59,11 +59,11 @@ def sigmoid_cross_entropy_with_logits_grad_compute(
     output tensor
     """
     dtype = predict.dtype
-    if dtype == "float32" and tbe_platform.api_check_support(
+    if dtype == "float16" and tbe_platform.api_check_support(
             "te.lang.cce.vmul", "float32"):
-        predict = tbe.cast_to(predict, "float16")
-        target = tbe.cast_to(target, "float16")
-        dout = tbe.cast_to(dout, "float16")
+        predict = tbe.cast_to(predict, "float32")
+        target = tbe.cast_to(target, "float32")
+        dout = tbe.cast_to(dout, "float32")
 
     # e^x
     val1 = tbe.vexp(predict)
@@ -78,7 +78,7 @@ def sigmoid_cross_entropy_with_logits_grad_compute(
 
     result = tbe.vmul(val5, dout)
 
-    if dtype == "float32":
+    if dtype == "float16":
         result = tbe.cast_to(result, dtype)
     return result
 
