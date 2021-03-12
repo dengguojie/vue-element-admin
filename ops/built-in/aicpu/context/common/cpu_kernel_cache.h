@@ -36,7 +36,7 @@ struct CpuCacheData {
 
 class CpuKernelCache : public KernelCache<CpuCacheData> {
  public:
-  CpuKernelCache();
+  CpuKernelCache() = default;
   ~CpuKernelCache() = default;
 
   /*
@@ -62,7 +62,9 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * update framework output tensor shape.
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t UpdateFWKOutputShape(const CpuKernelContext &ctx);
+  uint32_t UpdateFWKOutputShape(
+      bool unknown_shape, const CpuKernelContext &ctx,
+      std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type);
 
   /*
    * get shape information from framework.
@@ -76,21 +78,27 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param ctx: kernel context
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t UpdateTensor(CpuKernelContext &ctx);
+  uint32_t UpdateTensor(
+      const std::vector<uint64_t> &io_addrs, bool unknown_shape,
+      const std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
+      const std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type,
+      CpuKernelContext &ctx);
 
   /*
    * parse extend tensor shape types information.
    * @param ext_info: extend information
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info);
-  
+  uint32_t ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info,
+                             bool &unknown_shape);
+
   /*
    * parse extend tensor bitmap information.
    * @param ext_info: extend information
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info);
+  uint32_t ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
+                          bool &unknown_shape);
 
   /*
    * parse extend tensor shape and types information.
@@ -99,7 +107,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t ParseExtShapeAndType(
-      FWKAdapter::ExtInfo *ext_info,
+      bool unknown_shape, FWKAdapter::ExtInfo *ext_info,
       std::vector<FWKAdapter::ShapeAndType *> &shape_and_type);
 
   /*
@@ -118,15 +126,23 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param kernel_id: kernel id
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t ParseExtMsg(AicpuParamHead *param_head, bool &has_session_info,
-                       uint64_t &kernel_id);
+  uint32_t ParseExtMsg(
+      AicpuParamHead *param_head, bool &has_session_info, uint64_t &kernel_id,
+      bool &unknown_shape,
+      std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
+      std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type);
 
   /*
    * parse io address.
    * @param param_head: kernel context
+   * @param io_addrs: kernel inputs and outputs adress
+   * @param nodedef: kernel node def
+   * @param nodedef_len: kernel node def length
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t ParseIoAddr(AicpuParamHead *param_head);
+  uint32_t ParseIoAddr(AicpuParamHead *param_head,
+                       std::vector<uint64_t> &io_addrs, char *&nodedef,
+                       uint32_t &nodedef_len);
 
   /*
    * get cpu kernel context from cache
@@ -134,8 +150,9 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param kernel_id: kernel id, the key of cache
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  std::shared_ptr<CpuKernelContext> GetCpuKernelContext(bool has_sess_info,
-                                                        uint64_t kernel_id);
+  std::shared_ptr<CpuKernelContext> GetCpuKernelContext(
+      bool has_sess_info, uint64_t kernel_id, const char *nodedef,
+      uint32_t nodedef_len, std::shared_ptr<NodeDef> &nodedef_proto);
 
   /*
    * get bit status on pos
@@ -144,15 +161,6 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return bool: bit is 1 or 0
    */
   bool GetBitStatus(uint64_t num, uint64_t pos);
-
- private:
-  std::vector<uint64_t> io_addrs_;
-  bool unknown_shape_;
-  std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type_;
-  std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type_;
-  char *nodedef_;
-  uint32_t nodedef_len_;
-  std::shared_ptr<NodeDef> nodedef_proto_;
 };
 }  // namespace aicpu
 #endif  // AICPU_CPU_KERNEL_CACHE_H_

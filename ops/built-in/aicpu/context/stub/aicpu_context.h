@@ -57,7 +57,8 @@ status_t GetOpname(uint32_t threadIndex, std::string &opname);
 status_t __attribute__((weak))
 SetThreadLocalCtx(const std::string &key, const std::string &value);
 
-status_t GetThreadLocalCtx(const std::string &key, std::string &value);
+status_t __attribute__((weak))
+GetThreadLocalCtx(const std::string &key, std::string &value);
 
 status_t RemoveThreadLocalCtx(const std::string &key);
 }  // namespace aicpu

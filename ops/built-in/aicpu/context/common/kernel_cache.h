@@ -21,6 +21,7 @@
 #include <list>
 #include <memory>
 #include <unordered_map>
+#include <mutex>
 
 #include "log.h"
 
@@ -57,6 +58,7 @@ class KernelCache {
   T *GetCache(uint64_t key) {
     KERNEL_LOG_DEBUG("GetCache begin, key[%llu].", key);
     T *ret = nullptr;
+    std::unique_lock<std::mutex> lock(kernel_mutex_);
     auto it = kernel_cache_iter_.find(key);
     if (it != kernel_cache_iter_.end()) {
       KERNEL_LOG_DEBUG("GetCache success, key[%llu].", key);
@@ -79,6 +81,7 @@ class KernelCache {
    */
   void SetCache(uint64_t key, std::shared_ptr<T> value) {
     KERNEL_LOG_DEBUG("SetCache begin, key[%llu].", key);
+    std::unique_lock<std::mutex> lock(kernel_mutex_);
     auto iter = kernel_cache_iter_.find(key);
     if (iter != kernel_cache_iter_.end()) {
       KERNEL_LOG_DEBUG("SetCache update cache, key[%llu].", key);
@@ -148,6 +151,7 @@ class KernelCache {
 
   bool sess_flag_;  // whether it's a session scene, false need to support LRU
   uint32_t capacity_;  // lru capacity
+  std::mutex kernel_mutex_;
   std::list<std::pair<uint64_t, std::shared_ptr<T>>>
       kernel_cache_;  // all kernel cache, key is kernel id
   std::unordered_map<

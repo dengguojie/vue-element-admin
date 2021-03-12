@@ -34,12 +34,6 @@ constexpr uint32_t kMaxLRUCacheNum = 256;
 }  // namespace
 
 namespace aicpu {
-CpuKernelCache::CpuKernelCache()
-    : unknown_shape_(false),
-      nodedef_(nullptr),
-      nodedef_len_(0),
-      nodedef_proto_(nullptr) {}
-
 /*
  * Init kernel cache.
  */
@@ -53,8 +47,10 @@ int32_t CpuKernelCache::InitParameter() {
 /*
  * update framework output tensor shape.
  */
-uint32_t CpuKernelCache::UpdateFWKOutputShape(const CpuKernelContext &ctx) {
-  if (unknown_shape_) {
+uint32_t CpuKernelCache::UpdateFWKOutputShape(
+    bool unknown_shape, const CpuKernelContext &ctx,
+    std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type) {
+  if (unknown_shape) {
     for (size_t i = 0; i < ctx.GetOutputsSize(); ++i) {
       Tensor *output = ctx.Output(i);
       KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
@@ -64,7 +60,7 @@ uint32_t CpuKernelCache::UpdateFWKOutputShape(const CpuKernelContext &ctx) {
                            "Get output[%zu] shape failed.", i)
 
       for (int32_t index = 0; index < shape->GetDims(); ++index) {
-        output_shape_and_type_[i]->dims[index] = shape->GetDimSize(index);
+        output_shape_and_type[i]->dims[index] = shape->GetDimSize(index);
       }
     }
   }
@@ -91,25 +87,29 @@ void CpuKernelCache::GetDimsFromShapeAndType(
 /*
  * update tensor information.
  */
-uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
+uint32_t CpuKernelCache::UpdateTensor(
+    const std::vector<uint64_t> &io_addrs, bool unknown_shape,
+    const std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
+    const std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type,
+    CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Update tensor info begin.");
-  if (io_addrs_.size() != ctx.GetInputsSize() + ctx.GetOutputsSize()) {
+  if (io_addrs.size() != ctx.GetInputsSize() + ctx.GetOutputsSize()) {
     KERNEL_LOG_ERROR(
         "Addr number[%zu] is not equal to the sum of inputs[%zu] and "
         "output[%zu].",
-        io_addrs_.size(), ctx.GetInputsSize(), ctx.GetOutputsSize());
+        io_addrs.size(), ctx.GetInputsSize(), ctx.GetOutputsSize());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  if ((unknown_shape_) &&
-      ((input_shape_and_type_.size() != ctx.GetInputsSize()) ||
-       (output_shape_and_type_.size() != ctx.GetOutputsSize()))) {
+  if ((unknown_shape) &&
+      ((input_shape_and_type.size() != ctx.GetInputsSize()) ||
+       (output_shape_and_type.size() != ctx.GetOutputsSize()))) {
     KERNEL_LOG_ERROR(
         "Input shape_and_type size error, input size[%zu], input "
         "shape_and_type "
         "size[%zu], output size[%zu], output shape_and_type size[%zu].",
-        ctx.GetInputsSize(), input_shape_and_type_.size(), ctx.GetOutputsSize(),
-        output_shape_and_type_.size());
+        ctx.GetInputsSize(), input_shape_and_type.size(), ctx.GetOutputsSize(),
+        output_shape_and_type.size());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -119,11 +119,11 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
     KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_PARAM_INVALID,
                          "Get input[%zu] failed.", i)
     input->SetData(reinterpret_cast<void *>(
-        static_cast<uintptr_t>(io_addrs_[addr_index])));
+        static_cast<uintptr_t>(io_addrs[addr_index])));
 
-    if (unknown_shape_) {
+    if (unknown_shape) {
       std::vector<int64_t> dims;
-      GetDimsFromShapeAndType(input_shape_and_type_[i], dims);
+      GetDimsFromShapeAndType(input_shape_and_type[i], dims);
       auto shape = input->GetTensorShape();
       KERNEL_CHECK_NULLPTR(shape, KERNEL_STATUS_PARAM_INVALID,
                            "Get input[%zu] shape failed.", i)
@@ -134,7 +134,7 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
     uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
     input->SetDataSize(data_size);
     KERNEL_LOG_INFO("Set input[%zu] addr[%llu] success.", i,
-                    io_addrs_[addr_index]);
+                    io_addrs[addr_index]);
   }
 
   for (size_t i = 0; i < ctx.GetOutputsSize(); i++, addr_index++) {
@@ -142,11 +142,11 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
     KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
                          "Get output[%zu] failed.", i)
     output->SetData(reinterpret_cast<void *>(
-        static_cast<uintptr_t>(io_addrs_[addr_index])));
+        static_cast<uintptr_t>(io_addrs[addr_index])));
 
-    if (unknown_shape_) {
+    if (unknown_shape) {
       std::vector<int64_t> dims;
-      GetDimsFromShapeAndType(output_shape_and_type_[i], dims);
+      GetDimsFromShapeAndType(output_shape_and_type[i], dims);
       auto shape = output->GetTensorShape();
       KERNEL_CHECK_NULLPTR(shape, KERNEL_STATUS_PARAM_INVALID,
                            "Get output[%zu] shape failed.", i)
@@ -157,7 +157,7 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
     uint64_t data_size = calc_data_size < 0 ? 0 : calc_data_size;
     output->SetDataSize(data_size);
     KERNEL_LOG_INFO("Set output[%zu] addr[%llu] success.", i,
-                    io_addrs_[addr_index]);
+                    io_addrs[addr_index]);
   }
   KERNEL_LOG_INFO("Update tensor info success.");
   return KERNEL_STATUS_OK;
@@ -166,8 +166,8 @@ uint32_t CpuKernelCache::UpdateTensor(CpuKernelContext &ctx) {
 /*
  * parse extend tensor shape types information.
  */
-uint32_t CpuKernelCache::ParseExtShapeType(
-    const FWKAdapter::ExtInfo *ext_info) {
+uint32_t CpuKernelCache::ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info,
+                                           bool &unknown_shape) {
   if (ext_info->infoLen != sizeof(int32_t)) {
     KERNEL_LOG_ERROR(
         "Parse extend shape type failed, as info length must be [%zu], but got "
@@ -176,7 +176,7 @@ uint32_t CpuKernelCache::ParseExtShapeType(
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  unknown_shape_ = true;
+  unknown_shape = true;
   KERNEL_LOG_INFO("Kernel has unknown shape.");
   return KERNEL_STATUS_OK;
 }
@@ -185,12 +185,11 @@ uint32_t CpuKernelCache::ParseExtShapeType(
  * parse extend tensor shape and types information.
  */
 uint32_t CpuKernelCache::ParseExtShapeAndType(
-    FWKAdapter::ExtInfo *ext_info,
+    bool unknown_shape, FWKAdapter::ExtInfo *ext_info,
     std::vector<FWKAdapter::ShapeAndType *> &shape_and_type) {
-  if (!unknown_shape_) {
+  if (!unknown_shape) {
     return KERNEL_STATUS_OK;
   }
-  shape_and_type.clear();
   uint32_t size = (ext_info->infoLen) / sizeof(FWKAdapter::ShapeAndType);
   KERNEL_LOG_INFO("Parse extend shape and type, size[%u].", size);
   uint32_t check = (ext_info->infoLen) % sizeof(FWKAdapter::ShapeAndType);
@@ -240,7 +239,8 @@ bool CpuKernelCache::GetBitStatus(uint64_t num, uint64_t pos) {
 /*
  * parse bitmap information.
  */
-uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info) {
+uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
+                                        bool &unknown_shape) {
   if (ext_info->infoLen != sizeof(int64_t)) {
     KERNEL_LOG_ERROR(
         "Parse extend bitmap failed, as info length must be [%zu], but got "
@@ -250,8 +250,8 @@ uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info) {
   }
 
   uint64_t bit_map = *(reinterpret_cast<const int64_t *>(ext_info->infoMsg));
-  unknown_shape_ = (!GetBitStatus(bit_map, 0));
-  KERNEL_LOG_INFO("Unknown_shape_ is [%d].", unknown_shape_);
+  unknown_shape = (!GetBitStatus(bit_map, 0));
+  KERNEL_LOG_INFO("Unknown_shape_ is [%d].", unknown_shape);
   return KERNEL_STATUS_OK;
 }
 
@@ -260,9 +260,11 @@ uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info) {
  */
 uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
                                      bool &has_session_info,
-                                     uint64_t &kernel_id) {
+                                     uint64_t &kernel_id,
+                                     bool &unknown_shape,
+                                     std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
+                                     std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type) {
   KERNEL_LOG_INFO("Parse extend info and update shape begin.");
-  unknown_shape_ = false;
   uint32_t offset = 0;
   FWKAdapter::ExtInfo *ext_info = nullptr;
   char *extInfo_buf =
@@ -280,20 +282,20 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
     uint32_t ret = KERNEL_STATUS_OK;
     switch (ext_info->infoType) {
       case FWKAdapter::FWK_ADPT_EXT_SHAPE_TYPE:
-        ret = ParseExtShapeType(ext_info);
+        ret = ParseExtShapeType(ext_info, unknown_shape);
         break;
       case FWKAdapter::FWK_ADPT_EXT_INPUT_SHAPE:
-        ret = ParseExtShapeAndType(ext_info, input_shape_and_type_);
+        ret = ParseExtShapeAndType(unknown_shape, ext_info, input_shape_and_type);
         break;
       case FWKAdapter::FWK_ADPT_EXT_OUTPUT_SHAPE:
-        ret = ParseExtShapeAndType(ext_info, output_shape_and_type_);
+        ret = ParseExtShapeAndType(unknown_shape, ext_info, output_shape_and_type);
         break;
       case FWKAdapter::FWK_ADPT_EXT_SESSION_INFO:
         has_session_info = true;
         ret = ParseExtSessionInfo(ext_info, kernel_id);
         break;
       case FWKAdapter::FWK_ADPT_EXT_BITMAP:
-        ret = ParseExtBitMap(ext_info);
+        ret = ParseExtBitMap(ext_info, unknown_shape);
         break;
       default:
         KERNEL_LOG_INFO("Ignore infoType[%d], infoLen[%u].", ext_info->infoType,
@@ -316,11 +318,12 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
 /*
  * parse io address.
  */
-uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head) {
+uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head,
+                                     std::vector<uint64_t> &io_addrs,
+                                     char *&nodedef, uint32_t &nodedef_len) {
   auto param_base = reinterpret_cast<char *>(param_head);
   char *extend_param_base = param_base + sizeof(AicpuParamHead);
   uint32_t extend_param_len = param_head->length - sizeof(AicpuParamHead);
-  io_addrs_.clear();
 
   if (param_head->ioAddrNum > 0) {
     if (param_head->ioAddrNum > kMaxIoAddrNumParamLen) {
@@ -340,7 +343,7 @@ uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head) {
 
     auto io_addr_base = reinterpret_cast<uint64_t *>(extend_param_base);
     for (uint32_t i = 0; i < param_head->ioAddrNum; ++i) {
-      io_addrs_.push_back(io_addr_base[i]);
+      io_addrs.push_back(io_addr_base[i]);
     }
     extend_param_base = extend_param_base + addr_len;
     extend_param_len -= addr_len;
@@ -354,11 +357,11 @@ uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  nodedef_len_ = *reinterpret_cast<uint32_t *>(extend_param_base);
+  nodedef_len = *reinterpret_cast<uint32_t *>(extend_param_base);
   extend_param_base += sizeof(uint32_t);
-  nodedef_ = extend_param_base;
+  nodedef = extend_param_base;
   KERNEL_LOG_INFO("Parse io addr success, io number[%zu], nodedef length[%u].",
-                  io_addrs_.size(), nodedef_len_);
+                  io_addrs.size(), nodedef_len);
   return KERNEL_STATUS_OK;
 }
 
@@ -366,7 +369,8 @@ uint32_t CpuKernelCache::ParseIoAddr(AicpuParamHead *param_head) {
  * get cpu kernel context from cache
  */
 std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
-    bool has_sess_info, uint64_t kernel_id) {
+    bool has_sess_info, uint64_t kernel_id, const char *nodedef,
+    uint32_t nodedef_len, std::shared_ptr<NodeDef> &nodedef_proto) {
   std::shared_ptr<CpuKernelContext> ctx = nullptr;
   KERNEL_LOG_INFO("Get cpu kernel context begin, kernel id[%llu].", kernel_id);
   if (has_sess_info) {
@@ -377,12 +381,12 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
     }
   }
 
-  std::string str_data(nodedef_, nodedef_len_);
-  nodedef_proto_ = CpuKernelUtils::CreateNodeDef();
-  KERNEL_CHECK_NULLPTR(nodedef_proto_,
+  std::string str_data(nodedef, nodedef_len);
+  nodedef_proto = CpuKernelUtils::CreateNodeDef();
+  KERNEL_CHECK_NULLPTR(nodedef_proto  ,
                        std::shared_ptr<CpuKernelContext>(nullptr),
                        "Create node def failed.")
-  if (!nodedef_proto_->ParseFromString(str_data)) {
+  if (!nodedef_proto->ParseFromString(str_data)) {
     return std::shared_ptr<CpuKernelContext>(nullptr);
   }
 
@@ -390,14 +394,14 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
   KERNEL_CHECK_NULLPTR(tmp, std::shared_ptr<CpuKernelContext>(nullptr),
                        "Create context failed.")
   ctx = std::shared_ptr<CpuKernelContext>(tmp);
-  uint32_t ret = ctx->Init(nodedef_proto_.get());
+  uint32_t ret = ctx->Init(nodedef_proto.get());
   if (ret != KERNEL_STATUS_OK) {
     return std::shared_ptr<CpuKernelContext>(nullptr);
   }
 
   if (has_sess_info) {
     CpuCacheData *cache_ptr =
-        new (std::nothrow) CpuCacheData(nodedef_proto_, ctx);
+        new (std::nothrow) CpuCacheData(nodedef_proto, ctx);
     KERNEL_CHECK_NULLPTR(cache_ptr, std::shared_ptr<CpuKernelContext>(nullptr),
                          "Create cpu cache data failed.")
     std::shared_ptr<CpuCacheData> cache_shared =
@@ -416,23 +420,33 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
  */
 int32_t CpuKernelCache::RunKernel(void *param) {
   AicpuParamHead *param_head = static_cast<AicpuParamHead *>(param);
-  uint32_t ret = ParseIoAddr(param_head);
+  std::vector<uint64_t> io_addrs;
+  char *nodedef = nullptr;
+  uint32_t nodedef_len = 0;
+  uint32_t ret = ParseIoAddr(param_head, io_addrs, nodedef, nodedef_len);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
 
   bool has_sess_info = false;
   uint64_t kernel_id = 0;
-  ret = ParseExtMsg(param_head, has_sess_info, kernel_id);
+  bool unknown_shape = false;
+  std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type;
+  std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type;
+  ret = ParseExtMsg(param_head, has_sess_info, kernel_id, unknown_shape,
+                    input_shape_and_type, output_shape_and_type);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
 
-  auto ctx = GetCpuKernelContext(has_sess_info, kernel_id);
+  std::shared_ptr<NodeDef> nodedef_proto = nullptr;
+  auto ctx = GetCpuKernelContext(has_sess_info, kernel_id, nodedef, nodedef_len,
+                                 nodedef_proto);
   KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR,
                        "Get cpu kernel context from buff failed.")
 
-  ret = UpdateTensor(*ctx);
+  ret = UpdateTensor(io_addrs, unknown_shape, input_shape_and_type,
+                     output_shape_and_type, *ctx);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
@@ -442,7 +456,7 @@ int32_t CpuKernelCache::RunKernel(void *param) {
     return -1;
   }
 
-  ret = UpdateFWKOutputShape(*ctx);
+  ret = UpdateFWKOutputShape(unknown_shape, *ctx, output_shape_and_type);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
