@@ -440,6 +440,15 @@ def strided_slice_assign_d(ref_dict,
     _update_begin_end_by_begin_end_mask(input_shape, begin, end, begin_mask, end_mask)
     _update_begin_end_strides_by_ellipsis_mask(input_shape, begin, end, strides, ellipsis_mask)
     slice_shape = _update_slice_params(input_shape, begin, end, strides, new_axis_mask, shrink_axis_mask)
+    if input_dtype in ("int32", "float32"):
+        if slice_shape[-1] < 8:
+            error_manager_vector.raise_err_specific_reson(
+                "strided_slice_assign_d",
+                "Under int32 and fp32, last dimension of input shape must bigger and equal than 8.")
+    if input_dtype == "float16":
+        if slice_shape[-1] < 16:
+            error_manager_vector.raise_err_specific_reson(
+                "strided_slice_assign_d", "Under fp16, last dimension of input shape must bigger and equal than 16.")
 
     input_tensor = tvm.placeholder(input_shape, dtype=input_dtype, name='input_tensor')
     input_value_tensor = tvm.placeholder(slice_shape, dtype=input_dtype, name='input_value_tensor')

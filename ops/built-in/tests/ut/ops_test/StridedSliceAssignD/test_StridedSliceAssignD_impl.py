@@ -32,10 +32,10 @@ case_small_shape_fp16 = {
                 "ori_format": "ND"
             },
             {
-                "shape": (6, ),
+                "shape": (16, ),
                 "format": "ND",
                 "dtype": "float16",
-                "ori_shape": (6, ),
+                "ori_shape": (16, ),
                 "ori_format": "ND"
             },
             {
@@ -46,7 +46,7 @@ case_small_shape_fp16 = {
                 "ori_format": "ND"
             },
             (0, ),
-            (11, ),
+            (16, ),
             (1, ),
             0, 0, 0, 0, 0
         ],
