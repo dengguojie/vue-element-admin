@@ -103,13 +103,16 @@ def op_select_format(input_values,
     > for example:
     > x : Tensor of (shape=(16, 16, 16, 16), "ND")
     """
+    shape_len = 1
     data_list = []
     ori_format = input_values[0].get("ori_format").upper()
     for i, input_dict in enumerate(input_values):
         shape_input = input_dict.get("ori_shape")
         shape_input = shape_util.scalar2tensor_one(shape_input)
         data_list.append(shape_input)
-    concat_dim = axis % len(data_list[0])
+        if -2 not in shape_input:
+            shape_len = len(shape_input)
+    concat_dim = axis % shape_len
 
     # add op_select_format for not align input with 5HD start
     # like: m.2 + m,2 + m,2 = m,6
@@ -122,6 +125,9 @@ def op_select_format(input_values,
     align_len = 16
     is_concat_dim_align = True
     for i, input_shape in enumerate(data_list[0:len(data_list) - 1]):
+        if -2 in input_shape:
+            is_concat_dim_align = False
+            break
         if input_shape[concat_dim] % align_len != 0:
             is_concat_dim_align = False
             break
@@ -132,7 +138,7 @@ def op_select_format(input_values,
         + util_common.get_fused_format_str(["N", "H", "W", "C"])
     is_support_hd = False
     is_support_fz = False
-    if ori_format in hd_support_format and len(ori_format) == len(data_list[0]):
+    if ori_format in hd_support_format and len(ori_format) == shape_len:
         is_concat_with_c = ori_format[concat_dim] == "C"
         is_concat_with_n = ori_format[concat_dim] == "N"
         # hd condition:
@@ -148,9 +154,9 @@ def op_select_format(input_values,
 
     # charge whether support FRACTAL_NZ
     is_support_nz = False
-    if len(data_list[0]) >= 2:
-        is_concat_last_one_dim = concat_dim == len(data_list[0]) - 1
-        is_concat_last_second_dim = concat_dim == len(data_list[0]) - 2
+    if shape_len >= 2:
+        is_concat_last_one_dim = concat_dim == shape_len - 1
+        is_concat_last_second_dim = concat_dim == shape_len - 2
         # condition
         # 1. do not concat the tensor with the -1 or -2 dim
         # 2. concat the tensor with the -1 or -2 dim, and the concat dim size align C0 for all input
@@ -167,12 +173,12 @@ def op_select_format(input_values,
 
     dtype_base_out = base_data_type.copy()
     format_base_out = ["ND"] * len(dtype_base_out)
-    if is_support_hd and not util_common.is_dynamic_input(input_values):
-        other_format = "NC1HWC0" if len(data_list[0]) == 4 else "NDC1HWC0"
+    if is_support_hd:
+        other_format = "NC1HWC0" if shape_len == 4 else "NDC1HWC0"
         dtype_base_out = dtype_base_out + other_data_type
         format_base_out = format_base_out + [other_format] * len(other_data_type)
     if is_support_fz and not util_common.is_dynamic_input(input_values):
-        other_format = "FRACTAL_Z" if len(data_list[0]) == 4 else "FRACTAL_Z_3D"
+        other_format = "FRACTAL_Z" if shape_len == 4 else "FRACTAL_Z_3D"
         dtype_base_out = dtype_base_out + other_data_type
         format_base_out = format_base_out + [other_format] * len(other_data_type)
     if is_support_nz and not util_common.is_dynamic_input(input_values):
@@ -293,7 +299,7 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
         if len(shape_input) != dim_num:
             rule_desc = "The length of each shape must be equal"
             error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "shape_input",
-                                                            len(shape_input))
+                                                              len(shape_input))
     if axis < -dim_num or axis >= dim_num:
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, "axis", -len(dim_num),
                                                                 len(dim_num), axis)

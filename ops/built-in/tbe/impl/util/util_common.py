@@ -187,7 +187,8 @@ def update_axis_for_other_format(ori_shape, axis, input_format, ori_format, redu
     update_axis_for_other_format: when format is changed, the axis will be updated
     """
     if input_format in ("NDC1HWC0", "NC1HWC0"):
-        axis = axis % len(ori_shape)
+        ori_shape_len = len(ori_shape) if -2 not in ori_shape else len(ori_format)
+        axis = axis % ori_shape_len
         # ex: ori axis with N, axis = 0
         # ex: ori axis with D, axis = 1
         # ex: ori axis with C, axis = 1 (NC1HWC0) 2(NDC1HWC0)
@@ -366,6 +367,29 @@ def is_dynamic_input(_inputs):
 
     for _, _input in enumerate(_inputs):
         if -1 in _input.get("shape"):
+            return True
+
+    return False
+
+
+def is_unknown_rank_input(input_list):
+    """
+    is_unknown_rank_input: check whether the shape contain -2
+        contain -2 return True else False
+
+    Parameters
+    ----------
+    input_list: list of dict/tuple of dict/dict
+
+    Returns
+    -------
+    bool
+    """
+    if not isinstance(input_list, list) and not isinstance(input_list, tuple):
+        input_list = [input_list]
+
+    for _, _input in enumerate(input_list):
+        if -2 in _input.get("shape") or -2 in _input.get("ori_shape"):
             return True
 
     return False

@@ -302,4 +302,4 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
         "name": kernel_name,
         "tensor_list": tensors
     }
-    tbe.build(sch, config)
+    tbe.build(schedules, config)
