@@ -19,7 +19,6 @@ unsorted_segment_sum
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
-
 # int32 select key
 SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID = 9
 SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID = 10
@@ -27,6 +26,8 @@ SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID = 11
 SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID = 12
 SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_BLOCK = 13
 SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_BLOCK = 14
+SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE = 15
+SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN = 16
 
 DTYPE_FP32 = "float32"
 DTYPE_FP16 = "float16"
@@ -34,7 +35,7 @@ DTYPE_INT32 = "int32"
 TILING_PARAM_DTYPE = DTYPE_INT32
 
 # max_int32
-MAX_INT32 = 2 ** 31 - 1
+MAX_INT32 = 2**31 - 1
 
 # fp32 byte
 BYTE_FP32 = 4
@@ -127,8 +128,7 @@ class UnsortedSegmentSum():
         Modify : 2020-12-9
     """
 
-    def __init__(self, x_dict, segment_ids_dict, num_segments_dict, y_dict,
-                 kernel_name):
+    def __init__(self, x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name):
         """
         constructor of class UnsortedSegmentSum
 
@@ -171,8 +171,7 @@ class UnsortedSegmentSum():
             Modify : 2020-12-9
             """
 
-            def __init__(self, tik_instance, input_dtype, ids_dtype,
-                         num_segments_dtype):
+            def __init__(self, tik_instance, input_dtype, ids_dtype, num_segments_dtype):
                 """
                 constructor of class GmTensor
 
@@ -187,22 +186,17 @@ class UnsortedSegmentSum():
                 -------
                 None
                 """
-                self.input_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,),
-                                                    name="input_gm",
-                                                    scope=tik.scope_gm)
-                self.ids_gm = tik_instance.Tensor(ids_dtype, (MAX_INT32,),
-                                                  name="ids_gm",
-                                                  scope=tik.scope_gm)
-                self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (
-                    MIN_TENSOR_ELE_NUM,), name="num_segments_gm",
+                self.input_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,), name="input_gm", scope=tik.scope_gm)
+                self.ids_gm = tik_instance.Tensor(ids_dtype, (MAX_INT32,), name="ids_gm", scope=tik.scope_gm)
+                self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (MIN_TENSOR_ELE_NUM,),
+                                                           name="num_segments_gm",
                                                            scope=tik.scope_gm)
 
-                self.output_gm = tik_instance.Tensor(input_dtype,
-                                                     (MAX_INT32,),
+                self.output_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,),
                                                      name="output_gm",
-                                                     scope=tik.scope_gm)
-                self.tiling_gm = tik_instance.Tensor(TILING_PARAM_DTYPE,
-                                                     (TILING_PARAMS_NUM,),
+                                                     scope=tik.scope_gm,
+                                                     is_atomic_add=True)
+                self.tiling_gm = tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,),
                                                      name="tiling_gm",
                                                      scope=tik.scope_gm)
 
@@ -250,20 +244,15 @@ class UnsortedSegmentSum():
                 -------
                 None
                 """
-                self.num_segments_scalar = tik_instance.Scalar(
-                    dtype=num_segments_dtype, name="num_segments_scalar")
-                self.id_val_scalar = tik_instance.Scalar(dtype=ids_dtype,
-                                                         name="id_val_scalar")
-                self.select_key = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="select_key")
-                self.need_core_num = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="need_core_num")
-                self.num_segments_front_core = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="num_segments_front_core")
-                self.num_segments_last_core = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="num_segments_last_core")
+                self.num_segments_scalar = tik_instance.Scalar(dtype=num_segments_dtype, name="num_segments_scalar")
+                self.id_val_scalar = tik_instance.Scalar(dtype=ids_dtype, name="id_val_scalar")
+                self.output_id_scalar = tik_instance.Scalar(dtype=ids_dtype, name="output_id_scalar", init_value=0)
+                self.select_key = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="select_key")
+                self.need_core_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="need_core_num")
+                self.num_segments_front_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                   name="num_segments_front_core")
+                self.num_segments_last_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                  name="num_segments_last_core")
 
         class Int32IdsScalar():
             """
@@ -283,25 +272,18 @@ class UnsortedSegmentSum():
                 -------
                 None
                 """
-                self.size = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="size")
-                self.mov_times_gm2ub = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="mov_times_gm2ub")
+                self.size = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="size")
+                self.mov_times_gm2ub = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="mov_times_gm2ub")
                 self.ele_num_ub_front_part = \
                     tik_instance.Scalar(
                         dtype=TILING_PARAM_DTYPE,
                         name="ele_num_ub_front_part")
-                self.front_burst_len = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="front_burst_len")
+                self.front_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="front_burst_len")
                 self.ele_num_ub_last_part = \
                     tik_instance.Scalar(
                         dtype=TILING_PARAM_DTYPE,
                         name="ele_num_ub_last_part")
-                self.last_burst_len = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="last_burst_len")
+                self.last_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="last_burst_len")
 
         class Int32ENumScalar():
             """
@@ -321,81 +303,70 @@ class UnsortedSegmentSum():
                 -------
                 None
                 """
-                self.e_num = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="e_num")
-                self.e_mov_times_gm2ub = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="e_mov_times_gm2ub")
-                self.e_ub2gm_front_burst_len = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="e_ub2gm_front_burst_len")
-                self.e_num_front_part = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="e_num_front_part")
-                self.repeat_time_front_part = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="repeat_time_front_part")
-                self.e_ub2gm_last_burst_len = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="e_ub2gm_last_burst_len")
-                self.e_num_last_part = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="e_num_last_part")
-                self.repeat_time_last_part = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="repeat_time_last_part")
-                self.align_scalar = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
-                                                        name="align_scalar")
+                self.e_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num")
+                self.e_mov_times_gm2ub = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_mov_times_gm2ub")
+                self.e_ub2gm_front_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                   name="e_ub2gm_front_burst_len")
+                self.e_num_front_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num_front_part")
+                self.repeat_time_front_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                  name="repeat_time_front_part")
+                self.e_ub2gm_last_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                  name="e_ub2gm_last_burst_len")
+                self.e_num_last_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num_last_part")
+                self.repeat_time_last_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="repeat_time_last_part")
+                self.align_scalar = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="align_scalar")
                 self.align_scalar_last_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
                                                                   name="align_scalar_last_core")
-                self.e_gm2ub_front_burst_len = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="e_gm2ub_front_burst_len")
-                self.e_gm2ub_last_burst_len = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="e_gm2ub_last_burst_len")
+                self.e_gm2ub_front_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                   name="e_gm2ub_front_burst_len")
+                self.e_gm2ub_last_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                  name="e_gm2ub_last_burst_len")
                 self.num_segment_max = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="num_segment_max")
-                self.e_max_num_time = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="e_max_num_time")
-                self.e_max_num_time_last_core = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="e_max_num_time_last_core")
-                self.front_num_segment = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="front_num_segment")
-                self.front_num_segment_last = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="front_num_segment_last")
-                self.front_num_segment_lastcore = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE,
-                    name="front_num_segment_lastcore")
-                self.front_num_segment_last_lastcore = tik_instance.Scalar(
-                    dtype=TILING_PARAM_DTYPE, name="front_num_segment_last_lastcore")
+                self.e_max_num_time = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_max_num_time")
+                self.e_max_num_time_last_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                    name="e_max_num_time_last_core")
+                self.front_num_segment = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="front_num_segment")
+                self.front_num_segment_last = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                  name="front_num_segment_last")
+                self.front_num_segment_lastcore = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                      name="front_num_segment_lastcore")
+                self.front_num_segment_last_lastcore = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                           name="front_num_segment_last_lastcore")
                 self.e_ub2gm_front_bust_len_small_e_last_core = tik_instance.Scalar(
                     dtype=TILING_PARAM_DTYPE, name="e_ub2gm_front_bust_len_small_e_last_core")
                 self.e_ub2gm_last_burst_len_input_scalar_lastcore = tik_instance.Scalar(
                     dtype=TILING_PARAM_DTYPE, name="e_ub2gm_last_burst_len_input_scalar_lastcore")
+                self.repeat_times = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="repeat_times")
+                self.repeat_times_last_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                  name="repeat_times_last_part")
+                self.repeat_times_last_part_lastcore = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                           name="repeat_times_last_part_lastcore")
+                self.e_mov_times_gm2ub_lastcore = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                      name="e_mov_times_gm2ub_lastcore")
+                self.repeat_time_last_part_lastcore = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                                                                          name="repeat_time_last_part_lastcore")
 
-        self.obj_gm_tensor = GmTensor(self.tik_instance, self.input_dtype,
-                                      self.ids_dtype, self.num_segments_dtype)
+        self.obj_gm_tensor = GmTensor(self.tik_instance, self.input_dtype, self.ids_dtype, self.num_segments_dtype)
         self.obj_ub_tensor = UbTensor()
-        self.obj_common_scalar = CommonScalar(self.tik_instance,
-                                              self.num_segments_dtype,
-                                              self.ids_dtype)
+        self.obj_common_scalar = CommonScalar(self.tik_instance, self.num_segments_dtype, self.ids_dtype)
 
         self.obj_int32_ids_input_scalar = Int32IdsScalar(self.tik_instance)
         self.obj_int32_e_num_input_scalar = Int32ENumScalar(self.tik_instance)
 
         with self.tik_instance.new_stmt_scope():
             # num_segments
-            self.obj_ub_tensor.num_segments_ub = self.tik_instance.Tensor(
-                self.num_segments_dtype, (MIN_TENSOR_ELE_NUM,),
-                name="num_segments_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(self.obj_ub_tensor.num_segments_ub,
-                                        self.obj_gm_tensor.num_segments_gm, 0,
-                                        1, 1, 0, 0)
-            self.obj_common_scalar.num_segments_scalar.set_as(
-                self.obj_ub_tensor.num_segments_ub[0])
+            self.obj_ub_tensor.num_segments_ub = self.tik_instance.Tensor(self.num_segments_dtype,
+                                                                          (MIN_TENSOR_ELE_NUM,),
+                                                                          name="num_segments_ub",
+                                                                          scope=tik.scope_ubuf)
+            self.tik_instance.data_move(self.obj_ub_tensor.num_segments_ub, self.obj_gm_tensor.num_segments_gm, 0, 1, 1,
+                                        0, 0)
+            self.obj_common_scalar.num_segments_scalar.set_as(self.obj_ub_tensor.num_segments_ub[0])
 
         with self.tik_instance.new_stmt_scope():
-            self.obj_ub_tensor.tiling_ub = self.tik_instance.Tensor(
-                TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,), name="tiling_ub",
-                scope=tik.scope_ubuf)
+            self.obj_ub_tensor.tiling_ub = self.tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,),
+                                                                    name="tiling_ub",
+                                                                    scope=tik.scope_ubuf)
             # mov tiling params from gm to ub
             self.tik_instance.data_move(self.obj_ub_tensor.tiling_ub,
                                         self.obj_gm_tensor.tiling_gm, 0, 1,
@@ -406,47 +377,36 @@ class UnsortedSegmentSum():
             input_scalar_index = 0
 
             # common params
-            self.obj_common_scalar.select_key.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_common_scalar.select_key.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_common_scalar.need_core_num.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_common_scalar.need_core_num.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_common_scalar.num_segments_front_core.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_common_scalar.num_segments_front_core.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_common_scalar.num_segments_last_core.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_common_scalar.num_segments_last_core.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_ids_input_scalar.size.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_ids_input_scalar.size.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_ids_input_scalar.mov_times_gm2ub.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_ids_input_scalar.mov_times_gm2ub.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_ids_input_scalar.ele_num_ub_front_part.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_ids_input_scalar.front_burst_len.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_ids_input_scalar.front_burst_len.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_ids_input_scalar.ele_num_ub_last_part.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_ids_input_scalar.last_burst_len.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_ids_input_scalar.last_burst_len.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.e_num.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.e_num.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.e_mov_times_gm2ub.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.e_mov_times_gm2ub.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.e_num_front_part.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.e_num_front_part.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_e_num_input_scalar.repeat_time_front_part.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
@@ -454,14 +414,12 @@ class UnsortedSegmentSum():
             self.obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.e_num_last_part.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.e_num_last_part.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_e_num_input_scalar.repeat_time_last_part.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.align_scalar.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.align_scalar.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_e_num_input_scalar.align_scalar_last_core.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
@@ -472,17 +430,14 @@ class UnsortedSegmentSum():
             self.obj_int32_e_num_input_scalar.e_gm2ub_last_burst_len.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.num_segment_max.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.num_segment_max.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.e_max_num_time.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.e_max_num_time.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_e_num_input_scalar.e_max_num_time_last_core.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
-            self.obj_int32_e_num_input_scalar.front_num_segment.set_as(
-                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            self.obj_int32_e_num_input_scalar.front_num_segment.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
             input_scalar_index = input_scalar_index + 1
 
             self.obj_int32_e_num_input_scalar.front_num_segment_last.set_as(
@@ -499,6 +454,20 @@ class UnsortedSegmentSum():
             input_scalar_index = input_scalar_index + 1
             self.obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len_input_scalar_lastcore.set_as(
                 self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_int32_e_num_input_scalar.repeat_times.set_as(self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_int32_e_num_input_scalar.repeat_times_last_part.set_as(
+                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_int32_e_num_input_scalar.repeat_times_last_part_lastcore.set_as(
+                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_int32_e_num_input_scalar.e_mov_times_gm2ub_lastcore.set_as(
+                self.obj_ub_tensor.tiling_ub[input_scalar_index])
+            input_scalar_index = input_scalar_index + 1
+            self.obj_int32_e_num_input_scalar.repeat_time_last_part_lastcore.set_as(
+                self.obj_ub_tensor.tiling_ub[input_scalar_index])
 
     def unsorted_segment_sum(self):
         """
@@ -512,138 +481,149 @@ class UnsortedSegmentSum():
         -------
         None
         """
-        _enable_atomic_add(self.tik_instance, self.input_dtype)
         byte = BYTE_INT32 if self.input_dtype == DTYPE_INT32 else BYTE_FLOAT16
         mask = MASK_FP16 if self.input_dtype == DTYPE_FP16 else MASK_INT32
+        ub_size = self.ub_size - 2 * 16000 * byte
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
             with self.tik_instance.if_scope(block_index < self.obj_common_scalar.need_core_num):
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID):
-                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
-                            self.input_dtype, (self.ub_size // 3 // byte,), name="input_ub",
-                            scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, (self.ub_size // 3 // BYTE_INT32,),
-                            name="ids_ub", scope=tik.scope_ubuf)
+                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE):
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
+                                                                               (self.ub_size // 2 // byte,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
                         self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
-                                                                                (self.ub_size // 3 // byte,),
-                                                                                name="output_ub", scope=tik.scope_ubuf)
-                        _tik_no_atomic_small_e_small_id(block_index,
-                                                        self.tik_instance,
-                                                        self.obj_gm_tensor,
-                                                        self.obj_ub_tensor,
-                                                        self.obj_common_scalar,
+                                                                                (self.ub_size // 2 // byte,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        _tik_no_atomic_num_segment_one(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                       self.obj_ub_tensor, self.obj_common_scalar,
+                                                       self.obj_int32_ids_input_scalar,
+                                                       self.obj_int32_e_num_input_scalar, self.input_dtype)
+                with self.tik_instance.new_stmt_scope():
+                    with self.tik_instance.if_scope(
+                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID):
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype, (16000,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype, (ub_size // BYTE_INT32,),
+                                                                             name="ids_ub",
+                                                                             scope=tik.scope_ubuf)
+                        _tik_no_atomic_small_e_small_id(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                        self.obj_ub_tensor, self.obj_common_scalar,
                                                         self.obj_int32_ids_input_scalar,
-                                                        self.obj_int32_e_num_input_scalar,
-                                                        self.input_dtype)
+                                                        self.obj_int32_e_num_input_scalar, self.input_dtype)
+                with self.tik_instance.new_stmt_scope():
+                    with self.tik_instance.if_scope(
+                            self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN):
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype, (16000,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype, (ub_size // BYTE_INT32,),
+                                                                             name="ids_ub",
+                                                                             scope=tik.scope_ubuf)
+                        _tik_no_atomic_all_in_align(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                    self.obj_ub_tensor, self.obj_common_scalar,
+                                                    self.obj_int32_ids_input_scalar, self.obj_int32_e_num_input_scalar,
+                                                    self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID):
-                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
-                            self.input_dtype, (self.ub_size // 3 // byte,), name="input_ub",
-                            scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, (self.ub_size // 3 // BYTE_INT32,),
-                            name="ids_ub", scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
-                                                                                (self.ub_size // 3 // byte,),
-                                                                                name="output_ub", scope=tik.scope_ubuf)
-                        _tik_no_atomic_small_e_big_id(block_index,
-                                                      self.tik_instance,
-                                                      self.obj_gm_tensor,
-                                                      self.obj_ub_tensor,
-                                                      self.obj_common_scalar,
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype, (ub_size // BYTE_INT32,),
+                                                                             name="ids_ub",
+                                                                             scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype, (16000,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        _tik_no_atomic_small_e_big_id(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                      self.obj_ub_tensor, self.obj_common_scalar,
                                                       self.obj_int32_ids_input_scalar,
-                                                      self.obj_int32_e_num_input_scalar,
-                                                      self.input_dtype)
+                                                      self.obj_int32_e_num_input_scalar, self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID):
-                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
-                            self.input_dtype, (self.ub_size // 3 // byte,), name="input_ub",
-                            scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, (self.ub_size // 3 // BYTE_INT32,),
-                            name="ids_ub", scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
-                                                                                (self.ub_size // 3 // byte,),
-                                                                                name="output_ub", scope=tik.scope_ubuf)
-                        _tik_no_atomic_big_e_small_id(block_index,
-                                                      self.tik_instance,
-                                                      self.obj_gm_tensor,
-                                                      self.obj_ub_tensor,
-                                                      self.obj_common_scalar,
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype, (ub_size // BYTE_INT32,),
+                                                                             name="ids_ub",
+                                                                             scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype, (16000,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        _tik_no_atomic_big_e_small_id(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                      self.obj_ub_tensor, self.obj_common_scalar,
                                                       self.obj_int32_ids_input_scalar,
-                                                      self.obj_int32_e_num_input_scalar,
-                                                      self.input_dtype)
+                                                      self.obj_int32_e_num_input_scalar, self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID):
-                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
-                            self.input_dtype, (self.ub_size // 3 // byte,), name="input_ub",
-                            scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, (self.ub_size // 3 // BYTE_INT32,),
-                            name="ids_ub", scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
-                                                                                (self.ub_size // 3 // byte,),
-                                                                                name="output_ub", scope=tik.scope_ubuf)
-                        _tik_no_atomic_big_e_big_id(block_index,
-                                                    self.tik_instance,
-                                                    self.obj_gm_tensor,
-                                                    self.obj_ub_tensor,
-                                                    self.obj_common_scalar,
-                                                    self.obj_int32_ids_input_scalar,
-                                                    self.obj_int32_e_num_input_scalar,
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (16000 // byte,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype, (16000 // BYTE_INT32,),
+                                                                             name="ids_ub",
+                                                                             scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype, (ub_size // byte,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        _tik_no_atomic_big_e_big_id(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                    self.obj_ub_tensor, self.obj_common_scalar,
+                                                    self.obj_int32_ids_input_scalar, self.obj_int32_e_num_input_scalar,
                                                     self.input_dtype)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_BLOCK):
-                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
-                            self.input_dtype, (mask,), name="input_ub", scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, ((self.ub_size - 256) // 2 // BYTE_INT32,),
-                            name="ids_ub", scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(
-                            self.output_dtype, ((self.ub_size - 256) // 2 // byte,),
-                            name="output_ub", scope=tik.scope_ubuf)
-                        _tik_no_atomic_small_e_block_small_id(block_index,
-                                                              self.tik_instance,
-                                                              self.obj_gm_tensor,
-                                                              self.obj_ub_tensor,
-                                                              self.obj_common_scalar,
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (mask,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype,
+                                                                             ((self.ub_size - 256) // 2 // BYTE_INT32,),
+                                                                             name="ids_ub",
+                                                                             scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
+                                                                                ((self.ub_size - 256) // 2 // byte,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        _tik_no_atomic_small_e_block_small_id(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                              self.obj_ub_tensor, self.obj_common_scalar,
                                                               self.obj_int32_ids_input_scalar,
-                                                              self.obj_int32_e_num_input_scalar,
-                                                              self.input_dtype)
+                                                              self.obj_int32_e_num_input_scalar, self.input_dtype)
 
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_BLOCK):
-                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(
-                            self.input_dtype, (mask,), name="input_ub", scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(
-                            self.ids_dtype, ((self.ub_size - 256) // 2 // BYTE_INT32,),
-                            name="ids_ub", scope=tik.scope_ubuf)
-                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(
-                            self.output_dtype, ((self.ub_size - 256) // 2 // byte,),
-                            name="output_ub", scope=tik.scope_ubuf)
-                        _tik_no_atomic_small_e_block_big_id(block_index,
-                                                            self.tik_instance,
-                                                            self.obj_gm_tensor,
-                                                            self.obj_ub_tensor,
-                                                            self.obj_common_scalar,
+                        self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype, (mask,),
+                                                                               name="input_ub",
+                                                                               scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype,
+                                                                             ((self.ub_size - 256) // 2 // BYTE_INT32,),
+                                                                             name="ids_ub",
+                                                                             scope=tik.scope_ubuf)
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
+                                                                                ((self.ub_size - 256) // 2 // byte,),
+                                                                                name="output_ub",
+                                                                                scope=tik.scope_ubuf)
+                        _tik_no_atomic_small_e_block_big_id(block_index, self.tik_instance, self.obj_gm_tensor,
+                                                            self.obj_ub_tensor, self.obj_common_scalar,
                                                             self.obj_int32_ids_input_scalar,
-                                                            self.obj_int32_e_num_input_scalar,
-                                                            self.input_dtype)
+                                                            self.obj_int32_e_num_input_scalar, self.input_dtype)
 
-        _disable_atomic_add(self.tik_instance, self.input_dtype)
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.obj_gm_tensor.input_gm,
-                                           self.obj_gm_tensor.ids_gm,
-                                           self.obj_gm_tensor.num_segments_gm],
-                                   outputs=[self.obj_gm_tensor.output_gm],
-                                   flowtable=[self.obj_gm_tensor.tiling_gm])
+        self.tik_instance.BuildCCE(
+            kernel_name=self.kernel_name,
+            inputs=[self.obj_gm_tensor.input_gm, self.obj_gm_tensor.ids_gm, self.obj_gm_tensor.num_segments_gm],
+            outputs=[self.obj_gm_tensor.output_gm],
+            flowtable=[self.obj_gm_tensor.tiling_gm])
 
 
 def _enable_atomic_add(tik_inst, dtype):
@@ -711,10 +691,7 @@ def _tik_get_core_num():
     return tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
-def _tik_init_ub_tensor_once(tik_inst,
-                             ub_tensor,
-                             repeat_time,
-                             mask):
+def _tik_init_ub_tensor_once(tik_inst, ub_tensor, repeat_time, mask, uboffset=0):
     """
     init ub tensor once
 
@@ -729,14 +706,10 @@ def _tik_init_ub_tensor_once(tik_inst,
     -------
     None
     """
-    tik_inst.vector_dup(mask, ub_tensor, 0, repeat_time, 1, 8)
+    tik_inst.vector_dup(mask, ub_tensor[uboffset], 0, repeat_time, 1, 8)
 
 
-def _tik_vadd(tik_inst,
-              input_ub,
-              output_ub,
-              repeat_time,
-              mask):
+def _tik_vadd(tik_inst, input_ub, output_ub, repeat_time, mask, uboffset=0):
     """
     tik_vadd
 
@@ -752,16 +725,29 @@ def _tik_vadd(tik_inst,
     -------
     None
     """
-    tik_inst.vadd(mask, output_ub, output_ub, input_ub, repeat_time, 1, 1, 1, 8,
-                  8, 8)
+    tik_inst.vadd(mask, output_ub, output_ub, input_ub[uboffset], repeat_time, 1, 1, 1, 8, 8, 8)
 
 
-def _tik_mov_output_ub2gm_continue(tik_inst,
-                                   output_gm,
-                                   output_ub,
-                                   output_offset_gm,
-                                   output_offset_ub,
-                                   output_n_burst,
+def _tik_vadd_num_one(tik_inst, input_ub, output_ub, repeat_time, mask, uboffset=0):
+    """
+    _tik_vadd_num_one
+
+    Parameters
+    ----------
+    tik_inst: tik instance
+    input_ub: input ub tensor
+    output_ub: output ub tensor
+    repeat_time: repeat time
+    mask: mask
+
+    Returns
+    -------
+    None
+    """
+    tik_inst.vadd(mask, output_ub[uboffset], output_ub[uboffset], input_ub[uboffset], repeat_time, 1, 1, 1, 8, 8, 8)
+
+
+def _tik_mov_output_ub2gm_continue(tik_inst, output_gm, output_ub, output_offset_gm, output_offset_ub, output_n_burst,
                                    output_burst_len):
     """
     tik_mov_output_ub2gm_continue
@@ -780,16 +766,11 @@ def _tik_mov_output_ub2gm_continue(tik_inst,
     -------
     None
     """
-    tik_inst.data_move(output_gm[output_offset_gm], output_ub[output_offset_ub],
-                       0, output_n_burst, output_burst_len, 0, 0)
+    tik_inst.data_move(output_gm[output_offset_gm], output_ub[output_offset_ub], 0, output_n_burst, output_burst_len, 0,
+                       0)
 
 
-def _tik_mov_input_gm2ub_continue(tik_inst,
-                                  input_gm,
-                                  input_ub,
-                                  input_offset_gm,
-                                  input_offset_ub,
-                                  input_n_burst,
+def _tik_mov_input_gm2ub_continue(tik_inst, input_gm, input_ub, input_offset_gm, input_offset_ub, input_n_burst,
                                   input_burst_len):
     """
     tik_mov_input_gm2ub_continue
@@ -808,17 +789,10 @@ def _tik_mov_input_gm2ub_continue(tik_inst,
     -------
     None
     """
-    tik_inst.data_move(input_ub[input_offset_ub], input_gm[input_offset_gm], 0,
-                       input_n_burst, input_burst_len, 0, 0)
+    tik_inst.data_move(input_ub[input_offset_ub], input_gm[input_offset_gm], 0, input_n_burst, input_burst_len, 0, 0)
 
 
-def _tik_mov_ids_gm2ub(tik_inst,
-                       ids_gm,
-                       ids_ub,
-                       ids_offset_gm,
-                       ids_offset_ub,
-                       ids_n_burst,
-                       ids_burst_len):
+def _tik_mov_ids_gm2ub(tik_inst, ids_gm, ids_ub, ids_offset_gm, ids_offset_ub, ids_n_burst, ids_burst_len):
     """
     tik_mov_ids_gm2ub
 
@@ -836,18 +810,288 @@ def _tik_mov_ids_gm2ub(tik_inst,
     -------
     None
     """
-    tik_inst.data_move(ids_ub[ids_offset_ub], ids_gm[ids_offset_gm], 0,
-                       ids_n_burst, ids_burst_len, 0, 0)
+    tik_inst.data_move(ids_ub[ids_offset_ub], ids_gm[ids_offset_gm], 0, ids_n_burst, ids_burst_len, 0, 0)
 
 
-def _tik_no_atomic_small_e_small_id(block_index,
-                                    tik_inst,
-                                    obj_gm_tensor,
-                                    obj_ub_tensor,
-                                    obj_common_scalar,
-                                    obj_int32_ids_input_scalar,
-                                    obj_int32_e_num_input_scalar,
-                                    dtype):
+def _tik_no_atomic_num_segment_one(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                   obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
+    """
+    _tik_int32_add_big_e
+
+    Parameters
+    ----------
+    block_index: block_index
+    tik_inst: tik_instance
+    obj_gm_tensor: obj_gm_tensor
+    obj_ub_tensor: obj_ub_tensor
+    obj_common_scalar: obj_common_scalar
+    obj_int32_ids_input_scalar: obj_int32_ids_input_scalar
+    obj_int32_e_num_input_scalar: obj_int32_e_num_input_scalar
+    dtype:input dtype
+
+    Returns
+    -------
+    None
+    """
+    mask = MASK_FP16 if dtype == DTYPE_FP16 else MASK_INT32
+    with tik_inst.if_scope(block_index < obj_common_scalar.need_core_num - 1):
+        # front core
+        with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_mov_times_gm2ub) as e_mov_index_gm2ub:
+            # e divide by ub
+            with tik_inst.if_scope(e_mov_index_gm2ub < obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
+                # front part e
+                with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times) as i:
+                    ub_offset = i * 255 * mask
+                    with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times - 1):
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub, 255, mask, ub_offset)
+                    with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times - 1):
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                                 obj_int32_e_num_input_scalar.repeat_time_front_part, mask, ub_offset)
+                with tik_inst.for_range(0, obj_int32_ids_input_scalar.size) as segment_index_front_core:
+                    # num_segments divide by core
+                    input_offset_gm = segment_index_front_core * obj_int32_e_num_input_scalar.e_num + \
+                                      block_index * obj_common_scalar.num_segments_front_core + \
+                                      e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                    input_offset_ub = 0
+                    input_n_burst = 1
+                    input_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                  input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
+                    with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times) as i:
+                        ub_offset = i * 255 * mask
+                        with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub, 255, mask,
+                                              ub_offset)
+                        with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask, ub_offset)
+                    # mov output data ub2gm
+                output_offset_gm = block_index * obj_common_scalar.num_segments_front_core + \
+                                   e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                output_offset_ub = 0
+                output_n_burst = 1
+                output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                               output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
+
+            with tik_inst.if_scope(e_mov_index_gm2ub == obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
+                with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times_last_part) as i:
+                    ub_offset = i * 255 * mask
+                    with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times_last_part - 1):
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub, 255, mask, ub_offset)
+                    with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times_last_part - 1):
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                                 obj_int32_e_num_input_scalar.repeat_time_last_part, mask, ub_offset)
+
+                # last part e
+                with tik_inst.for_range(0, obj_int32_ids_input_scalar.size) as segment_index_front_core:
+                    # num_segments divide by core
+                    # init output_ub
+                    input_offset_gm = segment_index_front_core * obj_int32_e_num_input_scalar.e_num + \
+                                      block_index * obj_common_scalar.num_segments_front_core + \
+                                      e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                    input_offset_ub = 0
+                    input_n_burst = 1
+                    input_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
+                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                  input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
+                    with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times_last_part) as i:
+                        ub_offset = i * 255 * mask
+                        with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times_last_part - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub, 255, mask,
+                                              ub_offset)
+                        with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times_last_part - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_last_part, mask, ub_offset)
+                    # mov output data ub2gm
+                output_offset_gm = block_index * obj_common_scalar.num_segments_front_core + \
+                                   e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                output_offset_ub = 0
+                output_n_burst = 1
+                output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                               output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
+    with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
+        # last core
+        with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_mov_times_gm2ub_lastcore) as e_mov_index_gm2ub:
+            # e divide by ub
+            with tik_inst.if_scope(e_mov_index_gm2ub < obj_int32_e_num_input_scalar.e_mov_times_gm2ub_lastcore - 1):
+                with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times) as i:
+                    with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times - 1):
+                        ub_offset = i * 255 * mask
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub, 255, mask, ub_offset)
+                    with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times - 1):
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                                 obj_int32_e_num_input_scalar.repeat_time_front_part, mask, ub_offset)
+                # front part e
+                with tik_inst.for_range(0, obj_int32_ids_input_scalar.size) as segment_index_last_core:
+                    # num_segments divide by core
+                    # init output_ub
+                    input_offset_gm = segment_index_last_core * obj_int32_e_num_input_scalar.e_num + \
+                                      block_index * obj_common_scalar.num_segments_front_core + \
+                                      e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                    input_offset_ub = 0
+                    input_n_burst = 1
+                    input_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                  input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
+                    with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times) as i:
+                        ub_offset = i * 255 * mask
+                        with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub, 255, mask,
+                                              ub_offset)
+                        with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask, ub_offset)
+                    # mov output data ub2gm
+                output_offset_gm = block_index * obj_common_scalar.num_segments_front_core + \
+                                   e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                output_offset_ub = 0
+                output_n_burst = 1
+                output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                               output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
+
+            with tik_inst.if_scope(e_mov_index_gm2ub == obj_int32_e_num_input_scalar.e_mov_times_gm2ub_lastcore - 1):
+                with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times_last_part_lastcore) as i:
+                    ub_offset = i * 255 * mask
+                    with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times_last_part_lastcore - 1):
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub, 255, mask, ub_offset)
+                    with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times_last_part_lastcore - 1):
+                        _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                                 obj_int32_e_num_input_scalar.repeat_time_last_part_lastcore, mask,
+                                                 ub_offset)
+                # last part e
+                with tik_inst.for_range(0, obj_int32_ids_input_scalar.size) as segment_index_last_core:
+                    # num_segments divide by core
+                    # init output_ub
+                    # id in segment
+                    input_offset_gm = segment_index_last_core * obj_int32_e_num_input_scalar.e_num + \
+                                      block_index * obj_common_scalar.num_segments_front_core + \
+                                      e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                    input_offset_ub = 0
+                    input_n_burst = 1
+                    input_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len_input_scalar_lastcore
+                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                  input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
+                    with tik_inst.for_range(0, obj_int32_e_num_input_scalar.repeat_times_last_part_lastcore) as i:
+                        ub_offset = i * 255 * mask
+                        with tik_inst.if_scope(i < obj_int32_e_num_input_scalar.repeat_times_last_part_lastcore - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub, 255, mask,
+                                              ub_offset)
+                        with tik_inst.if_scope(i == obj_int32_e_num_input_scalar.repeat_times_last_part_lastcore - 1):
+                            _tik_vadd_num_one(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_last_part_lastcore, mask,
+                                              ub_offset)
+                    # mov output data ub2gm
+                output_offset_gm = block_index * obj_common_scalar.num_segments_front_core + \
+                                   e_mov_index_gm2ub * obj_int32_e_num_input_scalar.e_num_front_part
+                output_offset_ub = 0
+                output_n_burst = 1
+                output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len_input_scalar_lastcore
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                               output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
+
+
+def _tik_no_atomic_all_in_align(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
+    """
+    _tik_no_atomic_all_in_align
+
+    Parameters
+    ----------
+    block_index: block_index
+    tik_inst: tik_instance
+    obj_gm_tensor: obj_gm_tensor
+    obj_ub_tensor: obj_ub_tensor
+    obj_common_scalar: obj_common_scalar
+    obj_int32_ids_input_scalar: obj_int32_ids_input_scalar
+    obj_int32_e_num_input_scalar: obj_int32_e_num_input_scalar
+    dtype: input dtype
+
+    Returns
+    -------
+    None
+    """
+    id_val_scalar = obj_common_scalar.id_val_scalar
+    output_id_scalar = obj_common_scalar.output_id_scalar
+    mask = MASK_FP16 if dtype == DTYPE_FP16 else MASK_INT32
+    with tik_inst.if_scope(block_index < obj_common_scalar.need_core_num - 1):
+        ids_offset_gm = 0
+        ids_offset_ub = 0
+        ids_n_burst = 1
+        ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
+        _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
+                           ids_n_burst, ids_burst_len)
+        input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
+        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub, 0, 0, 1,
+                                      input_burst_len)
+        # front core
+        with tik_inst.for_range(0, obj_common_scalar.num_segments_front_core) as \
+                segment_index_front_core:
+            # num_segments divide by core
+            # init output_ub
+            _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                     obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
+
+            with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
+                # visit ids
+                id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
+                with tik_inst.if_scope(segment_index_front_core +
+                                       block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
+                    output_id_scalar.set_as(1)
+                    # id in segment
+                    input_offset_ub = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
+                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask, input_offset_ub)
+            with tik_inst.if_scope(output_id_scalar == 1):
+                output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
+                                    segment_index_front_core) * obj_int32_e_num_input_scalar.e_num
+                output_offset_ub = 0
+                output_n_burst = 1
+                output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                               output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
+
+    with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
+        ids_offset_gm = 0
+        ids_offset_ub = 0
+        ids_n_burst = 1
+        ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
+        _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
+                           ids_n_burst, ids_burst_len)
+        input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
+        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub, 0, 0, 1,
+                                      input_burst_len)
+        # last core
+        with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
+            # num_segments divide by core
+            # init output_ub
+            _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                     obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
+
+            with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
+                # visit ids
+                id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
+                with tik_inst.if_scope(segment_index_last_core +
+                                       block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
+                    output_id_scalar.set_as(1)
+                    # id in segment
+                    input_offset_ub = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
+                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask, input_offset_ub)
+            with tik_inst.if_scope(output_id_scalar == 1):
+                output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
+                                    segment_index_last_core) * obj_int32_e_num_input_scalar.e_num
+                output_offset_ub = 0
+                output_n_burst = 1
+                output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                               output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
+
+
+def _tik_no_atomic_small_e_small_id(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                    obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
     """
     _tik_no_atomic_small_e_small_id
 
@@ -875,35 +1119,27 @@ def _tik_no_atomic_small_e_small_id(block_index,
         ids_n_burst = 1
         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
         _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
-                           ids_n_burst,
-                           ids_burst_len)
+                           ids_n_burst, ids_burst_len)
         # front core
         with tik_inst.for_range(0, obj_common_scalar.num_segments_front_core) as \
                 segment_index_front_core:
             # num_segments divide by core
             # init output_ub
-            _tik_init_ub_tensor_once(tik_inst,
-                                     obj_ub_tensor.output_ub,
-                                     obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                     mask)
+            _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                     obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
 
             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                 # visit ids
                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                with tik_inst.if_scope(segment_index_front_core + block_index *
-                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                with tik_inst.if_scope(segment_index_front_core +
+                                       block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                     # id in segment
                     input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                     input_offset_ub = 0
                     input_n_burst = 1
                     input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                  obj_gm_tensor.input_gm,
-                                                  obj_ub_tensor.input_ub,
-                                                  input_offset_gm,
-                                                  input_offset_ub,
-                                                  input_n_burst,
-                                                  input_burst_len)
+                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                  input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
                     _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
                               obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
             output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
@@ -911,26 +1147,16 @@ def _tik_no_atomic_small_e_small_id(block_index,
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
             with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                 align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                 output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                 with tik_inst.for_range(0, mask // 8) as num_i:
-                    align_ub[num_i].set_as(
-                        obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar + num_i])
-                _tik_mov_output_ub2gm_continue(tik_inst,
-                                               obj_gm_tensor.output_gm,
-                                               align_ub,
-                                               output_offset_gm_one,
-                                               output_offset_ub,
-                                               output_n_burst,
-                                               1)
+                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar +
+                                                                   num_i])
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub, output_offset_gm_one,
+                                               output_offset_ub, output_n_burst, 1)
 
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         ids_offset_gm = 0
@@ -938,71 +1164,47 @@ def _tik_no_atomic_small_e_small_id(block_index,
         ids_n_burst = 1
         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
         _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
-                           ids_n_burst,
-                           ids_burst_len)
+                           ids_n_burst, ids_burst_len)
         # last core
         with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
             # num_segments divide by core
             # init output_ub
-            _tik_init_ub_tensor_once(tik_inst,
-                                     obj_ub_tensor.output_ub,
-                                     obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                     mask)
+            _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                     obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
 
             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                 # visit ids
                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                with tik_inst.if_scope(segment_index_last_core + block_index *
-                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                with tik_inst.if_scope(segment_index_last_core +
+                                       block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                     # id in segment
                     input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                     input_offset_ub = 0
                     input_n_burst = 1
                     input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
-                                                  obj_ub_tensor.input_ub,
-                                                  input_offset_gm,
-                                                  input_offset_ub,
-                                                  input_n_burst,
-                                                  input_burst_len)
+                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                  input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
                     _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
-                              obj_int32_e_num_input_scalar.repeat_time_front_part,
-                              mask)
+                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
             output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                 segment_index_last_core) * obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
             with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                 align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                 output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                 with tik_inst.for_range(0, mask // 8) as num_i:
-                    align_ub[num_i].set_as(
-                        obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar + num_i])
-                _tik_mov_output_ub2gm_continue(tik_inst,
-                                               obj_gm_tensor.output_gm,
-                                               align_ub,
-                                               output_offset_gm_one,
-                                               output_offset_ub,
-                                               output_n_burst,
-                                               1)
+                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar +
+                                                                   num_i])
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub, output_offset_gm_one,
+                                               output_offset_ub, output_n_burst, 1)
 
 
-def _tik_no_atomic_small_e_big_id(block_index,
-                                  tik_inst,
-                                  obj_gm_tensor,
-                                  obj_ub_tensor,
-                                  obj_common_scalar,
-                                  obj_int32_ids_input_scalar,
-                                  obj_int32_e_num_input_scalar,
-                                  dtype):
+def _tik_no_atomic_small_e_big_id(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                  obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
     """
     _tik_no_atomic_small_e_big_id
 
@@ -1030,11 +1232,8 @@ def _tik_no_atomic_small_e_big_id(block_index,
                 segment_index_front_core:
             # num_segments divide by core
             # init output_ub
-            _tik_init_ub_tensor_once(tik_inst,
-                                     obj_ub_tensor.output_ub,
-                                     obj_int32_e_num_input_scalar.
-                                     repeat_time_front_part,
-                                     mask)
+            _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                     obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
             with tik_inst.for_range(0, obj_int32_ids_input_scalar.mov_times_gm2ub) as \
                     ids_mov_index_gm2ub:
                 # ids divide by ub
@@ -1044,110 +1243,73 @@ def _tik_no_atomic_small_e_big_id(block_index,
                     ids_offset_ub = 0
                     ids_n_burst = 1
                     ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                    _tik_mov_ids_gm2ub(tik_inst,
-                                       obj_gm_tensor.ids_gm,
-                                       obj_ub_tensor.ids_ub,
-                                       ids_offset_gm,
-                                       ids_offset_ub,
-                                       ids_n_burst,
-                                       ids_burst_len)
+                    _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                       ids_offset_ub, ids_n_burst, ids_burst_len)
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                             ids_index_front_part:
                         # visit ids
-                        id_val_scalar.set_as(
-                            obj_ub_tensor.ids_ub[ids_index_front_part])
-                        with tik_inst.if_scope(segment_index_front_core + block_index *
-                                               obj_common_scalar.num_segments_front_core == id_val_scalar):
+                        id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
+                        with tik_inst.if_scope(
+                                segment_index_front_core +
+                                block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                             # id in segment
                             input_offset_gm = (ids_offset_gm + ids_index_front_part) * \
                                               obj_int32_e_num_input_scalar.e_num
                             input_offset_ub = 0
                             input_n_burst = 1
                             input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                            _tik_mov_input_gm2ub_continue(tik_inst,
-                                                          obj_gm_tensor.input_gm,
-                                                          obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
-                            _tik_vadd(tik_inst,
-                                      obj_ub_tensor.input_ub,
-                                      obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.
-                                      repeat_time_front_part,
-                                      mask)
+                            _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                      obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                 with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                     # ids last part
                     ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                     ids_offset_ub = 0
                     ids_n_burst = 1
                     ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                    _tik_mov_ids_gm2ub(tik_inst,
-                                       obj_gm_tensor.ids_gm,
-                                       obj_ub_tensor.ids_ub,
-                                       ids_offset_gm,
-                                       ids_offset_ub,
-                                       ids_n_burst,
-                                       ids_burst_len)
+                    _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                       ids_offset_ub, ids_n_burst, ids_burst_len)
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                         # visit ids
                         id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                        with tik_inst.if_scope(segment_index_front_core + block_index *
-                                               obj_common_scalar.num_segments_front_core == id_val_scalar):
+                        with tik_inst.if_scope(
+                                segment_index_front_core +
+                                block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                             # id in segment
-                            input_offset_gm = (ids_offset_gm +
-                                               ids_index_last_part) * obj_int32_e_num_input_scalar.e_num
+                            input_offset_gm = (ids_offset_gm + ids_index_last_part) * obj_int32_e_num_input_scalar.e_num
                             input_offset_ub = 0
                             input_n_burst = 1
                             input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                            _tik_mov_input_gm2ub_continue(tik_inst,
-                                                          obj_gm_tensor.input_gm,
-                                                          obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
-                            _tik_vadd(tik_inst,
-                                      obj_ub_tensor.input_ub,
-                                      obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                      mask)
+                            _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                      obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
 
             output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                 segment_index_front_core) * obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
             with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                 align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                 output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                 with tik_inst.for_range(0, mask // 8) as num_i:
-                    align_ub[num_i].set_as(
-                        obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar + num_i])
-                _tik_mov_output_ub2gm_continue(tik_inst,
-                                               obj_gm_tensor.output_gm,
-                                               align_ub,
-                                               output_offset_gm_one,
-                                               output_offset_ub,
-                                               output_n_burst,
-                                               1)
+                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar +
+                                                                   num_i])
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub, output_offset_gm_one,
+                                               output_offset_ub, output_n_burst, 1)
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         # last core
         with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
             # num_segments divide by core
             # init output_ub
-            _tik_init_ub_tensor_once(tik_inst,
-                                     obj_ub_tensor.output_ub,
-                                     obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                     mask)
+            _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                     obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
             with tik_inst.for_range(0, obj_int32_ids_input_scalar.mov_times_gm2ub) as ids_mov_index_gm2ub:
                 # ids divide by ub
                 with tik_inst.if_scope(ids_mov_index_gm2ub < obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
@@ -1156,111 +1318,69 @@ def _tik_no_atomic_small_e_big_id(block_index,
                     ids_offset_ub = 0
                     ids_n_burst = 1
                     ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                    _tik_mov_ids_gm2ub(tik_inst,
-                                       obj_gm_tensor.ids_gm,
-                                       obj_ub_tensor.ids_ub,
-                                       ids_offset_gm,
-                                       ids_offset_ub,
-                                       ids_n_burst,
-                                       ids_burst_len)
-                    with tik_inst.for_range(
-                            0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as ids_index_front_part:
+                    _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                       ids_offset_ub, ids_n_burst, ids_burst_len)
+                    with tik_inst.for_range(0,
+                                            obj_int32_ids_input_scalar.ele_num_ub_front_part) as ids_index_front_part:
                         # visit ids
                         id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
-                        with tik_inst.if_scope(segment_index_last_core +
-                                               block_index * obj_common_scalar.num_segments_front_core ==
-                                               id_val_scalar):
+                        with tik_inst.if_scope(
+                                segment_index_last_core +
+                                block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                             # id in segment
                             input_offset_gm = (ids_offset_gm +
                                                ids_index_front_part) * obj_int32_e_num_input_scalar.e_num
                             input_offset_ub = 0
                             input_n_burst = 1
                             input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                            _tik_mov_input_gm2ub_continue(tik_inst,
-                                                          obj_gm_tensor.input_gm,
-                                                          obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
-                            _tik_vadd(tik_inst,
-                                      obj_ub_tensor.input_ub,
-                                      obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.
-                                      repeat_time_front_part,
-                                      mask)
+                            _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                      obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                 with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                     # ids last part
                     ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                     ids_offset_ub = 0
                     ids_n_burst = 1
                     ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                    _tik_mov_ids_gm2ub(tik_inst,
-                                       obj_gm_tensor.ids_gm,
-                                       obj_ub_tensor.ids_ub,
-                                       ids_offset_gm,
-                                       ids_offset_ub,
-                                       ids_n_burst,
-                                       ids_burst_len)
+                    _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                       ids_offset_ub, ids_n_burst, ids_burst_len)
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                         # visit ids
                         id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                        with tik_inst.if_scope(segment_index_last_core + block_index *
-                                               obj_common_scalar.num_segments_front_core == id_val_scalar):
+                        with tik_inst.if_scope(
+                                segment_index_last_core +
+                                block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                             # id in segment
-                            input_offset_gm = (ids_offset_gm +
-                                               ids_index_last_part) * obj_int32_e_num_input_scalar.e_num
+                            input_offset_gm = (ids_offset_gm + ids_index_last_part) * obj_int32_e_num_input_scalar.e_num
                             input_offset_ub = 0
                             input_n_burst = 1
                             input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                            _tik_mov_input_gm2ub_continue(tik_inst,
-                                                          obj_gm_tensor.input_gm,
-                                                          obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
-                            _tik_vadd(tik_inst,
-                                      obj_ub_tensor.input_ub,
-                                      obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.
-                                      repeat_time_front_part,
-                                      mask)
+                            _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                      obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
             output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                 segment_index_last_core) * obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
             with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                 align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                 output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                 with tik_inst.for_range(0, mask // 8) as num_i:
-                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) -
-                                                                   align_scalar + num_i])
-                _tik_mov_output_ub2gm_continue(tik_inst,
-                                               obj_gm_tensor.output_gm,
-                                               align_ub,
-                                               output_offset_gm_one,
-                                               output_offset_ub,
-                                               output_n_burst,
-                                               1)
+                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar +
+                                                                   num_i])
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub, output_offset_gm_one,
+                                               output_offset_ub, output_n_burst, 1)
 
 
-def _tik_no_atomic_big_e_small_id(block_index,
-                                  tik_inst,
-                                  obj_gm_tensor,
-                                  obj_ub_tensor,
-                                  obj_common_scalar,
-                                  obj_int32_ids_input_scalar,
-                                  obj_int32_e_num_input_scalar,
-                                  dtype):
+def _tik_no_atomic_big_e_small_id(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                  obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
     """
     _tik_int32_add_big_e
 
@@ -1288,21 +1408,17 @@ def _tik_no_atomic_big_e_small_id(block_index,
         ids_n_burst = 1
         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
         _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
-                           ids_n_burst,
-                           ids_burst_len)
+                           ids_n_burst, ids_burst_len)
         # front core
         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_mov_times_gm2ub) as e_mov_index_gm2ub:
             # e divide by ub
-            with tik_inst.if_scope(
-                    e_mov_index_gm2ub < obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
+            with tik_inst.if_scope(e_mov_index_gm2ub < obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
                 # front part e
                 with tik_inst.for_range(0, obj_common_scalar.num_segments_front_core) as segment_index_front_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                             mask)
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
 
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                         # visit ids
@@ -1316,15 +1432,11 @@ def _tik_no_atomic_big_e_small_id(block_index,
                             input_offset_ub = 0
                             input_n_burst = 1
                             input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
-                                                          obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
                             _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                      mask)
+                                      obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         segment_index_front_core) * obj_int32_e_num_input_scalar.e_num + \
@@ -1332,13 +1444,8 @@ def _tik_no_atomic_big_e_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
 
             with tik_inst.if_scope(e_mov_index_gm2ub == obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
                 # last part e
@@ -1346,16 +1453,15 @@ def _tik_no_atomic_big_e_small_id(block_index,
                         segment_index_front_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                             mask)
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
 
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                         # visit ids
                         id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                        with tik_inst.if_scope(segment_index_front_core + block_index *
-                                               obj_common_scalar.num_segments_front_core == id_val_scalar):
+                        with tik_inst.if_scope(
+                                segment_index_front_core +
+                                block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                             # id in segment
                             input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                               obj_int32_e_num_input_scalar.e_num + \
@@ -1364,18 +1470,11 @@ def _tik_no_atomic_big_e_small_id(block_index,
                             input_offset_ub = 0
                             input_n_burst = 1
                             input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_last_burst_len
-                            _tik_mov_input_gm2ub_continue(tik_inst,
-                                                          obj_gm_tensor.input_gm,
-                                                          obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
-                            _tik_vadd(tik_inst,
-                                      obj_ub_tensor.input_ub,
-                                      obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                      mask)
+                            _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                      obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index *
                                         obj_common_scalar.
@@ -1387,35 +1486,23 @@ def _tik_no_atomic_big_e_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                         align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                         with tik_inst.for_range(0, mask // 8) as num_i:
-                            align_ub[num_i].set_as(
-                                obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
-    with tik_inst.if_scope(
-            block_index == obj_common_scalar.need_core_num - 1):
+                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) -
+                                                                           align_scalar + num_i])
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
+    with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         ids_offset_gm = 0
         ids_offset_ub = 0
         ids_n_burst = 1
         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
         _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
-                           ids_n_burst,
-                           ids_burst_len)
+                           ids_n_burst, ids_burst_len)
         # last core
         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_mov_times_gm2ub) as e_mov_index_gm2ub:
             # e divide by ub
@@ -1424,10 +1511,8 @@ def _tik_no_atomic_big_e_small_id(block_index,
                 with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                             mask)
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
 
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                         # visit ids
@@ -1444,13 +1529,10 @@ def _tik_no_atomic_big_e_small_id(block_index,
                             input_burst_len = \
                                 obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
                             _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
                             _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                      mask)
+                                      obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index *
                                         obj_common_scalar.
@@ -1462,13 +1544,8 @@ def _tik_no_atomic_big_e_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
 
             with tik_inst.if_scope(e_mov_index_gm2ub == obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
                 # last part e
@@ -1476,17 +1553,15 @@ def _tik_no_atomic_big_e_small_id(block_index,
                         segment_index_last_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.
-                                             repeat_time_last_part,
-                                             mask)
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
 
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                         # visit ids
                         id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                        with tik_inst.if_scope(segment_index_last_core + block_index *
-                                               obj_common_scalar.num_segments_front_core == id_val_scalar):
+                        with tik_inst.if_scope(
+                                segment_index_last_core +
+                                block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                             # id in segment
                             input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                               obj_int32_e_num_input_scalar.e_num + \
@@ -1494,18 +1569,11 @@ def _tik_no_atomic_big_e_small_id(block_index,
                             input_offset_ub = 0
                             input_n_burst = 1
                             input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_last_burst_len
-                            _tik_mov_input_gm2ub_continue(tik_inst,
-                                                          obj_gm_tensor.input_gm,
-                                                          obj_ub_tensor.input_ub,
-                                                          input_offset_gm,
-                                                          input_offset_ub,
-                                                          input_n_burst,
+                            _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                          input_offset_gm, input_offset_ub, input_n_burst,
                                                           input_burst_len)
-                            _tik_vadd(tik_inst,
-                                      obj_ub_tensor.input_ub,
-                                      obj_ub_tensor.output_ub,
-                                      obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                      mask)
+                            _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                      obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index *
                                         obj_common_scalar.
@@ -1517,36 +1585,20 @@ def _tik_no_atomic_big_e_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                         align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                         with tik_inst.for_range(0, mask // 8) as num_i:
-                            align_ub[num_i].set_as(
-                                obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
+                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) -
+                                                                           align_scalar + num_i])
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
 
 
-def _tik_no_atomic_big_e_big_id(block_index,
-                                tik_inst,
-                                obj_gm_tensor,
-                                obj_ub_tensor,
-                                obj_common_scalar,
-                                obj_int32_ids_input_scalar,
-                                obj_int32_e_num_input_scalar,
-                                dtype):
+def _tik_no_atomic_big_e_big_id(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
     """
     _tik_no_atomic_big_e_big_id
 
@@ -1572,50 +1624,36 @@ def _tik_no_atomic_big_e_big_id(block_index,
         # front core
         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_mov_times_gm2ub) as e_mov_index_gm2ub:
             # e divide by ub
-            with tik_inst.if_scope(
-                    e_mov_index_gm2ub < obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
+            with tik_inst.if_scope(e_mov_index_gm2ub < obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
                 # front part e
                 with tik_inst.for_range(0,
                                         obj_common_scalar.num_segments_front_core) as \
                         segment_index_front_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.repeat_time_front_part,
-                                             mask)
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                     with tik_inst.for_range(0,
                                             obj_int32_ids_input_scalar.mov_times_gm2ub) as \
                             ids_mov_index_gm2ub:
                         # ids divide by ub
-                        with tik_inst.if_scope(
-                                ids_mov_index_gm2ub <
-                                obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
+                        with tik_inst.if_scope(ids_mov_index_gm2ub < obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                             # ids front part
                             ids_offset_gm = ids_mov_index_gm2ub * \
                                             obj_int32_ids_input_scalar.ele_num_ub_front_part
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0,
                                                     obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                     ids_index_front_part:
                                 # visit ids
-                                id_val_scalar.set_as(
-                                    obj_ub_tensor.ids_ub[ids_index_front_part])
+                                id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
                                 with tik_inst.if_scope(
                                         segment_index_front_core +
-                                        block_index *
-                                        obj_common_scalar.
-                                                num_segments_front_core ==
-                                        id_val_scalar):
+                                        block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                     # id in segment
                                     input_offset_gm = (ids_offset_gm + ids_index_front_part) * \
                                                       obj_int32_e_num_input_scalar.e_num + \
@@ -1623,38 +1661,26 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_offset_ub = 0
                                     input_n_burst = 1
                                     input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.
-                                              repeat_time_front_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                         with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                             # ids last part
                             ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                     ids_index_last_part:
                                 # visit ids
                                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                                with tik_inst.if_scope(segment_index_front_core + block_index *
-                                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                with tik_inst.if_scope(
+                                        segment_index_front_core +
+                                        block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                     # id in segment
                                     input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                       obj_int32_e_num_input_scalar.e_num + \
@@ -1662,19 +1688,11 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_offset_ub = 0
                                     input_n_burst = 1
                                     input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_front_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.
-                                              repeat_time_front_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         segment_index_front_core) * obj_int32_e_num_input_scalar.e_num + \
@@ -1682,24 +1700,16 @@ def _tik_no_atomic_big_e_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
 
             with tik_inst.if_scope(e_mov_index_gm2ub == obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
                 # last part e
                 with tik_inst.for_range(0, obj_common_scalar.num_segments_front_core) as segment_index_front_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.
-                                             repeat_time_last_part,
-                                             mask)
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.mov_times_gm2ub) as ids_mov_index_gm2ub:
                         # ids divide by ub
                         with tik_inst.if_scope(ids_mov_index_gm2ub < obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
@@ -1708,19 +1718,15 @@ def _tik_no_atomic_big_e_big_id(block_index,
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                     ids_index_front_part:
                                 # visit ids
                                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
-                                with tik_inst.if_scope(segment_index_front_core + block_index *
-                                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                with tik_inst.if_scope(
+                                        segment_index_front_core +
+                                        block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                     # id in segment
                                     input_offset_gm = (ids_offset_gm + ids_index_front_part) * \
                                                       obj_int32_e_num_input_scalar.e_num + \
@@ -1728,37 +1734,26 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_offset_ub = 0
                                     input_n_burst = 1
                                     input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_last_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
                         with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                             # ids last part
                             ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                     ids_index_last_part:
                                 # visit ids
                                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                                with tik_inst.if_scope(segment_index_front_core + block_index *
-                                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                with tik_inst.if_scope(
+                                        segment_index_front_core +
+                                        block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                     # id in segment
                                     input_offset_gm = (ids_offset_gm +
                                                        ids_index_last_part) * \
@@ -1769,18 +1764,11 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_n_burst = 1
                                     input_burst_len = \
                                         obj_int32_e_num_input_scalar.e_gm2ub_last_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index *
                                         obj_common_scalar.
@@ -1792,26 +1780,16 @@ def _tik_no_atomic_big_e_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                         align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                         with tik_inst.for_range(0, mask // 8) as num_i:
-                            align_ub[num_i].set_as(
-                                obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
+                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) -
+                                                                           align_scalar + num_i])
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         # last core
         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_mov_times_gm2ub) as e_mov_index_gm2ub:
@@ -1821,11 +1799,8 @@ def _tik_no_atomic_big_e_big_id(block_index,
                 with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.
-                                             repeat_time_front_part,
-                                             mask)
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                     with tik_inst.for_range(0, obj_int32_ids_input_scalar.mov_times_gm2ub) as ids_mov_index_gm2ub:
                         # ids divide by ub
                         with tik_inst.if_scope(ids_mov_index_gm2ub < obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
@@ -1834,19 +1809,15 @@ def _tik_no_atomic_big_e_big_id(block_index,
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                     ids_index_front_part:
                                 # visit ids
                                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
-                                with tik_inst.if_scope(segment_index_last_core + block_index *
-                                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                with tik_inst.if_scope(
+                                        segment_index_last_core +
+                                        block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                     # id in segment
                                     input_offset_gm = (ids_offset_gm + ids_index_front_part) * \
                                                       obj_int32_e_num_input_scalar.e_num + e_mov_index_gm2ub * \
@@ -1854,38 +1825,26 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_offset_ub = 0
                                     input_n_burst = 1
                                     input_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.
-                                              repeat_time_front_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                         with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                             # ids last part
                             ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                     ids_index_last_part:
                                 # visit ids
                                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                                with tik_inst.if_scope(segment_index_last_core + block_index *
-                                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                with tik_inst.if_scope(
+                                        segment_index_last_core +
+                                        block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                     # id in segment
                                     input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                       obj_int32_e_num_input_scalar.e_num + \
@@ -1893,19 +1852,11 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_offset_ub = 0
                                     input_n_burst = 1
                                     input_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.
-                                              repeat_time_front_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_front_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         segment_index_last_core) * obj_int32_e_num_input_scalar.e_num + \
@@ -1913,25 +1864,17 @@ def _tik_no_atomic_big_e_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
 
             with tik_inst.if_scope(e_mov_index_gm2ub == obj_int32_e_num_input_scalar.e_mov_times_gm2ub - 1):
                 # last part e
                 with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
                     # num_segments divide by core
                     # init output_ub
-                    _tik_init_ub_tensor_once(tik_inst,
-                                             obj_ub_tensor.output_ub,
-                                             obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                             mask)
-                    with tik_inst.for_range(0,
-                                            obj_int32_ids_input_scalar.mov_times_gm2ub) as ids_mov_index_gm2ub:
+                    _tik_init_ub_tensor_once(tik_inst, obj_ub_tensor.output_ub,
+                                             obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
+                    with tik_inst.for_range(0, obj_int32_ids_input_scalar.mov_times_gm2ub) as ids_mov_index_gm2ub:
                         # ids divide by ub
                         with tik_inst.if_scope(ids_mov_index_gm2ub < obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                             # ids front part
@@ -1939,13 +1882,8 @@ def _tik_no_atomic_big_e_big_id(block_index,
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                     ids_index_front_part:
                                 # visit ids
@@ -1963,38 +1901,27 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_n_burst = 1
                                     input_burst_len = \
                                         obj_int32_e_num_input_scalar.e_gm2ub_last_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
                         with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
                             # ids last part
                             ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                             ids_offset_ub = 0
                             ids_n_burst = 1
                             ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                            _tik_mov_ids_gm2ub(tik_inst,
-                                               obj_gm_tensor.ids_gm,
-                                               obj_ub_tensor.ids_ub,
-                                               ids_offset_gm,
-                                               ids_offset_ub,
-                                               ids_n_burst,
-                                               ids_burst_len)
+                            _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                               ids_offset_ub, ids_n_burst, ids_burst_len)
                             with tik_inst.for_range(0,
                                                     obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                     ids_index_last_part:
                                 # visit ids
                                 id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                                with tik_inst.if_scope(segment_index_last_core + block_index *
-                                                       obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                with tik_inst.if_scope(
+                                        segment_index_last_core +
+                                        block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                     # id in segment
                                     input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                       obj_int32_e_num_input_scalar.e_num + \
@@ -2003,18 +1930,11 @@ def _tik_no_atomic_big_e_big_id(block_index,
                                     input_offset_ub = 0
                                     input_n_burst = 1
                                     input_burst_len = obj_int32_e_num_input_scalar.e_gm2ub_last_burst_len
-                                    _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                  obj_gm_tensor.input_gm,
-                                                                  obj_ub_tensor.input_ub,
-                                                                  input_offset_gm,
-                                                                  input_offset_ub,
-                                                                  input_n_burst,
-                                                                  input_burst_len)
-                                    _tik_vadd(tik_inst,
-                                              obj_ub_tensor.input_ub,
-                                              obj_ub_tensor.output_ub,
-                                              obj_int32_e_num_input_scalar.repeat_time_last_part,
-                                              mask)
+                                    _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                  obj_ub_tensor.input_ub, input_offset_gm,
+                                                                  input_offset_ub, input_n_burst, input_burst_len)
+                                    _tik_vadd(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.output_ub,
+                                              obj_int32_e_num_input_scalar.repeat_time_last_part, mask)
                     # mov output data ub2gm
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         segment_index_last_core) * obj_int32_e_num_input_scalar.e_num + \
@@ -2022,36 +1942,20 @@ def _tik_no_atomic_big_e_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(tik.all(obj_common_scalar.need_core_num > 1, align_scalar > 0)):
                         align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * (mask // 8) - align_scalar
                         with tik_inst.for_range(0, mask // 8) as num_i:
-                            align_ub[num_i].set_as(
-                                obj_ub_tensor.output_ub[output_burst_len * (mask // 8) - align_scalar + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
+                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * (mask // 8) -
+                                                                           align_scalar + num_i])
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
 
 
-def _tik_no_atomic_small_e_block_small_id(block_index,
-                                          tik_inst,
-                                          obj_gm_tensor,
-                                          obj_ub_tensor,
-                                          obj_common_scalar,
-                                          obj_int32_ids_input_scalar,
-                                          obj_int32_e_num_input_scalar,
-                                          dtype):
+def _tik_no_atomic_small_e_block_small_id(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                          obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
     """
     _tik_no_atomic_small_e_block_small_id
 
@@ -2082,8 +1986,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
         ids_n_burst = 1
         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
         _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
-                           ids_n_burst,
-                           ids_burst_len)
+                           ids_n_burst, ids_burst_len)
         # front core
         with tik_inst.if_scope(obj_int32_e_num_input_scalar.e_max_num_time > 1):
             with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_max_num_time) as index_e_max_num_time:
@@ -2092,9 +1995,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                                             obj_int32_e_num_input_scalar.front_num_segment) as segment_index_last_core:
                         # num_segments divide by core
                         # init output_ub
-                        _tik_init_ub_tensor_once(tik_inst,
-                                                 mask_ub,
-                                                 1, mask)
+                        _tik_init_ub_tensor_once(tik_inst, mask_ub, 1, mask)
 
                         with tik_inst.for_range(0,
                                                 obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
@@ -2102,23 +2003,20 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
                             with tik_inst.if_scope(
                                     index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment +
-                                    segment_index_last_core + block_index *
-                                    obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                    segment_index_last_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
                                 _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment) * \
@@ -2126,46 +2024,36 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                 with tik_inst.if_scope(index_e_max_num_time == obj_int32_e_num_input_scalar.e_max_num_time - 1):
                     with tik_inst.for_range(0,
                                             obj_int32_e_num_input_scalar.front_num_segment_last) as \
                             segment_index_last_core:
                         # num_segments divide by core
                         # init output_ub
-                        _tik_init_ub_tensor_once(tik_inst,
-                                                 mask_ub,
-                                                 1, mask)
+                        _tik_init_ub_tensor_once(tik_inst, mask_ub, 1, mask)
 
                         with tik_inst.for_range(0,
                                                 obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                            with tik_inst.if_scope(index_e_max_num_time *
-                                                   obj_int32_e_num_input_scalar.front_num_segment_last +
-                                                   segment_index_last_core + block_index *
-                                                   obj_common_scalar.num_segments_front_core == id_val_scalar):
+                            with tik_inst.if_scope(
+                                    index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment_last +
+                                    segment_index_last_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
                                 _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment_last) * \
@@ -2173,26 +2061,16 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(align_scalar > 0):
                         align_ub = tik_inst.Tensor(dtype, (ele_num_one_block,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - align_scalar
                         with tik_inst.for_range(0, ele_num_one_block) as num_i:
-                            align_ub[num_i].set_as(
-                                obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block - align_scalar + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
+                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block -
+                                                                           align_scalar + num_i])
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
 
         with tik_inst.else_scope():
             with tik_inst.for_range(0, obj_common_scalar.num_segments_front_core) as segment_index_front_core:
@@ -2203,37 +2081,27 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                     # visit ids
                     id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                    with tik_inst.if_scope(segment_index_front_core + block_index *
-                                           obj_common_scalar.num_segments_front_core == id_val_scalar):
+                    with tik_inst.if_scope(segment_index_front_core +
+                                           block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                         # id in segment
                         input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                         input_offset_ub = 0
                         input_n_burst = 1
                         input_burst_len = 1
-                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                      obj_gm_tensor.input_gm,
-                                                      obj_ub_tensor.input_ub,
-                                                      input_offset_gm,
-                                                      input_offset_ub,
-                                                      input_n_burst,
-                                                      input_burst_len)
+                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                      input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                 with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                    obj_ub_tensor.output_ub[segment_index_front_core *
-                                            obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                    obj_ub_tensor.output_ub[segment_index_front_core * obj_int32_e_num_input_scalar.e_num + j].set_as(
+                        mask_ub[j])
 
             output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) * \
                                obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
 
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         ids_offset_gm = 0
@@ -2241,8 +2109,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
         ids_n_burst = 1
         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
         _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm, ids_offset_ub,
-                           ids_n_burst,
-                           ids_burst_len)
+                           ids_n_burst, ids_burst_len)
         with tik_inst.if_scope(obj_int32_e_num_input_scalar.e_max_num_time_last_core > 1):
             with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_max_num_time_last_core) as index_e_max_num_time:
                 with tik_inst.if_scope(index_e_max_num_time < obj_int32_e_num_input_scalar.e_max_num_time - 1):
@@ -2250,9 +2117,7 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                             segment_index_last_core:
                         # num_segments divide by core
                         # init output_ub
-                        _tik_init_ub_tensor_once(tik_inst,
-                                                 mask_ub,
-                                                 1, mask)
+                        _tik_init_ub_tensor_once(tik_inst, mask_ub, 1, mask)
 
                         with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                 ids_index_last_part:
@@ -2260,24 +2125,20 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
                             with tik_inst.if_scope(
                                     index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment_lastcore +
-                                    segment_index_last_core + block_index *
-                                    obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                    segment_index_last_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
-                                _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1,
-                                          mask)
+                                _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
@@ -2286,16 +2147,11 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_bust_len_small_e_last_core
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
 
-                with tik_inst.if_scope(
-                        index_e_max_num_time == obj_int32_e_num_input_scalar.e_max_num_time_last_core - 1):
+                with tik_inst.if_scope(index_e_max_num_time == obj_int32_e_num_input_scalar.e_max_num_time_last_core -
+                                       1):
                     with tik_inst.for_range(0, obj_int32_e_num_input_scalar.front_num_segment_last_lastcore) as \
                             segment_index_last_core:
                         # num_segments divide by core
@@ -2306,25 +2162,22 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                                 ids_index_last_part:
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                            with tik_inst.if_scope(index_e_max_num_time *
-                                                   obj_int32_e_num_input_scalar.front_num_segment_lastcore +
-                                                   segment_index_last_core + block_index *
-                                                   obj_common_scalar.num_segments_front_core == id_val_scalar):
+                            with tik_inst.if_scope(
+                                    index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment_lastcore +
+                                    segment_index_last_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
                                 _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
@@ -2333,28 +2186,17 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len_input_scalar_lastcore
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(align_scalar_last_core > 0):
                         align_ub = tik_inst.Tensor(dtype, (ele_num_one_block,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - \
                                                align_scalar_last_core
                         with tik_inst.for_range(0, ele_num_one_block) as num_i:
-                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[
-                                                       output_burst_len * ele_num_one_block -
-                                                       align_scalar_last_core + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
+                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block -
+                                                                           align_scalar_last_core + num_i])
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
         with tik_inst.else_scope():
             # last core
             with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
@@ -2365,61 +2207,39 @@ def _tik_no_atomic_small_e_block_small_id(block_index,
                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as ids_index_last_part:
                     # visit ids
                     id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                    with tik_inst.if_scope(segment_index_last_core + block_index *
-                                           obj_common_scalar.num_segments_front_core == id_val_scalar):
+                    with tik_inst.if_scope(segment_index_last_core +
+                                           block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                         # id in segment
                         input_offset_gm = ids_index_last_part * obj_int32_e_num_input_scalar.e_num
                         input_offset_ub = 0
                         input_n_burst = 1
                         input_burst_len = 1
-                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
-                                                      obj_ub_tensor.input_ub,
-                                                      input_offset_gm,
-                                                      input_offset_ub,
-                                                      input_n_burst,
-                                                      input_burst_len)
-                        _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub,
-                                  1,
-                                  mask)
+                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                      input_offset_gm, input_offset_ub, input_n_burst, input_burst_len)
+                        _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                     with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                        obj_ub_tensor.output_ub[
-                            segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                        obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num +
+                                                j].set_as(mask_ub[j])
 
             output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core) * \
                                obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len_input_scalar_lastcore
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
             with tik_inst.if_scope(align_scalar_last_core > 0):
                 align_ub = tik_inst.Tensor(dtype, (ele_num_one_block,), name="align_ub", scope=tik.scope_ubuf)
                 output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - align_scalar_last_core
                 with tik_inst.for_range(0, ele_num_one_block) as num_i:
-                    align_ub[num_i].set_as(
-                        obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block - align_scalar_last_core + num_i])
-                _tik_mov_output_ub2gm_continue(tik_inst,
-                                               obj_gm_tensor.output_gm,
-                                               align_ub,
-                                               output_offset_gm_one,
-                                               output_offset_ub,
-                                               output_n_burst,
-                                               1)
+                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block -
+                                                                   align_scalar_last_core + num_i])
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub, output_offset_gm_one,
+                                               output_offset_ub, output_n_burst, 1)
 
 
-def _tik_no_atomic_small_e_block_big_id(block_index,
-                                        tik_inst,
-                                        obj_gm_tensor,
-                                        obj_ub_tensor,
-                                        obj_common_scalar,
-                                        obj_int32_ids_input_scalar,
-                                        obj_int32_e_num_input_scalar,
-                                        dtype):
+def _tik_no_atomic_small_e_block_big_id(block_index, tik_inst, obj_gm_tensor, obj_ub_tensor, obj_common_scalar,
+                                        obj_int32_ids_input_scalar, obj_int32_e_num_input_scalar, dtype):
     """
     _tik_no_atomic_small_e_block_big_id
 
@@ -2464,76 +2284,58 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                         ids_index_front_part:
                                     # visit ids
                                     id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
                                     with tik_inst.if_scope(
                                             index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment +
-                                            segment_index_front_core + block_index *
-                                            obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                            segment_index_front_core +
+                                            block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                         # id in segment
                                         input_offset_gm = (ids_offset_gm + ids_index_front_part) * \
                                                           obj_int32_e_num_input_scalar.e_num
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
                                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
 
-                            with tik_inst.if_scope(
-                                    ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
+                            with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub -
+                                                   1):
                                 # ids last part
                                 ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                         ids_index_last_part:
                                     # visit ids
                                     id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
                                     with tik_inst.if_scope(
                                             index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment +
-                                            segment_index_front_core + block_index *
-                                            obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                            segment_index_front_core +
+                                            block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                         # id in segment
                                         input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                           obj_int32_e_num_input_scalar.e_num
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
                                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
 
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_front_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_front_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment) * \
@@ -2541,13 +2343,8 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                 with tik_inst.if_scope(index_e_max_num_time == obj_int32_e_num_input_scalar.e_max_num_time - 1):
                     with tik_inst.for_range(0, obj_int32_e_num_input_scalar.front_num_segment_last) as \
                             segment_index_front_core:
@@ -2563,13 +2360,8 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                         ids_index_front_part:
                                     # visit ids
@@ -2584,53 +2376,40 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
                                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
-                            with tik_inst.if_scope(
-                                    ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
+                            with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub -
+                                                   1):
                                 # ids last part
                                 ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                         ids_index_last_part:
                                     # visit ids
                                     id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
                                     with tik_inst.if_scope(
                                             index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment +
-                                            segment_index_front_core + block_index *
-                                            obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                            segment_index_front_core +
+                                            block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                         # id in segment
                                         input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                           obj_int32_e_num_input_scalar.e_num
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
                                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_front_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_front_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time * obj_int32_e_num_input_scalar.front_num_segment) * \
@@ -2638,26 +2417,16 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(align_scalar > 0):
                         align_ub = tik_inst.Tensor(dtype, (ele_num_one_block,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - align_scalar
                         with tik_inst.for_range(0, ele_num_one_block) as num_i:
-                            align_ub[num_i].set_as(
-                                obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block - align_scalar + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
+                            align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block -
+                                                                           align_scalar + num_i])
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
 
         with tik_inst.else_scope():
             with tik_inst.for_range(0, obj_common_scalar.num_segments_front_core) as segment_index_front_core:
@@ -2672,32 +2441,23 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                         ids_offset_ub = 0
                         ids_n_burst = 1
                         ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                        _tik_mov_ids_gm2ub(tik_inst,
-                                           obj_gm_tensor.ids_gm,
-                                           obj_ub_tensor.ids_ub,
-                                           ids_offset_gm,
-                                           ids_offset_ub,
-                                           ids_n_burst,
-                                           ids_burst_len)
+                        _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                           ids_offset_ub, ids_n_burst, ids_burst_len)
                         with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                 ids_index_front_part:
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
                             with tik_inst.if_scope(
-                                    segment_index_front_core + block_index *
-                                    obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                    segment_index_front_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = (ids_offset_gm + ids_index_front_part) * \
                                                   obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst,
-                                                              obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
                                 _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                     with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
@@ -2706,61 +2466,43 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                         ids_offset_ub = 0
                         ids_n_burst = 1
                         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                        _tik_mov_ids_gm2ub(tik_inst,
-                                           obj_gm_tensor.ids_gm,
-                                           obj_ub_tensor.ids_ub,
-                                           ids_offset_gm,
-                                           ids_offset_ub,
-                                           ids_n_burst,
-                                           ids_burst_len)
+                        _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                           ids_offset_ub, ids_n_burst, ids_burst_len)
                         with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                 ids_index_last_part:
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                            with tik_inst.if_scope(segment_index_front_core + block_index *
-                                                   obj_common_scalar.num_segments_front_core == id_val_scalar):
+                            with tik_inst.if_scope(
+                                    segment_index_front_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                   obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst,
-                                                              obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
                                 _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                 with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                    obj_ub_tensor.output_ub[segment_index_front_core *
-                                            obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                    obj_ub_tensor.output_ub[segment_index_front_core * obj_int32_e_num_input_scalar.e_num + j].set_as(
+                        mask_ub[j])
             output_offset_gm = (block_index *
                                 obj_common_scalar.num_segments_front_core) * obj_int32_e_num_input_scalar.e_num
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_burst_len
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
             with tik_inst.if_scope(align_scalar > 0):
                 align_ub = tik_inst.Tensor(dtype, (ele_num_one_block,), name="align_ub", scope=tik.scope_ubuf)
                 output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - align_scalar
                 with tik_inst.for_range(0, ele_num_one_block) as num_i:
-                    align_ub[num_i].set_as(
-                        obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block - align_scalar + num_i])
-                _tik_mov_output_ub2gm_continue(tik_inst,
-                                               obj_gm_tensor.output_gm,
-                                               align_ub,
-                                               output_offset_gm_one,
-                                               output_offset_ub,
-                                               output_n_burst,
-                                               1)
+                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block - align_scalar +
+                                                                   num_i])
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub, output_offset_gm_one,
+                                               output_offset_ub, output_n_burst, 1)
 
     with tik_inst.if_scope(block_index == obj_common_scalar.need_core_num - 1):
         # last core
@@ -2782,54 +2524,35 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                         ids_index_front_part:
                                     # visit ids
-                                    id_val_scalar.set_as(
-                                        obj_ub_tensor.ids_ub[ids_index_front_part])
+                                    id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
                                     with tik_inst.if_scope(
                                             obj_int32_e_num_input_scalar.front_num_segment_lastcore *
-                                            index_e_max_num_time + segment_index_last_core + block_index *
-                                            obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                            index_e_max_num_time + segment_index_last_core +
+                                            block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                         # id in segment
                                         input_offset_gm = (ids_offset_gm +
                                                            ids_index_front_part) * obj_int32_e_num_input_scalar.e_num
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
-                                        _tik_vadd(tik_inst,
-                                                  obj_ub_tensor.input_ub,
-                                                  mask_ub,
-                                                  1,
-                                                  mask)
-                            with tik_inst.if_scope(
-                                    ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
+                                        _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
+                            with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub -
+                                                   1):
                                 # ids last part
                                 ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                         ids_index_last_part:
                                     # visit ids
@@ -2837,25 +2560,21 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                                     with tik_inst.if_scope(
                                             index_e_max_num_time *
                                             obj_int32_e_num_input_scalar.front_num_segment_lastcore +
-                                            segment_index_last_core + block_index *
-                                            obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                            segment_index_last_core +
+                                            block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                         # id in segment
                                         input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                           obj_int32_e_num_input_scalar.e_num
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
                                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
@@ -2864,13 +2583,8 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_bust_len_small_e_last_core
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
 
                 with tik_inst.if_scope(index_e_max_num_time == obj_int32_e_num_input_scalar.e_max_num_time - 1):
                     with tik_inst.for_range(0, obj_int32_e_num_input_scalar.front_num_segment_last_lastcore) as \
@@ -2887,74 +2601,57 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                         ids_index_front_part:
                                     # visit ids
                                     id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
                                     with tik_inst.if_scope(
                                             obj_int32_e_num_input_scalar.front_num_segment_lastcore *
-                                            index_e_max_num_time + segment_index_last_core + block_index *
-                                            obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                            index_e_max_num_time + segment_index_last_core +
+                                            block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                         # id in segment
                                         input_offset_gm = (ids_offset_gm +
                                                            ids_index_front_part) * obj_int32_e_num_input_scalar.e_num
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
                                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
-                            with tik_inst.if_scope(
-                                    ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
+                            with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub -
+                                                   1):
                                 # ids last part
                                 ids_offset_gm = ids_mov_index_gm2ub * obj_int32_ids_input_scalar.ele_num_ub_front_part
                                 ids_offset_ub = 0
                                 ids_n_burst = 1
                                 ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                                _tik_mov_ids_gm2ub(tik_inst,
-                                                   obj_gm_tensor.ids_gm,
-                                                   obj_ub_tensor.ids_ub,
-                                                   ids_offset_gm,
-                                                   ids_offset_ub,
-                                                   ids_n_burst,
-                                                   ids_burst_len)
+                                _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                                   ids_offset_ub, ids_n_burst, ids_burst_len)
                                 with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                         ids_index_last_part:
                                     # visit ids
                                     id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                                    with tik_inst.if_scope(index_e_max_num_time *
-                                                           obj_int32_e_num_input_scalar.front_num_segment_lastcore +
-                                                           segment_index_last_core + block_index *
-                                                           obj_common_scalar.num_segments_front_core == id_val_scalar):
+                                    with tik_inst.if_scope(
+                                            index_e_max_num_time *
+                                            obj_int32_e_num_input_scalar.front_num_segment_lastcore +
+                                            segment_index_last_core +
+                                            block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                         # id in segment
                                         input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                           obj_int32_e_num_input_scalar.e_num
                                         input_offset_ub = 0
                                         input_n_burst = 1
                                         input_burst_len = 1
-                                        _tik_mov_input_gm2ub_continue(tik_inst,
-                                                                      obj_gm_tensor.input_gm,
-                                                                      obj_ub_tensor.input_ub,
-                                                                      input_offset_gm,
-                                                                      input_offset_ub,
-                                                                      input_n_burst,
-                                                                      input_burst_len)
+                                        _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm,
+                                                                      obj_ub_tensor.input_ub, input_offset_gm,
+                                                                      input_offset_ub, input_n_burst, input_burst_len)
                                         _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                         with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
-                            obj_ub_tensor.output_ub[
-                                segment_index_last_core * obj_int32_e_num_input_scalar.e_num + j].set_as(mask_ub[j])
+                            obj_ub_tensor.output_ub[segment_index_last_core * obj_int32_e_num_input_scalar.e_num +
+                                                    j].set_as(mask_ub[j])
 
                     output_offset_gm = (block_index * obj_common_scalar.num_segments_front_core +
                                         index_e_max_num_time *
@@ -2963,26 +2660,16 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                     output_offset_ub = 0
                     output_n_burst = 1
                     output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_last_burst_len_input_scalar_lastcore
-                    _tik_mov_output_ub2gm_continue(tik_inst,
-                                                   obj_gm_tensor.output_gm,
-                                                   obj_ub_tensor.output_ub,
-                                                   output_offset_gm,
-                                                   output_offset_ub,
-                                                   output_n_burst,
-                                                   output_burst_len)
+                    _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub,
+                                                   output_offset_gm, output_offset_ub, output_n_burst, output_burst_len)
                     with tik_inst.if_scope(align_scalar_last_core > 0):
                         align_ub = tik_inst.Tensor(dtype, (mask,), name="align_ub", scope=tik.scope_ubuf)
                         output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - align_scalar
                         with tik_inst.for_range(0, ele_num_one_block) as num_i:
                             align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block -
                                                                            align_scalar_last_core + num_i])
-                        _tik_mov_output_ub2gm_continue(tik_inst,
-                                                       obj_gm_tensor.output_gm,
-                                                       align_ub,
-                                                       output_offset_gm_one,
-                                                       output_offset_ub,
-                                                       output_n_burst,
-                                                       1)
+                        _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub,
+                                                       output_offset_gm_one, output_offset_ub, output_n_burst, 1)
 
         with tik_inst.else_scope():
             with tik_inst.for_range(0, obj_common_scalar.num_segments_last_core) as segment_index_last_core:
@@ -2997,31 +2684,23 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                         ids_offset_ub = 0
                         ids_n_burst = 1
                         ids_burst_len = obj_int32_ids_input_scalar.front_burst_len
-                        _tik_mov_ids_gm2ub(tik_inst,
-                                           obj_gm_tensor.ids_gm,
-                                           obj_ub_tensor.ids_ub,
-                                           ids_offset_gm,
-                                           ids_offset_ub,
-                                           ids_n_burst,
-                                           ids_burst_len)
+                        _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                           ids_offset_ub, ids_n_burst, ids_burst_len)
                         with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_front_part) as \
                                 ids_index_front_part:
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_front_part])
-                            with tik_inst.if_scope(segment_index_last_core + block_index *
-                                                   obj_common_scalar.num_segments_front_core == id_val_scalar):
+                            with tik_inst.if_scope(
+                                    segment_index_last_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = (ids_offset_gm +
                                                    ids_index_front_part) * obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst,
-                                                              obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
                                 _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                     with tik_inst.if_scope(ids_mov_index_gm2ub == obj_int32_ids_input_scalar.mov_times_gm2ub - 1):
@@ -3030,31 +2709,23 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
                         ids_offset_ub = 0
                         ids_n_burst = 1
                         ids_burst_len = obj_int32_ids_input_scalar.last_burst_len
-                        _tik_mov_ids_gm2ub(tik_inst,
-                                           obj_gm_tensor.ids_gm,
-                                           obj_ub_tensor.ids_ub,
-                                           ids_offset_gm,
-                                           ids_offset_ub,
-                                           ids_n_burst,
-                                           ids_burst_len)
+                        _tik_mov_ids_gm2ub(tik_inst, obj_gm_tensor.ids_gm, obj_ub_tensor.ids_ub, ids_offset_gm,
+                                           ids_offset_ub, ids_n_burst, ids_burst_len)
                         with tik_inst.for_range(0, obj_int32_ids_input_scalar.ele_num_ub_last_part) as \
                                 ids_index_last_part:
                             # visit ids
                             id_val_scalar.set_as(obj_ub_tensor.ids_ub[ids_index_last_part])
-                            with tik_inst.if_scope(segment_index_last_core + block_index *
-                                                   obj_common_scalar.num_segments_front_core == id_val_scalar):
+                            with tik_inst.if_scope(
+                                    segment_index_last_core +
+                                    block_index * obj_common_scalar.num_segments_front_core == id_val_scalar):
                                 # id in segment
                                 input_offset_gm = (ids_offset_gm + ids_index_last_part) * \
                                                   obj_int32_e_num_input_scalar.e_num
                                 input_offset_ub = 0
                                 input_n_burst = 1
                                 input_burst_len = 1
-                                _tik_mov_input_gm2ub_continue(tik_inst,
-                                                              obj_gm_tensor.input_gm,
-                                                              obj_ub_tensor.input_ub,
-                                                              input_offset_gm,
-                                                              input_offset_ub,
-                                                              input_n_burst,
+                                _tik_mov_input_gm2ub_continue(tik_inst, obj_gm_tensor.input_gm, obj_ub_tensor.input_ub,
+                                                              input_offset_gm, input_offset_ub, input_n_burst,
                                                               input_burst_len)
                                 _tik_vadd(tik_inst, obj_ub_tensor.input_ub, mask_ub, 1, mask)
                 with tik_inst.for_range(0, obj_int32_e_num_input_scalar.e_num) as j:
@@ -3065,29 +2736,22 @@ def _tik_no_atomic_small_e_block_big_id(block_index,
             output_offset_ub = 0
             output_n_burst = 1
             output_burst_len = obj_int32_e_num_input_scalar.e_ub2gm_front_bust_len_small_e_last_core
-            _tik_mov_output_ub2gm_continue(tik_inst,
-                                           obj_gm_tensor.output_gm,
-                                           obj_ub_tensor.output_ub,
-                                           output_offset_gm,
-                                           output_offset_ub,
-                                           output_n_burst,
-                                           output_burst_len)
+            _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, obj_ub_tensor.output_ub, output_offset_gm,
+                                           output_offset_ub, output_n_burst, output_burst_len)
             with tik_inst.if_scope(align_scalar_last_core):
                 align_ub = tik_inst.Tensor(dtype, (ele_num_one_block,), name="align_ub", scope=tik.scope_ubuf)
                 output_offset_gm_one = output_offset_gm + output_burst_len * ele_num_one_block - align_scalar
                 with tik_inst.for_range(0, ele_num_one_block) as num_i:
-                    align_ub[num_i].set_as(
-                        obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block - align_scalar + num_i])
-                _tik_mov_output_ub2gm_continue(tik_inst,
-                                               obj_gm_tensor.output_gm,
-                                               align_ub,
-                                               output_offset_gm_one,
-                                               output_offset_ub,
-                                               output_n_burst,
-                                               1)
+                    align_ub[num_i].set_as(obj_ub_tensor.output_ub[output_burst_len * ele_num_one_block - align_scalar +
+                                                                   num_i])
+                _tik_mov_output_ub2gm_continue(tik_inst, obj_gm_tensor.output_gm, align_ub, output_offset_gm_one,
+                                               output_offset_ub, output_n_burst, 1)
 
 
-def unsorted_segment_sum_no_atomic(x_dict, segment_ids_dict, num_segments_dict, y_dict,
+def unsorted_segment_sum_no_atomic(x_dict,
+                                   segment_ids_dict,
+                                   num_segments_dict,
+                                   y_dict,
                                    kernel_name="UnsortedSegmentSum"):
     """
     unsorted_segment_sum_no_atomic entry interface
@@ -3108,7 +2772,10 @@ def unsorted_segment_sum_no_atomic(x_dict, segment_ids_dict, num_segments_dict, 
     obj = UnsortedSegmentSum(x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name)
     obj.unsorted_segment_sum()
     # add compile info
-    tbe_context.get_context().add_compile_info("vars",
-                                               {"ub_size": obj.ub_size, "core_num": obj.core_num,
-                                                "dtype": obj.obj_gm_tensor.input_gm.dtype,
-                                                "ub_tensor_num": obj.ub_tensor_num})
+    tbe_context.get_context().add_compile_info(
+        "vars", {
+            "ub_size": obj.ub_size,
+            "core_num": obj.core_num,
+            "dtype": obj.obj_gm_tensor.input_gm.dtype,
+            "ub_tensor_num": obj.ub_tensor_num
+        })

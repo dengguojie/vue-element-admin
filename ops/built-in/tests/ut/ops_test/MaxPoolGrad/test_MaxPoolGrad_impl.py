@@ -19,7 +19,23 @@ import math
 ut_case = OpUT("MaxPoolGrad", "impl.max_pool_grad",
                "max_pool_grad")
 
+from impl.max_pool_grad import op_select_format
 
+def test_op_select_format(test_arg):
+    x1={"shape":(1,10,10,16),"format":"NHWC","dtype":"float16","ori_shape":(1,10,10,16),"ori_format":"NHWC"}
+    x2={"shape":(1,10,10,16),"format":"NHWC","dtype":"float16","ori_shape":(1,10,10,16),"ori_format":"NHWC"}
+    grad={"shape":(1,10,10,16),"format":"NHWC","dtype":"float16","ori_shape":(1,10,10,16),"ori_format":"NHWC"}
+    y={"shape":(1,10,10,16),"format":"NHWC","dtype":"float16","ori_shape":(1,10,10,16),"ori_format":"NHWC"}
+    ksize=[1,2,2,1]
+    strides=[1,1,1,1]
+    padding="VALID"
+    data_format="NHWC"
+    x1_dy={"shape":(1,-1,-1,16),"format":"NHWC","dtype":"float16","ori_shape":(1,10,10,16),"ori_format":"NHWC"}
+    op_select_format(x1, x2, grad, y, ksize, strides,padding, data_format)
+    op_select_format(x1_dy, x2, grad, y, ksize, strides,padding, data_format)
+
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 def _shape_4d_2_5d(in_shape, format):
     if format == "NHWC":
         n, hi, wi, c = in_shape

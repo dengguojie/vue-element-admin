@@ -22,11 +22,74 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.util_select_op_base import gen_param
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
 # pylint: disable=too-few-public-methods,too-many-statements,too-many-branches,no-self-use
 # pylint: disable=too-many-instance-attributes,unused-argument,too-many-lines
 # pylint: disable=too-many-lines,too-many-locals,too-many-statements,unused-variable
+def op_select_format(x1, x2, grad, y, ksize, strides,
+                     padding, data_format="NHWC", kernel_name="maxpoolgrad"):
+    """
+    Operator output under dynamic shape only supports float32,
+    fixed shape output only supports float16 
+    """
+    x1_shape = list(x1.get("shape"))
+    x2_shape = list(x1.get("shape"))
+    grad_shape = list(x1.get("shape"))
+    dynamic = False
+    for i in range(len(x1_shape)):
+        if x1_shape[i] == -1 or x2_shape[i] == -1 or grad_shape[i] == -1:
+            dynamic = True
+            break
+    if dynamic:
+        x1_dtype = "float16"
+        x1_format = "NC1HWC0"
+        x1_dy_format = "NC1HWC0"
+        x2_dtype = "float16"
+        x2_format = "NC1HWC0"
+        x2_dy_format = "NC1HWC0"
+        grad_dtype = "float16"
+        grad_format = "NC1HWC0"
+        grad_dy_format = "NC1HWC0"
+        y_dtype = "float"
+        y_format = "NC1HWC0"
+        y_dy_format = "NC1HWC0"
+    else:
+        x1_dtype = "float16"
+        x1_format = "NC1HWC0"
+        x1_dy_format = None
+        x2_dtype = "float16"
+        x2_format = "NC1HWC0"
+        x2_dy_format = None
+        grad_dtype = "float16"
+        grad_format = "NC1HWC0"
+        grad_dy_format = None
+        y_dtype = "float16"
+        y_format = "NC1HWC0"
+        y_dy_format = None
+    input0 = gen_param(classify="input0", name="x1",
+                       datatype=x1_dtype,
+                       format=x1_format,
+                       unknownshape_format=x1_dy_format)
+    input1 = gen_param(classify="input1", name="x2",
+                       datatype=x2_dtype,
+                       format=x2_format,
+                       unknownshape_format=x2_dy_format)
+    input2 = gen_param(classify="input2", name="grad",
+                       datatype=grad_format,
+                       format=grad_dy_format,
+                       unknownshape_format=grad_dy_format)
+    output0 = gen_param(classify="output0", name="y",
+                        datatype=y_dtype,
+                        format=y_format,
+                        unknownshape_format=y_dy_format)
+
+    param_list = [input0, input1, input2, output0]
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
+    return param_dynamic_in_json
+
 def _ceil_div(num, divisor):
     """calcu use _ceil_div
 

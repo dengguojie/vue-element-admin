@@ -67,21 +67,28 @@ def check_supported(x, filter, bias, y, ksize, strides,
     True or False
     """
     ori_shape = y.get("ori_shape")
+    input_shape = x.get("ori_shape")
     if data_format == "NHWC":
         ksize_h = ksize[1]
         ksize_w = ksize[2]
         outputh = ori_shape[1]
         outputw = ori_shape[2]
+        input_h = input_shape[1]
+        input_w = input_shape[2]
     else:
         ksize_h = ksize[2]
         ksize_w = ksize[3]
         outputh = ori_shape[2]
         outputw = ori_shape[3]
+        input_h = input_shape[2]
+        input_w = input_shape[3]
     is_support_kernel = (ksize_h * ksize_w <= AVG_KERNEL_SIZE_H_MUL_W) or \
                         (ksize_h <= AVG_KERNEL_SIZE and ksize_w <= AVG_KERNEL_SIZE)
     if not is_support_kernel and outputh != 1 and outputw == 1:
         return False
     if not is_support_kernel and not (outputh == 1 and outputw == 1):
+        return False
+    if input_h == 1 and input_w > 100000:
         return False
     return True
 

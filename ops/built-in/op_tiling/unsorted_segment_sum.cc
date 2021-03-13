@@ -61,6 +61,7 @@ const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E = 5;
 const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_BIG_E = 6;
 const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MODIFY = 7;
 const int32_t SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI = 8;
+const int32_t SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE = 17;
 
 // int32 select key
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID = 9;
@@ -69,6 +70,8 @@ const int32_t SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID = 11;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID = 12;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_SMALLBLOCK = 13;
 const int32_t SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_SMALLBLOCK = 14;
+const int32_t SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE = 15;
+const int32_t SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN = 16;
 enum EleByte { FP16_BYTE = 2, FP32_BYTE = 4, INT32_BYTE = 4, INT8_BYTE = 1, UINT8_BYTE = 1 };
 
 struct TilingParamsFp32 {
@@ -198,6 +201,11 @@ struct TilingParamsInt32 {
   int32_t front_num_segment_last_lastcore;
   int32_t e_ub2gm_front_burst_len_input_scalar_lastcore;
   int32_t e_ub2gm_last_burst_len_input_scalar_lastcore;
+  int32_t repeat_times;
+  int32_t repeat_times_last_part;
+  int32_t repeat_times_last_part_lastcore;
+  int32_t e_mov_times_gm2ub_input_scalar_lastcore;
+  int32_t repeat_time_front_part_input_scalar_lastcore;
 };
 
 /******************COMMON_FUNCTION******************/
@@ -277,12 +285,12 @@ bool GetUssCompileParams(const std::string& op_type, const nlohmann::json& op_co
 }
 
 bool GetTilingMode(const std::vector<int64_t>& input_shape, const int32_t& e_size, const std::string& input_dtype,
-                   const int32_t& ub_tensor_ele_num, int32_t& select_key) {
+                   const int32_t& ub_tensor_ele_num, int32_t& select_key, int32_t& num_segments) {
   int input_dim = input_shape.size();
   if (input_shape.empty()) {
     return false;
   }
-  if (input_dtype == DTYPE_FP32) {
+  if (num_segments > 1) {
     if (input_dim == 1) {
       select_key = SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI;
     } else
@@ -305,61 +313,64 @@ bool GetTilingMode(const std::vector<int64_t>& input_shape, const int32_t& e_siz
           }
     }
     return true;
+  } else{
+    select_key = SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE;
+    return true;
   }
   return false;
 }
 
 bool GetTilingModeNoAtomic(const std::vector<int64_t>& input_shape, const int32_t& e_size, const int32_t& ids_size,
     const std::string& input_dtype, const std::string& ids_dtype, int32_t& ub_tensor_size,
-    int32_t& select_key, int32_t& e_once_num,int32_t& id_once_num, const int32_t& need_core,
-    const int32_t& output_ub_ele_num_one_row, int32_t& num_segment_max, int32_t& mask) {
-  int input_byte=0;
+    int32_t& ub_tensor_size_input, int32_t& select_key, int32_t& e_once_num,int32_t& id_once_num,
+    const int32_t& need_core, const int32_t& output_ub_ele_num_one_row, int32_t& num_segment_max,
+    int32_t& mask, const int32_t& all_size, int32_t& num_segments) {
+  int input_byte = 0;
   if (input_dtype  == DTYPE_FP16) {
       input_byte = 2;
   } else {
-      input_byte=4;
+      input_byte = 4;
   }
-  int32_t e_once_ubsize = (ub_tensor_size / (BYTE_BLOCK * 8)) * (BYTE_BLOCK * 8);
-  if (e_once_ubsize > 65280){
-      e_once_num = 255 * mask;
-  }else{
-      e_once_num = e_once_ubsize / input_byte;
-  }
+  int32_t e_once_ubsize = (ub_tensor_size_input / BYTE_FULL_MASK) * BYTE_FULL_MASK;
+  e_once_num = e_once_ubsize / input_byte;
   id_once_num = ((ub_tensor_size / BYTE_BLOCK) * BYTE_BLOCK) / INT32_BYTE;
-  num_segment_max =((ub_tensor_size / BYTE_BLOCK) * BYTE_BLOCK) / input_byte;
+  num_segment_max = ((ub_tensor_size / BYTE_BLOCK) * BYTE_BLOCK) / input_byte;
   num_segment_max = num_segment_max / e_size;
 
   if (input_shape.empty()) {
     OP_LOGD("input shape is empty");
     return false;
   }
-
-  if (e_size > e_once_num && ids_size > id_once_num) {
+  if(num_segments == 1){
+    select_key = SELECT_KEY_MODE_NO_ATOMIC_NUM_SEGMENT_ONE;
+    return true;
+  }else if (e_size > e_once_num && ids_size > id_once_num) {
       // e big id big
       select_key = SELECT_KEY_MODE_NO_ATOMIC_BIG_E_BIG_ID;
       return true;
   } else if(e_size > e_once_num && ids_size < id_once_num) {
    // e nig id small
-   select_key = SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID;
-   return true;
-    }else if(e_size < e_once_num && ids_size<id_once_num) {
+    select_key = SELECT_KEY_MODE_NO_ATOMIC_BIG_E_SMALL_ID;
+    return true;
+    }else if(e_size < e_once_num && ids_size < id_once_num) {
       // e small id small
     select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID;
-    if ( need_core > 1 && e_size < output_ub_ele_num_one_row ){
+    if (need_core > 1 && e_size < output_ub_ele_num_one_row){
       select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_SMALL_ID_SMALLBLOCK;
-      }
-  return true;
-    }else if( ids_size > id_once_num&&e_size < e_once_num ) {
+      } else if(e_size % output_ub_ele_num_one_row == 0 && all_size < e_once_num){
+      select_key = SELECT_KEY_MODE_NO_ATOMIC_ALL_IN_ALIGN;
+    }
+    return true;
+    }else if(ids_size > id_once_num && e_size < e_once_num) {
       // e small id big
       select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID;
-      if ( need_core > 1 && e_size < output_ub_ele_num_one_row){
+      if(need_core > 1 && e_size < output_ub_ele_num_one_row){
          select_key = SELECT_KEY_MODE_NO_ATOMIC_SMALL_E_BIG_ID_SMALLBLOCK;
       }
     return true;
     }
     return false;
 }
-
 
 bool GetEleDtype(const std::string& dtype, EleByte& elebyte) {
   if (dtype == "float32") {
@@ -381,28 +392,39 @@ bool GetEleDtype(const std::string& dtype, EleByte& elebyte) {
   return false;
 }
 
-bool IsUsingAllCore(const int32_t& ids_size, const int32_t& core_num, int32_t& need_core_num, int32_t& e_size) {
+bool IsUsingAllCore(const int32_t& ids_size, const int32_t& core_num, int32_t& need_core_num, int32_t& e_size,
+                    int32_t& num_segments) {
   int32_t ele_num = ids_size / core_num;
-  if (e_size>1){
-    if (ele_num >= 1) {
+  if(num_segments > 1){
+    if (e_size > 1){
+      if (ele_num >= 1) {
+        need_core_num = core_num;
+        return true;
+      }else{
+        need_core_num = ids_size;
+        return true;
+      }
+    }else{
+      if (ids_size <= 64 || ele_num <= 0){
+        need_core_num = 1;
+        return true;
+      }else{
+        if(ele_num >= 64){
+          need_core_num = core_num;
+          return true;
+        } else{
+          need_core_num = ids_size / 64;
+          return true;
+        }
+      }
+    }
+  }else{
+    if(ele_num >= 1){
       need_core_num = core_num;
       return true;
     }else{
       need_core_num = ids_size;
       return true;
-    }
-  }else{
-    if (ids_size <= 64 || ele_num < 0){
-      need_core_num = 1;
-      return true;
-    }else{
-      if(ele_num >= 64){
-        need_core_num = core_num;
-        return true;
-      } else{
-        need_core_num = ids_size / 64;
-        return true;
-      }
     }
   }
   need_core_num = 1;
@@ -412,20 +434,40 @@ bool IsUsingAllCore(const int32_t& ids_size, const int32_t& core_num, int32_t& n
 bool IsUsingAllCoreByNumSegments(const int32_t& num_segments, const int32_t& core_num,
     int32_t& need_core_num,int32_t& e_size, int32_t& output_ub_ele_num_one_row) {
   int32_t ele_num = num_segments / core_num;
-  if(e_size < output_ub_ele_num_one_row && ele_num < output_ub_ele_num_one_row ){
-      need_core_num=1;
+  if(num_segments == 1){
+    if(e_size <= output_ub_ele_num_one_row){
+      need_core_num = 1;
+      return true;
+    }else{
+      int32_t core_one = e_size / output_ub_ele_num_one_row;
+      if(core_one >= core_num){
+        need_core_num = core_num;
+        return true;
+      }else{
+        if(e_size % output_ub_ele_num_one_row == 0){
+          need_core_num = core_one;
+          return true;
+        }else{
+          need_core_num = core_one + 1;
+          return true;
+        }
+      }
+    }
+  }
+  if(e_size < output_ub_ele_num_one_row && ele_num < output_ub_ele_num_one_row){
+      need_core_num = 1;
       return true;
     }
-  if(e_size > output_ub_ele_num_one_row) {
-    if(ele_num>1){
-      need_core_num=core_num;
+  if(e_size >= output_ub_ele_num_one_row) {
+    if(ele_num >= 1){
+      need_core_num = core_num;
     }else {
-      need_core_num=num_segments;
+      need_core_num = num_segments;
     }
       return true;
     }
-  if(e_size < output_ub_ele_num_one_row && ele_num >= output_ub_ele_num_one_row ) {
-    need_core_num=core_num;
+  if(e_size < output_ub_ele_num_one_row && ele_num >= output_ub_ele_num_one_row) {
+    need_core_num = core_num;
     return true;
     }
   need_core_num = 1;
@@ -433,21 +475,72 @@ bool IsUsingAllCoreByNumSegments(const int32_t& num_segments, const int32_t& cor
 }
 
 void ComputeUbTensorSizeNoAtomic(const int32_t& ub_size, const std::vector<int64_t>& input_shape,
-    const std::string& input_dtype, const int32_t& e_size, int32_t& ub_tensor_size,
-    const int32_t& output_ub_ele_num_one_row, const int32_t & need_core_num, int32_t& mask) {
-  if(need_core_num > 1 && e_size < output_ub_ele_num_one_row){
+    const std::string& input_dtype, const int32_t& e_size, int32_t& ub_tensor_size_id,int32_t& ub_tensor_size_input,
+    int32_t& ub_tensor_size_output, const int32_t& output_ub_ele_num_one_row,
+    const int32_t & need_core_num, int32_t& mask, int32_t num_segments) {
+  int32_t input_ele_byte = (input_dtype == DTYPE_FP16)? 2 : 4;
+  if(num_segments == 1){
+    ub_tensor_size_id = ub_size / 2;
+    ub_tensor_size_input = ub_tensor_size_id;
+    ub_tensor_size_output = ub_tensor_size_id;
+  }else if(need_core_num > 1 && e_size < output_ub_ele_num_one_row){
     int32_t ub_tensor_num = 2;
-    int32_t input_ele_byte = (input_dtype == DTYPE_FP16)? 2 : 4;
-    int32_t input0_ub_tensor_size = mask * input_ele_byte;
-    ub_tensor_size = (ub_size - input0_ub_tensor_size) / ub_tensor_num;
+    ub_tensor_size_input = mask * input_ele_byte;
+    ub_tensor_size_id = (ub_size - ub_tensor_size_input) / ub_tensor_num;
+    ub_tensor_size_output = ub_tensor_size_id;
+  }else{
+  ub_tensor_size_input = 16000 * input_ele_byte;
+  ub_tensor_size_output = ub_tensor_size_input;
+  ub_tensor_size_id = ub_size - 2 * ub_tensor_size_input;
   }
-  int32_t ub_tensor_num = UB_TENSOR_NUM_FP32_INPUT_LAST_AXIS_NOT_ALIGN;
-  ub_tensor_size = ub_size / ub_tensor_num;
 }
 
+void NumSegmentOne(int32_t& e_mov_times_gm2ub_input_scalar,int32_t& max_ele_num_one_ub_tensor,
+    int32_t& e_num_front_part_input_scalar, int32_t& e_ub2gm_front_burst_len_input_scalar,
+    int32_t& repeat_times,int32_t& repeat_time_front_part_input_scalar,int32_t& e_num_last_part_input_scalar,
+    int32_t& e_ub2gm_last_burst_len_input_scalar,int32_t& repeat_times_last_part, int32_t& mask,
+    const EleByte& ele_byte, int32_t& num_segments_front_core_input_scalar,int32_t& repeat_time_last_part_input_scalar){
+  if(e_mov_times_gm2ub_input_scalar > 1){
+    e_num_front_part_input_scalar = max_ele_num_one_ub_tensor;
+    e_ub2gm_front_burst_len_input_scalar = UssCeilDiv(e_num_front_part_input_scalar * ele_byte, BYTE_BLOCK);
+    repeat_times = UssCeilDiv(e_num_front_part_input_scalar,mask * 255);
+
+    repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar -
+    (repeat_times - 1) * mask * 255, mask);
+
+    e_num_last_part_input_scalar = ComputeDivRemainders(num_segments_front_core_input_scalar,
+    e_num_front_part_input_scalar, e_mov_times_gm2ub_input_scalar - 1);
+    e_ub2gm_last_burst_len_input_scalar = UssCeilDiv(e_num_last_part_input_scalar * ele_byte, BYTE_BLOCK);
+
+    repeat_times_last_part = UssCeilDiv(e_num_last_part_input_scalar, mask * 255);
+    if(repeat_times_last_part > 1){
+      repeat_time_last_part_input_scalar = UssCeilDiv(e_num_last_part_input_scalar -
+      (repeat_times_last_part - 1) * mask * 255, mask);
+    }else{
+      repeat_time_last_part_input_scalar = UssCeilDiv(e_num_last_part_input_scalar, mask);
+    }
+  }else{
+    e_num_front_part_input_scalar = num_segments_front_core_input_scalar;
+
+    e_ub2gm_front_burst_len_input_scalar = UssCeilDiv(e_num_front_part_input_scalar * ele_byte, BYTE_BLOCK);
+    repeat_times = UssCeilDiv(e_num_front_part_input_scalar, mask * 255);
+    if(repeat_times > 1){
+
+      repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar -
+      (repeat_times - 1) * mask * 255, mask);
+    }else{
+      repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar, mask);
+    }
+    repeat_time_last_part_input_scalar = repeat_time_front_part_input_scalar;
+    e_num_last_part_input_scalar = e_num_front_part_input_scalar;
+    e_ub2gm_last_burst_len_input_scalar = e_ub2gm_front_burst_len_input_scalar;
+    repeat_times_last_part = repeat_times;
+  }
+}
 void ComputeUbTensorSize(const int32_t& ub_size, const std::vector<int64_t>& input_shape,
-                         const std::string& input_dtype,int32_t& e_size,int32_t& ub_tensor_size) {
-  if (input_dtype == DTYPE_FP32) {
+                         const std::string& input_dtype, int32_t& e_size,
+                         int32_t& ub_tensor_size, int32_t& num_segments) {
+  if(num_segments > 1){
     if (e_size == 1) {
       // input is one dim or last axis is one
       int32_t one_row_size = FP32_BYTE + INT32_BYTE + FP32_BYTE * FP32_ELE_NUM_ALIGN_32B;
@@ -464,27 +557,34 @@ void ComputeUbTensorSize(const int32_t& ub_size, const std::vector<int64_t>& inp
           ub_tensor_size = ((ub_size / ub_tensor_num) / BYTE_BLOCK) * BYTE_BLOCK;
         }
       }
-    }
+  } else{
+    ub_tensor_size = ub_size / BYTE_BLOCK * BYTE_BLOCK;
+  }
 }
 
 /******************MODE_FP32_INPUT_LAST_AXIS_ALIGN******************/
 void ComputeEleNumOneCore(const int32_t& min_ele_num, const int32_t& ids_num, const int32_t& core_num,
                           const int32_t& e_size, int32_t& ids_ele_num_front_core, int32_t& ids_ele_num_last_core,
-                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core) {
+                          int32_t& input_ele_num_front_core, int32_t& input_ele_num_last_core, int32_t& num_segments) {
   int32_t ids_num_align = UssCeil(ids_num, min_ele_num);
-  if (e_size == 1) {
-    ids_ele_num_front_core = ids_num_align / core_num;
-    ids_ele_num_front_core = ids_ele_num_front_core / MASK_FP32 * MASK_FP32;
-    ids_ele_num_last_core = ComputeDivRemainders(ids_num, ids_ele_num_front_core, core_num - 1);
-    input_ele_num_front_core = ids_ele_num_front_core;
-    input_ele_num_last_core = ids_ele_num_last_core;
-    return;
-  }
-  ids_ele_num_front_core = ids_num / core_num;
+  if(num_segments > 1){
+    if (e_size == 1) {
+      ids_ele_num_front_core = ids_num_align / core_num;
+      ids_ele_num_front_core = ids_ele_num_front_core / MASK_FP32 * MASK_FP32;
+      ids_ele_num_last_core = ComputeDivRemainders(ids_num, ids_ele_num_front_core, core_num - 1);
+      input_ele_num_front_core = ids_ele_num_front_core;
+      input_ele_num_last_core = ids_ele_num_last_core;
+      return;
+    }
+    ids_ele_num_front_core = ids_num / core_num;
 
-  ids_ele_num_last_core = ComputeDivRemainders(ids_num, ids_ele_num_front_core, core_num - 1);
-  input_ele_num_front_core = ids_ele_num_front_core * e_size;
-  input_ele_num_last_core = ids_ele_num_last_core * e_size;
+    ids_ele_num_last_core = ComputeDivRemainders(ids_num, ids_ele_num_front_core, core_num - 1);
+    input_ele_num_front_core = ids_ele_num_front_core * e_size;
+    input_ele_num_last_core = ids_ele_num_last_core * e_size;
+  }else{
+    ids_ele_num_front_core = ids_num / core_num;
+    ids_ele_num_last_core = ComputeDivRemainders(ids_num, ids_ele_num_front_core, core_num - 1);
+  }
 }
 
 void ComputeInputParamsMovGm2ub(const int32_t& ub_tensor_size, const EleByte& input_ele_byte,
@@ -607,13 +707,26 @@ void ComputeInitOutputUbParams(const int32_t& ids_ele_num, const int32_t& output
 }
 
 void ComputeNumSegmentsParams(const int32_t& need_core_num, const int32_t& num_segmens, int32_t& num_segmens_front_core,
-                              int32_t& num_segmens_last_core,const int32_t& e_size,int32_t& output_ub_ele_num_one_row) {
-  if (need_core_num == 1) {
+                              int32_t& num_segmens_last_core, const int32_t& e_size,
+                              int32_t& output_ub_ele_num_one_row) {
+  if (need_core_num == 1 && num_segmens > 1) {
     num_segmens_front_core = num_segmens;
     num_segmens_last_core = num_segmens_front_core;
-  } else if (need_core_num > 1) {
+  } else if (need_core_num > 1 && num_segmens > 1) {
     num_segmens_front_core = UssCeilDivNoAtomic(num_segmens, need_core_num,e_size,output_ub_ele_num_one_row);
     num_segmens_last_core = ComputeDivRemainders(num_segmens, num_segmens_front_core, need_core_num - 1);
+  }else if (num_segmens == 1){
+    if(e_size < output_ub_ele_num_one_row){
+      num_segmens_front_core = e_size;
+      num_segmens_last_core = e_size;
+    }else{
+      if(e_size / need_core_num > output_ub_ele_num_one_row){
+        num_segmens_front_core = e_size / need_core_num / output_ub_ele_num_one_row * output_ub_ele_num_one_row;
+      }else{
+        num_segmens_front_core = output_ub_ele_num_one_row;
+      }
+      num_segmens_last_core = e_size - (num_segmens_front_core * (need_core_num - 1));
+    }
   }
 }
 
@@ -627,18 +740,21 @@ void ComputeENumParams(const std::string& input_dytpe,const int32_t& e_num, cons
     int32_t& need_core, int32_t& num_segment_max, int32_t& num_segment_max_time,
     int32_t& num_segment_max_time_lastcore, int32_t&front_num_segment, int32_t& front_num_segment_last,
     int32_t&front_num_segment_lastcore, int32_t&front_num_segment_last_lastcore,
-    int32_t& e_ub2gm_front_burst_len_input_scalar_lastcore, int32_t& e_ub2gm_last_burst_len_input_scalar_lastcore) {
+    int32_t& e_ub2gm_front_burst_len_input_scalar_lastcore, int32_t& e_ub2gm_last_burst_len_input_scalar_lastcore,
+    const int32_t& all_size, int32_t& num_segments, int32_t& repeat_times, int32_t& repeat_times_last_part,
+    int32_t& repeat_times_last_part_lastcore, int32_t& e_mov_times_gm2ub_input_scalar_lastcore,
+    int32_t& repeat_time_front_part_input_scalar_lastcore) {
   int32_t max_ele_num_one_ub_tensor = e_once_num;
   int32_t mask = (input_dytpe == DTYPE_INT32) ? MASK_INT32 : MASK_FP16;
   int32_t byte = (input_dytpe == DTYPE_INT32) ? INT32_BLOCK_NUM : FP16_BLOCK_NUM;
   int32_t count = e_num * num_segments_front_core_input_scalar;
   int32_t lastcore_count = e_num * num_segments_last_core_input_scalar;
-  if (e_num % byte==0 && e_num > byte ) {
-    align_scalar=0;
-  }else if(e_num % byte!=0 && e_num > byte) {
+  if (e_num % byte == 0 && e_num > byte ) {
+    align_scalar = 0;
+  }else if(e_num % byte != 0 && e_num > byte) {
     align_scalar = byte - (e_num - (e_num / byte) * byte);
   }
-  if (e_num >= max_ele_num_one_ub_tensor) {
+  if (e_num >= max_ele_num_one_ub_tensor && num_segments > 1) {
     e_mov_times_gm2ub_input_scalar = UssCeilDiv(e_num, max_ele_num_one_ub_tensor);
     int32_t last = ComputeDivRemainders(e_num, max_ele_num_one_ub_tensor, e_mov_times_gm2ub_input_scalar - 1);
     if (last < byte){
@@ -647,7 +763,7 @@ void ComputeENumParams(const std::string& input_dytpe,const int32_t& e_num, cons
     }
     // front part
     e_gm2ub_front_burst_len_input_scalar = UssCeilDiv(max_ele_num_one_ub_tensor * ele_byte, BYTE_BLOCK);
-    e_ub2gm_front_burst_len_input_scalar=max_ele_num_one_ub_tensor * ele_byte / BYTE_BLOCK;
+    e_ub2gm_front_burst_len_input_scalar = max_ele_num_one_ub_tensor * ele_byte / BYTE_BLOCK;
     e_num_front_part_input_scalar = max_ele_num_one_ub_tensor;
     repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar, mask);
     // last part
@@ -656,9 +772,9 @@ void ComputeENumParams(const std::string& input_dytpe,const int32_t& e_num, cons
     e_gm2ub_last_burst_len_input_scalar = UssCeilDiv(e_num_last_part_input_scalar * ele_byte, BYTE_BLOCK);
     repeat_time_last_part_input_scalar = UssCeilDiv(e_num_last_part_input_scalar, mask);
     e_ub2gm_last_burst_len_input_scalar=e_num_last_part_input_scalar * ele_byte / BYTE_BLOCK;
-  } else {
+  } else if(num_segments > 1 && e_num < max_ele_num_one_ub_tensor) {
     e_mov_times_gm2ub_input_scalar = 1;
-    if(e_num > byte || need_core == 1) {
+    if(e_num >= byte || need_core == 1) {
       e_ub2gm_front_burst_len_input_scalar = e_num * ele_byte / BYTE_BLOCK;
       if(need_core == 1 && e_num * ele_byte % BYTE_BLOCK != 0){
           e_ub2gm_front_burst_len_input_scalar = e_ub2gm_front_burst_len_input_scalar + 1;
@@ -671,15 +787,20 @@ void ComputeENumParams(const std::string& input_dytpe,const int32_t& e_num, cons
       repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar, mask);
       // last part
       e_num_last_part_input_scalar = e_num;
-      e_ub2gm_last_burst_len_input_scalar =e_ub2gm_front_burst_len_input_scalar;
-      e_gm2ub_last_burst_len_input_scalar=e_gm2ub_front_burst_len_input_scalar;
-      repeat_time_last_part_input_scalar = repeat_time_front_part_input_scalar;} else {
-      if(num_segments_front_core_input_scalar < num_segment_max) {
+      e_ub2gm_last_burst_len_input_scalar = e_ub2gm_front_burst_len_input_scalar;
+      e_gm2ub_last_burst_len_input_scalar = e_gm2ub_front_burst_len_input_scalar;
+      if(e_num % byte == 0 && all_size <= max_ele_num_one_ub_tensor){
+        e_gm2ub_front_burst_len_input_scalar = UssCeilDiv(all_size * ele_byte, BYTE_BLOCK);
+        e_gm2ub_last_burst_len_input_scalar = e_gm2ub_front_burst_len_input_scalar;
+      }
+      repeat_time_last_part_input_scalar = repeat_time_front_part_input_scalar;
+    } else {
+      if(num_segments_front_core_input_scalar <= num_segment_max) {
           num_segment_max_time = 1;
           e_ub2gm_front_burst_len_input_scalar = count * ele_byte / BYTE_BLOCK;
           if(e_ub2gm_front_burst_len_input_scalar < 1) {
               e_ub2gm_front_burst_len_input_scalar = 1;
-	      }
+          }
         front_num_segment = num_segments_front_core_input_scalar;
         front_num_segment_last = num_segments_front_core_input_scalar;
         e_gm2ub_front_burst_len_input_scalar = 1;
@@ -764,6 +885,22 @@ void ComputeENumParams(const std::string& input_dytpe,const int32_t& e_num, cons
       repeat_time_last_part_input_scalar = 1;
       }
     }
+  }else if(num_segments == 1){
+      e_mov_times_gm2ub_input_scalar = UssCeilDiv(num_segments_front_core_input_scalar, max_ele_num_one_ub_tensor);
+      e_mov_times_gm2ub_input_scalar_lastcore = UssCeilDiv(num_segments_last_core_input_scalar,
+      max_ele_num_one_ub_tensor);
+      //front core
+      NumSegmentOne(e_mov_times_gm2ub_input_scalar, max_ele_num_one_ub_tensor, e_num_front_part_input_scalar,
+                    e_ub2gm_front_burst_len_input_scalar, repeat_times,
+                    repeat_time_front_part_input_scalar, e_num_last_part_input_scalar,
+                    e_ub2gm_last_burst_len_input_scalar, repeat_times_last_part, mask, ele_byte,
+                    num_segments_front_core_input_scalar, repeat_time_last_part_input_scalar);
+      //last core
+      NumSegmentOne(e_mov_times_gm2ub_input_scalar_lastcore, max_ele_num_one_ub_tensor, e_num_front_part_input_scalar,
+                    e_ub2gm_front_burst_len_input_scalar_lastcore,
+                    repeat_times, repeat_time_front_part_input_scalar, e_num_last_part_input_scalar,
+                    e_ub2gm_last_burst_len_input_scalar_lastcore, repeat_times_last_part_lastcore, mask, ele_byte,
+                    num_segments_last_core_input_scalar, repeat_time_front_part_input_scalar_lastcore);
   }
 }
 
@@ -881,18 +1018,24 @@ void InitTilingParams(TilingParamsInt32& params) {
   params.e_num_last_part_input_scalar = 0;
   params.repeat_time_last_part_input_scalar = 0;
   params.align_scalar = 0;
-  params.align_scalar_lastcore=0;
+  params.align_scalar_lastcore = 0;
   params.e_gm2ub_front_burst_len_input_scalar = 0;
   params.e_gm2ub_last_burst_len_input_scalar = 0;
-  params.num_segment_max=0;
-  params.num_segment_max_time=0;
-  params.num_segment_max_time_lastcore=0;
-  params.front_num_segment=0;
-  params.front_num_segment_last=0;
-  params.front_num_segment_lastcore=0;
-  params.front_num_segment_last_lastcore=0;
-  params.e_ub2gm_front_burst_len_input_scalar_lastcore=0;
-  params.e_ub2gm_last_burst_len_input_scalar_lastcore=0;
+  params.num_segment_max = 0;
+  params.num_segment_max_time = 0;
+  params.num_segment_max_time_lastcore = 0;
+  params.front_num_segment = 0;
+  params.front_num_segment_last = 0;
+  params.front_num_segment_lastcore = 0;
+  params.front_num_segment_last_lastcore = 0;
+  params.e_ub2gm_front_burst_len_input_scalar_lastcore = 0;
+  params.e_ub2gm_last_burst_len_input_scalar_lastcore = 0;
+  params.repeat_times = 0;
+  params.repeat_times_last_part = 0;
+  params.repeat_times_last_part_lastcore = 0;
+  params.e_mov_times_gm2ub_input_scalar_lastcore = 0;
+  params.repeat_time_front_part_input_scalar_lastcore = 0;
+
 }
 
 void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
@@ -973,13 +1116,17 @@ void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.input_last_axis_align_floor_ele_num_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.last_part_vadd_mask_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.e_gm2ub_last_burst_len_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data,
+  params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data,
+  params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data,
+  params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+  ByteBufferPut(run_info.tiling_data,
+  params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
 
 }
@@ -1021,6 +1168,11 @@ void WriteTilingParams(const TilingParamsInt32& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.front_num_segment_last_lastcore);
   ByteBufferPut(run_info.tiling_data, params.e_ub2gm_front_burst_len_input_scalar_lastcore);
   ByteBufferPut(run_info.tiling_data, params.e_ub2gm_last_burst_len_input_scalar_lastcore);
+  ByteBufferPut(run_info.tiling_data, params.repeat_times);
+  ByteBufferPut(run_info.tiling_data, params.repeat_times_last_part);
+  ByteBufferPut(run_info.tiling_data, params.repeat_times_last_part_lastcore);
+  ByteBufferPut(run_info.tiling_data, params.e_mov_times_gm2ub_input_scalar_lastcore);
+  ByteBufferPut(run_info.tiling_data, params.repeat_time_front_part_input_scalar_lastcore);
 }
 
 void PrintTilingParams(const std::string& op_type, const TilingParamsFp32& params) {
@@ -1144,20 +1296,20 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsFp32& param
   GELOGD("op [%s] : params.e_gm2ub_last_burst_len_input_scalar=%d", op_type.c_str(),
   params.e_gm2ub_last_burst_len_input_scalar);
   
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar=%d",
+  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_front_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_front_core_input_scalar=%d", op_type.c_str(),
   params.output_ub_init_last_row_times_front_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar=%d",
+  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_front_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_front_core_input_scalar=%d", op_type.c_str(),
   params.output_ub_init_last_row_times_last_part_front_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar=%d",
+  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_front_part_last_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_front_part_last_core_input_scalar=%d", op_type.c_str(),
   params.output_ub_init_last_row_times_front_part_last_core_input_scalar);
-  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d", op_type.c_str(),
-  params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
+  GELOGD("op [%s] : params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar=%d",
+  op_type.c_str(), params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
   GELOGD("op [%s] : params.output_ub_init_last_row_times_last_part_last_core_input_scalar=%d", op_type.c_str(),
   params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
 }
@@ -1218,6 +1370,14 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& para
   params.e_ub2gm_front_burst_len_input_scalar_lastcore);
   GELOGD("op [%s] : params.e_ub2gm_last_burst_len_input_scalar_lastcore=%d", op_type.c_str(),
   params.e_ub2gm_last_burst_len_input_scalar_lastcore);
+  GELOGD("op [%s] : params.repeat_times=%d", op_type.c_str(), params.repeat_times);
+  GELOGD("op [%s] : params.repeat_times_last_part=%d", op_type.c_str(), params.repeat_times_last_part);
+  GELOGD("op [%s] : params.repeat_times_last_part_lastcore=%d", op_type.c_str(),
+  params.repeat_times_last_part_lastcore);
+  GELOGD("op [%s] : params.e_mov_times_gm2ub_input_scalar_lastcore=%d", op_type.c_str(),
+  params.e_mov_times_gm2ub_input_scalar_lastcore);
+  GELOGD("op [%s] : params.repeat_time_front_part_input_scalar_lastcore=%d", op_type.c_str(),
+  params.repeat_time_front_part_input_scalar_lastcore);
 
 }
 
@@ -1269,7 +1429,7 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
   GELOGD("op[%s] e_size is %d",op_type.c_str(), e_size);
   const std::string& input_dtype = op_paras.inputs[0].tensor[0].dtype;
   const std::string& ids_dtype = op_paras.inputs[1].tensor[0].dtype;
-  bool flag;
+  bool flag = false;
   // get input dtype
   EleByte input_ele_byte;
   flag = GetEleDtype(input_dtype, input_ele_byte);
@@ -1299,12 +1459,21 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     OP_LOGE("op[%s] GetCompileParams failed.", op_type.c_str());
     return false;
   }
-
+  std::string key_num_segments = "num_segments";
+  if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
+    ge::OpsOneInputShapeErrReport("UnsortedSegmentSum", "num_segments", "num_segments not exists.");
+    OP_LOGE("op[%s] num_segments not exists.", op_type.c_str());
+    return false;
+  }
+  const int32_t* num_segments_ptr =
+  reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at(key_num_segments)));
+  int32_t num_segments = *num_segments_ptr;
+  GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
 
   if (input_dtype == DTYPE_FP32) {
     int32_t ub_tensor_size = 0;
-    ComputeUbTensorSize(ub_size, input_shape, input_dtype, e_size, ub_tensor_size);
-    if (e_size == 1 ) {
+    ComputeUbTensorSize(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, num_segments);
+    if (e_size == 1) {
       ub_tensor_size = ub_tensor_size / BYTE_FULL_MASK * BYTE_FULL_MASK;
     }
     GELOGD("op [%s] : ub_tensor_size=%d", op_type.c_str(), ub_tensor_size);
@@ -1313,7 +1482,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     TilingParamsFp32 params;
     InitTilingParams(params);
     // select key
-    flag = GetTilingMode(input_shape, e_size, input_dtype, ub_tensor_ele_num, params.select_key_input_scalar);
+    flag = GetTilingMode(input_shape, e_size, input_dtype, ub_tensor_ele_num, params.select_key_input_scalar,
+                         num_segments);
     if (!flag) {
       ge::OpsOneInputShapeErrReport("UnsortedSegmentSum", "tiling_mode", "GetTilingMode failed.");
       OP_LOGE("op[%s] GetTilingMode failed.", op_type.c_str());
@@ -1324,10 +1494,11 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     params.ids_size_input_scalar = ids_size;
     int32_t ids_min_ele_num = BYTE_BLOCK / ids_ele_byte;
     // is using all core
-    flag = IsUsingAllCore(ids_size, core_num, params.need_core_num_input_scalar, e_size);
+    flag = IsUsingAllCore(ids_size, core_num, params.need_core_num_input_scalar, e_size, num_segments);
     ComputeEleNumOneCore(ids_min_ele_num, ids_size, params.need_core_num_input_scalar, e_size,
                          params.ids_ele_num_front_core_input_scalar, params.ids_ele_num_last_core_input_scalar,
-                         params.input_ele_num_front_core_input_scalar, params.input_ele_num_last_core_input_scalar);
+                         params.input_ele_num_front_core_input_scalar, params.input_ele_num_last_core_input_scalar,
+                         num_segments);
     // ids params front core
     ComputeIdsParamsMovGm2ub(
         params.ids_ele_num_front_core_input_scalar, ub_tensor_size, ids_ele_byte,
@@ -1545,7 +1716,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     } else if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E) {
       ComputeEleNumOneCore(ids_min_ele_num, ids_size, params.need_core_num_input_scalar, e_size,
                            params.ids_ele_num_front_core_input_scalar, params.ids_ele_num_last_core_input_scalar,
-                           params.input_ele_num_front_core_input_scalar, params.input_ele_num_last_core_input_scalar);
+                           params.input_ele_num_front_core_input_scalar, params.input_ele_num_last_core_input_scalar,
+                           num_segments);
       // ids params front core
       ComputeIdsParamsMovGm2ub(
           params.ids_ele_num_front_core_input_scalar, ub_tensor_size, ids_ele_byte,
@@ -1564,7 +1736,8 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
       params.e_ub2gm_front_burst_len_input_scalar = ub_tensor_size / BYTE_BLOCK;
       params.e_num_front_part_input_scalar = ub_tensor_ele_num;
       params.e_num_last_part_input_scalar =
-          ComputeDivRemainders(e_size, params.e_num_front_part_input_scalar, params.e_mov_times_gm2ub_input_scalar - 1);
+          ComputeDivRemainders(e_size, params.e_num_front_part_input_scalar,
+                               params.e_mov_times_gm2ub_input_scalar - 1);
       params.e_ub2gm_last_burst_len_input_scalar = params.e_num_last_part_input_scalar * input_ele_byte / BYTE_BLOCK;
 
       // input data params
@@ -1720,22 +1893,19 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
           params.ids_ele_num_ub_front_part_front_core_input_scalar / (MASK_FP32 * MULTI);
       params.output_ub_init_last_repeat_time_front_part_front_core_input_scalar =
           ComputeDivRemainders(params.ids_ele_num_ub_front_part_front_core_input_scalar, MASK_FP32 * MULTI,
-                               params.output_ub_init_times_front_part_front_core_input_scalar) /
-          MASK_FP32;
+                               params.output_ub_init_times_front_part_front_core_input_scalar) / MASK_FP32;
       // last part front core
       params.output_ub_init_times_last_part_front_core_input_scalar =
           params.ids_ele_num_ub_last_part_front_core_input_scalar / (MASK_FP32 * MULTI);
       params.output_ub_init_last_repeat_time_last_part_front_core_input_scalar =
           ComputeDivRemainders(params.ids_ele_num_ub_last_part_front_core_input_scalar, MASK_FP32 * MULTI,
-                               params.output_ub_init_times_last_part_front_core_input_scalar) /
-          MASK_FP32;
+                               params.output_ub_init_times_last_part_front_core_input_scalar) / MASK_FP32;
       // front part last core
       params.output_ub_init_times_front_part_last_core_input_scalar =
           params.ids_ele_num_ub_front_part_last_core_input_scalar / (MASK_FP32 * MULTI);
       params.output_ub_init_last_repeat_time_front_part_last_core_input_scalar =
           ComputeDivRemainders(params.ids_ele_num_ub_front_part_last_core_input_scalar, MASK_FP32 * MULTI,
-                               params.output_ub_init_times_front_part_last_core_input_scalar) /
-          MASK_FP32;
+                               params.output_ub_init_times_front_part_last_core_input_scalar) / MASK_FP32;
       // last part last core
       // multi 64 part
       params.output_ub_init_times_last_part_last_core_input_scalar =
@@ -1743,14 +1913,21 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
       // single 64 part
       params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar =
           ComputeDivRemainders(params.ids_ele_num_ub_last_part_last_core_input_scalar, MASK_FP32 * MULTI,
-                               params.output_ub_init_times_last_part_last_core_input_scalar) /
-          MASK_FP32;
+                               params.output_ub_init_times_last_part_last_core_input_scalar) / MASK_FP32;
       // last mask part
       params.last_part_vadd_mask_input_scalar =
           ComputeDivRemainders(params.ids_ele_num_ub_last_part_last_core_input_scalar, MASK_FP32 * MULTI,
                                params.output_ub_init_times_last_part_last_core_input_scalar) -
           params.output_ub_init_last_repeat_time_last_part_last_core_input_scalar * MASK_FP32;
-    }
+    }else if (params.select_key_input_scalar == SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE){
+        params.e_mov_times_gm2ub_input_scalar = UssCeilDiv(e_size, ub_tensor_ele_num);
+        params.e_ub2gm_front_burst_len_input_scalar = ub_tensor_size / BYTE_BLOCK;
+        params.e_num_front_part_input_scalar = ub_tensor_ele_num;
+        params.e_num_last_part_input_scalar =
+        ComputeDivRemainders(e_size, params.e_num_front_part_input_scalar, params.e_mov_times_gm2ub_input_scalar - 1);
+        params.e_ub2gm_last_burst_len_input_scalar = UssCeilDiv(params.e_num_last_part_input_scalar * input_ele_byte,
+        BYTE_BLOCK);
+        }
     // write tiling params to run_info
     WriteTilingParams(params, run_info);
     // cout tiling params
@@ -1761,16 +1938,6 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     std::vector<int64_t> workspace;
     run_info.workspaces = workspace;
   } else if (input_dtype == DTYPE_INT32 || input_dtype == DTYPE_FP16) {
-    std::string key_num_segments = "num_segments";
-    if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
-      ge::OpsOneInputShapeErrReport("UnsortedSegmentSum", "num_segments", "num_segments not exists.");
-      OP_LOGE("op[%s] num_segments not exists.", op_type.c_str());
-      return false;
-    }
-    const int32_t* num_segments_ptr =
-        reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at(key_num_segments)));
-    int32_t num_segments = *num_segments_ptr;
-    GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
     // int32 tiling params
     TilingParamsInt32 params;
     InitTilingParams(params);
@@ -1788,12 +1955,17 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     IsUsingAllCoreByNumSegments(num_segments, core_num, params.need_core_num_input_scalar,
                                 e_size, output_ub_ele_num_one_row);
     int32_t ub_tensor_size = 0;
-    ComputeUbTensorSizeNoAtomic(ub_size, input_shape, input_dtype, e_size, ub_tensor_size,
-                                output_ub_ele_num_one_row, params.need_core_num_input_scalar, mask);
-    GELOGD("op [%s] : ub_tensor_size=%d", op_type.c_str(), ub_tensor_size);
-    bool flag = GetTilingModeNoAtomic(input_shape,e_size,ids_size, input_dtype, ids_dtype, ub_tensor_size,
-                                      params.select_key_input_scalar,
-    e_once_num, id_once_num, params.need_core_num_input_scalar, output_ub_ele_num_one_row, params.num_segment_max, mask);
+    int32_t ub_tensor_size_input = 0;
+    int32_t ub_tensor_size_output = 0;
+    ComputeUbTensorSizeNoAtomic(ub_size, input_shape, input_dtype, e_size, ub_tensor_size, ub_tensor_size_input,
+                                ub_tensor_size_output, output_ub_ele_num_one_row,
+                                params.need_core_num_input_scalar, mask, num_segments);
+    GELOGD("op [%s] : ub_tensor_size_id is=%d,ub_tensor_size_input is %d,ub_tensor_size_output is %d",
+    op_type.c_str(), ub_tensor_size, ub_tensor_size_input, ub_tensor_size_output);
+
+    bool flag = GetTilingModeNoAtomic(input_shape, e_size, ids_size, input_dtype, ids_dtype, ub_tensor_size,
+    ub_tensor_size_input, params.select_key_input_scalar, e_once_num, id_once_num, params.need_core_num_input_scalar,
+    output_ub_ele_num_one_row, params.num_segment_max, mask, input_size, num_segments);
     GELOGD("op[%s]:e_once_num is %d ,id_once_num is %d ,params.num_segment_max is %d", op_type.c_str(), e_once_num,
         id_once_num, params.num_segment_max);
     if (!flag) {
@@ -1813,7 +1985,6 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
                              params.ids_ele_num_ub_last_part_input_scalar);
     // e num params
     params.e_num_input_scalar = e_size;
-
     ComputeENumParams(input_dtype,params.e_num_input_scalar, input_ele_byte, e_once_num,
         params.e_mov_times_gm2ub_input_scalar, params.e_ub2gm_front_burst_len_input_scalar,
         params.e_num_front_part_input_scalar, params.repeat_time_front_part_input_scalar,
@@ -1825,7 +1996,9 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
         params.num_segment_max, params.num_segment_max_time, params.num_segment_max_time_lastcore,
         params.front_num_segment,params.front_num_segment_last, params.front_num_segment_lastcore,
         params.front_num_segment_last_lastcore, params.e_ub2gm_front_burst_len_input_scalar_lastcore,
-        params.e_ub2gm_last_burst_len_input_scalar_lastcore);
+        params.e_ub2gm_last_burst_len_input_scalar_lastcore, input_size, num_segments,
+        params.repeat_times, params.repeat_times_last_part, params.repeat_times_last_part_lastcore,
+        params.e_mov_times_gm2ub_input_scalar_lastcore, params.repeat_time_front_part_input_scalar_lastcore);
     // write tiling params to run_info
     WriteTilingParams(params, run_info);
     // cout tiling params

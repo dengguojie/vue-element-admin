@@ -26,7 +26,8 @@ static string to_string(const std::stringstream &tiling_data) {
     result += std::to_string(tmp);
     result += " ";
   }
-
+  std::cout << "to_string" << std::endl;
+  std::cout << result << std::endl;
   return result;
 }
 
@@ -41,6 +42,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_0) {
   std::vector<int64_t> inputA{2,3132864};
   std::vector<int64_t> inputB{2};
   std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments{1,};
   std::vector<int64_t> output{1,3132864};
 
   TeOpTensor tensor_inputA;
@@ -75,12 +77,16 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_0) {
   opParas.inputs.push_back(tensor_argC);
   opParas.outputs.push_back(tensor_arg);
   opParas.op_type = op_name;
+  opParas.const_inputs["num_segments"] =
+            std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)num_segments.data(), num_segments.size() * 4, ge::Tensor());
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
+
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "5 2 3132864 1 0 0 16384 3520 0 0 1 0 0 16384 3520 0 0 3132864 1 0 0 16384 3520 0 0 1 0 0 16384 3520 0 0 3132864 192 2048 16384 440 3520 2 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
+
+  EXPECT_EQ(to_string(runInfo.tiling_data), "17 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3132864 96 4096 32768 2488 19904 2 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   using namespace optiling;
@@ -93,7 +99,181 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   std::vector<int64_t> inputA{1024,80};
   std::vector<int64_t> inputB{1024};
   std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments{300,};
   std::vector<int64_t> output{300,80};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float32";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "int32";
+  
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float32";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  opParas.const_inputs["num_segments"] =
+            std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)num_segments.data(), num_segments.size() * 4, ge::Tensor());
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "aa";
+  OpRunInfo runInfo;
+
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+
+  EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 80 1 10 80 10 80 1024 32 1 4 4 32 32 32 1 4 4 32 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
+}
+TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_2) {
+  using namespace optiling;
+  std::string op_name = "UnsortedSegmentSum";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+
+  std::vector<int64_t> inputA{1024,80};
+  std::vector<int64_t> inputB{1024};
+  std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments{300,};
+  std::vector<int64_t> output{300,80};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float16";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "int32";
+  
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float16";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  opParas.const_inputs["num_segments"] =
+            std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)num_segments.data(), num_segments.size() * 4, ge::Tensor());
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "aa";
+  OpRunInfo runInfo;
+  
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  std::cout << "#####2" << std::endl;
+  EXPECT_EQ(to_string(runInfo.tiling_data), "9 32 9 21 1024 1 1024 128 1024 128 80 1 5 80 1 5 80 1 0 0 5 5 419 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
+}
+TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_3) {
+  using namespace optiling;
+  std::string op_name = "UnsortedSegmentSum";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+
+  std::vector<int64_t> inputA{2,3132864};
+  std::vector<int64_t> inputB{2};
+  std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments{1,};
+  std::vector<int64_t> output{1,3132864};
+
+  TeOpTensor tensor_inputA;
+  tensor_inputA.shape = inputA;
+  tensor_inputA.dtype = "float16";
+  TeOpTensor tensor_inputB;
+  tensor_inputB.shape = inputB;
+  tensor_inputB.dtype = "int32";
+  TeOpTensor tensor_inputC;
+  tensor_inputC.shape = inputC;
+  tensor_inputC.dtype = "int32";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float16";
+
+  TeOpTensorArg tensor_argA;
+  tensor_argA.tensor.push_back(tensor_inputA);
+  tensor_argA.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argB;
+  tensor_argB.tensor.push_back(tensor_inputB);
+  tensor_argB.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_argC;
+  tensor_argC.tensor.push_back(tensor_inputC);
+  tensor_argC.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_arg;
+  tensor_arg.tensor.push_back(tensor_output);
+  tensor_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.inputs.push_back(tensor_argA);
+  opParas.inputs.push_back(tensor_argB);
+  opParas.inputs.push_back(tensor_argC);
+  opParas.outputs.push_back(tensor_arg);
+  opParas.op_type = op_name;
+  opParas.const_inputs["num_segments"] =
+            std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)num_segments.data(), num_segments.size() * 4, ge::Tensor());
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "aa";
+  OpRunInfo runInfo;
+
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  std::cout << "#####3" << std::endl;
+  EXPECT_EQ(to_string(runInfo.tiling_data), "15 32 97888 98336 2 1 2 1 2 1 3132864 3 2048 32768 1 2022 32 253 0 0 0 0 0 0 0 0 0 0 0 2048 2 2 1 1 4 1 ");
+}
+TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_4) {
+  using namespace optiling;
+  std::string op_name = "UnsortedSegmentSum";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  
+  std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
+
+  std::vector<int64_t> inputA{46,44};
+  std::vector<int64_t> inputB{46};
+  std::vector<int64_t> inputC{1};
+  std::vector<int32_t> num_segments{100,};
+  std::vector<int64_t> output{100,44};
 
   TeOpTensor tensor_inputA;
   tensor_inputA.shape = inputA;
@@ -127,12 +307,16 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   opParas.inputs.push_back(tensor_argC);
   opParas.outputs.push_back(tensor_arg);
   opParas.op_type = op_name;
+  opParas.const_inputs["num_segments"] =
+            std::tuple<const uint8_t*, size_t, ge::Tensor>((const uint8_t*)num_segments.data(), num_segments.size() * 4, ge::Tensor());
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
+
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 80 1 10 80 10 80 1024 32 1 4 4 32 32 32 1 4 4 32 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
+  std::cout << "#####4" << std::endl;
+  EXPECT_EQ(to_string(runInfo.tiling_data), "4 32 44 1 6 6 44 44 1 1 1 6 6 44 44 1 1 660 1 83 83 660 660 15 15 1 83 83 660 660 15 15 44 1 5 40 1 4 46 1 1 1 1 1 1 15 1 2 2 15 15 1 1 1 1 2 1 2 1 40 48 4 0 1 1 1 1 2 1 2 1 ");
 }
 
 
