@@ -23,9 +23,11 @@ namespace aicpu {
  * status code
  */
 enum KernelStatus : uint32_t {
+  // 0-3 is fixed error code, runtime need interprete 0-3 error codes
   KERNEL_STATUS_OK = 0,
-  KERNEL_STATUS_PARAM_INVALID,
-  KERNEL_STATUS_INNER_ERROR,
+  KERNEL_STATUS_PARAM_INVALID = 1,
+  KERNEL_STATUS_INNER_ERROR = 2,
+  KERNEL_STATUS_TIMEOUT = 3,
   KERNEL_STATUS_PROTOBUF_ERROR,
   KERNEL_STATUS_SHARDER_ERROR
 };
