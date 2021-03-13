@@ -59,6 +59,33 @@ Status ParseParamsResize(const Message *op_src, ge::Operator &op_dst) {
       op_dst.SetAttr("nearest_mode", nearest_mode_value);
     }
   }
+
+  // the input format should be NCHW
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dst);
+  if (op_desc == nullptr){
+    OP_LOGE("Resize", "Get op desc failed.");
+    return FAILED;
+  }
+  for (size_t i = 0; i < op_desc->GetInputsSize(); i++){
+    ge::GeTensorDesc tensor = op_desc->GetInputDesc(i);
+    tensor.SetOriginFormat(ge::FORMAT_NCHW);
+    tensor.SetFormat(ge::FORMAT_NCHW);
+    auto ret_x = op_desc->UpdateInputDesc(i, tensor);
+    if (ret_x != ge::GRAPH_SUCCESS){
+      OP_LOGE("Resize", "update input format failed.");
+      return FAILED;
+    }
+  }
+  for (size_t i = 0; i < op_desc->GetOutputsSize(); i++){
+    ge::GeTensorDesc tensor = op_desc->GetOutputDesc(i);
+    tensor.SetOriginFormat(ge::FORMAT_NCHW);
+    tensor.SetFormat(ge::FORMAT_NCHW);
+    auto ret_y = op_desc->UpdateOutputDesc(i, tensor);
+    if (ret_y != ge::GRAPH_SUCCESS){
+      OP_LOGE("Resize", "update output format failed.");
+      return FAILED;
+    }
+  }
   return SUCCESS;
 }
 

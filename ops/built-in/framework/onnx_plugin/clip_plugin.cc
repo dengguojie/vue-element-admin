@@ -159,7 +159,7 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     ge::Shape shape({1});
     TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_FLOAT);
     ge::Tensor min_tensor(tensorDesc, reinterpret_cast<uint8_t*>(&min), sizeof(ge::DT_FLOAT));
-    auto data1 = op::Const("min").set_attr_value(min_tensor);
+    min_op = op::Const("min").set_attr_value(min_tensor);
   } else {
     min_op = op::Data("min").set_attr_index(index);
     index++;
@@ -172,7 +172,7 @@ static Status ParseOpToGraphClipV11(const Operator& op, Graph& graph) {
     ge::Shape shape({1});
     TensorDesc tensorDesc(shape, ge::FORMAT_ND, ge::DT_FLOAT);
     ge::Tensor max_tensor(tensorDesc, reinterpret_cast<uint8_t*>(&max), sizeof(ge::DT_FLOAT));
-    auto data1 = op::Const("max").set_attr_value(max_tensor);
+    max_op = op::Const("max").set_attr_value(max_tensor);
   } else {
     max_op = op::Data("max").set_attr_index(index);
     index++;
