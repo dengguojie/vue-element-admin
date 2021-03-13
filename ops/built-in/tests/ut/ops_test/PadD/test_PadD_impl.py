@@ -85,7 +85,7 @@ def test_op_select_format(test_arg):
                      [[0, 0],[0, 0],[0, 0],[32, 32]],
                      "test_pad_op_select_format_case_1")
 
-# ut_case.add_cust_test_func(test_func=test_op_select_format)
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 
 def calc_expect_func(x, res, paddings):
