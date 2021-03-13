@@ -18,10 +18,11 @@ segment schedule, provide a schedule for segment compute
 # pylint: disable=too-many-lines
 from functools import reduce as functools_reduce
 
-from te import platform as cceconf
-from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe import tvm
-from te.platform import log
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import dma_copy
+from tbe.dsl.instrinsic import cce_emitinsn_params
+from tbe.common.utils import log
 
 
 class CceSegmentOp:
@@ -68,10 +69,10 @@ class CceSegmentOp:
         self._spec_node_list = []
         self._get_op_list_traversed_tensor = set()
         self._goto_speel_ub_use_threshold = 0.5
-        self._core_dim = cceconf.get_soc_spec("CORE_NUM")
+        self._core_dim = get_soc_spec("CORE_NUM")
 
         if self._scope.lower().find('.ub') != -1:
-            self._total_size = cceconf.get_soc_spec("UB_SIZE")
+            self._total_size = get_soc_spec("UB_SIZE")
             if self._need_double_buffer:
                 self._total_size = self._total_size // 2
         else:
@@ -308,9 +309,9 @@ class CceSegmentOp:
             for cache_tensor in read_cache_list:
                 self._schedule[cache_tensor].emit_insn(
                     self._schedule[cache_tensor].op.axis[0],
-                    cceconf.dma_copy)
+                    dma_copy)
             self._schedule[res].emit_insn(self._schedule[res].op.axis[0],
-                                          cceconf.dma_copy, {"no_overlap": 1})
+                                          dma_copy, {"no_overlap": 1})
 
     def _dim_equal_one_schedule(self, res, write_cache_list, read_cache_list):
         """
@@ -350,9 +351,9 @@ class CceSegmentOp:
             for cache_tensor in read_cache_list:
                 self._schedule[cache_tensor].emit_insn(
                     self._schedule[cache_tensor].op.axis[0],
-                    cceconf.dma_copy)
+                    dma_copy)
             self._schedule[res].emit_insn(self._schedule[res].op.axis[0],
-                                          cceconf.dma_copy, {"no_overlap": 1})
+                                          dma_copy, {"no_overlap": 1})
 
     def _local_emit_insn(self, res, res_ub, read_cache_list):
         """
@@ -365,7 +366,7 @@ class CceSegmentOp:
         for cache_tensor in read_cache_list:
             self._schedule[cache_tensor].emit_insn(
                 self._schedule[cache_tensor].op.axis[0],
-                cceconf.dma_copy)
+                dma_copy)
 
         if op_name == "segmentensor_min":
             op_name_emit = "vector_min"
@@ -377,7 +378,7 @@ class CceSegmentOp:
             raise RuntimeError("operation %s not support yet" % op_name)
 
         if len(in_shape) == 1:
-            self._schedule[res].emit_insn(self._ub_split_xi, cceconf.dma_copy, {"no_overlap": 1})
+            self._schedule[res].emit_insn(self._ub_split_xi, dma_copy, {"no_overlap": 1})
             ub_outer_axis, ub_inner_axis = self._schedule[res_ub].split(
                 self._schedule[res_ub].op.axis[0], factor=1)
             self._schedule[res_ub].pragma(ub_outer_axis, "sparse_access", ub_outer_axis)
@@ -386,7 +387,7 @@ class CceSegmentOp:
             if self._need_font_emit:
                 self._schedule[res].emit_insn(self._ub_split_xi, "mov_backup")
             else:
-                self._schedule[res].emit_insn(self._ub_split_xi, cceconf.dma_copy,
+                self._schedule[res].emit_insn(self._ub_split_xi, dma_copy,
                                               {"no_overlap": 1})
             self._schedule[res_ub].pragma(self._schedule[res_ub].op.axis[0], "sparse_access",
                                           self._schedule[res_ub].op.axis[0])
@@ -628,7 +629,7 @@ class CceSegmentOp:
         for cache_tensor in read_cache_list:
             self._schedule[cache_tensor].emit_insn(
                 self._schedule[cache_tensor].op.axis[self._split_axis],
-                cceconf.dma_copy)
+                dma_copy)
 
         # if the move element number once can not div align_factor,
         # we should backup for not covering the old result

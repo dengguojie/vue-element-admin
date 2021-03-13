@@ -17,7 +17,7 @@ pooling3d
 """
 import math
 from tbe import tvm
-from te.platform.cce_conf import get_soc_spec
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.testing.dsl_source_info import source_info_decorator
 
 

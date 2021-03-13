@@ -17,12 +17,18 @@ reduce atomic schedule
 """
 from functools import reduce as reduceIns
 
-from te import platform as cceconf
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.instrinsic import cce_emitinsn_params
-import te.platform.cce_params as cce
-from te.platform.cce_conf import CceProductParams as pver
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
 from tbe.common.utils.errormgr import get_error_message
+
 from . import util
 from .vector_schedule import VectorSchedule
 
@@ -273,8 +279,8 @@ class ReduceAtomicSchedule(VectorSchedule):
         dtype = reduce_tensor.dtype
         if dtype != "float32":
             return False
-        is_support_atomic = pver().is_cloud_version() or \
-            pver().is_ng1_version()
+        soc_ver = get_soc_spec(SOC_VERSION)
+        is_support_atomic = soc_ver in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710)
         if not is_support_atomic:
             return False
         tag = reduce_tensor.op.tag
@@ -342,7 +348,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             size = 1
             for i in range(0, first_reduce_axis):
                 size = size * reordered_shape[i]
-            core_num = cceconf.get_soc_spec("CORE_NUM")
+            core_num = get_soc_spec("CORE_NUM")
             # not tuple reduce sum
             if size >= core_num and len(self._last_output_tensors) < 2:
                 return False
@@ -447,7 +453,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 if i in reduce_axis_index:
                     # pylint: disable=unsubscriptable-object
                     size = size * shape_before_reduce[i]
-            core_num = cceconf.get_soc_spec("CORE_NUM")
+            core_num = get_soc_spec("CORE_NUM")
             if none_reduce_size / core_num > size:
                 return False
 
@@ -1505,7 +1511,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                                                             factor_axis=-1)
         if len(self._last_output_tensors) > 1:
             final_out_tensor_ub_rf = final_out_tensor_ub_rf[0]
-        self._schedule[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
+        self._schedule[final_out_tensor_ub_rf].set_scope(scope_ubuf)
         self._reduce_tiling_para["ub_tiling"][0]["tiling_tensor"] = \
             final_out_tensor_ub_rf
         final_out_tensor_global_list = self._schedule.cache_write(
@@ -2429,7 +2435,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         :return: max element num loaded in UB buffer
         """
         # div 2 for align to fp16
-        self._total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+        self._total_size = get_soc_spec("UB_SIZE") // 2
         self._total_size = self._total_size // 2  # div 2 for double buffer
         total_width = self._get_total_width()
         if not total_width:

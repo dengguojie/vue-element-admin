@@ -17,10 +17,14 @@ ascend_quant
 """
 from functools import reduce as function_reduce
 import copy
-import te.lang.cce
+
 from tbe import tvm
-from te import platform as cceconf
-from te.platform.cce_conf import CceProductParams as pver
+from tbe.common.utils import shape_to_list
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_cbuf_fusion
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from .elewise_schedule_new import ElewiseSchedule
 from .util import dfs_tensor_graph
@@ -57,7 +61,7 @@ def _tilling_axis(shape, dtype_size, tensor_num, res):
     split_axis and split_factor
     """
     shape_new = list(shape).copy()
-    total_size = (cceconf.get_soc_spec("UB_SIZE") - 1024) // dtype_size
+    total_size = (get_soc_spec("UB_SIZE") - 1024) // dtype_size
     max_ub_count = total_size // tensor_num
     total_ele = max_ub_count // 2
     split_axis = 0
@@ -106,7 +110,7 @@ def _round_emit_insn(round_mode):
     instruction
     """
     emit_insn_str = 'vector_conv_%s' % round_mode.value.lower()
-    if pver().is_mini_version():
+    if get_soc_spec(SOC_VERSION) == ASCEND_310:
         # mini
         emit_insn_str = 'vector_conv'
     if round_mode == "Round":
@@ -180,7 +184,7 @@ def _set_buffer_scope(sch, tensor_map):
     None
     """
     for _, value in tensor_map.items():
-        sch[value].set_scope(cceconf.scope_ubuf)
+        sch[value].set_scope(scope_ubuf)
 
 
 def _set_buffer_compute_at(sch, res, tensor_map, axis_outer):
@@ -307,7 +311,7 @@ def _bind_fuse(fused_value, fused_list, axis_outer_num, sch, res,
     """
     bind the fused axis.
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     bind_axis = axis_outer
     if fused_list:
         if fused_value * axis_outer_num <= core_num:
@@ -425,7 +429,7 @@ def _get_block_num(res):
     """
     get the core number
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     l1_fusion_flag = res.op.attrs['l1_fusion_flag'].value
     if l1_fusion_flag != -1:
         return 1
@@ -445,7 +449,7 @@ def ascend_quant_schedule(res, input_tensors):
     -------
     the result of schedule
     """
-    out_shape = te.lang.cce.util.shape_to_list(res.shape)
+    out_shape = shape_to_list(res.shape)
     sch = tvm.create_schedule(res.op)
     tensor_map = {}
     is_fuse_flag = _get_tensor_map(res, tensor_map)
@@ -472,10 +476,10 @@ def ascend_quant_schedule(res, input_tensors):
                 if 'addr_type' in tensor.op.attrs:
                     attr_type = tensor.op.attrs["addr_type"].value
             if l1_fusion_flag != -1 and attr_type == 1:
-                sch[tensor].set_scope(cceconf.scope_cbuf_fusion)
+                sch[tensor].set_scope(scope_cbuf_fusion)
         out_addr_type = attr_dic.get("addr_type")
         if l1_fusion_flag != -1 and out_addr_type == 1:
-            sch[res].set_scope(cceconf.scope_cbuf_fusion)
+            sch[res].set_scope(scope_cbuf_fusion)
         _set_buffer_scope(sch, tensor_map)
         _reorder_buffer(sch, res, tensor_map)
         axis_outer, axis_inner = _bind_core(out_shape, sch, res, tensor_map)
@@ -640,7 +644,7 @@ class QuantSchedule(ElewiseSchedule):
         """
         for i in self._cache_write_tensors:
             self._cache_write_tensors_and_buffer_map[i] = i
-            self._schedule[i].set_scope(cceconf.scope_ubuf)
+            self._schedule[i].set_scope(scope_ubuf)
         if self._out_tensors:
             visited, input_tensors, mid_tensors, tensor_map = dfs_tensor_graph(
                 self._out_tensors[0])

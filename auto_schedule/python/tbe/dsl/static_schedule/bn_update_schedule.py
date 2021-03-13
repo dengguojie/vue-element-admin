@@ -23,12 +23,15 @@ from math import sqrt
 
 import te.lang.cce
 from tbe import tvm
-from te import platform as cceconf
-from te.platform.cce_conf import CceProductParams as pver
-import te.platform.cce_params as cce
+from tbe.common.utils import shape_to_list
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import scope_ubuf
 from .util import get_nearest_factor
 from .util import DTYPE_WIDTH_MAP
-from te.platform import log
+from tbe.common.utils import log
 
 MAX_SHAPE_NUM = 10000000
 BN_TYPE = 0
@@ -45,7 +48,7 @@ def get_max_ub_count(dtype, op_type):
     :return: max element num loaded in UB buffer
     """
     # div 2 for align to fp16
-    total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+    total_size = get_soc_spec("UB_SIZE") // 2
     dtype_size = DTYPE_WIDTH_MAP.get(dtype)
     total_size = total_size // dtype_size
     total_size = total_size // 2  # div 2 for double buffer
@@ -59,7 +62,7 @@ def get_max_ub_count(dtype, op_type):
         total_width_other = 9
         total_width_cloud = 7
 
-    if pver().is_cloud_version():
+    if get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_920A):
         total_width = total_width_cloud
     else:
         total_width = total_width_other
@@ -264,7 +267,7 @@ def bn_update_schedule_model_parallel(  # pylint: disable=R0912, R0913, R0914, R
     do schedule for model parallel case
     """
     sch = sch_list[0]
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     block_split_axis = 1
     res_block_outer, res_block_inner = sch[phony_out].split(
@@ -438,7 +441,7 @@ def _check_is_model_para_case(shape_x, max_ub_count):
     w_size = shape_x[3]
     c0_size = shape_x[4]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     if max_ub_count // (h_size*w_size*c0_size) < 2:
         return False
@@ -521,8 +524,8 @@ def _is_need_do_broadcast(input_tensors):
     """
     x_input = input_tensors[-1]
     sum_input = input_tensors[0]
-    shape_x = te.lang.cce.util.shape_to_list(x_input.shape)
-    shape_sum = te.lang.cce.util.shape_to_list(sum_input.shape)
+    shape_x = shape_to_list(x_input.shape)
+    shape_sum = shape_to_list(sum_input.shape)
 
     broadcast_aixs = []
     for i, _ in enumerate(shape_x):
@@ -563,18 +566,18 @@ def _gn_update_sch_do_cache(
     gn_update schedule do cache_read/write and compute_inline
     """
     for key in input_tensor_dst_tensor_map:
-        read_buffer = sch.cache_read(key, cce.scope_ubuf,
+        read_buffer = sch.cache_read(key, scope_ubuf,
                                      input_tensor_dst_tensor_map[key])
         input_tensor_buffer_tensor_map[key] = read_buffer
 
     for i in mid_out_tensor_list:
-        read_buffer = sch.cache_read(i, cce.scope_ubuf,
+        read_buffer = sch.cache_read(i, scope_ubuf,
                                      mid_tensor_dst_tensor_map[i])
         mid_out_tensor_read_buffer_map[i] = read_buffer
 
     for key in mid_tensor_dst_tensor_map:
         if key not in broadcast_not_last_axis_tensors:
-            write_buffer = sch.cache_write(key, cce.scope_ubuf)
+            write_buffer = sch.cache_write(key, scope_ubuf)
             mid_tensor_buffer_tensor_map[key] = write_buffer
             if key in input_broadcast_tensors:
                 input_broadcast_tensor_buffers.append(write_buffer)
@@ -944,7 +947,7 @@ def _cal_gn_update_tiling(shape_x, group_nums, format_input, max_ub_count):
     """
     calculate gn_update tiling
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     one_core_data_threshold = 128
 
@@ -1195,7 +1198,7 @@ def gn_update_schedule(res, input_tensors):
     _check_gn_update_params(res, input_tensors)
 
     x_input = input_tensors[0]
-    shape_x = te.lang.cce.util.shape_to_list(res[0].shape)
+    shape_x = shape_to_list(res[0].shape)
 
     shape_x_size = 1
     for dim in x_input.shape:
@@ -1256,19 +1259,19 @@ def gn_update_schedule(res, input_tensors):
         input_broadcast_tensor_buffers)
 
     res_out = res[0]
-    res_out_ub = sch.cache_write(res_out, cce.scope_ubuf)
+    res_out_ub = sch.cache_write(res_out, scope_ubuf)
 
     shape_x_tensor_list = []
     for i in tensor_list_map:
         tensor = tensor_list_map[i]
-        shape = te.lang.cce.util.shape_to_list(tensor.shape)
+        shape = shape_to_list(tensor.shape)
         if shape == shape_x:
             shape_x_tensor_list.append(tensor)
 
     dtype = x_input.dtype.lower()
 
     sum_input = input_tensors[0]
-    shape_sum = te.lang.cce.util.shape_to_list(sum_input.shape)
+    shape_sum = shape_to_list(sum_input.shape)
 
     group_nums, format_input = \
         _get_gn_update_group_nums(shape_x, shape_sum)
@@ -1343,7 +1346,7 @@ def _in_update_get_comput_axis(shape_x, mean_compute_at_axis,
                                res_ub_outer, max_ub_count):
     shape_c0 = 16
     shape_c1 = shape_x[1]
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     if shape_x[0] >= core_num:
         batch_factor = (shape_x[0] + core_num - 1) // core_num
@@ -1521,7 +1524,7 @@ def _in_update_get_res_ub_outer_inner(sch, phony_out, res_block_inner,
 
 
 def _in_update_res_block_outer_inner(sch, phony_out, shape_x):
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     batch = shape_x[0]
     c1_size = shape_x[1]
     h_size = shape_x[2]
@@ -1588,8 +1591,8 @@ def in_update_schedule(res, input_tensors):
 
     x_input = input_tensors[-1]
     sum_input = input_tensors[0]
-    shape_x = te.lang.cce.util.shape_to_list(x_input.shape)
-    shape_sum = te.lang.cce.util.shape_to_list(sum_input.shape)
+    shape_x = shape_to_list(x_input.shape)
+    shape_sum = shape_to_list(sum_input.shape)
 
     is_gn_update = _is_gn_update_pattern(shape_x, shape_sum)
     log.debug("gn update schedule is %d", is_gn_update)
@@ -1710,13 +1713,13 @@ def in_update_schedule(res, input_tensors):
 
     input_tensor_buffer_tensor_map = {}
     for key in input_tensor_dst_tensor_map:
-        read_buffer = sch.cache_read(key, cce.scope_ubuf,
+        read_buffer = sch.cache_read(key, scope_ubuf,
                                      input_tensor_dst_tensor_map[key])
         input_tensor_buffer_tensor_map[key] = read_buffer
 
     mid_out_tensor_read_buffer_map = {}
     for i in mid_out_tensor_list:
-        read_buffer = sch.cache_read(i, cce.scope_ubuf,
+        read_buffer = sch.cache_read(i, scope_ubuf,
                                      mid_tensor_dst_tensor_map[i])
         mid_out_tensor_read_buffer_map[i] = read_buffer
 
@@ -1724,12 +1727,12 @@ def in_update_schedule(res, input_tensors):
     input_broadcast_tensor_buffers = []
     for key in mid_tensor_dst_tensor_map:
         if key not in broadcast_not_last_axis_tensors:
-            write_buffer = sch.cache_write(key, cce.scope_ubuf)
+            write_buffer = sch.cache_write(key, scope_ubuf)
             mid_tensor_buffer_tensor_map[key] = write_buffer
             if key in input_broadcast_tensors:
                 input_broadcast_tensor_buffers.append(write_buffer)
 
-    phony_out_ub = sch.cache_write(phony_out, cce.scope_ubuf)
+    phony_out_ub = sch.cache_write(phony_out, scope_ubuf)
 
     def do_compute_inline_reuse(sch, mid_tensor_dst_tensor_map,
                                 mid_out_tensor_list):
@@ -1749,7 +1752,7 @@ def in_update_schedule(res, input_tensors):
         shape_x_tensor_list = []
         for i in tensor_list_map:
             tensor = tensor_list_map[i]
-            shape = te.lang.cce.util.shape_to_list(tensor.shape)
+            shape = shape_to_list(tensor.shape)
             length = len(shape)
             if shape == shape_x and \
                     not tensor.op.tag.find("broadcast") != -1 \
@@ -1893,7 +1896,7 @@ def bn_update_schedule(res, input_tensors):
             shape_x_size = shape_size
             x_input = tmp_ten
 
-    shape_x = te.lang.cce.util.shape_to_list(x_input.shape)
+    shape_x = shape_to_list(x_input.shape)
     if len(shape_x) != 5:
         raise RuntimeError("Batch normalization only support 5D format.")
 
@@ -1969,13 +1972,13 @@ def bn_update_schedule(res, input_tensors):
 
     input_tensor_buffer_tensor_map = {}
     for key in input_tensor_dst_tensor_map:
-        read_buffer = sch.cache_read(key, cce.scope_ubuf,
+        read_buffer = sch.cache_read(key, scope_ubuf,
                                      input_tensor_dst_tensor_map[key])
         input_tensor_buffer_tensor_map[key] = read_buffer
 
     mid_out_tensor_read_buffer_map = {}
     for i in mid_out_tensor_list:
-        read_buffer = sch.cache_read(i, cce.scope_ubuf,
+        read_buffer = sch.cache_read(i, scope_ubuf,
                                      mid_tensor_dst_tensor_map[i])
         mid_out_tensor_read_buffer_map[i] = read_buffer
 
@@ -1983,12 +1986,12 @@ def bn_update_schedule(res, input_tensors):
     input_broadcast_tensor_buffers = []
     for key in mid_tensor_dst_tensor_map:
         if key not in broadcast_not_last_axis_tensors:
-            write_buffer = sch.cache_write(key, cce.scope_ubuf)
+            write_buffer = sch.cache_write(key, scope_ubuf)
             mid_tensor_buffer_tensor_map[key] = write_buffer
             if key in input_broadcast_tensors:
                 input_broadcast_tensor_buffers.append(write_buffer)
 
-    phony_out_ub = sch.cache_write(phony_out, cce.scope_ubuf)
+    phony_out_ub = sch.cache_write(phony_out, scope_ubuf)
 
     for key in mid_tensor_dst_tensor_map:
         if key not in mid_out_tensor_list:
@@ -2002,7 +2005,7 @@ def bn_update_schedule(res, input_tensors):
     shape_x_tensor_list = []
     for i in tensor_list_map:
         tensor = tensor_list_map[i]
-        shape = te.lang.cce.util.shape_to_list(tensor.shape)
+        shape = shape_to_list(tensor.shape)
         length = len(shape)
         # need to check mask shape [****,2]
         if shape == shape_x and not tensor.op.tag.find("broadcast") != -1 \
@@ -2029,7 +2032,7 @@ def bn_update_schedule(res, input_tensors):
             phony_tensor_list,
             input_broadcast_tensor_buffers)
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     batch = shape_x[0]
     c1_size = shape_x[1]
     h_size = shape_x[2]
@@ -2068,7 +2071,7 @@ def bn_update_schedule(res, input_tensors):
     special_need_condition = False
     if is_general_sch:
         block_split_axis = 0
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
         if batch >= core_num:
             res_block_outer, res_block_inner = sch[phony_out].split(
                 phony_out.op.axis[0], nparts=core_num)

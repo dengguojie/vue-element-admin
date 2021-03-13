@@ -18,7 +18,7 @@ batchnorm grad reduce schedule
 import copy
 import math
 
-from te import platform as cceconf
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from . import util
@@ -594,7 +594,7 @@ class BnGradReduceSchedule(ElewiseSchedule):
         """
         dtype = self._input_tensors[0].dtype.lower()
         # div 2 for align to fp16
-        total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+        total_size = get_soc_spec("UB_SIZE") // 2
         dtype_size = DTYPE_WIDTH_MAP.get(dtype)
         shape = util.shape_to_list(self._last_output_tensor.shape)
         total_size = total_size // dtype_size
@@ -756,7 +756,7 @@ class BnGradReduceSchedule(ElewiseSchedule):
         do schedule for model parallel of resnet50 case
         :return:
         """
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
         shape_out = util.shape_to_list(out_tensor.shape)
 
         if shape_out in ([32, 16, 14, 14, 16], [32, 16, 15, 15, 16]):
@@ -916,7 +916,7 @@ class BnGradReduceSchedule(ElewiseSchedule):
         Bool, now is true
 
         """
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
         self._out_tensors = copy.copy(out_tensors)
         out_tensors_bak = copy.copy(out_tensors)
         out_tensor = out_tensors[0]

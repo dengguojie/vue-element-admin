@@ -19,7 +19,6 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
-from te import platform as cce
 from .broadcast_elewise_classifier import BroadcastElewiseClassifier
 from .pure_elewise_classifier import PureElewiseClassifier
 from tbe.dsl.base import operation
@@ -33,6 +32,7 @@ def classify(ins: list, support_broadcast: bool = False, extra_params: Optional[
     :return:
     """
     operation.get_context().add("_support_broadcast", support_broadcast)
+    from te import platform as cce
     if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
         return [ins]
 

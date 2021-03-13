@@ -19,9 +19,11 @@ import math
 import warnings
 
 from tbe import tvm
-from te.platform import get_soc_spec
-from te.platform.cce_conf import CceProductParams as pver
-from te.platform.cce_policy import get_L1_info
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import intrinsic_check_support
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
+from tbe.common.buildcfg import get_L1_info
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.testing.dsl_source_info import source_info_decorator
 
@@ -1102,12 +1104,12 @@ def _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_p
     :setfmatrix_dict: set_fmatrix params, it is a dictionary
     :return: res
     """
-    from te.platform import intrinsic_check_support
     # Check for vadd, vmul fp32 ability
     vconv_ability = intrinsic_check_support("Intrinsic_vconv", "f162f32")
     vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")
     vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
-    use_fp16 = pver().is_mini_version() and \
+    soc_ver = get_soc_spec(SOC_VERSION)
+    use_fp16 = (soc_ver == ASCEND_310) and \
         (impl_mode == "high_performance")
     fp32_ability = vconv_ability and \
         vadd_ability and \

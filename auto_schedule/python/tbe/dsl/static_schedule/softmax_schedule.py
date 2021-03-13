@@ -19,12 +19,15 @@ softmax schedule, provide a schedule for softmax
 from __future__ import absolute_import
 
 from tbe import tvm
-from te import platform as cce
-from te.platform import log
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_reg
+from tbe.common.utils import log
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from te.platform import cce_util
-from te.platform import intrinsic_check_support
+from tbe.common.platform import intrinsic_check_support
 from tbe.dsl.instrinsic.cce_intrin_md import vec_cmd_factory
+
 from .vector_schedule import VectorSchedule
 from .util import shape_to_list
 from .util import get_align_factor
@@ -62,10 +65,10 @@ class SoftmaxSchedule(VectorSchedule):
     # pylint: disable=super-init-not-called
 
     def __init__(self):
-        self._scope = cce.scope_ubuf
-        self._core_dim = cce.get_soc_spec("CORE_NUM")
+        self._scope = scope_ubuf
+        self._core_dim = get_soc_spec("CORE_NUM")
         if self._scope.lower().find('.ub') != -1:
-            self._total_size = cce.get_soc_spec("UB_SIZE")
+            self._total_size = get_soc_spec("UB_SIZE")
         else:
             raise RuntimeError("only support UB buffer now")
         self._ub_tiling_max_size = self._total_size
@@ -729,7 +732,7 @@ class SoftmaxSchedule(VectorSchedule):
         self._is_block_fuse = (block_axis not in (0,))
 
         tiling_adjust = True
-        if cce.get_soc_spec("CORE_NUM") == 30 and len(shape) == 2 and self._reduce_axis_num == 1:
+        if get_soc_spec("CORE_NUM") == 30 and len(shape) == 2 and self._reduce_axis_num == 1:
             if shape[0] == 47182 or shape[0] == 180358:
                 tiling_adjust = False
         if tiling_adjust:
@@ -1981,17 +1984,17 @@ def reduce_last_axis_enhance_vcmd(tensor_op, intrin_cmd):
                                  data=src_buffer.data,
                                  offset_factor=1,
                                  data_alignment=16,
-                                 scope=cce.scope_ubuf,
+                                 scope=scope_ubuf,
                                  elem_offset=0)
 
     tmp_buf_shape = (no_reduce_len,)
     tmp_buf = new_alloc(ib_expr, dtype, tmp_buf_shape,
-                        'tmp_buf', scope=cce.scope_ubuf)
+                        'tmp_buf', scope=scope_ubuf)
 
     # reg_buf shape(8,)
     reg_size = 8
     reg = ib_expr.allocate(dtype, (reg_size,),
-                           name="reg_buf", scope=cce.scope_reg)
+                           name="reg_buf", scope=scope_reg)
 
     # src_buffer column[0] -> res_buffer
     _matrix_column_reg_mov(ib_expr, reg, reg_size,
@@ -2362,10 +2365,10 @@ def reduce_last_axis_enhance_vccmd(tensor_op, intrin_cmd):
 
     # 32B align buffer
     tmp_buf_len = (reduce_axis_len + 15) // 16 * 16
-    tmp_buf = new_alloc(ib_expr, src_buffer.dtype, (tmp_buf_len,), 'tmp_buf', scope=cce.scope_ubuf)
+    tmp_buf = new_alloc(ib_expr, src_buffer.dtype, (tmp_buf_len,), 'tmp_buf', scope=scope_ubuf)
     # reg
     reg_num = reduce_axis_len if(reduce_axis_len < 8) else 8
-    reg = ib_expr.allocate(outs[0].dtype, (reg_num,), name="reg_buf", scope=cce.scope_reg)
+    reg = ib_expr.allocate(outs[0].dtype, (reg_num,), name="reg_buf", scope=scope_reg)
 
     loop_len = get_shape_size_ext(for_extent_vals[1:])
 
@@ -2449,13 +2452,13 @@ def vector_reduce_sum_softmax_fractalz_vcadd(
                                  data=src_buffer.data,
                                  offset_factor=1,
                                  data_alignment=16,
-                                 scope=cce.scope_ubuf,
+                                 scope=scope_ubuf,
                                  elem_offset=0)
 
     first_reduce_len = (outer_reduce_size + 7) // 8 * 2
     tmp_buf_shape = (no_reduce_size, first_reduce_len * 8)
     tmp_buf = new_alloc(ib_expr, dtype, tmp_buf_shape,
-                        'tmp_buf', scope=cce.scope_ubuf)
+                        'tmp_buf', scope=scope_ubuf)
 
     reset_mask_insn(ib_expr, dtype, bits=vector_inst_one_repeat_size)
 
@@ -2594,7 +2597,7 @@ def vector_reduce_softmax_fractalz(tensor_op, intrin_cmd):
                                  data=src_buffer.data,
                                  offset_factor=1,
                                  data_alignment=16,
-                                 scope=cce.scope_ubuf,
+                                 scope=scope_ubuf,
                                  elem_offset=0)
 
     reduce_axis_num = 0
@@ -2648,7 +2651,7 @@ def vector_reduce_softmax_fractalz(tensor_op, intrin_cmd):
     # 1. first dichotomy reduce, using vadd/vmax/vmin
     tmp_buf_shape = (c1_size // 2, hw_size, c0_size)
     tmp_buf = new_alloc(ib_expr, dtype, tmp_buf_shape,
-                        'tmp_buf', scope=cce.scope_ubuf)
+                        'tmp_buf', scope=scope_ubuf)
 
     outer_size = c1_size
     dichotomy_size = outer_size // 2

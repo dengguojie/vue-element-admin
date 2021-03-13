@@ -16,7 +16,8 @@
 write_select_schedule
 """
 from tbe import tvm
-from te import platform as cce
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_cbuf_fusion
 
 
 def _get_tensor_map(res, tensor_map):
@@ -76,9 +77,9 @@ def write_select_schedule(res, input_tensors):  # pylint: disable=locally-disabl
 
     sch = tvm.create_schedule(res.op)
 
-    sch[tensor_input].set_scope(cce.scope_ubuf)
+    sch[tensor_input].set_scope(scope_ubuf)
     if dst_out_flag == "L1":
-        sch[res].set_scope(cce.scope_cbuf_fusion)
+        sch[res].set_scope(scope_cbuf_fusion)
 
     sch[res].bind_buffer(res.op.axis[1], h_valid*w_valid*c0_valid, 0)
     sch[tensor_input].emit_insn(tensor_input.op.axis[0], 'dma_copy')

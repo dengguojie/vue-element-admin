@@ -17,13 +17,16 @@ pooling2d_schedule
 """
 import math
 
-from te import platform as cce
 from tbe import tvm
-from te.platform import intrinsic_check_support
-from te.platform import get_soc_spec
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_cbuf_fusion
+from tbe.common.platform import scope_cbuf
+from tbe.common.platform import intrinsic_check_support
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.instrinsic import cce_emitinsn_params as cce_params
-from te.platform.cce_conf import CceProductParams as pver
-from te.platform.cce_policy import get_L1_info
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
+from tbe.common.buildcfg import get_L1_info
 from tbe.common.utils.errormgr import get_error_message
 from .max_pool2d_schedule import schedule as schedule_max_pool
 from .avg_pool2d_schedule import schedule as schedule_avg_pool
@@ -862,7 +865,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
     vconv_ability = intrinsic_check_support("Intrinsic_vconv", "f162f32")
     vadd_ability = intrinsic_check_support("Intrinsic_vadd", "float32")
     vmul_ability = intrinsic_check_support("Intrinsic_vmul", "float32")
-    use_fp16 = pver().is_mini_version() and \
+    use_fp16 = (get_soc_spec(SOC_VERSION) == ASCEND_310) and \
         (impl_mode == "high_performance")
     fp32_ability = vconv_ability and \
         vadd_ability and \
@@ -1131,7 +1134,7 @@ def _build_anti_tensor(res):
 
 def _set_anti_buffer_scope(sch, anti_tensor):
     for _, tensor in anti_tensor.items():
-        sch[tensor].set_scope(cce.scope_ubuf)
+        sch[tensor].set_scope(scope_ubuf)
 
 
 def _anti_compute_at(sch, res, anti_tensor):
@@ -1155,7 +1158,7 @@ def set_ascend_buffer_scope(sch, quant_tensor_map):
     :return:
     """
     for _, value in quant_tensor_map.items():
-        sch[value].set_scope(cce.scope_ubuf)
+        sch[value].set_scope(scope_ubuf)
 
 
 def set_ascend_compute_at(sch, res, quant_tensor_map, axis):
@@ -1186,7 +1189,7 @@ def set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if pver().is_mini_version():
+    if get_soc_spec(SOC_VERSION) == ASCEND_310:
         # mini/cloud
         emit_insn_str = "vector_conv"
     else:
@@ -1422,7 +1425,7 @@ def pooling2d_schedule(res, sch_list):
     def _set_fp32_ability():
         if pooling_mode == "GAP":
             impl_mode = pooling2d_res.op.attrs['impl_mode']
-            use_fp16 = pver().is_mini_version() and \
+            use_fp16 = (get_soc_spec(SOC_VERSION) == ASCEND_310) and \
                 (impl_mode == "high_performance")
             fp32_ability = vconv_ability and \
                 vadd_ability and \
@@ -1475,39 +1478,39 @@ def pooling2d_schedule(res, sch_list):
         def _set_scope():
             if is_l1fusion:
                 if in_l1_flag:
-                    sch[fmap_l1].set_scope(cce.scope_cbuf_fusion)
-                    sch[tensor_in].set_scope(cce.scope_cbuf_fusion)
+                    sch[fmap_l1].set_scope(scope_cbuf_fusion)
+                    sch[tensor_in].set_scope(scope_cbuf_fusion)
                 else:
-                    sch[fmap_l1].set_scope(cce.scope_cbuf_fusion)
+                    sch[fmap_l1].set_scope(scope_cbuf_fusion)
             else:
-                sch[fmap_l1].set_scope(cce.scope_cbuf)
-            sch[fmap_img2col].set_scope(cce.scope_cbuf)
-            sch[fmap_fractal].set_scope(cce.scope_ubuf)
-            sch[pooling_out_ub].set_scope(cce.scope_ubuf)
-            sch[pooling_ub_5hd].set_scope(cce.scope_ubuf)
+                sch[fmap_l1].set_scope(scope_cbuf)
+            sch[fmap_img2col].set_scope(scope_cbuf)
+            sch[fmap_fractal].set_scope(scope_ubuf)
+            sch[pooling_out_ub].set_scope(scope_ubuf)
+            sch[pooling_ub_5hd].set_scope(scope_ubuf)
             if pooling_mode == "AVG":
-                sch[pooling_out_ub_mul_factor].set_scope(cce.scope_ubuf)
+                sch[pooling_out_ub_mul_factor].set_scope(scope_ubuf)
 
             # fuse select_wirte op and ascend_quant op
             if fused_select_write:
-                sch[pooling2d_res].set_scope(cce.scope_ubuf)
+                sch[pooling2d_res].set_scope(scope_ubuf)
 
                 if fused_ascend_quant:
-                    sch[res_quant].set_scope(cce.scope_ubuf)
+                    sch[res_quant].set_scope(scope_ubuf)
                     set_ascend_buffer_scope(sch, ascend_tensor)
                 if fused_anti_quant:
-                    sch[anti_res].set_scope(cce.scope_cbuf)
+                    sch[anti_res].set_scope(scope_cbuf)
                     _set_anti_buffer_scope(sch, anti_tensor)
             else:
                 if fused_ascend_quant:
-                    sch[pooling2d_res].set_scope(cce.scope_ubuf)
+                    sch[pooling2d_res].set_scope(scope_ubuf)
                     set_ascend_buffer_scope(sch, ascend_tensor)
                 if fused_anti_quant:
-                    sch[anti_res].set_scope(cce.scope_cbuf)
+                    sch[anti_res].set_scope(scope_cbuf)
                     _set_anti_buffer_scope(sch, anti_tensor)
 
             if is_l1fusion and out_l1_flag:
-                sch[res].set_scope(cce.scope_cbuf_fusion)
+                sch[res].set_scope(scope_cbuf_fusion)
 
         _set_scope()
 
@@ -2058,29 +2061,29 @@ def pooling2d_schedule(res, sch_list):
         if is_gloabl_avg_fp32:
             tensor_in_ub = tensor_in_ub_f32.op.input_tensors[0]
             # set scope for each tensor
-            sch[tensor_in_ub].set_scope(cce.scope_ubuf)
-            sch[tensor_in_ub_f32].set_scope(cce.scope_ubuf)
-            sch[pooling_out_ub].set_scope(cce.scope_ubuf)
+            sch[tensor_in_ub].set_scope(scope_ubuf)
+            sch[tensor_in_ub_f32].set_scope(scope_ubuf)
+            sch[pooling_out_ub].set_scope(scope_ubuf)
         else:
             tensor_in_ub = pooling_out_ub.op.input_tensors[0]
             # set scope for each tensor
-            sch[tensor_in_ub].set_scope(cce.scope_ubuf)
-            sch[pooling_out_ub].set_scope(cce.scope_ubuf)
+            sch[tensor_in_ub].set_scope(scope_ubuf)
+            sch[pooling_out_ub].set_scope(scope_ubuf)
 
         if in_l1_flag:
             tensor_in = tensor_in_ub.op.input_tensors[0]
             if l1_fusion_type == 1:
-                sch[tensor_in].set_scope(cce.scope_cbuf)
+                sch[tensor_in].set_scope(scope_cbuf)
             else:
-                sch[tensor_in].set_scope(cce.scope_cbuf_fusion)
+                sch[tensor_in].set_scope(scope_cbuf_fusion)
 
         if pooling_mode == "GAP":
             if fp32_ability:
-                sch[pooling_out_ub_mul_factor_f16].set_scope(cce.scope_ubuf)
-            sch[pooling_out_ub_mul_factor].set_scope(cce.scope_ubuf)
+                sch[pooling_out_ub_mul_factor_f16].set_scope(scope_ubuf)
+            sch[pooling_out_ub_mul_factor].set_scope(scope_ubuf)
 
         if out_l1_flag:
-            sch[res].set_scope(cce.scope_cbuf_fusion)
+            sch[res].set_scope(scope_cbuf_fusion)
 
         cut_ci_factor = tiling_params["cut_ci_factor"]
         # shedule part
@@ -2301,7 +2304,7 @@ def pooling_global_quant_schedule(
     batch_size = pooling_params["batch_size"]
     c1_value = pooling_params["c1_value"]
 
-    sch[pooling2d_res].set_scope(cce.scope_ubuf)
+    sch[pooling2d_res].set_scope(scope_ubuf)
     set_ascend_buffer_scope(sch, quant_tensor_map)
     input_ub = quant_tensor_map['input_ub']
     del quant_tensor_map['input_ub']
@@ -2329,32 +2332,32 @@ def pooling_global_quant_schedule(
                 tensor_in_ub_f32 = pooling_out_ub.op.input_tensors[0]
                 tensor_in_ub = tensor_in_ub_f32.op.input_tensors[0]
                 # set scope for each tensor
-                sch[tensor_in_ub_f32].set_scope(cce.scope_ubuf)
-                sch[pooling_out_ub_mul_factor_f16].set_scope(cce.scope_ubuf)
+                sch[tensor_in_ub_f32].set_scope(scope_ubuf)
+                sch[pooling_out_ub_mul_factor_f16].set_scope(scope_ubuf)
             else:
                 pooling_out_ub_mul_factor = pooling2d_res.op.input_tensors[0]
                 pooling_out_ub = pooling_out_ub_mul_factor.op.input_tensors[0]
                 tensor_in_ub = pooling_out_ub.op.input_tensors[0]
 
-            sch[pooling_out_ub_mul_factor].set_scope(cce.scope_ubuf)
+            sch[pooling_out_ub_mul_factor].set_scope(scope_ubuf)
 
-            sch[tensor_in_ub].set_scope(cce.scope_ubuf)
-            sch[pooling_out_ub].set_scope(cce.scope_ubuf)
+            sch[tensor_in_ub].set_scope(scope_ubuf)
+            sch[pooling_out_ub].set_scope(scope_ubuf)
         else:
             pooling_out_ub = pooling2d_res.op.input_tensors[0]
             tensor_in_ub = pooling_out_ub.op.input_tensors[0]
             # set scope for each tensor
-            sch[tensor_in_ub].set_scope(cce.scope_ubuf)
-            sch[pooling_out_ub].set_scope(cce.scope_ubuf)
+            sch[tensor_in_ub].set_scope(scope_ubuf)
+            sch[pooling_out_ub].set_scope(scope_ubuf)
 
         if is_l1fusion and in_l1_flag:
             tensor_in = tensor_in_ub.op.input_tensors[0]
             if l1_fusion_type == 1:
-                sch[tensor_in].set_scope(cce.scope_cbuf)
+                sch[tensor_in].set_scope(scope_cbuf)
             else:
-                sch[tensor_in].set_scope(cce.scope_cbuf_fusion)
+                sch[tensor_in].set_scope(scope_cbuf_fusion)
         if is_l1fusion and out_l1_flag:
-            sch[res].set_scope(cce.scope_cbuf_fusion)
+            sch[res].set_scope(scope_cbuf_fusion)
 
         res_list = (pooling_out_ub_mul_factor_f16, pooling_out_ub_mul_factor,
                     pooling_out_ub, tensor_in_ub_f32, tensor_in_ub, tensor_in)

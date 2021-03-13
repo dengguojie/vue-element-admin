@@ -16,18 +16,23 @@
 Pure broadcast schedule
 """
 import math
+
 import te
-
 from tbe import tvm
-from te.platform import log
-
+from tbe.common.utils import log
 from tbe.tvm.tensor import Tensor
 from tbe.tvm.schedule import Schedule
 from te.platform.cce_util import get_align_factor
 from te.platform.cce_util import get_buffer
 from te.platform.cce_util import apply_for_new_alloc
-from te.platform.cce_params import scope_ubuf
-from te.platform.cce_conf import CceProductParams as pver
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
 from .pure_broadcast_intrin import last_axis_broadcast
 from .pure_broadcast_intrin import mid_axis_broadcast
 from .pure_broadcast_intrin import full_aligned_broadcast_selection
@@ -67,7 +72,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         self.dtype_byte_size = None
         self.block_byte_size = None
         # Utilities
-        self.scope_ubuf = te.platform.cce_params.scope_ubuf
+        self.scope_ubuf = scope_ubuf
         # Stage after data_flow_control
         self.placeholder_ub = None
         self.broadcast_ub = None
@@ -167,9 +172,9 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
             else:
                 self.broadcasts.append(tensor)
         # Get device core num
-        self.device_core_num = te.platform.get_soc_spec("CORE_NUM")
+        self.device_core_num = get_soc_spec("CORE_NUM")
         # Get device ub size
-        self.device_ub_size = te.platform.get_soc_spec("UB_SIZE")
+        self.device_ub_size = get_soc_spec("UB_SIZE")
         # Get tensor information
         self.dtype = str(self.placeholders[0].dtype)
         # Get block information
@@ -397,7 +402,8 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                     block_split_nparts = i
                     block_split_axis = axis
                     break
-                hdw_tsch = pver().is_cloud_version() or pver().is_ng1_version()
+                soc_ver = get_soc_spec(SOC_VERSION)
+                hdw_tsch = soc_ver in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710)
                 if not hdw_tsch:
                     if core_num >= self.device_core_num:
                         break
@@ -636,7 +642,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                 self.block_outer = sch_broadcast.fuse(current_axis, outer)
                 self.block_inner = inner
         sch_broadcast.bind(self.block_outer,
-                           te.tvm.thread_axis("blockIdx.x"))
+                           tvm.thread_axis("blockIdx.x"))
 
     def do_compute_at(self):
         """Excecute compute hierarchy setting stage"""

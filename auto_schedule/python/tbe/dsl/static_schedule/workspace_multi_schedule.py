@@ -15,8 +15,9 @@
 """
 elewise mutil out schedule
 """
-from te import platform as cceconf
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
+
 from . import util
 from .cce_schedule_declarations import OpSpecTypes
 
@@ -194,7 +195,7 @@ class WorkspaceMultiSchedule():  # pylint: disable=too-many-instance-attributes
 
         multi_core_size = util.get_shape_size(multi_core_shape)
         multi_core_num = min(int(multi_core_size // reserve_size),
-                             cceconf.get_soc_spec("CORE_NUM"))
+                             get_soc_spec("CORE_NUM"))
         if multi_core_size == util.INIT_SIZE or \
                 multi_core_num <= util.INIT_SIZE:
             return False

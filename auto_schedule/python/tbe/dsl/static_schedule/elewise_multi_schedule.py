@@ -17,8 +17,8 @@ elewise mutil out schedule
 """
 import math
 from tbe import tvm
-from te import platform as cceconf
-from te.platform import log
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.utils import log
 from . import util
 from .elewise_schedule_new import ElewiseSchedule
 
@@ -164,7 +164,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
                 min_type_bitsize = util.DTYPE_WIDTH_MAP[temp_dtype]
         shape = util.shape_to_list(self._last_output_tensor.shape)
         # for block align, it must more than 1 block out
-        cur_core_num = cceconf.get_soc_spec("CORE_NUM")
+        cur_core_num = get_soc_spec("CORE_NUM")
         cur_shape_size = util.get_shape_size(shape)
         block_per_num = int(util.VECTOR_ONE_BLOCK_UNIT / min_type_bitsize)
         max_core_num = int(cur_shape_size // block_per_num)

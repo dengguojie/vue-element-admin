@@ -15,11 +15,12 @@
 """
 avg_pool2d_schedule
 """
-from te import platform as cce
+from tbe.common import platform as cce
 from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params as cce_params
-from te.platform import get_soc_spec
-from te.platform.cce_conf import CceProductParams as pver
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
 
 # define the quantize tensor name
 CAST_F16_NAME = "cast_f16_ub"
@@ -294,7 +295,7 @@ def _set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if pver().is_mini_version():
+    if get_soc_spec(SOC_VERSION) == ASCEND_310:
         # mini
         emit_insn_str = "vector_conv"
     else:

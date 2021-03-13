@@ -20,10 +20,10 @@ from __future__ import absolute_import as _abs
 
 from functools import reduce as _reduce
 
-from te.platform import cce_conf
-from te.platform import cce_params
+from tbe.common.platform import intrinsic_check_support
+from tbe.common import platform as cce_params
+from te.platform import CCE_AXIS
 from te.platform import cce_util
-
 from tbe.tvm.ir_builder import create as _create
 from tbe.tvm.intrin import call_extern
 from tbe.tvm import make as _make
@@ -113,7 +113,7 @@ def intrin_gemm_cce(input_m, input_n, input_k, mock=False):
             instr fuction
             """
             ib_ins = _create()
-            ib_ins.scope_attr(cce_params.CCE_AXIS, "coproc_scope", 3)
+            ib_ins.scope_attr(CCE_AXIS, "coproc_scope", 3)
             control_c_bit = 1 if index == 0 else 0
             ib_ins.emit(call_extern(
                 dout.dtype, "mad",
@@ -1004,7 +1004,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                         nburst = 1
                         body_func_name = 'copy_ubuf_to_ubuf'
                         ib_instance.scope_attr(
-                            cce_params.CCE_AXIS, "coproc_scope",
+                            CCE_AXIS, "coproc_scope",
                             2 + total_pipe_line * pipe_line_index)
                         ib_instance.emit(call_extern(
                             out.dtype, body_func_name,
@@ -1284,7 +1284,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                                 scope="local.UB", data=buf_var)
                         with ib_instance.new_scope():
                             ib_instance.scope_attr(
-                                cce_params.CCE_AXIS, "coproc_scope",
+                                CCE_AXIS, "coproc_scope",
                                 2 + total_pipe_line *
                                 (pipe_line_index + 2 * pipeline_count))
                             ib_instance.emit(call_extern(
@@ -1304,7 +1304,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
 
                         with ib_instance.new_scope():
                             ib_instance.scope_attr(
-                                cce_params.CCE_AXIS, "coproc_scope",
+                                CCE_AXIS, "coproc_scope",
                                 2 + total_pipe_line *
                                 (pipe_line_index + 2 * pipeline_count))
                             mask1, mask2 = set_mask(16)
@@ -1316,7 +1316,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
 
                         with ib_instance.new_scope():
                             ib_instance.scope_attr(
-                                cce_params.CCE_AXIS, "coproc_scope",
+                                CCE_AXIS, "coproc_scope",
                                 2 + total_pipe_line *
                                 (pipe_line_index + 2 * pipeline_count))
                             ib_instance.emit(call_extern(
@@ -1330,7 +1330,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                             pipeline_count = 1 - pipeline_count
                         with ib_instance.new_scope():
                             ib_instance.scope_attr(
-                                cce_params.CCE_AXIS, "coproc_scope",
+                                CCE_AXIS, "coproc_scope",
                                 2 + total_pipe_line * (pipe_line_index + 1))
                             mask1, mask2 = set_mask(128)
                             ib_instance.emit(call_extern(
@@ -1346,7 +1346,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                                 scope="local.UB", data=buf_var)
                         with ib_instance.new_scope():
                             ib_instance.scope_attr(
-                                cce_params.CCE_AXIS, "coproc_scope",
+                                CCE_AXIS, "coproc_scope",
                                 2 + total_pipe_line *
                                 (pipe_line_index + 2 * pipeline_count))
                             ib_instance.emit(call_extern(
@@ -1368,7 +1368,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
 
                         with ib_instance.new_scope():
                             ib_instance.scope_attr(
-                                cce_params.CCE_AXIS, "coproc_scope",
+                                CCE_AXIS, "coproc_scope",
                                 2 + total_pipe_line *
                                 (pipe_line_index + 2 * pipeline_count))
                             ib_instance.emit(call_extern(
@@ -1378,7 +1378,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 0, 1, 1, 0, 0))
                         with ib_instance.new_scope():
                             ib_instance.scope_attr(
-                                cce_params.CCE_AXIS, "coproc_scope",
+                                CCE_AXIS, "coproc_scope",
                                 2 + total_pipe_line * (pipe_line_index + 1))
                             mask1, mask2 = set_mask(128)
                             ib_instance.emit(call_extern(
@@ -1516,9 +1516,9 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                     is_vcmax = vc_cmd == "vcmax"
                     is_vcmin = vc_cmd == "vcmin"
                     is_vcmax_v200 = out_b.dtype.lower() == "float32" and \
-                        cce_conf.intrinsic_check_support("Intrinsic_vcmax", "float32")
+                        intrinsic_check_support("Intrinsic_vcmax", "float32")
                     is_vcmin_v200 = out_b.dtype.lower() == "float32" and \
-                        cce_conf.intrinsic_check_support("Intrinsic_vcmin", "float32")
+                        intrinsic_check_support("Intrinsic_vcmin", "float32")
                     if (is_vcmax and is_vcmax_v200) or (is_vcmin and is_vcmin_v200):
                         return True
                     return False
@@ -1539,7 +1539,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                             if repeat_times > 0:
                                 local_repeat_times = repeat_times
                                 with ib_ins.new_scope():
-                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                    ib_ins.scope_attr(CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1568,7 +1568,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                             if remain_len > 0:
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                    ib_ins.scope_attr(CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1579,7 +1579,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                         tvm.const(mask2, dtype="uint64")))
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                    ib_ins.scope_attr(CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1597,7 +1597,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                     ))
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                    ib_ins.scope_attr(CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1624,7 +1624,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                             with ib_ins.new_scope():
                                 mask1, mask2 = set_mask(local_total_len)
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
                                 ib_ins.emit(call_extern(
@@ -1635,7 +1635,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
 
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
 
@@ -1681,7 +1681,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 out_b.access_ptr("r")))
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
                                 mask1, mask2 = set_mask(v_cmd_mask)
@@ -1692,7 +1692,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
                                 ib_ins.emit(call_extern(
@@ -1711,7 +1711,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 1))
                                 mask1, mask2 = set_mask(128)
@@ -1726,7 +1726,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                         with ib_ins.else_scope():
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
                                 mask1, mask2 = set_mask(v_cmd_mask)
@@ -1737,7 +1737,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
                                 ib_ins.emit(call_extern(
@@ -1756,7 +1756,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 1))
                                 mask1, mask2 = set_mask(128)
@@ -1773,7 +1773,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                             if repeat_times > 0:
                                 local_repeat_times = repeat_times
                                 with ib_ins.new_scope():
-                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                    ib_ins.scope_attr(CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1803,7 +1803,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                             if remain_len > 0:
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                    ib_ins.scope_attr(CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1814,7 +1814,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                         tvm.const(mask2, dtype="uint64")))
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
-                                    ib_ins.scope_attr(cce_params.CCE_AXIS,
+                                    ib_ins.scope_attr(CCE_AXIS,
                                                       "coproc_scope",
                                                       2 + total_pipe_line * (
                                                           pipe_line_index + 2 * pipeline_count))
@@ -1833,7 +1833,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 with ib_ins.new_scope():
                                     pipeline_count = 1 - pipeline_count
                                     ib_ins.scope_attr(
-                                        cce_params.CCE_AXIS,
+                                        CCE_AXIS,
                                         "coproc_scope",
                                         2 + total_pipe_line *
                                         (pipe_line_index + 2 * pipeline_count))
@@ -1861,7 +1861,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                             with ib_ins.new_scope():
                                 mask1, mask2 = set_mask(local_total_len)
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
                                 ib_ins.emit(call_extern(
@@ -1871,7 +1871,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 pipeline_count = 1 - pipeline_count
                             with ib_ins.new_scope():
                                 ib_ins.scope_attr(
-                                    cce_params.CCE_AXIS, "coproc_scope",
+                                    CCE_AXIS, "coproc_scope",
                                     2 + total_pipe_line *
                                     (pipe_line_index + 2 * pipeline_count))
 
@@ -1919,7 +1919,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                     1
                                 ))
                         with ib_ins.new_scope():
-                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                            ib_ins.scope_attr(CCE_AXIS,
                                               "coproc_scope",
                                               2 + total_pipe_line * (pipe_line_index + 1))
                             mask1, mask2 = set_mask(128)
@@ -2406,7 +2406,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                     if intrinsic_cmd == "vconv_deq":
                         with ib_ins.new_scope():
                             ib_ins.scope_attr(
-                                cce_params.CCE_AXIS,
+                                CCE_AXIS,
                                 "coproc_scope",
                                 2 + total_pipe_line * pipe_line_index)
                             ib_ins.emit(
@@ -2724,7 +2724,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                         instr function
                         """
                         ib_ins = _create()
-                        ib_ins.scope_attr(cce_params.CCE_AXIS, "coproc_scope",
+                        ib_ins.scope_attr(CCE_AXIS, "coproc_scope",
                                           2 + total_pipe_line * pipe_line_index)
                         if flag == 'body':
                             ib_ins.emit(call_extern(
@@ -2826,7 +2826,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                                            (align_factor,))
                         with ib_ins.new_scope():
                             sid = cce_util.get_dma_sid("Sid_copy_gm_to_ubuf")
-                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                            ib_ins.scope_attr(CCE_AXIS,
                                               "coproc_scope", 5)
                             ib_ins.emit(call_extern(
                                 out.dtype, "copy_gm_to_ubuf",
@@ -2838,7 +2838,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 0,
                                 0))
                         with ib_ins.new_scope():
-                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                            ib_ins.scope_attr(CCE_AXIS,
                                               "coproc_scope", 6)
                             ib_ins.emit(call_extern(
                                 out.dtype, "copy_ubuf_to_gm",
@@ -2850,7 +2850,7 @@ def intrin_factor(buffer_scope=cce_params.scope_ubuf):
                                 0,
                                 0))
                         with ib_ins.new_scope():
-                            ib_ins.scope_attr(cce_params.CCE_AXIS,
+                            ib_ins.scope_attr(CCE_AXIS,
                                               "coproc_scope", 14)
                             ib_ins.emit(call_extern(
                                 out.dtype, "copy_ubuf_to_gm",

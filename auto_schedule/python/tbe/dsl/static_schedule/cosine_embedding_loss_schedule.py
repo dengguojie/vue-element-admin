@@ -18,10 +18,11 @@ batch_normalization_forward_training_reduce
 from __future__ import absolute_import
 from __future__ import division
 from functools import reduce as functools_reduce
+
 from tbe import tvm
-import te.platform.cce_params as cce
-from te import platform as cceconf
-from te.platform import log
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.utils import log
 from .util import get_emit_insn_map
 from .util import DTYPE_WIDTH_MAP
 
@@ -32,7 +33,7 @@ def get_max_ub_count(cast_dtype, reduce_len):
     :return: max element num loaded in UB buffer
     """
     # div 2 for align to fp16
-    total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+    total_size = get_soc_spec("UB_SIZE") // 2
     dtype_size = DTYPE_WIDTH_MAP.get(cast_dtype)
     total_size = total_size // dtype_size
     # div 2 for double buffer
@@ -58,7 +59,7 @@ def _get_block_tiling(shape, one_core_data_threadhold):
     """
     find block tiling
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     block_axis = 0
     block_factor = 1
 
@@ -236,18 +237,18 @@ def _cut_no_reduce_axis_sch_do_cache(
     """
     # cache_read/write
     for key in input_tensor_dst_tensor_map:
-        read_buffer = sch.cache_read(key, cce.scope_ubuf,
+        read_buffer = sch.cache_read(key, scope_ubuf,
                                      input_tensor_dst_tensor_map[key])
         input_tensor_buffer_tensor_map[key] = read_buffer
 
         double_buffer_tensors.append(read_buffer)
 
     for key in mid_tensor_dst_tensor_map:
-        write_buffer = sch.cache_write(key, cce.scope_ubuf)
+        write_buffer = sch.cache_write(key, scope_ubuf)
         mid_tensor_buffer_tensor_map[key] = write_buffer
 
     if not is_reduce_output:
-        write_buffer = sch.cache_write(res_tensor, cce.scope_ubuf)
+        write_buffer = sch.cache_write(res_tensor, scope_ubuf)
         mid_tensor_buffer_tensor_map[res_tensor] = write_buffer
 
     for key in mid_tensor_dst_tensor_map:
@@ -268,7 +269,7 @@ def _cut_no_reduce_axis_sch_do_tiling(
             res_tensor.op.reduce_axis[0], factor=block_factor)
         res_tensor_rf = sch.rfactor(res_tensor, res_outer)
         res_tensor_gm = sch.cache_write(res_tensor, "global")
-        res_tensor_rf_ub = sch.cache_write(res_tensor_rf, cce.scope_ubuf)
+        res_tensor_rf_ub = sch.cache_write(res_tensor_rf, scope_ubuf)
         sch[res_tensor_rf].compute_inline()
         barrier_tensor = res_tensor_rf_ub
         compute_at_axis = res_tensor_rf_ub.op.axis[0]
@@ -543,7 +544,7 @@ def _cut_notfirst_axis_sch_do_tiling(
         res_tensor_rf = sch.rfactor(res_tensor, res_outer)
 
         res_tensor_gm = sch.cache_write(res_tensor, "global")
-        res_tensor_rf_ub = sch.cache_write(res_tensor_rf, cce.scope_ubuf)
+        res_tensor_rf_ub = sch.cache_write(res_tensor_rf, scope_ubuf)
         sch[res_tensor_rf].compute_inline()
 
         barrier_tensor = res_tensor_rf_ub
@@ -699,7 +700,7 @@ def _cut_notfirst_axis_sch_do_cache_read(
     for tensor in wk_tensor_placeholder_map:
         input_tensor = wk_tensor_placeholder_map[tensor]
         read_buffer = sch.cache_read(
-            input_tensor, cce.scope_ubuf,
+            input_tensor, scope_ubuf,
             input_tensor_dst_tensor_map[input_tensor])
         workspace_input_tensor_buffer_map[tensor] = read_buffer
         double_buffer_tensors.append(read_buffer)
@@ -710,7 +711,7 @@ def _cut_notfirst_axis_sch_do_cache_read(
         if key not in reduce_tensor_placeholder_list +\
                 wk_tensor_placeholder_list:
             read_buffer = sch.cache_read(
-                key, cce.scope_ubuf,
+                key, scope_ubuf,
                 input_tensor_dst_tensor_map[key])
             input_tensor_buffer_tensor_map[key] = read_buffer
             double_buffer_tensors.append(read_buffer)
@@ -725,7 +726,7 @@ def _cut_notfirst_axis_sch_do_cache_read(
             for i in tensor_list_dst_tensor_map[tensor]:
                 if i in reduce_tensor_input_map[key]:
                     dst_tensor.append(i)
-            read_buffer = sch.cache_read(tensor, cce.scope_ubuf,
+            read_buffer = sch.cache_read(tensor, scope_ubuf,
                                          dst_tensor)
             reduce_tensor_placeholder_buffer_map[key].append(read_buffer)
 
@@ -745,22 +746,22 @@ def _cut_notfirst_axis_sch_do_cache_write(
     """
     workspace_node_buffer_map = {}
     for key in workspace_node_list:
-        write_buffer = sch.cache_write(key, cce.scope_ubuf)
+        write_buffer = sch.cache_write(key, scope_ubuf)
         workspace_node_buffer_map[key] = write_buffer
 
     workspace_mid_tensor_buffer_map = {}
     for key in workspace_tensor_input_list:
-        write_buffer = sch.cache_write(key, cce.scope_ubuf)
+        write_buffer = sch.cache_write(key, scope_ubuf)
         workspace_mid_tensor_buffer_map[key] = write_buffer
 
     mid_tensor_buffer_map = {}
     for key in mid_tensor_dst_tensor_map:
         if key not in workspace_tensor_input_list + workspace_node_list:
-            write_buffer = sch.cache_write(key, cce.scope_ubuf)
+            write_buffer = sch.cache_write(key, scope_ubuf)
             mid_tensor_buffer_map[key] = write_buffer
 
     if not is_reduce_output:
-        write_buffer = sch.cache_write(res_tensor, cce.scope_ubuf)
+        write_buffer = sch.cache_write(res_tensor, scope_ubuf)
         mid_tensor_buffer_map[res_tensor] = write_buffer
 
     return workspace_node_buffer_map, workspace_mid_tensor_buffer_map, \

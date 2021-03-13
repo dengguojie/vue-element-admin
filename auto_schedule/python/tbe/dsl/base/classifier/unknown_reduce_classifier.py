@@ -17,8 +17,6 @@ classifier of shape in unknown reduce axis
 """
 from itertools import combinations
 
-from te import platform as cce
-
 from . import reduce_helper as helper
 from . import util
 from .reduce_helper import ZeroAxisStatus
@@ -50,6 +48,7 @@ class UnknownReduceClassifier:
         self.const_reduce_axis_size = self.dim_len if size0 < 0 else min(size0, self.dim_len)
 
     def classify(self):
+        from te import platform as cce
         if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
             return [helper.ins_of_prebuild(self.ins, list(range(0, self.reduce_axis_size)))]
 

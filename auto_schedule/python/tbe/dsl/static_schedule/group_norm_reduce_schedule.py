@@ -19,11 +19,18 @@ from __future__ import absolute_import
 from __future__ import division
 from functools import reduce as reduceIns
 
-import te.lang.cce
 from tbe import tvm
-from te import platform as cceconf
-from te.platform.cce_conf import CceProductParams as pver
-from te.platform import log
+from tbe.common.utils import shape_to_list
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
+from tbe.common.utils import log
+
 from .util import DTYPE_WIDTH_MAP
 from .util import get_reduce_axis_num
 
@@ -37,7 +44,7 @@ def get_max_ub_count(dtype):
     :return: max element num loaded in UB buffer
     """
     # div 2 for align to fp16
-    total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+    total_size = get_soc_spec("UB_SIZE") // 2
     dtype_size = DTYPE_WIDTH_MAP.get(dtype)
     total_size = total_size // dtype_size
     total_size = total_size // 2  # div 2 for double buffer
@@ -65,7 +72,7 @@ def sch_cut_not_reduce_axis_nchw(
     res_list[1] = square_sum_x
 
     _, sum_x_ub = sch.cache_write([square_sum_x, sum_x],
-                                  cceconf.scope_ubuf)
+                                  scope_ubuf)
 
     sum_x_block_outer, sum_x_block_inner = \
         sch[sum_x].split(sum_x.op.axis[block_split_axis],
@@ -151,7 +158,7 @@ def sch_cut_reduce_axis_nchw(
     res_list[0] = sum_x_global
     res_list[1] = square_sum_x_global
 
-    sch[sum_x_ub_rf].set_scope(cceconf.scope_ubuf)
+    sch[sum_x_ub_rf].set_scope(scope_ubuf)
 
     split_reduce_axis_index = ub_split_axis - block_split_axis
     # after rfactor, the new reduce axis is the last reduce axis
@@ -219,7 +226,7 @@ def sch_cut_not_reduce_axis_nhwc(
     res_list[1] = square_sum_x
 
     _, sum_x_ub = sch.cache_write([square_sum_x, sum_x],
-                                  cceconf.scope_ubuf)
+                                  scope_ubuf)
 
     sum_x_block_outer, sum_x_block_inner = \
         sch[sum_x].split(sum_x.op.axis[block_split_axis],
@@ -459,7 +466,7 @@ def sch_cut_reduce_axis_nhwc(
     res_list[0] = sum_x_global
     res_list[1] = square_sum_x_global
 
-    sch[sum_x_ub_rf].set_scope(cceconf.scope_ubuf)
+    sch[sum_x_ub_rf].set_scope(scope_ubuf)
 
     # after rfactor, the new reduce axis is the last reduce axis
     if block_split_axis in [1, 2]:
@@ -552,8 +559,8 @@ def _is_supported_atomic_add(reduce_tensor):
     dtype = reduce_tensor.dtype
     if dtype != "float32":
         return False
-    is_version_support = pver().is_cloud_version() or \
-        pver().is_ng1_version()
+    soc_ver = get_soc_spec(SOC_VERSION)
+    is_version_support = (soc_ver in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710))
     if not is_version_support:
         return False
     tag = reduce_tensor.op.tag
@@ -580,8 +587,8 @@ def _gn_reduce_nchw_tiling(shape_before_reduce,
     :param dtype:
     :return:
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
-    soc_version = cceconf.get_soc_spec(cceconf.SOC_VERSION)
+    core_num = get_soc_spec("CORE_NUM")
+    soc_version = get_soc_spec(SOC_VERSION)
     shape_key = "_".join(str(i) for i in shape_before_reduce) + \
                 "_" + dtype + "_" + soc_version
     if shape_key in GN_REDUCE_NCHW_TILING_MAP:
@@ -845,7 +852,7 @@ def _gn_reduce_nhwc_tiling(shape_before_reduce,
         return reduceIns(lambda x, y: x*y, shape)
 
     group_size = shape_before_reduce[-1]
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     n_size = shape_before_reduce[0]
     group_nums = shape_before_reduce[3]
@@ -1026,14 +1033,14 @@ def _gn_reduce_shc_do_cache(sch, input_tensor, sum_x, square_sum_x):
 
     data = input_tensor
     if is_cast:
-        data_ub = sch.cache_read(data, cceconf.scope_ubuf, [cast_0])
+        data_ub = sch.cache_read(data, scope_ubuf, [cast_0])
         cast_0_ub = \
-            sch.cache_read(cast_0, cceconf.scope_ubuf, [data_mul, sum_x])
+            sch.cache_read(cast_0, scope_ubuf, [data_mul, sum_x])
     else:
-        data_ub = sch.cache_read(data, cceconf.scope_ubuf, [data_mul, sum_x])
+        data_ub = sch.cache_read(data, scope_ubuf, [data_mul, sum_x])
         cast_0_ub = None
 
-    data_mul_ub = sch.cache_read(data_mul, cceconf.scope_ubuf, [sum_x])
+    data_mul_ub = sch.cache_read(data_mul, scope_ubuf, [sum_x])
 
     sch[data_mul].compute_inline()
     if is_cast:
@@ -1094,9 +1101,9 @@ def gn_reduce_schedule(res, input_tensors):
     input_tensor = input_tensors[0]
     sum_x = res[0]
     square_sum_x = res[1]
-    shape_input = te.lang.cce.util.shape_to_list(input_tensor.shape)
+    shape_input = shape_to_list(input_tensor.shape)
 
-    shape_res = te.lang.cce.util.shape_to_list(sum_x.shape)
+    shape_res = shape_to_list(sum_x.shape)
 
     res_dtype = sum_x[0].dtype
 

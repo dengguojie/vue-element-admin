@@ -22,8 +22,9 @@ import functools
 
 import te.lang.cce
 from tbe import tvm
-import te.platform.cce_params as cce
-from te import platform as cceconf
+from tbe.common.utils import shape_to_list
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform.platform_info import get_soc_spec
 from te.platform import cce_util
 
 MAX_SHAPE_NUM = 10000000
@@ -108,7 +109,7 @@ def get_max_ub_count(dtype):
     :return: max element num loaded in UB buffer
     """
     # div 2 for align to fp16
-    total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+    total_size = get_soc_spec("UB_SIZE") // 2
     dtype_size = DTYPE_WIDTH_MAP.get(dtype)
     total_size = total_size // dtype_size
     if dtype == "float16":
@@ -129,7 +130,7 @@ def get_tiling(shape, dtype, reduce_axis_idx, max_ub_count):
     """
     get tiling
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     dim = len(shape)
 
@@ -220,7 +221,7 @@ def get_tiling_fractal_z(shape, dtype, max_ub_count):
     """
     get tiling fractal_z
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     dim = len(shape)
 
@@ -435,7 +436,7 @@ def _do_cache_read(sch_list, input_tensor_dst_tensor_map, exclude_tensor):
     input_tensor_buffer_map = {}
     for tensor in input_tensor_dst_tensor_map:
         if tensor not in exclude_tensor:
-            buffer_tensor = sch.cache_read(tensor, cce.scope_ubuf,
+            buffer_tensor = sch.cache_read(tensor, scope_ubuf,
                                            input_tensor_dst_tensor_map[tensor])
             input_tensor_buffer_map[tensor] = buffer_tensor
     sch_list[0] = sch
@@ -452,7 +453,7 @@ def _do_cache_write(sch_list, mid_tensor_dst_tensor_map,
     input_broadcast_tensor_buffers = []
     for tensor in mid_tensor_dst_tensor_map:
         if tensor not in exclude_tensor:
-            buffer_tensor = sch.cache_write(tensor, cce.scope_ubuf)
+            buffer_tensor = sch.cache_write(tensor, scope_ubuf)
             mid_tensor_buffer_map[tensor] = buffer_tensor
 
             if tensor in input_broadcast_tensors:
@@ -526,7 +527,7 @@ def _do_compute_at(sch_list, shape_input, input_tensor_buffer_map,
 
     for tensor in input_tensor_buffer_map:
         buffer_tensor = input_tensor_buffer_map[tensor]
-        shape = te.lang.cce.util.shape_to_list(tensor.shape)
+        shape = shape_to_list(tensor.shape)
         if shape == shape_input:
             # small shape input to be broadcast
             sch[buffer_tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
@@ -541,7 +542,7 @@ def _do_compute_at(sch_list, shape_input, input_tensor_buffer_map,
         sch[buffer_tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
         sch[tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
 
-    soc_version = cceconf.get_soc_spec("SOC_VERSION")
+    soc_version = get_soc_spec("SOC_VERSION")
 
     for tensor in mid_tensor_buffer_map:
         buffer_tensor = mid_tensor_buffer_map[tensor]
@@ -563,7 +564,7 @@ def _do_double_buffer(sch_list, shape_input, outer_loop, input_tensor_buffer_map
     sch = sch_list[0]
     if outer_loop > 2:
         for tensor in input_tensor_buffer_map:
-            shape = te.lang.cce.util.shape_to_list(tensor.shape)
+            shape = shape_to_list(tensor.shape)
             if shape == shape_input:
                 buffer_tensor = input_tensor_buffer_map[tensor]
                 sch[buffer_tensor].double_buffer()
@@ -625,7 +626,7 @@ def schedule_cut_nlstaxis_twice(sch_list, res, shape_x,
         res[list_index_in_res[i]] =\
             final_out_tensor_global_list[i]
 
-    sch[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
+    sch[final_out_tensor_ub_rf].set_scope(scope_ubuf)
 
     final_out_tensor_global = final_out_tensor_global_list[0]
 
@@ -741,7 +742,7 @@ def schedule_cut_diff_axis(sch_list, res, shape_x,
         res[list_index_in_res[i]] =\
             final_out_tensor_global_list[i]
 
-    sch[final_out_tensor_ub_rf].set_scope(cce.scope_ubuf)
+    sch[final_out_tensor_ub_rf].set_scope(scope_ubuf)
 
     final_out_tensor_global = final_out_tensor_global_list[0]
 
@@ -848,7 +849,7 @@ def schedule_cut_general(sch_list, shape_input, ub_split_reduce_axis, split_fact
     """
     sch = sch_list[0]
 
-    final_out_buffer_list = sch.cache_write(final_out_tensor_list, cce.scope_ubuf)
+    final_out_buffer_list = sch.cache_write(final_out_tensor_list, scope_ubuf)
     final_out_tensor = final_out_tensor_list[0]
     final_out_buffer = final_out_buffer_list[0]
 
@@ -957,7 +958,7 @@ def schedule_cut_m1_nz(sch_list, res, shape_x,
     sch = sch_list[0]
 
     final_ub_tensor_list = sch.cache_write(final_out_tensor_list,
-                                           cce.scope_ubuf)
+                                           scope_ubuf)
 
     final_ub_tensor = final_ub_tensor_list[0]
 
@@ -1143,7 +1144,7 @@ def layer_norm_grad_schedule(res, input_tensors):
         raise RuntimeError("LayerNorm_grad_beta_gamma input nums should be 4.")
 
     data_x_tensor = input_tensors[-1]
-    shape_x = te.lang.cce.util.shape_to_list(data_x_tensor.shape)
+    shape_x = shape_to_list(data_x_tensor.shape)
 
     dtype = data_x_tensor.dtype.lower()
 
@@ -1178,7 +1179,7 @@ def layer_norm_grad_schedule(res, input_tensors):
             broadcast_tensor_list.append(tensor)
 
     out_tensor = final_out_tensor_list[0]
-    shape_res = te.lang.cce.util.shape_to_list(out_tensor.shape)
+    shape_res = shape_to_list(out_tensor.shape)
 
     is_keep_dim = True
     if len(shape_x) != len(shape_res):
@@ -1193,7 +1194,7 @@ def layer_norm_grad_schedule(res, input_tensors):
     reduce_axis_idx = _get_reduce_axis(shape_x, shape_res)
 
     data_mean = input_tensors[0]
-    shape_mean = te.lang.cce.util.shape_to_list(data_mean.shape)
+    shape_mean = shape_to_list(data_mean.shape)
 
     broadcast_axis_idx = _get_broadcast_axis(shape_x, shape_mean)
 
@@ -1222,8 +1223,8 @@ def layer_norm_grad_schedule(res, input_tensors):
         # pylint: disable=consider-using-enumerate
         for i in range(len(res)):
             input_tensor = res[i].op.input_tensors[i]
-            input_shape = te.lang.cce.util.shape_to_list(input_tensor.shape)
-            output_shape = te.lang.cce.util.shape_to_list(res[i].shape)
+            input_shape = shape_to_list(input_tensor.shape)
+            output_shape = shape_to_list(res[i].shape)
             reduce_axes = []
             for cur_dim in range(len(output_shape)):
                 if output_shape[cur_dim] != input_shape[cur_dim]:

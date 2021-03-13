@@ -19,11 +19,18 @@ elewise schedule
 import math
 import functools
 
-from te import platform as cceconf
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.instrinsic import cce_emitinsn_params
-from te.platform.cce_conf import CceProductParams as pver
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
+
 from . import util
 from .vector_schedule import VectorSchedule
 from .cce_schedule_mappings import OpSubPatterns
@@ -249,7 +256,7 @@ class ElewiseSchedule(VectorSchedule):
         Returns
         -------
         """
-        if not pver().is_mini_version():
+        if get_soc_spec(SOC_VERSION) != ASCEND_310:
             return
 
         if self._is_contain_broadcast_tensor():
@@ -585,7 +592,7 @@ class ElewiseSchedule(VectorSchedule):
         multiply core threshold
         """
         multi_core_threshold = self._multi_core_threshold
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
         if core_num == shape[0] and len(shape) > 1:
             data_size = DTYPE_WIDTH_MAP[dtype] * 2
             for i in range(1, len(shape)):
@@ -1703,7 +1710,8 @@ class ElewiseSchedule(VectorSchedule):
         -------
         True or False
         """
-        if not (pver().is_cloud_version() or pver().is_ng1_version()):
+        soc_ver = get_soc_spec(SOC_VERSION)
+        if soc_ver not in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -1855,8 +1863,9 @@ class ElewiseSchedule(VectorSchedule):
     def _is_special_broadcast_sence(self, block_split_axis,
                                     block_split_inner_size):
         def __check_support_version():
-            if not pver().is_cloud_version():
-                if pver().is_mini_version():
+            soc_ver = get_soc_spec(SOC_VERSION)
+            if soc_ver not in (ASCEND_910, ASCEND_920A):
+                if soc_ver == ASCEND_310:
                     if self._op_type == OpSpecTypes.NORMALIZE_SCALE:
                         return True
                 return False
@@ -1876,7 +1885,7 @@ class ElewiseSchedule(VectorSchedule):
 
     def _is_less_32_core_middle_broadcast_out_scene(self, block_split_axis,
                                                     block_split_inner_size):
-        if not pver().is_cloud_version():
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -1934,7 +1943,7 @@ class ElewiseSchedule(VectorSchedule):
         return is_out
 
     def _is_mix_broadcast_out_scene(self, block_split_axis, block_split_inner_size):
-        if not pver().is_cloud_version():
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2044,7 +2053,7 @@ class ElewiseSchedule(VectorSchedule):
     def _is_non_32align_broadcast_out_scene(self, block_split_axis,
                                             block_split_inner_size,
                                             shape, max_ub_count):
-        if not pver().is_cloud_version():
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2151,7 +2160,7 @@ class ElewiseSchedule(VectorSchedule):
         return True
 
     def _is_32align_broadcast_out_scene(self, block_split_axis, block_split_inner_size):
-        if not pver().is_cloud_version():
+        if get_soc_spec(SOC_VERSION) not in (ASCEND_910, ASCEND_920A):
             return False
 
         if not self._is_only_broadcast_not_last_axis():
@@ -2232,7 +2241,7 @@ class ElewiseSchedule(VectorSchedule):
         """
         Get the specail broadcast pattern optimize threshold value
         """
-        if pver().is_cloud_version():
+        if get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_920A):
             return 64
         return 32
 
@@ -2315,7 +2324,7 @@ class ElewiseSchedule(VectorSchedule):
         if not self._broadcast_not_last_axis_tensors:
             return False
 
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
 
         threshold_value = self._get_special_broadcast_optimize_value()
         self._normalize_scale_opt()
@@ -2427,7 +2436,7 @@ class ElewiseSchedule(VectorSchedule):
         block_split_axis = block_tiling_para["axis"]
         block_split_inner_size = block_tiling_para["factor"]
 
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
         threshold_value = self._get_special_broadcast_optimize_value()
 
         broadcast_axis_multiply_flag = False
@@ -3255,7 +3264,7 @@ class ElewiseSchedule(VectorSchedule):
             return total_width + update_width
 
         # div 2 for align to fp16
-        self._total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+        self._total_size = get_soc_spec("UB_SIZE") // 2
         self._total_size = self._total_size // 2  # div 2 for double buffer
         if self._op_type == OpSpecTypes.RELU_GRAD_V2:
             dtype = self._input_tensors[1].dtype.lower()

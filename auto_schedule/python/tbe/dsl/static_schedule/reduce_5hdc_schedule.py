@@ -17,11 +17,12 @@ reduce 5hd c axis schedule
 """
 import math
 
-import te
-
-from te.platform.cce_params import scope_ubuf
-from te.platform import log
+from tbe import tvm
+from tbe.common.platform import scope_ubuf
+from tbe.common.utils import log
 from tbe.common.utils.errormgr import get_error_message
+from tbe.common.platform.platform_info import get_soc_spec
+
 from .util import dfs_tensor_graph
 from .util import get_all_axes
 from .util import get_reduce_axes
@@ -70,8 +71,8 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         # Itervar of outermost reduce axis for all tensors except in_tensor
         self.all_reduce_var_dict = {}
         # Device info
-        self.device_ub_size = int(te.platform.get_soc_spec("UB_SIZE"))
-        self.device_core_num = int(te.platform.get_soc_spec("CORE_NUM"))
+        self.device_ub_size = int(get_soc_spec("UB_SIZE"))
+        self.device_core_num = int(get_soc_spec("CORE_NUM"))
         # Tiling info
         self.tiling_calculation_unit_axis = None
         self.tiling_calculation_unit_factor = None
@@ -561,7 +562,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         if self.block_outer is None:
             self.block_outer = block_tiling_axis
         self._schedule[self._out_tensor].bind(block_tiling_axis,
-                                              te.tvm.thread_axis("blockIdx.x"))
+                                              tvm.thread_axis("blockIdx.x"))
 
     def _do_ub_tiling(self, out_stage):
         """Apply ub tiling"""

@@ -22,8 +22,9 @@ import functools
 
 import te.lang.cce
 from tbe import tvm
-import te.platform.cce_params as cce
-from te import platform as cceconf
+from tbe.common.utils import shape_to_list
+from tbe.common import platform as cce
+from tbe.common.platform.platform_info import get_soc_spec
 from te.platform import cce_util
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .util import get_nearest_factor
@@ -149,7 +150,7 @@ def get_max_ub_count(dtype, shape):
     :return: max element num loaded in UB buffer
     """
     # div 2 for align to fp16
-    total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+    total_size = get_soc_spec("UB_SIZE") // 2
     dtype_size = DTYPE_WIDTH_MAP.get(dtype)
     total_size = total_size // dtype_size
     if shape not in RESNET_50_SHAPE_LIST:
@@ -194,7 +195,7 @@ def get_ub_tiling(shape, block_tiling_axis,
     if block_tiling_axis < 0 or block_tiling_axis > last_axis:
         return ub_split_axis, ub_split_inner
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     n_size = shape[0]
     c1_size = shape[1]
@@ -470,7 +471,7 @@ def _do_compute_at(sch_list, shape_input, input_tensor_buffer_map,
 
     for tensor in input_tensor_buffer_map:
         buffer_tensor = input_tensor_buffer_map[tensor]
-        shape = te.lang.cce.util.shape_to_list(tensor.shape)
+        shape = shape_to_list(tensor.shape)
         if shape == shape_input:
             sch[buffer_tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
             # small shape input to be broadcast
@@ -484,7 +485,7 @@ def _do_compute_at(sch_list, shape_input, input_tensor_buffer_map,
 
     for tensor in mid_tensor_buffer_map:
         buffer_tensor = mid_tensor_buffer_map[tensor]
-        shape = te.lang.cce.util.shape_to_list(tensor.shape)
+        shape = shape_to_list(tensor.shape)
         if shape == shape_input:
             sch[buffer_tensor].compute_at(sch[final_out_buffer_1], compute_at_axis_1)
         else:
@@ -502,7 +503,7 @@ def _do_double_buffer(sch_list, shape_input, outer_loop,
     if outer_loop > 2:
         # pylint: disable=consider-using-enumerate
         for tensor in input_tensor_buffer_map:
-            shape = te.lang.cce.util.shape_to_list(tensor.shape)
+            shape = shape_to_list(tensor.shape)
             if shape == shape_input:
                 buffer_tensor = input_tensor_buffer_map[tensor]
                 sch[buffer_tensor].double_buffer()
@@ -523,7 +524,7 @@ def schedule_cut_h_or_w_twice(
 
     final_out_tensor = final_out_tensor_list[0]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     final_out_tensor_block_outer, final_out_tensor_block_inner =\
         sch[final_out_tensor].split(
             final_out_tensor.op.reduce_axis[ub_split_axis - 1],
@@ -662,7 +663,7 @@ def schedule_fuse_h_n(sch_list, res, shape_input, split_factor,
 
     final_out_tensor = final_out_tensor_list[0]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     half_core_num = core_num // 2
     final_out_tensor_block_outer, final_out_tensor_block_inner = \
         sch[final_out_tensor].split(final_out_tensor.op.reduce_axis[1],
@@ -799,7 +800,7 @@ def schedule_cut_c1(sch_list, shape_input, ub_split_axis, split_factor,
     sum_x_ub_h_reduce_axis = final_out_buffer.op.reduce_axis[1]
     sum_x_ub_w_reduce_axis = final_out_buffer.op.reduce_axis[2]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     inner_loop = shape_input[ub_split_axis]
 
@@ -1210,7 +1211,7 @@ def schedule_cut_batch(sch_list, res, shape_input, ub_split_reduce_axis,
 
     final_out_tensor = final_out_tensor_list[0]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     if special_sign:
         core_num = 24
     final_out_tensor_block_outer, _ = \
@@ -1416,7 +1417,7 @@ def bn_update_grad_schedule(res, input_tensors):
         raise RuntimeError("Batch normalization update grad input nums should be 4.")
 
     input_x_tensor = input_tensors[-1]
-    shape_x = te.lang.cce.util.shape_to_list(input_x_tensor.shape)
+    shape_x = shape_to_list(input_x_tensor.shape)
     if len(shape_x) != 5:
         raise RuntimeError("Batch normalization only support 5D format.")
 
@@ -1432,8 +1433,8 @@ def bn_update_grad_schedule(res, input_tensors):
                 continue
 
             input_tensor = res[i].op.input_tensors[i]
-            input_shape = te.lang.cce.util.shape_to_list(input_tensor.shape)
-            output_shape = te.lang.cce.util.shape_to_list(res[i].shape)
+            input_shape = shape_to_list(input_tensor.shape)
+            output_shape = shape_to_list(res[i].shape)
             reduce_axes = []
             for cur_dim in range(len(output_shape)):
                 if output_shape[cur_dim] != input_shape[cur_dim]:
@@ -1473,7 +1474,7 @@ def bn_update_grad_schedule(res, input_tensors):
             broadcast_tensor_list.append(tensor)
 
     out_tensor = final_out_tensor_list[0]
-    shape_res = te.lang.cce.util.shape_to_list(out_tensor.shape)
+    shape_res = shape_to_list(out_tensor.shape)
 
     is_keep_dim = True
     if len(shape_x) != len(shape_res):
@@ -1494,7 +1495,7 @@ def bn_update_grad_schedule(res, input_tensors):
     split_factor = ub_split_inner
     outer_loop = shape_x[ub_split_axis] // ub_split_inner
     # get device_core_num
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     half_core_num = core_num // 2
     batch = shape_x[0]
     c1_size = shape_x[1]

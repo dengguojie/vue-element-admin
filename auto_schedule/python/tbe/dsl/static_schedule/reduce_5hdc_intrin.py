@@ -15,14 +15,12 @@
 """
 reduce 5hd c axis intrinsic functions
 """
-import te
-
 from tbe import tvm
-
-from te.platform import log
+from tbe.common.utils import log
 from te.platform.cce_util import get_buffer
 from te.platform.cce_util import get_align_factor
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
+from tbe.common.platform import VECTOR_INST_BLOCK_WIDTH
 
 
 INTRIN_MAPPING_GROUP = {
@@ -188,7 +186,7 @@ def last_axis_reduce(ir_builder, intrin_cmd, reduce_src, reduce_factor,  # pylin
     log.debug("[LastAxisReduce] Need clean: " + str(need_clean))
     element_size = get_align_factor(input_buffer.dtype)[1]
     element_per_block = 32 // element_size
-    vector_insn_rep_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
+    vector_insn_rep_size = VECTOR_INST_BLOCK_WIDTH // element_size
     block_per_vector_insn = vector_insn_rep_size // element_per_block
     repeat_times = reduce_src * reduce_factor // vector_insn_rep_size
     remains = reduce_src * reduce_factor - vector_insn_rep_size * repeat_times
@@ -212,7 +210,7 @@ def mid_axis_reduce(ir_builder, intrin_cmd, reduce_src,  # pylint: disable=R0913
     if reduce_unit % 16 != 0:
         raise RuntimeError("Mid axis reduce currently doesn't support unaligned reduce")
     element_size = get_align_factor(input_buffer.dtype)[1]
-    vector_insn_rep_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
+    vector_insn_rep_size = VECTOR_INST_BLOCK_WIDTH // element_size
     repeat_times = reduce_unit // vector_insn_rep_size
     remains = reduce_unit - vector_insn_rep_size * repeat_times
     with ir_builder.for_range(0, reduce_factor - 1, name="loop_reduce_factor") as loop_factor:
@@ -347,7 +345,7 @@ def vector_insn_factor_clean(ir_builder, cmd, src_buffer,  # pylint: disable=R09
     }
     element_size = get_align_factor(src_buffer.dtype)[1]
     element_per_block = 32 // element_size
-    vector_insn_rep_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // element_size
+    vector_insn_rep_size = VECTOR_INST_BLOCK_WIDTH // element_size
     block_per_vector_insn = vector_insn_rep_size // element_per_block
     mask_num = 16 - clean_factor
     if cmd in num_fill_dict:

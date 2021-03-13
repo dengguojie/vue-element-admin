@@ -16,9 +16,10 @@
 inplace schedule, provide a schedule for inplace compute
 """
 from tbe import tvm
-from te import platform as cceconf
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import dma_copy
 from tbe.dsl.instrinsic import cce_emitinsn_params
-from te.platform import log
+from tbe.common.utils import log
 from .util import get_align_factor
 from .util import shape_to_list
 
@@ -60,11 +61,11 @@ class CceInplaceOp:
 
         # using for tiling
         if self._scope.lower().find('.ub') != -1:
-            self._total_size = cceconf.get_soc_spec("UB_SIZE")
+            self._total_size = get_soc_spec("UB_SIZE")
         else:
             raise RuntimeError("only support UB buffer now")
         # get device_core_num
-        self._core_dim = cceconf.get_soc_spec("CORE_NUM")
+        self._core_dim = get_soc_spec("CORE_NUM")
         self._ub_tiling_max_size = self._total_size
         self._need_double_buffer = False
         self._need_block_tiling = False
@@ -211,10 +212,10 @@ class CceInplaceOp:
         for i in self._read_cache:
             self._schedule[i].emit_insn(
                 self._schedule[i].op.axis[0],
-                cceconf.dma_copy)
+                dma_copy)
 
         self._schedule[res].emit_insn(self._ub_split_xi,
-                                      cceconf.dma_copy, {"no_overlap": 1})
+                                      dma_copy, {"no_overlap": 1})
 
     def _do_double_buffer(self):
         """

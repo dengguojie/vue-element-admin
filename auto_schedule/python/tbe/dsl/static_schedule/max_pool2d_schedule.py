@@ -15,11 +15,16 @@
 """
 max_pool2d_schedule
 """
-from te import platform as cce
 from tbe import tvm
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_cbuf_fusion
+from tbe.common.platform import scope_cbuf
 from tbe.dsl.instrinsic import cce_emitinsn_params as cce_params
-from te.platform import get_soc_spec
-from te.platform.cce_conf import CceProductParams as pver
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
 from tbe.common.utils.errormgr import get_error_message
 
 # define the quantize tensor name
@@ -299,7 +304,8 @@ def _set_round_emit_insn(round_mode):
     -------
     instruction
     """
-    if pver().is_mini_version() or pver().is_cloud_version():
+    soc_ver = get_soc_spec(SOC_VERSION)
+    if soc_ver in (ASCEND_310, ASCEND_910, ASCEND_920A):
         # mini/cloud
         emit_insn_str = "vector_conv"
     else:
@@ -318,7 +324,7 @@ def _set_round_emit_insn(round_mode):
 
 def _schedule_quant(res, sch, tensors, context, round_mode):
     # scope
-    _set_scope(sch, tensors.values(), cce.scope_ubuf)
+    _set_scope(sch, tensors.values(), scope_ubuf)
 
     # compute optimize
     _compute_at(sch, tensors.values(), res, context["Woo"])
@@ -351,7 +357,7 @@ def _schedule_pool(res, sch, tensors, context):
     tx_ub_c, tx_ub = tensors["tx_ub_c"], tensors["tx_ub"]
 
     # scope
-    _set_scope(sch, tensors.values(), cce.scope_ubuf)
+    _set_scope(sch, tensors.values(), scope_ubuf)
 
     # db
     enabler_db = context["enabler_db"]
@@ -404,7 +410,7 @@ def _schedule_dequant(res, sch, tensors, context):
                                (1, 1),
                                (1, 32))
     # scope
-    _set_scope(sch, tensors.values(), cce.scope_ubuf)
+    _set_scope(sch, tensors.values(), scope_ubuf)
 
     # db
     if context["enabler_db"]:
@@ -667,7 +673,7 @@ def schedule(res, sch_list):
             # inline will cost more time
             if p_c1 % 2 == 0:
                 sch[quant_tensors["input_ub"]].compute_inline()
-            _set_scope(sch, [pool_res], cce.scope_ubuf)
+            _set_scope(sch, [pool_res], scope_ubuf)
             sch[pool_res].compute_at(sch[res], res3o)
             tx_rh_name = "tx_rh" + str(k_h - 1)
             sch[pool_res].reused_by(pool_tensors[tx_rh_name])
@@ -676,7 +682,7 @@ def schedule(res, sch_list):
         # schedule dequant
         if fused_dequant:
             _schedule_dequant(dequant_res, sch, dequant_tensors, context)
-            _set_scope(sch, [dequant_res], cce.scope_ubuf)
+            _set_scope(sch, [dequant_res], scope_ubuf)
             if p_c1 % 2 == 0:
                 sch[pool_tensors["tx_ub_c"]].compute_inline()
             sch[dequant_res].compute_at(sch[res], res3o)
@@ -716,13 +722,13 @@ def schedule(res, sch_list):
     def _l1_fusion_set_scope():
         if in_l1_flag:
             if l1_fusion_type == L1_BREADTH_FUSION:
-                sch[tensor_in_ub].set_scope(cce.scope_cbuf)
+                sch[tensor_in_ub].set_scope(scope_cbuf)
             else:
                 tensor_in = tensor_in_ub.op.input_tensors[0]
-                sch[tensor_in].set_scope(cce.scope_cbuf_fusion)
+                sch[tensor_in].set_scope(scope_cbuf_fusion)
 
         if out_l1_flag:
-            sch[res].set_scope(cce.scope_cbuf_fusion)
+            sch[res].set_scope(scope_cbuf_fusion)
 
     _l1_fusion_set_scope()
 

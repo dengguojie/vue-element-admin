@@ -17,18 +17,20 @@ Pure broadcast intrin
 """
 import math
 
-import te
-
 from tbe import tvm
-from te.platform import log
-
+from tbe.common.utils import log
 from te.platform.cce_util import get_align_factor
-from te.platform import cce_conf as cceconf
-from .util import get_least_common_multiple
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn_inverted
 from tbe.dsl.instrinsic.cce_intrin_md import apply_for_new_alloc
-from te.platform.cce_params import scope_reg
+from tbe.common.platform import scope_reg
+from tbe.common.platform import VECTOR_INST_BLOCK_WIDTH
+
+from .util import get_least_common_multiple
 
 DMA_MODE = 0
 VECTOR_MODE = 1
@@ -138,8 +140,7 @@ def is_falat_supported(broadcast_factor, broadcast_src, dtype_byte_size,
 def is_mg_supported(broadcast_src, broadcast_factor, dtype_byte_size, align_factor, is_lfa):
     """Check MG broadcast algorithm requirement"""
     if broadcast_factor * dtype_byte_size >= align_factor and not is_lfa:
-        cce_product_params = cceconf.CceProductParams()
-        if cce_product_params.is_cloud_version():
+        if get_soc_spec(SOC_VERSION) in (ASCEND_910, ASCEND_920A):
             return True
         else:
             if [broadcast_src, broadcast_factor] in ME_LIMITS_LIST:
@@ -234,7 +235,7 @@ def mask_grouping_broadcast(*args):  # pylint: disable=too-many-locals, too-many
     # Broadcast count, number of float you need to broadcast
     broadcast_count = broadcast_src
     # number of elements processed per vector op
-    vector_inst_one_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH \
+    vector_inst_one_repeat_size = VECTOR_INST_BLOCK_WIDTH \
         // get_align_factor(dtype)[1]
 
     # Save regs
@@ -496,11 +497,11 @@ def broadcast_last_axis_aligned(*args):  # pylint: disable=too-many-locals
     remain_count = broadcast_src % reg_num
     broadcast_len = broadcast_factor
     _, dtype_byte_size = get_align_factor(input_buffer.dtype)
-    vector_insn_one_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
+    vector_insn_one_repeat_size = VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
     repeat_size = broadcast_len // vector_insn_one_repeat_size
     remain_size = broadcast_len % vector_insn_one_repeat_size
     reg = ir_builder.allocate(outs[0].dtype, (reg_num,), name="reg_buf",
-                              scope=te.platform.cce_params.scope_reg)
+                              scope=scope_reg)
     if loop_count > 0:
         with ir_builder.for_range(0, loop_count, name="idx") as idx:
             for i in range(reg_num):
@@ -698,7 +699,7 @@ def full_aligned_broadcast_selection(broadcast_src, broadcast_unit, broadcast_fa
                                      dtype, no_enhanced=False):
     """Determine possible FA broadcast algorithm"""
     dtype_block_size, dtype_byte_size = get_align_factor(dtype)
-    vector_insn_one_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
+    vector_insn_one_repeat_size = VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
     std_src = broadcast_unit // dtype_block_size * broadcast_factor
     std_unit = broadcast_src * broadcast_factor
     std_factor = math.ceil(broadcast_unit / vector_insn_one_repeat_size) * broadcast_src
@@ -844,7 +845,7 @@ def full_aligned_broadcast_vector(*args, remain=0):  # pylint: disable=too-many-
     broadcast_unit_16 = broadcast_unit * b16_factor
     remain_16 = remain * b16_factor
     broadcast_unit_block_size = broadcast_unit_16 // 16  # 32Byte Block -> 16 b16
-    vector_insn_one_repeat_size_16 = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // 2
+    vector_insn_one_repeat_size_16 = VECTOR_INST_BLOCK_WIDTH // 2
     num_of_instruction = broadcast_unit_16 // vector_insn_one_repeat_size_16
     remain_instruction_size = broadcast_unit_16 % vector_insn_one_repeat_size_16
     if for_loop > 0:
@@ -965,7 +966,7 @@ def full_aligned_broadcast_vector_enhanced(*args):  # pylint: disable=too-many-l
     broadcast_unit_16 = broadcast_unit * b16_factor
     block_size_16 = 16
     broadcast_unit_16_block_num = broadcast_unit_16 // block_size_16  # 32Byte Block -> 16 b16
-    vector_insn_one_repeat_size_16 = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // 2
+    vector_insn_one_repeat_size_16 = VECTOR_INST_BLOCK_WIDTH // 2
     num_of_instruction = broadcast_unit_16 // block_size_16
     num_of_repeat = broadcast_src * block_size_16 // vector_insn_one_repeat_size_16
     remain_repeat_size = broadcast_src * block_size_16 % vector_insn_one_repeat_size_16
@@ -1053,7 +1054,7 @@ def full_aligned_last_axis_transpose(*args):  # pylint: disable=too-many-locals,
     ir_builder, index, input_buffer, output_buffer, \
         broadcast_src, broadcast_factor, scope = args
     dtype_block_size, dtype_byte_size = get_align_factor(input_buffer.dtype)
-    vector_insn_one_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
+    vector_insn_one_repeat_size = VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
     if dtype_byte_size != 2:
         raise RuntimeError("FALAT broadcast supports fp16 only")
     full_aligned_broadcast(ir_builder, index, input_buffer, output_buffer,
@@ -1304,7 +1305,7 @@ def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # pylint: dis
                                dst_offset=0, src_offset=0, src1_offset=0, _repeat_size=128):
     """Generate normal vector intrin, factory function"""
     block_size, dtype_size = get_align_factor(src_buffer.dtype)
-    repeat_size = min(te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_size, _repeat_size)
+    repeat_size = min(VECTOR_INST_BLOCK_WIDTH // dtype_size, _repeat_size)
     repeat = elem // repeat_size
     rem = elem - repeat * repeat_size
     # Remain part
@@ -1372,7 +1373,7 @@ def vector_dup_factory_aligned(ir_builder, dst_buffer, src_const,  # pylint: dis
                                repeat, dst_offset, _repeat_size=128):
     """Generate vector_dup intrin, factory function"""
     block_size, dtype_size = get_align_factor(dst_buffer.dtype)
-    vector_insn_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_size
+    vector_insn_repeat_size = VECTOR_INST_BLOCK_WIDTH // dtype_size
     if repeat > 255:
         repeat_size_size = repeat // 255
         repeat_size_remain = repeat % 255
@@ -1405,7 +1406,7 @@ def lfa_cycle_estimation(dtype, broadcast_src, broadcast_unit, broadcast_factor)
     """Estimation function for lfa(last_axis) algorithm cycle performance"""
     list([broadcast_unit]).clear()  # Use it once to avoid static checks
     dtype_byte_size = get_align_factor(dtype)[1]
-    vector_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
+    vector_repeat_size = VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
     # Base cycle: read each broadcast source number into register, each num costs 1 cycle
     cycle_base = broadcast_src
     # Action cycle, broadcast one number to target shape using masked vector_dup
@@ -1421,7 +1422,7 @@ def mg_cycle_estimation(dtype, broadcast_src, broadcast_unit, broadcast_factor):
     """Estimation function for mg(last_axis) algorithm cycle performance"""
     list([broadcast_unit]).clear()  # Use it once to avoid static checks
     dtype_byte_size = get_align_factor(dtype)[1]
-    vector_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
+    vector_repeat_size = VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
     # Base cycle: read each broadcast source number into register, each num costs 1 cycle
     cycle_base = broadcast_src
     # Action cycle, broadcast one number to target shape using masked vector_dup
@@ -1481,7 +1482,7 @@ def fa_cycle_estimation(dtype, broadcast_src, broadcast_unit, broadcast_factor):
     """Estimation function for fa(mid_axis) algorithm cycle performance"""
     list([broadcast_unit]).clear()  # Use it once to avoid static checks
     dtype_byte_size = get_align_factor(dtype)[1]
-    vector_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
+    vector_repeat_size = VECTOR_INST_BLOCK_WIDTH // dtype_byte_size
     # Base cycle: none
     cycle_base = 0
     # Action cycle, broadcast one number to target shape using masked vector_dup

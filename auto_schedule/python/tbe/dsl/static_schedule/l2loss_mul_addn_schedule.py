@@ -20,7 +20,13 @@ import functools
 
 import te
 from tbe import tvm
-from te import platform as cce
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.utils import shape_to_list
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_gm
+from tbe.common.platform import VECTOR_INST_BLOCK_WIDTH
+from tbe.common.platform import VECTOR_INST_BLOCK_NUM
+from tbe.dsl.instrinsic.cce_intrin import get_bit_len
 from .util import get_emit_insn_map
 from .util import gen_reversed_subgraph_list
 from .util import DTYPE_WIDTH_MAP
@@ -32,7 +38,7 @@ def get_max_ub_count(dtype):
     :return: max element num loaded in UB buffer
     """
     # div 2 for align to fp16
-    total_size = cce.get_soc_spec("UB_SIZE") // 2
+    total_size = get_soc_spec("UB_SIZE") // 2
     dtype_size = DTYPE_WIDTH_MAP.get(dtype)
     total_size = total_size // dtype_size
     # two input, not need to do double buffer
@@ -88,7 +94,7 @@ def _get_block_tiling(shape, last_emit_axis, last_emit_factor, is_align_shape):
     """
     find block tiling
     """
-    core_num = cce.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     block_split_axis = 0
     block_factor = 1
     tmp_size = 1
@@ -142,8 +148,8 @@ def _get_tiling(shape, dtype):
     :param dtype: data type
     :return: ubtiling factor
     """
-    dtype_size = cce.get_bit_len(dtype) // 8
-    min_emit_size = cce.VECTOR_INST_BLOCK_WIDTH // cce.VECTOR_INST_BLOCK_NUM // dtype_size
+    dtype_size = get_bit_len(dtype) // 8
+    min_emit_size = VECTOR_INST_BLOCK_WIDTH // VECTOR_INST_BLOCK_NUM // dtype_size
     max_ub_count = get_max_ub_count(dtype)
     # 1024 is a empirical value
     one_core_data_threadhold = 1024 * min_emit_size
@@ -159,7 +165,7 @@ def _get_tiling(shape, dtype):
         block_nums = _ceil(shape[0], max_ub_count)
         block_split_axis = 0
         ub_split_axis = 0
-        core_num = cce.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
         block_factor = _ceil(block_nums, core_num) * max_ub_count
         ub_factor = min(block_factor, max_ub_count)
         return [block_split_axis, block_factor, ub_split_axis, ub_factor]
@@ -249,7 +255,7 @@ def l2loss_mul_addn_schedule(res, input_tensors):
     axis = [i for i in range(len(res_add.shape))]
     new_res = te.lang.cce.sum(phony_add, axis=axis, keepdims=False)
 
-    shape_add = te.lang.cce.util.shape_to_list(res_add.shape)
+    shape_add = shape_to_list(res_add.shape)
 
     tensor_list_map = {}
     tensor_list_dst_tensor_map = {}
@@ -291,23 +297,23 @@ def l2loss_mul_addn_schedule(res, input_tensors):
     # ---------cache read/write--------------
     cache_read_buffer_list = []
     for tensor in cache_read_tensor_list:
-        cache_read_buffer_list.append(sch.cache_read(tensor, cce.scope_ubuf, input_tensor_dst_tensor_map[tensor]))
+        cache_read_buffer_list.append(sch.cache_read(tensor, scope_ubuf, input_tensor_dst_tensor_map[tensor]))
 
     mid_out_tensor_read_buffer_map = {}
     for i in mid_out_tensor_list:
-        read_buffer = sch.cache_read(i, cce.scope_ubuf, mid_tensor_dst_tensor_map[i])
+        read_buffer = sch.cache_read(i, scope_ubuf, mid_tensor_dst_tensor_map[i])
         mid_out_tensor_read_buffer_map[i] = read_buffer
 
     cache_write_buffer_list = []
     cache_write_buffer_map = {}
     for tensor in cache_write_tensor_list:
-        buf = sch.cache_write(tensor, cce.scope_ubuf)
+        buf = sch.cache_write(tensor, scope_ubuf)
         cache_write_buffer_list.append(buf)
         cache_write_buffer_map[tensor] = buf
 
-    new_res_global = sch.cache_write(new_res, cce.scope_gm)
+    new_res_global = sch.cache_write(new_res, scope_gm)
 
-    sch[res_ub_rf].set_scope(cce.scope_ubuf)
+    sch[res_ub_rf].set_scope(scope_ubuf)
 
     # ---------compute inline----------------
     for tensor in cache_write_tensor_list:

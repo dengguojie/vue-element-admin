@@ -15,8 +15,6 @@
 """
 classifier of shape in known reduce axis
 """
-from te import platform as cce
-
 from . import reduce_helper as helper
 from . import util
 from .reduce_helper import ZeroAxisStatus
@@ -47,6 +45,7 @@ class KnownReduceClassifier:
         self.dim_len, self.reduce_axis_size = len(self.f_shape), len(self.f_reduce_axes)
 
     def classify(self):
+        from te import platform as cce
         if cce.fusion_manager.fusion_manager.get_build_cfg() == "disable":
             return [helper.ins_of_prebuild(self.ins, self.reduce_axes)]
 

@@ -20,14 +20,18 @@ from functools import reduce as reduceIns
 from math import ceil
 import math
 
-from te.platform import log
-from te.platform import intrinsic_check_support
-from te.platform.cce_conf import CceProductParams as pver
-from te import platform as cceconf
 from tbe import tvm
+from tbe.common.utils import log
+from tbe.common.platform import intrinsic_check_support
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import HI3796CV300CS
+from tbe.common.platform import HI3796CV300ES
+from tbe.common.platform import SD3403
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.instrinsic.cce_intrin import intrin_factor
-import te.platform.cce_params as cce_params
+from tbe.common import platform as cce
 from tbe.common.utils.errormgr import get_error_message
 from . import util
 
@@ -56,7 +60,7 @@ DSL_REDUCE_TYPE_MAP = {"single_reduce_sum_float32": 0,
                        "cast_single_reduce_mean_4d": 9,
                        "single_reduce_mean_float32_2d": 10,
                        "cast_single_reduce_mean_2d": 11}
-ELEMENTS_VECTOR_OP_FP16 = cce_params.ELEMENTS_VECTOR_OP_FP16
+ELEMENTS_VECTOR_OP_FP16 = cce.ELEMENTS_VECTOR_OP_FP16
 
 # Multi-core splitting, so that the data processed into each core is greater
 # than or equal to this threshold, too-many-public-methods
@@ -93,7 +97,7 @@ class CceOp:
             inp_dtype = "float16"
             power_num = tvm.const(0.5)
             data = tvm.placeholder(data_shape, name="data", dtype=inp_dtype)
-            cce = CceOp(cceconf.scope_ubuf, need_pragma = True,
+            cce = CceOp(cce.scope_ubuf, need_pragma = True,
             need_tensorize = True)
 
             res = cce.vexp(data)
@@ -201,16 +205,16 @@ class CceOp:
         self._need_storage_align_falg = False
 
         # optimal reduce_sum 5d, 4d
-        self.device_core_num = cceconf.get_soc_spec("CORE_NUM")
+        self.device_core_num = get_soc_spec("CORE_NUM")
         self.xouter = []
         self.xinner = []
         self.dsl_type = DSL_REDUCE_TYPE_MAP["cast_single_reduce_sum"]
 
         if self._scope.lower().find('.ub') != -1:
             self._ub_max_buff = \
-                cceconf.get_soc_spec("UB_SIZE") * 224 // 256
+                get_soc_spec("UB_SIZE") * 224 // 256
             self._total_size = \
-                cceconf.get_soc_spec("UB_SIZE") // 2
+                get_soc_spec("UB_SIZE") // 2
         else:
             dict_args = dict()
             dict_args["errCode"] = "E90003"
@@ -705,16 +709,16 @@ class CceOp:
                 if hasattr(i.op, "reduce_axis") and i.op.reduce_axis:
                     ko1, _ = i.split(i.op.reduce_axis[0], 300)
                     tmp = schedule.rfactor(i.op.output(0), ko1)
-                    schedule[tmp].set_scope(cceconf.scope_aicpu)
+                    schedule[tmp].set_scope(cce.scope_aicpu)
                     for tensor in mid_tensors:
-                        schedule[tensor].set_scope(cceconf.scope_aicpu)
+                        schedule[tensor].set_scope(cce.scope_aicpu)
                     for tensor in mid_tensors:
                         if not tensor.op.tag.startswith("reduce"):
                             schedule[tensor].compute_inline()
                     break
         else:
             for tensor in mid_tensors:
-                schedule[tensor].set_scope(cceconf.scope_aicpu)
+                schedule[tensor].set_scope(cce.scope_aicpu)
             for tensor in mid_tensors:
                 schedule[tensor].compute_inline()
         return schedule
@@ -741,8 +745,9 @@ class CceOp:
 
         # get device_core_num
         device_core_num = \
-            cceconf.get_soc_spec("CORE_NUM")
-        if device_core_num == 1 and not cceconf.is_lhisi_version():
+            get_soc_spec("CORE_NUM")
+        soc_ver = get_soc_spec(SOC_VERSION)
+        if device_core_num == 1 and (soc_ver not in (HI3796CV300CS, HI3796CV300ES, SD3403)):
             self._need_enable_muticore = False
         else:
             self._block_dim = device_core_num
@@ -2287,7 +2292,7 @@ class CceOp:
             for i in range(begin_axis, end_axis + 1, 1):
                 temp_size = temp_size * shape[i]
 
-            core_num = cceconf.get_soc_spec("CORE_NUM")
+            core_num = get_soc_spec("CORE_NUM")
             block_dim = core_num
             if temp_size < core_num:
                 block_dim = temp_size
@@ -2353,7 +2358,7 @@ class CceOp:
         if len(self._res_tensor.shape) == 1:
             return res_axis, rfactor
 
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
 
         align_type = self._res_tensor.dtype
         # bool is represented by int8
@@ -2415,7 +2420,7 @@ class CceOp:
                 or sum(shape[0:block_split_axis]) == block_split_axis:
             return block_split_axis, block_split_inner_size
 
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
         sorted_factors = self._get_factors_of_positive_integer(
             shape[block_split_axis])
         bound_size = 1
@@ -2712,7 +2717,7 @@ class CceOp:
             res_axis = begin_axis
             rfactor = shape[begin_axis]
 
-            core_num = cceconf.get_soc_spec("CORE_NUM")
+            core_num = get_soc_spec("CORE_NUM")
 
             align_type = self._res_tensor.dtype
             # bool is represented by int8
@@ -2761,7 +2766,7 @@ class CceOp:
         res_axis = begin_axis
         rfactor = shape[begin_axis]
 
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
 
         align_type = self._res_tensor.dtype
         # bool is represented by int8
@@ -3568,7 +3573,7 @@ class CceOp:
         for i in read_buffer:
             self._schedule[i].emit_insn(
                 self._schedule[i].op.axis[self._read_dma_axis],
-                cceconf.dma_copy)
+                cce.dma_copy)
 
         align_type = self._res_tensor.dtype
         align_factor, _ = util.get_align_factor(align_type)
@@ -3580,7 +3585,7 @@ class CceOp:
                 self._res_dma_axis, "dma_copy_for_non_32_align")
         else:
             self._schedule[self._res_tensor].emit_insn(
-                self._res_dma_axis, cceconf.dma_copy)
+                self._res_dma_axis, cce.dma_copy)
         # dma copy for muti res
         for lop in self._op[self._reduce_index:]:
             # the muti res has cache write and cache_read, this for cache read
@@ -3591,7 +3596,7 @@ class CceOp:
                 self._schedule[write_buffer].emit_insn(
                     self._schedule[write_buffer].op.axis[
                         len(self._schedule[write_buffer].op.axis) - 1],
-                    cceconf.dma_copy)
+                    cce.dma_copy)
 
                 # A_UB equal to compute(XXX)
                 # A equal to A_UB
@@ -3617,7 +3622,7 @@ class CceOp:
             if write_buffer in self._read_cache_muti_out.keys():
                 self._schedule[write_buffer].emit_insn(
                     self._schedule[write_buffer].op.axis[self._read_dma_axis],
-                    cceconf.dma_copy)
+                    cce.dma_copy)
 
                 # A_UB equal to compute(XXX)
                 # A equal to A_UB
@@ -3966,7 +3971,7 @@ class CceOp:
         return False
 
     def _check_dich_add_emit_insn(self, lop):
-        if pver().is_mini_version() and \
+        if get_soc_spec(SOC_VERSION) == ASCEND_310 and \
                 lop["cache_buffer"].dtype.lower() == "float32":
             return False
 
@@ -4480,8 +4485,8 @@ class CceOp:
             return False
 
         dtype = self._origin_tensor[0].dtype
-        nburst_limit = cce_params.VECTOR_COPY_NBURST_LIMIT
-        block_width_fp16 = cce_params.VECTOR_SINGLE_BLOCK_WIDTH_FP16
+        nburst_limit = cce.VECTOR_COPY_NBURST_LIMIT
+        block_width_fp16 = cce.VECTOR_SINGLE_BLOCK_WIDTH_FP16
         block_width = block_width_fp16 // type_len_map[dtype]
         # only enable optimal when size enough large
         min_size = 4 * block_width

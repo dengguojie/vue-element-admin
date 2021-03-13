@@ -21,9 +21,15 @@ import math
 from functools import reduce as _reduce
 from functools import cmp_to_key
 
-from te.platform import cce_conf
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import intrinsic_check_support
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import HI3796CV300CS
+from tbe.common.platform import HI3796CV300ES
+from tbe.common.platform import SD3403
 from tbe.dsl.instrinsic import cce_emitinsn_params
-from te.platform import cce_params
+from tbe.common import platform as cce_params
 from te.platform import cce_util
 
 from tbe.tvm._ffi.function import register_func
@@ -4204,7 +4210,7 @@ def psalign_four_2_five(tensor_op):
 
     # thread_block is roi in single batch, or batch in multi batch
     thread_block = get_emitinsn_params("thread_block")
-    device_core_num = cce_conf.get_soc_spec("CORE_NUM")
+    device_core_num = get_soc_spec("CORE_NUM")
     fm_out_thread_offset = (thread_block % device_core_num)*fm_num_per_batch_out
     fm_in_thread_offset = 0
     if batch_size == 1:
@@ -4661,7 +4667,7 @@ def psalign_roi_pooling_reg_mov(tensor_op):
     per_c0_size = fm_w*fm_h*cce_params.C0_SIZE
 
     # four2five out result of feature map need offset for multi core
-    device_core_num = cce_conf.get_soc_spec("CORE_NUM")
+    device_core_num = get_soc_spec("CORE_NUM")
     fm_out_thread_offset = (thread_block % device_core_num)*fm_num_per_batch_out
     # the max space that one bin can be occupied
     max_bin_size = \
@@ -6680,13 +6686,14 @@ def pooling2d_global_process(op_expr):
     ib_expr = _create()
 
     # Get vadd vmul vconv ability
-    vconv_ability = cce_conf.intrinsic_check_support("Intrinsic_vconv",
+    vconv_ability = intrinsic_check_support("Intrinsic_vconv",
                                                      "f162f32")
-    vadd_ability = cce_conf.intrinsic_check_support("Intrinsic_vadd",
+    vadd_ability = intrinsic_check_support("Intrinsic_vadd",
                                                     "float32")
-    vmul_ability = cce_conf.intrinsic_check_support("Intrinsic_vmul",
+    vmul_ability = intrinsic_check_support("Intrinsic_vmul",
                                                     "float32")
-    use_fp16 = cce_conf.CceProductParams().is_mini_version() and \
+    soc_ver = get_soc_spec(SOC_VERSION)
+    use_fp16 = (soc_ver == ASCEND_310) and \
         (impl_mode == "high_performance")
     fp32_ability = vconv_ability and\
         vadd_ability and\
@@ -6749,8 +6756,9 @@ def pooling2d_global_process(op_expr):
         dump_value = tvm.const(0.0, dtype="float16")
         pooling_intrin = 'vadd'
 
-    is_mini_or_lhisi = (cce_conf.CceProductParams().is_mini_version() or
-                        cce_conf.CceProductParams().is_lhisi_version())
+    soc_ver = get_soc_spec(SOC_VERSION)
+    is_mini_or_lhisi = (soc_ver == ASCEND_310 or
+                        soc_ver in (HI3796CV300CS, HI3796CV300ES, SD3403))
 
     if is_reg_mov:
         if isinstance(is_reg_mov[0], _expr.StringImm) and\
@@ -9416,7 +9424,7 @@ def vector_dichotomy_add_for_bn_reduce(tensor_op):
 
     total_repeats = op_size // vector_inst_one_repeat_size
 
-    soc_ver = cce_conf.get_soc_spec("SOC_VERSION")
+    soc_ver = get_soc_spec("SOC_VERSION")
     if soc_ver in ("Ascend310",):
         # vadd not support fp32 accumulation, so can't use 0 8 0 mode
         return vector_dichotomy_add_for_bn_reduce_for_mini(

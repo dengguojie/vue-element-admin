@@ -15,8 +15,8 @@
 """
 l2 normalize schedule
 """
-from te import platform as cceconf
 from tbe import tvm
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from . import util
 from .vector_schedule import VectorSchedule
@@ -903,7 +903,7 @@ class L2NormalizeSchedule(VectorSchedule):
         :return: max element num loaded in UB buffer
         """
         # div 2 for align to fp16
-        total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+        total_size = get_soc_spec("UB_SIZE") // 2
         total_size = total_size // 2  # div 2 for double buffer
         total_width = self._get_total_width()
         if not total_width:

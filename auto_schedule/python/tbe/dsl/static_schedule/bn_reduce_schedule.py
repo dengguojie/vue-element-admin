@@ -20,11 +20,12 @@ from __future__ import division
 import math
 
 import te.lang.cce
-from te import tvm
-import te.platform.cce_params as cce
-from te import platform as cceconf
+from tbe import tvm
+from tbe.common.utils import shape_to_list
+from tbe.common import platform as cce
+from tbe.common.platform.platform_info import get_soc_spec
 from te.platform import cce_util
-from te.platform import log
+from tbe.common.utils import log
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .group_norm_reduce_schedule import gn_reduce_schedule
 from .util import get_nearest_factor
@@ -108,7 +109,7 @@ def get_max_ub_count(dtype):
     :return: max element num loaded in UB buffer
     """
     # div 2 for align to fp16
-    total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+    total_size = get_soc_spec("UB_SIZE") // 2
     dtype_size = DTYPE_WIDTH_MAP.get(dtype)
     total_size = total_size // dtype_size
     total_size = total_size // 2  # div 2 for double buffer
@@ -135,7 +136,7 @@ def get_ub_tiling(shape, block_tiling_axis,
     if block_tiling_axis < 0 or block_tiling_axis > last_axis:
         return ub_split_axis, ub_split_inner
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     n_size = shape[0]
     c1_size = shape[1]
@@ -276,9 +277,9 @@ def schedule_cut_h_twice(sch_list, res_list, sum_x, square_sum_x,
     cut h twice
     """
     sch = sch_list[0]
-    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+    shape_input = shape_to_list(data_ub.shape)
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     if is_in_reduce:
         reduce_axis_loc = [0, 1, 2]
@@ -367,9 +368,9 @@ def schedule_fuse_h_n(sch_list, res_list, sum_x, square_sum_x,
     fuse h
     """
     sch = sch_list[0]
-    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+    shape_input = shape_to_list(data_ub.shape)
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     half_core_num = core_num // 2
 
     sum_x_block_outer, sum_x_block_inner = sch[sum_x].split(
@@ -495,7 +496,7 @@ def schedule_cut_c1(sch_list, res_list, sum_x, square_sum_x,
     bn_reduce schedule for cut c1
     '''
     sch = sch_list[0]
-    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+    shape_input = shape_to_list(data_ub.shape)
     res_list[0] = sum_x
     res_list[1] = square_sum_x
     _, sum_x_ub = sch.cache_write([square_sum_x, sum_x],
@@ -518,7 +519,7 @@ def schedule_cut_c1(sch_list, res_list, sum_x, square_sum_x,
         sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[0]
         sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[1]
 
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
 
         sum_x_block_outer, sum_x_block_inner =\
             sch[sum_x].split(sum_x_c1_axis, nparts=core_num)
@@ -581,7 +582,7 @@ def schedule_cut_c1(sch_list, res_list, sum_x, square_sum_x,
         sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[1]
         sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[2]
 
-        core_num = cceconf.get_soc_spec("CORE_NUM")
+        core_num = get_soc_spec("CORE_NUM")
 
         c1_size = shape_input[1]
         c0_size = 16
@@ -725,7 +726,7 @@ def schedule_cut_general(sch_list, res_list, sum_x, square_sum_x,
         raise RuntimeError("Bn_reduce only support keep_dim is True.")
 
     sch = sch_list[0]
-    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+    shape_input = shape_to_list(data_ub.shape)
     res_list[0] = sum_x
     res_list[1] = square_sum_x
 
@@ -862,7 +863,7 @@ def schedule_cut_batch_model_parallerl(
 
     sch = sch_list[0]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     batch_split_factor = 4
     c1_split_factor = 4
@@ -1013,7 +1014,7 @@ def schedule_cut_batch(sch_list, res_list, sum_x,
     '''
     bn_reduce schedule for cut batch
     '''
-    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+    shape_input = shape_to_list(data_ub.shape)
 
     if shape_input in ([32, 16, 14, 14, 16], [32, 16, 15, 15, 16]):
         schedule_cut_batch_model_parallerl(
@@ -1025,7 +1026,7 @@ def schedule_cut_batch(sch_list, res_list, sum_x,
 
     sch = sch_list[0]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
 
     sum_x_block_outer, _ =\
         sch[sum_x].split(sum_x.op.reduce_axis[0], nparts=core_num)
@@ -1165,7 +1166,7 @@ def in_schedule_cut_batch(sch_list, res_list, sum_x,
 
     print("in_schedule_cut_batch start")
     sch = sch_list[0]
-    shape_input = te.lang.cce.util.shape_to_list(data_ub.shape)
+    shape_input = shape_to_list(data_ub.shape)
 
     res_list[0] = sum_x
     res_list[1] = square_sum_x
@@ -1184,7 +1185,7 @@ def in_schedule_cut_batch(sch_list, res_list, sum_x,
     sum_x_ub_h_reduce_axis = sum_x_ub.op.reduce_axis[0]
     sum_x_ub_w_reduce_axis = sum_x_ub.op.reduce_axis[1]
 
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     sum_x_block_outer, sum_x_block_inner = sch[sum_x].split(sum_x_n_axis,
                                                             nparts=core_num)
     sum_x_ub_outer, sum_x_ub_inner = \
@@ -1339,7 +1340,7 @@ def bn_reduce_schedule(res, input_tensors):
     input_tensor = input_tensors[0]
     sum_x = res[0]
     square_sum_x = res[1]
-    shape_input = te.lang.cce.util.shape_to_list(input_tensor.shape)
+    shape_input = shape_to_list(input_tensor.shape)
     if len(shape_input) != 5:
         raise RuntimeError("Batch normalization only support 5D format.")
 
@@ -1365,7 +1366,7 @@ def bn_reduce_schedule(res, input_tensors):
     is_in_reduce = len(res[0].op.reduce_axis) == \
         2 and len(res[1].op.reduce_axis) == 2
     log.debug("is_in_reduce_pattern is %d", is_in_reduce)
-    shape_res = te.lang.cce.util.shape_to_list(sum_x.shape)
+    shape_res = shape_to_list(sum_x.shape)
 
     is_keep_dim = True
     if len(shape_input) != len(shape_res):
@@ -1380,7 +1381,7 @@ def bn_reduce_schedule(res, input_tensors):
     split_factor = ub_split_inner
     outer_loop = shape_input[ub_split_axis] // ub_split_inner
     # get device_core_num
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     half_core_num = core_num // 2
     batch = shape_input[0]
     c1_size = shape_input[1]

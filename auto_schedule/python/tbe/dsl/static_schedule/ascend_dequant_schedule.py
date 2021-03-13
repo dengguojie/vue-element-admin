@@ -16,9 +16,12 @@
 ascend_dequant
 """
 from functools import reduce as function_reduce
-import te.lang.cce
+
 from tbe import tvm
-from te import platform as cceconf
+from tbe.common.utils import shape_to_list
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_cc
 
 
 def _get_tensor_map(res, tensor_map):
@@ -65,9 +68,9 @@ def _tilling_axis(shape, dtype_size, tensor_num):
     """
     shape_new = list(shape).copy()
     shape_new[2] = (shape_new[2] + 15) // 16 * 16
-    total_ele = cceconf.get_soc_spec("UB_SIZE") // \
+    total_ele = get_soc_spec("UB_SIZE") // \
         dtype_size // tensor_num // 2
-    block_num = cceconf.get_soc_spec("CORE_NUM")
+    block_num = get_soc_spec("CORE_NUM")
     val_cnt = 1
     index_cnt = 0
     for i in range(0, len(shape_new) - 1):
@@ -140,9 +143,9 @@ def _set_buffer_scope(sch, tensor_map):
     """
     for key, value in tensor_map.items():
         if key == "x_l0c":
-            sch[value].set_scope(cceconf.scope_cc)
+            sch[value].set_scope(scope_cc)
         else:
-            sch[value].set_scope(cceconf.scope_ubuf)
+            sch[value].set_scope(scope_ubuf)
 
 
 def _bind_fuse(fused_value, fused_list, axis_outer_num, sch, res,
@@ -150,7 +153,7 @@ def _bind_fuse(fused_value, fused_list, axis_outer_num, sch, res,
     """
     bind the fused axis.
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     bind_axis = axis_outer
     if fused_list:
         if fused_value * axis_outer_num <= core_num:
@@ -195,7 +198,7 @@ def _bind_core(out_shape, sch, res, tensor_map):
     -------
     axis_outer, axis_inner
     """
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     split_axis, split_factor = _tilling_axis(out_shape, 4, 2)
     axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
                                             factor=split_factor)
@@ -253,7 +256,7 @@ def _set_buffer_emit_insn(sch, res, tensor_map, axis_inner):
             sch[value].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
         elif key == "dequant_to_fp16":
             sch[value].buffer_align((1, 1), (1, 1), (1, 16), (1, 16))
-            if cceconf.get_soc_spec("SOC_VERSION") in ("Ascend710",
+            if get_soc_spec("SOC_VERSION") in ("Ascend710",
                                                        "Ascend610",
                                                        "Ascend615",
                                                        "Hi3796CV300CS",
@@ -288,7 +291,7 @@ def ascend_dequant_schedule(res, input_tensors):
     sch = tvm.create_schedule(res.op)
     tensor_map = {}
     _get_tensor_map(res, tensor_map)
-    out_shape = te.lang.cce.util.shape_to_list(res.shape)
+    out_shape = shape_to_list(res.shape)
     _set_buffer_scope(sch, tensor_map)
     axis_outer, axis_inner = _bind_core(out_shape, sch, res, tensor_map)
 

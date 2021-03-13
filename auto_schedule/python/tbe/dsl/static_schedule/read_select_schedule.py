@@ -16,13 +16,16 @@
 read_select_schedule
 """
 from functools import reduce as functools_reduce
+
 from tbe import tvm
-from te import platform as cce
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_cbuf_fusion
+from tbe.common.platform.platform_info import get_soc_spec
 from tbe.dsl.instrinsic.cce_intrin import get_bit_len
 
 
 def _tilling_axis(valid_shape, input_dtype):
-    ub_size_bytes = cce.get_soc_spec("UB_SIZE") - 32
+    ub_size_bytes = get_soc_spec("UB_SIZE") - 32
     dtype_bytes_size = get_bit_len(input_dtype) // 8
 
     total_ele = int(ub_size_bytes // dtype_bytes_size)
@@ -105,8 +108,8 @@ def read_select_schedule(res, input_tensors):  # pylint: disable=locally-disable
     sch[tensor_map.get("output_ub_5d")].compute_at(sch[res], axis_outer)
 
     if src_in_flag == "L1":
-        sch[tensor_input].set_scope(cce.scope_cbuf_fusion)
-    sch[tensor_map.get("output_ub_5d")].set_scope(cce.scope_ubuf)
+        sch[tensor_input].set_scope(scope_cbuf_fusion)
+    sch[tensor_map.get("output_ub_5d")].set_scope(scope_ubuf)
     sch[tensor_map.get("output_ub_5d")].emit_insn(
         tensor_map.get("output_ub_5d").op.axis[split_axis], 'dma_copy')
     sch[res].emit_insn(axis_inner, 'dma_copy')

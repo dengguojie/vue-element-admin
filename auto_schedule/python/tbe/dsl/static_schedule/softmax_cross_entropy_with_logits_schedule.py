@@ -19,10 +19,14 @@ import math
 
 import te.lang.cce
 from tbe import tvm
-from te import platform as cce
 from te.platform import cce_util
 from tbe.dsl.instrinsic import cce_emitinsn_params
-from te.platform import intrinsic_check_support
+from tbe.common.platform import intrinsic_check_support
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import BLOCK_REDUCE_INT8
+from tbe.dsl.instrinsic.cce_intrin import get_bit_len
+
 from .util import get_align_factor
 from .util import get_nearest_factor
 from .util import gen_reversed_subgraph_list
@@ -201,7 +205,7 @@ def reduce_last_axis_max_and_sum(tensor_op, intrin_cmd):
     res_buffer = outs[0]
 
     tmp_buf = new_alloc(ib_expr, src_buffer.dtype, (tmp_buf_len,),
-                        'tmp_buf', scope=cce.scope_ubuf)
+                        'tmp_buf', scope=scope_ubuf)
 
     repeat_time = reduce_axis_len // vector_inst_one_repeat_size
     remain_size = reduce_axis_len % vector_inst_one_repeat_size
@@ -368,7 +372,7 @@ def dma_copy_softmax_cewl(tensor_op):
         raise RuntimeError("buf_len must be greater than %d" % dma_copy_size_one_block)
 
     tmp_buf, buf_var = new_alloc(ib_expr, src_buffer.dtype, (tmp_buf_len,),
-                                 'tmp_buf', scope=cce.scope_ubuf)
+                                 'tmp_buf', scope=scope_ubuf)
 
     ib_expr.scope_attr(buf_var.asnode(), "pragma_buffer_index",
                        tvm.call_extern("int64", "buffer_index", 1000))
@@ -393,7 +397,7 @@ def dma_copy_softmax_cewl(tensor_op):
             tmp_buf_2, _ = new_alloc(ib_expr, src_buffer.dtype,
                                      (dma_copy_size_one_block,),
                                      'tmp_buf_2',
-                                     scope=cce.scope_ubuf)
+                                     scope=scope_ubuf)
 
             res_offset = (repeat_time - 1)*dma_copy_size_one_block + remain_size
 
@@ -504,21 +508,21 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
 
     input_tensor_buffer_tensor_map = {}
     for tensor in input_tensor_dst_tensor_map:
-        tensor_ub = sch.cache_read(tensor, cce.scope_ubuf,
+        tensor_ub = sch.cache_read(tensor, scope_ubuf,
                                    input_tensor_dst_tensor_map[tensor])
         input_tensor_buffer_tensor_map[tensor] = tensor_ub
 
     for tensor in mid_out_tensor_list:
-        tensor_ub = sch.cache_read(tensor, cce.scope_ubuf,
+        tensor_ub = sch.cache_read(tensor, scope_ubuf,
                                    mid_tensor_dst_tensor_map[tensor])
         mid_out_buffer_tensor_list[tensor] = tensor_ub
 
     mid_tensor_buffer_tensor_map = {}
     for tensor in mid_tensor_dst_tensor_map:
-        tensor_ub = sch.cache_write(tensor, cce.scope_ubuf)
+        tensor_ub = sch.cache_write(tensor, scope_ubuf)
         mid_tensor_buffer_tensor_map[tensor] = tensor_ub
 
-    out_ub = sch.cache_write(out, cce.scope_ubuf)
+    out_ub = sch.cache_write(out, scope_ubuf)
 
     for tensor in mid_tensor_dst_tensor_map:
         if tensor not in mid_out_tensor_list:
@@ -528,7 +532,7 @@ def logits_2d_schedule(res, input_tensors):  # pylint: disable=unused-argument
 
     max_ub_count = get_max_ub_count(dtype, len(shape))
 
-    block_dim = cce.get_soc_spec("CORE_NUM")
+    block_dim = get_soc_spec("CORE_NUM")
     _, dtype_bytes = get_align_factor(dtype)
 
     npart_factor = get_npart_factor(n_h_w, dtype_bytes, block_dim)
@@ -691,7 +695,7 @@ def logits_2d_schedule_large_axis(res, input_tensors):
     # ////////////////////////////////
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
     sch = tvm.create_schedule(fake_output_node.op)
-    block_elem_num = te.platform.cce_util.get_align_factor(output_loss.dtype)[0]
+    block_elem_num = cce_util.get_align_factor(output_loss.dtype)[0]
     # Get all tensors
     tensor_list_map = {}
     tensor_list_dst_tensor_map = {}
@@ -715,7 +719,7 @@ def logits_2d_schedule_large_axis(res, input_tensors):
     # //     Block split(Core)      //
     # ////////////////////////////////
     # Get maximum core num
-    core_num = int(te.platform.get_soc_spec("CORE_NUM"))
+    core_num = int(get_soc_spec("CORE_NUM"))
     # available block split axis is always 0 for this operator as the shape will always be rank 2
     block_split_axis_index = 0
     total_block_split_num = int(shape[0])
@@ -750,14 +754,14 @@ def logits_2d_schedule_large_axis(res, input_tensors):
     # Set data on UB
     for tensor in ub_list:
         if tensor not in (output_backprop,):
-            sch[tensor].set_scope(cce.scope_ubuf)
+            sch[tensor].set_scope(scope_ubuf)
     # Read data on GM
     placeholders_ub = tuple(sch.cache_read(placeholder,
-                                           cce.scope_ubuf,
+                                           scope_ubuf,
                                            tensor_list_dst_tensor_map[placeholder]) for placeholder
                             in placeholder_list)
     # Write data to GM
-    output_backprop_ub = sch.cache_write(output_backprop, cce.scope_ubuf)
+    output_backprop_ub = sch.cache_write(output_backprop, scope_ubuf)
     # ////////////////////////////////
     # //        Do Blk split        //
     # ////////////////////////////////
@@ -817,7 +821,7 @@ def get_max_ub_count(dtype, dim):
     caculate the max element num loaded in UB buffer
     :return: max element num loaded in UB buffer
     """
-    total_size = cce.get_soc_spec("UB_SIZE") // 2  # div 2 for align to fp16
+    total_size = get_soc_spec("UB_SIZE") // 2  # div 2 for align to fp16
     dtype_size = DTYPE_WIDTH_MAP.get(dtype)
     total_size = total_size // dtype_size
 
@@ -969,20 +973,20 @@ def logits_nchw_schedule(res, input_tensors):
 
     input_tensor_buffer_tensor_map = {}
     for tensor in input_tensor_dst_tensor_map:
-        tensor_ub = sch.cache_read(tensor, cce.scope_ubuf, input_tensor_dst_tensor_map[tensor])
+        tensor_ub = sch.cache_read(tensor, scope_ubuf, input_tensor_dst_tensor_map[tensor])
         input_tensor_buffer_tensor_map[tensor] = tensor_ub
 
     for tensor in mid_out_tensor_list:
-        tensor_ub = sch.cache_read(tensor, cce.scope_ubuf, mid_tensor_dst_tensor_map[tensor])
+        tensor_ub = sch.cache_read(tensor, scope_ubuf, mid_tensor_dst_tensor_map[tensor])
         mid_out_buffer_tensor_list[tensor] = tensor_ub
 
     mid_tensor_buffer_tensor_map = {}
     for tensor in mid_tensor_dst_tensor_map:
         if tensor not in broadcast_not_last_axis_tensors:
-            tensor_ub = sch.cache_write(tensor, cce.scope_ubuf)
+            tensor_ub = sch.cache_write(tensor, scope_ubuf)
             mid_tensor_buffer_tensor_map[tensor] = tensor_ub
 
-    out_ub = sch.cache_write(out, cce.scope_ubuf)
+    out_ub = sch.cache_write(out, scope_ubuf)
 
     for tensor in mid_tensor_dst_tensor_map:
         if tensor not in mid_out_tensor_list:
@@ -1009,7 +1013,7 @@ def logits_nchw_schedule(res, input_tensors):
 
     block_split_axis = 0
 
-    block_dim = cce.get_soc_spec("CORE_NUM")
+    block_dim = get_soc_spec("CORE_NUM")
 
     # N greater than or equal to  block_dim
     if batch >= block_dim and batch % block_dim == 0:
@@ -1115,7 +1119,7 @@ def _get_tiling_large_axis_workspace(shape, dtype):
     the size of one core must be greater equal min_num_size_one_core
     """
     batch = shape[0]
-    core_num = int(te.platform.get_soc_spec("CORE_NUM"))
+    core_num = int(get_soc_spec("CORE_NUM"))
 
     # block tiling
     if dtype == "float16":
@@ -1336,8 +1340,8 @@ def logits_2d_schedule_large_axis_workspace(res, input_tensors):
 
     # compute_at code
     nparts_factor = (add_0.shape[0].value + block_outer - 1) // block_outer
-    data_size = te.platform.get_bit_len(dtype.lower()) // 8
-    min_factor = te.platform.BLOCK_REDUCE_INT8 // data_size
+    data_size = get_bit_len(dtype.lower()) // 8
+    min_factor = BLOCK_REDUCE_INT8 // data_size
     if nparts_factor >= min_factor:
         add_0_axis_0_o, add_0_axis_0_n1_o = s[add_0].split(add_0_axis_0_o,
                                                            nparts=block_outer)

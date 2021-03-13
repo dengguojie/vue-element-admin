@@ -17,10 +17,15 @@ elewise mutil out schedule
 """
 import math
 
-from te import platform as cceconf
 from tbe import tvm
-from te.platform.cce_conf import CceProductParams as pver
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import SOC_VERSION
+from tbe.common.platform import ASCEND_310
+from tbe.common.platform import ASCEND_610
+from tbe.common.platform import ASCEND_615
+from tbe.common.platform import ASCEND_710
 from tbe.common.utils.errormgr import get_error_message
+
 from . import util
 from .elewise_schedule_new import ElewiseSchedule
 from .elewise_schedule_new import NON_LAST_BROADCAST_UNIT_THRESHOLD
@@ -429,7 +434,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         if (self._pattern == "log_softmax_grad_fp16_1980") and \
                 self._reduce_include_last_axis and \
                 (self._default_shape[-1] >= max_last_reduce_size) and \
-                pver().is_ng1_version():
+                (get_soc_spec(SOC_VERSION) in (ASCEND_610, ASCEND_615, ASCEND_710)):
             return False
 
         return True
@@ -530,7 +535,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         for tensor in self._mid_tensors:
             if tensor.op.tag.split('|')[0] not in white_list:
                 return True
-        if pver().is_mini_version():
+        if get_soc_spec(SOC_VERSION) == ASCEND_310:
             for tensor in self._mid_tensors:
                 if tensor.op.tag.split('|')[0] in black_list_in_mini:
                     return True
@@ -625,11 +630,11 @@ class ReduceMultiSchedule(ElewiseSchedule):
             if util.DTYPE_WIDTH_MAP[dtype] > self._max_type_bitsize:
                 self._max_type_bitsize = util.DTYPE_WIDTH_MAP[dtype]
         # ub block
-        self._core_num = cceconf.get_soc_spec("CORE_NUM")
+        self._core_num = get_soc_spec("CORE_NUM")
 
         # ub size
         # div 2 for align to fp16
-        total_size = cceconf.get_soc_spec("UB_SIZE") // 2
+        total_size = get_soc_spec("UB_SIZE") // 2
         self._pattern = util.pattern_identify(self._mid_tensors)
         if self._pattern in util.pattern.width.keys() and util.PATTERN_OPTIMAZE:
             # custom for layernorm

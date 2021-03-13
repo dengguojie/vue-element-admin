@@ -23,9 +23,9 @@ import math
 from functools import reduce as functools_reduce
 
 from tbe import tvm
-from te import platform as cce
+from tbe.common.platform import scope_ubuf
 from tbe.dsl.instrinsic.cce_intrin import get_bit_len
-from te.platform import get_soc_spec
+from tbe.common.platform.platform_info import get_soc_spec
 from te.platform.fusion_manager import fusion_manager
 from te.domain.rl_bank import rl_bank
 
@@ -213,7 +213,7 @@ def split_schedule_com(data, split_dim, shape_list, tensor_list):
     sch = tvm.create_schedule(res_op)
 
     for tensor in tensor_list:
-        sch[tensor].set_scope(cce.scope_ubuf)
+        sch[tensor].set_scope(scope_ubuf)
 
     dtype = data.dtype
     dtype_size = get_bit_len(dtype) // 8

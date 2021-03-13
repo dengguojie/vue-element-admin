@@ -17,12 +17,13 @@ common
 """
 from __future__ import absolute_import
 from tbe import tvm
-import te.platform.cce_params as cce_params
+from tbe.common.platform import BLOCK_REDUCE
+from tbe.common.platform import BLOCK_REDUCE_INT8
 from tbe.common.utils.errormgr.error_manager_util import get_error_message
 
 
-_BLOCK_SIZE = cce_params.BLOCK_REDUCE
-_BLOCK_INT8_SIZE = cce_params.BLOCK_REDUCE_INT8
+_BLOCK_SIZE = BLOCK_REDUCE
+_BLOCK_INT8_SIZE = BLOCK_REDUCE_INT8
 
 
 def img2col(input_img,

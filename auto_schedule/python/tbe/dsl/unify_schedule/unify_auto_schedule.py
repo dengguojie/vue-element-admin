@@ -28,7 +28,6 @@ from tbe.dsl.base.var import AttrVarDesc
 from tbe.dsl.base.var import Category
 from tbe.dsl.base.var import Var
 from tbe.tvm.build_module import BuildConfigs
-from te import platform as cce
 
 from . import CompileInfo
 from . import Pattern
@@ -51,6 +50,7 @@ def schedule_cce(outs, option=None):
 
     if util.get_build_cfg() == "disable":
         # prebuild
+        from te import platform as cce
         f_m = cce.fusion_manager.fusion_manager
         op_type = operation.get_context().get_op_type()
         compute = operation.get_op_compute(op_type, verbose=True)
@@ -267,6 +267,7 @@ class Builder:
             m_config_items.update(self.config_map['build_args'])
         m_config_items.update(operation.get_build_args())
 
+        from te import platform as cce
         cce_build = cce.cce_build
         dynamic_config, static_config = cce_build.dynamic_build_config, cce_build.build_config
         update_func = cce_build.build_config_update_list

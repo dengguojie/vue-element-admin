@@ -25,7 +25,6 @@ from tbe.tvm import api as tvm
 from tbe.tvm import expr as _expr
 from tbe.tvm import make as _make
 from tbe.tvm import tensor as _tensor
-from te.platform.fusion_manager import fusion_manager
 
 
 def squeeze_shape(shape):
@@ -267,6 +266,7 @@ def refine_shapes_for_broadcast(shape1, shape2):
 
         return fused_shape1, fused_shape2
 
+    from te.platform.fusion_manager import fusion_manager
     if fusion_manager.get_build_cfg() == "disable":
         return shape1, shape2
 

@@ -15,9 +15,9 @@
 """
 pooling3d_schedule
 """
-from te import platform as cce
 from tbe import tvm
-from te import platform as cceconf
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import scope_ubuf
 from .pooling3d_max_grad_grad_schedule import pooling3d_max_grad_grad_schedule
 
 ASCEND_QUANT_TAG = "quant"
@@ -87,11 +87,11 @@ def _pooling3d_max_schedule(res, sch_list):
     sch[res].reorder(res.op.axis[0], res.op.axis[2],
                      d_out, h_out, w_out, d_in, h_in, w_in, res.op.axis[5])
     fuse = sch[res].fuse(res.op.axis[0], res.op.axis[2])
-    core_num = cceconf.get_soc_spec("CORE_NUM")
+    core_num = get_soc_spec("CORE_NUM")
     fuse_o, _ = sch[res].split(fuse, nparts=core_num)
     thread_block = tvm.thread_axis("blockIdx.x")
     sch[res].bind(fuse_o, thread_block)
-    _set_scope(sch, pool_tensors.values(), cce.scope_ubuf)
+    _set_scope(sch, pool_tensors.values(), scope_ubuf)
 
     for tensor in pool_tensors.values():
         sch[tensor].compute_at(sch[res], w_out)
@@ -138,7 +138,7 @@ def _calc_process_per_window_ub_size(context):
 
 
 def _calc_window_numbers_per_batch(context):
-    ub_size = cce.get_soc_spec("UB_SIZE")
+    ub_size = get_soc_spec("UB_SIZE")
     # For the reason pass may generate multi tx_rd/tx_rh/tx_rw tensors, so use half of the ub size
     ub_size = ub_size // 2
     return ub_size // _calc_process_per_window_ub_size(context)

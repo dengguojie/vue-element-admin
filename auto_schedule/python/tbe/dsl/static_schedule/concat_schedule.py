@@ -19,8 +19,9 @@ Optimizing schedule for concat operation.
 import math
 from functools import reduce as functools_reduce
 
-from te import platform as cceconf
 from tbe import tvm
+from tbe.common.platform import dma_copy
+from tbe.common.platform.platform_info import get_soc_spec
 
 
 def _get_align_factor(dtype):
@@ -80,7 +81,7 @@ class CceConcatOp():
 
         self._spec_node_list = []
         if self._scope.lower().find('.ub') != -1:
-            self._total_size = cceconf.get_soc_spec("UB_SIZE")
+            self._total_size = get_soc_spec("UB_SIZE")
         else:
             raise RuntimeError("only support UB buffer now")
 
@@ -141,10 +142,10 @@ class CceConcatOp():
             cur_axis = self._schedule[cur_tensor].split(cur_tensor.op.axis[0],
                                                         factor=factors[i])
             self._schedule[cur_tensor].compute_at(self._schedule[res], axis_one)
-            self._schedule[cur_tensor].emit_insn(cur_axis[1], cceconf.dma_copy)
+            self._schedule[cur_tensor].emit_insn(cur_axis[1], dma_copy)
             i = i + 1
 
-        self._schedule[res].emit_insn(axis_two, cceconf.dma_copy)
+        self._schedule[res].emit_insn(axis_two, dma_copy)
         self._schedule[res].bind(axis_one, tvm.thread_axis('blockIdx.x'))
         sch_list[0] = self._schedule
 
@@ -327,7 +328,7 @@ class CceConcatOp():
         for cache_tensor in read_cache_list:
             if split_axis == 0 and split_factor == 0:
                 self._schedule[cache_tensor].emit_insn(
-                    cache_tensor.op.axis[self._concat_axis], cceconf.dma_copy)
+                    cache_tensor.op.axis[self._concat_axis], dma_copy)
             else:
                 _, cahe_inner = self._schedule[cache_tensor].split(
                     self._schedule[cache_tensor].op.axis[split_axis],
@@ -335,11 +336,11 @@ class CceConcatOp():
                 self._schedule[cache_tensor].storage_align(
                     cahe_inner, self._align_factor, 0)
                 self._schedule[cache_tensor].emit_insn(cahe_inner,
-                                                       cceconf.dma_copy)
+                                                       dma_copy)
 
         for cache_tensor in write_cache_list:
             self._schedule[cache_tensor].compute_inline()
-        self._schedule[res].emit_insn(res_emit_axis, cceconf.dma_copy)
+        self._schedule[res].emit_insn(res_emit_axis, dma_copy)
         sch_list[0] = self._schedule
 
         if self._shapes[-1][0] > 32 and split_axis != 0:
@@ -414,7 +415,7 @@ class CceConcatOp():
         else:
             storage_factor = 1
 
-        ub_size = cceconf.get_soc_spec("UB_SIZE")
+        ub_size = get_soc_spec("UB_SIZE")
         ub_size_align = ((ub_size // self._align_factor) * self._align_factor //
                          self._dtype_bytes // storage_factor)
 

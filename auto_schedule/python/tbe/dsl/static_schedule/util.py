@@ -25,8 +25,12 @@ from typing import Callable
 from typing import Union
 
 from tbe import tvm
-from te.platform.cce_conf import CceProductParams as pver
-from te.platform.cce_conf import VERSION_CLOUD
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import ASCEND_910
+from tbe.common.platform import ASCEND_920A
+from tbe.common.platform import SOC_VERSION
+
+
 from . import pattern
 
 
@@ -77,8 +81,10 @@ DTYPE_WIDTH_MAP = {"float16": 1,
                    "uint8": 0.5,
                    "bool": 0.5}
 
-REDUCE_ATOMIC_SUPPORT = {VERSION_CLOUD: {"tag": "reduce_sum",
-                                         "dtype": "float32"}, }
+REDUCE_ATOMIC_SUPPORT = {ASCEND_910: {"tag": "reduce_sum",
+                                         "dtype": "float32"},
+                        ASCEND_920A: {"tag": "reduce_sum",
+                                         "dtype": "float32"}}
 
 DEFAULT_INDEX = -1
 INIT_COUNT = 0
@@ -722,7 +728,7 @@ def get_atomic_reduce_info():
     """
     get atomic reduce info
     """
-    version_code = pver().get_product_version()
+    version_code = get_soc_spec(SOC_VERSION)
     if version_code in REDUCE_ATOMIC_SUPPORT.keys():
         return REDUCE_ATOMIC_SUPPORT[version_code]
     return {}

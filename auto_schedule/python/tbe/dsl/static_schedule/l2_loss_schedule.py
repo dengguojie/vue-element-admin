@@ -18,7 +18,8 @@ l2_loss_schedule
 from __future__ import absolute_import
 import math
 from tbe import tvm
-from te import platform as cce
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import scope_ubuf
 
 
 def _map_apend(input_map, key, value):
@@ -90,7 +91,7 @@ def get_max_ub_count(datatype):
     caculate the max element num loaded in UB buffer
     :return: max element num loaded in UB buffer
     """
-    _total_size = cce.get_soc_spec("UB_SIZE")
+    _total_size = get_soc_spec("UB_SIZE")
     # 8k for reserve
     if datatype == "float32":
         max_ub_count = (_total_size - 8192) // 4
@@ -176,11 +177,11 @@ def l2_loss_schedule(res, input_tensors):
     cache_read_buffer_list = []
     for tensor in cache_read_tensor_list:
         cache_read_buffer_list.append(
-            sch.cache_read(tensor, cce.scope_ubuf,
+            sch.cache_read(tensor, scope_ubuf,
                            input_tensor_dst_tensor_map[tensor]))
     cache_write_buffer_list = []
     for tensor in cache_write_tensor_list:
-        cache_write_buffer_list.append(sch.cache_write(tensor, cce.scope_ubuf))
+        cache_write_buffer_list.append(sch.cache_write(tensor, scope_ubuf))
 
     # ---------compute inline----------------
     for tensor in cache_write_tensor_list:
@@ -188,13 +189,13 @@ def l2_loss_schedule(res, input_tensors):
 
     # ---------add reduce rfactor------------
     shape = input_tensors[0].shape[-1]
-    block_dim = cce.get_soc_spec("CORE_NUM")
+    block_dim = get_soc_spec("CORE_NUM")
     # (N,M) N is less equal blockDim, and can be divided by totaldata
     _, shape_n = get_max_divided_factor(int(shape), block_dim)
 
     res_o, _ = sch[reduce_c].split(reduce_c.op.reduce_axis[0], shape_n)
     reduce_i_ub = sch.rfactor(reduce_c, res_o)
-    sch[reduce_i_ub].set_scope(cce.scope_ubuf)
+    sch[reduce_i_ub].set_scope(scope_ubuf)
     reduce_o_gm = sch.cache_write(reduce_c, "")
 
     ub_split_factor = ubtiling(shape_n, reduce_c.dtype)

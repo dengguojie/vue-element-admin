@@ -19,11 +19,12 @@ import abc
 import math
 import copy
 
-from te import platform as cceconf
 from tbe import tvm
-from te.platform import log
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.utils import log
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.common.utils.errormgr import get_error_message
+
 from .cce_schedule_declarations import OpSpecTypes
 from .util import get_align_factor
 from .util import dfs_tensor_graph
@@ -615,7 +616,7 @@ class VectorSchedule(object):
         return split_axis, split_size
 
     def _get_block_num(self):
-        return cceconf.get_soc_spec("CORE_NUM")
+        return get_soc_spec("CORE_NUM")
 
     def _get_block_tiling(self, shape, dtype,
                           multi_core_threshold=ENABLE_MULTI_CORE_THRESHOLD):

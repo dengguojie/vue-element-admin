@@ -17,12 +17,14 @@ reduce atomic schedule
 """
 import math
 
-import te.lang.cce
 from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
 from te.platform import cce_util
 from tbe.common.utils.errormgr import get_error_message
+from tbe.common.platform import VECTOR_INST_BLOCK_WIDTH
+from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import scope_ubuf
 
 
 @tvm.register_func("tvm.intrin.cce.dichotomy_reduce_block_mean")
@@ -45,13 +47,13 @@ def dichotomy_reduce_block_mean(stmt_op):  # pylint: disable=too-many-locals
     input_size = input_size[0]
 
     # Check if input can be collapsed into one repeat
-    vector_inst_one_repeat_size = te.platform.cce_params.VECTOR_INST_BLOCK_WIDTH \
+    vector_inst_one_repeat_size = VECTOR_INST_BLOCK_WIDTH \
         // cce_util.get_align_factor(in_buffer.dtype)[1]
     collapse_loop_num = math.log(input_size / vector_inst_one_repeat_size, 2)
     if not collapse_loop_num.is_integer():
         collapse_repeat = int(math.pow(2, int(collapse_loop_num)))
         total_repeat = input_size // vector_inst_one_repeat_size
-        block_size = te.platform.cce_util.get_align_factor(in_buffer.dtype)[0]
+        block_size = cce_util.get_align_factor(in_buffer.dtype)[0]
         remain_block = (input_size - total_repeat * vector_inst_one_repeat_size) / block_size
         remain_block_size = int(remain_block * block_size)
         out_of_collapse_repeat = total_repeat - collapse_repeat
@@ -168,15 +170,15 @@ def reduce_mean_mid_reduce_high_performance_schedule(outs,  # pylint: disable=R0
     # ////////////////////////////////
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
     sch = sch_list[0]
-    block_elem_num, element_byte_size = te.platform.cce_util.get_align_factor(res.dtype)
+    block_elem_num, element_byte_size = cce_util.get_align_factor(res.dtype)
     # Double block_elem_num for DMA performance
     block_elem_num *= 2
     # Get maximum core num
-    core_num = int(te.platform.get_soc_spec("CORE_NUM"))
+    core_num = int(get_soc_spec("CORE_NUM"))
     # available block split axes are all axes except reduce axes
     possible_axes = [axis for axis, _ in enumerate(original_shape) if axis not in reduce_axis]
     # Get UB size
-    ub_size = te.platform.get_soc_spec("UB_SIZE")
+    ub_size = get_soc_spec("UB_SIZE")
     # ////////////////////////////////
     # //    Tiling Calculation      //
     # ////////////////////////////////
@@ -193,13 +195,13 @@ def reduce_mean_mid_reduce_high_performance_schedule(outs,  # pylint: disable=R0
     # Set data on UB
     for tensor in [sum_tensor, mul_tensor]:
         if tensor not in (res,):
-            sch[tensor].set_scope(te.platform.cce_params.scope_ubuf)
+            sch[tensor].set_scope(scope_ubuf)
     # Read data on GM
     placeholder_ub = sch.cache_read(placeholder,
-                                    te.platform.cce_params.scope_ubuf,
+                                    scope_ubuf,
                                     tensor_src_dst_dict[placeholder])
     # Write data to GM
-    res_ub = sch.cache_write(res, te.platform.cce_params.scope_ubuf)
+    res_ub = sch.cache_write(res, scope_ubuf)
     # ////////////////////////////////
     # //        Do Blk split        //
     # ////////////////////////////////

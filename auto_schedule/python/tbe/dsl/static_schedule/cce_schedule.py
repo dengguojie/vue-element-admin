@@ -24,27 +24,23 @@ import re
 import stat
 import itertools
 import warnings
-
 from functools import reduce as functools_reduce
-
-import te.lang.cce
 
 from tbe import tvm
 from te import platform as cceconf
-from te.platform import log
-
-from te.platform import get_soc_spec
+from tbe.common.platform import scope_ubuf
+from tbe.common.platform import scope_cbuf_fusion
+from tbe.common.buildcfg import get_L1_info
+from tbe.common.utils import log
+from tbe.common.platform.platform_info import get_soc_spec
 from te.platform import conv_buffer_ex
-from te.platform import cce_conf
 from te.platform.cce_conf import get_kernel_meta_dir
-
 from te.platform.fusion_manager import fusion_manager
-
 from tbe.dsl.compute.conv_compute import ConvParam  # pylint: disable=C0412
 from te.domain.rl_bank import rl_bank
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.instrinsic import cce_emitinsn_params
-from te.utils.shape_util import shape_to_list
+from tbe.common.utils import shape_to_list
 from topi.cce import util  # pylint: disable=E0401
 
 from .util import gen_dfs_tensor_map
@@ -417,7 +413,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
                                                                 templet_name='speel',
                                                                 op_info=op_info)
         if schedule is None:
-            cce_op = CceOp(cceconf.scope_ubuf, need_tensorize=True,
+            cce_op = CceOp(scope_ubuf, need_tensorize=True,
                            need_pragma=True)
             if len(outs) > 1:
                 dict_args = dict()
@@ -1079,7 +1075,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
                 need_enable_muticore = False
             schedule_index = 0
             for tensor_i in spec_node_list:
-                scope_name = cceconf.scope_ubuf
+                scope_name = scope_ubuf
                 if schedule_index > 0:
                     scope_name = scope_name + str(schedule_index)
                     decl_memory(scope_name)
@@ -1114,7 +1110,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
                 need_enable_muticore = False
             schedule_index = 0
             for tensor_i in spec_node_list:
-                scope_name = cceconf.scope_ubuf
+                scope_name = scope_ubuf
                 if schedule_index > 0:
                     scope_name = scope_name + str(schedule_index)
                     decl_memory(scope_name)
@@ -1136,11 +1132,11 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             need_enable_muticore = True
 
             if templet_name == 'global':
-                cce_op = CceOp(cceconf.scope_ubuf, need_tensorize=True,
+                cce_op = CceOp(scope_ubuf, need_tensorize=True,
                                need_pragma=True,
                                need_enable_muticore=need_enable_muticore)
             elif templet_name == 'speel':
-                cce_op = CceSpeelOp(cceconf.scope_ubuf, need_tensorize=True,
+                cce_op = CceSpeelOp(scope_ubuf, need_tensorize=True,
                                     need_pragma=True,
                                     need_enable_muticore=need_enable_muticore)
 
@@ -1148,15 +1144,15 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
                 input_origin_outs, outs, sch_list, tensor_map)
     elif pattern == OpPatterns.SEGMENT_PATTERN:
         if templet_name == 'global':
-            cce_segment_op = CceSegmentOp(cceconf.scope_ubuf,
+            cce_segment_op = CceSegmentOp(scope_ubuf,
                                           need_tensorize=True, need_pragma=True)
         elif templet_name == 'speel':
-            cce_segment_op = CceSegmentSpeelOp(cceconf.scope_ubuf,
+            cce_segment_op = CceSegmentSpeelOp(scope_ubuf,
                                                need_tensorize=True,
                                                need_pragma=True)
         schedule_valid = cce_segment_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.INPLACE_PATTERN:
-        cce_inplace_op = CceInplaceOp(cceconf.scope_ubuf)
+        cce_inplace_op = CceInplaceOp(scope_ubuf)
         schedule_valid = cce_inplace_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.PURE_BROADCAST_PATTERN:
         pure_broadcast_schedule = PureBroadcastSchedule()
@@ -1173,27 +1169,27 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         cce_depthwise_conv_op = depthwise_conv2d_schedule(outs[0])
         sch_list[0] = cce_depthwise_conv_op
     elif pattern == OpPatterns.CONV3D_PATTERN:
-        cce_conv3d_op = CceConv3dOp(cceconf.scope_ubuf, need_tensorize=True,
+        cce_conv3d_op = CceConv3dOp(scope_ubuf, need_tensorize=True,
                                     need_pragma=True)
         schedule_valid = cce_conv3d_op.do_schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.CONV2D_BACKPROP_INPUT_PATTERN:
         cce_conv2d_backprop_input_op = CceConv2dBackpropInputOp(
-            cceconf.scope_ubuf,
+            scope_ubuf,
             need_tensorize=True, need_pragma=True)
         cce_conv2d_backprop_input_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.CONV3D_BACKPROP_INPUT_PATTERN:
         cce_conv3d_backprop_input_op = CceConv3dBackpropInputOp(
-            cceconf.scope_ubuf,
+            scope_ubuf,
             need_tensorize=True, need_pragma=True)
         cce_conv3d_backprop_input_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.CONV3D_BACKPROP_FILTER_PATTERN:
         cce_conv3d_backprop_filter_op = CceConv3dBackpropFilterOp(
-            cceconf.scope_ubuf,
+            scope_ubuf,
             need_tensorize=True, need_pragma=True)
         cce_conv3d_backprop_filter_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.CONV2D_BACKPROP_FILTER_PATTERN:
         cce_conv2d_backprop_filter_op = CceConv2dBackpropFilterOp(
-            cceconf.scope_ubuf,
+            scope_ubuf,
             need_tensorize=True, need_pragma=True)
         cce_conv2d_backprop_filter_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.CUBE_LAYER_NORM:
@@ -1237,7 +1233,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         for tensor_i in spec_node_list:
             if isinstance(tensor_i.op, tvm.tensor.ExternOp):
                 continue
-            scope_name = cceconf.scope_ubuf
+            scope_name = scope_ubuf
             if schedule_index > 0:
                 scope_name = scope_name + str(schedule_index)
                 decl_memory(scope_name)
@@ -1287,7 +1283,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     warnings.warn("cce_build_code is expired, please replace it with the func build in cce",
                   DeprecationWarning)
     if fusion_manager.get_build_cfg() == "disable" and \
-            not cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT"):
+            not get_soc_spec("CUBE_VECTOR_SPLIT"):
         te_util.L1CommonParam.l1_fusion_tensors_map = None
         return
 
@@ -1350,7 +1346,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
                          stat.S_IRWXU + stat.S_IRGRP + stat.S_IXGRP)
             addr_type_list = []
             for tensor_w in workspace_list:
-                if sch[tensor_w].scope == cceconf.scope_cbuf_fusion:
+                if sch[tensor_w].scope == scope_cbuf_fusion:
                     addr_type_list.append(1)
                 else:
                     addr_type_list.append(0)
@@ -1427,9 +1423,9 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     fusion_manager.set_tensor_list(config_map.get("tensor_list", []))
 
     config_map.setdefault("l1_fusion_option",
-                          cceconf.get_L1_info("L1_fusion_enabled"))
+                          get_L1_info("L1_fusion_enabled"))
     config_map.setdefault("l2_fusion_option",
-                          cceconf.get_L1_info("L2_fusion_enabled"))
+                          get_L1_info("L2_fusion_enabled"))
     local_build_config = _update_build_config()
     local_config_map = {"print_ir": False,
                         "need_build": True,
@@ -1529,12 +1525,12 @@ class ScheduleDispatch:
 
     @handle_case.register('conv2d_backprop_input')
     def _(self, case, tensor, spec_node_list, sch_list):
-        cce_op = CceConv2dBackpropInputOp(cceconf.scope_ubuf, need_tensorize=True, need_pragma=True)
+        cce_op = CceConv2dBackpropInputOp(scope_ubuf, need_tensorize=True, need_pragma=True)
         return cce_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('conv2d_backprop_filter')
     def _(self, case, tensor, spec_node_list, sch_list):
-        cce_op = CceConv2dBackpropInputOp(cceconf.scope_ubuf, need_tensorize=True, need_pragma=True)
+        cce_op = CceConv2dBackpropInputOp(scope_ubuf, need_tensorize=True, need_pragma=True)
         return cce_op.schedule(tensor, spec_node_list, sch_list)
 
     @handle_case.register('pooling2d')
