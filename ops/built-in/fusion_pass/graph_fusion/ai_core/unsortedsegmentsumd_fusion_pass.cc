@@ -121,6 +121,7 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   ge::Format input_desc_Format = input_desc.GetFormat();
   ge::GeTensorDesc tensorDescPaddingOutput(GeShape(), input_desc_Format, input_desc_type);
   tensorDescPaddingOutput.SetShape(output_desc_shape1);
+  tensorDescPaddingOutput.SetOriginShape(output_desc_shape1);
   tensorDescPaddingOutput.SetOriginFormat(input_desc_Format);
   tensorDescPaddingOutput.SetOriginDataType(input_desc_type);
 
@@ -160,6 +161,7 @@ Status UnsortedSegmentSumdFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
   ge::DataType output_desc2_type = output_desc2.GetDataType();
   ge::GeTensorDesc tensorDescUnsortedOutput(GeShape(), output_desc2_Format, input_desc_type);
   tensorDescUnsortedOutput.SetShape(output_desc_shape);
+  tensorDescUnsortedOutput.SetOriginShape(output_desc_shape);
   tensorDescUnsortedOutput.SetOriginFormat(output_desc2_Format);
   tensorDescUnsortedOutput.SetOriginDataType(output_desc2_type);
 
