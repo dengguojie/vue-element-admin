@@ -1482,7 +1482,7 @@ def check_use_vector_branch(shapes_list, dtype, output_shape,
 
     # check support dtype
     dtype_support = True
-    support_dtype = ("float32", "int32", "float16")
+    support_dtype = ("float32", "float16")
     if dtype not in support_dtype:
         dtype_support = False
         return False, dtype_support
