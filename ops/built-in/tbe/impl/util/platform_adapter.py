@@ -237,35 +237,19 @@ class PlatformApi:
     COMPILER_ARCH = platform.COMPILER_ARCH
 
     intrinsic_check_support = platform.intrinsic_check_support
-    register_api_check_support_func = platform.register_api_check_support_func
     VECTOR_INST_BLOCK_NUM = platform.VECTOR_INST_BLOCK_NUM
     VECTOR_INST_BLOCK_WIDTH = platform.VECTOR_INST_BLOCK_WIDTH
     VECTOR_INST_MAX_REPEAT_TIMES = platform.VECTOR_INST_MAX_REPEAT_TIMES
-    WGT_WIDTH = platform.WGT_WIDTH
-    INP_WIDTH = platform.INP_WIDTH
-    OUT_WIDTH = platform.OUT_WIDTH
     BLOCK_IN = platform.BLOCK_IN
     BLOCK_OUT = platform.BLOCK_OUT
     BLOCK_REDUCE = platform.BLOCK_REDUCE
     BLOCK_REDUCE_INT8 = platform.BLOCK_REDUCE_INT8
     BLOCK_VECTOR = platform.BLOCK_VECTOR
-    INP_ELEM_BYTES = platform.INP_ELEM_BYTES
-    WGT_ELEM_BYTES = platform.WGT_ELEM_BYTES
-    OUT_ELEM_BYTES = platform.OUT_ELEM_BYTES
-    GLB_ELEM_BYTES = platform.GLB_ELEM_BYTES
     GEMM_MODE = platform.GEMM_MODE
-    GEVM_MODE = platform.GEVM_MODE
     CONV_MODE = platform.CONV_MODE
     C0_SIZE = platform.C0_SIZE
     ELEMENTS_VECTOR_OP_FP16 = platform.ELEMENTS_VECTOR_OP_FP16
-    DEFAULT_ADD_VALUE = platform.DEFAULT_ADD_VALUE
-    DEFAULT_MUL_VALUE = platform.DEFAULT_MUL_VALUE
     CUBE_MKN = platform.CUBE_MKN
-    VECTOR_COPY_NBURST_LIMIT = platform.VECTOR_COPY_NBURST_LIMIT
-    VECTOR_SINGLE_BLOCK_WIDTH_FP16 = platform.VECTOR_SINGLE_BLOCK_WIDTH_FP16
-    AIC = platform.AIC
-    VERSION_MINI = platform.VERSION_MINI
-    VERSION_MINI_NG1 = platform.VERSION_MINI_NG1
 
     get_soc_spec = platform_info.get_soc_spec
     api_check_support = platform_info.api_check_support
