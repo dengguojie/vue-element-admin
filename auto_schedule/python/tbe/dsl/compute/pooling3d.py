@@ -22,9 +22,6 @@ from tbe.common.testing.dsl_source_info import source_info_decorator
 
 
 _POOL3D_TAG = "pooling3d_"
-_DATA_MODE_CEIL = 0
-_DATA_MODE_PADDING = 1
-
 _MIN_VAL_MAP = {"float16": -65504.0, "float32": 3.4e-38, "double": 1.7e-308}
 _SIZEOF_DTYPE_MAP = {"float16": 2, "float32": 4, "double": 8}
 _C0_DIMENSION_DATA_SIZE_MAP = {"float16": 32, "float32": 64, "double": 128}
@@ -48,7 +45,6 @@ def pooling3d(tensor_in, window, stride, padding_mode="SAME",
     :ceil_mode : caffe round_mode params, 0:CEIL(default), 1:FLOOR
     :return: pooling result
     """
-    data_mode = _DATA_MODE_PADDING
 
     def _select(indices):
         i_n, i_c1, i_d = indices[0], indices[1], indices[2]
@@ -88,15 +84,16 @@ def pooling3d(tensor_in, window, stride, padding_mode="SAME",
     k_d, k_h, k_w = window[0], window[1], window[2]
     s_d, s_h, s_w = stride[0], stride[1], stride[2]
 
-    if data_mode == _DATA_MODE_PADDING:
+    if padding_mode == "CALCULATED":
         o_d, o_h, o_w, p_ft, p_bk, p_t, p_b, p_l, p_r = \
-            _get_out_and_pad_with_padding_mode(padding_mode, d, h, w,
-                                               window, stride, dilation)
+                _get_out_and_pad_with_pytorch(ceil_mode, pads, d, h, w, window, stride, dilation)
+        d_p, h_p, w_p = d + pads[0] + pads[1], h + pads[2] + pads[3], w + pads[4] + pads[5]
+    else:
+        o_d, o_h, o_w, p_ft, p_bk, p_t, p_b, p_l, p_r = \
+            _get_out_and_pad_with_tf(padding_mode, d, h, w, window, stride, dilation)
         d_p, h_p, w_p = (o_d - 1) * s_d + k_d, \
                         (o_h - 1) * s_h + k_h, \
                         (o_w - 1) * s_w + k_w
-    elif data_mode == _DATA_MODE_CEIL:
-        pass
 
     shape_trans = (n, c1, d_p, h_p, w_p, c0)
     tx_ub_c = tvm.compute(shape_trans, lambda *i: _select(i),
@@ -238,26 +235,23 @@ def _reduce_d(n, c1, o_d, o_h, o_w, c0, s_d, k_d, tx_rh):
     return tx_rd
 
 
-def _get_out_size_and_pad_with_ceil_mode():
-    pass
+def _get_out_and_pad_with_pytorch(ceil_mode, pads, in_size_d, in_size_h, in_size_w, window, stride, dilation):
+    out_size_d, out_size_h, out_size_w = 0, 0, 0
+    pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right = pads[0], pads[1], pads[2], pads[3], pads[4], pads[5]
+    dilation = (1, 1, 1)
+    if ceil_mode == 0:
+        out_size_d = (in_size_d + 2 * pads[0] - dilation[0] * (window[0] - 1) - 1) // stride[0] + 1
+        out_size_h = (in_size_h + 2 * pads[2] - dilation[1] * (window[1] - 1) - 1) // stride[1] + 1
+        out_size_w = (in_size_w + 2 * pads[4] - dilation[2] * (window[2] - 1) - 1) // stride[2] + 1
+    else:
+        out_size_d = (in_size_d + 2 * pads[0] - dilation[0] * (window[0] - 1) - 1 + stride[0] - 1) // stride[0] + 1
+        out_size_h = (in_size_h + 2 * pads[2] - dilation[1] * (window[1] - 1) - 1 + stride[1] - 1) // stride[1] + 1
+        out_size_w = (in_size_w + 2 * pads[4] - dilation[2] * (window[2] - 1) - 1 + stride[2] - 1) // stride[2] + 1
+
+    return out_size_d, out_size_h, out_size_w, pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right
 
 
-def _get_out_and_pad_with_padding_mode(padding_mode, in_size_d, in_size_h, in_size_w,
-                                       window, stride, dilation):
-    """
-    :param padding_mode: can be SAME, VALID
-    :param in_size_d: input tensor
-    :param in_size_h: input tensor
-    :param in_size_w: input tensor
-    :param window: input window d/h/w
-    :param stride: stride d/h/w
-    :param dilation: dilation d/h/w
-    :param pad_top: pad top
-    :param pad_bottom: pad bottom
-    :param pad_left: pad left
-    :param pad_right: pad right
-    :return:
-    """
+def _get_out_and_pad_with_tf(padding_mode, in_size_d, in_size_h, in_size_w, window, stride, dilation):
     out_size_d, out_size_h, out_size_w = 0, 0, 0
     pad_front, pad_back, pad_top, pad_bottom, pad_left, pad_right = 0, 0, 0, 0, 0, 0
     dilation = (1, 1, 1)
@@ -311,7 +305,7 @@ def _get_out_and_pad_with_padding_mode(padding_mode, in_size_d, in_size_h, in_si
 
 def _check_ub_tiling(window_d, window_h, window_w, pooling_mode, dtype):
     if pooling_mode == "MAX":
-        data_size = _get_ub_least_data_size_for_max(window_d, window_h, window_w)
+        data_size = _get_ub_least_data_size_for_max(window_d, window_h, window_w, dtype)
     else:
         raise RuntimeError("Not suport pooling_mode yet.")
 

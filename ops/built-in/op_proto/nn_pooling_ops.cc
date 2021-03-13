@@ -2717,30 +2717,6 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> ksizeTempList;
-  if (ksizeList.size() == DIM_SIZE1) {
-    ksizeTempList.push_back(1);
-    ksizeTempList.push_back(ksizeList[0]);
-    ksizeTempList.push_back(ksizeList[0]);
-    ksizeTempList.push_back(ksizeList[0]);
-    ksizeTempList.push_back(1);
-  }
-
-  if (ksizeList.size() == DIM_SIZE3) {
-    ksizeTempList.push_back(1);
-    ksizeTempList.push_back(ksizeList[0]);
-    ksizeTempList.push_back(ksizeList[1]);
-    ksizeTempList.push_back(ksizeList[2]);
-    ksizeTempList.push_back(1);
-  }
-
-  if (ksizeList.size() == DIM_SIZE5) {
-    ksizeTempList.push_back(ksizeList[0]);
-    ksizeTempList.push_back(ksizeList[1]);
-    ksizeTempList.push_back(ksizeList[2]);
-    ksizeTempList.push_back(ksizeList[3]);
-    ksizeTempList.push_back(ksizeList[4]);
-  }
 
   // get input strides
   std::vector<int32_t> stridesList;
@@ -2757,38 +2733,132 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
     return GRAPH_FAILED;
   }
 
-  std::vector<int64_t> stridesTempList;
-  if (stridesList.size() == DIM_SIZE1) {
-    stridesTempList.push_back(1);
-    stridesTempList.push_back(stridesList[0]);
-    stridesTempList.push_back(stridesList[0]);
-    stridesTempList.push_back(stridesList[0]);
-    stridesTempList.push_back(1);
-  }
-
-  if (stridesList.size() == DIM_SIZE3) {
-    stridesTempList.push_back(1);
-    stridesTempList.push_back(stridesList[0]);
-    stridesTempList.push_back(stridesList[1]);
-    stridesTempList.push_back(stridesList[2]);
-    stridesTempList.push_back(1);
-  }
-
-  if (stridesList.size() == DIM_SIZE5) {
-    stridesTempList.push_back(stridesList[0]);
-    stridesTempList.push_back(stridesList[1]);
-    stridesTempList.push_back(stridesList[2]);
-    stridesTempList.push_back(stridesList[3]);
-    stridesTempList.push_back(stridesList[4]);
-  }
-
-  // get input data_format
   std::string dataFormat;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
     OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(),
-            "The MaxPool3D op GetOpAttr data_format "
-            "failed!");
+    OP_LOGE(op.GetName().c_str(), "The MaxPool3D op GetOpAttr data_format failed!");
+    return GRAPH_FAILED;
+  }
+
+  if (dataFormat != "NDHWC" && dataFormat != "NCDHW") {
+    string excepted_value = ConcatString("NDHWC, NCDHW");
+    OpsAttrValueErrReport(op.GetName(), "data_format", excepted_value, dataFormat);
+    OP_LOGE(op.GetName().c_str(), "MaxPool3D data_format should be NDHWC or NCDHW ");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> ksizeTempList;
+  if (dataFormat == "NDHWC") {
+    if (ksizeList.size() == DIM_SIZE1) {
+      ksizeTempList.push_back(1);
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(1);
+    }
+
+    if (ksizeList.size() == DIM_SIZE3) {
+      ksizeTempList.push_back(1);
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[1]);
+      ksizeTempList.push_back(ksizeList[2]);
+      ksizeTempList.push_back(1);
+    }
+
+    if (ksizeList.size() == DIM_SIZE5) {
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[1]);
+      ksizeTempList.push_back(ksizeList[2]);
+      ksizeTempList.push_back(ksizeList[3]);
+      ksizeTempList.push_back(ksizeList[4]);
+    }
+  }else {
+    if (ksizeList.size() == DIM_SIZE1) {
+      ksizeTempList.push_back(1);
+      ksizeTempList.push_back(1);
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[0]);
+    }
+
+    if (ksizeList.size() == DIM_SIZE3) {
+      ksizeTempList.push_back(1);
+      ksizeTempList.push_back(1);
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[1]);
+      ksizeTempList.push_back(ksizeList[2]);
+    }
+
+    if (ksizeList.size() == DIM_SIZE5) {
+      ksizeTempList.push_back(ksizeList[0]);
+      ksizeTempList.push_back(ksizeList[1]);
+      ksizeTempList.push_back(ksizeList[2]);
+      ksizeTempList.push_back(ksizeList[3]);
+      ksizeTempList.push_back(ksizeList[4]);
+    }
+  }
+
+  std::vector<int64_t> stridesTempList;
+  if (dataFormat == "NDHWC") {
+    if (stridesList.size() == DIM_SIZE1) {
+      stridesTempList.push_back(1);
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(1);
+    }
+
+    if (stridesList.size() == DIM_SIZE3) {
+      stridesTempList.push_back(1);
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[1]);
+      stridesTempList.push_back(stridesList[2]);
+      stridesTempList.push_back(1);
+    }
+
+    if (stridesList.size() == DIM_SIZE5) {
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[1]);
+      stridesTempList.push_back(stridesList[2]);
+      stridesTempList.push_back(stridesList[3]);
+      stridesTempList.push_back(stridesList[4]);
+    }
+  }else {
+    if (stridesList.size() == DIM_SIZE1) {
+      stridesTempList.push_back(1);
+      stridesTempList.push_back(1);
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[0]);
+    }
+
+    if (stridesList.size() == DIM_SIZE3) {
+      stridesTempList.push_back(1);
+      stridesTempList.push_back(1);
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[1]);
+      stridesTempList.push_back(stridesList[2]);
+    }
+    if (stridesList.size() == DIM_SIZE5) {
+      stridesTempList.push_back(stridesList[0]);
+      stridesTempList.push_back(stridesList[1]);
+      stridesTempList.push_back(stridesList[2]);
+      stridesTempList.push_back(stridesList[3]);
+      stridesTempList.push_back(stridesList[4]);
+    }
+  }
+
+  std::vector<int32_t> padsList;
+  if (GRAPH_SUCCESS != op.GetAttr("pads", padsList)) {
+    OpsGetAttrErrReport(op.GetName(), "padsList");
+    OP_LOGE(op.GetName().c_str(), "The MaxPool3D op GetOpAttr pads failed!");
+    return GRAPH_FAILED;
+  }
+
+  if (padsList.size() != 6) {
+    string excepted_value = ConcatString(6);
+    OpsAttrValueErrReport(op.GetName(), "length of pads", excepted_value, ConcatString((size_t)padsList.size()));
+    OP_LOGE(op.GetName().c_str(), "length of pads must be 6");
     return GRAPH_FAILED;
   }
 
@@ -2800,30 +2870,157 @@ IMPLEMT_INFERFUNC(MaxPool3D, MaxPool3DInferShape) {
     return GRAPH_FAILED;
   }
 
-  if (paddingMode != "SAME" && paddingMode != "VALID") {
-    string excepted_value = ConcatString("SAME,VALID");
+  if (paddingMode != "SAME" && paddingMode != "VALID" && paddingMode != "CALCULATED") {
+    string excepted_value = ConcatString("SAME,VALID,CALCULATED");
     OpsAttrValueErrReport(op.GetName(), "padding", excepted_value, paddingMode);
     OP_LOGE(op.GetName().c_str(),
-            "MaxPool3D can only support SAME or VALID "
+            "MaxPool3D can only support SAME or VALID or CALCULATED "
             "padding mode!");
     return GRAPH_FAILED;
   }
 
+  int ceilMode = 0;
+  if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceilMode)) {
+    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
+    OP_LOGE(op.GetName().c_str(), "MaxPool3D GetOpAttr ceil_mode failed!");
+    return GRAPH_FAILED;
+  }
+  if (ceilMode != 0 && ceilMode != 1) {
+    string excepted_value = ConcatString("0,1");
+    OpsAttrValueErrReport(op.GetName(), "ceil_mode", excepted_value, paddingMode);
+    OP_LOGE(op.GetName().c_str(), "MaxPool3D ceil_mode should be 0 or 1");
+    return GRAPH_FAILED;
+  }
+
   std::vector<int64_t> dims_input = shape.GetDims();
-  // set output shape
   std::vector<int64_t> dimVector;
-  if (input_format == FORMAT_NDHWC) {
-    if (paddingMode == "SAME") {
-      for (size_t i = 0; i < dims_input.size(); i++) {
-        // D H W calculate, N C stride default 1
-        int64_t dims = (dims_input[i] + stridesTempList[i] - 1) / stridesTempList[i];
-        dimVector.push_back(dims);
+  int64_t dims = 1;
+  int pad = 0;
+  // set output shape
+  if (paddingMode == "CALCULATED") {
+    if (ceilMode == 0) {
+      if (input_format == FORMAT_NCDHW) {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          if (i == 0 || i == 1) {
+              dims = dims_input[i];
+          }else {
+            if(i == 2){
+              pad = padsList[0];
+            }
+            if(i == 3){
+              pad = padsList[2];
+            }
+            if(i == 4){
+              pad = padsList[4];
+            }
+            dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1) / stridesTempList[i]) + 1;
+          }
+          dimVector.push_back(dims);
+        }
+      }else if (input_format == FORMAT_NDHWC) {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          if (i == 0 || i == 4) {
+              dims = dims_input[i];
+          }else {
+            if(i == 1){
+              pad = padsList[0];
+            }
+            if(i == 2){
+              pad = padsList[2];
+            }
+            if(i == 3){
+              pad = padsList[4];
+            }
+            dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1) / stridesTempList[i]) + 1;
+          }
+          dimVector.push_back(dims);
+        }
       }
     } else {
-      for (size_t i = 0; i < dims_input.size(); i++) {
-        // D H W calculate, N C stride default 1
-        int64_t dims = (dims_input[i] - ksizeTempList[i] + 1 + (stridesTempList[i] - 1)) / stridesTempList[i];
-        dimVector.push_back(dims);
+      if (input_format == FORMAT_NCDHW) {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          if (i == 0 || i == 1) {
+              dims = dims_input[i];
+          }else {
+            if (i == 2) {
+              pad = padsList[0];
+            }
+            if (i == 3) {
+              pad = padsList[2];
+            }
+            if (i == 4) {
+              pad = padsList[4];
+            }
+            dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1 + stridesTempList[i] - 1) /\
+                     stridesTempList[i]) + 1;
+          }
+          dimVector.push_back(dims);
+        }
+      }else if (input_format == FORMAT_NDHWC) {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          if (i == 0 || i == 4) {
+              dims = dims_input[i];
+          }else {
+            if (i == 1) {
+              pad = padsList[0];
+            }
+            if (i == 2) {
+              pad = padsList[2];
+            }
+            if (i == 3) {
+              pad = padsList[4];
+            }
+            dims = ((dims_input[i] + 2 * pad - (ksizeTempList[i] - 1) - 1 + stridesTempList[i] - 1) /\
+                     stridesTempList[i]) + 1;
+          }
+          dimVector.push_back(dims);
+        }
+      }
+    }
+  } else {
+    if (input_format == FORMAT_NDHWC) {
+      if (paddingMode == "SAME") {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          int64_t dims = 1;
+          if (i == 0 || i == 4) {
+            dims = dims_input[i];
+          } else {
+            dims = (dims_input[i] + stridesTempList[i] - 1) / stridesTempList[i];
+          }
+          dimVector.push_back(dims);
+        }
+      } else {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          int64_t dims = 1;
+          if (i == 0 || i == 4) {
+            dims = dims_input[i];
+          } else {
+            dims = (dims_input[i] - ksizeTempList[i] + 1 + (stridesTempList[i] - 1)) / stridesTempList[i];
+          }
+          dimVector.push_back(dims);
+        }
+      }
+    } else if (input_format == FORMAT_NCDHW) {
+      if (paddingMode == "SAME") {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          int64_t dims = 1;
+          if (i == 0 || i == 1) {
+            dims = dims_input[i];
+          } else {
+            dims = (dims_input[i] + stridesTempList[i] - 1) / stridesTempList[i];
+          }
+          dimVector.push_back(dims);
+        }
+      } else {
+        for (size_t i = 0; i < dims_input.size(); i++) {
+          int64_t dims = 1;
+          if (i == 0 || i == 1) {
+            dims = dims_input[i];
+          } else {
+            dims = (dims_input[i] - ksizeTempList[i] + 1 + (stridesTempList[i] - 1)) / stridesTempList[i];
+          }
+          dimVector.push_back(dims);
+        }
       }
     }
   }

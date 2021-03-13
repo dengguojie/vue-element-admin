@@ -53,6 +53,9 @@ Status ParseParamsMaxPool3D(const Message* op_src, ge::Operator& op) {
   }
   OP_LOGI(op.GetName().c_str(), "update output y format success, now is %d", op.GetOutputDesc(POS_0).GetFormat());
 
+  std::vector<int32_t> padList = {0, 0, 0, 0, 0, 0};
+  op.SetAttr("pads", padList);
+
   return SUCCESS;
 }
 
