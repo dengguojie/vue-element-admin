@@ -5166,6 +5166,13 @@ static bool GetPadMaxPool3DGrad(ge::Operator& op, int32_t id, int32_t ih, int32_
     } else if (padStr.compare("VALID") == 0) {
       for (int32_t i = 0; i < 6; i++)
         padList.push_back(0);
+    } else if (padStr.compare("CALCULATED") == 0) {
+      // Pytorch
+      if (op.GetAttr("pads", padList) != ge::GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "Failed to get pads!");
+        return false;
+      }
+      return true;
     } else {
       map<string, string> err_map;
       err_map["param_name"] = "padding";

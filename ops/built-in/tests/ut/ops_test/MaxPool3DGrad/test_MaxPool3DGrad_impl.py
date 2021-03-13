@@ -30,7 +30,8 @@ def _calc_pads(paddings, in_shape, ksize, strides, data_format):
         kd, kh, kw = ksize[2], ksize[3], ksize[4]
         sd, sh, sw = strides[2], strides[3], strides[4]
 
-    if paddings == "VALID":
+    # suppose CALCULATED is 0,0,0,0,0,0
+    if paddings in ["VALID", "CALCULATED"]:
         pads = [0, 0, 0, 0, 0, 0]
     else:
         do = (id + sd - 1) // sd
@@ -53,7 +54,7 @@ def _calc_pads(paddings, in_shape, ksize, strides, data_format):
 
 def gen_max_pool3d_grad_add_case(expect, case_name_val, in_dtype, ou_dtype,
                                  shape0, ori_shape0, shape1, ori_shape1, ksize,
-                                 strides, pads, data_format):
+                                 strides, pads, data_format, paddings):
     return {"params": [{"shape": shape0, "dtype": in_dtype, "ori_shape": ori_shape0,
                         "ori_format": data_format, "format": "NDC1HWC0"},
                        {"shape": shape1, "dtype": in_dtype, "ori_shape": ori_shape1,
@@ -62,7 +63,7 @@ def gen_max_pool3d_grad_add_case(expect, case_name_val, in_dtype, ou_dtype,
                         "ori_format": data_format, "format": "NDC1HWC0"},
                        {"shape": shape0, "dtype": ou_dtype, "ori_shape": ori_shape0,
                         "ori_format": data_format, "format": "NDC1HWC0"},
-                       ksize, strides, pads, data_format],
+                       ksize, strides, paddings, pads, data_format],
             "case_name": case_name_val,
             "expect": expect,
             "format_expect": [],
@@ -77,12 +78,12 @@ def do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format):
                      gen_max_pool3d_grad_add_case(
                          "success", "VALID_X", "float16", "float32",
                          shape0, ori_shape0, shape1, ori_shape1,
-                         ksize, strides, pads, data_format))
+                         ksize, strides, pads, data_format, paddings))
 
 
 def gen_max_pool3d_grad_add_case_error(expect, case_name_val, in_dtype, ou_dtype,
                                        list_shape, list_ori_shape, ksize,
-                                       strides, pads, data_format):
+                                       strides, pads, data_format, paddings):
     return {"params": [{"shape": list_shape[0], "dtype": in_dtype, "ori_shape": list_ori_shape[0],
                         "ori_format": data_format, "format": "NDC1HWC0"},
                        {"shape": list_shape[1], "dtype": in_dtype, "ori_shape": list_ori_shape[1],
@@ -91,7 +92,7 @@ def gen_max_pool3d_grad_add_case_error(expect, case_name_val, in_dtype, ou_dtype
                         "ori_format": data_format, "format": "NDC1HWC0"},
                        {"shape": list_shape[3], "dtype": ou_dtype, "ori_shape": list_ori_shape[3],
                         "ori_format": data_format, "format": "NDC1HWC0"},
-                       ksize, strides, pads, data_format],
+                       ksize, strides, paddings, pads, data_format],
             "case_name": case_name_val,
             "expect": expect,
             "format_expect": [],
@@ -106,7 +107,7 @@ def do_case_error_one(ori_shape0, ori_shape1, ksize, strides, paddings, data_for
                      gen_max_pool3d_grad_add_case(
                          RuntimeError, "VALID_X", "float16", "float32",
                          shape0, ori_shape0, shape1, ori_shape1,
-                         ksize, strides, pads, data_format))
+                         ksize, strides, pads, data_format, paddings))
 
 
 def do_case_error(list_ori_shape, ksize, strides, paddings, data_format):
@@ -118,13 +119,22 @@ def do_case_error(list_ori_shape, ksize, strides, paddings, data_format):
                      gen_max_pool3d_grad_add_case_error(
                          RuntimeError, "VALID_X", "float16", "float32",
                          list_shape, list_ori_shape,
-                         ksize, strides, pads, data_format))
+                         ksize, strides, pads, data_format, paddings))
 
 
 # ============================================
 # VALID: split n and c1 as core
 # ============================================
 # not_tiling
+ori_shape0 = [32, 12, 3, 3, 48]
+ori_shape1 = [32, 4, 1, 1, 48]
+ksize = [1, 2, 2, 2, 1]
+strides = [1, 3, 3, 3, 1]
+paddings = "CALCULATED"
+data_format = "NDHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format)
+
+
 ori_shape0 = [32, 12, 3, 3, 48]
 ori_shape1 = [32, 4, 1, 1, 48]
 ksize = [1, 2, 2, 2, 1]

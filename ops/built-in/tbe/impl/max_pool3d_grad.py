@@ -126,19 +126,6 @@ def calc_pad(tik_instance, pad_top, pad_bottom,
     return top, bottom
 
 
-def grad_model(pad_list):
-    """
-    grad_model
-    """
-    for i in pad_list:
-        if i > 0:
-            model = 'SAME'
-            break
-        model = 'VALID'
-
-    return model
-
-
 def _check_config(config):
     config = list(config)
     mark = True
@@ -193,10 +180,9 @@ class MaxPool3DGradCompute:
 
         self.ksize = params[0]
         self.strides = params[1]
-        padding = params[2]
-        self.pads = grad_model(padding)
         self.dtype = params[3]
         self.kernel_name = params[4]
+        self.pads = params[5].upper()
 
         self.kd = self.ksize[1]
         self.kh = self.ksize[2]
@@ -205,7 +191,17 @@ class MaxPool3DGradCompute:
         self.sh = self.strides[2]
         self.sw = self.strides[3]
 
-        self.do, self.ho, self.wo, self.pad = self._padding_mode()
+        if self.pads in ["CALCULATED", ]:
+            # Pytorch
+            self.pads = "SAME"
+            self.pad = [[params[2][0], params[2][1]],
+                        [params[2][2], params[2][3]],
+                        [params[2][4], params[2][5]]]
+            self.do, self.ho, self.wo = self.grad_shape[1], self.grad_shape[3], \
+                                        self.grad_shape[4]
+        else:
+            # TF
+            self.do, self.ho, self.wo, self.pad = self._padding_mode()
         self.overlap_d = self._overlap_mode(self.sd, self.kd, self.do, self.d)
         self.overlap_h = self._overlap_mode(self.sh, self.kh, self.ho, self.h)
         self.overlap_w = self._overlap_mode(self.sw, self.kw, self.wo, self.w)
@@ -4132,9 +4128,9 @@ def check_param(ori_input, ori_output, grad, ksize, strides,
 
 # pylint: disable=invalid-name,unused-argument
 @util.check_input_type(dict, dict, dict, dict,
-                       (tuple, list), (tuple, list), (tuple, list), str, str)
+                       (tuple, list), (tuple, list), str, (tuple, list), str, str)
 def max_pool3d_grad(orig_x, orig_y, grads, y,
-                    ksize, strides, pads=(0, 0, 0, 0, 0, 0),
+                    ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
                     data_format="NDHWC",
                     kernel_name="max_pool3d_grad"):
     """
@@ -4180,6 +4176,6 @@ def max_pool3d_grad(orig_x, orig_y, grads, y,
     if data_format not in ["NCDHW", "NDHWC"]:
         raise RuntimeError("data_format should be NDHWC or NCDHW")
 
-    params = [ksize, strides, list(pads), dtype, kernel_name]
+    params = [ksize, strides, list(pads), dtype, kernel_name, padding]
     result = MaxPool3DGradCompute(shape_list, params)
     return result.get_tik_instance()

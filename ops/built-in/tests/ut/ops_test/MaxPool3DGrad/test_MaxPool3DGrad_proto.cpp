@@ -132,3 +132,33 @@ TEST_F(max_pool3d_grad, max_pool3d_grad_infershape_test_1) {
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
+
+TEST_F(max_pool3d_grad, max_pool3d_grad_infershape_test_2) {
+  ge::op::MaxPool3DGrad op;
+  op.UpdateInputDesc("orig_x", create_desc_with_ori({17, 63, 7, 2, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {17, 63, 7, 2, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("orig_y", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  op.UpdateInputDesc("grads", create_desc_with_ori({17, 62, 6, 1, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {17, 62, 6, 1, 16}, ge::FORMAT_NDHWC));
+  vector<int64_t> ksize = {1, 2, 2, 2, 1};
+  vector<int64_t> strides = {1, 1, 1, 1, 1};
+  vector<int64_t> pads = {0, 0, 0, 0, 0, 0};
+
+  string model = "CALCULATED";
+  string format = "NDHWC";
+  vector<int64_t> in_shape = {17, 63, 7, 2, 16};
+  GetPads(model, format, in_shape, ksize, strides, pads);
+
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("padding", model);
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape = {17, 63, 7, 2, 16};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
