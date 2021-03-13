@@ -549,7 +549,7 @@ class CaseDesign:
                                   enumerate(ori_field_cross_key_list)}
                     if cur_params.get('shape'):
                         dynamic_handle.set_typical_shape_in_cur_params(
-                            cur_params, tensor)
+                            cur_params, tensor, self.current_json_path)
                     case_list.append(cur_params)
                 total_case_list.append(case_list)
             else:
@@ -562,7 +562,7 @@ class CaseDesign:
                     self._check_cur_params_undefined(cur_params)
                     if cur_params.get('shape'):
                         dynamic_handle.set_typical_shape_in_cur_params(
-                            cur_params, tensor)
+                            cur_params, tensor, self.current_json_path)
                     case_list.append(cur_params)
                 total_case_list.append(case_list)
         return total_case_list

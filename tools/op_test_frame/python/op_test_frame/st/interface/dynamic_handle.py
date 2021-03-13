@@ -76,14 +76,22 @@ def add_key_in_cross_key_list(key_list):
         key_list.append(key)
 
 
-def set_typical_shape_in_cur_params(cur_params, tensor):
+def set_typical_shape_in_cur_params(cur_params, tensor, current_json_path):
     """update cur_params dict"""
     shape_list = cur_params.get('shape')
     for dim in shape_list:
         if dim == utils.SHAPE_DYNAMIC_SCENARIOS_ONE \
                 or dim == utils.SHAPE_DYNAMIC_SCENARIOS_TWO:
             typical_shape_list = tensor.get(utils.TYPICAL_SHAPE)
-            cur_params.update({utils.TYPICAL_SHAPE: typical_shape_list[0]})
+            if typical_shape_list is None:
+                utils.print_error_log("Please add \"typical_shape\" filed in "
+                                      "%s used for executing the operator in "
+                                      "dynamic shape scenarios."
+                                      % current_json_path)
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_NONE_TYPICAL_SHAPE_ERROR)
+            else:
+                cur_params.update({utils.TYPICAL_SHAPE: typical_shape_list[0]})
             # dynamic shape scenarios two, need to remove shape_range.
             if dim == utils.SHAPE_DYNAMIC_SCENARIOS_TWO\
                     and cur_params.get(utils.SHAPE_RANGE):
