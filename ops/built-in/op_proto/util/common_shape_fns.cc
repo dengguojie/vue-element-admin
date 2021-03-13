@@ -379,7 +379,7 @@ graphStatus SubShape(const Shape& s, int64_t start, int64_t end, int64_t stride,
   }
   const int64_t rank = static_cast<int64_t>(s.GetDimNum());
   TensorDesc tensor(s);
-  if (start == 0 && ((tensor.GetRealDimCnt() != -1 && end >= rank) || end == std::numeric_limits<int64_t>::max())) {
+  if (!RankKnown(s) || (start == 0 && ((tensor.GetRealDimCnt() != -1 && end >= rank) || end == std::numeric_limits<int64_t>::max()))) {
     out = s;
     return GRAPH_SUCCESS;
   }
