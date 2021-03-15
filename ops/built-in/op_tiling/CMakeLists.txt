@@ -98,6 +98,7 @@ set(_optiling_files
   reduce_mean.cc
   softmax_tiling.cc
   embedding_dense_grad.cc
+  one_hot.cc
 )
 
 set(_op_tiling_include
