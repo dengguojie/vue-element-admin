@@ -33,6 +33,7 @@
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace ge;
 namespace fe {
@@ -73,6 +74,11 @@ Status ConstToAttrTilePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   ge::OpDescPtr fusionDescPtr = PatternFusionUtil::GetFusionOpDesc(fusedNode, fusionOpType, tileAttrInfo);
   FUSION_PASS_CHECK(fusionDescPtr == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fusion op desc is nullptr."),
                     return NOT_CHANGED);
+  if (HasUnKnowDimShape(fusedNode)) {
+    FUSION_PASS_CHECK(CheckOpSupported(fusionDescPtr), OP_LOGI(FUSED_NODE, "tile dynamic shape supported"),
+                      return NOT_CHANGED);
+    OP_LOGI(FUSED_NODE, "CheckOpSupported fail, tile dynamic");
+  }
 
   // get const_data
   Operator tileOp = ge::OpDescUtils::CreateOperatorFromNode(fusedNode);

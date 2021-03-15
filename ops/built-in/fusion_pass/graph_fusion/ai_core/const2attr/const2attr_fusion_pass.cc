@@ -281,7 +281,10 @@ REGISTER_CONST2ATTR("ReduceMeanD")
     .NeedCheckSupported(true)
     .SetConstToAttr(1, "axes", "SetListInt");
 
-REGISTER_CONST2ATTR("ReduceAllD").OriginOpType("ReduceAll").SetConstToAttr(1, "axes", "SetListInt");
+REGISTER_CONST2ATTR("ReduceAllD")
+    .OriginOpType("ReduceAll")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(1, "axes", "SetListInt");
 
 REGISTER_CONST2ATTR("ReduceAnyD")
     .OriginOpType("ReduceAny")
