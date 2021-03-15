@@ -31,11 +31,25 @@ Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("adj_x1", trans_a);
   op_dest.SetAttr("adj_x2", trans_b);
 
+  auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  if (op_dsc == nullptr) {
+    OP_LOGE("MatMul", "Get op desc failed. " );
+    return FAILED;
+  }
+
+  ge::GeTensorDesc org_tensor_y = op_dsc->GetOutputDesc(0);
+  org_tensor_y.SetOriginFormat(ge::FORMAT_NCHW);
+  org_tensor_y.SetFormat(ge::FORMAT_NCHW);
+  auto ret_y = op_dsc->UpdateOutputDesc(0, org_tensor_y);
+  if (ret_y != ge::GRAPH_SUCCESS) {
+    OP_LOGE("MatMul", "Update output format failed. " );
+    return FAILED;
+  }
   return SUCCESS;
 }
 
 // register MatMul op info to GE
-REGISTER_CUSTOM_OP("BatchMatMul")
+REGISTER_CUSTOM_OP("BatchMatMulV2")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::MatMul",
                    "ai.onnx::10::MatMul",

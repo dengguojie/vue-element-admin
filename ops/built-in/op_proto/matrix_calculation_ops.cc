@@ -987,6 +987,14 @@ graphStatus GetMatMulOutputShape(const Operator &op,
             op.GetName().c_str(), name_attr.c_str());
     return GRAPH_FAILED;
   }
+  if(shape_a.size() == 1 && shape_a[0] > 0) {
+    shape_a.insert(shape_a.begin(), 1);
+    shape_range_a.insert(shape_range_a.begin(), make_pair<int64_t, int64_t>(1, 1));
+  }
+  if(shape_b.size() == 1 && shape_b[0] > 0) {
+    shape_b.push_back(1);
+    shape_range_b.push_back(make_pair<int64_t, int64_t>(1, 1));
+  }
   bool trans_b = false;
   if (ge::GRAPH_SUCCESS != op.GetAttr(name_attr + "_x2", trans_b)) {
     OpsGetAttrErrReport(op.GetName(), name_attr + "_x2");
@@ -994,7 +1002,6 @@ graphStatus GetMatMulOutputShape(const Operator &op,
             op.GetName().c_str(), name_attr.c_str());
     return GRAPH_FAILED;
   }
-
   auto obj = InferShapeMatMul(op.GetName(), shape_a, shape_b, shape_bias, shape_range_a, shape_range_b,
                               shape_range_bias, trans_a, trans_b, shape_out, shape_range_out, has_batch);
   if (!obj.GetShapeRangeOfOutput()) {
@@ -1086,7 +1093,7 @@ bool InferMatmulInputND(const Operator &op,
   return false;
 }
 
-bool InferMatmul(const Operator &op) {
+bool InferMatmul(const Operator &op) {  
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
 
@@ -1397,8 +1404,8 @@ graphStatus CommonBatchMatMulInferShape(const Operator &op) {
 
   int dim_num = std::max(dim_num_x1, dim_num_x2);
   bool any_unknown_rank = shape_x1 == UNKNOWN_RANK || shape_x1 == UNKNOWN_RANK || shape_bias == UNKNOWN_RANK;
-  if (!any_unknown_rank && (dim_num < 2 || dim_num > 8)) {
-    OP_LOGE(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 2 to 8.");
+  if (!any_unknown_rank && (dim_num < 1 || dim_num > 8)) {
+    OP_LOGE(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 1 to 8.");
     return GRAPH_FAILED;
   }
 
@@ -1410,7 +1417,11 @@ graphStatus CommonBatchMatMulInferShape(const Operator &op) {
 
   tensordesc_out->SetShape(ge::GeShape(shape_out));
   tensordesc_out->SetShapeRange(shape_range_out);
-  tensordesc_out->SetDataType(tensordesc_x1.GetDataType());
+  if (tensordesc_x1.GetDataType() == ge::DT_INT8) {
+    tensordesc_out->SetDataType(ge::DT_INT32);
+  } else {
+    tensordesc_out->SetDataType(tensordesc_x1.GetDataType());
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1437,7 +1448,23 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulV2InferShape) {
   return CommonBatchMatMulInferShape(op);
 }
 
+IMPLEMT_INFERFORMAT_FUNC(BatchMatMulV2, BatchMatMulV2InferFormat) {
+  OP_LOGD(op.GetName().c_str(), "[BatchMatMulV2 Inferformat] Finaly input format is %d", FORMAT_ND);
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+
+  auto tensordesc_input = op_desc->MutableInputDesc("x1");
+  tensordesc_input->SetOriginFormat(FORMAT_ND);
+  tensordesc_input->SetFormat(FORMAT_ND);
+
+  auto tensordesc_input_2 = op_desc->MutableInputDesc("x2");
+  tensordesc_input_2->SetOriginFormat(FORMAT_ND);
+  tensordesc_input_2->SetFormat(FORMAT_ND);
+
+  return GRAPH_SUCCESS;
+}
+
 // Registered inferfunction
+INFER_FORMAT_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferFormat);
 COMMON_INFER_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferShape);
 
 // Registered verify function

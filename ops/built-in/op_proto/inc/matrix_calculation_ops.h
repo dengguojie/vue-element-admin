@@ -189,8 +189,8 @@ REG_OP(BatchMatMul)
 * float32, int32. 2D or higher. Has format [ND, NHWC, FRACTAL_NZ] . \n
 
 * @par Attributes:
-* @li adj_x: A bool. If True, changes the shape of "x1" from [B, M, K] to [B, K, M].
-* @li adj_y: A bool. If True, changes the shape of "x2" from [B, M, K] to [B, K, M] . \n
+* @li adj_x1: A bool. If True, changes the shape of "x1" from [B, M, K] to [B, K, M].
+* @li adj_x2: A bool. If True, changes the shape of "x2" from [B, M, K] to [B, K, M] . \n
 
 * @par Outputs:
 * y: The result matrix Tensor. 2D or higher. Must be one of the following types: float16,
@@ -201,14 +201,15 @@ REG_OP(BatchMatMul)
 */
 
 REG_OP(BatchMatMulV2)
-    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
-    .INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT8}))
+    .INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT8}))
     .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+    .OPTIONAL_INPUT(offset_w, TensorType({DT_INT8}))
     .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
     .ATTR(adj_x1, Bool, false)
     .ATTR(adj_x2, Bool, false)
+    .ATTR(offset_x, Int, 0)
     .OP_END_FACTORY_REG(BatchMatMulV2)
-
 
 /**
 *@brief Computes half the L2 norm of a tensor without the sqrt . \n

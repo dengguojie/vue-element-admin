@@ -66,9 +66,12 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     else:
         shape_len = shape_len_b
     inp_src_dtype = src_dtype.lower()
-    k_block_size = tbe_platform.BLOCK_REDUCE
-    check_list = ("float16")
+    if inp_src_dtype == "float16":
+        k_block_size = tbe_platform.BLOCK_REDUCE
+    elif inp_src_dtype == "int8":
+        k_block_size = tbe_platform.BLOCK_REDUCE_INT8
 
+    check_list = ("float16", "int8")
     if inp_src_dtype not in check_list:
         error_manager_vector.raise_err_dtype_invalid('batch_matmul', 'input_x', check_list, inp_src_dtype)
 
@@ -160,7 +163,7 @@ def _get_bias(shape_bias):
     return shape_bias
 
 
-def _get_input_shape(shape_x):
+def _get_input_shape(shape_x, transpose, src_dtype):
     """ get input shape
     :param shape_x
     :return:  input shape
@@ -170,14 +173,51 @@ def _get_input_shape(shape_x):
     dim_b = shape_x[shape_length - 1]
     shape_length = shape_length - 2
     res = shape_x[:shape_length]
-    if dim_a % 16 != 0:
-        dim_a = (dim_a // 16) * 16 + 16
+    factor_base = 32 if src_dtype == "int8" else 16
+    if transpose:
+        factor_1 = factor_base
+        factor_2 = 16
+    else:
+        factor_1 = 16
+        factor_2 = factor_base    
+    if dim_a % factor_1 != 0:
+        dim_a = (dim_a // factor_1) * factor_1 + factor_1
         res.append(dim_a)
     else:
         res.append(dim_a)
 
-    if dim_b % 16 != 0:
-        dim_b = (dim_b // 16) * 16 + 16
+    if dim_b % factor_2 != 0:
+        dim_b = (dim_b // factor_2) * factor_2 + factor_2
+        res.append(dim_b)
+    else:
+        res.append(dim_b)
+    return res
+
+def _get_input_shape_b(shape_y, transpose, src_dtype):
+    """ get input shape
+    :param shape_x
+    :return:  input shape
+    """
+    shape_length = len(shape_y)
+    dim_a = shape_y[shape_length - 2]
+    dim_b = shape_y[shape_length - 1]
+    shape_length = shape_length - 2
+    res = shape_y[:shape_length]
+    factor_base = 32 if src_dtype == "int8" else 16
+    if transpose:
+        factor_1 = 16
+        factor_2 = factor_base
+    else:
+        factor_1 = factor_base
+        factor_2 = 16     
+    if dim_a % factor_1 != 0:
+        dim_a = (dim_a // factor_1) * factor_1 + factor_1
+        res.append(dim_a)
+    else:
+        res.append(dim_a)
+
+    if dim_b % factor_2 != 0:
+        dim_b = (dim_b // factor_2) * factor_2 + factor_2
         res.append(dim_b)
     else:
         res.append(dim_b)
@@ -229,8 +269,8 @@ def _check_batch_range(input_x, input_y):
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=dangerous-default-value, no-member
 # pylint: disable=too-many-statements, unused-argument
-def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
-                     trans_b=False, kernel_name="matmul"):
+def op_select_format(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
+                     trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     provide dynamic format to FE
     """
@@ -241,21 +281,25 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
     is_dynamic_shape = any(v == -1 for v in shape_a) or any(v == -1 for v in shape_b)
     if is_dynamic_shape:
         input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                               datatype="float16",
-                                               format="FRACTAL_NZ",
-                                               unknownshape_format="FRACTAL_NZ")
+                                               datatype="float16,int8,int8",
+                                               format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
+                                               unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
         input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                               datatype="float16",
-                                               format="FRACTAL_NZ",
-                                               unknownshape_format="FRACTAL_NZ")
+                                               datatype="float16,int8,int8",
+                                               format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z",
+                                               unknownshape_format="FRACTAL_NZ,FRACTAL_Z,FRACTAL_Z")
         input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                               datatype="float16",
-                                               format="ND",
-                                               unknownshape_format="ND")
+                                               datatype="float16,int32,float16",
+                                               format="ND,ND,ND",
+                                               unknownshape_format="ND,ND,ND")
+        input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                               datatype="int8,int8,int8",
+                                               format="ND,ND,ND",
+                                               unknownshape_format="ND,ND,ND")                                               
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                datatype="float16",
-                                                format="FRACTAL_NZ",
-                                                unknownshape_format="FRACTAL_NZ")
+                                                datatype="float16,int32,float16",
+                                                format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ",
+                                                unknownshape_format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ")
     else:
         if src_dtype == "float16":
             input0 = util_select_op_base.gen_param(classify="input0", name="x1",
@@ -267,24 +311,30 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
             input2 = util_select_op_base.gen_param(classify="input2", name="bias",
                                                    datatype="float16,float",
                                                    format="ND,ND")
+            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                                   datatype="int8,int8",
+                                                   format="ND,ND")                                                     
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                     datatype="float16,float",
                                                     format="FRACTAL_NZ,FRACTAL_NZ")
         else:
             input0 = util_select_op_base.gen_param(classify="input0", name="x1",
-                                                   datatype="float16,float,float,int32,int32",
-                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+                                                   datatype="float16,float,float,int32,int32,int8,int8",
+                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND,FRACTAL_NZ,FRACTAL_NZ")
             input1 = util_select_op_base.gen_param(classify="input1", name="x2",
-                                                   datatype="float16,float,float,int32,int32",
-                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+                                                   datatype="float16,float,float,int32,int32,int8,int8",
+                                                   format="FRACTAL_NZ,NHWC,ND,NHWC,ND,FRACTAL_Z,FRACTAL_Z")
             input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                   datatype="float16,float,float,int32,int32",
-                                                   format="ND,NHWC,ND,NHWC,ND")
+                                                   datatype="float16,float,float,int32,int32,int32,float16",
+                                                   format="ND,NHWC,ND,NHWC,ND,ND,ND")
+            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                                   datatype="int8,int8,int8,int8,int8,int8,int8",
+                                                   format="ND,ND,ND,ND,ND,ND,ND")                                                       
             output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float,float,int32,int32",
-                                                    format="FRACTAL_NZ,NHWC,ND,NHWC,ND")
+                                                    datatype="float16,float,float,int32,int32,int32,int32",
+                                                    format="FRACTAL_NZ,NHWC,ND,NHWC,ND,FRACTAL_NZ,FRACTAL_NZ")
 
-    param_list = [input0, input1, input2, output0]
+    param_list = [input0, input1, input2, input3, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
@@ -293,14 +343,14 @@ def op_select_format(input_x, input_y, bias=None, output_z={}, trans_a=False,
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=too-many-arguments,no-member,no-else-return
 # pylint: disable=too-many-statements, unused-argument,too-many-return-statements
-def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
-                    trans_b=False, kernel_name="matmul"):
+def check_supported(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
+                    trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     get the op supported situation
     """
 
-    shape_a = input_x.get("shape")
-    shape_b = input_y.get("shape")
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
     src_dtype = input_x.get("dtype")
     dynamic_flag = any(v < 0 for v in shape_a) or any(v < 0 for v in shape_b)
     if not dynamic_flag:
@@ -336,7 +386,7 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
             else:
                 if shape_a[shape_length - 1] != shape_b[shape_length - 2]:
                     return False
-    elif src_dtype == "float16" and not dynamic_flag:
+    elif src_dtype in ["float16", "int8"] and not dynamic_flag:
         shape_length = len(shape_a)
         if trans_a:
             k_shape = shape_a[shape_length - 2]
@@ -359,8 +409,8 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
 # pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
 @tbe_platform.fusion_manager.fusion_manager.register("batch_matmul")
-def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False,
-                         trans_b=False, kernel_name="matmul"):
+def batch_matmul_compute(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
+                         trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     algorithm: batch_matmul
     calculating  matrix multiplication with bias, C = A*B + bias, support input
@@ -416,6 +466,9 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     ori_shape_x = input_x.op.attrs["ori_shape"]
     batch_shape = ori_shape_x[:-2] if len(ori_shape_x) > 2 else None
 
+    if offset_w is not None:
+        error_manager_vector.raise_err_specific_reson("batch_matmul",
+                                                "For BatchMatMulV2, tensor offset_w must be None!")
     para_dict = {
         "trans_a": trans_a_local,
         "trans_b": trans_b_local,
@@ -423,6 +476,8 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
         "format_b": format_b,
         "dst_dtype": dst_dtype,
         "tensor_c": bias,
+        "offset_a": offset_x,
+        "offset_b": offset_w,  
         "kernel_name": kernel_name,
         "batch_shape": batch_shape
         }
@@ -431,8 +486,8 @@ def batch_matmul_compute(input_x, input_y, bias=None, output_z={}, trans_a=False
     return result
 
 # pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
-def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=False,
-                              trans_b=False, kernel_name="matmul"):
+def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_z={}, trans_a=False,
+                              trans_b=False, offset_x=0, kernel_name="matmul"):
     """
     algorithm: batch_matmul
     calculating  matrix multiplication with bias, C = A*B + bias, support input
@@ -485,12 +540,17 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
         trans_b_local = trans_b
     dst_dtype = output_z.get("dtype").lower()
 
+    if offset_w is not None:
+        error_manager_vector.raise_err_specific_reson("batch_matmul_v2",
+                                                "For BatchMatMulV2, tensor offset_w must be None!")
     para_dict = {
         "trans_a": trans_a_local,
         "trans_b": trans_b_local,
         "format_a": format_a,
         "format_b": format_b,
         "dst_dtype": dst_dtype,
+        "offset_a": offset_x,
+        "offset_b": offset_w,
         "tensor_c": bias,
         "kernel_name": kernel_name
         }
@@ -503,10 +563,10 @@ def batch_matmul_compute_self(input_x, input_y, bias=None, output_z={}, trans_a=
 # pylint: disable=too-many-locals, no-member
 # pylint: disable=too-many-statements, dangerous-default-value
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
-                            para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
-def batch_matmul_v2(input_x, input_y, bias=None, output_z={}, trans_a=False,
-                    trans_b=False, kernel_name="matmul"):
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_BOOL,
+                            para_check.REQUIRED_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
+                    trans_b=False, offset_x=0, kernel_name="matmul"):
     """ algorithm: batch_matmul
     calculating  matrix multiplication with bias, C = A*B + bias, support input
     data with fractal format.
@@ -569,8 +629,8 @@ def batch_matmul_v2(input_x, input_y, bias=None, output_z={}, trans_a=False,
     shape_a = list(shape_a)
     shape_b = list(shape_b)
     if input_x.get("format") == "FRACTAL_NZ":
-        shape_a = _get_input_shape(shape_a)
-        shape_b = _get_input_shape(shape_b)
+        shape_a = _get_input_shape(shape_a, trans_a, src_dtype)
+        shape_b = _get_input_shape_b(shape_b, trans_b, src_dtype)
 
     para_check.check_shape(shape_a, param_name="input_x")
     para_check.check_shape(shape_b, param_name="input_y")
@@ -602,6 +662,8 @@ def batch_matmul_v2(input_x, input_y, bias=None, output_z={}, trans_a=False,
 
     if inp_src_dtype == "float16":
         block_reduce = tbe_platform.BLOCK_REDUCE
+    elif inp_src_dtype == "int8":
+        block_reduce = tbe_platform.BLOCK_REDUCE_INT8
 
     block_in = tbe_platform.BLOCK_IN
     block_out = tbe_platform.BLOCK_OUT
@@ -619,9 +681,9 @@ def batch_matmul_v2(input_x, input_y, bias=None, output_z={}, trans_a=False,
         block_out = tbe_platform.BLOCK_VECTOR
 
     if trans_a:
-        shape_a_dup = (m_shape // block_reduce, km_shape // block_in, block_reduce, block_in)
+        shape_a_dup = (m_shape // block_in, km_shape // block_reduce, block_reduce, block_in)
     else:
-        shape_a_dup = (m_shape // block_in, km_shape // block_reduce, block_in, block_reduce)
+        shape_a_dup = (m_shape // block_reduce, km_shape // block_in, block_in, block_reduce)
 
     if trans_b:
         shape_b_dup = (kn_shape // block_out, n_shape // block_reduce, block_reduce, block_out)
@@ -694,8 +756,15 @@ def batch_matmul_v2(input_x, input_y, bias=None, output_z={}, trans_a=False,
     if shape_bias_length > 0:
         tensor_bias = tvm.placeholder(shape_bias_dup, name='tensor_bias',
                                       dtype=dst_dtype)
-    result = batch_matmul_compute_self(tensor_a, tensor_b, tensor_bias,
-                                       output_z, trans_a, trans_b, kernel_name)
+    
+    if offset_w is None:
+        tensor_offset_w = None
+    else:
+        error_manager_vector.raise_err_specific_reson(
+            "batch_matmul", "offset w must be None!")
+
+    result = batch_matmul_compute_self(tensor_a, tensor_b, tensor_bias, tensor_offset_w,
+                                       output_z, trans_a, trans_b, offset_x, kernel_name)
     with tvm.target.cce():
         schedule = tbe.auto_schedule(result)
     tensor_list = [tensor_a, tensor_b, result]
