@@ -757,6 +757,34 @@ IMPLEMT_COMMON_INFERFUNC(NLLLossGradInferShape) {
 COMMON_INFER_FUNC_REG(NLLLossGrad, NLLLossGradInferShape);
 // --------------------NLLLossGrad END----------------------
 
+// --------------------Pdist----------------------
+IMPLEMT_COMMON_INFERFUNC(PdistInferShape) {
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    DataType predict_dtype = op.GetInputDesc("x").GetDataType();
+    Format predict_format = op.GetInputDesc("x").GetFormat();
+    ge::Shape inputshape = op.GetInputDesc("x").GetShape();
+    if (inputshape.GetDims().size() != 2) {
+        OP_LOGE("The shape of input must be 2.");
+        return GRAPH_FAILED;
+    }
+    int64_t dim_shape = inputshape.GetDim(0);
+    int64_t outputshape = 0.5 * ((dim_shape) * (dim_shape-1));
+    std::vector<int64_t> yShape({outputshape});
+    output_desc.SetDataType(predict_dtype);
+    output_desc.SetFormat(predict_format);
+    output_desc.SetShape(Shape(yShape));
+    (void)op.UpdateOutputDesc("y", output_desc);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Pdist, PdistVerify) {
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Pdist, PdistInferShape);
+VERIFY_FUNC_REG(Pdist, PdistVerify);
+// --------------------Pdist END----------------------
+
 // ----------------LpNorm Begin-------------------
 IMPLEMT_VERIFIER(LpNorm, LpNormVerify) { return GRAPH_SUCCESS; }
 IMPLEMT_COMMON_INFERFUNC(LpNormInfer) {
