@@ -78,8 +78,8 @@ def op_select_format(x1, x2, grad, y, ksize, strides,
                        format=x2_format,
                        unknownshape_format=x2_dy_format)
     input2 = gen_param(classify="input2", name="grad",
-                       datatype=grad_format,
-                       format=grad_dy_format,
+                       datatype=grad_dtype,
+                       format=grad_format,
                        unknownshape_format=grad_dy_format)
     output0 = gen_param(classify="output0", name="y",
                         datatype=y_dtype,
