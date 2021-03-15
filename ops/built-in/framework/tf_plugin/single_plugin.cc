@@ -253,6 +253,20 @@ REGISTER_CUSTOM_OP("EncodeBase64")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register Angle op to GE
+REGISTER_CUSTOM_OP("DecodeRaw")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DecodeRaw")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register Angle op to GE
+REGISTER_CUSTOM_OP("DecodePng")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DecodePng")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register FixedUnigramCandidateSampler op to GE
 REGISTER_CUSTOM_OP("FixedUnigramCandidateSampler")
     .FrameworkType(TENSORFLOW)

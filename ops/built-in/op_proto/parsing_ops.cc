@@ -46,4 +46,30 @@ IMPLEMT_INFERFUNC(StringToNumber, StringToNumberInfer) {
 }
 INFER_FUNC_REG(StringToNumber, StringToNumberInfer);
 
+IMPLEMT_INFERFUNC(DecodeRaw, DecodeRawInfer) {
+  int64_t unused_dim = 0;
+  auto x1_tensor = op.GetInputDesc(0);
+  Shape s = x1_tensor.GetShape();
+  std::vector<int64_t> dims;
+  for (int i = 0; i< s.GetDimNum(); i++) {
+    dims.push_back(s.GetDim(i));
+  }
+  dims.push_back(UNKNOWN_DIM);
+  Shape output_shape(dims);
+  DataType dtype;
+  if (op.GetAttr("out_type", dtype) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr dtype failed");
+    return GRAPH_FAILED;
+  }
+  TensorDesc y_tensor = op.GetOutputDesc("output");
+  y_tensor.SetDataType(dtype);
+  y_tensor.SetShape(output_shape);
+  if (op.UpdateOutputDesc("output", y_tensor) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Update output failed");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(DecodeRaw, DecodeRawInfer);
+
 }  // namespace ge

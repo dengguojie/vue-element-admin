@@ -37,6 +37,8 @@ usage() {
   echo "    -v Verbose"
   echo "    -g GCC compiler prefix, used to specify the compiler toolchain"
   echo "    -a|--aicpu only compile aicpu task"
+  echo "    -m|--minirc aicpu only compile aicpu task"
+
   echo "to be continued ..."
 }
 
@@ -48,8 +50,9 @@ checkopts() {
   UT_TEST=FALSE
   ST_TEST=FALSE
   AICPU_ONLY=FALSE
+  MINIRC_AICPU_ONLY=FALSE
   # Process the options
-  while getopts 'hj:usvg:a-:' opt
+  while getopts 'hj:usvg:a-:m-:' opt
   do
     case "${opt}" in
       h) usage
@@ -60,8 +63,10 @@ checkopts() {
       v) VERBOSE="VERBOSE=1" ;;
       g) GCC_PREFIX=$OPTARG ;;
       a) AICPU_ONLY=TRUE ;;
+      m) MINIRC_AICPU_ONLY=TRUE ;;
       -) case $OPTARG in
            aicpu) AICPU_ONLY=TRUE ;;
+           minirc) MINIRC_AICPU_ONLY=TRUE ;;
            *) logging "Undefined option: $OPTARG"
               usage
               exit 1 ;;
@@ -115,10 +120,21 @@ build_cann() {
   logging "CANN build success!"
 }
 
+minirc(){
+  CMAKE_ARGS="-DBUILD_PATH=$BUILD_PATH -DBUILD_OPEN_PROJECT=TRUE -DPRODUCT_SIDE=device -DMINRC=TRUE"
+  logging "Start build device target. CMake Args: ${CMAKE_ARGS}"
+  mk_dir "${CMAKE_DEVICE_PATH}"
+  cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
+  make ${VERBOSE} -j${THREAD_NUM}
+
+}
 release_cann() {
   logging "Create output directory"
   mk_dir "${RELEASE_PATH}"
   RELEASE_TARGET="cann.tar"
+  if [ "$MINIRC_AICPU_ONLY" = "TRUE" ];then
+     RELEASE_TARGET="aicpu_minrc.tar"
+  fi
   cd ${INSTALL_PATH} && tar cfz "${RELEASE_TARGET}" * && mv "${RELEASE_TARGET}" "${RELEASE_PATH}"
 }
 
@@ -126,8 +142,13 @@ main() {
   checkopts "$@"
   # CANN build start
   logging "---------------- CANN build start ----------------"
-  ${GCC_PREFIX}g++ -v
-  build_cann
+  if [ "$MINIRC_AICPU_ONLY" = "TRUE" ]; then
+    ${GCC_PREFIX}g++ -v
+    minirc 
+  else
+    ${GCC_PREFIX}g++ -v
+    build_cann
+  fi
   release_cann
   logging "---------------- CANN build finished ----------------"
 }

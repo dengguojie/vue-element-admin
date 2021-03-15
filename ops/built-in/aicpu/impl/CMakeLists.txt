@@ -96,9 +96,13 @@ if(BUILD_OPEN_PROJECT)
   )
 ]]
   if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
-    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
-    set(CMAKE_C_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
-
+    if (MINRC)
+      set(CMAKE_C_COMPILER /usr/bin/aarch64-linux-gnu-gcc)
+      set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-g++)
+    else()
+      set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
+      set(CMAKE_C_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
+    endif()
     add_library(cpu_kernels SHARED
       ${local_kernels_src_files}
       ${local_device_kernels_src_files}

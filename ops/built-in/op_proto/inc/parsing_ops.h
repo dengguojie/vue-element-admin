@@ -51,6 +51,23 @@ REG_OP(StringToNumber)
     .ATTR(out_type, Type, DT_FLOAT)
     .OP_END_FACTORY_REG(StringToNumber)
 
+/**
+*@brief Decodes raw file into  tensor . \n
+*@par Input:
+*contents: A Tensor of type string.
+*little_endian bool ture
+*@par Output: A Tensor
+
+**/
+REG_OP(DecodeRaw)
+    .INPUT(bytes, TensorType({DT_STRING}))
+    .OUTPUT(output, TensorType({DT_BOOL,DT_FLOAT16,DT_DOUBLE,DT_FLOAT,
+                                    DT_INT64,DT_INT32,DT_INT8,DT_UINT8,DT_INT16,
+                                    DT_UINT16,DT_COMPLEX64,DT_COMPLEX128}))
+    .ATTR(out_type, Type, DT_FLOAT)
+    .ATTR(little_endian, Bool, true)
+    .OP_END_FACTORY_REG(DecodeRaw)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_PARSING_OPS_H_

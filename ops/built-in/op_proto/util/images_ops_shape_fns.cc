@@ -122,6 +122,40 @@ graphStatus EncodeImageShapeFn(Operator& op) {
   return op.UpdateOutputDesc("contents", output_tensor);
 }
 
+graphStatus DecodeImageShapeFn(Operator& op) {
+  int channels;
+  if (op.GetAttr("channels", channels) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr chanels failed");
+    return GRAPH_FAILED;
+  }
+  if (channels != 0 && channels != 1 && channels != 3 && channels != 4) {
+    OP_LOGE(op.GetName().c_str(), "Channels must be 0,1,3,or 4, got [%d]", channels);
+    return GRAPH_FAILED;
+  }
+
+  DataType dtype;
+  if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Get attr dtype failed");
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> dims;
+  if (channels == 0) {
+     dims = {ge::UNKNOWN_DIM, ge::UNKNOWN_DIM, ge::UNKNOWN_DIM};
+  } else {
+    dims = {ge::UNKNOWN_DIM, ge::UNKNOWN_DIM, channels};
+  }
+  
+  Shape output_shape(dims);
+  TensorDesc output_tensor = op.GetOutputDesc(0);
+  output_tensor.SetDataType(dtype);
+  output_tensor.SetShape(output_shape);
+  if (op.UpdateOutputDesc("image", output_tensor) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Update image failed");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 bool DimsAllEqualOrUnknown(std::initializer_list<int64_t>&& inputs, int64_t unknown_dim_val) {
   auto it = inputs.begin();
   for (; it != inputs.end() && (*it == unknown_dim_val); ++it) {

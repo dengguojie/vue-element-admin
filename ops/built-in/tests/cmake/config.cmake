@@ -52,7 +52,6 @@ else ()
     set(CMAKE_C_COMPILER "${REPO_ROOT}/prebuilts/gcc/linux-x86/x86/x86_64-unknown-linux-gnu-4.9.3/bin/gcc")
     set(CMAKE_CXX_COMPILER "${REPO_ROOT}/prebuilts/gcc/linux-x86/x86/x86_64-unknown-linux-gnu-4.9.3/bin/g++")
     set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address -static-libasan -fsanitize=undefined")
-
     MESSAGE(STATUS "built-in project, using built-in configuration base on repo code")
     # [Config Me] change me to you own repo root dir, please not ends with separator
     set(TOP_DIR ${REPO_ROOT})

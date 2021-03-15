@@ -1127,6 +1127,14 @@ IMPLEMT_INFERFUNC(EncodePng, EncodePngInfer) {
 
 INFER_FUNC_REG(EncodePng, EncodePngInfer);
 
+
+
+IMPLEMT_INFERFUNC(DecodePng, DecodePngInfer) {
+  return DecodeImageShapeFn(op);
+}
+
+INFER_FUNC_REG(DecodePng, DecodePngInfer);
+
 static void GetResizeConstValue(const Operator& op, const GeTensorPtr& const_tensor,
                                 const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = const_tensor->GetData().GetSize();

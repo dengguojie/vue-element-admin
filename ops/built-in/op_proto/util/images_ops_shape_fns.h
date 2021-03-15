@@ -65,12 +65,20 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
 graphStatus EncodeImageShapeFn(Operator& op);
 
 /**
+ * DecodeImageShapeFn, infereshape funtion of DecodeImage op
+ * @param op, Operators that need to reason about shape
+ * @return status whether infer shape success
+ */
+graphStatus DecodeImageShapeFn(Operator& op);
+
+/**
  * EncodeImageShapeFn, infereshape funtion of EncodeImage op
  * @param inputs, the list of impu dims
  * @param unknown_dim_val, the definithion of UNKNOWN_DIM
  * @return status whether infer shape success
  */
 bool DimsAllEqualOrUnknown(std::initializer_list<int64_t>&& inputs, int64_t unknown_dim_val = UNKNOWN_DIM);
+
 
 }  // namespace ge
 

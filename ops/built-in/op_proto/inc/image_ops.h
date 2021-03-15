@@ -1071,6 +1071,29 @@ REG_OP(EncodePng)
     .ATTR(compression, Int, -1)
     .OP_END_FACTORY_REG(EncodePng)
 
+
+/**
+*@brief PNG-decode an image.
+*@par Inputs:
+*contents: 0-D. PNG-decoded image .
+
+*@par Attributes:
+*channels: graph channels \n
+
+*@par Outputs:
+*image: is a 3-D uint8 or uint16 Tensor of shape [height, width, channels]
+where channels is: 1: for grayscale; 2: for grayscale + alpha; 3: for RGB;
+4: for RGBA . \n
+
+*@par Third-party framework compatibility
+*Compatible with tensorflow DecodePng operator.
+*/
+REG_OP(DecodePng)
+    .INPUT(contents, TensorType({DT_STRING}))
+    .OUTPUT(image, TensorType({DT_UINT8, DT_UINT16}))
+    .ATTR(dtype, Type, DT_UINT8)
+    .ATTR(channels, Int, 0)
+    .OP_END_FACTORY_REG(DecodePng)
 /**
 *@brief Resizes "images" to "size" using bilinear interpolation . \n
 
