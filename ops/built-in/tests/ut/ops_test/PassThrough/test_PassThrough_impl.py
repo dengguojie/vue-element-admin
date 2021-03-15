@@ -35,8 +35,18 @@ case5 = do_pass_through((1, 1, 1, 4), "float32", "NHWC", 2, True,
                         "pass_through_5")
 case6 = do_pass_through((1, 1, 1, 720004), "float32", "NHWC", 2, True,
                         "pass_through_6")
-
-
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.pass_through import op_select_format
+    op_select_format({"shape": (1, 512, 26, 26), "dtype": "float16", "format": "NCHW",
+                      "ori_shape": (1, 512, 26, 26), "ori_format": "NCHW"},
+                     None,
+                     {"shape": (1, 2048, 13, 13), "dtype": "float16", "format": "NCHW",
+                      "ori_shape": (1, 2048, 13, 13), "ori_format": "NCHW"},
+					  2,
+					  False)
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
@@ -44,6 +54,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

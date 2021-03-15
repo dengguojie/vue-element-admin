@@ -651,7 +651,7 @@ Status ALSTMFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::GeShape wxShape = wxDesc.GetShape();
   ge::GeTensorDesc whDesc = fusedDesc->GetInputDesc(whIndex);
   ge::GeShape whShape = whDesc.GetShape();
-  if((wxShape.GetDim(1) + whShape.GetDim(1)) % 16 == 0 && wxShape.GetDim(1) >= 16 && whShape.GetDim(1) >= 16) {
+  if((wxShape.GetDim(1) % 16 == 0) && (whShape.GetDim(1) % 16 == 0)) {
     return SUCCESS;
   }
   // end check shape handle by dynamic_lstm_v2
