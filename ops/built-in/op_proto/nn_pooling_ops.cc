@@ -871,107 +871,34 @@ static void InferHWPooling(int64_t kernel, int64_t dilation, int64_t& pad_pre, i
 }
 
 IMPLEMT_INFER_DATA_SLICE(Pooling, PoolingInferDataSlice) {
-  auto globalPooling = op.get_attr_global_pooling();
-  auto window = op.get_attr_window();
-  auto pad = op.get_attr_pad();
-  auto stride = op.get_attr_stride();
-  auto ceilMode = op.get_attr_ceil_mode();
-  auto xShape = op.get_input_desc_x().GetShape().GetDims();
-  auto xFormat = op.get_input_desc_x().GetFormat();
-
-  int64_t dilationH = 0;
-  int64_t inputN = 0;
-  int64_t inputC = 0;
-  int64_t inputH = 0;
-  int64_t inputW = 0;
-
-  if (xFormat == FORMAT_NCHW) {
-    inputN = xShape[0];
-    inputC = xShape[1];
-    inputH = xShape[2];
-    inputW = xShape[3];
-  } else if (xFormat == FORMAT_NHWC) {
-    inputN = xShape[0];
-    inputC = xShape[3];
-    inputH = xShape[1];
-    inputW = xShape[2];
-  } else {
-    OP_LOGE(op.GetName().c_str(),
-            "xFormat should be NCHW or NHWC."
-            " actual is: %d",
-            (int)xFormat);
-    OpsInputFormatErrReport(op.GetName(), "xFormat", "NCHW or NHWC", ConcatString(xFormat));
-    return GRAPH_FAILED;
-  }
-
-  int64_t outputH = inputH;
-  int64_t outputW = inputW;
-  int64_t strH = stride[0];
-  int64_t strW = stride[1];
-  int64_t windowH = window[0];
-  int64_t windowW = window[1];
-  int64_t padT = pad[0];
-  int64_t padB = pad[1];
-  int64_t padL = pad[2];
-  int64_t padR = pad[3];
-   // update output
-  if (ceilMode == 0) {
-    outputH = static_cast<int64_t>(std::ceil((inputH + padT + padB - windowH) * 1.0f / strH)) + 1;
-    outputW = static_cast<int64_t>(std::ceil((inputW + padL + padR - windowW) * 1.0f / strW)) + 1;
-  } else if (ceilMode == 1) {
-    outputH = static_cast<int64_t>(std::floor((inputH + padT + padB - windowH) * 1.0f / strH)) + 1;
-    outputW = static_cast<int64_t>(std::floor((inputW + padL + padR - windowW) * 1.0f / strW)) + 1;
-  } else {
-    OP_LOGE(op.GetName().c_str(), "Unknown rounding mode.");
-    return GRAPH_FAILED;
-  }
-
-  bool hasPad = padT || padL;
-  if (hasPad) {
-    if ((outputH - 1) * strH >= inputH + padT) {
-      --outputH;
-    }
-    if ((outputW - 1) * strW >= inputW + padL) {
-      --outputW;
-    }
-  }
-
   vector<vector<int64_t>> y_data_slice = {{}, {}, {}, {}, {}};
   vector<vector<int64_t>> x_data_slice = {{}, {}, {}, {}, {}};
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("y");
-  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("x");
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc(0);
+  GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc(0);
   if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
     OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
     return GRAPH_FAILED;
   }
-
   for(unsigned i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 0) {
       if (i == 0) {
-        return NO_OVERLAP_DIM;
-      } else if (i == 1 or i == 3 or i == 4) {
+        int64_t n_start = y_data_slice[i][0];
+        int64_t n_end = y_data_slice[i][1];
+        x_data_slice[i] = {n_start, n_end};
+        
+        if (!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
+          OP_LOGE(op.GetName().c_str(), "pooling x_data_slice set failed.");
+          return GRAPH_FAILED;
+        }
+      } else {
+        OP_LOGI(op.GetName().c_str(), "only support cut in n");
         return NOT_SUPPORT_SLICE;
-      } else if (i == 2) {
-        vector<int64_t> input_h;
-        InferHWPooling(windowH, dilationH, pad[0], pad[1], stride[0], y_data_slice[i], input_h, inputH, outputH);
-        x_data_slice[i] = input_h;
       }
     }
   }
-
-  for(unsigned i = 0; i < x_data_slice.size(); i++) {
-    if (x_data_slice[i].size() > 0) {
-      if(!AttrUtils::SetListListInt(tensor_desc_in, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
-        return GRAPH_FAILED;
-      }
-      (void)op.set_attr_pad(pad);
-      return GRAPH_SUCCESS;
-    }
-    return NO_OVERLAP_DIM;
-  }
-
-   return NO_OVERLAP_DIM;
+  OP_LOGI(op.GetName().c_str(), "PoolingInferDataSlice success");
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(Pooling, PoolingInferShape);

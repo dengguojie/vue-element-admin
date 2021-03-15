@@ -52,12 +52,24 @@ case6 = {"params": [{"shape": (13, 1, 2, 768, 16), "dtype": "float16", "format":
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+
+def test_pooling_get_op_support_info(test_arg):
+    from impl.pooling import get_op_support_info
+    get_op_support_info({"shape": (13, 1, 2, 768, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (13, 2, 768, 13),"ori_format": "NCHW"},
+                        {"shape": (9, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 3, 3),"ori_format": "NCHW"},
+                        None,
+                        {"shape": (13, 1, 2, 768, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (13, 2, 768, 13),"ori_format": "NCHW"},
+                        (1, 1,), (1, 1), 0, 1)
+
+ut_case.add_cust_test_func(test_func=test_pooling_get_op_support_info)
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")
