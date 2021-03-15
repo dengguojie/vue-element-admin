@@ -347,6 +347,28 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew.push_back(axisC0);
   }
 
+  if (srcFormat == "NDHWC" && dstFormat == "NDC1HWC0") {
+    if (inShape.size() != 5) {
+      OP_LOGE("trans_data", "The input shape dimension size is not correct!");
+      return false;
+    }
+    realSrcFormat = "NDHC";
+    realDstFormat = "NDCHT";
+    inShapeNew.push_back(inShape[0]);
+    inShapeNew.push_back(inShape[1]);
+    inShapeNew.push_back(inShape[3] * inShape[2]);
+    inShapeNew.push_back(inShape[4]);
+    int64_t cIdx = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
+    int64_t axisC1 = GetCeilDiv(inShape[cIdx], c0Len);
+    int64_t axisC0 = c0Len;
+    outShapeNew.push_back(inShape[0]);
+    outShapeNew.push_back(inShape[1]);
+    outShapeNew.push_back(axisC1);
+    outShapeNew.push_back(inShape[3] * inShape[2]);
+    outShapeNew.push_back(axisC0);
+  }
+
+
   return true;
 }
 
