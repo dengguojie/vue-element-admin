@@ -93,6 +93,8 @@ set(_onnx_plugins
   lp_normalization_plugin.cc
   reduce_sum_square_plugin.cc
   gather_elements_plugin.cc
+  global_max_pool_plugin.cc
+  reduceL1_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include

@@ -1,0 +1,19 @@
+
+mvnv2-onnx:ˆ
+7
+inputoutput"ReduceL1*
+axes@ *
+keepdims 
+test-modelZ
+input
+
+
+
+
+b 
+output
+
+
+
+
+B
