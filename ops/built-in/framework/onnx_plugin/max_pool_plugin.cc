@@ -24,147 +24,84 @@
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
-
+#include "graph.h"
+#include "all_ops.h"
 #include "op_log.h"
 
+using namespace ge;
 namespace domi {
 static const int OUTPUT_SIZE = 1;
-struct MaxPoolAttr {
-  int64_t v_ceil_mode = 0;
-  std::vector<int> v_ksizes = {};
-  std::vector<int> v_strides = {};
-  std::vector<int> v_pads = {};
-  std::string v_pad = "CALCULATED";
-  std::vector<int> DefaultStride = {1, 1, 1, 1};
-  std::vector<int> DefaultPads = {0, 0, 0, 0};
-  std::vector<int> v_dilations = {};
-  int v_storage_order = 0;
-
-  bool set_ksizes_flag = false;
-  bool set_strides_flag = false;
-  bool set_pads_flag = false;
+struct TbeAttr {
+  // public attr
+  std::vector<int64_t> ksize;
+  std::vector<int64_t> strides;
+  std::string padding_mode;
+  std::vector<int64_t> pads;
+  int64_t ceil_mode;
+  // for MaxPool3D
+  std::vector<int64_t> dilation;
 };
 
-Status UpdateAttrFromOnnx(const ge::onnx::NodeProto* node, MaxPoolAttr& node_attr) {
+struct OnnxAttr {
+  // according to onnx::maxpool
+  std::string auto_pad = "NOTSET";
+  int64_t ceil_mode = 0;
+  std::vector<int64_t> dilations;
+  std::vector<int64_t> kernel_shape;
+  std::vector<int64_t> pads;
+  std::vector<int64_t> strides;
+};
+
+Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_attr) {
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "kernel_shape" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      node_attr.v_ksizes.push_back(1);
-      node_attr.v_ksizes.push_back(1);
-      if (attr.ints_size() == 2) {
-        for (int i = 0; i < attr.ints_size(); i++) {
-          node_attr.v_ksizes.push_back(attr.ints(i));
-        }
-      } else if (attr.ints_size() == 1) {
-        node_attr.v_ksizes.push_back(attr.ints(0));
-        node_attr.v_ksizes.push_back(attr.ints(0));
-      } else {
-        OP_LOGE("MaxPool", "the lenth of attr kernel size is greater then 2, may be it is 3D MaxPool.");
-        return FAILED;
+      for (int i = 0; i < attr.ints_size(); i++) {
+        onnx_attr.kernel_shape.push_back(attr.ints(i));
       }
-      node_attr.set_ksizes_flag = true;
     } else if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      node_attr.v_strides.push_back(1);
-      node_attr.v_strides.push_back(1);
-      if (attr.ints_size() == 2) {
-        for (int i = 0; i < attr.ints_size(); i++) {
-          node_attr.v_strides.push_back(attr.ints(i));
-        }
-      } else if (attr.ints_size() == 1) {
-        node_attr.v_strides.push_back(attr.ints(0));
-        node_attr.v_strides.push_back(attr.ints(0));
-      } else {
-        OP_LOGE("MaxPool", "the lenth of attr strides is greater then 2, may be it is 3D MaxPool.");
-        return FAILED;
+      for (int i = 0; i < attr.ints_size(); i++) {
+        onnx_attr.strides.push_back(attr.ints(i));
       }
-      node_attr.set_strides_flag = true;
     } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
-      if (attr.s() == "VALID") {
-        node_attr.v_pad = "VALID";
-      } else if (attr.s() == "NOTSET") {
-        node_attr.v_pad = "CALCULATED";
-      } else if (attr.s() == "SAME_UPPER") {
-        node_attr.v_pad = "SAME";
-      } else if (attr.s() == "SAME_LOWER") {
-        node_attr.v_pad = "SAME";
-        OP_LOGW("MaxPool", "value of auto_pad is same_lower, the accuracy error will be large!");
-      } else {
-        OP_LOGE("MaxPool", "value of auto_pad is invalid, transform failed.");
-        return FAILED;
-      }
+      onnx_attr.auto_pad = attr.s();
     } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      if (attr.ints_size() == 4) {
-        // adjust padding order from top-left-bottom-right to top-bottom-left-right.
-        std::vector<int> rank = {0, 2, 1, 3};
-        for (auto i : rank) {
-          node_attr.v_pads.push_back(attr.ints(i));
-        }
-      } else if (attr.ints_size() == 1) {
-        node_attr.v_pads.push_back(attr.ints(0));
-        node_attr.v_pads.push_back(attr.ints(0));
-        node_attr.v_pads.push_back(attr.ints(0));
-        node_attr.v_pads.push_back(attr.ints(0));
-      } else {
-        OP_LOGE("MaxPool", "the lenth of attr pads is not equal to 4 or 1, transform failed.");
+      int len = attr.ints_size();
+      if (len & 1) {
+        OP_LOGE("MaxPool", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
         return FAILED;
       }
-      node_attr.set_pads_flag = true;
+      for (int i = 0; i < len / 2; i++) {
+        onnx_attr.pads.push_back(attr.ints(i));
+        onnx_attr.pads.push_back(attr.ints(i + len / 2));
+      }
     } else if (attr.name() == "ceil_mode" && attr.type() == ge::onnx::AttributeProto::INT) {
-      node_attr.v_ceil_mode = attr.i();
+      onnx_attr.ceil_mode = attr.i();
     } else if (attr.name() == "dilations" && attr.type() == ge::onnx::AttributeProto::INTS) {
       for (int i = 0; i < attr.ints_size(); i++) {
-        node_attr.v_dilations.push_back(attr.ints(i));
+        onnx_attr.dilations.push_back(attr.ints(i));
       }
-    } else if (attr.name() == "storage_order" && attr.type() == ge::onnx::AttributeProto::INT) {
-      node_attr.v_storage_order = attr.i();
+    } else if (attr.name() == "storage_order" && attr.type() == ge::onnx::AttributeProto::INT && attr.i() == 1) {
+      OP_LOGE("MaxPool", "only support storage_order=0, but 1 is obtained now.");
+      return FAILED;
     }
+  }
+  if (onnx_attr.kernel_shape.size() == 0) {
+    OP_LOGE("MaxPool", "kernel_shape is required attribute, but NONE is obtained now.");
+    return FAILED;
   }
   return SUCCESS;
 }
 
-Status SetAttrToDesc(ge::Operator& op_dest, MaxPoolAttr& node_attr) {
-  if (node_attr.v_storage_order != 0) {
-    OP_LOGE("MaxPool", "the storage order used column is not supported, failed to transfrom.");
-    return FAILED;
+void MaybeChangeAttr(std::vector<int64_t>& value, int64_t length, int64_t num) {
+  if (value.empty()) {
+    value = std::vector<int64_t>(length, num);
+  } else if (length == 4) {
+    value.resize(length);
+    value[3] = value[1];
+    value[2] = value[0];
+    value[1] = 1;
+    value[0] = 1;
   }
-
-  if (node_attr.v_dilations.begin() != node_attr.v_dilations.end()) {
-    for (auto i : node_attr.v_dilations) {
-      if (i != 1) {
-        OP_LOGE("MaxPool", "the value of attr dilations is not 1, failed to transfrom.");
-        return FAILED;
-      }
-    }
-  }
-
-  if (node_attr.v_ceil_mode == 0) {
-    op_dest.SetAttr("ceil_mode", false);
-  } else {
-    op_dest.SetAttr("ceil_mode", true);
-  }
-
-  if (node_attr.set_ksizes_flag) {
-    op_dest.SetAttr("ksize", node_attr.v_ksizes);
-  } else {
-    OP_LOGI("MaxPool", "onnx MaxPool op has no ksize attr, set it to 1.");
-    op_dest.SetAttr("ksize", node_attr.DefaultStride);
-  }
-
-  if (node_attr.set_strides_flag) {
-    op_dest.SetAttr("strides", node_attr.v_strides);
-  } else {
-    OP_LOGI("MaxPool", "onnx MaxPool op has no strides attr, use default.");
-    op_dest.SetAttr("strides", node_attr.DefaultStride);
-  }
-
-  if (node_attr.set_pads_flag) {
-    op_dest.SetAttr("pads", node_attr.v_pads);
-  } else {
-    OP_LOGI("MaxPool", "onnx MaxPool op has no pads attr, use default.");
-    op_dest.SetAttr("pads", node_attr.DefaultPads);
-  }
-
-  op_dest.SetAttr("padding_mode", node_attr.v_pad);
-  return SUCCESS;
 }
 
 Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
@@ -179,21 +116,146 @@ Status ParseParamsMaxPool(const Message* op_src, ge::Operator& op_dest) {
     OP_LOGE("MaxPool", "The output of Indices is not support, transforming failed.");
     return FAILED;
   }
-  MaxPoolAttr node_attr;
-  if (UpdateAttrFromOnnx(node, node_attr) != SUCCESS) {
+
+  // 1.add dynamic input and out
+  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  if (opDesc == nullptr) {
+    OP_LOGE("MaxPool", "Get OpDesc from operator failed.");
+    return FAILED;
+  }
+  opDesc->AddDynamicInputDesc("x", 1);
+  opDesc->AddDynamicOutputDesc("y", 1);
+  // 2.set original_type
+  op_dest.SetAttr("original_type", "ai.onnx::11::MaxPool");
+  // 3.set attr if needed
+  OnnxAttr node_attr;
+  if (UpdateOnnxAttrFromOnnx(node, node_attr) != SUCCESS) {
     return FAILED;
   }
 
-  if (SetAttrToDesc(op_dest, node_attr) != SUCCESS) {
+  int64_t dims = node_attr.kernel_shape.size();
+  if (dims != 2 && dims != 3) {
+    OP_LOGE("MaxPool", "Only support 2D/3D, but the length of kernel_shape is %ld", dims);
     return FAILED;
   }
 
-  OP_LOGI("MaxPool", "--------------ParseParamsMaxPool  end---------------");
+  op_dest.SetAttr("dims", dims);
+  op_dest.SetAttr("ceil_mode", node_attr.ceil_mode);
+  std::map<string, string> padding_mode = {
+      {"NOTSET", "CALCULATED"}, {"SAME_UPPER", "SAME"}, {"SAME_LOWER", "SAME"}, {"VALID", "VALID"}};
+  op_dest.SetAttr("padding_mode", padding_mode[node_attr.auto_pad]);
+
+  MaybeChangeAttr(node_attr.kernel_shape, dims == 2 ? dims + 2 : dims, 1);
+  op_dest.SetAttr("ksize", node_attr.kernel_shape);
+
+  MaybeChangeAttr(node_attr.strides, dims == 2 ? dims + 2 : dims, 1);
+  op_dest.SetAttr("strides", node_attr.strides);
+
+  MaybeChangeAttr(node_attr.pads, dims * 2, 0);
+  op_dest.SetAttr("pads", node_attr.pads);
+
+  MaybeChangeAttr(node_attr.dilations, dims * 2, 1);
+  op_dest.SetAttr("dilation", node_attr.dilations);
 
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("MaxPoolV3")
+Status UpdateTbeAttrFromOp(const Operator& op, TbeAttr& tbe_attr, int dims) {
+  if (op.GetAttr("ceil_mode", tbe_attr.ceil_mode) != SUCCESS) {
+    OP_LOGE("MaxPool", "get ceil_mode from op failed");
+    return FAILED;
+  };
+  if (op.GetAttr("padding_mode", tbe_attr.padding_mode) != SUCCESS) {
+    OP_LOGE("MaxPool", "get padding_mode from op failed");
+    return FAILED;
+  };
+  if (op.GetAttr("ksize", tbe_attr.ksize) != SUCCESS) {
+    OP_LOGE("MaxPool", "get ksize from op failed");
+    return FAILED;
+  };
+  if (op.GetAttr("strides", tbe_attr.strides) != SUCCESS) {
+    OP_LOGE("MaxPool", "get strides from op failed");
+    return FAILED;
+  };
+  if (op.GetAttr("pads", tbe_attr.pads) != SUCCESS) {
+    OP_LOGE("MaxPool", "get pads from op failed");
+    return FAILED;
+  };
+  if (op.GetAttr("dilation", tbe_attr.dilation) != SUCCESS) {
+    OP_LOGE("MaxPool", "get dilation from op failed");
+    return FAILED;
+  };
+  return SUCCESS;
+}
+
+static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
+  int dims = 0;
+  if (op.GetAttr("dims", dims) != SUCCESS) {
+    OP_LOGE("MaxPool", "get dims from op failed");
+    return FAILED;
+  }
+  TbeAttr tbe_attr;
+  if (UpdateTbeAttrFromOp(op, tbe_attr, dims) != SUCCESS) {
+    return FAILED;
+  }
+
+  auto data0 = op::Data("data0").set_attr_index(0);
+  std::vector<Operator> inputs{data0};
+  std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
+
+  if (dims == 2) {
+    auto maxpoolv3 = op::MaxPoolV3()
+                         .set_input_x(data0)
+                         .set_attr_ksize(tbe_attr.ksize)
+                         .set_attr_strides(tbe_attr.strides)
+                         .set_attr_padding_mode(tbe_attr.padding_mode)
+                         .set_attr_pads(tbe_attr.pads)
+                         .set_attr_ceil_mode(tbe_attr.ceil_mode == 1)
+                         .set_attr_data_format("NCHW");
+    outputs.emplace_back(maxpoolv3, std::vector<std::size_t>{0});
+  } else {
+    auto maxpool3d = op::MaxPool3D()
+                         .set_input_x(data0)
+                         .set_attr_ksize(tbe_attr.ksize)
+                         .set_attr_strides(tbe_attr.strides)
+                         .set_attr_padding(tbe_attr.padding_mode)
+                         .set_attr_pads(tbe_attr.pads)
+                         .set_attr_dilation(tbe_attr.dilation)
+                         .set_attr_ceil_mode(tbe_attr.ceil_mode)
+                         .set_attr_data_format("NCDHW");
+
+    // update input format
+    ge::TensorDesc orgTensorX = maxpool3d.get_input_desc_x();
+    orgTensorX.SetOriginFormat(ge::FORMAT_NCDHW);
+    orgTensorX.SetFormat(ge::FORMAT_NCDHW);
+    auto ret = maxpool3d.update_input_desc_x(orgTensorX);
+    if (ret != ge::GRAPH_SUCCESS) {
+      OP_LOGE(maxpool3d.GetName().c_str(), "update input x format failed.");
+      return FAILED;
+    }
+    OP_LOGI(maxpool3d.GetName().c_str(), "update input x format success, now is %d",
+            maxpool3d.get_input_desc_x().GetFormat());
+
+    // update output format
+    ge::TensorDesc orgTensorY = maxpool3d.get_output_desc_y();
+    orgTensorY.SetOriginFormat(ge::FORMAT_NCDHW);
+    orgTensorY.SetFormat(ge::FORMAT_NCDHW);
+    ret = maxpool3d.update_output_desc_y(orgTensorY);
+    if (ret != ge::GRAPH_SUCCESS) {
+      OP_LOGE(maxpool3d.GetName().c_str(), "update input y format failed.");
+      return FAILED;
+    }
+    OP_LOGI(maxpool3d.GetName().c_str(), "update input y format success, now is %d",
+            maxpool3d.get_output_desc_y().GetFormat());
+
+    outputs.emplace_back(maxpool3d, std::vector<std::size_t>{0});
+  }
+
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  return SUCCESS;
+}
+
+REGISTER_CUSTOM_OP("PartitionedCall")
     .FrameworkType(ONNX)
     .OriginOpType({"ai.onnx::9::MaxPool",
                    "ai.onnx::10::MaxPool",
@@ -201,5 +263,6 @@ REGISTER_CUSTOM_OP("MaxPoolV3")
                    "ai.onnx::12::MaxPool",
                    "ai.onnx::13::MaxPool"})
     .ParseParamsFn(ParseParamsMaxPool)
+    .ParseOpToGraphFn(ParseOpToGraphMaxPool)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

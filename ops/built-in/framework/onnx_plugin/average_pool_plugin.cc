@@ -87,7 +87,7 @@ Status ParseParamsAveragePool(const Message* op_src, ge::Operator& op_dest) {
   }
 
   std::map<string, string> padding_mode = {
-      {"NOTSET", "CALCULATED"}, {"SAME_UPPER", "SAME"}, {"SAME_LOWER ", "SAME"}, {"VALID", "VALID"}};
+      {"NOTSET", "CALCULATED"}, {"SAME_UPPER", "SAME"}, {"SAME_LOWER", "SAME"}, {"VALID", "VALID"}};
   // set attr for AvgPoolV2
   op_dest.SetAttr("ksize", node_attr.kernel_shape);
   op_dest.SetAttr("strides", node_attr.strides);
