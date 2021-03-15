@@ -2867,6 +2867,32 @@ COMMON_INFER_FUNC_REG(CumsumD, CumsumDInferShape);
 VERIFY_FUNC_REG(CumsumD, CumsumDVerify);
 // ----------------CumsumD END-------------------
 
+// ----------------Cummin------------------------
+IMPLEMT_COMMON_INFERFUNC(CumminInferShape) {
+        TensorDesc output_desc_y = op.GetOutputDesc("y");
+        TensorDesc output_desc_argmin = op.GetOutputDesc("indices");
+        DataType predict_dtype = op.GetInputDesc("x").GetDataType();
+        Format predict_format = op.GetInputDesc("x").GetFormat();
+        ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+        output_desc_y.SetDataType(predict_dtype);
+        output_desc_y.SetFormat(predict_format);
+        output_desc_y.SetShape(output_shape);
+        output_desc_argmin.SetDataType(DT_INT32);
+        output_desc_argmin.SetFormat(predict_format);
+        output_desc_argmin.SetShape(output_shape);
+        (void)op.UpdateOutputDesc("y", output_desc_y);
+        (void)op.UpdateOutputDesc("indices", output_desc_argmin);
+        return GRAPH_SUCCESS;
+    }
+
+    IMPLEMT_VERIFIER(Cummin, CumminVerify) {
+        return GRAPH_SUCCESS;
+    }
+
+    COMMON_INFER_FUNC_REG(Cummin, CumminInferShape);
+    VERIFY_FUNC_REG(Cummin, CumminVerify);
+// ----------------Cummin END----------------------
+
 // ----------------InplaceUpdate-------------------
 IMPLEMT_COMMON_INFERFUNC(InplaceUpdateInferShape) {
   auto output_desc = op.GetInputDesc("x");
