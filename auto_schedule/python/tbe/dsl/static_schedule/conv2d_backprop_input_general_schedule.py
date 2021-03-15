@@ -316,7 +316,7 @@ def general_schedule(
                     a_zero = dy_vn.op.input_tensors[0]
 
                     a_filling = dy_vn.op.input_tensors[1]
-                    a_ddr = dy_vn.op.input_tensors[1]
+                    a_ddr = a_filling.op.input_tensors[0]
                     stride_h, stride_w = cube_util.shape_to_list(a_filling.op.attrs["stride_expand"])
 
                     sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
