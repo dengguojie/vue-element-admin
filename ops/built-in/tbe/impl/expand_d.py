@@ -40,12 +40,18 @@ def expand_compute(x, shape):
     output_tensor : tensor after expand.
     """
     shape_in = x.shape
+    dtype = x.dtype
+    if dtype in ('int8', 'uint8'):
+        x = tbe.cast_to(x, 'float16')
 
     # te.lang.cce.broadcast supports float16, float32, int32.
     if shape_in != shape:
         output_tensor = tbe.broadcast(x, shape)
     else:
         output_tensor = x
+
+    if dtype in ('int8', 'uint8'):
+        return tbe.cast_to(output_tensor, dtype, f1628IntegerFlag=True)
 
     return output_tensor
 
