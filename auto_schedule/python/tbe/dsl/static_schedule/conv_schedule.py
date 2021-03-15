@@ -570,6 +570,37 @@ def reget_tensor_list(outs):
     return outputs
 
 
+def check_dynamic_quantfuse_doubleout(tensor_list, outs):
+    """
+    checkout if deuquant requant(quant) double out or not
+
+    Parameters
+    ----------
+    tensor_list : the tensor of output
+
+    sch : tvm.schedule
+        schedule to build or to print lower code
+
+    Returns
+    -------
+    tensor_list
+
+    """
+    if hasattr(ConvParam, "conv_deq_req_double_out"):
+        if ConvParam.conv_deq_req_double_out:
+            tensor_list = tensor_list[:-2]
+            tensor_list.append(outs[1])
+            tensor_list.append(outs[2])
+            ConvParam.conv_deq_req_double_out = False
+    if ConvParam.conv_reluv2_flag:
+        tensor_list = tensor_list[: -2]
+        tensor_list.extend(outs[1:])
+    for tensor in tensor_list:
+        if "conv_virtual_res" in tensor.op.name:
+            tensor_list.remove(tensor)
+
+    return tensor_list
+
 def check_quantfuse_doubleout(tensor_list, sch):
     """
     checkout if deuquant requant(quant) double out or not
@@ -2009,7 +2040,8 @@ class CceConvOp:
                     res_ub_dynamic = self._op_graph.output_ops[0]["dst_buffer"]
                     reuse_tensors.append(res_ub_dynamic)
                 while ub_tensor_dynamic.op.tag != "convolution_C_UB":
-                    reuse_tensors.append(ub_tensor_dynamic)
+                    if "input_ub" not in ub_tensor_dynamic.op.name:
+                        reuse_tensors.append(ub_tensor_dynamic)
                     ub_tensor_dynamic = ub_tensor_dynamic.op.input_tensors[0]
 
                 sch[c_ub].reused_by(*reuse_tensors)
@@ -2149,17 +2181,17 @@ class CceConvOp:
                     if strideh_opti_flag:
                         strideh_update = 1
                     else:
-                        strideh_update = c_ub.op.attrs['stride'][0]
+                        strideh_update = ConvParam.stride_h
                     im2col_attr = {
                         'set_fmatrix': 1,
-                        'conv_kernel_h': c_ub.op.attrs['kernel_h'],
-                        'conv_kernel_w': c_ub.op.attrs['kernel_w'],
-                        'conv_padding_top': c_ub.op.attrs['padding'][0],
-                        'conv_padding_bottom': c_ub.op.attrs['padding'][1],
-                        'conv_padding_left': c_ub.op.attrs['padding'][2],
-                        'conv_padding_right': c_ub.op.attrs['padding'][3],
+                        'conv_kernel_h': ConvParam.filter_h,
+                        'conv_kernel_w': ConvParam.filter_w,
+                        'conv_padding_top': ConvParam.padding[0],
+                        'conv_padding_bottom': ConvParam.padding[1],
+                        'conv_padding_left': ConvParam.padding[2],
+                        'conv_padding_right': ConvParam.padding[3],
                         'conv_stride_h': strideh_update,
-                        'conv_stride_w': c_ub.op.attrs['stride'][1],
+                        'conv_stride_w': ConvParam.stride_w,
                         'conv_fm_c': fmap.shape[4]*fmap.shape[1],
                         'conv_fm_c1': fmap.shape[1],
                         'conv_fm_h': fmap.shape[2],
@@ -2168,14 +2200,14 @@ class CceConvOp:
                     }
                     im2col_attr_0 = {
                         'set_fmatrix': 0,
-                        'conv_kernel_h': c_ub.op.attrs['kernel_h'],
-                        'conv_kernel_w': c_ub.op.attrs['kernel_w'],
-                        'conv_padding_top': c_ub.op.attrs['padding'][0],
-                        'conv_padding_bottom': c_ub.op.attrs['padding'][1],
-                        'conv_padding_left': c_ub.op.attrs['padding'][2],
-                        'conv_padding_right': c_ub.op.attrs['padding'][3],
+                        'conv_kernel_h': ConvParam.filter_h,
+                        'conv_kernel_w': ConvParam.filter_w,
+                        'conv_padding_top': ConvParam.padding[0],
+                        'conv_padding_bottom': ConvParam.padding[1],
+                        'conv_padding_left': ConvParam.padding[2],
+                        'conv_padding_right': ConvParam.padding[3],
                         'conv_stride_h': strideh_update,
-                        'conv_stride_w': c_ub.op.attrs['stride'][1],
+                        'conv_stride_w': ConvParam.stride_w,
                         'conv_fm_c': fmap.shape[4]*fmap.shape[1],
                         'conv_fm_c1': fmap.shape[1],
                         'conv_fm_h': fmap.shape[2],
@@ -3830,9 +3862,9 @@ class CceConvOp:
             """
 
             def modify_m_for_load3d(l1_m, w_in, w_out, additional_rows):
-                stride_update = 1 if strideh_opti_flag else c_ub.op.attrs['stride'][0]
+                stride_update = 1 if strideh_opti_flag else ConvParam.stride_h
                 ho_len = tvm.floordiv(l1_m, w_out) + additional_rows
-                hi_max = c_ub.op.attrs['kernel_h'] + (ho_len - 1) * stride_update
+                hi_max = ConvParam.filter_h + (ho_len - 1) * stride_update
                 return hi_max * w_in
 
             w_out = dim_map['out_img_height_width'][1]
@@ -5511,8 +5543,9 @@ class CceConvOp:
             if tiling["BL1_shape"] is not None:
                 sch[bl1].mem_unique()
             sch[bl0].mem_unique()
-            sch[c_col].mem_unique()
-            if not self._fused_flag and "fp16_bias" not in tensor_map:
+            if "int32_bias" not in tensor_map.keys():
+                sch[c_col].mem_unique()
+            if not self._fused_flag and "fp16_bias" not in tensor_map.keys():
                 sch[c_ub].mem_unique()
 
             return True
@@ -5668,15 +5701,19 @@ class CceConvOp:
             if lop["op"] in dma_move_list:
                 _op_in_dma_move_list()
             elif "reform" in lop["op"]:
-                c_reform_vector = lop['dst_buffer']
-                ndim = len(self._schedule[c_reform_vector].op.axis)
-                factor = CUBE_MKN["float16"]["mac"][1]
-                coo, _ = self._schedule[c_reform_vector].split(
-                    self._schedule[c_reform_vector].op.axis[ndim - 1], factor)
-                axis_list = self._schedule[c_reform_vector].op.axis[0:ndim - 1]
-                hw_in_ub = tiling["CUB_matrix"][1]*tiling["CUB_matrix"][3]
-                hw_floor_align = c_reform_vector.shape[2].value // 16*16
-                _reform_emit_insn_optimize()
+                if self._var_map:
+                    c_reform_vector = lop['dst_buffer']
+                    self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
+                else:
+                    c_reform_vector = lop['dst_buffer']
+                    ndim = len(self._schedule[c_reform_vector].op.axis)
+                    factor = CUBE_MKN["float16"]["mac"][1]
+                    coo, _ = self._schedule[c_reform_vector].split(
+                        self._schedule[c_reform_vector].op.axis[ndim - 1], factor)
+                    axis_list = self._schedule[c_reform_vector].op.axis[0:ndim - 1]
+                    hw_in_ub = tiling["CUB_matrix"][1]*tiling["CUB_matrix"][3]
+                    hw_floor_align = c_reform_vector.shape[2].value // 16*16
+                    _reform_emit_insn_optimize()
             elif lop["op"] == "cast_i8_ub":
                 round_mode_emit_insn = 'vector_conv_%s' % self._lhisi_dequant_quant_para['quant_round'].value.lower()
                 if get_soc_spec("SOC_VERSION") == "Ascend310" or \
@@ -6269,6 +6306,7 @@ class AutoScheduleOp:
             "invalid_conv2d_rmpad": OpFusionype.CONV,
             "convolution_im2col_fractal_convolution_Input": OpFusionype.CONV,
             "convolution__im2col_fractal_convolution_Input": OpFusionype.CONV,
+            "convolution_im2col_fractal_v2_convolution_Input": OpFusionype.CONV,
             "bias_ub": OpFusionype.OP_EMPTY,
             # for read select
             "strided_read_convolution_A": OpFusionype.OP_EMPTY,

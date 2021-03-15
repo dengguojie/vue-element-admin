@@ -33,8 +33,11 @@ from te.lang.dynamic.schedule.cube_tilingcase import CubeTilingOp
 from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils
 from te.lang.dynamic.schedule.constants import Pattern
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
+from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
 from .conv2d_schedule import get_op_tensor_map
 
+CUBE_INFO = {'type_size':{'int8': 1, 'float16': 2, 'float32': 4, 'int32': 4},
+             'reduce_k0':{'int8': 32, 'float16': 16, 'float32': 8, 'int32': 8}}
 
 # noinspection PyUnusedLocal
 @register_tiling_case(pattern=Pattern.CONV2D)
@@ -50,7 +53,8 @@ def calc_conv2d(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
-
+    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
+    outs = reget_tensor_list(outs)
     var_names = ["batch_n", "fmap_h", "fmap_w"]
     conv_info = ConvParam.tiling_info_dict
     tgt_area = {}
@@ -85,6 +89,7 @@ class Conv2dTiling(CubeTilingOp):
         self._get_calc_info()
         self.key = 'A_shape'
         self.op_type = "conv2d"
+        self.w_type = tiling_info.get("b_dtype")
 
     def get_repo_tiling(self):
         tiling_list = get_tiling(self.tiling_info)
@@ -162,10 +167,11 @@ class Conv2dTiling(CubeTilingOp):
         tiling_m = 1
         tiling_k = 1
         tiling_n = 1
-        tiling["AL1_shape"] = [self.b_info[2] * self.b_info[3] * utils.FP16_K, 1, 1, 1]
+        reduce_k0 = CUBE_INFO["reduce_k0"][self.w_type]
+        tiling["AL1_shape"] = [self.b_info[2] * self.b_info[3] * reduce_k0, 1, 1, 1]
         tiling["BL1_shape"] = None
-        tiling["AL0_matrix"] = [tiling_m, tiling_k, utils.FP16_M, utils.FP16_K, 1, 1]
-        tiling["BL0_matrix"] = [tiling_k, tiling_n, utils.FP16_N, utils.FP16_K, 1, 1]
+        tiling["AL0_matrix"] = [tiling_m, tiling_k, utils.FP16_M, reduce_k0, 1, 1]
+        tiling["BL0_matrix"] = [tiling_k, tiling_n, utils.FP16_N, reduce_k0, 1, 1]
         tiling["CL0_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
         tiling["CUB_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
         tiling["AUB_shape"] = tiling["AL1_shape"]
@@ -343,8 +349,10 @@ class Conv2dTiling(CubeTilingOp):
         al1_bound = self._get_al1_bound(tiling, current_w)
 
         # fmap size in L1 ( M * K * db * 2byte)
-        fmap_l1_size = utils.FP16_SIZE * al1_bound * tiling['AL1_shape'][0] * \
-            utils.FP16_K * tiling['manual_pingpong_buffer']['AL1_pbuffer']
+        type_size = CUBE_INFO["type_size"][self.w_type]
+        reduce_k0 = CUBE_INFO["reduce_k0"][self.w_type]
+        fmap_l1_size = type_size * al1_bound * tiling['AL1_shape'][0] * \
+            reduce_k0 * tiling['manual_pingpong_buffer']['AL1_pbuffer']
 
         # filter size
         if tiling['BL1_shape'] is None:
@@ -352,13 +360,13 @@ class Conv2dTiling(CubeTilingOp):
             filter_l1_size = 0
         elif len(tiling['BL1_shape']) == 0:
             # fully load in BL1
-            filter_l1_size = utils.FP16_SIZE * self.k_cout * self.k_cin * self.k_h * \
+            filter_l1_size =type_size * self.k_cout * self.k_cin * self.k_h * \
                 self.k_w / tiling['block_dim'][1]
         else:
             # fmap size in L1 ( K * N * db * 2byte)
-            filter_l1_size = utils.FP16_SIZE * tiling['BL1_shape'][1] * \
+            filter_l1_size = type_size * tiling['BL1_shape'][1] * \
                 tiling['CL0_matrix'][0] * utils.FP16_N * tiling['BL1_shape'][0] * \
-                utils.FP16_K * self.k_h * self.k_w * \
+                reduce_k0 * self.k_h * self.k_w * \
                 tiling['manual_pingpong_buffer']['BL1_pbuffer']
 
         return int(fmap_l1_size) + int(filter_l1_size) <= utils.L1BUFFER
@@ -389,10 +397,10 @@ class Conv2dTiling(CubeTilingOp):
         tiling = copy.deepcopy(tiling_in)
         if tiling["AL1_shape"]:
             tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // \
-                (self.k_h * self.k_w * utils.CUBE_SIZE)
+                (self.k_h * self.k_w * CUBE_INFO["reduce_k0"][self.w_type])
         if tiling["BL1_shape"]:
             tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // \
-                (self.k_h * self.k_w * utils.CUBE_SIZE)
+                (self.k_h * self.k_w * CUBE_INFO["reduce_k0"][self.w_type])
         return tiling
 
     def get_output_h(self, h_in):

@@ -1006,6 +1006,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         bias_optimize_flag = True
         if is_support_v200():
             bias_optimize_flag = False
+        if ConvParam.var_map:
+            bias_optimize_flag = False
 
         howo_mad = (height_out*width_out + block_size_m - 1) // block_size_m*block_size_m
 
@@ -2287,6 +2289,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             remove_pad_params = calculate_remove_pad_params(conv_shape, ConvParam.v200_width_out_1_flag)
             res_remove_pad = remove_pad_quant_dsl(conv_res, conv_shape, invalid_data_rm_flag,
                                                   params_dict=remove_pad_params)
+            _save_tiling_info_dict(shape_fmap_nc1hwc0, shape_w_nc1hwc0, list(res_remove_pad.shape),
+                                   in_dtype, w_dtype, res_dtype, bias_tensor_flag, kernel_name)
             return res_remove_pad
         # quant single op
         conv_res = _cube_compute(data, weight, mad_dtype,

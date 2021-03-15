@@ -111,7 +111,7 @@ class CubeParaProcess:
             "valid_format": {"weights": ("NCHW", "NHWC", "HWCN"),
                              "input": ("NCHW", "NHWC"),
                              "output": ("NCHW", "NHWC")},
-            "valid_dtype": ("float16",)
+            "valid_dtype": ("float16", "int8", "int32")
         }
 
     def check_support_valid(self, in_shape, filter_shape):
@@ -489,7 +489,7 @@ class Conv2dParaProcess(CubeParaProcess):
         input_tensor = tvm.placeholder(param.get("in_shape_nc1hwc0"), name="Fmap", dtype=self.dtype)
         weight_tensor = tvm.placeholder(param.get("w_shape_frac_z"), name="Filter", dtype=self.dtype)
         if self.bias:
-            bias_tensor = tvm.placeholder((param.get("w_shape")[N_DIM],), name="bias_tensor", dtype=self.dtype)
+            bias_tensor = tvm.placeholder((param.get("w_shape")[N_DIM],), name="bias_tensor", dtype=self.bias.get("dtype"))
         else:
             bias_tensor = None
 

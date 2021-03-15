@@ -63,7 +63,9 @@ REDUCE_COMPUTE = {
 
 CONV2D_COMPUTE = {
     "conv_vector_remove_pad",
-    "convolution_C"
+    "convolution_C",
+    "convolution_C_UB",
+    "convolution_c_col"
 }
 
 CONV2D_BP_INPUT_COMPUTE = {
