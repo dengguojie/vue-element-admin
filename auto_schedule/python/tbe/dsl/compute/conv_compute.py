@@ -1836,7 +1836,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
             ConvParam.dim_map["fmap_ori_nchw_shape"] = [batch, cin_ori, hin, win]
             ConvParam.dim_map["fmap_align_nchw_shape"] = [batch, cin1*cin0, hin, win]
-            ConvParam.dim_map["fmap_5hd_shape"] = para_dict["a_shape"]
+            if para_dict.get("fusion_para") and para_dict.get("fusion_para").get("valid_shape"):
+                ConvParam.dim_map["fmap_5hd_shape"] = para_dict["fusion_para"]["valid_shape"]
+            else:
+                ConvParam.dim_map["fmap_5hd_shape"] = para_dict["a_shape"]
 
             dsl_fmap_shape = _get_dsl_fmap_shape_nc1hwc0()
             ConvParam.dim_map["fmap_tiling_a_shape"] = [dsl_fmap_shape[0], cin1_opt,
