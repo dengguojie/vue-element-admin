@@ -142,6 +142,34 @@ def set_default_tiling_case(target_area, tiling_op):
     return tiling_case
 
 
+def change_full_load_to_value(tiling_list):
+    """
+    change tiling [] to concrete values
+    """
+    transed_tiling_list = []
+    for seed in tiling_list:
+        seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
+        seed_n_value = seed["B_shape"][1]
+        tiling_value = seed["tiling"]
+        block_batch, block_n, block_m = tiling_value["block_dim"][0:3]
+        loc_n_value, loc_m_value = tiling_value["CL0_matrix"][0:2]
+        k0_value = seed["A_shape"][4]
+        if not tiling_value["AL1_shape"]:
+            k_al1 = seed_k_value * k0_value
+            multi_m_al1 = math.ceil(math.ceil(seed_m_value / loc_m_value) / block_m)
+            tiling_value["AL1_shape"] = [k_al1, multi_m_al1, 1, 1]
+
+        if not tiling_value["BL1_shape"]:
+            k_bl1 = seed_k_value * k0_value
+            multi_n_bl1 = math.ceil(math.ceil(seed_n_value / loc_n_value) / block_n)
+            tiling_value["BL1_shape"] = [k_bl1, multi_n_bl1, 1, 1]
+
+        seed["tiling"] = tiling_value
+        transed_tiling_list.append(seed)
+
+    return transed_tiling_list
+
+
 @register_tiling_case(pattern=Pattern.MAT_MUL)
 def calc_matmul(outs, option=None):
     """
@@ -189,8 +217,9 @@ class MatmulTiling(CubeTilingOp):
         """
         get tiling using repository model
         """
-
+        self.tiling_info["tiling_type"] = None
         tiling_list = get_tiling(self.tiling_info)
+        tiling_list = change_full_load_to_value(tiling_list)
         return tiling_list
 
     def get_costmodel_tiling(self, shape):

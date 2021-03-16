@@ -30,8 +30,6 @@ from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Expr
 
 
-
-
 C0_SIZE = 16
 W_DELTA = 1
 H_LEN = 400
@@ -39,6 +37,9 @@ W_LEN = 400
 NHW_RANGE_LEN = 6
 MAX_RANGE = 2**31 - 1
 NDHW_RANGE_LEN = 8
+DEFAULT_COMPILE_TIME = 4096
+GEAR_M_N = [1, 4, 8, 16, 32, 64, 128, 192, 256, 512, 768, 1024]
+
 
 class CubeTilingOp:
     def __init__(self, tiling_info, dynamic_mode, var_map=None):
@@ -310,6 +311,97 @@ class TilingSelection:
         add_compile_info("cost_range", cost_range)
         return tiling_cases
 
+    def _calc_gear_costmodel_matmul(self, cost_cases, gear_repo_shapes):
+        """
+        calculate tilingcase depends on gear costmodel
+
+        Parameters
+        ----------
+        gear_repo_shapes format:[(m_gear, k_gear, n_gear),...]
+
+        cost_cases format: {[m_value, k_value, n_value],...]
+
+        Returns
+        -------
+        cost_tiling_range: [m_min, m_max, k_min, k_max, n_min, n_max]
+        cost_tiling_seeds: list, calculated tilings
+        """
+
+
+        cost_tiling_seeds = []
+        cost_tiling_range = {}
+        for case in cost_cases:
+            cost_seed = self.op.get_costmodel_tiling(case)
+            seed_range = _get_tiling_range(gear_repo_shapes, case)
+            seed_cnt = next(self.seed_cnt)
+            cost_tiling_seeds.append(
+                self.op.assembly_case(cost_seed['tiling'], seed_range, seed_cnt))
+            cost_tiling_range[seed_cnt] = seed_range
+
+        return cost_tiling_seeds,cost_tiling_range
+
+
+    def _calc_gear_matmul(self, target_area):
+        """
+        calculate tilingcase depends on gear and repository
+
+        Parameters
+        ----------
+        target_area:list, range to be covered [[m_min, m_max], [k_min, k_max],
+                 [n_min, n_max],[batch_min, batch_max]], batch value exsit when
+                 dynamic_mknb mode
+
+        Returns
+        -------
+        tilings_cases: list, calculated tilings
+        """
+        candidates = {}
+        cost_cases = []
+        repo_seeds = self.op.get_repo_tiling()
+
+        gear_repo_shapes = _get_gear_repo_shapes(target_area)
+
+        for seed in repo_seeds:
+            seed_batch_value, seed_k_value, seed_m_value = seed["A_shape"][0:3]
+            seed_n_value = seed["B_shape"][1]
+            seed_shape_info = [seed_m_value, seed_k_value, seed_n_value]
+            seed_range = _get_tiling_range(gear_repo_shapes, seed_shape_info)
+            gear_repo_shapes = _remove_same_shape(gear_repo_shapes, seed_shape_info)
+            candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], seed_shape_info]
+
+        for gear_shape in gear_repo_shapes:
+            key_list = ["ha_var_range", "ca1_var_range", "cb1_var_range", "batch_var_range"]
+            for index, value in enumerate(gear_shape):
+                self.op.tiling_info[key_list[index]] = [value, value]
+            gear_repo_seeds = self.op.get_repo_tiling()
+
+            if len(gear_repo_seeds) == 0:
+                cost_cases.append(gear_shape)
+
+            for seed in gear_repo_seeds:
+                seed_range = _get_tiling_range(gear_repo_shapes, gear_shape)
+                candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], gear_shape]
+
+        cost_tiling_seeds, cost_range = self._calc_gear_costmodel_matmul(cost_cases, gear_repo_shapes)
+
+        tiling_cases = [
+            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
+        tiling_cases += cost_tiling_seeds
+
+        if not tiling_cases:
+            raise RuntimeError("No tiling generated for this shape and range")
+
+        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
+        repo_range = {k: v[0] for k, v in candidates.items()}
+
+        add_compile_info("cost_range", cost_range)
+        add_compile_info("repo_range", repo_range)
+        if "trans_a" in self.op.tiling_info and "trans_b" in self.op.tiling_info:
+            add_compile_info("attrs", {"transpose_a": self.op.tiling_info["trans_a"],
+            "transpose_b": self.op.tiling_info["trans_b"]})
+
+        return tiling_cases
+
     def _calc_matmul(self, target_area):
         """
         calculate tilings for dynamic mkn or bmkn mode
@@ -331,6 +423,11 @@ class TilingSelection:
             return [func(ta, sa) for func, ta, sa in zip(funcs, range_area, seed_area)]
 
         range_area = tuple(target_area[0] + target_area[1] + target_area[2])
+
+        compile_time = _get_compile_time(target_area)
+        if compile_time > DEFAULT_COMPILE_TIME and self.op.dynamic_mode == "dynamic_mkn":
+            return self._calc_gear_matmul(target_area)
+
         candidates = {}
         repo_seeds = self.op.get_repo_tiling()
 
@@ -871,6 +968,103 @@ def _cut_line(base_line, cut_line):
     if base_line[1] > cut_line[1]:
         segments.append([cut_line[1] + 1, base_line[1]])
     return segments
+
+
+def _get_compile_time(target_area):
+    """
+    caculate total all compile time depends on target_area
+    """
+    compile_time = 1
+    for value in target_area:
+        compile_time *= (value[1] - value[0] + 1)
+    return compile_time
+
+def _get_gear_element(range_value, gear):
+    """
+    Parameters
+    ----------
+    range_value: format [m_min,m_max]
+
+    gear format: [1, 4, 8, 16, 32, 64, 128, 192, 256, 512, 768, 1024]
+
+    Returns
+    -------
+    element_list: list, element to cover the range_value
+    """
+    left = 0
+    right = 0
+    element_list = []
+    for index, value in enumerate(gear):
+        if value <= range_value[0]:
+            left = index
+        if index < (len(gear) -1) and gear[index] <= range_value[1] < gear[index + 1]:
+            right = index + 1
+    if left == (len(gear) - 1):
+        element_list = [gear[-1]]
+    if right == 0:
+        element_list = gear[left:]
+    else:
+        element_list = gear[left:right]
+    return element_list
+
+def _get_gear_repo_shapes(target_area):
+    """
+    caculate all gear repo seeds during range
+
+    Parameters
+    ----------
+    target_are: format [[m_min,m_max],[k_min,k_max],[n_min,n_max]]
+
+    Returns
+    -------
+    gear_repo_shapes: list, [(m_value, k_value, n_value),...]
+    """
+
+    gear_m_list = _get_gear_element(target_area[0], GEAR_M_N)
+    gear_k_list = _get_gear_element(target_area[1], GEAR_M_N)
+    gear_n_list = _get_gear_element(target_area[2], GEAR_M_N)
+
+    return list(itertools.product(gear_m_list, gear_k_list, gear_n_list))
+
+def _get_tiling_range(gear_repo_shapes, seed_shape):
+    """
+    cacaulate gear repository range
+
+    Parameters
+    ----------
+    gear_repo_shapes format:[(m_gear, k_gear, n_gear),...]
+
+    seed_shape format: [m_value, k_value, n_value]
+
+    Returns
+    -------
+    gear_tiling_range：[m_min, m_max, k_min, k_max, n_min, n_max]
+    """
+    def _calc_range(value, gear):
+        value_index = gear.index(value)
+        if value_index == (len(gear) - 1):
+            return [value, MAX_RANGE]
+        return [value, (gear[value_index + 1] - 1)]
+
+    gear_tiling_range = []
+    if seed_shape in gear_repo_shapes:
+        for item in seed_shape:
+            gear_tiling_range += _calc_range(item, GEAR_M_N)
+    else:
+        for item in seed_shape:
+            gear_tiling_range += [item, item]
+    return gear_tiling_range
+
+def _remove_same_shape(gear_repo_shapes, seed_shape):
+    """
+    gear_repo_shapes format:[(m_gear, k_gear, n_gear),...]
+    seed_shape format: [m_value, k_value, n_value]
+    """
+    gear_shape = copy.deepcopy(gear_repo_shapes)
+    if seed_shape in gear_repo_shapes:
+        gear_shape.remove(seed_shape)
+    return gear_shape
+
 
 
 class TilingUtils:
