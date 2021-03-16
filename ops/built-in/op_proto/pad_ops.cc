@@ -649,6 +649,8 @@ COMMON_INFER_FUNC_REG(FillD, FillDInferShape);
 
 // -------------------BroadcastTo-----------------------
 IMPLEMT_INFERFUNC(BroadcastTo, BroadcastToInferShape) {
+    const vector<string> depend_names = {"shape"};
+    PREPARE_DYNAMIC_SHAPE(depend_names);
     Tensor data;
     auto op_info = OpDescUtils::GetOpDescFromOperator(op);
     if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
