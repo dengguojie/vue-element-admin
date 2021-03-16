@@ -38,7 +38,6 @@ NONETYPE = type(None)
 H_DIM = 2
 W_DIM = 3
 
-
 def set_default_para():
     """
     set default parameter value
@@ -54,8 +53,8 @@ def set_default_para():
 
 
 @register_op_compute("Conv2D", op_mode="dynamic", support_fusion=True)
-@para_check.check_input_type(dict, dict, (dict, NONETYPE), (dict, NONETYPE), dict,
-                             (tuple, list), (tuple, list), (tuple, list),
+@para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, (tvm.tensor.Tensor, NONETYPE),
+                             (tvm.tensor.Tensor, NONETYPE), dict, (tuple, list), (tuple, list), (tuple, list),
                              int, str, int, str, str)
 def conv2d_fusion_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                           groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
@@ -154,6 +153,8 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                   optim_dict=default_para.get("optim_dict"),
                   dsl_flag=dsl_flag)
 
+    if conv_para.is_tensor == True:
+        return op_res
     if conv_para.bias is not None:
         return {"op_placeholder": [paras.get("input_tensor"), paras.get("weight_tensor"), paras.get("bias_tensor")],
                 "op_res": [op_res]}

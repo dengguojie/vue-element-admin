@@ -288,6 +288,72 @@ def refine_shapes_for_broadcast(shape1, shape2):
     return fused_shape1, fused_shape2
 
 
+def _get_input_range_nchw(op_type, in_shape, in_format, in_range):
+    """
+    get input range of nchw format
+    """
+    pos_n = in_format.find('N')
+    pos_c = in_format.find('C')
+    pos_h = in_format.find('H')
+    pos_w = in_format.find('W')
+
+    n_dim = 0
+    h_dim = 2
+    w_dim = 3
+    format_nchw_dim = 4
+    format_nc1hwc0_dim = 5
+
+    if len(in_range) == format_nchw_dim:
+        in_range = [in_range[pos_n], in_range[pos_c], in_range[pos_h], in_range[pos_w]]
+    # range in NC1HWC0 format sometimes
+    elif len(in_range) == format_nc1hwc0_dim:
+        in_range = [in_range[n_dim], (in_shape[pos_c], in_shape[pos_c]), in_range[h_dim], in_range[w_dim]]
+    else:
+        err_man.raise_err_specific_user(op_type, "dimension of range should be 4 or 5.")
+    for r in in_range:
+        if not isinstance(r, (tuple, list)):
+            err_man.raise_err_specific_user(op_type, "each dim of range must be tuple or list.")
+    return [tuple(r) if r else r for r in in_range]
+
+
+def _cube_variable_shape(inputs: list):
+    shape_out = []
+
+    for i, input in enumerate(inputs):
+        if i == 0:
+            n_dim = 0
+            h_dim = 2
+            w_dim = 3
+            dynamic_flag = -1
+            unknown_flag = -2
+
+            ori_shape = list(input.get("ori_shape"))
+            ori_format = input.get("ori_format")
+            in_range = input.get("range")
+            if ori_shape == [unknown_flag]:
+                in_range_nchw = [(1, None), (1, 1), (1, None), (1, None)]
+            else:
+                in_range_nchw = _get_input_range_nchw("cube", ori_shape, ori_format, in_range)
+
+            in_shape = input.get("shape")
+            if input.get("format") != "NC1HWC0":
+                return []
+            if in_shape[n_dim] == dynamic_flag:
+                in_shape[n_dim] = operation.var("batch_n", in_range_nchw[n_dim])
+                operation.add_exclude_bound_var(in_shape[n_dim])
+            if in_shape[h_dim] == dynamic_flag:
+                in_shape[h_dim] = operation.var("fmap_h", in_range_nchw[h_dim])
+                operation.add_exclude_bound_var(in_shape[h_dim])
+            if in_shape[w_dim] == dynamic_flag:
+                in_shape[w_dim] = operation.var("fmap_w", in_range_nchw[w_dim])
+                operation.add_exclude_bound_var(in_shape[w_dim])
+
+            shape_out.append(in_shape[:])
+        else:
+            shape_out.append(input.get("shape")[:])
+    return shape_out
+
+
 def variable_shape(inputs: list, op_mode="elewise"):
     """
     :param inputs: all inputs
@@ -295,6 +361,9 @@ def variable_shape(inputs: list, op_mode="elewise"):
     :param support_broadcast: whether to support broadcast
     :return:
     """
+    if op_mode == "cube":
+        return _cube_variable_shape(inputs)
+
     if op_mode == "reduce":
         return _reduce_variable_shape(inputs)
 
@@ -412,6 +481,12 @@ def variable_shape(inputs: list, op_mode="elewise"):
             operation.get_context(). \
                 get_current_compute().add("_pattern", pattern)
 
+    def _get_support_broadcast():
+        support_flag = operation.get_context().get("_support_broadcast")
+        if support_flag is None:
+            support_flag = False
+        return support_flag
+
     if len(inputs) < 1:
         return []
     mode = inputs[0].get("mode")
@@ -420,9 +495,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
     operation.get_context().add("_mode", mode)
     current_compute = operation.get_context().get_current_compute()
     current_compute.add("_mode", mode)
-    support_broadcast = operation.get_context().get("_support_broadcast")
-    if support_broadcast is None:
-        support_broadcast = False
+    support_broadcast = _get_support_broadcast()
 
     shapes, ranges = _fill(inputs)
     _mode_process()

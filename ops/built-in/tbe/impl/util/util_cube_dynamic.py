@@ -361,14 +361,47 @@ class Conv2dParaProcess(CubeParaProcess):
     """
 
     def __init__(self, paras):
+        def conver_tensor2dict(tensor, need_range):
+            if tensor is None:
+                return None
+            dict = {}
+            dict["ori_shape"] = []
+            for i in tensor.op.attrs['ori_shape']:
+                dict["ori_shape"].append(i.value)
+            dict["dtype"] = tensor.dtype
+            dict["ori_format"] = tensor.op.attrs['ori_format'].value
+
+            if need_range == True:
+                dict["range"] = []
+                for one_range in tensor.op.attrs['range']:
+                    range_list = []
+                    for value in one_range:
+                        range_list.append(value.value)
+                    dict["range"].append(range_list)
+
+            return dict
+
         super().__init__(paras)
         self.op_type = "conv2d"
-        self.inputs = paras.get("inputs")
-        self.weights = paras.get("weights")
-        self.bias = paras.get("bias")
+        if isinstance(paras.get("inputs"), dict):
+            self.is_tensor = False
+            self.inputs = paras.get("inputs")
+            self.weights = paras.get("weights")
+            self.bias = paras.get("bias")
+            self.dtype = paras.get("inputs").get("dtype")
+        else:
+            self.is_tensor = True
+            self.input_tensor = paras.get("inputs")
+            self.weights_tensor = paras.get("weights")
+            self.bias_tensor = paras.get("bias")
+
+            self.inputs = conver_tensor2dict(self.input_tensor, True)
+            self.weights = conver_tensor2dict(self.weights_tensor, False)
+            self.bias = conver_tensor2dict(self.bias_tensor, False)
+            self.dtype = self.input_tensor.dtype
+
         self.outputs = paras.get("outputs")
         self.data_format = paras.get("data_format")
-        self.dtype = paras.get("inputs").get("dtype")
         self.pooling_mode = None
 
     def check_support_valid(self, in_shape, w_shape):
@@ -397,17 +430,27 @@ class Conv2dParaProcess(CubeParaProcess):
 
         in_shape_nc1hwc0 = [in_shape[N_DIM], in_shape[C_DIM] // block_size_k,
                             in_shape[H_DIM], in_shape[W_DIM], block_size_k]
-        if in_shape_nc1hwc0[N_DIM] == DYNAMIC_FLAG:
-            in_shape_nc1hwc0[N_DIM] = tbe_base.var("batch_n", in_range[N_DIM])
-            tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[N_DIM])
-        if in_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
-            in_shape_nc1hwc0[H_DIM] = tbe_base.var("fmap_h", in_range[H_DIM])
-            tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[H_DIM])
-            tbe_base.add_exclude_bound_var(tbe_base.var("ho", y_range[H_DIM]))
-        if in_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
-            in_shape_nc1hwc0[W_DIM] = tbe_base.var("fmap_w", in_range[W_DIM])
-            tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[W_DIM])
-            tbe_base.add_exclude_bound_var(tbe_base.var("wo", y_range[W_DIM]))
+        if self.is_tensor == False:
+            if in_shape_nc1hwc0[N_DIM] == DYNAMIC_FLAG:
+                in_shape_nc1hwc0[N_DIM] = tbe_base.var("batch_n", in_range[N_DIM])
+                tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[N_DIM])
+            if in_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
+                in_shape_nc1hwc0[H_DIM] = tbe_base.var("fmap_h", in_range[H_DIM])
+                tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[H_DIM])
+                tbe_base.add_exclude_bound_var(tbe_base.var("ho", y_range[H_DIM]))
+            if in_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
+                in_shape_nc1hwc0[W_DIM] = tbe_base.var("fmap_w", in_range[W_DIM])
+                tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[W_DIM])
+                tbe_base.add_exclude_bound_var(tbe_base.var("wo", y_range[W_DIM]))
+        else:
+            if in_shape_nc1hwc0[N_DIM] == DYNAMIC_FLAG:
+                in_shape_nc1hwc0[N_DIM] = self.input_tensor.shape[N_DIM]
+            if in_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
+                in_shape_nc1hwc0[H_DIM] = self.input_tensor.shape[H_DIM]
+                tbe_base.add_exclude_bound_var(tbe_base.var("ho", y_range[H_DIM]))
+            if in_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
+                in_shape_nc1hwc0[W_DIM] = self.input_tensor.shape[W_DIM]
+                tbe_base.add_exclude_bound_var(tbe_base.var("wo", y_range[W_DIM]))
 
         if self.paras.get("optim_dict").get("c0_optim_flg"):
             w_shape_frac_z = (ceil_div(4 * w_shape[H_DIM] * w_shape[W_DIM], block_size_k),
@@ -486,12 +529,17 @@ class Conv2dParaProcess(CubeParaProcess):
         """
 
         param = self.check_paras()
-        input_tensor = tvm.placeholder(param.get("in_shape_nc1hwc0"), name="Fmap", dtype=self.dtype)
-        weight_tensor = tvm.placeholder(param.get("w_shape_frac_z"), name="Filter", dtype=self.dtype)
-        if self.bias:
-            bias_tensor = tvm.placeholder((param.get("w_shape")[N_DIM],), name="bias_tensor", dtype=self.bias.get("dtype"))
+        if self.is_tensor == False:
+            input_tensor = tvm.placeholder(param.get("in_shape_nc1hwc0"), name="Fmap", dtype=self.dtype)
+            weight_tensor = tvm.placeholder(param.get("w_shape_frac_z"), name="Filter", dtype=self.dtype)
+            if self.bias:
+                bias_tensor = tvm.placeholder((param.get("w_shape")[N_DIM],), name="bias_tensor", dtype=self.bias.get("dtype"))
+            else:
+                bias_tensor = None
         else:
-            bias_tensor = None
+            input_tensor = self.input_tensor
+            weight_tensor = self.weights_tensor
+            bias_tensor = self.bias_tensor
 
         return {"input_tensor": input_tensor, "weight_tensor": weight_tensor, "bias_tensor": bias_tensor,
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
