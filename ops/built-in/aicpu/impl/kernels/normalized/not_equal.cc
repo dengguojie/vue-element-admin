@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "equal.h"
+#include "not_equal.h"
 
-#include "Eigen/Core"
-#include "unsupported/Eigen/CXX11/Tensor"
 #include "cpu_kernel_utils.h"
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
@@ -24,25 +22,25 @@
 namespace {
 constexpr uint32_t kOutputNum = 1;
 constexpr uint32_t kInputNum = 2;
-const char *kEqual = "Equal";
-const bool kFlag = true;
+const char *kNotEqual = "NotEqual";
+const bool kFlag = false;
 
-#define EQUAL_COMPUTE_CASE(DTYPE, TYPE, CTX, FLAG)                              \
-  case (DTYPE): {                                                               \
-    uint32_t result = EqualCompute<TYPE>(CTX, FLAG);                            \
-    if (result != KERNEL_STATUS_OK) {                                           \
-      KERNEL_LOG_ERROR("Equal kernel compute failed , result = [%d].", result); \
-      return result;                                                            \
-    }                                                                           \
-    break;                                                                      \
+#define EQUAL_COMPUTE_CASE(DTYPE, TYPE, CTX, Flag)                                \
+  case (DTYPE): {                                                                 \
+    uint32_t result = EqualCompute<TYPE>(CTX, Flag);                              \
+    if (result != KERNEL_STATUS_OK) {                                             \
+      KERNEL_LOG_ERROR("NotEqual kernel compute failed, result = [%d].", result); \
+      return result;                                                              \
+    }                                                                             \
+    break;                                                                        \
   }
 }
 
 namespace aicpu {
-uint32_t EqualCpuKernel::Compute(CpuKernelContext &ctx) {
+uint32_t NotEqualCpuKernel::Compute(CpuKernelContext &ctx) {
   // check params
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
-                      "Check Equal params failed.");
+                      "Check NotEqual params failed.");
 
   auto data_type = ctx.Input(0)->GetDataType();
   switch (data_type) {
@@ -55,13 +53,11 @@ uint32_t EqualCpuKernel::Compute(CpuKernelContext &ctx) {
     EQUAL_COMPUTE_CASE(DT_FLOAT, float, ctx, kFlag)
     EQUAL_COMPUTE_CASE(DT_DOUBLE, double, ctx, kFlag)
     EQUAL_COMPUTE_CASE(DT_BOOL, bool, ctx, kFlag)
-    EQUAL_COMPUTE_CASE(DT_COMPLEX64, std::complex<float>, ctx, kFlag)
-    EQUAL_COMPUTE_CASE(DT_COMPLEX128, std::complex<double>, ctx, kFlag)
     default:
-      KERNEL_LOG_WARN("Equal kernel data type [%u] not support.", data_type);
+      KERNEL_LOG_WARN("NotEqual kernel data type [%u] not support.", data_type);
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
 }
-REGISTER_CPU_KERNEL(kEqual, EqualCpuKernel);
+REGISTER_CPU_KERNEL(kNotEqual, NotEqualCpuKernel);
 }  // namespace aicpu

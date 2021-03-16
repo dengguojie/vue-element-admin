@@ -88,6 +88,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/adaptive_max_pool_2d.cc
   ${CPU_KERNELS_DIR}/kernels/device/where.cc
   ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/not_equal.cc
 )
 
 set(cpu_kernels_llt_src
@@ -175,6 +176,7 @@ set(_cpu_kernels_ut_files
   testcase/adaptiveMaxPool/adaptiveMaxPool2d_utest.cpp
   testcase/where/src/where_utest.cpp
   testcase/avg_pool1d_avg_matrix/src/avg_pool1d_avg_matrix_utest.cpp
+  testcase/not_equal/src/not_equal_utest.cpp
 )
 
 add_executable(cpu_kernels_ut

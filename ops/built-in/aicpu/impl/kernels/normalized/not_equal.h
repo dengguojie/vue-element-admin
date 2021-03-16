@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_EQUAL_H_
-#define AICPU_KERNELS_NORMALIZED_EQUAL_H_
+#ifndef AICPU_KERNELS_NORMALIZED_NOT_EQUAL_H_
+#define AICPU_KERNELS_NORMALIZED_NOT_EQUAL_H_
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
 
-class EqualCpuKernel : public CpuKernel {
+class NotEqualCpuKernel : public CpuKernel {
  public:
-  EqualCpuKernel() = default;
-  ~EqualCpuKernel() override = default;
+  NotEqualCpuKernel() = default;
+  ~NotEqualCpuKernel() override = default;
 
  protected:
   uint32_t Compute(CpuKernelContext &ctx) override;
