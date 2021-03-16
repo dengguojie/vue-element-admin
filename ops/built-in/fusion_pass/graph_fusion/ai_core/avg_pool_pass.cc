@@ -814,8 +814,11 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
 
   } else {  // fp16
     ge::GeTensorPtr assitPtr = nullptr;
-
     int64_t matrixSize = inputC * ksizeH * ksizeW;
+    int64_t inputC1 = (inputC + COUT -1) / COUT;
+    if (isDynamic) {
+      matrixSize = inputC1 * ksizeH * ksizeW * CIN * COUT;
+    }
     FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[matrixSize]());
     FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
@@ -824,7 +827,6 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     Status ret = NnSet(matrixSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
     FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
     vector<int64_t> assitDimInfoOrigin = {inputC, 1, ksizeH, ksizeW};
-    int64_t inputC1 = (inputC + COUT -1) / COUT;
     vector<int64_t> assitDimInfoDynamic = {inputC1 * ksizeH * ksizeW, 1, CIN, COUT};
     vector<int64_t> assitDimInfoOriginDynamic = {inputC, 1, ksizeH, ksizeW};
     if (padding == "VALID") {
