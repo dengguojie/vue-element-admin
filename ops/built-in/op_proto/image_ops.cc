@@ -31,6 +31,33 @@
 #include "axis_util.h"
 
 namespace ge {
+IMPLEMT_INFERFUNC(DecodeGif, DecodeGifInfer) {
+  const char *op_name = op.GetName().c_str();
+  auto tensor = op.GetInputDesc(0);
+  Shape input_shape;
+  if (WithRank(tensor, 0, input_shape, op_name) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "Input must be 0-D");
+    return GRAPH_FAILED;
+  }
+  TensorDesc y_desc = op.GetOutputDesc(0);
+  Shape out = Shape({ge::UNKNOWN_DIM, ge::UNKNOWN_DIM, ge::UNKNOWN_DIM, 3});
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  (void)y_range.emplace_back(std::make_pair(1, -1));
+  (void)y_range.emplace_back(std::make_pair(1, -1));
+  (void)y_range.emplace_back(std::make_pair(1, -1));
+  (void)y_range.emplace_back(std::make_pair(3, 3));
+  y_desc.SetShape(Shape(out));
+  y_desc.SetShapeRange(y_range);
+  y_desc.SetDataType(DT_UINT8);
+  if (op.UpdateOutputDesc("image", y_desc) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name, "Fail to update output.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DecodeGif, DecodeGifInfer);
+
 IMPLEMT_INFERFUNC(AdjustHue, AdjustHueInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto images_desc = op_desc->MutableInputDesc(0);

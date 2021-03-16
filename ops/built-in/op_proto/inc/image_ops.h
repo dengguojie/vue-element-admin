@@ -24,6 +24,22 @@
 #include "graph/operator_reg.h"
 
 namespace ge {
+/**
+*@brief Decode the frame(s) of a GIF-encoded image to a uint8 tensor . \n
+
+*@par Inputs:
+*@li contents:A Tensor of type string. 0-D. The GIF-encoded image. \n
+
+*@par Outputs:
+*image:A Tensor of type uint8. \n
+
+*@par Third-party framework compatibility
+*Compatible with tensorflow DecodeGif operator.
+*/
+REG_OP(DecodeGif)
+    .INPUT(contents, TensorType({DT_STRING}))
+    .OUTPUT(image, TensorType({DT_UINT8}))
+    .OP_END_FACTORY_REG(DecodeGif)
 
 /**
 *@brief Adjust the hue of one or more images . \n

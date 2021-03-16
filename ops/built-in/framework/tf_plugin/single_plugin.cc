@@ -71,6 +71,13 @@ REGISTER_CUSTOM_OP("AllCandidateSampler")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register DecodeGif op to GE
+REGISTER_CUSTOM_OP("DecodeGif")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DecodeGif")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register AsString op to GE
 REGISTER_CUSTOM_OP("AsString")
     .FrameworkType(TENSORFLOW)
