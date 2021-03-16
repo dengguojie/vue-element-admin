@@ -29,26 +29,15 @@ Status ParseParamsAscendDequant(const Message* op_src, ge::Operator& op_dest) {
   }
 
   int dtype = 0;  // DT_FLOAT
+  bool sqrt_mode = false;
+  bool relu_flag = false;
   for (const auto& attr : node->attribute()) {
     if (attr.name() == "dtype" && attr.type() == ge::onnx::AttributeProto::INT) {
       dtype = attr.i();
-      break;
-    }
-  }
-
-  bool sqrt_mode = false;
-  for (const auto& attr : node->attribute()) {
-    if (attr.name() == "sqrt_mode" && attr.i() != 0) {
+    } else if (attr.name() == "sqrt_mode" && attr.i() != 0) {
       sqrt_mode = true;
-      break;
-    }
-  }
-
-  bool relu_flag = false;
-  for (const auto& attr : node->attribute()) {
-    if (attr.name() == "relu_flag" && attr.i() != 0) {
+    } else if (attr.name() == "relu_flag" && attr.i() != 0) {
       relu_flag = true;
-      break;
     }
   }
 
@@ -56,6 +45,32 @@ Status ParseParamsAscendDequant(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("sqrt_mode", sqrt_mode);
   op_dest.SetAttr("relu_flag", relu_flag);
 
+    // the input format should be NCHW
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  if (op_desc == nullptr){
+    OP_LOGE("Dequant", "Get op desc failed.");
+    return FAILED;
+  }
+  for (size_t i = 0; i < op_desc->GetInputsSize(); i++){
+    ge::GeTensorDesc tensor = op_desc->GetInputDesc(i);
+    tensor.SetOriginFormat(ge::FORMAT_NCHW);
+    tensor.SetFormat(ge::FORMAT_NCHW);
+    auto ret_x = op_desc->UpdateInputDesc(i, tensor);
+    if (ret_x != ge::GRAPH_SUCCESS){
+      OP_LOGE("Dequant", "update input format failed.");
+      return FAILED;
+    }
+  }
+  for (size_t i = 0; i < op_desc->GetOutputsSize(); i++){
+    ge::GeTensorDesc tensor = op_desc->GetOutputDesc(i);
+    tensor.SetOriginFormat(ge::FORMAT_NCHW);
+    tensor.SetFormat(ge::FORMAT_NCHW);
+    auto ret_y = op_desc->UpdateOutputDesc(i, tensor);
+    if (ret_y != ge::GRAPH_SUCCESS){
+      OP_LOGE("Dequant", "update output format failed.");
+      return FAILED;
+    }
+  }
   return SUCCESS;
 }
 
