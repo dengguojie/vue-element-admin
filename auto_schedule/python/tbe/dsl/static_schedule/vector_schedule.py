@@ -33,6 +33,7 @@ from .util import dfs_tensor_graph
 DTYPE_WIDTH_MAP = {"float16": 1,
                    "float32": 2,
                    "int32": 2,
+                   "uint32": 2,
                    "int16": 1,
                    "uint16": 1,
                    "int8": 0.5,

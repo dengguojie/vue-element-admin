@@ -56,14 +56,22 @@ DSL_SAME_API_MAP = {
 
 DSL_CHECK_SUPPORT_MAP = {
     "broadcast": {
-        "AllSoc": ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
-        ASCEND_310: ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
-        ASCEND_910: ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
-        ASCEND_920A: ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
-        ASCEND_710: ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
-        ASCEND_610: ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
-        ASCEND_615: ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
-        ASCEND_SHISI: ("float16", "float32", "int32", "int16", "uint16", "int8", "uint8"),
+        "AllSoc": ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
+        ASCEND_310: ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
+        ASCEND_910: ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
+        ASCEND_920A: ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
+        ASCEND_710: ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
+        ASCEND_610: ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
+        ASCEND_615: ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
+        ASCEND_SHISI: ("float16", "float32", "int32", "uint32", "int16", 
+        "uint16", "int8", "uint8"),
     },
 
     # segment

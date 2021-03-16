@@ -39,6 +39,7 @@ from .cce_schedule_mappings import OpSpecTypes
 DTYPE_WIDTH_MAP = {"float16": 1,
                    "float32": 2,
                    "int32": 2,
+                   "uint32": 2,
                    "int16": 1,
                    "uint16": 1,
                    "int8": 0.5,
