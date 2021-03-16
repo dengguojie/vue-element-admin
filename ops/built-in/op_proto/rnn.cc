@@ -917,4 +917,71 @@ IMPLEMT_INFERFUNC(CommonGRU, CommonGRUInferShape) {
 }
 
 INFER_FUNC_REG(CommonGRU, CommonGRUInferShape);
+// ----------------EmbeddingBag-------------------
+
+int64_t get_batch_dim(bool include_last_offset, int64_t offset_lens) {
+    int64_t output_dim = 0;
+    if (include_last_offset) {
+        output_dim = offset_lens -1;
+    } else {
+        output_dim = offset_lens;
+    }
+    return output_dim;
+}
+
+IMPLEMT_COMMON_INFERFUNC(EmbeddingBagInferShape) {
+    OP_LOGI(op.GetName().c_str(), " EmbeddingBag inferShape begin!");
+    // get weight info
+    TensorDesc weight_desc = op.GetInputDesc("weight");
+    auto weight_shape = weight_desc.GetShape().GetDims();
+    DataType weight_dtype = weight_desc.GetDataType();
+
+    int64_t batch_dim = 0;
+    int64_t embedding_dim = weight_shape[1];
+    // get indices info
+    TensorDesc indices_desc = op.GetInputDesc("indices");
+    auto indices_shape = indices_desc.GetShape().GetDims();
+
+    // get offsets info
+    TensorDesc offsets_desc = op.GetInputDesc("offsets");
+    auto offsets_shape = offsets_desc.GetShape().GetDims();
+
+    // get offset_lens
+    int64_t offset_lens = static_cast<int64_t>(offsets_shape[0]);
+
+    bool include_last_offset;
+    if (op.GetAttr("include_last_offset", include_last_offset) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), " get attr include_last_offset failed");
+        return GRAPH_FAILED;
+    }
+    // get batch_dim
+    int64_t indices_size = static_cast<int64_t>(indices_shape.size());
+    if (indices_size == 2) {
+        batch_dim = indices_shape[0];
+    } else {
+        batch_dim = get_batch_dim(include_last_offset, offset_lens);
+    }
+    
+    vector<int64_t> embedding_output_shape;
+   // push embedding bag dim to output shape
+    embedding_output_shape.push_back(batch_dim);
+    embedding_output_shape.push_back(embedding_dim);
+
+    // update output info
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(embedding_output_shape));
+    output_desc.SetDataType(weight_dtype);
+    output_desc.SetOriginFormat(ge::FORMAT_ND);
+    output_desc.SetFormat(ge::FORMAT_ND);
+    (void)op.UpdateOutputDesc("y", output_desc);
+
+    OP_LOGI(op.GetName().c_str(), " EmbeddingBag inferShape end!");
+    return GRAPH_SUCCESS;
+}
+IMPLEMT_VERIFIER(EmbeddingBag, EmbeddingBagVerify) {
+    return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(EmbeddingBag, EmbeddingBagInferShape);
+VERIFY_FUNC_REG(EmbeddingBag, EmbeddingBagVerify);
+// ----------------EmbeddingBag-------------------
 }  // namespace ge

@@ -960,6 +960,47 @@ REG_OP(CommonGRU)
     .REQUIRED_ATTR(hidden_size, Int)
     .ATTR(linear_before_reset , Int, 0)
     .OP_END_FACTORY_REG(CommonGRU)
+/**
+* @brief Calculates the reversed outputs of the function "embedding". \n
+
+* @par Inputs:
+* Four inputs, including:
+* @li weight: A mutable Tensor of word grad. Must be one of the following types:
+*     float32.
+* @li indices: A mutable word index Tensor of the int32 type.\n
+* @li offsets: A mutable word index Tensor of the int32 type.\n
+* @li per_sample_weights: to indicate all weights should be taken to be 1.
+*     If specified, per_sample_weights must have exactly the same shape as input
+*     and is treated as having the same offsets, if those are not None.
+*     Only supported for mode='sum'..\n
+
+* @par Attributes:
+* @li mode: An string attr which use "sum"``, ``"mean"`` or ``"max"``. Specifies the way to reduce the bag.. \n
+
+* @li scale_grad_by_freq: An optional bool. Defaults to "False".
+*     If "True", "grad_weight" will be scale by word_frequency.
+*     If "False", "grad_weight" will not be scale by word_frequency. \n
+* @li sparse: if True, gradient w.r.t.attr weight matrix will be a sparse tensor. \n
+* @li include_last_offset: if True, attr offsets  has one additional element, where the last element
+*     is equivalent to the size of indices. This matches the CSR format.. \n
+
+* @par Outputs:
+* @li grad_weight: A mutable output Tensor of new word grad has the same type as "grads". \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator EmbeddingBag.
+*/
+REG_OP(EmbeddingBag)
+    .INPUT(weight, TensorType({ DT_FLOAT32 }))
+    .INPUT(indices, TensorType({ DT_INT32 }))
+    .OPTIONAL_INPUT(offsets, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(per_sample_weights, TensorType({DT_FLOAT32}))
+    .OUTPUT(y, TensorType({ DT_FLOAT32 }))
+    .ATTR(mode, String, "mean")
+    .ATTR(scale_grad_by_freq, Bool, false)
+    .ATTR(sparse, Bool, false)
+    .ATTR(include_last_offset, Bool, false)
+    .OP_END_FACTORY_REG(EmbeddingBag)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_RNN_H_

@@ -95,6 +95,7 @@ set(_onnx_plugins
   gather_elements_plugin.cc
   global_max_pool_plugin.cc
   reduceL1_plugin.cc
+  embedding_bag_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
