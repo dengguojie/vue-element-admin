@@ -139,6 +139,9 @@ class CubeTilingOp:
     def assembly_case(self, tiling_strategy, covered, cnt):
         pass
 
+    def get_default_range(self, tgt_area):
+        return [bound if bound is not None else MAX_RANGE for bound in tgt_area]
+
 
 class TilingSelection:
     def __init__(self, tiling_op: CubeTilingOp):
@@ -186,7 +189,7 @@ class TilingSelection:
                 default_tiling = self.op.get_default_tiling()
                 tiling_cases = [self.op.assembly_case(default_tiling, tgt_area, seed_cnt)]
                 add_compile_info("tiling_type", "default_tiling")
-                add_compile_info("default_range", {str(seed_cnt): tgt_area})
+                add_compile_info("default_range", {str(seed_cnt): self.op.get_default_range(tgt_area)})
             else:
                 add_compile_info("tiling_type", "dynamic_tiling")
                 if h_name in self.op.var_map or w_name in self.op.var_map or d_name in self.op.var_map:

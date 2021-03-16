@@ -287,10 +287,13 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
         dynamic_mode[i] = std::find(vars.begin(), vars.end(), all_vars[i]) != vars.end();
       }
 
-      std::string tiling_id;
+      std::string tiling_id("0");
       bool is_dynamic_batch = (dynamic_batch == dynamic_mode);
-      if (op_type == "Conv3D" && compile_info["tiling_type"] == "default_tiling") {
-        tiling_id = compile_info["default_range"].begin().key();
+      if (compile_info["tiling_type"] == "default_tiling") {
+        std::vector<int64_t> default_range = compile_info["default_range"].begin().value().get<std::vector<int64_t>>();
+        if (IsShapeInRange(input_shape, default_range)) {
+          tiling_id = compile_info["default_range"].begin().key();
+        }
       } else if (is_dynamic_batch) {
         tiling_id = GetConv3DBatchTiling(op_type, input_shape, compile_info);
       } else {

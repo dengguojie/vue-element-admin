@@ -230,6 +230,8 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                                error_manager_util.get_error_message(dict_args))
 
     def _check_ub_limitation():
+        if not dedy_w_upper:
+            return
         w_value = dedy_w_upper * stride_w
 
         aub_dedy_size_min = dedy_w_upper * _BLOCK_SIZE * _BIT_RATIO_DICT["float16"]
@@ -245,6 +247,8 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                                error_manager_util.get_error_message(dict_args))
 
     def _check_l1_limitation():
+        if not dedy_w_upper:
+            return
         w_value = dedy_w_upper * stride_w
         if dedx_w_upper > _BLOCK_SIZE:
             h_value_max = filter_h_dilation + 1
@@ -301,6 +305,22 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
                 }
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
+
+    def _check_shape_size():
+        # check shape size, 64 bits limitation
+        # ===========================================================
+        filter_size = compute_util.align(filter_batch, tbe_platform.C0_SIZE) * compute_util.align(
+            filter_channel, tbe_platform.C0_SIZE) * filter_depth * filter_h * filter_w
+        _check_64bits_limitation("filter", filter_size, dtype=filter_dtype)
+
+        if dedx_batch_upper and dedx_d_upper and dedx_h_upper and dedx_w_upper:
+            fmap_size = (dedx_batch_upper * compute_util.align(fmap_channel, tbe_platform.C0_SIZE) *
+                         dedx_d_upper * dedx_h_upper * dedx_w_upper)
+            dedy_size = (dedy_batch_upper * dedy_channel_aligned * dedy_d_upper *
+                         dedy_h_upper * dedy_w_upper)
+            _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
+            _check_64bits_limitation("out_backprop", dedy_size,
+                                     dtype=out_backprop_dtype)
 
     dilation_n, dilation_d, dilation_h, dilation_w, dilation_c = dilations
     if dilation_d != 1:
@@ -392,19 +412,23 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
     def _check_dedy():
         _check_attr_range("Dedy's H after expands", dedy_h_lower * stride_h,
                           _DEDY_HW_MIN, _DEDY_HW_MAX)
-        _check_attr_range("Dedy's H after expands", dedy_h_upper * stride_h,
-                          _DEDY_HW_MIN, _DEDY_HW_MAX)
+        if dedy_h_upper:
+            _check_attr_range("Dedy's H after expands", dedy_h_upper * stride_h,
+                              _DEDY_HW_MIN, _DEDY_HW_MAX)
         _check_attr_range("Dedy's W after expands", dedy_w_lower * stride_w,
                           _DEDY_HW_MIN, _DEDY_HW_MAX)
-        _check_attr_range("Dedy's W after expands", dedy_w_upper * stride_w,
-                          _DEDY_HW_MIN, _DEDY_HW_MAX)
+        if dedy_w_upper:
+            _check_attr_range("Dedy's W after expands", dedy_w_upper * stride_w,
+                              _DEDY_HW_MIN, _DEDY_HW_MAX)
 
     # Fmap value limit
     def _check_dedx():
         _check_attr_range("Fmap's H", dedx_h_lower, _FMAP_HW_MIN, _FMAP_HW_MAX)
         _check_attr_range("Fmap's W", dedx_w_lower, _FMAP_HW_MIN, _FMAP_HW_MAX)
-        _check_attr_range("Fmap's H", dedx_h_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
-        _check_attr_range("Fmap's W", dedx_w_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
+        if dedx_h_upper:
+            _check_attr_range("Fmap's H", dedx_h_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
+        if dedx_w_upper:
+            _check_attr_range("Fmap's W", dedx_w_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
 
     _check_dedy()
     _check_dedx()
@@ -414,18 +438,7 @@ def _check_conv3dbp_input_params_in_dsl(shape_filter, shape_out_backprop,
         _check_ub_limitation()
 
     _check_l1_limitation()
-    # check shape size, 64 bits limitation
-    # ===========================================================
-    fmap_size = (dedx_batch_upper * compute_util.align(fmap_channel, tbe_platform.C0_SIZE) *
-                 dedx_d_upper * dedx_h_upper * dedx_w_upper)
-    dedy_size = (dedy_batch_upper * dedy_channel_aligned * dedy_d_upper *
-                 dedy_h_upper * dedy_w_upper)
-    filter_size = compute_util.align(filter_batch, tbe_platform.C0_SIZE) * compute_util.align(
-        filter_channel, tbe_platform.C0_SIZE) * filter_depth * filter_h * filter_w
-    _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
-    _check_64bits_limitation("out_backprop", dedy_size,
-                             dtype=out_backprop_dtype)
-    _check_64bits_limitation("filter", filter_size, dtype=filter_dtype)
+    _check_shape_size()
 
 
 @tbe_utils.para_check.check_input_type(tvm.tensor.Tensor,

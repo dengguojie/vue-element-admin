@@ -169,10 +169,12 @@ def _check_range(range, range_min=1, range_max=None):
     if range[0] < range_min:
         cube_err.raise_err_specific(
             'conv3d_backprop_input', "the lower bound of range should be larger than {}".format(range_min))
+    if not range[1]:
+        return
     if (range_max is not None) and (range[1] > range_max):
         cube_err.raise_err_specific(
             'conv3d_backprop_input', "the upper bound of range should be less than {}".format(range_max))
-    if range[0] > range[1] and range[1] != -1:
+    if range[0] > range[1]:
         cube_err.raise_err_specific(
             'conv3d_backprop_input', "the upper bound of range should be larger than lower bound")
 
@@ -187,6 +189,8 @@ def _check_dynamic_flag(input_size_ndhwc):
             'conv3d_backprop_input',"Dim C does not support dynamic shape")
 
 def _get_output(x_in, k_size, pads, stride, dilation):
+    if not x_in:
+        return None
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
@@ -200,12 +204,16 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     _check_attr_range("stride's H", stride[2], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     _check_attr_range("stride's W", stride[3], _STRIDE_HW_MIN, _STRIDE_HW_MAX)
     if not all(i == 0 for i in pads):
+        out_d_upper, out_h_upper, out_w_upper = None, None, None
         out_d_lower = util_common.ceil(fmap_range_d[0], stride[1])
-        out_d_upper = util_common.ceil(fmap_range_d[1], stride[1])
+        if fmap_range_d[1]:
+            out_d_upper = util_common.ceil(fmap_range_d[1], stride[1])
         out_h_lower = util_common.ceil(fmap_range_h[0], stride[2])
-        out_h_upper = util_common.ceil(fmap_range_h[1], stride[2])
+        if fmap_range_h[1]:
+            out_h_upper = util_common.ceil(fmap_range_h[1], stride[2])
         out_w_lower = util_common.ceil(fmap_range_w[0], stride[3])
-        out_w_upper = util_common.ceil(fmap_range_w[1], stride[3])
+        if fmap_range_w[1]:
+            out_w_upper = util_common.ceil(fmap_range_w[1], stride[3])
     else:
         out_d_lower = _get_output(fmap_range_d[0], w_d, (pads[0], pads[1]), stride[1], dilation[1])
         if out_d_lower < 1:
@@ -228,7 +236,7 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
             out_w_lower = _get_output(fmap_range_w[0], w_w, (pads[4], pads[5]), stride[3], dilation[3])
         out_w_upper = _get_output(fmap_range_w[1], w_w, (pads[4], pads[5]), stride[3], dilation[3])
 
-    range_dedy = [(fmap_range[0][0], fmap_range[0][1]), (out_d_lower, out_d_upper),
+    range_dedy = [(fmap_range_n[0], fmap_range_n[1]), (out_d_lower, out_d_upper),
                   (util_common.ceil(out_shape[4], _C0_SIZE), util_common.ceil(out_shape[4], _C0_SIZE)),
                   (out_h_lower, out_h_upper), (out_w_lower, out_w_upper), (_C0_SIZE, _C0_SIZE)]
 
@@ -340,6 +348,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                error_manager_util.get_error_message(dict_args))
 
     def _check_ub_limitation():
+        if not dedy_w_upper:
+            return
         w_value = dedy_w_upper * stride_w
 
         aub_dedy_size_min = dedy_w_upper * _C0_SIZE * 2
@@ -355,6 +365,8 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                error_manager_util.get_error_message(dict_args))
 
     def _check_l1_limitation():
+        if not fmap_w_upper:
+            return
         w_value = fmap_w_upper * stride_w
         if fmap_w_upper > _C0_SIZE:
             h_value_max = filter_h_dilation + 1
@@ -409,6 +421,18 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                 dict_args = {'errCode': 'E62508',}
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
+
+    def _check_shape_size():
+        if fmap_batch_upper and fmap_d_upper and fmap_h_upper and fmap_w_upper:
+            fmap_size = (fmap_batch_upper * util_common.align(fmap_channel, _C0_SIZE) *
+                         fmap_d_upper * fmap_h_upper * fmap_w_upper)
+            dedy_size = (dedy_batch_upper * dedy_channel * dedy_d_upper *
+                         dedy_h_upper * dedy_w_upper)
+            _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
+            _check_64bits_limitation("out_backprop", dedy_size, dtype=out_backprop_dtype)
+        filter_size = util_common.align(filter_batch, _C0_SIZE) * util_common.align(
+                    filter_channel, _C0_SIZE) * filter_depth * filter_h * filter_w
+        _check_64bits_limitation("filter", filter_size, dtype=filter_dtype)
 
     # Base check, Mainly required by interface appearance
     # ===========================================================
@@ -520,12 +544,14 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     # Dedy value limit
     _check_attr_range("Dedy's H after expands", dedy_h_lower * stride_h,
                       _DEDY_HW_MIN, _DEDY_HW_MAX)
-    _check_attr_range("Dedy's H after expands", dedy_h_upper * stride_h,
-                      _DEDY_HW_MIN, _DEDY_HW_MAX)
+    if dedy_h_upper:
+        _check_attr_range("Dedy's H after expands", dedy_h_upper * stride_h,
+                          _DEDY_HW_MIN, _DEDY_HW_MAX)
     _check_attr_range("Dedy's W after expands", dedy_w_lower * stride_w,
                       _DEDY_HW_MIN, _DEDY_HW_MAX)
-    _check_attr_range("Dedy's W after expands", dedy_w_upper * stride_w,
-                      _DEDY_HW_MIN, _DEDY_HW_MAX)
+    if dedy_w_upper:
+        _check_attr_range("Dedy's W after expands", dedy_w_upper * stride_w,
+                          _DEDY_HW_MIN, _DEDY_HW_MAX)
 
     # filter value limit
     _check_attr_range("filter's H", filter_h, _FILTER_HW_MIN, _FILTER_HW_MAX)
@@ -539,8 +565,10 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     # Fmap value limit
     _check_attr_range("Fmap's H", fmap_h_lower, _FMAP_HW_MIN, _FMAP_HW_MAX)
     _check_attr_range("Fmap's W", fmap_w_lower, _FMAP_HW_MIN, _FMAP_HW_MAX)
-    _check_attr_range("Fmap's H", fmap_h_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
-    _check_attr_range("Fmap's W", fmap_h_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
+    if fmap_h_upper:
+        _check_attr_range("Fmap's H", fmap_h_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
+    if fmap_w_upper:
+        _check_attr_range("Fmap's W", fmap_w_upper, _FMAP_HW_MIN, _FMAP_HW_MAX)
     # stride value limit
     _check_attr_range("stride's H*W",
                       stride_h * stride_w, _STRIDE_HW_MIN, _STRIDE_SIZE_MAX)
@@ -555,15 +583,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     # check shape size, 64 bits limitation
     # ===========================================================
-    fmap_size = (fmap_batch_upper * util_common.align(fmap_channel, _C0_SIZE) *
-                 fmap_d_upper * fmap_h_upper * fmap_w_upper)
-    dedy_size = (dedy_batch_upper * dedy_channel * dedy_d_upper *
-                 dedy_h_upper * dedy_w_upper)
-    filter_size = util_common.align(filter_batch, _C0_SIZE) * util_common.align(
-                  filter_channel, _C0_SIZE) * filter_depth * filter_h * filter_w
-    _check_64bits_limitation("input", fmap_size, dtype=res_dtype)
-    _check_64bits_limitation("out_backprop", dedy_size, dtype=out_backprop_dtype)
-    _check_64bits_limitation("filter", filter_size, dtype=filter_dtype)
+    _check_shape_size()
 
     result = (shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
               filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict)

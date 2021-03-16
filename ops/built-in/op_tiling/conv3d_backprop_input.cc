@@ -24,7 +24,6 @@
 #include "op_tiling.h"
 #include "cube_tiling.h"
 #include "graph/debug/ge_log.h"
-#include "conv_tiling.h"
 #include "op_log.h"
 
 namespace {
