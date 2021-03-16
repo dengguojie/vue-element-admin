@@ -40,45 +40,43 @@
 
 using namespace ge;
 namespace fe {
-static const char *FUSED_NODE = "CommonGRU";
+static const char* FUSED_NODE = "CommonGRU";
 static const std::string PATTERN_FUSEDNODE = "CommonGRU";
 
 vector<FusionPattern*> GRUFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
-  FusionPattern *pattern = new(std::nothrow) FusionPattern("GRUFusionPass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("GRUFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
-           return patterns);
+                    return patterns);
 
-  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE})
-          .SetOutput(PATTERN_FUSEDNODE);
+  pattern->AddOpDesc(PATTERN_FUSEDNODE, {FUSED_NODE}).SetOutput(PATTERN_FUSEDNODE);
 
   patterns.push_back(pattern);
 
   return patterns;
 }
 
-Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes) {
+Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
   // get the NodePtr of GRU
   ge::NodePtr fusedNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
   FUSION_PASS_CHECK(fusedNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode is null."), return PARAM_INVALID);
 
   // get the OpDescPtr of GRU
   ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
-  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null."),
+                    return PARAM_INVALID);
 
   auto gruOp = ge::OperatorFactory::CreateOperator(fusedDesc->GetName() + "_splitD_layer", "DynamicGRUV2");
-  FUSION_PASS_CHECK(gruOp.IsEmpty(),
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2 operator error"),
-                        return FAILED);
+  FUSION_PASS_CHECK(gruOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "create DynamicGRUV2 operator error"),
+                    return FAILED);
 
   // create DynamicGRUV2 OpDesc
   std::shared_ptr<ge::OpDesc> gruOpDesc = nullptr;
   gruOpDesc = ge::OpDescUtils::GetOpDescFromOperator(gruOp);
   gruOp.BreakConnect();
-  FUSION_PASS_CHECK(gruOpDesc == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "gruOpDesc is null, DynamicGRUV2 failed."),
-                      return PARAM_INVALID);
+  FUSION_PASS_CHECK(gruOpDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "gruOpDesc is null, DynamicGRUV2 failed."),
+                    return PARAM_INVALID);
 
   // process x
   GeTensorDesc xInput = fusedDesc->GetInputDesc(0);
@@ -149,26 +147,18 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
   y.Update(yShape, ge::FORMAT_FRACTAL_NZ, y.GetDataType());
   gruOpDesc->UpdateOutputDesc("y", y);
 
-  GeTensorDesc outputH = fusedDesc->GetOutputDesc(1);
-  std::vector<int64_t> outputHDims = ProcessOutputDim(outputH.GetShape().GetDims());
+  gruOpDesc->UpdateOutputDesc("output_h", y);
 
-  GeShape outputHOriginShape(outputHDims);
-  outputH.SetOriginShape(outputHOriginShape);
-  (void)ProcessNZFormat(outputHDims);
-  GeShape outputHShape(outputHDims);
-  outputH.Update(outputHShape, ge::FORMAT_FRACTAL_NZ, outputH.GetDataType());
-  gruOpDesc->UpdateOutputDesc("output_h", outputH);
-
-  gruOpDesc->UpdateOutputDesc("update", outputH);
-  gruOpDesc->UpdateOutputDesc("reset", outputH);
-  gruOpDesc->UpdateOutputDesc("new", outputH);
-  gruOpDesc->UpdateOutputDesc("hidden_new", outputH);
+  gruOpDesc->UpdateOutputDesc("update", y);
+  gruOpDesc->UpdateOutputDesc("reset", y);
+  gruOpDesc->UpdateOutputDesc("new", y);
+  gruOpDesc->UpdateOutputDesc("hidden_new", y);
 
   // create a splitD Op
   OpDescPtr splitDesc = nullptr;
   splitDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/DynamicGRUV2_split", "SplitD");
-  FUSION_PASS_CHECK(splitDesc == nullptr, 
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "splitD is null, SplitD failed."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(splitDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "splitD is null, SplitD failed."),
+                    return PARAM_INVALID);
 
   int groups = 2;
   AttrUtils::SetInt(splitDesc, "split_dim", 1);
@@ -180,18 +170,19 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
   if (hasB) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "yes hasB");
     ge::GeTensorDesc bias = fusedDesc->GetInputDesc(3);
-    FUSION_PASS_CHECK(splitDesc->AddInputDesc(bias) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "add SplitD input"), return FAILED);
+    FUSION_PASS_CHECK(splitDesc->AddInputDesc(bias) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add SplitD input"),
+                      return FAILED);
   }
 
   GeTensorDesc inputDesc = fusedDesc->GetInputDesc(3);
   size_t inChannelIdx = -1;
-  FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
-        OP_LOGE(FUSED_OP_TYPE.c_str(),
-                "The original format of the gru node[name=%s, type=%s]'s input is %s, which is unsupportable.",
-                fusedDesc->GetName().c_str(), fusedDesc->GetType().c_str(),
-                ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
-        return FAILED);
+  FUSION_PASS_CHECK(
+      SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
+      OP_LOGE(FUSED_OP_TYPE.c_str(),
+              "The original format of the gru node[name=%s, type=%s]'s input is %s, which is unsupportable.",
+              fusedDesc->GetName().c_str(), fusedDesc->GetType().c_str(),
+              ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
+      return FAILED);
 
   // add output
   GeShape inputShape = inputDesc.GetShape();
@@ -218,43 +209,60 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
 
   // create DynamicGRUV2 Node
   ge::NodePtr gruNode = graph.AddNode(gruOpDesc);
-  FUSION_PASS_CHECK(gruNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2 node is null, fusion failed."), return FAILED);
+  FUSION_PASS_CHECK(gruNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2 node is null, fusion failed."),
+                    return FAILED);
 
   // create SplitD Node
   ge::NodePtr splitNode = graph.AddNode(splitDesc);
-  FUSION_PASS_CHECK(splitNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "SplitD node is null, fusion failed."), return FAILED);
-    
-  graphStatus status = GraphUtils::AddEdge(fusedNode->GetInDataAnchor(3)->GetPeerOutAnchor(), splitNode->GetInDataAnchor(0));
+  FUSION_PASS_CHECK(splitNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "SplitD node is null, fusion failed."),
+                    return FAILED);
 
-  FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "add data to Split edge fail"), return false);
-    
+  graphStatus status =
+      GraphUtils::AddEdge(fusedNode->GetInDataAnchor(3)->GetPeerOutAnchor(), splitNode->GetInDataAnchor(0));
+
+  FUSION_PASS_CHECK(status != GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add data to Split edge fail"),
+                    return false);
+
   for (int i = 0; i < groups; i++) {
     status = GraphUtils::AddEdge(splitNode->GetOutDataAnchor(i), gruNode->GetInDataAnchor(i + 3));
-    FUSION_PASS_CHECK(status != GRAPH_SUCCESS,
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add slice to conv edge fail"), return false);
+    FUSION_PASS_CHECK(status != GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add slice to conv edge fail"),
+                      return false);
   }
 
   // connect x
-  FUSION_PASS_CHECK(
-    SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(), gruNode->GetInDataAnchor(0)),
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node x failed."), return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
+                                                       gruNode->GetInDataAnchor(0)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node x failed."), return FAILED);
 
   // connect weight_input
-  FUSION_PASS_CHECK(
-    SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(), gruNode->GetInDataAnchor(1)),
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node weight_input failed."), return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(1)->GetPeerOutAnchor(),
+                                                       gruNode->GetInDataAnchor(1)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node weight_input failed."),
+                    return FAILED);
 
   // connect weight_hidden
-  FUSION_PASS_CHECK(
-    SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(2)->GetPeerOutAnchor(), gruNode->GetInDataAnchor(2)),
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node weight_hidden failed."), return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(2)->GetPeerOutAnchor(),
+                                                       gruNode->GetInDataAnchor(2)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node weight_hidden failed."),
+                    return FAILED);
 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "hasSeqLength");
   if (hasSeqLength) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "yes hasSeqLength");
-    ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
-                            gruNode->GetInDataAnchor(5));
+    ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(4)->GetPeerOutAnchor(), gruNode->GetInDataAnchor(5));
+  }
+
+  int64_t first_dim_value = 1;
+  ge::NodePtr output_node = gruNode;
+  int anchor_index = 1;
+  if (yDims[0] > first_dim_value) {
+    ge::NodePtr slice_node = nullptr;
+    auto ret = CreateSliceNode(graph, gruNode, slice_node);
+    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create slice node fail."), return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(gruNode->GetOutDataAnchor(1), slice_node->GetInDataAnchor(0)),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "AddEdge for slice node fail"), return FAILED);
+    output_node = slice_node;
+    anchor_index = 0;
   }
 
   ge::OutDataAnchorPtr outputY = fusedNode->GetOutDataAnchor(0);
@@ -265,8 +273,7 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
   OP_LOGI(FUSED_OP_TYPE.c_str(), "init_h");
   if (hasInitH) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "yes hasInitH");
-    ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(5)->GetPeerOutAnchor(),
-                            gruNode->GetInDataAnchor(6));
+    ge::GraphUtils::AddEdge(fusedNode->GetInDataAnchor(5)->GetPeerOutAnchor(), gruNode->GetInDataAnchor(6));
   }
 
   // unlink all input of CommonGRU
@@ -286,33 +293,78 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<g
   for (uint64_t i = 0; i < yOriTopPeerAnchors.size(); ++i) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = yOriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-    FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(gruNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y failed."), return FAILED);
+    FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(gruNode->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y failed."),
+                      return FAILED);
   }
 
   for (uint64_t i = 0; i < yhOriTopPeerAnchors.size(); ++i) {
     ge::InDataAnchorPtr oriTopPeerAnchorPtri = yhOriTopPeerAnchors.at(i);
     ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
     FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(gruNode->GetOutDataAnchor(1), oriTopPeerAnchorPtri),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y_h failed."), return FAILED);
+        SUCCESS != ge::GraphUtils::AddEdge(output_node->GetOutDataAnchor(anchor_index), oriTopPeerAnchorPtri),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y_h failed."), return FAILED);
   }
 
   return SUCCESS;
 }
 
-Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::ComputeGraph &graph) {
+Status GRUFusionPass::CreateSliceNode(ge::ComputeGraph& graph, ge::NodePtr& gru_node, ge::NodePtr& new_node) {
+  ge::OpDescPtr new_desc = nullptr;
+  FUSION_PASS_MAKE_SHARED((new_desc = std::make_shared<ge::OpDesc>(gru_node->GetName() + "_SliceD", "SliceD")),
+                          return INTERNAL_ERROR);
+  Operator op = ge::OpDescUtils::CreateOperatorFromNode(gru_node);
+  auto output_desc1 = op.GetOutputDesc(1);
+  std::vector<int64_t> dims = output_desc1.GetShape().GetDims();
+  ge::GeShape input_shape(dims);
+  std::vector<int64_t> origin_dims = output_desc1.GetOriginShape().GetDims();
+  ge::GeShape origin_shape(origin_dims);
+  ge::Format data_format = output_desc1.GetFormat();
+  ge::DataType data_type = output_desc1.GetDataType();
+  auto ret = new_desc->AddInputDesc(GeTensorDesc(input_shape, data_format, data_type));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("GRUFusionPass", "CreateSliceNode AddInputDesc fail"), return FAILED);
+  auto input_desc = new_desc->GetInputDesc(0);
+  input_desc.SetOriginShape(origin_shape);
+  input_desc.SetOriginDataType(data_type);
+  input_desc.SetOriginFormat(output_desc1.GetOriginFormat());
+  new_desc->UpdateInputDesc(0, input_desc);
+  int dims_size = origin_dims.size();
+  std::vector<int64_t> offsets(dims_size, 0);
+  offsets[0] = origin_dims[0] - 1;
+  std::vector<int64_t> origin_output_dims = {1};
+  for (int i = 1; i < dims_size; ++i) {
+    origin_output_dims.push_back(origin_dims[i]);
+  }
+  ge::GeShape origin_output_shape(origin_output_dims);
+  std::vector<int64_t> output_dims = {1};
+  for (int i = 1; i < dims.size(); ++i) {
+    output_dims.push_back(dims[i]);
+  }
+  ge::GeShape output_shape(output_dims);
+  ret = new_desc->AddOutputDesc(GeTensorDesc(output_shape, data_format, data_type));
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("GRUFusionPass", "CreateSliceNode AddOutputDesc fail"), return FAILED);
+  auto output_desc = new_desc->GetOutputDesc(0);
+  output_desc.SetOriginShape(origin_output_shape);
+  output_desc.SetOriginDataType(data_type);
+  output_desc.SetOriginFormat(output_desc1.GetOriginFormat());
+  new_desc->UpdateOutputDesc(0, output_desc);
+  AttrUtils::SetListInt(new_desc, "offsets", offsets);
+  AttrUtils::SetListInt(new_desc, "size", origin_output_dims);
+  new_node = graph.AddNode(new_desc);
+  return SUCCESS;
+}
+
+Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::ComputeGraph& graph) {
   ge::NodePtr weightNode = gruNode->GetInDataAnchor(anchorIndex)->GetPeerOutAnchor()->GetOwnerNode();
   std::shared_ptr<ge::OpDesc> transposeOpdesc = nullptr;
   FUSION_PASS_MAKE_SHARED(
       (transposeOpdesc = std::make_shared<ge::OpDesc>(weightNode->GetName() + "_transpose_b", "TransposeD")),
-  return FAILED);
+      return FAILED);
 
   vector<int64_t> perm = {0, 2, 1};
   FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(transposeOpdesc, "perm", perm),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Set perm to %s failed.", transposeOpdesc->GetName().c_str()),
-  return FAILED);
+                    return FAILED);
 
   ge::GeTensorDesc inputDesc = weightNode->GetOpDesc()->GetOutputDesc(0).Clone();
   std::vector<int64_t> dims = inputDesc.GetShape().GetDims();
@@ -325,10 +377,10 @@ Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::
 
   FUSION_PASS_CHECK(transposeOpdesc->AddInputDesc("x", inputDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "%s add inputDesc failed.", transposeOpdesc->GetName().c_str()),
-  return FAILED);
+                    return FAILED);
   FUSION_PASS_CHECK(transposeOpdesc->AddOutputDesc("y", outputDesc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "%s add outputDesc failed.", transposeOpdesc->GetName().c_str()),
-  return FAILED);
+                    return FAILED);
 
   ge::NodePtr transposeNode = graph.AddNode(transposeOpdesc);
 
@@ -337,20 +389,20 @@ Status GRUFusionPass::AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::
 
   FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(src, dst) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "remove %s input edge error", gruNode->GetName().c_str()),
-  return FAILED);
+                    return FAILED);
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(src, transposeNode->GetInDataAnchor(0)) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             weightNode->GetName().c_str(), transposeNode->GetName().c_str()),
-  return FAILED);
+                    return FAILED);
 
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(transposeNode->GetOutDataAnchor(0), dst) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                             transposeNode->GetName().c_str(), gruNode->GetName().c_str()),
-  return FAILED);
+                    return FAILED);
   return SUCCESS;
 }
 
-std::vector<int64_t> GRUFusionPass::RemoveNumDirectionsDim(const std::vector<int64_t> dims, bool isReverse) {
+std::vector<int64_t> GRUFusionPass::RemoveNumDirectionsDim(const std::vector<int64_t>& dims, bool isReverse) {
   std::vector<int64_t> res;
   if (isReverse) {
     for (int i = dims.size() - 1; i > 0; --i) {
@@ -364,7 +416,7 @@ std::vector<int64_t> GRUFusionPass::RemoveNumDirectionsDim(const std::vector<int
   return res;
 }
 
-std::vector<int64_t> GRUFusionPass::ProcessOutputDim(const std::vector<int64_t> dims) {
+std::vector<int64_t> GRUFusionPass::ProcessOutputDim(const std::vector<int64_t>& dims) {
   std::vector<int64_t> res;
   int n = dims.size();
   FUSION_PASS_CHECK(n < 2, OP_LOGE(FUSED_OP_TYPE.c_str(), "dim size less then 2."), return res);
@@ -377,9 +429,9 @@ std::vector<int64_t> GRUFusionPass::ProcessOutputDim(const std::vector<int64_t> 
   return res;
 }
 
-void GRUFusionPass::ProcessNZFormat(std::vector<int64_t> &dims) {
+void GRUFusionPass::ProcessNZFormat(std::vector<int64_t>& dims) {
   int n = dims.size();
-  FUSION_PASS_CHECK(n < 2, OP_LOGE(FUSED_OP_TYPE.c_str(), "dim size less then 2."), return);
+  FUSION_PASS_CHECK(n < 2, OP_LOGE(FUSED_OP_TYPE.c_str(), "dim size less then 2."), return );
   int64_t first = dims[n - 1];
   int64_t second = dims[n - 2];
   dims[n - 1] = (second + 15) / 16;
@@ -388,8 +440,8 @@ void GRUFusionPass::ProcessNZFormat(std::vector<int64_t> &dims) {
   dims.push_back(16);
 }
 
-void GRUFusionPass::ProcessZFormat(std::vector<int64_t> &dims) {
-  for (auto &elem : dims) {
+void GRUFusionPass::ProcessZFormat(std::vector<int64_t>& dims) {
+  for (auto& elem : dims) {
     elem = (elem + 15) / 16;
   }
   dims.push_back(16);
@@ -397,4 +449,4 @@ void GRUFusionPass::ProcessZFormat(std::vector<int64_t> &dims) {
 }
 
 REGISTER_PASS("GRUFusionPass", BUILT_IN_GRAPH_PASS, GRUFusionPass);
-}
+}  // namespace fe

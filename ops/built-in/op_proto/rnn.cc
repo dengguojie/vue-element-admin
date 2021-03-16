@@ -897,7 +897,7 @@ IMPLEMT_INFERFUNC(CommonGRU, CommonGRUInferShape) {
   int64_t hidden_size = shape_w.GetDims().at(1) / 3;
 
   vector<int64_t> y_dims = {seq_length, num_directions, batch_size, hidden_size};
-  vector<int64_t> y_h_dims = {seq_length, batch_size, hidden_size};
+  vector<int64_t> y_h_dims = {num_directions, batch_size, hidden_size};
 
   y_tensor_desc.SetShape(Shape(y_dims));
   y_h_tensor_desc.SetShape(Shape(y_h_dims));

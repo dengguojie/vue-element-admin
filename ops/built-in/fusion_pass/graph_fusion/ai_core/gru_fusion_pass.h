@@ -28,18 +28,18 @@
 namespace fe {
 class GRUFusionPass : public PatternFusionBasePass {
  protected:
-  vector<FusionPattern *> DefinePatterns() override;
-  Status Fusion(ge::ComputeGraph &graph,
-                Mapping &mapping,
-                vector<ge::NodePtr> &newNodes) override;
-private:
-  void ProcessNZFormat(std::vector<int64_t> &dims);
-  void ProcessZFormat(std::vector<int64_t> &dims);
-  std::vector<int64_t> RemoveNumDirectionsDim(const std::vector<int64_t> dims, bool isReverse);
-  std::vector<int64_t> ProcessOutputDim(const std::vector<int64_t> dims);
-  Status AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::ComputeGraph &graph);
+  vector<FusionPattern*> DefinePatterns() override;
+  Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
+
+ private:
+  void ProcessNZFormat(std::vector<int64_t>& dims);
+  void ProcessZFormat(std::vector<int64_t>& dims);
+  std::vector<int64_t> RemoveNumDirectionsDim(const std::vector<int64_t>& dims, bool isReverse);
+  std::vector<int64_t> ProcessOutputDim(const std::vector<int64_t>& dims);
+  Status AddTransposNode(ge::NodePtr gruNode, int anchorIndex, ge::ComputeGraph& graph);
+  Status CreateSliceNode(ge::ComputeGraph& graph, ge::NodePtr& gru_node, ge::NodePtr& new_node);
   const string FUSED_OP_TYPE = "SplitD_DynamicGRUV2";
 };
-} // namespace fe
+}  // namespace fe
 
 #endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_GRU_FUSION_PASS_H
