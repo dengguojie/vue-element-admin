@@ -342,7 +342,7 @@ Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   ge::OpDescPtr stnPreOp;
   ge::NodePtr stnPreNode;
-  FUSION_PASS_MAKE_SHARED((stnPreOp = std::make_shared<ge::OpDesc>("stn_pre", "StnPre")), return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((stnPreOp = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_pre", "StnPre")), return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != MakeStnPreLayer(stnPreOp, spatialTransformerDOpDesc, oriInAnchorPtr1 != nullptr),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "make stn_pre layer failed."), return NOT_CHANGED);
@@ -363,7 +363,7 @@ Status SpatialTransformerDPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   ge::OpDescPtr stnComputeOp;
   ge::NodePtr stnComputeNode;
-  FUSION_PASS_MAKE_SHARED((stnComputeOp = std::make_shared<ge::OpDesc>("stn_compute", "StnCompute")),
+  FUSION_PASS_MAKE_SHARED((stnComputeOp = std::make_shared<ge::OpDesc>(spatialTransformerDNode->GetName() + "_stn_compute", "StnCompute")),
                           return INTERNAL_ERROR);
 
   FUSION_PASS_CHECK(SUCCESS != MakeStnComputeLayer(stnComputeOp, stnPreOp, spatialTransformerDOpDesc),

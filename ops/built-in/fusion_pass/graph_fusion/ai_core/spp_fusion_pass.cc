@@ -268,7 +268,7 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
   if (sppHyramidHeight == 1) {
     ge::OpDescPtr singlePoolingOp;
     ge::NodePtr singlePoolingNode;
-    FUSION_PASS_MAKE_SHARED((singlePoolingOp = std::make_shared<ge::OpDesc>("spp_pooling", "SppPooling")),
+    FUSION_PASS_MAKE_SHARED((singlePoolingOp = std::make_shared<ge::OpDesc>(sppNode->GetName() + "_spp_pooling", "SppPooling")),
                             return INTERNAL_ERROR);
 
     FUSION_PASS_CHECK(SUCCESS != MakePoolingLayer(singlePoolingOp, sppInputDesc, 0, sppPoolMethod),
@@ -304,7 +304,7 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
   vector<ge::OpDescPtr> poolingOp;
   vector<ge::NodePtr> poolingNode;
   for (int64_t i = 0; i < sppHyramidHeight; i++) {
-    string strName = "spp_pooling" + std::to_string(i);
+    string strName = sppNode->GetName() + "_spp_pooling" + std::to_string(i);
     ge::OpDescPtr tmpOp;
     ge::NodePtr tmpNode;
     FUSION_PASS_MAKE_SHARED((tmpOp = std::make_shared<ge::OpDesc>(strName, "SppPooling")), return INTERNAL_ERROR);
@@ -325,7 +325,7 @@ Status SPPPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::Nod
 
   ge::OpDescPtr concatOp;
   ge::NodePtr concatNode;
-  FUSION_PASS_MAKE_SHARED((concatOp = std::make_shared<ge::OpDesc>("concat", "ConcatD")), return INTERNAL_ERROR);
+  FUSION_PASS_MAKE_SHARED((concatOp = std::make_shared<ge::OpDesc>(sppNode->GetName() + "_concat", "ConcatD")), return INTERNAL_ERROR);
   int64_t concatDim = 1;
   FUSION_PASS_CHECK(SUCCESS != MakeConcatLayer(concatOp, poolingOp, concatDim),
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "make pooling layer failed."), return FAILED);
