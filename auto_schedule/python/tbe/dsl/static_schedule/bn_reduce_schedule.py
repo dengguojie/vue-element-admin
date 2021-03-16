@@ -24,7 +24,7 @@ from tbe import tvm
 from tbe.common.utils import shape_to_list
 from tbe.common import platform as cce
 from tbe.common.platform.platform_info import get_soc_spec
-from te.platform import cce_util
+from tbe.dsl.instrinsic import cce_util
 from tbe.common.utils import log
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .group_norm_reduce_schedule import gn_reduce_schedule

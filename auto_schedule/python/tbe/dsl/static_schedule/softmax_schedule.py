@@ -24,7 +24,7 @@ from tbe.common.platform import scope_ubuf
 from tbe.common.platform import scope_reg
 from tbe.common.utils import log
 from tbe.dsl.instrinsic import cce_emitinsn_params
-from te.platform import cce_util
+from tbe.dsl.instrinsic import cce_util
 from tbe.common.platform import intrinsic_check_support
 from tbe.dsl.instrinsic.cce_intrin_md import vec_cmd_factory
 

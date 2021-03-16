@@ -25,7 +25,7 @@ from tbe import tvm
 from tbe.common.utils import shape_to_list
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform.platform_info import get_soc_spec
-from te.platform import cce_util
+from tbe.dsl.instrinsic import cce_util
 
 MAX_SHAPE_NUM = 10000000
 

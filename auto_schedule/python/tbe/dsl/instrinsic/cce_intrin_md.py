@@ -30,8 +30,6 @@ from tbe.common.platform import HI3796CV300ES
 from tbe.common.platform import SD3403
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.common import platform as cce_params
-from te.platform import cce_util
-
 from tbe.tvm._ffi.function import register_func
 from tbe.tvm.ir_builder import create as _create
 from tbe.tvm.intrin import call_extern
@@ -40,6 +38,8 @@ from tbe.tvm import api as tvm
 from tbe.tvm import expr as _expr
 from tbe.tvm import stmt as _stmt
 from tbe.tvm import make as _make
+
+from . import cce_util
 
 
 # max repeat time

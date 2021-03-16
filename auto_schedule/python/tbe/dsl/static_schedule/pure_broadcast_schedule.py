@@ -17,14 +17,14 @@ Pure broadcast schedule
 """
 import math
 
-import te
+import tbe
 from tbe import tvm
 from tbe.common.utils import log
 from tbe.tvm.tensor import Tensor
 from tbe.tvm.schedule import Schedule
-from te.platform.cce_util import get_align_factor
-from te.platform.cce_util import get_buffer
-from te.platform.cce_util import apply_for_new_alloc
+from tbe.dsl.instrinsic.cce_util import get_align_factor
+from tbe.dsl.instrinsic.cce_util import get_buffer
+from tbe.dsl.instrinsic.cce_util import apply_for_new_alloc
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import SOC_VERSION
@@ -524,8 +524,8 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
             if self.broadcast_original_shape[i] == 1:
                 mid_broadcast_shape[i] = 1
         # Do reconstruct
-        mid_broadcast = te.lang.cce.broadcast(input_tensor, mid_broadcast_shape)
-        final_broadcast = te.lang.cce.broadcast(mid_broadcast, self.broadcast_target_shape)
+        mid_broadcast = tbe.dsl.broadcast(input_tensor, mid_broadcast_shape)
+        final_broadcast = tbe.dsl.broadcast(mid_broadcast, self.broadcast_target_shape)
         self.broadcast_ub = mid_broadcast
         self.broadcasts[0] = final_broadcast
         self.real_outs[0] = final_broadcast

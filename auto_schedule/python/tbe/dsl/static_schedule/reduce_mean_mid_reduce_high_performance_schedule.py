@@ -20,7 +20,7 @@ import math
 from tbe import tvm
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
-from te.platform import cce_util
+from tbe.dsl.instrinsic import cce_util
 from tbe.common.utils.errormgr import get_error_message
 from tbe.common.platform import VECTOR_INST_BLOCK_WIDTH
 from tbe.common.platform.platform_info import get_soc_spec

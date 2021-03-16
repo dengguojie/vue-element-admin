@@ -22,13 +22,14 @@ from functools import reduce as _reduce
 
 from tbe.common.platform import intrinsic_check_support
 from tbe.common import platform as cce_params
-from te.platform import CCE_AXIS
-from te.platform import cce_util
 from tbe.tvm.ir_builder import create as _create
 from tbe.tvm.intrin import call_extern
 from tbe.tvm import make as _make
 from tbe.tvm.tensor_intrin import decl_tensor_intrin
 from tbe.tvm import api as tvm
+
+from . import cce_util
+from .cce_util import CCE_AXIS
 
 # the limit of the nesting depth in the generated CCE,
 # if num_segments > MAX_BRACKET_DEPTH, stackoverflow,

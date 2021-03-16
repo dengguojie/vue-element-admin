@@ -17,8 +17,8 @@ reduce 5hd c axis intrinsic functions
 """
 from tbe import tvm
 from tbe.common.utils import log
-from te.platform.cce_util import get_buffer
-from te.platform.cce_util import get_align_factor
+from tbe.dsl.instrinsic.cce_util import get_buffer
+from tbe.dsl.instrinsic.cce_util import get_align_factor
 from tbe.dsl.instrinsic.cce_intrin_md import reset_mask_insn
 from tbe.common.platform import VECTOR_INST_BLOCK_WIDTH
 

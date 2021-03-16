@@ -19,7 +19,7 @@ import math
 
 from tbe import tvm
 from tbe.common.utils import log
-from te.platform.cce_util import get_align_factor
+from tbe.dsl.instrinsic.cce_util import get_align_factor
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import ASCEND_910

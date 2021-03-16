@@ -19,7 +19,7 @@ import math
 
 import te.lang.cce
 from tbe import tvm
-from te.platform import cce_util
+from tbe.dsl.instrinsic import cce_util
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform.platform_info import get_soc_spec
