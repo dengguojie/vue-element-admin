@@ -381,6 +381,7 @@ static void PrintInOutTensorShape(ge::Operator& op) {
   OP_LOGD(op.GetName().c_str(), "%s", ss.str().c_str());
 }
 
+//--------- Dilation2D ---------------
 IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
   auto x_shape = op.GetInputDesc("x").GetShape();
   Format input_format = op.GetInputDesc("x").GetFormat();
@@ -514,6 +515,7 @@ IMPLEMT_VERIFIER(Dilation2D, Dilation2DVerify) {
 
   return GRAPH_SUCCESS;
 }
+
 IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
   auto strides =  op.get_attr_strides();
   auto rates = op.get_attr_rates();
@@ -605,7 +607,7 @@ IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
     padding_before = 0;
     padding_after = 0;
   }
-  if(GetWindowedOutputSizeVerboseV2(
+  if (GetWindowedOutputSizeVerboseV2(
       in_rows_dim, filter_rows_eff, 1, stride_rows, padding_mode, ceil_mode, &output_rows,
       &padding_before, &padding_after) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -618,7 +620,7 @@ IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
     padding_before = 0;
     padding_after = 0;
   }
-  if(GetWindowedOutputSizeVerboseV2(
+  if (GetWindowedOutputSizeVerboseV2(
       in_cols_dim, filter_cols_eff, 1, stride_cols, padding_mode, ceil_mode, &output_cols,
       &padding_before, &padding_after) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -633,8 +635,486 @@ IMPLEMT_INFERFUNC(Dilation2D, Dilation2DInfer) {
   output_desc.SetDataType(data_type);
   return op.UpdateOutputDesc("y", output_desc);
 }
+
 VERIFY_FUNC_REG(Dilation2D, Dilation2DVerify);
 INFER_FUNC_REG(Dilation2D, Dilation2DInfer);
+
+//--------- Dilation2DBackpropFilter ---------------
+IMPLEMT_VERIFIER(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify) {
+  auto x_shape = op.GetInputDesc("x").GetShape();
+  Format input_format = op.GetInputDesc("x").GetFormat();
+  auto filter_shape = op.GetInputDesc("filter").GetShape();
+  std::vector<int64_t> filter_list = filter_shape.GetDims();
+  auto out_backprop_shape = op.GetInputDesc("out_backprop").GetShape();
+  Format out_backprop_format = op.GetInputDesc("out_backprop").GetFormat();
+
+  if (!CheckTwoInputDtypeSame(op, "x", "filter")) {
+    OP_LOGE(op.GetName().c_str(), "Two input dtypes must be same.");
+    return GRAPH_FAILED;
+  }
+  if (WithRank(op.GetInputDesc(0), 4, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Size", "XShape Size != 4");
+    OP_LOGE(op.GetName().c_str(), "The rank of x must be 4.");
+    return GRAPH_FAILED;
+  }
+
+  if (WithRank(op.GetInputDesc(1), 3, filter_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "Filter Shape Size", "FilterShape Size != 3");
+    OP_LOGE(op.GetName().c_str(), "The rank of filter must be 3.");
+    return GRAPH_FAILED;
+  }
+
+  if (WithRank(op.GetInputDesc(2), 4, out_backprop_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "out_backprop Shape Size", "out_backpropShape Size != 4");
+    OP_LOGE(op.GetName().c_str(), "The rank of out_backprop must be 4.");
+    return GRAPH_FAILED;
+  }
+
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "data_format");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NHWC" && data_format != "NCHW") {
+    OpsAttrValueErrReport(op.GetName(), "data_format", "NHWC,NCHW", data_format);
+    OP_LOGE(op.GetName().c_str(), "data_format[%s] is invalid!", data_format.c_str());
+    return GRAPH_FAILED;
+  }
+
+  if ((input_format == FORMAT_NCHW && out_backprop_format == FORMAT_NCHW && data_format != "NCHW") ||
+      (input_format == FORMAT_NHWC && out_backprop_format == FORMAT_NHWC && data_format != "NHWC")) {
+    InferShapeOtherErrReport(op.GetName(), "Input format and out_backprop_format and data_format is not same");
+  }
+
+  std::vector<int64_t> strides;
+  if (op.GetAttr("strides", strides) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "strides");
+    OP_LOGE(op.GetName().c_str(), "Get attr strides failed");
+    return GRAPH_FAILED;
+  }
+  if (strides.size() != 4) {
+    AttrSizeErrReport("strides", op.GetName(), ConcatString(strides.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr strides(%u) must be 4", strides.size());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> rates;
+  if (op.GetAttr("rates", rates) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "rates");
+    OP_LOGE(op.GetName().c_str(), "Get attr rates failed");
+    return GRAPH_FAILED;
+  }
+
+  if (rates.size() != 4) {
+    AttrSizeErrReport("rates", op.GetName(), ConcatString(rates.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr rates(%u) must be 4", rates.size());
+    return GRAPH_FAILED;
+  }
+
+  std::string padding_mode;
+  if (op.GetAttr("padding_mode", padding_mode) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "padding_mode");
+    OP_LOGE(op.GetName().c_str(), "Get padding failed!");
+    return GRAPH_FAILED;
+  }
+
+  if (padding_mode != "SAME" && padding_mode != "VALID" && padding_mode != "CALCULATED") {
+    OpsAttrValueErrReport(op.GetName(), "padding_mode", "SAME,VALID,CALCULATED", padding_mode);
+    OP_LOGE(op.GetName().c_str(), "Attr padding(%s) only support SAME,VALID,CALCULATED", padding_mode.c_str());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> pads;
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "pads");
+    OP_LOGE(op.GetName().c_str(), "Get attr pads failed");
+    return GRAPH_FAILED;
+  }
+  if (pads.size() != 4) {
+    AttrSizeErrReport("pads", op.GetName(), ConcatString(pads.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr pads(%u) must be 4", pads.size());
+    return GRAPH_FAILED;
+  }
+
+  bool ceil_mode;
+  if (op.GetAttr("ceil_mode", ceil_mode) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
+    OP_LOGE(op.GetName().c_str(), "Get attr ceil_mode failed");
+    return GRAPH_FAILED;
+  }
+
+  int64_t window_h;
+  int64_t window_w;
+  int64_t rate_n;
+  int64_t rate_c;
+  int64_t stride_n;
+  int64_t stride_c;
+
+  if (data_format == "NHWC") {
+    rate_n = rates[0];
+    rate_c = rates[3];
+    stride_n = strides[0];
+    stride_c = strides[3];
+    window_h = (filter_list[0] - 1) * rates[1] + 1;
+    window_w = (filter_list[1] - 1) * rates[2] + 1;
+  } else {
+    rate_n = rates[0];
+    rate_c = rates[1];
+    stride_n = strides[0];
+    stride_c = strides[1];
+    window_h = (filter_list[1] - 1) * rates[2] + 1;
+    window_w = (filter_list[2] - 1) * rates[3] + 1;
+  }
+
+  if (rate_n != 1 || rate_c != 1) {
+    OpsAttrValueErrReport(op.GetName(), "rates", "1", ConcatString(rate_n, ",", rate_c));
+    OP_LOGE(op.GetName().c_str(), "rates[%d,%d] of NC is invalid!", rate_n, rate_c);
+    return GRAPH_FAILED;
+  }
+
+  if (stride_n != 1 || stride_c != 1) {
+    OpsAttrValueErrReport(op.GetName(), "strides", "1", ConcatString(stride_n, ",", stride_c));
+    OP_LOGE(op.GetName().c_str(), "strides[%d,%d] of NC is invalid!", stride_n, stride_c);
+    return GRAPH_FAILED;
+  }
+
+  if (padding_mode == "CALCULATED" &&
+      (pads[0] >= window_h || pads[1] >= window_h || pads[2] >= window_w || pads[3] >= window_w)) {
+    InferShapeOtherErrReport(op.GetName(), "pads must be less than window size when using CALCULATED mode");
+    OP_LOGE(op.GetName().c_str(), "pads must be less than window size when using CALCULATED mode");
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(Dilation2DBackpropFilter, Dilation2DBackpropFilterInfer) {
+  auto strides = op.get_attr_strides();
+  auto rates = op.get_attr_rates();
+  auto padding_mode = op.get_attr_padding_mode();
+  auto pads = op.get_attr_pads();
+  auto ceil_mode = op.get_attr_ceil_mode();
+  auto data_format = op.get_attr_data_format();
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  Shape filter_shape = op.GetInputDesc("filter").GetShape();
+  auto data_type = op.GetInputDesc("x").GetDataType();
+  TensorDesc output_desc = op.GetOutputDesc("y");
+
+  int32_t stride_rows;
+  int32_t stride_cols;
+  int32_t rate_rows;
+  int32_t rate_cols;
+  int64_t batch_size_dim;
+  int64_t in_rows_dim;
+  int64_t in_cols_dim;
+  int64_t filter_rows_dim;
+  int64_t filter_cols_dim;
+  int64_t output_depth_dim;
+  int64_t unused;
+  int32_t x_h_dim;
+  int32_t x_w_dim;
+  int32_t filter_h_dim;
+  int32_t filter_w_dim;
+
+  if (data_format == "NHWC") {
+    stride_rows = strides[1];
+    stride_cols = strides[2];
+    rate_rows = rates[1];
+    rate_cols = rates[2];
+    batch_size_dim = 1;
+    in_rows_dim = x_shape.GetDim(1);
+    in_cols_dim = x_shape.GetDim(2);
+    filter_rows_dim = filter_shape.GetDim(0);
+    filter_cols_dim = filter_shape.GetDim(1);
+    output_depth_dim = filter_shape.GetDim(2);
+    unused = x_shape.GetDim(3);
+    x_h_dim = 1;
+    x_w_dim = 2;
+    filter_h_dim = 0;
+    filter_w_dim = 1;
+  } else {
+    stride_rows = strides[2];
+    stride_cols = strides[3];
+    rate_rows = rates[2];
+    rate_cols = rates[3];
+    batch_size_dim = 1;
+    in_rows_dim = x_shape.GetDim(2);
+    in_cols_dim = x_shape.GetDim(3);
+    filter_rows_dim = filter_shape.GetDim(1);
+    filter_cols_dim = filter_shape.GetDim(2);
+    output_depth_dim = filter_shape.GetDim(0);
+    unused = x_shape.GetDim(1);
+    x_h_dim = 2;
+    x_w_dim = 3;
+    filter_h_dim = 1;
+    filter_w_dim = 2;
+  }
+
+  if (!ValueKnown(x_shape, x_h_dim) || !ValueKnown(x_shape, x_w_dim) || !ValueKnown(filter_shape, filter_h_dim) ||
+      !ValueKnown(filter_shape, filter_w_dim)) {
+    Shape output_shape({batch_size_dim, -1, -1, output_depth_dim});
+    output_desc.SetShape(output_shape);
+    output_desc.SetDataType(data_type);
+    return op.UpdateOutputDesc("y", output_desc);
+  }
+
+  if (Merge(unused, output_depth_dim, unused) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Merge unused and output_depth_dim failed.");
+    return GRAPH_FAILED;
+  }
+
+  if (data_format == "NHWC") {
+    Shape y_shape({batch_size_dim, filter_rows_dim, filter_cols_dim, output_depth_dim});
+    output_desc.SetShape(y_shape);
+  } else {
+    Shape y_shape({batch_size_dim, output_depth_dim, filter_rows_dim, filter_cols_dim});
+    output_desc.SetShape(y_shape);
+  }
+  output_desc.SetDataType(data_type);
+  return op.UpdateOutputDesc("y", output_desc);
+}
+
+VERIFY_FUNC_REG(Dilation2DBackpropFilter, Dilation2DBackpropFilterVerify);
+INFER_FUNC_REG(Dilation2DBackpropFilter, Dilation2DBackpropFilterInfer);
+
+//--------- Dilation2DBackpropInput ---------------
+IMPLEMT_VERIFIER(Dilation2DBackpropInput, Dilation2DBackpropInputVerify) {
+  auto x_shape = op.GetInputDesc("x").GetShape();
+  Format input_format = op.GetInputDesc("x").GetFormat();
+  auto filter_shape = op.GetInputDesc("filter").GetShape();
+  std::vector<int64_t> filter_list = filter_shape.GetDims();
+  auto out_backprop_shape = op.GetInputDesc("out_backprop").GetShape();
+  Format out_backprop_format = op.GetInputDesc("out_backprop").GetFormat();
+
+  if (!CheckTwoInputDtypeSame(op, "x", "filter")) {
+    OP_LOGE(op.GetName().c_str(), "Two input dtypes must be same.");
+    return GRAPH_FAILED;
+  }
+  if (WithRank(op.GetInputDesc(0), 4, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Size", "XShape Size != 4");
+    OP_LOGE(op.GetName().c_str(), "The rank of x must be 4.");
+    return GRAPH_FAILED;
+  }
+
+  if (WithRank(op.GetInputDesc(1), 3, filter_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "Filter Shape Size", "FilterShape Size != 3");
+    OP_LOGE(op.GetName().c_str(), "The rank of filter must be 3.");
+    return GRAPH_FAILED;
+  }
+
+  if (WithRank(op.GetInputDesc(2), 4, out_backprop_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OpsOneInputShapeErrReport(op.GetName(), "out_backprop Shape Size", "out_backpropShape Size != 4");
+    OP_LOGE(op.GetName().c_str(), "The rank of out_backprop must be 4.");
+    return GRAPH_FAILED;
+  }
+
+  std::string data_format;
+  if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "data_format");
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+    return GRAPH_FAILED;
+  }
+  if (data_format != "NHWC" && data_format != "NCHW") {
+    OpsAttrValueErrReport(op.GetName(), "data_format", "NHWC,NCHW", data_format);
+    OP_LOGE(op.GetName().c_str(), "data_format[%s] is invalid!", data_format.c_str());
+    return GRAPH_FAILED;
+  }
+
+  if ((input_format == FORMAT_NCHW && out_backprop_format == FORMAT_NCHW && data_format != "NCHW") ||
+      (input_format == FORMAT_NHWC && out_backprop_format == FORMAT_NHWC && data_format != "NHWC")) {
+    InferShapeOtherErrReport(op.GetName(), "Input format and out_backprop_format and data_format is not same");
+  }
+
+  std::vector<int64_t> strides;
+  if (op.GetAttr("strides", strides) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "strides");
+    OP_LOGE(op.GetName().c_str(), "Get attr strides failed");
+    return GRAPH_FAILED;
+  }
+  if (strides.size() != 4) {
+    AttrSizeErrReport("strides", op.GetName(), ConcatString(strides.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr strides(%u) must be 4", strides.size());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> rates;
+  if (op.GetAttr("rates", rates) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "rates");
+    OP_LOGE(op.GetName().c_str(), "Get attr rates failed");
+    return GRAPH_FAILED;
+  }
+
+  if (rates.size() != 4) {
+    AttrSizeErrReport("rates", op.GetName(), ConcatString(rates.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr rates(%u) must be 4", rates.size());
+    return GRAPH_FAILED;
+  }
+
+  std::string padding_mode;
+  if (op.GetAttr("padding_mode", padding_mode) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "padding_mode");
+    OP_LOGE(op.GetName().c_str(), "Get padding failed!");
+    return GRAPH_FAILED;
+  }
+
+  if (padding_mode != "SAME" && padding_mode != "VALID" && padding_mode != "CALCULATED") {
+    OpsAttrValueErrReport(op.GetName(), "padding_mode", "SAME,VALID,CALCULATED", padding_mode);
+    OP_LOGE(op.GetName().c_str(), "Attr padding(%s) only support SAME,VALID,CALCULATED", padding_mode.c_str());
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> pads;
+  if (op.GetAttr("pads", pads) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "pads");
+    OP_LOGE(op.GetName().c_str(), "Get attr pads failed");
+    return GRAPH_FAILED;
+  }
+  if (pads.size() != 4) {
+    AttrSizeErrReport("pads", op.GetName(), ConcatString(pads.size()), "4");
+    OP_LOGE(op.GetName().c_str(), "Attr pads(%u) must be 4", pads.size());
+    return GRAPH_FAILED;
+  }
+
+  bool ceil_mode;
+  if (op.GetAttr("ceil_mode", ceil_mode) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
+    OP_LOGE(op.GetName().c_str(), "Get attr ceil_mode failed");
+    return GRAPH_FAILED;
+  }
+
+  int64_t window_h;
+  int64_t window_w;
+  int64_t rate_n;
+  int64_t rate_c;
+  int64_t stride_n;
+  int64_t stride_c;
+
+  if (data_format == "NHWC") {
+    rate_n = rates[0];
+    rate_c = rates[3];
+    stride_n = strides[0];
+    stride_c = strides[3];
+    window_h = (filter_list[0] - 1) * rates[1] + 1;
+    window_w = (filter_list[1] - 1) * rates[2] + 1;
+  } else {
+    rate_n = rates[0];
+    rate_c = rates[1];
+    stride_n = strides[0];
+    stride_c = strides[1];
+    window_h = (filter_list[1] - 1) * rates[2] + 1;
+    window_w = (filter_list[2] - 1) * rates[3] + 1;
+  }
+
+  if (rate_n != 1 || rate_c != 1) {
+    OpsAttrValueErrReport(op.GetName(), "rates", "1", ConcatString(rate_n, ",", rate_c));
+    OP_LOGE(op.GetName().c_str(), "rates[%d,%d] of NC is invalid!", rate_n, rate_c);
+    return GRAPH_FAILED;
+  }
+
+  if (stride_n != 1 || stride_c != 1) {
+    OpsAttrValueErrReport(op.GetName(), "strides", "1", ConcatString(stride_n, ",", stride_c));
+    OP_LOGE(op.GetName().c_str(), "strides[%d,%d] of NC is invalid!", stride_n, stride_c);
+    return GRAPH_FAILED;
+  }
+
+  if (padding_mode == "CALCULATED" &&
+      (pads[0] >= window_h || pads[1] >= window_h || pads[2] >= window_w || pads[3] >= window_w)) {
+    InferShapeOtherErrReport(op.GetName(), "pads must be less than window size when using CALCULATED mode");
+    OP_LOGE(op.GetName().c_str(), "pads must be less than window size when using CALCULATED mode");
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(Dilation2DBackpropInput, Dilation2DBackpropInputInfer) {
+  auto strides = op.get_attr_strides();
+  auto rates = op.get_attr_rates();
+  auto padding_mode = op.get_attr_padding_mode();
+  auto pads = op.get_attr_pads();
+  auto ceil_mode = op.get_attr_ceil_mode();
+  auto data_format = op.get_attr_data_format();
+  Shape x_shape = op.GetInputDesc("x").GetShape();
+  Shape filter_shape = op.GetInputDesc("filter").GetShape();
+  auto data_type = op.GetInputDesc("x").GetDataType();
+  TensorDesc output_desc = op.GetOutputDesc("y");
+
+  int32_t stride_rows;
+  int32_t stride_cols;
+  int32_t rate_rows;
+  int32_t rate_cols;
+  int64_t batch_size_dim;
+  int64_t in_rows_dim;
+  int64_t in_cols_dim;
+  int64_t filter_rows_dim;
+  int64_t filter_cols_dim;
+  int64_t output_depth_dim;
+  int64_t unused;
+  int32_t x_h_dim;
+  int32_t x_w_dim;
+  int32_t filter_h_dim;
+  int32_t filter_w_dim;
+
+  if (data_format == "NHWC") {
+    stride_rows = strides[1];
+    stride_cols = strides[2];
+    rate_rows = rates[1];
+    rate_cols = rates[2];
+    batch_size_dim = x_shape.GetDim(0);
+    in_rows_dim = x_shape.GetDim(1);
+    in_cols_dim = x_shape.GetDim(2);
+    filter_rows_dim = filter_shape.GetDim(0);
+    filter_cols_dim = filter_shape.GetDim(1);
+    output_depth_dim = filter_shape.GetDim(2);
+    unused = x_shape.GetDim(3);
+    x_h_dim = 1;
+    x_w_dim = 2;
+    filter_h_dim = 0;
+    filter_w_dim = 1;
+  } else {
+    stride_rows = strides[2];
+    stride_cols = strides[3];
+    rate_rows = rates[2];
+    rate_cols = rates[3];
+    batch_size_dim = x_shape.GetDim(0);
+    in_rows_dim = x_shape.GetDim(2);
+    in_cols_dim = x_shape.GetDim(3);
+    filter_rows_dim = filter_shape.GetDim(1);
+    filter_cols_dim = filter_shape.GetDim(2);
+    output_depth_dim = filter_shape.GetDim(0);
+    unused = x_shape.GetDim(1);
+    x_h_dim = 2;
+    x_w_dim = 3;
+    filter_h_dim = 1;
+    filter_w_dim = 2;
+  }
+
+  if (!ValueKnown(x_shape, x_h_dim) || !ValueKnown(x_shape, x_w_dim) || !ValueKnown(filter_shape, filter_h_dim) ||
+      !ValueKnown(filter_shape, filter_w_dim)) {
+    Shape output_shape({batch_size_dim, -1, -1, output_depth_dim});
+    output_desc.SetShape(output_shape);
+    output_desc.SetDataType(data_type);
+    return op.UpdateOutputDesc("y", output_desc);
+  }
+
+  if (Merge(unused, output_depth_dim, unused) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Merge unused and output_depth_dim failed.");
+    return GRAPH_FAILED;
+  }
+
+  if (data_format == "NHWC") {
+    Shape y_shape({batch_size_dim, in_rows_dim, in_cols_dim, output_depth_dim});
+    output_desc.SetShape(y_shape);
+  } else {
+    Shape y_shape({batch_size_dim, output_depth_dim, in_rows_dim, in_cols_dim});
+    output_desc.SetShape(y_shape);
+  }
+  output_desc.SetDataType(data_type);
+  return op.UpdateOutputDesc("y", output_desc);
+}
+
+VERIFY_FUNC_REG(Dilation2DBackpropInput, Dilation2DBackpropInputVerify);
+INFER_FUNC_REG(Dilation2DBackpropInput, Dilation2DBackpropInputInfer);
+
 // ----------------Pooling-------------------
 IMPLEMT_INFERFUNC(Pooling, PoolingInferShape) {
   auto globalPooling = op.get_attr_global_pooling();
@@ -2367,7 +2847,6 @@ static void UpdateDimAndRange(const int64_t& ksize, const int64_t& strides, int6
 }
 
 IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_shape = input_desc->MutableShape();

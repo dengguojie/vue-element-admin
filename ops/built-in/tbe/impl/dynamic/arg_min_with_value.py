@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-dynamic arg_min
+dynamic arg_min_with_value
 """
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
@@ -53,11 +53,12 @@ class Argmin():
     """Function: use to store argmin schedule parameters
     """
 
-    def __init__(self, shape_x, dtype_x, kernel_name):
+    def __init__(self, shape_x, dtype_x, dimension, kernel_name):
         """Init Argmin base parameters
         """
         self.tik_instance = tik.Tik()
         self.dtype_x = dtype_x
+        self.axis = dimension
         self.kernel_name = kernel_name
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.dtype_size = tbe_platform.get_bit_len(self.dtype_x) // 8
@@ -66,7 +67,7 @@ class Argmin():
         self.data_each_block = 8
         self.data_each_vector = 64
         if dtype_x == "float16":
-            self.segment = MAX_SEGMENT_LEN * 3  # only for arg at last dim
+            self.segment = MAX_SEGMENT_LEN * 2  # only for arg at last dim
             self.data_each_block = 16
             self.data_each_vector = 128
         self.init_gm_tensor()
@@ -125,8 +126,8 @@ class Argmin():
         """
         self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.data_gm = self.tik_instance.Tensor(self.dtype_x, (MAX_INT32,), name="data_gm", scope=tik.scope_gm)
-        self.axis_gm = self.tik_instance.Tensor("int32", (1,), name="axis_gm", scope=tik.scope_gm)
         self.result_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="result_gm", scope=tik.scope_gm)
+        self.result_gm_2 = self.tik_instance.Tensor(self.dtype_x, (MAX_INT32,), name="result_gm_2", scope=tik.scope_gm)
 
     def do_not_last_fp32(self, segment, gm_in_offset, gm_out_offset):
         """process for a segment when arg not last dim for fp32
@@ -164,6 +165,7 @@ class Argmin():
         # move out
         nbust_len_out = _get_ceil_int(segment, 8)
         self.tik_instance.data_move(self.result_gm[gm_out_offset], ub_c, 0, 1, nbust_len_out, 0, 0)
+        self.tik_instance.data_move(self.result_gm_2[gm_out_offset], ub_a, 0, 1, nbust_len_out, 0, 0)
 
     def do_not_last_fp16_default(self, segment, gm_in_offset, gm_out_offset):
         """process for a segment when arg not last dim for fp 16
@@ -213,6 +215,8 @@ class Argmin():
         # move out
         nbust_len_out = _get_ceil_int(segment, 8)
         self.tik_instance.data_move(self.result_gm[gm_out_offset], ub_c, 0, 1, nbust_len_out, 0, 0)
+        nbust_len_out_2 = _get_ceil_int(segment, 16)
+        self.tik_instance.data_move(self.result_gm_2[gm_out_offset], ub_a, 0, 1, nbust_len_out_2, 0, 0)
 
     def do_not_last_fp16_align(self, segment, gm_in_offset, gm_out_offset):
         """process for a segment when arg not last dim for fp16 align
@@ -279,6 +283,8 @@ class Argmin():
         # move out
         nbust_len_out = _get_ceil_int(segment, 8)
         self.tik_instance.data_move(self.result_gm[gm_out_offset], ub_c, 0, 1, nbust_len_out, 0, 0)
+        nbust_len_out_2 = _get_ceil_int(segment, 16)
+        self.tik_instance.data_move(self.result_gm_2[gm_out_offset], ub_min, 0, 1, nbust_len_out_2, 0, 0)
 
     def compute_argmin_not_last_axis_cut_by_first_dim(self, first_idx, segment_loop, segment_tail, segment_tail_data,
                                                       offset_data, func):
@@ -338,6 +344,9 @@ class Argmin():
         self.ub_result_int32 = self.tik_instance.Tensor("int32", (MAX_SEGMENT_LEN,),
                                                         name="ub_result_int32",
                                                         scope=tik.scope_ubuf)
+        self.ub_result_fp16 = self.tik_instance.Tensor("float16", (MAX_SEGMENT_LEN,),
+                                                       name="ub_result_fp16",
+                                                       scope=tik.scope_ubuf)
 
         def do_argmin_last_axis_fp16_less_vector(first_idx, segment_len):
             """do_argmin_last_axis_fp16_less_vector
@@ -375,6 +384,9 @@ class Argmin():
                         last_min_index = self.tik_instance.Scalar("uint16")
                         last_min_index.set_as(ub_data[_vcmin_idx * 2 + 1])
                         self.ub_result_int32[_vcmin_idx * self.align_num + align_idx].set_as(last_min_index)
+                        last_min_value = self.tik_instance.Scalar("float16")
+                        last_min_value.set_as(ub_data[_vcmin_idx * 2])
+                        self.ub_result_fp16[_vcmin_idx * self.align_num + align_idx].set_as(last_min_value)
 
         def _run(segment_len, segment_index):
             """run function
@@ -386,6 +398,9 @@ class Argmin():
             gm_out_offset = core_idx * self.one_core_ele + self.axis_size_one_time * segment_index
             out_nbust = _get_ceil_int(segment_len, 8)
             self.tik_instance.data_move(self.result_gm[gm_out_offset], self.ub_result_int32, 0, 1, out_nbust, 0, 0)
+            self.tik_instance.data_move(self.result_gm[gm_out_offset], self.ub_result_int32, 0, 1, out_nbust, 0, 0)
+            out_nbust_2 = _get_ceil_int(segment_len, 16)
+            self.tik_instance.data_move(self.result_gm_2[gm_out_offset], self.ub_result_fp16, 0, 1, out_nbust_2, 0, 0)
 
         # run loop
         with self.tik_instance.for_range(0, segment_loop) as _loop:
@@ -400,6 +415,9 @@ class Argmin():
         self.ub_result_int32 = self.tik_instance.Tensor("int32", (MAX_SEGMENT_LEN,),
                                                         name="ub_result_int32",
                                                         scope=tik.scope_ubuf)
+        self.ub_result_fp16 = self.tik_instance.Tensor("float16", (MAX_SEGMENT_LEN,),
+                                                       name="ub_result_fp16",
+                                                       scope=tik.scope_ubuf)
 
         def do_argmin_last_axis_fp16_more_vector(first_idx, segment_len):
             """do_argmin_last_axis_fp16_more_vector
@@ -494,6 +512,9 @@ class Argmin():
                         last_min_index.set_as(ub_data[vector_size * out_idx + second_min_index * 8 + 1])
                         result_int32.set_as(second_min_index * 8 + last_min_index)
                         self.ub_result_int32[out_idx * self.align_num + align_idx].set_as(result_int32)
+                        last_min_value = self.tik_instance.Scalar("float16")
+                        last_min_value.set_as(ub_data[vector_size * out_idx + second_min_index * 8])
+                        self.ub_result_fp16[out_idx * self.align_num + align_idx].set_as(last_min_value)
 
         def _run(segment_len, segment_index):
             """run function
@@ -505,6 +526,8 @@ class Argmin():
             gm_out_offset = core_idx * self.one_core_ele + self.axis_size_one_time * segment_index
             out_nbust = _get_ceil_int(segment_len, 8)
             self.tik_instance.data_move(self.result_gm[gm_out_offset], self.ub_result_int32, 0, 1, out_nbust, 0, 0)
+            out_nbust_2 = _get_ceil_int(segment_len, 16)
+            self.tik_instance.data_move(self.result_gm_2[gm_out_offset], self.ub_result_fp16, 0, 1, out_nbust_2, 0, 0)
 
         # run loop
         with self.tik_instance.for_range(0, segment_loop) as _loop:
@@ -519,6 +542,9 @@ class Argmin():
         self.ub_result_int32 = self.tik_instance.Tensor("int32", (MAX_SEGMENT_LEN,),
                                                         name="ub_result_int32",
                                                         scope=tik.scope_ubuf)
+        self.ub_result_fp16 = self.tik_instance.Tensor("float16", (MAX_SEGMENT_LEN,),
+                                                       name="ub_result_fp16",
+                                                       scope=tik.scope_ubuf)
 
         def do_argmin_last_axis_fp16_copy_one_time(first_idx):
             """do_argmin_last_axis_fp16_copy_one_time
@@ -598,6 +624,9 @@ class Argmin():
             last_min_index = self.tik_instance.Scalar("uint16")
             last_min_index.set_as(ub_result[second_min_index + 1])
             self.result_int32.set_as(second_min_index * 64 + last_min_index)
+            last_min_value = self.tik_instance.Scalar("float16")
+            last_min_value.set_as(ub_result[second_min_index])
+            self.result_fp16.set_as(last_min_value)
 
         def _run(segment_len, segment_index):
             """run function
@@ -606,13 +635,17 @@ class Argmin():
             with self.tik_instance.for_range(0, segment_len) as idx:
                 first_idx = core_idx * self.one_core_ele + idx + MAX_SEGMENT_LEN * segment_index
                 self.result_int32 = self.tik_instance.Scalar("int32")
+                self.result_fp16 = self.tik_instance.Scalar("float16")
                 do_argmin_last_axis_fp16_copy_one_time(first_idx)
                 self.ub_result_int32[idx] = self.result_int32
+                self.ub_result_fp16[idx] = self.result_fp16
 
             # move out
             gm_out_offset = core_idx * self.one_core_ele + MAX_SEGMENT_LEN * segment_index
             out_nbust = _get_ceil_int(segment_len, 8)
             self.tik_instance.data_move(self.result_gm[gm_out_offset], self.ub_result_int32, 0, 1, out_nbust, 0, 0)
+            out_nbust_2 = _get_ceil_int(segment_len, 16)
+            self.tik_instance.data_move(self.result_gm_2[gm_out_offset], self.ub_result_fp16, 0, 1, out_nbust_2, 0, 0)
 
         # run loop
         with self.tik_instance.for_range(0, segment_loop) as _loop:
@@ -627,6 +660,9 @@ class Argmin():
         self.ub_result_int32 = self.tik_instance.Tensor("int32", (MAX_SEGMENT_LEN,),
                                                         name="ub_result_int32",
                                                         scope=tik.scope_ubuf)
+        self.ub_result_fp16 = self.tik_instance.Tensor("float16", (MAX_SEGMENT_LEN,),
+                                                       name="ub_result_fp16",
+                                                       scope=tik.scope_ubuf)
 
         def do_argmin_last_axis_fp16(segment, loop, first_idx):
             """do_argmin_last_axis_fp16
@@ -771,10 +807,13 @@ class Argmin():
                 with self.tik_instance.if_scope(self.tail_size != 0):
                     do_argmin_last_axis_fp16(self.tail_size, self.loop_times, first_idx)
                 self.ub_result_int32[idx] = self.result_int32
+                self.ub_result_fp16[idx] = self.result_out_scalar
             # move out
             gm_out_offset = core_idx * self.one_core_ele + MAX_SEGMENT_LEN * segment_index
             out_nbust = _get_ceil_int(segment_len, 8)
             self.tik_instance.data_move(self.result_gm[gm_out_offset], self.ub_result_int32, 0, 1, out_nbust, 0, 0)
+            out_nbust_2 = _get_ceil_int(segment_len, 16)
+            self.tik_instance.data_move(self.result_gm_2[gm_out_offset], self.ub_result_fp16, 0, 1, out_nbust_2, 0, 0)
 
         # run loop
         with self.tik_instance.for_range(0, segment_loop) as _loop:
@@ -789,6 +828,9 @@ class Argmin():
         self.ub_result_int32 = self.tik_instance.Tensor("int32", (MAX_SEGMENT_LEN,),
                                                         name="ub_result_int32",
                                                         scope=tik.scope_ubuf)
+        self.ub_result_fp32 = self.tik_instance.Tensor("float32", (MAX_SEGMENT_LEN,),
+                                                       name="ub_result_fp32",
+                                                       scope=tik.scope_ubuf)
 
         def do_argmin_last_axis_fp32(segment, loop, first_idx):
             """do_argmin_last_axis_fp32
@@ -883,10 +925,12 @@ class Argmin():
                 with self.tik_instance.if_scope(self.tail_size != 0):
                     do_argmin_last_axis_fp32(self.tail_size, self.loop_times, first_idx)
                 self.ub_result_int32[idx] = self.result_int32
+                self.ub_result_fp32[idx] = self.result_out_scalar
             # move out
             gm_out_offset = core_idx * self.one_core_ele + MAX_SEGMENT_LEN * segment_index
             out_nbust = _get_ceil_int(segment_len, 8)
             self.tik_instance.data_move(self.result_gm[gm_out_offset], self.ub_result_int32, 0, 1, out_nbust, 0, 0)
+            self.tik_instance.data_move(self.result_gm_2[gm_out_offset], self.ub_result_fp32, 0, 1, out_nbust, 0, 0)
 
         # run loop
         with self.tik_instance.for_range(0, segment_loop) as _loop:
@@ -1003,34 +1047,37 @@ class Argmin():
         self.argmin_compute_tiling()
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.data_gm, self.axis_gm],
-                                   outputs=[self.result_gm],
+                                   inputs=[self.data_gm],
+                                   outputs=[self.result_gm, self.result_gm_2],
                                    flowtable=[self.tiling_gm],
                                    config=opt_config)
         tbe_context.get_context().add_compile_info("vars", {
             "ub_ele": self.ub_ele,
             "core_num": self.core_num,
+            "axis": self.axis,
         })
         return self.tik_instance
 
 
-@register_operator("ArgMin")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.KERNEL_NAME)
-def arg_min(x, dimension, y, kernel_name="arg_min"):
+@register_operator("ArgMinWithValue")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+def arg_min_with_value(x, index, value, dimension, kernel_name="arg_min_with_value"):
     """
-    Generate arg_min operator use arg_min
+    Generate arg_min_with_value operator use arg_min_with_value
 
     Parameters
     ----------
     x: dict
         data of input, support "float16", "float32".
+    index: dict
+        index of output.
+    value: dict
+        index of output.
     dimension: dict
         dimension input.
-    y: dict
-        index of output.
     kernel_name: str
-        kernel name, default value is "arg_min"
+        kernel name, default value is "arg_min_with_value"
 
     Returns
     -------
@@ -1041,8 +1088,8 @@ def arg_min(x, dimension, y, kernel_name="arg_min"):
     para_check.check_shape(shape_x, param_name="x")
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype_x.lower(), check_list, param_name="x")
-    min_index = Argmin(shape_x, dtype_x, kernel_name)
+    max_index = Argmin(shape_x, dtype_x, dimension, kernel_name)
 
-    tik_instance = min_index.argmin_compute()
+    tik_instance = max_index.argmin_compute()
 
     return tik_instance

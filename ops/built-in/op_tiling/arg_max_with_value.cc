@@ -115,7 +115,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   if (dtype == "float16") {
     data_each_block = 16;
     data_each_vector = 128;
-    segment = MAX_SEGMENT_LEN * 3;  // for arg at last dim
+    segment = MAX_SEGMENT_LEN * 2;  // for arg at last dim
   }
 
   int32_t first_dim_size = 1;
@@ -133,10 +133,10 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
 
     // calc core number at first dim size
     int32_t core_number = core_num;
-    if (param.first_dim_size < 8)
+    if (param.first_dim_size < data_each_block)
       core_number = 1;
     int32_t core_segment = GetCeilInt(param.first_dim_size, core_number);
-    core_segment = GetCeilInt(core_segment, 8) * 8;
+    core_segment = GetCeilInt(core_segment, data_each_block) * data_each_block;
 
     param.one_core_ele = core_segment;
     param.act_core_num = GetCeilInt(param.first_dim_size, core_segment);
@@ -304,35 +304,14 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
                          OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "ArgOpsTiling running.");
 
-  // get axis value
-  int32_t axis;
-  string axis_type = op_paras.inputs[1].tensor[0].dtype;
-  if (axis_type == "int32") {
-    const int32_t* axis_ptr = reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at("dimension")));
-    axis = *axis_ptr;
-  } else if (axis_type == "int64") {
-    const int64_t* axis_ptr = reinterpret_cast<const int64_t*>(std::get<0>(op_paras.const_inputs.at("dimension")));
-    axis = *axis_ptr;
-  } else {
-    OP_LOGE(op_type.c_str(), "ArgOpsTiling: axis can only support int32, int64, but got %s", axis_type.c_str());
-    return false;
-  }
-  // check axis value and set to positive value
-  vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
-  int64_t input_dims = input_shape.size();
-  if (axis < -input_dims || axis >= input_dims) {
-    OP_LOGE(op_type.c_str(), "ArgOpsTiling: axis is invalid, axis:%d, dims:%d", axis, input_dims);
-    return false;
-  }
-  axis = (axis + input_dims) % input_dims;
-  OP_LOGD(op_type.c_str(), "ArgOpsTiling", "axis is %d.", axis);
-
   // get compile info
   int32_t ub_ele = 0;
   int32_t core_num = 1;
+  int32_t axis = 1;
   const map<string, int32_t&> compile_params = {
       {"ub_ele", ub_ele},
       {"core_num", core_num},
+      {"axis", axis},
   };
   for (auto& param : compile_params) {
     const auto& name = param.first;
@@ -342,6 +321,16 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
     }
     OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
   }
+
+  // check axis value and set to positive value
+  vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
+  int64_t input_dims = input_shape.size();
+  if (axis < -input_dims || axis >= input_dims) {
+    OP_LOGE(op_type.c_str(), "ArgOpsTiling: axis is invalid, axis:%d, dims:%d", axis, input_dims);
+    return false;
+  }
+  axis = (axis + input_dims) % input_dims;
+  OP_LOGD(op_type.c_str(), "ArgOpsTiling", "axis is %d.", axis);
 
   // calc and set and print tiling param
   TilingParam param;
@@ -360,6 +349,6 @@ static bool ArgOpsTiling(const string& op_type, const TeOpParas& op_paras, const
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(ArgMin, ArgOpsTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(ArgMaxV2, ArgOpsTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(ArgMaxWithValue, ArgOpsTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(ArgMinWithValue, ArgOpsTiling);
 }  // namespace optiling

@@ -158,6 +158,8 @@ set(_tf_plugins
   dynamic_gruv2_plugin.cc
   dynamic_gruv2_grad_plugin.cc
   dilation2d_plugin.cc
+  dilation2d_backprop_filter_plugin.cc
+  dilation2d_backprop_input_plugin.cc
   elu_grad_plugin.cc
   elu_plugin.cc
   equal_plugin.cc

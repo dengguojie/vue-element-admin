@@ -342,7 +342,6 @@ class Argmax():
         def do_argmax_last_axis_fp16_less_vector(first_idx, segment_len):
             """do_argmax_last_axis_fp16_less_vector
             """
-            result_int32 = self.tik_instance.Scalar("int32")
             segment_align_num = segment_len // self.align_num
             segment_align_tail = segment_len % self.align_num
 
@@ -375,8 +374,7 @@ class Argmax():
                     with self.tik_instance.for_range(0, repeat_vcmax) as _vcmax_idx:
                         last_max_index = self.tik_instance.Scalar("uint16")
                         last_max_index.set_as(ub_data[_vcmax_idx * 2 + 1])
-                        result_int32.set_as(last_max_index)
-                        self.ub_result_int32[_vcmax_idx * self.align_num + align_idx].set_as(result_int32)
+                        self.ub_result_int32[_vcmax_idx * self.align_num + align_idx].set_as(last_max_index)
 
         def _run(segment_len, segment_index):
             """run function

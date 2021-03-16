@@ -16,8 +16,8 @@
 space_to_depth
 """
 # pylint: disable=W0613
-# pylint: disable=too-many-lines,wildcard-import,undefined-variable
-# pylint: disable=inconsistent-return-statements,unused-variable,super-with-arguments
+# pylint: disable=too-many-lines,wildcard-import,undefined-variable,not-callable
+# pylint: disable=inconsistent-return-statements,unused-variable,unused-wildcard-import
 from te import tik
 from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
@@ -39,9 +39,6 @@ BLOCK_SIZE_MIN = 2
 
 # the dim count is four
 DIM_CNT_FOUR = 4
-
-# the format of NHWC
-NHWC_STR = "NHWC"
 
 # the maximum value of  burst_n
 MAX_BURST_N = 4095
@@ -163,9 +160,12 @@ def _check_param(x, y, block_size, data_format, kernel_name):
     -------
     None
     """
-    if data_format != NHWC_STR:
+    data_format_tuple = ("NCHW", "NHWC")
+    if data_format not in data_format_tuple:
+        excepted_format_list = "NCHW, NHWC"
         error_manager_vector.raise_err_input_format_invalid(kernel_name, "data_format", \
-                                                            NHWC_STR, data_format)
+                                                            excepted_format_list, data_format)
+
     shape = x.get("shape")
     dtype = x.get("dtype").lower()
 

@@ -2140,7 +2140,6 @@ COMMON_INFER_FUNC_REG(ArgMin, ArgMinInferShape);
 // -------------------------------ArgMin----------------------------------------
 
 // --------------------------------ArgMinD--------------------------------------
-
 IMPLEMT_COMMON_INFERFUNC(ArgMinDInferShape) {
   // get all input desc
   auto node = NodeUtils::GetNodeFromOperator(op);
@@ -2191,6 +2190,7 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinDInferShape) {
 
   return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(ArgMinD, ArgMinDInferShape);
 // ------------------------------ArgMinD----------------------------------------
 
@@ -2331,57 +2331,76 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
 
   return GRAPH_SUCCESS;
 }
+
 COMMON_INFER_FUNC_REG(ArgMaxD, ArgMaxDInferShape);
 // ------------------------------ArgMaxD----------------------------------------
 
 // ----------------------------ArgMaxWithValue----------------------------------
 IMPLEMT_COMMON_INFERFUNC(ArgMaxWithValueInferShape) {
-  auto tensordesc = op.GetInputDesc("x");
-  auto shape_x = tensordesc.GetShape();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();;
+  auto input_dtype = input_desc->GetDataType();
+  auto indice_desc = op_info->MutableOutputDesc("indice");
+  auto values_desc = op_info->MutableOutputDesc("values");
+  indice_desc->SetDataType(DT_INT32);
+  values_desc->SetDataType(input_dtype);
+
+  // if input_shape == -2, set output -2
+  if (IsUnknownRankShape(input_shape)) {
+    indice_desc->SetShape(GeShape(input_shape));
+    values_desc->SetShape(GeShape(input_shape));
+    return GRAPH_SUCCESS;
+  }
+
+  // get dimension
   int64_t dimension;
-  if (GRAPH_SUCCESS != op.GetAttr("dimension", dimension)) {
+  if (op.GetAttr("dimension", dimension) != GRAPH_SUCCESS) {
     OpsGetAttrErrReport(op.GetName(), "dimension");
     OP_LOGE(op.GetName().c_str(), "GetAttr dimension failed.");
     return GRAPH_FAILED;
   }
   if (dimension < 0) {
-    dimension += shape_x.GetDimNum();
+    dimension += input_shape.size();
   }
-  auto dim_num = shape_x.GetDimNum();
-  vector<int64_t> y_shape;
-  for (size_t i = 0; i < dim_num; ++i) {
-    y_shape.push_back(shape_x.GetDim(i));
+  if (dimension >= input_shape.size()) {
+    OP_LOGE(op.GetName().c_str(),
+            "The dimension value must be range at input shape size, but got dimension value %d, input shape size %d.",
+            dimension, input_shape.size());
+    return GRAPH_FAILED;
   }
-  int64_t max_size = y_shape.size();
-  if (max_size != 0) {
-    dimension = dimension % max_size;
-  }
-  OP_LOGI(op.GetName().c_str(), "the dimension is %d.", (int)dimension);
 
+  // get keep_dims
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
     OpsGetAttrErrReport(op.GetName(), "keep_dims");
     OP_LOGE(op.GetName().c_str(), "GetAttr of keep_dims failed.");
     return GRAPH_FAILED;
   }
+
+  vector<int64_t> output_shape(input_shape);
   if (keep_dims) {
     // If keepDims is true, current dimesion set to 1
-    y_shape[dimension] = 1;
+    output_shape[dimension] = 1;
   } else {
-    y_shape.erase(y_shape.begin() + dimension);
+    output_shape.erase(output_shape.begin() + dimension);
   }
+  indice_desc->SetShape(GeShape(output_shape));
+  values_desc->SetShape(GeShape(output_shape));
 
-  Shape outputShape(y_shape);
-  DataType input_dtype = tensordesc.GetDataType();
-  TensorDesc td = op.GetOutputDesc("indice");
-  TensorDesc td2 = op.GetOutputDesc("values");
-  td.SetShape(outputShape);
-  td2.SetShape(outputShape);
-  td.SetDataType(DT_INT32);
-  td2.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("indice", td);
-  (void)op.UpdateOutputDesc("values", td2);
-
+  // when output is dynamic will update range
+  if (IsUnknown(output_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    MakeUpShapeRange(input_shape, input_range);
+    if (keep_dims) {
+      input_range[dimension] = {1, 1};
+    } else {
+      input_range.erase(input_range.begin() + dimension);
+    }
+    indice_desc->SetShapeRange(input_range);
+    values_desc->SetShapeRange(input_range);
+  }
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(ArgMaxWithValue, ArgMaxWithValueInferShape);
@@ -2389,49 +2408,70 @@ COMMON_INFER_FUNC_REG(ArgMaxWithValue, ArgMaxWithValueInferShape);
 
 // ---------------------------ArgMinWithValue-----------------------------------
 IMPLEMT_COMMON_INFERFUNC(ArgMinWithValueInferShape) {
-  auto tensordesc = op.GetInputDesc("x");
-  auto shape_x = tensordesc.GetShape();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape().GetDims();
+  auto input_dtype = input_desc->GetDataType();
+  auto indice_desc = op_info->MutableOutputDesc("indice");
+  auto values_desc = op_info->MutableOutputDesc("values");
+  indice_desc->SetDataType(DT_INT32);
+  values_desc->SetDataType(input_dtype);
+
+  // if input_shape == -2, set output -2
+  if (IsUnknownRankShape(input_shape)) {
+    indice_desc->SetShape(GeShape(input_shape));
+    values_desc->SetShape(GeShape(input_shape));
+    return GRAPH_SUCCESS;
+  }
+
+  // get dimension
   int64_t dimension;
-  if (GRAPH_SUCCESS != op.GetAttr("dimension", dimension)) {
+  if (op.GetAttr("dimension", dimension) != GRAPH_SUCCESS) {
     OpsGetAttrErrReport(op.GetName(), "dimension");
     OP_LOGE(op.GetName().c_str(), "GetAttr dimension failed.");
     return GRAPH_FAILED;
   }
   if (dimension < 0) {
-    dimension += shape_x.GetDimNum();
+    dimension += input_shape.size();
   }
-  auto dim_num = shape_x.GetDimNum();
-  vector<int64_t> y_shape;
-  for (size_t i = 0; i < dim_num; ++i) {
-    y_shape.push_back(shape_x.GetDim(i));
+  if (dimension >= input_shape.size()) {
+    OP_LOGE(op.GetName().c_str(),
+            "The dimension value must be range at input shape size, but got dimension value %d, input shape size %d.",
+            dimension, input_shape.size());
+    return GRAPH_FAILED;
   }
-  int64_t max_size = y_shape.size();
-  dimension = dimension % max_size;
-  OP_LOGI(op.GetName().c_str(), "the dimension is %d.", (int)dimension);
 
+  // get keep_dims
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
     OpsGetAttrErrReport(op.GetName(), "keep_dims");
     OP_LOGE(op.GetName().c_str(), "GetAttr of keep_dims failed.");
     return GRAPH_FAILED;
   }
+
+  vector<int64_t> output_shape(input_shape);
   if (keep_dims) {
     // If keepDims is true, current dimesion set to 1
-    y_shape[dimension] = 1;
+    output_shape[dimension] = 1;
   } else {
-    y_shape.erase(y_shape.begin() + dimension);
+    output_shape.erase(output_shape.begin() + dimension);
   }
+  indice_desc->SetShape(GeShape(output_shape));
+  values_desc->SetShape(GeShape(output_shape));
 
-  Shape outputShape(y_shape);
-  DataType input_dtype = tensordesc.GetDataType();
-  TensorDesc td = op.GetOutputDesc("indice");
-  TensorDesc td2 = op.GetOutputDesc("values");
-  td.SetShape(outputShape);
-  td2.SetShape(outputShape);
-  td.SetDataType(DT_INT32);
-  td2.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("indice", td);
-  (void)op.UpdateOutputDesc("values", td2);
+  // when output is dynamic will update range
+  if (IsUnknown(output_shape)) {
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    MakeUpShapeRange(input_shape, input_range);
+    if (keep_dims) {
+      input_range[dimension] = {1, 1};
+    } else {
+      input_range.erase(input_range.begin() + dimension);
+    }
+    indice_desc->SetShapeRange(input_range);
+    values_desc->SetShapeRange(input_range);
+  }
   return GRAPH_SUCCESS;
 }
 
