@@ -50,14 +50,15 @@ L1_SIZE = CceProductParams().getParams("L1_Buffer")
 # pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
 # pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
 # pylint: disable=too-many-statements,no-self-use,too-few-public-methods
-def  check_supported(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
-                     ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
+# pylint: disable=too-many-locals,unused-argument
+def check_supported(x, y, argmax, ksize, strides, pads, dtype, dilation,
+                    ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     """
     check whether ai_core is supported
     """
     if ksize[1] * ksize[2] > SCALAR_255:
         return False
-    
+
     return True
 
 
@@ -156,11 +157,11 @@ def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode, kernel_
     if dtype != DT_INT32 and dtype != DT_INT64:
         raise RuntimeError("MaxPoolWithArgmax only supports output indices data type: "
                            "int32, int64, and other data type not support!")
-    if ksize[1] * ksize[2] > 255:
+    if ksize[1] * ksize[2] > SCALAR_255:
         raise RuntimeError("invalid window params, kernel_h*kernel_w should be <= 255")
 
 
-class MaxPoolWithargmaxPytorch():
+class MaxPoolWithargmaxPytorch(object):
     """
     Function: use to finish MaxPoolWithargmax main functions
     Modify : 2019-10-16
@@ -576,6 +577,8 @@ class MaxPoolWithargmaxPytorch():
                 cut_h_tail = self.input_h + self.pad[2] - cut_stride * (cut_h_num - 1)
                 if cut_h_tail > cut_h_size:
                     cut_h_tail = cut_h_size
+                if cut_h_tail <= 0:
+                    cut_h_tail = 1
                 tmp_tail = (cut_h_tail - self.kernel_h + self.stride_h + self.pad[3])
                 if tmp_tail < self.stride_h:
                     out_size_h_tail = (cut_h_tail - self.kernel_h + self.stride_h + self.pad[3])
@@ -594,6 +597,8 @@ class MaxPoolWithargmaxPytorch():
 
                 with self.tik_instance.if_scope((last_tem + (gm_l1_burst_len // self.input_w)) > self.input_h):
                     gm_l1_burst_len_1.set_as((self.input_h - last_tem) * self.input_w)
+                with self.tik_instance.if_scope(gm_l1_burst_len_1 <= 0):
+                    gm_l1_burst_len_1.set_as(self.input_w)
                 self.tik_instance.data_move(
                     input_fmap_l1, self.input_fmap_gm[nc1_num * self.input_h * self.input_w * self.c0_size +
                                                       last_tem * self.input_w * self.c0_size],
@@ -646,8 +651,8 @@ class MaxPoolWithargmaxPytorch():
                     self._dup_mask_fun(mask_ub, mask_shape_ub)
                 mask_cut = fmap_img2col_h_tail_num * 16 - fmap_img2col_h_tail
                 mask_zero_cut = 2 ** 16 - 2 ** (16 - mask_cut)
-                offset_output_mask = nc1_num * (
-                            self.fmap_h_num + 1) * self.fmap_w * self.c0_size + cut_h_index * fmap_img2col_cut_h
+                offset_output_mask = nc1_num * (self.fmap_h_num + 1) * \
+                    self.fmap_w * self.c0_size + cut_h_index * fmap_img2col_cut_h
 
                 len_tmp1.set_as(cut_h_index * fmap_img2col_cut_h +
                                 (self.fmap_w - 1) * (self.fmap_h_num + 1) * self.c0_size)
