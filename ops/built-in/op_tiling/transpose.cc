@@ -33,6 +33,49 @@ namespace optiling {
 
 #define INVALID_SPLIT 999
 
+static void PrintScreen(const string & logStr) {
+    const char * pLevel = std::getenv("ASCEND_GLOBAL_LOG_LEVEL");
+    const char * pStdout = std::getenv("ASCEND_SLOG_PRINT_TO_STDOUT");
+
+    if (pLevel == NULL || pStdout == NULL) {
+        return;
+    }
+    if (pLevel[0] == '0' && pStdout[0] == '1') {
+        cout<<logStr<<endl;
+    }
+}
+
+// 1/16 usage of UB with vnchwconv
+static int64_t CalcVnchwconvPartialUbSize(int64_t coreNum, int64_t ubBlocks) {
+    int scalarBorrow = 8; //unit: kb
+    if (coreNum > 2 && ubBlocks == 8192) {
+        return 3952; // 910, UB : 256KB
+    }
+    else if (coreNum == 2 && ubBlocks == 8192) {
+        return 3824; // 310, UB : 248KB
+    }
+    else if (coreNum == 1 && ubBlocks == 6144) {
+        return 2832; // cs and es, UB : 192KB
+    } else {
+        return (ubBlocks * 32 / 1024 - scalarBorrow - TILING_FIXED_MAX_LEN) * 1024 / 33 / 2 / 16 * 16;
+    }
+}
+
+// full usage of UB with vnchwconv
+static int64_t CalcVnchwconvFullColSize(int64_t coreNum, int64_t ubBlocks) {
+    if (coreNum > 2 && ubBlocks == 8192) {
+        return 256; //910, 224*2 is better
+    }
+    else if (coreNum == 2 && ubBlocks == 8192) {
+        return 256; //310, 224*2 is better
+    }
+    else if (coreNum == 1 && ubBlocks == 6144) {
+        return 256; // cs and es
+    } else {
+        return 256;
+    }
+}
+
 static int GCD(int a, int b) {
     if (b == 0) return a;
     return GCD(b, a % b);
@@ -734,8 +777,8 @@ static void CalcWorkspaceParams(const CompilerInfo & compilerInfo,
 }
 
 static void PrintShapeInfo(const ShapeInfo &shapeInfo, string & logStr) {
-    logStr += "scenario  in                  out                 perm        reducedIn           reducedOut          ";
-    logStr += "reducedPerm  dim  lastAxisLen  lastAxisBurstLen  alignElement\n";
+    logStr += "\nscenario  in                  out                 perm        reducedIn           reducedOut        ";
+    logStr += "  reducedPerm  dim  lastAxisLen  lastAxisBurstLen  alignElement\n";
     logStr += "------------------------------------------------------------------------------------------------------";
     logStr += "-----------------------------------------------------------------\n";
     logStr += to_string(shapeInfo.scenario, 10);
@@ -780,7 +823,7 @@ static string PrintTilingInfoScenario0(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
-    //cout<<logStr<<endl;
+    PrintScreen(logStr);
     return logStr;
 }
 
@@ -811,7 +854,7 @@ static string PrintTilingInfoScenario1(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
-    //cout<<logStr<<endl;
+    PrintScreen(logStr);
     return logStr;
 }
 
@@ -857,7 +900,7 @@ static string PrintTilingInfoScenario2(const CompilerInfo & compilerInfo,
         logStr += to_string(loopInfo.tailTailNum, 13);
         logStr += "\n";
     }
-    //cout<<logStr<<endl;
+    PrintScreen(logStr);
     return logStr;
 }
 
@@ -892,7 +935,7 @@ static string PrintTilingInfoScenario3(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
-    //cout<<logStr<<endl;
+    PrintScreen(logStr);
     return logStr;
 }
 
@@ -971,7 +1014,7 @@ static string PrintTilingInfoScenario7(const CompilerInfo & compilerInfo,
         logStr += "\n";
     }
     logStr += "\n\n";
-    //cout<<logStr<<endl;
+    PrintScreen(logStr);
     return logStr;
 }
 
@@ -1360,14 +1403,18 @@ static void SplitNByFactor(RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
 static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
     priority_queue<shared_ptr<TilingModel>, vector<shared_ptr<TilingModel>>, TMCompare> pqtm = runtimeInfo.pqtm;
     shared_ptr<TilingModel> tm = pqtm.top();
-    int64_t maxCol = tm->maxCol / SizeofDType(compilerInfo.dType) * 2;
+    int64_t maxCol = tm->maxCol;
     int64_t factor = tm->sp.colFactor;
     runtimeInfo.infoCol.resize(factor);
     vector<InfoCol> & info = runtimeInfo.infoCol;
 
-    for (int64_t i = 0; i < factor; i++) {
-        int64_t col = runtimeInfo.colRange[i].second;
-        if (col >= elePerBlock) {
+    if (tm->Ist2f()) {
+        for (int64_t i = 0; i < factor; i++) {
+            info[i].colPerMC = runtimeInfo.colRange[i].second;
+        }
+    } else {
+        for (int64_t i = 0; i < factor; i++) {
+            int64_t col = runtimeInfo.colRange[i].second;
             if (col != 0) {
                 int64_t k = col % elePerBlock;
                 if (k != 0) {
@@ -1382,24 +1429,22 @@ static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                 info[i].colBlockTC = info[i].colTC / elePerBlock;
                 info[i].colOffset = runtimeInfo.colRange[i].first;
             }
-        } else {
-            info[i].colPerMC = col;
         }
-    }
 
-    for (int64_t i = 1; i < runtimeInfo.dstJumpAxisNum; i++) {
-        runtimeInfo.dstJumpFactorMod[i] *= runtimeInfo.dstJumpFactorMod[i - 1] * runtimeInfo.dstJumpFactor[i - 1];
-    }
+        for (int64_t i = 1; i < runtimeInfo.dstJumpAxisNum; i++) {
+            runtimeInfo.dstJumpFactorMod[i] *= runtimeInfo.dstJumpFactorMod[i - 1] * runtimeInfo.dstJumpFactor[i - 1];
+        }
 
-    for (int64_t i = 0; i < factor; i++) {
-        info[i].initDstTuple.resize(runtimeInfo.dstJumpAxisNum);
-        info[i].tailDstTuple.resize(runtimeInfo.dstJumpAxisNum);
-        for (int64_t j = 0; j < runtimeInfo.dstJumpAxisNum; j++) {
-            info[i].initDstTuple[j] = (info[i].colOffset / runtimeInfo.dstJumpFactorMod[j]) %\
-                                      runtimeInfo.dstJumpFactor[j];
-            if (info[i].colTC != 0) {
-                int64_t col = info[i].colOffset + info[i].colPerMC * info[i].loopOnMC - info[i].backStepLeft;
-                info[i].tailDstTuple[j] = (col / runtimeInfo.dstJumpFactorMod[j]) % runtimeInfo.dstJumpFactor[j];
+        for (int64_t i = 0; i < factor; i++) {
+            info[i].initDstTuple.resize(runtimeInfo.dstJumpAxisNum);
+            info[i].tailDstTuple.resize(runtimeInfo.dstJumpAxisNum);
+            for (int64_t j = 0; j < runtimeInfo.dstJumpAxisNum; j++) {
+                info[i].initDstTuple[j] = (info[i].colOffset / runtimeInfo.dstJumpFactorMod[j]) %\
+                                          runtimeInfo.dstJumpFactor[j];
+                if (info[i].colTC != 0) {
+                    int64_t col = info[i].colOffset + info[i].colPerMC * info[i].loopOnMC - info[i].backStepLeft;
+                    info[i].tailDstTuple[j] = (col / runtimeInfo.dstJumpFactorMod[j]) % runtimeInfo.dstJumpFactor[j];
+                }
             }
         }
     }
@@ -1415,9 +1460,13 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
     /*
      * vnchwconv max repeat is 255, so max block number is 255 * 16 = 4080
      */
-    for (int64_t i = 0; i < factor; i++) {
-        int64_t row = runtimeInfo.rowRange[i].second;
-        if (row >= elePerBlock) {
+    if (tm->Isf2t()) {
+        for (int64_t i = 0; i < factor; i++) {
+            info[i].rowPerMR = runtimeInfo.rowRange[i].second;
+        }
+    } else {
+        for (int64_t i = 0; i < factor; i++) {
+            int64_t row = runtimeInfo.rowRange[i].second;
             if (row != 0) {
                 int64_t k = row % elePerBlock;
                 if (k != 0) {
@@ -1432,24 +1481,22 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                 info[i].rowBlockTR = info[i].rowTR / elePerBlock;
                 info[i].rowOffset = runtimeInfo.rowRange[i].first;
             }
-        } else {
-            info[i].rowPerMR = row;
         }
-    }
 
-    for (int64_t i = 1; i < runtimeInfo.srcJumpAxisNum; i++) {
-        runtimeInfo.srcJumpFactorMod[i] *= runtimeInfo.srcJumpFactorMod[i - 1] * runtimeInfo.srcJumpFactor[i - 1];
-    }
+        for (int64_t i = 1; i < runtimeInfo.srcJumpAxisNum; i++) {
+            runtimeInfo.srcJumpFactorMod[i] *= runtimeInfo.srcJumpFactorMod[i - 1] * runtimeInfo.srcJumpFactor[i - 1];
+        }
 
-    for (int64_t i = 0; i < factor; i++) {
-        info[i].initSrcTuple.resize(runtimeInfo.srcJumpAxisNum);
-        info[i].tailSrcTuple.resize(runtimeInfo.srcJumpAxisNum);
-        for (int64_t j = 0; j < runtimeInfo.srcJumpAxisNum; j++) {
-            info[i].initSrcTuple[j] = (info[i].rowOffset / runtimeInfo.srcJumpFactorMod[j]) %\
-                                      runtimeInfo.srcJumpFactor[j];
-            if (info[i].rowTR != 0) {
-                int64_t row = info[i].rowOffset + info[i].rowPerMR * info[i].loopOnMR - info[i].backStepUp;
-                info[i].tailSrcTuple[j] = (row / runtimeInfo.srcJumpFactorMod[j]) % runtimeInfo.srcJumpFactor[j];
+        for (int64_t i = 0; i < factor; i++) {
+            info[i].initSrcTuple.resize(runtimeInfo.srcJumpAxisNum);
+            info[i].tailSrcTuple.resize(runtimeInfo.srcJumpAxisNum);
+            for (int64_t j = 0; j < runtimeInfo.srcJumpAxisNum; j++) {
+                info[i].initSrcTuple[j] = (info[i].rowOffset / runtimeInfo.srcJumpFactorMod[j]) %\
+                                          runtimeInfo.srcJumpFactor[j];
+                if (info[i].rowTR != 0) {
+                    int64_t row = info[i].rowOffset + info[i].rowPerMR * info[i].loopOnMR - info[i].backStepUp;
+                    info[i].tailSrcTuple[j] = (row / runtimeInfo.srcJumpFactorMod[j]) % runtimeInfo.srcJumpFactor[j];
+                }
             }
         }
     }
@@ -1672,8 +1719,11 @@ static void DispatchNCR(const ShapeInfo & shapeInfo, RuntimeInfo & runtimeInfo) 
 
 class Model001 : public TilingModel {
 public:
-    Model001() : TilingModel(1, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model001") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model001(int64_t coreNum, int64_t ubBlocks) : TilingModel(1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
         if (res) {
             sp.Set(coreNum, 1, 1);
@@ -1686,8 +1736,11 @@ public:
 
 class Model002 : public TilingModel {
 public:
-    Model002() : TilingModel(2, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model002") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model002(int64_t coreNum, int64_t ubBlocks) : TilingModel(2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
         if (res) {
             sp.Set(1, 1, coreNum);
@@ -1700,8 +1753,11 @@ public:
 
 class Model003 : public TilingModel {
 public:
-    Model003() : TilingModel(3, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model003") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model003(int64_t coreNum, int64_t ubBlocks) : TilingModel(3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
         if (res) {
             sp.Set(1, coreNum, 1);
@@ -1714,8 +1770,83 @@ public:
 
 class Model004 : public TilingModel {
 public:
-    Model004() : TilingModel(4, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model004") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model004(int64_t coreNum, int64_t ubBlocks) : TilingModel(4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_f2t") {}
+    void Decision(const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.col.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxCol = Align16(ubSize, n.rVol, ubSize) / 2;
+
+        if ((n.cVol >= 128 * coreNum) && (n.rVol < F2T_THRESHOLD_B32)) {
+            sp.Set(1, coreNum, 1);
+        } else if ((n.cVol >= 128) && (n.rVol < F2T_THRESHOLD_B32)) {
+            if (n.nVol > coreNum) {
+                sp.Set(coreNum, 1, 1);
+            } else {
+                sp.Set(n.nVol, coreNum / n.nVol, 1);
+            }
+        } else {
+            priority = INVALID_SPLIT;
+        }
+    }
+    bool Isf2t() {
+        return true;
+    }
+};
+
+class Model005 : public TilingModel {
+public:
+    Model005(int64_t coreNum, int64_t ubBlocks) : TilingModel(5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_t2f") {}
+    void Decision(const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.row.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+        if (IsValid(ncr, dim) == false) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxRow = Align16(ubSize, n.cVol, ubSize) / 2;
+
+        if ((n.cVol < F2T_THRESHOLD_B32) && (n.rVol >= 128 * coreNum)) {
+            sp.Set(1, 1, coreNum);
+        } else if ((n.cVol < F2T_THRESHOLD_B32) && (n.rVol >= 128)) {
+            if (n.nVol > coreNum) {
+                sp.Set(coreNum, 1, 1);
+            } else {
+                sp.Set(n.nVol, 1, coreNum / n.nVol);
+            }
+        } else {
+            priority = INVALID_SPLIT;
+        }
+    }
+    bool Ist2f() {
+        return true;
+    }
+private:
+    bool IsValid(const NCR & ncr, int64_t dim) {
+        int64_t rowIndex = ncr.row[0];
+        if (rowIndex + (int64_t)ncr.col.size() != dim - 1) {
+            return false;
+        }
+        return true;
+    }
+};
+
+class Model006 : public TilingModel {
+public:
+    Model006(int64_t coreNum, int64_t ubBlocks) : TilingModel(6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         if (n.nVol >= coreNum) {
             if (n.cVol >= 8 && n.rVol >= 8) {
                 sp.Set(coreNum, 1, 1);
@@ -1737,35 +1868,34 @@ public:
     }
 };
 
-class Model005 : public TilingModel {
+class Model007 : public TilingModel {
 public:
-    Model005() : TilingModel(5, 0, 0, LAST_AXIS_TR_F2T, "Model005_f2t") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model007(int64_t coreNum, int64_t ubBlocks) : TilingModel(7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_f2t") {}
+    void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.col.size() != 1) {
             priority = INVALID_SPLIT;
             return;
         }
 
-        maxCol = Align16(UB_SIZE_1_16_FP16, n.rVol, UB_SIZE_1_16_FP16);
-        if ((n.cVol >= 128 * coreNum) && (n.rVol <= 8)) {
-            sp.Set(1, coreNum, 1);
-        } else if ((n.cVol > 8) && (n.rVol <= 8)) {
-            if (n.nVol > coreNum) {
-                sp.Set(coreNum, 1, 1);
-            } else {
-                sp.Set(n.nVol, coreNum / n.nVol, 1);
-            }
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxCol = Align16(ubSize, n.rVol, ubSize) / 2;
+
+        if ((n.cVol >= 8) && (n.rVol < F2T_THRESHOLD_B32)) {
+            sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
         }
     }
+    bool Isf2t() {
+        return true;
+    }
 };
 
-class Model006 : public TilingModel {
+class Model008 : public TilingModel {
 public:
-    Model006() : TilingModel(6, 0, 0, LAST_AXIS_TR_T2F, "Model006_t2f") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model008(int64_t coreNum, int64_t ubBlocks) : TilingModel(8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_t2f") {}
+    void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.row.size() != 1) {
             priority = INVALID_SPLIT;
@@ -1775,18 +1905,18 @@ public:
             priority = INVALID_SPLIT;
             return;
         }
-        maxRow = Align16(UB_SIZE_1_16_FP16, n.cVol, UB_SIZE_1_16_FP16) / 2;
-        if ((n.cVol < 8) && (n.rVol >= 128 * coreNum)) {
-            sp.Set(1, 1, coreNum);
-        } else if ((n.cVol < 8) && (n.rVol >= 8)) {
-            if (n.nVol > coreNum) {
-                sp.Set(coreNum, 1, 1);
-            } else {
-                sp.Set(n.nVol, 1, coreNum / n.nVol);
-            }
+
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxRow = Align16(ubSize, n.cVol, ubSize) / 2;
+
+        if ((n.cVol < F2T_THRESHOLD_B32) && (n.rVol >= 8)) {
+            sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
         }
+    }
+    bool Ist2f() {
+        return true;
     }
 private:
     bool IsValid(const NCR & ncr, int64_t dim) {
@@ -1800,8 +1930,12 @@ private:
 
 class Model001_b16 : public TilingModel {
 public:
-    Model001_b16() : TilingModel(1, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model001_b16") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model001_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001_b16") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
         if (res) {
             sp.Set(coreNum, 1, 1);
@@ -1814,8 +1948,12 @@ public:
 
 class Model002_b16 : public TilingModel {
 public:
-    Model002_b16() : TilingModel(2, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model002_b16") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model002_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002_b16") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
         if (res) {
             sp.Set(1, 1, coreNum);
@@ -1828,8 +1966,12 @@ public:
 
 class Model003_b16 : public TilingModel {
 public:
-    Model003_b16() : TilingModel(3, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model003_b16") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model003_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003_b16") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
         if (res) {
             sp.Set(1, coreNum, 1);
@@ -1842,8 +1984,89 @@ public:
 
 class Model004_b16 : public TilingModel {
 public:
-    Model004_b16() : TilingModel(4, MAX_COL_FP16_VNCHWCONV_FULL, 128, LAST_AXIS_TR_COMMON, "Model004_b16") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model004_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_b16_f2t") {}
+    void Decision(const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.col.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxCol = Align16(ubSize, n.rVol, ubSize);
+
+        if ((n.cVol >= 256 * coreNum) && (n.rVol <= F2T_THRESHOLD_B16)) {
+            sp.Set(1, coreNum, 1);
+        } else if ((n.cVol >= 256) && (n.rVol < F2T_THRESHOLD_B16)) {
+            if (n.nVol > coreNum) {
+                sp.Set(coreNum, 1, 1);
+            } else {
+                sp.Set(n.nVol, coreNum / n.nVol, 1);
+            }
+        } else {
+            priority = INVALID_SPLIT;
+        }
+        if (n.col.size() > 1) {
+            priority = INVALID_SPLIT;
+        }
+    }
+    bool Isf2t() {
+        return true;
+    }
+};
+
+class Model005_b16 : public TilingModel {
+public:
+    Model005_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_b16_t2f") {}
+    void Decision(const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.row.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+        if (IsValid(ncr, dim) == false) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxRow = Align16(ubSize, n.cVol, ubSize);
+
+        if ((n.cVol <= F2T_THRESHOLD_B16) && (n.rVol >= 256 * coreNum)) {
+            sp.Set(1, 1, coreNum);
+        } else if ((n.cVol < F2T_THRESHOLD_B16) && (n.rVol >= 256)) {
+            if (n.nVol > coreNum) {
+                sp.Set(coreNum, 1, 1);
+            } else {
+                sp.Set(n.nVol, 1, coreNum / n.nVol);
+            }
+        } else {
+            priority = INVALID_SPLIT;
+        }
+    }
+    bool Ist2f() {
+        return true;
+    }
+private:
+    bool IsValid(const NCR & ncr, int64_t dim) {
+        int64_t rowIndex = ncr.row[0];
+        if (rowIndex + (int64_t)ncr.col.size() != dim - 1) {
+            return false;
+        }
+        return true;
+    }
+};
+
+class Model006_b16 : public TilingModel {
+public:
+    Model006_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006_b16") {
+        maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
+        maxRow = 128;
+    }
+    void Decision(const NCR & n, int64_t dim) {
         if (n.nVol >= coreNum) {
             if (n.cVol >= 16 && n.rVol >= 16) {
                 sp.Set(coreNum, 1, 1);
@@ -1864,33 +2087,39 @@ public:
         ncr = n;
     }
 };
-class Model005_b16 : public TilingModel {
+
+class Model007_b16 : public TilingModel {
 public:
-    Model005_b16() : TilingModel(5, 0, 0, LAST_AXIS_TR_F2T, "Model005_b16_f2t") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
-        maxCol = Align16(UB_SIZE_1_16_FP16, n.rVol, UB_SIZE_1_16_FP16);
-        if ((n.cVol >= 256 * coreNum) && (n.rVol <= 16)) {
-            sp.Set(1, coreNum, 1);
-        } else if ((n.cVol >= 16) && (n.rVol < 16)) {
-            if (n.nVol > coreNum) {
-                sp.Set(coreNum, 1, 1);
-            } else {
-                sp.Set(n.nVol, coreNum / n.nVol, 1);
-            }
+    Model007_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_b16_f2t") {
+    }
+    void Decision(const NCR & n, int64_t dim) {
+        ncr = n;
+        if (n.col.size() != 1) {
+            priority = INVALID_SPLIT;
+            return;
+        }
+
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxCol = Align16(ubSize, n.rVol, ubSize);
+
+        if ((n.cVol >= 16) && (n.rVol < F2T_THRESHOLD_B16)) {
+            sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
         }
-        if (n.col.size() > 1) {
-            priority = INVALID_SPLIT;
-        }
-        ncr = n;
+    }
+    bool Isf2t() {
+        return true;
     }
 };
 
-class Model006_b16 : public TilingModel {
+class Model008_b16 : public TilingModel {
 public:
-    Model006_b16() : TilingModel(6, 0, 0, LAST_AXIS_TR_T2F, "Model006_b16_t2f") {}
-    void Decision(int64_t coreNum, const NCR & n, int64_t dim) {
+    Model008_b16(int64_t coreNum, int64_t ubBlocks) :
+                 TilingModel(8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_b16_t2f") {
+    }
+    void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.row.size() != 1) {
             priority = INVALID_SPLIT;
@@ -1900,18 +2129,18 @@ public:
             priority = INVALID_SPLIT;
             return;
         }
-        maxRow = Align16(UB_SIZE_1_16_FP16, n.cVol, UB_SIZE_1_16_FP16);
-        if ((n.cVol <= 16) && (n.rVol >= 256 * coreNum)) {
-            sp.Set(1, 1, coreNum);
-        } else if ((n.cVol < 16) && (n.rVol >= 16)) {
-            if (n.nVol > coreNum) {
-                sp.Set(coreNum, 1, 1);
-            } else {
-                sp.Set(n.nVol, 1, coreNum / n.nVol);
-            }
+
+        int64_t ubSize = CalcVnchwconvPartialUbSize(coreNum, ubBlocks);
+        maxRow = Align16(ubSize, n.cVol, ubSize);
+
+        if ((n.cVol < F2T_THRESHOLD_B16) && (n.rVol >= 16)) {
+            sp.Set(coreNum, 1, 1);
         } else {
             priority = INVALID_SPLIT;
         }
+    }
+    bool Ist2f() {
+        return true;
     }
 private:
     bool IsValid(const NCR & ncr, int64_t dim) {
@@ -1929,8 +2158,8 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
 
 #define ADD_MODEL(SpecificModel) \
     {\
-        auto model = std::make_shared<SpecificModel>();\
-        model->Decision(compilerInfo.coreNum, runtimeInfo.ncrs[i], shapeInfo.dim);\
+        auto model = std::make_shared<SpecificModel>(compilerInfo.coreNum, compilerInfo.ubSize);\
+        model->Decision(runtimeInfo.ncrs[i], shapeInfo.dim);\
         runtimeInfo.pqtm.push(model);\
     }
 
@@ -1942,6 +2171,8 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
             ADD_MODEL(Model004);
             ADD_MODEL(Model005);
             ADD_MODEL(Model006);
+            ADD_MODEL(Model007);
+            ADD_MODEL(Model008);
         }
     } else {
         for (size_t i = 0; i < runtimeInfo.ncrs.size(); i++)  {
@@ -1951,6 +2182,8 @@ static void MakeNCRDecision(const CompilerInfo & compilerInfo,
             ADD_MODEL(Model004_b16);
             ADD_MODEL(Model005_b16);
             ADD_MODEL(Model006_b16);
+            ADD_MODEL(Model007_b16);
+            ADD_MODEL(Model008_b16);
         }
     }
 }

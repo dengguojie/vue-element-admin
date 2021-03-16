@@ -46,8 +46,9 @@ namespace optiling {
  * 4KB : reserved
  */
 #define UB_RESERVED_BLOCK_SIZE 4 * 32
+#define UB_RESERVED_KB 4
 #define LAST_AXIS_HUGE_THRESHOLD 100 * 1024 //unit B
-#define HUGE_BLOCKS_UNIT (LAST_AXIS_HUGE_THRESHOLD / 32) //unit blocks, 3200 blocks 
+#define HUGE_BLOCKS_UNIT (LAST_AXIS_HUGE_THRESHOLD / 32) //unit blocks, 3200 blocks
 #define LAST_AXIS_BLOCK_ALIGN_LARGE_THRESHOLD 4096 //unit B
 #define LAST_AXIS_NOT_BLOCK_ALIGN_LARGE_THRESHOLD 128 //unit B
 #define WORKSPACE_MAX_SIZE (int64_t)(16 * 1024 * 1024 * 1024) // 16GB
@@ -63,6 +64,9 @@ namespace optiling {
 #define MAX_ROW_FP16_VNCHWCONV_FULL    128
 #define UB_SIZE_1_16_FP16              3968 // 3968 * 33 < 256 * 1024
 #define SMALL_SHAPE_SIZE_THRESHOLD     1024
+#define F2T_THRESHOLD_B16  64 // unit : byte
+#define F2T_THRESHOLD_B32  32 // unit : byte
+#define TILING_FIXED_MAX_LEN 1 // unit: kb, keep same with transpose.py
 
 enum TransposeScenario {
     SCENARIO_0 = 0,     //identical shape
@@ -108,18 +112,29 @@ struct NCR {
 
 class TilingModel {
 public:
-    TilingModel(int64_t p, int col , int row, SubScenarioLastAxisTrans scenario, std::string name) : priority(p),
-                                                                 maxCol(col),
-                                                                 maxRow(row),
-                                                                 subScenario(scenario),
-                                                                 modelName(name) {}
-    virtual void Decision(int64_t coreNum, const NCR & ncr, int64_t dim) = 0;
+    TilingModel(int64_t p, int64_t c, int64_t u,
+                SubScenarioLastAxisTrans scenario, std::string name) : coreNum(c),
+                                                                       ubBlocks(u),
+                                                                       priority(p),
+                                                                       maxCol(0),
+                                                                       maxRow(0),
+                                                                       subScenario(scenario),
+                                                                       modelName(name) {}
+    virtual void Decision(const NCR & ncr, int64_t dim) = 0;
+    virtual bool Isf2t() {
+        return false;
+    }
+    virtual bool Ist2f() {
+        return false;
+    }
     SplitParam sp;
     NCR ncr;
+    int64_t coreNum;
+    int64_t ubBlocks;
     int64_t priority;
     int64_t maxCol; //unit: bytes
     int64_t maxRow;
-    SubScenarioLastAxisTrans  subScenario;
+    SubScenarioLastAxisTrans subScenario;
     std::string modelName;
 };
 
@@ -172,17 +187,17 @@ struct CompilerInfo {
     int64_t usedCoreNum;
     int64_t ubSize; //unit: block
     int64_t ubSizeCouldUse;//unit: block
+    int64_t fp16Times;
     int64_t blockSize;
     std::string dType;
     std::string opType;
-    int64_t fp16Times;
     CompilerInfo() {
         coreNum = 0;
         usedCoreNum = 0;
         ubSize = 0;
         ubSizeCouldUse = 0;
-        blockSize = 2;
         fp16Times = 1;
+        blockSize = 2;
     }
 };
 
@@ -343,6 +358,28 @@ struct InfoPerCore {
     InfoN infoN;
     InfoCol infoCol;
     InfoRow infoRow;
+};
+
+struct BorrowAxis {
+    int64_t index;
+    int64_t loop;
+    int64_t step;
+    int64_t tail;
+    int64_t stride;
+    BorrowAxis() {
+        index = -1;
+        loop = 0;
+        step = 0;
+        tail = 0;
+        stride = 1;
+    }
+};
+
+struct BorrowInfo {
+    BorrowAxis src_1;
+    BorrowAxis src_2;
+    BorrowAxis dst_1;
+    BorrowAxis dst_2;
 };
 
 struct RuntimeInfo {

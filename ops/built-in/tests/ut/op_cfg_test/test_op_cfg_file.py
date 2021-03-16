@@ -30,7 +30,6 @@ ini_path = os.path.dirname(ini_path)  # llt
 ini_path = os.path.dirname(ini_path)  #
 ini_path = os.path.join(ini_path, "ops/built-in/tbe/op_info_cfg/ai_core")  #
 
-
 class Test_OpConfig(unittest.TestCase):
     """Test_OpConfig"""
     def setUp(self):
@@ -59,7 +58,7 @@ class Test_OpConfig(unittest.TestCase):
                            "float", "bool", "double"])
         allow_input_info_keys = set(["name", "dtype", "format", "shape", "reshapeType",
                                      "needCompile", "shapesType", "valueDepend",
-                                     "unknownshape_format"])
+                                     "unknownshape_format", "valueDepend"])
         allow_reshape_types = set(["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW", "NWC"])
         allow_output_info_keys = set(["name", "dtype", "format", "shape", "reshapeType",
                                       "needCompile", "shapesType", "unknownshape_format"])
@@ -70,7 +69,7 @@ class Test_OpConfig(unittest.TestCase):
         allow_op_key = set(["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
                             "binfile.name", "kernel.name",
                             "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
-                            "needCheckSupport.flag", "dynamicShapeSupport.flag", "slicePattern.value"])
+                            "needCheckSupport.flag", "dynamicShapeSupport.flag", "slicePattern.value", "dynamicCompileStatic.flag"])
         allow_attr_info_key = set(["type", "value", "paramType", "defaultValue"])
         allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM',
                              'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',

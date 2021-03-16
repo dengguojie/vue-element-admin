@@ -27,10 +27,10 @@ TEST_F(TransposeTilingTest, reduce_axis_merge) {
      *
      */
     ShapeInfo shapeInfo1;
-    shapeInfo1.reducedInShape.push_back(4); 
-    shapeInfo1.reducedInShape.push_back(5); 
-    shapeInfo1.reducedInShape.push_back(6); 
-    shapeInfo1.reducedInShape.push_back(7); 
+    shapeInfo1.reducedInShape.push_back(4);
+    shapeInfo1.reducedInShape.push_back(5);
+    shapeInfo1.reducedInShape.push_back(6);
+    shapeInfo1.reducedInShape.push_back(7);
     shapeInfo1.reducedPerm.push_back(1);
     shapeInfo1.reducedPerm.push_back(0);
     shapeInfo1.reducedPerm.push_back(2);
@@ -48,7 +48,7 @@ TEST_F(TransposeTilingTest, reduce_axis_merge) {
     EXPECT_EQ(shapeInfo1.reducedPerm[0], 1);
     EXPECT_EQ(shapeInfo1.reducedPerm[1], 0);
     EXPECT_EQ(shapeInfo1.reducedPerm[2], 2);
-    
+
     /*
      *  inShape         perm                   reducedInShape       reducedOutShape       reducedPerm
      *  ---------------------------------------------------------------------------------------------------
@@ -56,11 +56,11 @@ TEST_F(TransposeTilingTest, reduce_axis_merge) {
      *
      */
     ShapeInfo shapeInfo2;
-    shapeInfo2.reducedInShape.push_back(2); 
-    shapeInfo2.reducedInShape.push_back(3); 
-    shapeInfo2.reducedInShape.push_back(4); 
-    shapeInfo2.reducedInShape.push_back(5); 
-    shapeInfo2.reducedInShape.push_back(6); 
+    shapeInfo2.reducedInShape.push_back(2);
+    shapeInfo2.reducedInShape.push_back(3);
+    shapeInfo2.reducedInShape.push_back(4);
+    shapeInfo2.reducedInShape.push_back(5);
+    shapeInfo2.reducedInShape.push_back(6);
     shapeInfo2.reducedPerm.push_back(0);
     shapeInfo2.reducedPerm.push_back(4);
     shapeInfo2.reducedPerm.push_back(1);
@@ -87,11 +87,11 @@ TEST_F(TransposeTilingTest, reduce_axis_merge) {
      *
      */
     ShapeInfo shapeInfo3;
-    shapeInfo3.reducedInShape.push_back(2); 
-    shapeInfo3.reducedInShape.push_back(3); 
-    shapeInfo3.reducedInShape.push_back(4); 
-    shapeInfo3.reducedInShape.push_back(5); 
-    shapeInfo3.reducedInShape.push_back(6); 
+    shapeInfo3.reducedInShape.push_back(2);
+    shapeInfo3.reducedInShape.push_back(3);
+    shapeInfo3.reducedInShape.push_back(4);
+    shapeInfo3.reducedInShape.push_back(5);
+    shapeInfo3.reducedInShape.push_back(6);
     shapeInfo3.reducedPerm.push_back(2);
     shapeInfo3.reducedPerm.push_back(3);
     shapeInfo3.reducedPerm.push_back(4);
@@ -114,14 +114,14 @@ TEST_F(TransposeTilingTest, reduce_axis_remove) {
     /*
      *  inShape         perm                   reducedInShape       reducedOutShape       reducedPerm
      *  ---------------------------------------------------------------------------------------------------
-     *  4,1,6,1         0,1,2,3                4,6                  4,6                   0,1 
+     *  4,1,6,1         0,1,2,3                4,6                  4,6                   0,1
      *
      */
     ShapeInfo shapeInfo1;
-    shapeInfo1.inShape.push_back(4); 
-    shapeInfo1.inShape.push_back(1); 
-    shapeInfo1.inShape.push_back(6); 
-    shapeInfo1.inShape.push_back(1); 
+    shapeInfo1.inShape.push_back(4);
+    shapeInfo1.inShape.push_back(1);
+    shapeInfo1.inShape.push_back(6);
+    shapeInfo1.inShape.push_back(1);
     shapeInfo1.perm.push_back(0);
     shapeInfo1.perm.push_back(1);
     shapeInfo1.perm.push_back(2);
@@ -140,14 +140,14 @@ TEST_F(TransposeTilingTest, reduce_axis_remove) {
     /*
      *  inShape         perm                   reducedInShape       reducedOutShape       reducedPerm
      *  ---------------------------------------------------------------------------------------------------
-     *  4,1,6,1         1,2,0,3                4,6                  6,4                   1,0 
+     *  4,1,6,1         1,2,0,3                4,6                  6,4                   1,0
      *
      */
     ShapeInfo shapeInfo2;
-    shapeInfo2.inShape.push_back(4); 
-    shapeInfo2.inShape.push_back(1); 
-    shapeInfo2.inShape.push_back(6); 
-    shapeInfo2.inShape.push_back(1); 
+    shapeInfo2.inShape.push_back(4);
+    shapeInfo2.inShape.push_back(1);
+    shapeInfo2.inShape.push_back(6);
+    shapeInfo2.inShape.push_back(1);
     shapeInfo2.perm.push_back(1);
     shapeInfo2.perm.push_back(2);
     shapeInfo2.perm.push_back(0);
@@ -167,14 +167,14 @@ TEST_F(TransposeTilingTest, reduce_axis_remove) {
     /*
      *  inShape         perm                   reducedInShape       reducedOutShape       reducedPerm
      *  ---------------------------------------------------------------------------------------------------
-     *  1,1,4,6         3,2,0,1                4,6                  6,4                   1,0 
+     *  1,1,4,6         3,2,0,1                4,6                  6,4                   1,0
      *
      */
     ShapeInfo shapeInfo3;
-    shapeInfo3.inShape.push_back(1); 
-    shapeInfo3.inShape.push_back(1); 
-    shapeInfo3.inShape.push_back(4); 
-    shapeInfo3.inShape.push_back(6); 
+    shapeInfo3.inShape.push_back(1);
+    shapeInfo3.inShape.push_back(1);
+    shapeInfo3.inShape.push_back(4);
+    shapeInfo3.inShape.push_back(6);
     shapeInfo3.perm.push_back(3);
     shapeInfo3.perm.push_back(2);
     shapeInfo3.perm.push_back(0);
@@ -193,14 +193,14 @@ TEST_F(TransposeTilingTest, reduce_axis_remove) {
     /*
      *  inShape         perm                   reducedInShape       reducedOutShape       reducedPerm
      *  ---------------------------------------------------------------------------------------------------
-     *  4,6,1,1         3,2,0,1                4,6                  4,6                   0,1 
+     *  4,6,1,1         3,2,0,1                4,6                  4,6                   0,1
      *
      */
     ShapeInfo shapeInfo4;
-    shapeInfo4.inShape.push_back(4); 
-    shapeInfo4.inShape.push_back(6); 
-    shapeInfo4.inShape.push_back(1); 
-    shapeInfo4.inShape.push_back(1); 
+    shapeInfo4.inShape.push_back(4);
+    shapeInfo4.inShape.push_back(6);
+    shapeInfo4.inShape.push_back(1);
+    shapeInfo4.inShape.push_back(1);
     shapeInfo4.perm.push_back(3);
     shapeInfo4.perm.push_back(2);
     shapeInfo4.perm.push_back(0);
@@ -253,7 +253,6 @@ TEST_F(TransposeTilingTest, identical_shape) {
     shapeInfo.outShape.push_back(2000);
     shapeInfo.perm.push_back(0);
     shapeInfo.perm.push_back(1);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
@@ -272,7 +271,6 @@ TEST_F(TransposeTilingTest, small_shape) {
     shapeInfo.outShape.push_back(10);
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
@@ -294,7 +292,6 @@ TEST_F(TransposeTilingTest, stride_gt_65535) {
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
     shapeInfo.perm.push_back(2);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
@@ -316,7 +313,6 @@ TEST_F(TransposeTilingTest, huge_last_axis) {
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
     shapeInfo.perm.push_back(2);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     EXPECT_TRUE(TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo));
 }
@@ -327,6 +323,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_2d) {
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
     compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
 
     shapeInfo.inShape.push_back(7000);
     shapeInfo.inShape.push_back(6000);
@@ -334,7 +331,6 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_2d) {
     shapeInfo.outShape.push_back(7000);
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
@@ -385,7 +381,6 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_with_multi_src_axis) {
     shapeInfo.perm.push_back(2);
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
@@ -441,7 +436,6 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_with_tail_row) {
     shapeInfo.perm.push_back(2);
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
@@ -509,7 +503,6 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_col_and_row_with_multi_axis
     shapeInfo.perm.push_back(4);
     shapeInfo.perm.push_back(3);
     shapeInfo.perm.push_back(2);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
@@ -569,7 +562,6 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose) {
     shapeInfo.perm.push_back(3);
     shapeInfo.perm.push_back(2);
     shapeInfo.perm.push_back(1);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
@@ -598,6 +590,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_t2f) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
     compilerInfo.dType ="float32";
     compilerInfo.fp16Times = 2;
 
@@ -607,11 +600,31 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_t2f) {
     shapeInfo.outShape.push_back(20000);
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
     EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.rowPerMR, 280);
+}
+
+TEST_F(TransposeTilingTest, last_axis_join_transpose_t2f_fp16) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float16";
+    compilerInfo.fp16Times = 1;
+
+    shapeInfo.inShape.push_back(20000);
+    shapeInfo.inShape.push_back(7);
+    shapeInfo.outShape.push_back(7);
+    shapeInfo.outShape.push_back(20000);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+
+    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoRow.rowPerMR, 560);
 }
 
 TEST_F(TransposeTilingTest, last_axis_join_transpose_f2t) {
@@ -619,8 +632,9 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_f2t) {
     ShapeInfo shapeInfo;
     RuntimeInfo runtimeInfo;
     compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
     compilerInfo.dType ="float32";
-    compilerInfo.fp16Times = 2;
+    compilerInfo.fp16Times = 1;
 
     shapeInfo.inShape.push_back(2);
     shapeInfo.inShape.push_back(30000);
@@ -628,11 +642,31 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_f2t) {
     shapeInfo.outShape.push_back(2);
     shapeInfo.perm.push_back(1);
     shapeInfo.perm.push_back(0);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
     EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.colPerMC, 944);
+}
+
+TEST_F(TransposeTilingTest, last_axis_join_transpose_f2t_fp16) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float16";
+    compilerInfo.fp16Times = 1;
+
+    shapeInfo.inShape.push_back(2);
+    shapeInfo.inShape.push_back(60000);
+    shapeInfo.outShape.push_back(60000);
+    shapeInfo.outShape.push_back(2);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(0);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+
+    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.colPerMC, 944*2);
 }
 
 TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
@@ -666,7 +700,6 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
     shapeInfo.perm.push_back(2);
     shapeInfo.perm.push_back(5);
     shapeInfo.perm.push_back(1);
-    
     ReduceAxis("Transpose", compilerInfo, shapeInfo);
     TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
 
@@ -712,7 +745,7 @@ TEST_F(TransposeTilingTest, para_test_32) {
 
     TeOpTensorArg tensorInputs;
     TeOpTensor tensorInput;
-    tensorInput.shape = inShape; 
+    tensorInput.shape = inShape;
     tensorInput.dtype = "float16";
     tensorInputs.tensor.push_back(tensorInput);
     tensorInputs.arg_type = TA_SINGLE;
@@ -720,7 +753,7 @@ TEST_F(TransposeTilingTest, para_test_32) {
 
     TeOpTensorArg tensorOutputsArg;
     TeOpTensor tensorOutput;
-    tensorOutput.shape = outShape; 
+    tensorOutput.shape = outShape;
     tensorOutput.dtype = "float16";
     tensorOutputsArg.tensor.push_back(tensorOutput);
     tensorOutputsArg.arg_type = TA_SINGLE;
@@ -762,14 +795,14 @@ TEST_F(TransposeTilingTest, para_test_64) {
     TeOpTensorArg tensorInputs;
     TeOpTensor tensorInput;
     tensorInput.shape = inShape ;
-    tensorInput.dtype = "float16"; 
+    tensorInput.dtype = "float16";
     tensorInputs.tensor.push_back(tensorInput);
     tensorInputs.arg_type = TA_SINGLE;
     opParas.inputs.push_back(tensorInputs);
 
     TeOpTensorArg tensorOutputsArg;
     TeOpTensor tensorOutput;
-    tensorOutput.shape = outShape; 
+    tensorOutput.shape = outShape;
     tensorOutput.dtype = "float16";
     tensorOutputsArg.tensor.push_back(tensorOutput);
     tensorOutputsArg.arg_type = TA_SINGLE;

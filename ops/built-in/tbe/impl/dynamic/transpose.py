@@ -15,11 +15,6 @@ transpose
 """
 
 from impl.util.platform_adapter import tvm
-from te.tvm import make as _make
-from te.tvm import expr as _expr
-from te.tvm import stmt as _stmt
-from te.platform.cce_runtime import PIPELINES
-from te.platform import cce_params
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
@@ -55,7 +50,7 @@ EPB16 = 16
 ELE_NUM_PER_BLOCK_FP32 = 8
 ELE_NUM_PER_BLOCK_INT64 = 4
 TILING_HEAD_LEN = 4
-BARRIER_INT_LEN = 4
+TILING_FIXED_MAX_LEN = 1024
 
 
 def _assert(tik_inst, ub_input, p, v):
@@ -67,83 +62,6 @@ def _assert(tik_inst, ub_input, p, v):
 # pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
 # pylint: disable=too-many-statements, invalid-name, no-self-use, protected-access
 # pylint: disable=too-many-instance-attributes, too-few-public-methods
-class Barrier(object):
-    """this class should be part of tik."""
-
-    def emit(self, tik_inst, stmt):
-        """Emit a statement to the end of current scope.
-
-        Parameters
-        ----------
-        stmt : Stmt or callable.
-        The statement to be emitted or callable that build stmt given
-        body.
-        """
-        if isinstance(stmt, _expr.Call):
-            stmt = _make.Evaluate(stmt)
-        assert isinstance(stmt, _stmt.Stmt) or callable(stmt)
-        tik_inst._seq_stack[-1].append(stmt)
-
-    def __init__(self, tik_instance, workspace, block_num, block_id):
-        """soft synchronization initialize"""
-        self.block_id = block_id
-        self.block_num = block_num
-        self.int32_byte_size = 4
-        self.tik_instance = tik_instance
-        self.gm_workspace = workspace
-        self.seq = self.tik_instance.Scalar('int64', init_value=1)
-        self.sync_ub = tik_instance.Tensor(
-            'int64', (self.int32_byte_size * self.block_num,), tik.scope_ubuf, 'barrier_ub')
-        zero = self.tik_instance.Scalar('int64')
-        zero.set_as(0)
-        self.sync_ub[self.block_id * self.int32_byte_size].set_as(zero)
-        self.sync_ub[self.block_id * self.int32_byte_size + 1].set_as(zero)
-        self.int64_max = 0x7FFFFFFFFFFFFFFF
-        self.loop_bound = self.tik_instance.Scalar('int64')
-        self.sync_ub[self.block_id * self.int32_byte_size].set_as(zero)
-        self.sync_ub[self.block_id * self.int32_byte_size + 1].set_as(zero)
-        self.tik_instance.tensor_mov(
-            self.gm_workspace[self.block_id * self.int32_byte_size],
-            self.sync_ub[self.block_id * self.int32_byte_size], '', 1, 1, 0, 0)
-        self.emit(
-            self.tik_instance, tvm.call_extern(
-                'int32', 'pipe_barrier', tvm.call_pure_intrin('int32', 'tvm_cce_string_print', 'PIPE_MTE3')))
-
-    def sync(self):
-        """ barrier sync func"""
-        # add pipe_barrier MTE3 here manually
-        self.emit(
-            self.tik_instance, tvm.call_extern(
-                'int32', 'pipe_barrier', tvm.call_pure_intrin('int32', 'tvm_cce_string_print', 'PIPE_MTE3')))
-        self.sync_ub[self.block_id * self.int32_byte_size + self.seq % 2].set_as(self.seq)
-        self.tik_instance.tensor_mov(
-            self.gm_workspace[self.block_id * self.int32_byte_size],
-            self.sync_ub[self.block_id * self.int32_byte_size], '', 1, 1, 0, 0)
-        self.loop_bound.set_as(self.int64_max)
-        pipe_line_dict = dict(zip(PIPELINES.values(), PIPELINES.keys()))
-        with self.tik_instance.new_scope():
-            self.tik_instance.scope_attr(cce_params.CCE_AXIS, 'group_coproc_scope', pipe_line_dict['PIPE_ALL'])
-            with self.tik_instance.for_range(0, self.loop_bound, dtype='int64'):
-                self.tik_instance.tensor_mov(self.sync_ub, self.gm_workspace, '', 1, self.block_num, 0, 0)
-                # insert set_flag wait by manual
-                self.emit(self.tik_instance, tvm.call_intrin(
-                    'int32', 'tvm_cce_string_print', 'set_flag(PIPE_MTE2, PIPE_S, EVENT_ID0)'))
-                synced = self.tik_instance.Scalar('int64', init_value=1)
-                # insert wait_flag by manual. IR above all is four.
-                self.emit(self.tik_instance, tvm.call_intrin(
-                    'int32', 'tvm_cce_string_print', 'wait_flag(PIPE_MTE2, PIPE_S, EVENT_ID0)'))
-
-                with self.tik_instance.for_range(0, self.block_num, dtype='int64') as core_id:
-                    with self.tik_instance.if_scope(
-                            self.sync_ub[core_id * self.int32_byte_size + self.seq % 2] != self.seq):
-                        synced.set_as(0)
-
-                with self.tik_instance.if_scope(synced == 1):
-                    self.loop_bound.set_as(0)
-
-        self.seq.set_as(self.seq + 1)
-
-
 class Transpose(object):
     """
     Transpose
@@ -153,21 +71,18 @@ class Transpose(object):
         """
         TilingParamS0
         """
-
-        def __init__(self, tiling_reg_list, ub_input_64, fixed_len, tik_inst):
+        def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64):
             """
             get tiling parameters
             """
             # part 2: fixed
-            ub_offset = tik_inst.Scalar("int32", init_value=0)
 
             for i in range(2):
-                tiling_reg_list[i].set_as(ub_input_64[ub_offset + i])
+                tiling_reg_list[i].set_as(ub_input_64_t[TILING_HEAD_LEN + i])
             self.core_num = tiling_reg_list[0]
             self.ub_size = tiling_reg_list[1]
 
-            # part 3 : percore
-            ub_offset.set_as(fixed_len)
+            #part 3 : percore
             reg_base = S0_FIXED_PART_SCALA_MAX_NUM
             self.base = tiling_reg_list[reg_base + 0]
             self.ele_num = tiling_reg_list[reg_base + 1]
@@ -176,27 +91,26 @@ class Transpose(object):
             self.tail_num = tiling_reg_list[reg_base + 4]
             self.not_align_ele = tiling_reg_list[reg_base + 5]
 
-            self.base.set_as(ub_input_64[ub_offset + 0])
-            self.ele_num.set_as(ub_input_64[ub_offset + 1])
-            self.major_loop.set_as(ub_input_64[ub_offset + 2])
-            self.major_num.set_as(ub_input_64[ub_offset + 3])
-            self.tail_num.set_as(ub_input_64[ub_offset + 4])
-            self.not_align_ele.set_as(ub_input_64[ub_offset + 5])
+            self.base.set_as(ub_input_64[0])
+            self.ele_num.set_as(ub_input_64[1])
+            self.major_loop.set_as(ub_input_64[2])
+            self.major_num.set_as(ub_input_64[3])
+            self.tail_num.set_as(ub_input_64[4])
+            self.not_align_ele.set_as(ub_input_64[5])
 
     class TilingParamS1(object):
         """
         TilingParamS1
         """
-
-        def __init__(self, tiling_reg_list, ub_input_64, fixed_len, tik_inst):
+        def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64, tik_inst):
             """
             get tiling parameters
             """
             # part 2: fixed
-            ub_offset = tik_inst.Scalar("int32", init_value=0)
+            ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
 
             for i in range(6):
-                tiling_reg_list[i].set_as(ub_input_64[ub_offset + i])
+                tiling_reg_list[i].set_as(ub_input_64_t[ub_offset + i])
             self.core_num = tiling_reg_list[0]
             self.ub_size = tiling_reg_list[1]
             self.last_axis_len = tiling_reg_list[2]
@@ -205,6 +119,7 @@ class Transpose(object):
             self.trans_axis_num = tiling_reg_list[5]
 
             reg_base = 6
+            ub_offset.set_as(TILING_HEAD_LEN + 6)
             cycle = 3
             self.src_jump_stride = []
             self.dst_jump_stride = []
@@ -213,26 +128,25 @@ class Transpose(object):
                 self.src_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 0])
                 self.dst_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 1])
                 self.dst_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 2])
-            ub_offset.set_as(reg_base)
+
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
 
             # part 3 : percore
-            ub_offset.set_as(fixed_len)
+            ub_offset.set_as(0)
             reg_base = S1_FIXED_PART_SCALA_MAX_NUM
-            tiling_reg_list[reg_base].set_as(ub_input_64[ub_offset])
             self.loop_num = tiling_reg_list[reg_base]
             self.loop_num.set_as(ub_input_64[ub_offset])
 
-            ub_offset.set_as(fixed_len + 1)
-            reg_base = S1_FIXED_PART_SCALA_MAX_NUM + 1
+            ub_offset.set_as(1)
+            reg_base = reg_base + 1
             self.init_tuple = []
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
                 self.init_tuple.append(tiling_reg_list[reg_base + i])
@@ -254,16 +168,13 @@ class Transpose(object):
         """
         TilingParamS2
         """
-
-        def __init__(self, tiling_reg_list, ub_input_64, fixed_len, tik_inst):
+        def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64, tik_inst):
             """
             get tiling parameters
             """
             # part 2: fixed
-            ub_offset = tik_inst.Scalar("int32", init_value=0)
-
             for i in range(9):
-                tiling_reg_list[i].set_as(ub_input_64[ub_offset + i])
+                tiling_reg_list[i].set_as(ub_input_64_t[TILING_HEAD_LEN + i])
             self.core_num = tiling_reg_list[0]
             self.ub_size = tiling_reg_list[1]
             self.last_axis_len = tiling_reg_list[2]
@@ -275,6 +186,7 @@ class Transpose(object):
             self.skip_ele = tiling_reg_list[8]
 
             reg_base = 9
+            ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN + 9)
             cycle = 4
             self.src_jump_stride = []
             self.dst_jump_stride = []
@@ -285,22 +197,22 @@ class Transpose(object):
                 self.dst_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 1])
                 self.dst_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 2])
                 self.dst_jump_factor_mod.append(tiling_reg_list[reg_base + i * cycle + 3])
-            ub_offset.set_as(reg_base)
+
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor_mod[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_factor_mod[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
 
             # part 3 : percore
-            ub_offset.set_as(fixed_len)
+            ub_offset.set_as(0)
             reg_base = S7_FIXED_PART_SCALA_MAX_NUM
 
             self.base = tiling_reg_list[reg_base]
@@ -360,16 +272,15 @@ class Transpose(object):
         """
         TilingParamS3
         """
-
-        def __init__(self, tiling_reg_list, ub_input_64, fixed_len, tik_inst):
+        def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64, tik_inst):
             """
             get tiling parameters
             """
             # part 2: fixed
-            ub_offset = tik_inst.Scalar("int32", init_value=0)
+            ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
 
             for i in range(10):
-                tiling_reg_list[i].set_as(ub_input_64[ub_offset + i])
+                tiling_reg_list[i].set_as(ub_input_64_t[ub_offset + i])
             self.core_num = tiling_reg_list[0]
             self.ub_size = tiling_reg_list[1]
             self.last_axis_len = tiling_reg_list[2]
@@ -382,6 +293,7 @@ class Transpose(object):
             self.back_ele = tiling_reg_list[9]
 
             reg_base = 10
+            ub_offset.set_as(ub_offset + reg_base)
             cycle = 3
             self.src_jump_stride = []
             self.dst_jump_stride = []
@@ -390,25 +302,24 @@ class Transpose(object):
                 self.src_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 0])
                 self.dst_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 1])
                 self.dst_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 2])
-            ub_offset.set_as(reg_base)
+
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.trans_axis_num)
 
             # part 3 : percore
-            ub_offset.set_as(fixed_len)
+            ub_offset.set_as(0)
             reg_base = S3_FIXED_PART_SCALA_MAX_NUM
-            tiling_reg_list[reg_base].set_as(ub_input_64[ub_offset])
             self.loop_num = tiling_reg_list[reg_base]
             self.loop_num.set_as(ub_input_64[ub_offset])
 
-            ub_offset.set_as(fixed_len + 1)
+            ub_offset.set_as(1)
             reg_base = S3_FIXED_PART_SCALA_MAX_NUM + 1
             self.init_tuple = []
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
@@ -431,17 +342,16 @@ class Transpose(object):
         """
         TilingParamS7
         """
-
-        def __init__(self, tiling_reg_list, ub_input_64, fixed_len, tik_inst):
+        def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64, tik_inst):
             """
             get tiling parameters
             """
 
             # part 2: fixed
-            ub_offset = tik_inst.Scalar("int32", init_value=0)
+            ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
 
             for i in range(6):
-                tiling_reg_list[i].set_as(ub_input_64[ub_offset + i])
+                tiling_reg_list[i].set_as(ub_input_64_t[ub_offset + i])
 
             self.core_num = tiling_reg_list[0]
             self.ub_size = tiling_reg_list[1]
@@ -458,6 +368,7 @@ class Transpose(object):
             self.src_jump_stride = []
 
             reg_base = 6
+            ub_offset.set_as(ub_offset + reg_base)
             cycle = 6
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
                 self.n_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 0])
@@ -467,39 +378,39 @@ class Transpose(object):
                 self.src_jump_factor.append(tiling_reg_list[reg_base + i * cycle + 4])
                 self.src_jump_stride.append(tiling_reg_list[reg_base + i * cycle + 5])
 
-            ub_offset.set_as(reg_base)
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.n_jump_factor[i].set_as(ub_input_64[ub_offset + i])
+                self.n_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.n_axis_num)
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.n_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.n_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.n_axis_num)
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_factor[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.dst_axis_num)
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.dst_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.dst_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.dst_axis_num)
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_factor[i].set_as(ub_input_64[ub_offset + i])
+                self.src_jump_factor[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.src_axis_num)
 
             for i in range(TRANSPOSE_MAX_AXIS_NUM):
-                self.src_jump_stride[i].set_as(ub_input_64[ub_offset + i])
+                self.src_jump_stride[i].set_as(ub_input_64_t[ub_offset + i])
             ub_offset.set_as(ub_offset + self.src_axis_num)
+
 
             # part 3: per core
             per_core_front = 12
-            ub_offset.set_as(fixed_len)
+            ub_offset.set_as(0)
             reg_base = S7_FIXED_PART_SCALA_MAX_NUM
             for i in range(per_core_front):
                 tiling_reg_list[reg_base + i].set_as(ub_input_64[ub_offset + i])
-            ub_offset.set_as(fixed_len + per_core_front)
+            ub_offset.set_as(per_core_front)
 
             self.loop_on_n = tiling_reg_list[reg_base + 0]
             self.n_offset_actual = tiling_reg_list[reg_base + 1]
@@ -513,7 +424,7 @@ class Transpose(object):
             self.row_tr = tiling_reg_list[reg_base + 9]
             self.row_offset = tiling_reg_list[reg_base + 10]
             self.back_step_up = tiling_reg_list[reg_base + 11]
-            # if add line here, should change "per_core_front"
+            #if add line here, should change "per_core_front"
 
             self.init_n_tuple = []
             self.init_dst_tuple = []
@@ -550,6 +461,7 @@ class Transpose(object):
                 self.tail_src_tuple[i].set_as(ub_input_64[ub_offset + i])
             ub_offset.set_as(ub_offset + self.src_axis_num)
 
+
             # part 4: variable
             self.rt_n_tuple = []
             self.rt_src_tuple = []
@@ -582,14 +494,13 @@ class Transpose(object):
         self.data_in, self.data_perm, self.data_out, self.data_workspace, self.data_tiling = tensor_list
         self.ub_size = self._get_ub_size_by_dtype()
         self.ub_size_64 = self._get_ub_size_by_int64()
-        self.ub_input_64 = self.tik_inst.Tensor("int64", (self.ub_size_64,), tik.scope_ubuf, "ub_input")
-        tik_inst.data_move(self.ub_input_64, self.data_tiling, 0, 1, TILING_HEAD_LEN, 0, 0)
-        # self.barrier_workspace = tik_inst.Tensor("int64", (BARRIER_INT_LEN * CORE_NUM,), tik.scope_gm,
-        #        "barrier_workspace", is_workspace=True, is_atomic_add=True)
+        self.ub_input_64_t = self.tik_inst.Tensor("int64", (128,), tik.scope_ubuf, "ub_input_64_t")
+        self.ub_input_64 = self.tik_inst.Tensor("int64", (self.ub_size_64,), tik.scope_ubuf, "ub_input_64")
         self.tiling_reg_list = [self.tik_inst.Scalar("int64") for i in range(TILING_MAX_PARAM_NUM)]
         self.element_per_block = self._element_per_block(self.x_dtype)
-        self.fp16_times = self._sizeof_dtype(x_dtype) // self._sizeof_dtype("float16")  # fp32/int32:2  fp16/int16:1
+        self.fp16_times = self._sizeof_dtype(x_dtype) // self._sizeof_dtype("float16") # fp32/int32:2  fp16/int16:1
         self.ele_per_block = BLOCK_SIZE // self._sizeof_dtype(x_dtype)
+        tik_inst.data_move(self.ub_input_64_t, self.data_tiling, 0, 1, TILING_FIXED_MAX_LEN // BLOCK_SIZE, 0, 0)
 
     def _sizeof_dtype(self, dtype):
         if dtype in ("int8", "uint8"):
@@ -619,6 +530,36 @@ class Transpose(object):
     def _get_ub_size_by_int64(self):
         return (UB_SIZE - RESERVED_UB * 1024) // self._sizeof_dtype("int64")
 
+    def _get_src_size(self):
+        if UB_SIZE == 256 * 1024:
+            return 3968 - 16  # 910 & 310
+        if UB_SIZE == 192 * 1024:
+            return 2854  # cs
+        if UB_SIZE == 128 * 1024:
+            return 1861  # es
+        return 3968 - 16
+
+    def _get_dst_size(self):
+        if UB_SIZE == 256 * 1024:
+            return 247  # 910 & 301,  247 to avoid bank conflict
+        if UB_SIZE == 192 * 1024:
+            return 191 # cs
+        if UB_SIZE == 128 * 1024:
+            return 123 # es
+        return 247
+
+    def _get_offset_1(self):
+        if CORE_NUM > 2 and UB_SIZE == 256 * 1024:
+            return 3952 # 910
+        if CORE_NUM == 2 and UB_SIZE == 256 * 1024:
+            return 3824 # 310
+        if CORE_NUM == 1 and UB_SIZE == 192 * 1024:
+            return 2832 # cs es
+        return 3952
+
+    def _get_offset_2(self, offset_1):
+        return offset_1 + offset_1 * EPB16
+
     #       cycle_num_wsp: 4
     #                loop_0       loop_1    tail
     #             ------------|------------|----
@@ -633,17 +574,17 @@ class Transpose(object):
         with self.tik_inst.for_range(0, tp.cycle_num_wsp) as i:
             with self.tik_inst.for_range(0, tp.loop_num_wsp) as j:
                 self.tik_inst.data_move(ub_input,
-                                        self.data_in[src_pos_wsp + \
-                                                     j * tp.nburst_wsp * tp.last_axis_ele * self.element_per_block + \
-                                                     i * tp.last_axis_ele],
+                                        self.data_in[src_pos_wsp +\
+                                                j * tp.nburst_wsp * tp.last_axis_ele * self.element_per_block +\
+                                                i * tp.last_axis_ele],
                                         0,
                                         tp.nburst_wsp,
                                         tp.burst_len,
                                         tp.src_stride_wsp,
                                         0)
-                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp + \
-                                                            j * tp.nburst_wsp * tp.last_axis_ele_a * self.element_per_block + \
-                                                            i * tp.last_axis_ele_a],
+                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp +\
+                                            j * tp.nburst_wsp * tp.last_axis_ele_a * self.element_per_block +\
+                                            i * tp.last_axis_ele_a],
                                         ub_input,
                                         0,
                                         tp.nburst_wsp,
@@ -652,19 +593,19 @@ class Transpose(object):
                                         tp.dst_stride_wsp)
             with self.tik_inst.if_scope(tp.nburst_tail_wsp != 0):
                 self.tik_inst.data_move(ub_input,
-                                        self.data_in[src_pos_wsp + \
-                                                     tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele * \
-                                                     self.element_per_block + \
+                                        self.data_in[src_pos_wsp +\
+                                                     tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele *\
+                                                     self.element_per_block +\
                                                      i * tp.last_axis_ele],
                                         0,
                                         tp.nburst_tail_wsp,
                                         tp.burst_len,
                                         tp.src_stride_wsp,
                                         0)
-                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp + \
-                                                            tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele_a * \
-                                                            self.element_per_block + \
-                                                            i * tp.last_axis_ele_a],
+                self.tik_inst.data_move(self.data_workspace[dst_pos_wsp +\
+                                                         tp.loop_num_wsp * tp.nburst_wsp * tp.last_axis_ele_a *\
+                                                         self.element_per_block +\
+                                                         i * tp.last_axis_ele_a],
                                         ub_input,
                                         0,
                                         tp.nburst_tail_wsp,
@@ -803,7 +744,7 @@ class Transpose(object):
         self.tik_inst.data_move(self.data_out[tp.dst_addr + skip_offset], ub_input, 0, 1, 1, 0, 0)
 
     def _move_data_s1(self, tp, ub_input_64):
-        ub_offset = self.tik_inst.Scalar("int32")  # unit : block
+        ub_offset = self.tik_inst.Scalar("int32") # unit : block
         ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
 
         self._init_tuple_common(tp)
@@ -827,7 +768,7 @@ class Transpose(object):
         fp16_offset_1 = ACCU_BLOCK_SIZE * 32
         fp16_offset_2 = ACCU_BLOCK_SIZE * 32 + ACCU_BLOCK_SIZE * 32 * 16
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
-        src_ele_num_in_fp16 = ub_offset * EPB16
+        src_ele_num_in_fp16 = self._get_src_size() # avoid bank conflict
         src_list = [ub_input_fp16[src_ele_num_in_fp16 * i] for i in range(EPB16)]
         dst_list = [ub_input_fp16[fp16_offset_1 + EPB16 * i] for i in range(EPB16)]
         with self.tik_inst.if_scope(ub_offset == 1):
@@ -844,9 +785,10 @@ class Transpose(object):
                                 0, nburst, burst_len, pad_line_number, 0)
 
         # step3. make all elements in the first col be in memory of contiguous
-        ub_offset_exclude_pad.set_as(((all_line_number - pad_line_number) * nburst + EPB16 - 1) // EPB16)
+        ub_offset_exclude_pad.set_as(((all_line_number - pad_line_number) * nburst + EPB16 - 1)// EPB16)
         src_list = [ub_input_fp16[fp16_offset_2 + EPB16 * i] for i in range(EPB16)]
-        dst_list = [ub_input_fp16[ub_offset_exclude_pad * EPB16 * i] for i in range(EPB16)]
+        # 247 avoid bank conflict
+        dst_list = [ub_input_fp16[self._get_dst_size() * EPB16 * i] for i in range(EPB16)]
 
         with self.tik_inst.if_scope(ub_offset_exclude_pad == 1):
             self.tik_inst.vnchwconv(False, False, dst_list, src_list, 1, 0, 0)
@@ -860,7 +802,7 @@ class Transpose(object):
         tp.dst_addr.set_as((tp.base + steps) * tp.last_axis_len)
 
     def _copy_out_s2(self, tp, ub_input, accu_blocks, backup_steps, steps):
-        ub_offset_exclude_pad = self.tik_inst.Scalar("int32")  # unit : block
+        ub_offset_exclude_pad = self.tik_inst.Scalar("int32") # unit : block
         ub_offset_exclude_pad.set_as(accu_blocks)
         with self.tik_inst.if_scope(tp.align_ele != 0):
             self._reorder_s2(tp, ub_input, accu_blocks, ub_offset_exclude_pad)
@@ -1647,10 +1589,10 @@ class Transpose(object):
     def _reorder_university_f2t(self, tp, ub_input, ub_offset, col_ele_num, row_ele_num, mode):
 
         # step1. make all elements in the first col
-        tp.fp16_offset_1.set_as(3968)
-        tp.fp16_offset_2.set_as(3968 + 63488)
+        tp.fp16_offset_1.set_as(self._get_offset_1())
+        tp.fp16_offset_2.set_as(self._get_offset_2(self._get_offset_1()))
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
-        src_ele_num_in_fp16 = ub_offset * EPB16
+        src_ele_num_in_fp16 = self._get_src_size()  # minus 16 avoid bank conflict
         src_list = [ub_input_fp16[src_ele_num_in_fp16 * i] for i in range(EPB16)]
         dst_list_intermediate = [ub_input_fp16[tp.fp16_offset_1 + EPB16 * i] \
                                  for i in range(EPB16)]
@@ -1661,13 +1603,37 @@ class Transpose(object):
 
         # step2. move output elements together
         with self.tik_inst.if_scope(mode == 0):
-            # f2t
-            with self.tik_inst.new_stmt_scope(disable_sync=True):
-                with self.tik_inst.for_range(0, row_ele_num) as i:
-                    self.tik_inst.data_move(ub_input_fp16[tp.fp16_offset_2 + i * self.fp16_times * EPB16],
-                                            ub_input_fp16[tp.fp16_offset_1 + i * col_ele_num * self.fp16_times * EPB16],
-                                            0, col_ele_num, self.fp16_times,
-                                            0, row_ele_num * self.fp16_times - self.fp16_times)
+            #f2t
+            with self.tik_inst.if_scope(tik.all(self.fp16_times == 1, row_ele_num < 32)):
+                with self.tik_inst.new_stmt_scope(disable_sync=True):
+                    with self.tik_inst.for_range(0, row_ele_num) as i:
+                        self.tik_inst.vadds(128, ub_input_fp16[tp.fp16_offset_2 + i * EPB16],
+                                            ub_input_fp16[tp.fp16_offset_1 + i * col_ele_num * EPB16],
+                                            0, col_ele_num // 8, row_ele_num, 1, row_ele_num * 8, 8)
+
+            with self.tik_inst.if_scope(tik.all(self.fp16_times == 1, row_ele_num >= 32)):
+                loop_num = self.tik_inst.Scalar("int32")
+                tail_num = self.tik_inst.Scalar("int32")
+                loop_num.set_as(row_ele_num // 8)
+                tail_num.set_as(row_ele_num % 8)
+                with self.tik_inst.new_stmt_scope(disable_sync=True):
+                    with self.tik_inst.for_range(0, loop_num) as i:
+                        self.tik_inst.vadds(128, ub_input_fp16[tp.fp16_offset_2 + i * 8 * EPB16],
+                                            ub_input_fp16[tp.fp16_offset_1 + i * col_ele_num * 8 * EPB16],
+                                            0, col_ele_num, 1, col_ele_num, row_ele_num, 1)
+                    with self.tik_inst.if_scope(tail_num != 0):
+                        self.tik_inst.vadds(tail_num * 8, ub_input_fp16[tp.fp16_offset_2 + loop_num * 8 * EPB16],
+                                            ub_input_fp16[tp.fp16_offset_1 + loop_num * col_ele_num * 8 * EPB16],
+                                            0, col_ele_num, 1, col_ele_num, row_ele_num, 1)
+
+            with self.tik_inst.if_scope(self.fp16_times == 2):
+                with self.tik_inst.new_stmt_scope(disable_sync=True):
+                    with self.tik_inst.for_range(0, row_ele_num) as i:
+                        self.tik_inst.data_move(ub_input_fp16[tp.fp16_offset_2 + i * self.fp16_times * EPB16],
+                                                ub_input_fp16[tp.fp16_offset_1 + \
+                                                              i * col_ele_num * self.fp16_times * EPB16],
+                                                0, col_ele_num, self.fp16_times,
+                                                0, row_ele_num * self.fp16_times - self.fp16_times)
         with self.tik_inst.else_scope():
             # t2f
             with self.tik_inst.new_stmt_scope(disable_sync=True):
@@ -1678,9 +1644,9 @@ class Transpose(object):
                                             col_ele_num * self.fp16_times - self.fp16_times, 0)
 
         # step3. make all elements in the first col be in memory of contiguous
-        src_list_intermediate = [ub_input_fp16[tp.fp16_offset_2 + EPB16 * i] \
-                                 for i in range(EPB16)]
-        dst_list_finally = [ub_input_fp16[ub_offset * 16 * i] for i in range(EPB16)]
+        src_list_intermediate = [ub_input_fp16[tp.fp16_offset_2 + EPB16 * i]\
+                for i in range(EPB16)]
+        dst_list_finally = [ub_input_fp16[self._get_dst_size() * 16 * i] for i in range(EPB16)]
 
         with self.tik_inst.if_scope(ub_offset == 1):
             self.tik_inst.vnchwconv(False, False, dst_list_finally, src_list_intermediate, 1, 0, 0)
@@ -1832,49 +1798,39 @@ class Transpose(object):
                 self._copy_out_tail_row_t2f(tp, ub_input, ub_offset, ln, tp.loop_on_mr)
             self._update_tuple(tp.n_axis_num, tp.rt_n_tuple, tp.n_jump_factor)
 
-    def _do_tiling_s0(self, block_idx, tiling_reg_list, ub_input_64, fixed_len, per_core_len):
-        self.tik_inst.data_move(ub_input_64, self.data_tiling[TILING_HEAD_LEN], 0, 1,
-                                fixed_len // ELE_NUM_PER_BLOCK_INT64, 0, 0)
-        self.tik_inst.data_move(ub_input_64[fixed_len],
+    def _do_tiling_s0(self, block_idx, tiling_reg_list, ub_input_64_t, ub_input_64, fixed_len, per_core_len):
+        self.tik_inst.data_move(ub_input_64[0],
                                 self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
                                 0, 1, per_core_len // ELE_NUM_PER_BLOCK_INT64 + 1, 0, 0)
-        tp = self.TilingParamS0(tiling_reg_list, ub_input_64, fixed_len, self.tik_inst)
+        tp = self.TilingParamS0(tiling_reg_list, ub_input_64_t, ub_input_64)
         return tp
 
-    def _do_tiling_s1(self, block_idx, tiling_reg_list, ub_input_64, fixed_len, per_core_len):
-        self.tik_inst.data_move(ub_input_64, self.data_tiling[TILING_HEAD_LEN], 0, 1,
-                                fixed_len // ELE_NUM_PER_BLOCK_INT64, 0, 0)
-        self.tik_inst.data_move(ub_input_64[fixed_len],
+    def _do_tiling_s1(self, block_idx, tiling_reg_list, ub_input_64_t, ub_input_64, fixed_len, per_core_len):
+        self.tik_inst.data_move(ub_input_64[0],
                                 self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
                                 0, 1, per_core_len // ELE_NUM_PER_BLOCK_INT64 + 1, 0, 0)
-        tp = self.TilingParamS1(tiling_reg_list, ub_input_64, fixed_len, self.tik_inst)
+        tp = self.TilingParamS1(tiling_reg_list, ub_input_64_t, ub_input_64, self.tik_inst)
         return tp
 
-    def _do_tiling_s2(self, block_idx, tiling_reg_list, ub_input_64, fixed_len, per_core_len):
-        self.tik_inst.data_move(ub_input_64, self.data_tiling[TILING_HEAD_LEN], 0, 1,
-                                fixed_len // ELE_NUM_PER_BLOCK_INT64, 0, 0)
-        self.tik_inst.data_move(ub_input_64[fixed_len],
+    def _do_tiling_s2(self, block_idx, tiling_reg_list, ub_input_64_t, ub_input_64, fixed_len, per_core_len):
+        self.tik_inst.data_move(ub_input_64[0],
                                 self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
                                 0, 1, per_core_len // ELE_NUM_PER_BLOCK_INT64 + 1, 0, 0)
-        tp = self.TilingParamS2(tiling_reg_list, ub_input_64, fixed_len, self.tik_inst)
+        tp = self.TilingParamS2(tiling_reg_list, ub_input_64_t, ub_input_64, self.tik_inst)
         return tp
 
-    def _do_tiling_s3(self, block_idx, tiling_reg_list, ub_input_64, fixed_len, per_core_len):
-        self.tik_inst.data_move(ub_input_64, self.data_tiling[TILING_HEAD_LEN], 0, 1,
-                                fixed_len // ELE_NUM_PER_BLOCK_INT64, 0, 0)
-        self.tik_inst.data_move(ub_input_64[fixed_len],
+    def _do_tiling_s3(self, block_idx, tiling_reg_list, ub_input_64_t, ub_input_64, fixed_len, per_core_len):
+        self.tik_inst.data_move(ub_input_64[0],
                                 self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
                                 0, 1, per_core_len // ELE_NUM_PER_BLOCK_INT64 + 1, 0, 0)
-        tp = self.TilingParamS3(tiling_reg_list, ub_input_64, fixed_len, self.tik_inst)
+        tp = self.TilingParamS3(tiling_reg_list, ub_input_64_t, ub_input_64, self.tik_inst)
         return tp
 
-    def _do_tiling_s7(self, block_idx, tiling_reg_list, ub_input_64, fixed_len, per_core_len):
-        self.tik_inst.data_move(ub_input_64, self.data_tiling[TILING_HEAD_LEN], 0, 1,
-                                fixed_len // ELE_NUM_PER_BLOCK_INT64, 0, 0)
-        self.tik_inst.data_move(ub_input_64[fixed_len],
+    def _do_tiling_s7(self, block_idx, tiling_reg_list, ub_input_64_t, ub_input_64, fixed_len, per_core_len):
+        self.tik_inst.data_move(ub_input_64[0],
                                 self.data_tiling[TILING_HEAD_LEN + fixed_len + block_idx * per_core_len],
                                 0, 1, per_core_len // ELE_NUM_PER_BLOCK_INT64 + 1, 0, 0)
-        tp = self.TilingParamS7(tiling_reg_list, ub_input_64, fixed_len, self.tik_inst)
+        tp = self.TilingParamS7(tiling_reg_list, ub_input_64_t, ub_input_64, self.tik_inst)
         return tp
 
     def _decode_tiling_head(self):
@@ -1882,18 +1838,22 @@ class Transpose(object):
         fixed_len = self.tik_inst.Scalar("int64")
         per_core_len = self.tik_inst.Scalar("int64")
         sub_scenario = self.tik_inst.Scalar("int64")
-        scenario.set_as(self.ub_input_64[0])
-        fixed_len.set_as(self.ub_input_64[1])
-        per_core_len.set_as(self.ub_input_64[2])
-        sub_scenario.set_as(self.ub_input_64[3])
+        scenario.set_as(self.ub_input_64_t[0])
+        fixed_len.set_as(self.ub_input_64_t[1])
+        per_core_len.set_as(self.ub_input_64_t[2])
+        sub_scenario.set_as(self.ub_input_64_t[3])
         return scenario, fixed_len, per_core_len, sub_scenario
 
     def compute_tiling(self):
+        '''
+        execution function
+        '''
         scenario, fixed_len, per_core_len, sub_scenario = self._decode_tiling_head()
 
         with self.tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
             with self.tik_inst.if_scope(scenario == 7):
-                tp = self._do_tiling_s7(block_idx, self.tiling_reg_list, self.ub_input_64, fixed_len, per_core_len)
+                tp = self._do_tiling_s7(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                        self.ub_input_64, fixed_len, per_core_len)
                 with self.tik_inst.if_scope(sub_scenario == 0):
                     self._move_data_last_axis_university(tp, self.ub_input_64)
                 with self.tik_inst.else_scope():
@@ -1903,31 +1863,38 @@ class Transpose(object):
                         self._move_data_last_axis_thin_2_fat(tp, self.ub_input_64)
             with self.tik_inst.else_scope():
                 with self.tik_inst.if_scope(scenario == 1):
-                    tp = self._do_tiling_s1(block_idx, self.tiling_reg_list, self.ub_input_64, fixed_len, per_core_len)
+                    tp = self._do_tiling_s1(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                            self.ub_input_64, fixed_len, per_core_len)
                     self._move_data_s1(tp, self.ub_input_64)
                 with self.tik_inst.else_scope():
                     with self.tik_inst.if_scope(tik.any(scenario == 2, scenario == 6)):
-                        tp = self._do_tiling_s2(block_idx, self.tiling_reg_list, self.ub_input_64,
-                                                fixed_len, per_core_len)
+                        tp = self._do_tiling_s2(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                                self.ub_input_64, fixed_len, per_core_len)
                         self._move_data_s2(tp, self.ub_input_64)
                     with self.tik_inst.else_scope():
                         with self.tik_inst.if_scope(scenario == 3):
-                            tp = self._do_tiling_s3(block_idx, self.tiling_reg_list, self.ub_input_64,
-                                                    fixed_len, per_core_len)
+                            tp = self._do_tiling_s3(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                                    self.ub_input_64, fixed_len, per_core_len)
                             self._move_data_s3(tp, self.ub_input_64)
                         with self.tik_inst.else_scope():  # scenario == 0
-                            tp = self._do_tiling_s0(block_idx, self.tiling_reg_list, self.ub_input_64,
-                                                    fixed_len, per_core_len)
+                            tp = self._do_tiling_s0(block_idx, self.tiling_reg_list, self.ub_input_64_t,
+                                                    self.ub_input_64, fixed_len, per_core_len)
                             self._move_data_s0(tp, self.ub_input_64)
 
     def compute(self, input_list):
+        '''
+        entrance function
+        '''
         self.compute_tiling()
+        tbe_context.get_context().add_compile_info("vars", {
+            "ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
+        # this "global_variable_link" flag suggest ccec.py do link without "-r" option
+        # which will result in global variable in cce file with wrong address
+        tbe_context.get_context().add_compile_info("global_variable_link", True)
         self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
                                inputs=input_list,
                                outputs=[self.data_out],
                                flowtable=[self.data_tiling])
-        tbe_context.get_context().add_compile_info("vars", {
-            "ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
         return {"compile_info": tbe_context.get_context().get_compile_info()}
 
 
@@ -1955,10 +1922,10 @@ def transpose(x, perm, y, kernel_name="transpose"):
     p_dtype = perm.get("dtype").lower()
     y_dtype = y.get("dtype").lower()
     tik_inst = tik.Tik()
-    data_in = tik_inst.Tensor(x_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_in")
-    data_perm = tik_inst.Tensor(p_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_perm")
-    data_out = tik_inst.Tensor(y_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_out")
-    data_workspace = tik_inst.Tensor(y_dtype, (1024,), tik.scope_gm, "data_workspace", is_workspace=True)
+    data_in = tik_inst.Tensor(x_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "x")
+    data_perm = tik_inst.Tensor(p_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "perm")
+    data_out = tik_inst.Tensor(y_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "y")
+    data_workspace = tik_inst.Tensor(y_dtype, (1024, ), tik.scope_gm, "data_workspace", is_workspace=True)
     data_tiling = tik_inst.Tensor("int64", (TILING_MAX_SIZE_GM,), tik.scope_gm, "data_tiling")
     tensor_list = [data_in, data_perm, data_out, data_workspace, data_tiling]
     input_list = [data_in, data_perm]

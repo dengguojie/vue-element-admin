@@ -24,12 +24,9 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
         -1 in output_y shape
         -2 in input_x shape
     """
-    x_shape = input_x.get("ori_shape")
-    y_shape = output_y.get("ori_shape")
     x_dtype = input_x.get("dtype")
 
-    if (-1 in x_shape or -1 in y_shape or -2 in x_shape) and\
-            x_dtype in ("float", "float32", "int32", "uint32", "int16", "uint16", "float16"):
+    if  x_dtype in ("float", "float32", "int32", "uint32", "int16", "uint16", "float16"):
         return True
 
     return False
