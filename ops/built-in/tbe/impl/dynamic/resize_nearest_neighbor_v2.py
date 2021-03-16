@@ -57,12 +57,12 @@ class ResizeNearestNeighbor:
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
         self.block_num = 16 if self.images_dtype in ("float16",) else 8
-        self.vcetor_num = self.block_num * 8
+        self.vector_num = self.block_num * 8
         self.ub_max_num = self.ub_size_bytes // 32 // 2 * self.block_num
 
         self.images_shape_c0 = 16
         self.height_idx_sigment_num = 512
-        self.weight_idx_sigment_num = 512
+        self.width_idx_sigment_num = 512
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
 
         self.images_gm = self.tik_instance.Tensor(self.images_dtype, [MAX_INT64],
@@ -81,12 +81,12 @@ class ResizeNearestNeighbor:
         self.tiling_batch = self.tik_instance.Scalar("int64", name="tiling_batch")
         self.tiling_c1 = self.tik_instance.Scalar("int64", name="tiling_c1")
         self.tiling_in_height = self.tik_instance.Scalar("int64", name="tiling_in_height")
-        self.tiling_in_weight = self.tik_instance.Scalar("int64", name="tiling_in_weight")
+        self.tiling_in_width = self.tik_instance.Scalar("int64", name="tiling_in_width")
         self.tiling_out_height = self.tik_instance.Scalar("int64", name="tiling_out_height")
-        self.tiling_out_weight = self.tik_instance.Scalar("int64", name="tiling_out_weight")
+        self.tiling_out_width = self.tik_instance.Scalar("int64", name="tiling_out_width")
         self.tiling_bc1_cut_num = self.tik_instance.Scalar("int64", name="tiling_bc1_cut_num")
         self.tiling_height_cut_num = self.tik_instance.Scalar("int64", name="tiling_height_cut_num")
-        self.tiling_weight_cut_num = self.tik_instance.Scalar("int64", name="tiling_weight_cut_num")
+        self.tiling_width_cut_num = self.tik_instance.Scalar("int64", name="tiling_width_cut_num")
 
         # init scaler for each core
         # nc1 start addr offset for per core
@@ -94,19 +94,19 @@ class ResizeNearestNeighbor:
         # h start addr offset for per core
         self.core_height_start = self.tik_instance.Scalar("int64", name="core_height_start")
         # w start addr offset for per core
-        self.core_weight_start = self.tik_instance.Scalar("int64", name="core_weight_start")
+        self.core_width_start = self.tik_instance.Scalar("int64", name="core_width_start")
         # nc1 process len for per core
         self.core_nc_num = self.tik_instance.Scalar("int64", name="core_nc_num")
         # h process len for per core
         self.core_height_num = self.tik_instance.Scalar("int64", name="core_height_num")
         # w process len for per core
-        self.core_weight_num = self.tik_instance.Scalar("int64", name="core_weight_num")
-        self.cut_weight_num = None
+        self.core_width_num = self.tik_instance.Scalar("int64", name="core_width_num")
+        self.cut_width_num = None
         self.cut_height_num = None
 
         # init ub
         self.height_idx_ub = None
-        self.weight_idx_ub = None
+        self.width_idx_ub = None
         self.idx_ub_fp32 = None
         self.idx_cb_fp32 = None
         self.image_out_ub = None
@@ -124,55 +124,84 @@ class ResizeNearestNeighbor:
             self.tiling_batch.set_as(tiling_ub[1])
             self.tiling_c1.set_as(tiling_ub[2])
             self.tiling_in_height.set_as(tiling_ub[3])
-            self.tiling_in_weight.set_as(tiling_ub[4])
+            self.tiling_in_width.set_as(tiling_ub[4])
             self.tiling_out_height.set_as(tiling_ub[5])
-            self.tiling_out_weight.set_as(tiling_ub[6])
+            self.tiling_out_width.set_as(tiling_ub[6])
             self.tiling_bc1_cut_num.set_as(tiling_ub[7])
             self.tiling_height_cut_num.set_as(tiling_ub[8])
-            self.tiling_weight_cut_num.set_as(tiling_ub[9])
+            self.tiling_width_cut_num.set_as(tiling_ub[9])
 
     def _core_scalar_args(self, _core_idx):
         """
-        get runtime tiling parameters from tiling
+        get runtime tiling parameters from tiling data with core_id
+
+        need_input1: image info -->
+                   tiling_batch*tiling_c1 tiling_in_height tiling_in_width tiling_out_height tiling_out_width
+        need_input2: cut core info ---> tiling_bc1_cut_num tiling_height_cut_num tiling_width_cut_num
+        output: the process info for each core -->
+                   self.core_nc_start/self.core_nc_num
+                   self.core_height_start/self.core_height_num
+                   self.core_width_start/self.core_width_num
+
+        proc:
+            core_nc_num = (batch*c1 + bc1_cut_num - 1) // bc1_cut_num
+            core_nc_start = (core_id // (height_cut_num * width_cut_num)) * core_nc_num
+            core_height_num = (height + height_cut_num - 1) // height_cut_num
+            core_height_start = ((core_id % (height_cut_num * width_cut_num)) // width_cut_num) * core_height_num
+            core_width_num = (width + width_cut_num - 1) // width_cut_num
+            core_width_start = ((core_id % (height_cut_num * width_cut_num)) // width_cut_num) * core_width_num
+
+            for example:
+                input info:
+                    16, 2, 32, 32, 16 resize to 16, 2, 64, 64, 16     h from 32->64 w from 32->64
+                cut info: tiling_bc1_cut_num, tiling_height_cut_num, tiling_width_cut_num
+                    4, 4, 2
+
+                core_nc_num = ceil(32, 4) = 8
+                core_nc_start = (core_idx // (4*2)) * core_nc_num
+                   ---> 0 <= core_idx < 8  core_nc_start = 0
+                   ---> 8 <= core_idx < 16  core_nc_start = 8
+                   ---> 16 <= core_idx < 24  core_nc_start = 16
+                   ---> 24 <= core_idx < 32  core_nc_start = 24
         """
-        self.core_nc_start.set_as(_core_idx // (self.tiling_height_cut_num * self.tiling_weight_cut_num))
+        self.core_nc_start.set_as(_core_idx // (self.tiling_height_cut_num * self.tiling_width_cut_num))
         self.core_height_start.set_as(
-            (_core_idx % (self.tiling_height_cut_num * self.tiling_weight_cut_num)) // self.tiling_weight_cut_num)
-        self.core_weight_start.set_as(
-            (_core_idx % (self.tiling_height_cut_num * self.tiling_weight_cut_num)) % self.tiling_weight_cut_num)
+            (_core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num)) // self.tiling_width_cut_num)
+        self.core_width_start.set_as(
+            (_core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num)) % self.tiling_width_cut_num)
         # h process len for per core
         self.cut_height_num = self.tik_instance.Scalar("int64", name="cut_height_num")
         # w process len for per core
-        self.cut_weight_num = self.tik_instance.Scalar("int64", name="cut_weight_num")
+        self.cut_width_num = self.tik_instance.Scalar("int64", name="cut_width_num")
         self.cut_height_num.set_as(self.tiling_out_height)
-        self.cut_weight_num.set_as(self.tiling_out_weight)
+        self.cut_width_num.set_as(self.tiling_out_width)
         with self.tik_instance.if_scope(self.tiling_key == 111000):
             # when tiling_key is 111000, will cut by input
             self.cut_height_num.set_as(self.tiling_in_height)
-            self.cut_weight_num.set_as(self.tiling_in_weight)
+            self.cut_width_num.set_as(self.tiling_in_width)
         with self.tik_instance.if_scope(self.tiling_key == 101000):
-            self.cut_weight_num.set_as(self.tiling_in_weight)
+            self.cut_width_num.set_as(self.tiling_in_width)
 
         nc_sigment = (self.tiling_batch * self.tiling_c1 + self.tiling_bc1_cut_num - 1) // self.tiling_bc1_cut_num
         h_sigment = (self.cut_height_num + self.tiling_height_cut_num - 1) // self.tiling_height_cut_num
-        w_sigment = (self.cut_weight_num + self.tiling_weight_cut_num - 1) // self.tiling_weight_cut_num
+        w_sigment = (self.cut_width_num + self.tiling_width_cut_num - 1) // self.tiling_width_cut_num
         self.core_nc_start.set_as(
-            (_core_idx // (self.tiling_height_cut_num * self.tiling_weight_cut_num)) * nc_sigment)
+            (_core_idx // (self.tiling_height_cut_num * self.tiling_width_cut_num)) * nc_sigment)
         self.core_height_start.set_as(
-            ((_core_idx % (self.tiling_height_cut_num * self.tiling_weight_cut_num))
-             // self.tiling_weight_cut_num) * h_sigment)
-        self.core_weight_start.set_as(
-            ((_core_idx % (self.tiling_height_cut_num * self.tiling_weight_cut_num))
-             % self.tiling_weight_cut_num) * w_sigment)
+            ((_core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num))
+             // self.tiling_width_cut_num) * h_sigment)
+        self.core_width_start.set_as(
+            ((_core_idx % (self.tiling_height_cut_num * self.tiling_width_cut_num))
+             % self.tiling_width_cut_num) * w_sigment)
         self.core_nc_num.set_as(nc_sigment)
         self.core_height_num.set_as(h_sigment)
-        self.core_weight_num.set_as(w_sigment)
+        self.core_width_num.set_as(w_sigment)
         with self.tik_instance.if_scope(self.tiling_key == 101000):
             # when tiling_key is 101000, w start will start from align_num*n
-            align_num = self.tiling_out_weight // self.tiling_in_weight
-            self.core_weight_num.set_as(self.core_weight_num * align_num)
-            self.core_weight_start.set_as(self.core_weight_start * align_num)
-            self.cut_weight_num.set_as(self.tiling_in_weight * align_num)
+            align_num = self.tiling_out_width // self.tiling_in_width
+            self.core_width_num.set_as(self.core_width_num * align_num)
+            self.core_width_start.set_as(self.core_width_start * align_num)
+            self.cut_width_num.set_as(self.tiling_in_width * align_num)
 
         with self.tik_instance.if_scope(
                 self.core_nc_start + self.core_nc_num >= self.tiling_batch * self.tiling_c1):
@@ -181,30 +210,30 @@ class ResizeNearestNeighbor:
                 self.core_height_start + self.core_height_num >= self.cut_height_num):
             self.core_height_num.set_as(self.cut_height_num - self.core_height_start)
         with self.tik_instance.if_scope(
-                self.core_weight_start + self.core_weight_num >= self.cut_weight_num):
-            self.core_weight_num.set_as(self.cut_weight_num - self.core_weight_start)
-        core_used = self.tiling_weight_cut_num * self.tiling_height_cut_num * self.tiling_bc1_cut_num
+                self.core_width_start + self.core_width_num >= self.cut_width_num):
+            self.core_width_num.set_as(self.cut_width_num - self.core_width_start)
+        core_used = self.tiling_width_cut_num * self.tiling_height_cut_num * self.tiling_bc1_cut_num
         with self.tik_instance.if_scope(_core_idx >= core_used):
             self.core_nc_num.set_as(0)
             self.core_height_num.set_as(0)
-            self.core_weight_num.set_as(0)
+            self.core_width_num.set_as(0)
 
-    def _init_ub_tensor_for_idx(self, height_idx_len=0, weight_idx_len=0):
+    def _init_ub_tensor_for_idx(self, height_idx_len=0, width_idx_len=0):
         """
         compute the ub size of tensors
         """
         height_idx_len = self.height_idx_sigment_num if height_idx_len == 0 else height_idx_len
-        weight_idx_len = self.weight_idx_sigment_num if weight_idx_len == 0 else weight_idx_len
-        idx_max_len = max(height_idx_len, weight_idx_len)
+        width_idx_len = self.width_idx_sigment_num if width_idx_len == 0 else width_idx_len
+        idx_max_len = max(height_idx_len, width_idx_len)
         self.height_idx_ub = self.tik_instance.Tensor("int32", (height_idx_len,),
                                                       name="height_idx", scope=tik.scope_ubuf)
-        self.weight_idx_ub = self.tik_instance.Tensor("int32", (weight_idx_len,),
-                                                      name="weight_idx", scope=tik.scope_ubuf)
+        self.width_idx_ub = self.tik_instance.Tensor("int32", (width_idx_len,),
+                                                     name="width_idx", scope=tik.scope_ubuf)
         self.idx_ub_fp32 = self.tik_instance.Tensor("float32", (idx_max_len,),
                                                     name="idx_ub_fp32", scope=tik.scope_ubuf)
         self.idx_cb_fp32 = self.tik_instance.Tensor("float32", (idx_max_len,),
                                                     name="idx_cb_fp32", scope=tik.scope_cbuf)
-        avail_bytes = self.ub_size_bytes - (height_idx_len + weight_idx_len + idx_max_len) * 4
+        avail_bytes = self.ub_size_bytes - (height_idx_len + width_idx_len + idx_max_len) * 4
         avail_block = avail_bytes // 32 // 2
         self.ub_max_num = avail_block * self.block_num
 
@@ -279,37 +308,37 @@ class ResizeNearestNeighbor:
         if is_w_algin:
             is_big_to_small = False
         self.height_idx_sigment_num = 64
-        self.weight_idx_sigment_num = 128
+        self.width_idx_sigment_num = 128
         # cut by output h and output w
         self._init_ub_tensor_for_idx()
 
         # gen 0-511 to l1 fp32
         with self.tik_instance.new_stmt_scope():
-            fill_index_in_ub(self.tik_instance, self.idx_ub_fp32, self.weight_idx_sigment_num)
+            fill_index_in_ub(self.tik_instance, self.idx_ub_fp32, self.width_idx_sigment_num)
 
         # calcu is_src_stride_copy and is_dst_stride_copy use scalar
         scalar_is_src_stride = self.tik_instance.Scalar("int32", name="scalar_is_src_stride", init_value=1)
         scalar_is_dst_stride = self.tik_instance.Scalar("int32", name="scalar_is_dst_stride", init_value=1)
 
-        with self.tik_instance.if_scope(self.tiling_in_height * self.tiling_in_weight > self.stride_threshold):
+        with self.tik_instance.if_scope(self.tiling_in_height * self.tiling_in_width > self.stride_threshold):
             scalar_is_src_stride.set_as(0)
-        with self.tik_instance.if_scope(self.tiling_out_height * self.tiling_out_weight > self.stride_threshold):
+        with self.tik_instance.if_scope(self.tiling_out_height * self.tiling_out_width > self.stride_threshold):
             scalar_is_dst_stride.set_as(0)
         # calcu is_src_stride_copy and is_dst_stride_copy use scalar end
 
         # init a scalar for w sigment one time
         w_loop_sigment = self.tik_instance.Scalar("int32", name="w_loop_sigment",
-                                                  init_value=self.weight_idx_sigment_num)
+                                                  init_value=self.width_idx_sigment_num)
         if is_w_algin:
-            # if weight is input_w resize to n*input_w, one sigment must be n algin
-            # exp: 24 resize to 48, one sigment of weight must be 2*n
+            # if width is input_w resize to n*input_w, one sigment must be n algin
+            # exp: 24 resize to 48, one sigment of width must be 2*n
             with self.tik_instance.new_stmt_scope():
                 algin_num_scalar = self.tik_instance.Scalar("int32", name="algin_num_scalar")
-                algin_num_scalar.set_as(self.tiling_out_weight // self.tiling_in_weight)
+                algin_num_scalar.set_as(self.tiling_out_width // self.tiling_in_width)
                 w_loop_sigment.set_as(w_loop_sigment // algin_num_scalar * algin_num_scalar)
 
-        with self.tik_instance.if_scope(tik.all(self.core_weight_num < w_loop_sigment, self.core_weight_num > 0)):
-            w_loop_sigment.set_as(self.core_weight_num)
+        with self.tik_instance.if_scope(tik.all(self.core_width_num < w_loop_sigment, self.core_width_num > 0)):
+            w_loop_sigment.set_as(self.core_width_num)
 
         w_loop_num = self.tik_instance.Scalar("int32", name="w_loop_num")
         w_tail_num = self.tik_instance.Scalar("int32", name="w_tail_num")
@@ -317,8 +346,8 @@ class ResizeNearestNeighbor:
         nc_loop = self.tik_instance.Scalar("int32", name="nc_loop")
         nc_tail = self.tik_instance.Scalar("int32", name="nc_tail")
 
-        w_loop_num.set_as(self.core_weight_num // w_loop_sigment)
-        w_tail_num.set_as(self.core_weight_num % w_loop_sigment)
+        w_loop_num.set_as(self.core_width_num // w_loop_sigment)
+        w_tail_num.set_as(self.core_width_num % w_loop_sigment)
         nc_max_segment.set_as(self.ub_max_num // (w_loop_sigment * self.images_shape_c0))
         nc_loop.set_as(self.core_nc_num // nc_max_segment)
         nc_tail.set_as(self.core_nc_num % nc_max_segment)
@@ -330,37 +359,37 @@ class ResizeNearestNeighbor:
                 nc_max_segment.set_as(0)
             # mean: if input_w // output_w > 4, the input_w can not save in l1
             # will modify w_loop_sigment base on input
-            w_input_output_rate = (self.tiling_in_weight + self.tiling_out_weight - 1) // self.tiling_out_weight
+            w_input_output_rate = (self.tiling_in_width + self.tiling_out_width - 1) // self.tiling_out_width
             w_loop_input_sigment = (w_loop_sigment - 1) * w_input_output_rate + 1
             _max_nc_w_in_l1 = self.ub_max_num * 4 // self.images_shape_c0
-            with self.tik_instance.if_scope(self.tiling_out_weight * 4 < self.tiling_in_weight):
+            with self.tik_instance.if_scope(self.tiling_out_width * 4 < self.tiling_in_width):
                 with self.tik_instance.if_scope(tik.any(w_loop_input_sigment * nc_tail > _max_nc_w_in_l1,
                                                         w_loop_input_sigment * nc_max_segment > _max_nc_w_in_l1)):
                     w_loop_sigment.set_as(w_loop_sigment * 4 // w_input_output_rate)
                     with self.tik_instance.if_scope(w_loop_sigment < 1):
                         w_loop_sigment.set_as(1)
-                    w_loop_num.set_as(self.core_weight_num // w_loop_sigment)
-                    w_tail_num.set_as(self.core_weight_num % w_loop_sigment)
+                    w_loop_num.set_as(self.core_width_num // w_loop_sigment)
+                    w_tail_num.set_as(self.core_width_num % w_loop_sigment)
 
         scalar_idx_fp32 = self.tik_instance.Scalar("float32", name="scalar_idx_fp32")
         # vconv start idx from int32 scalar to fp32 scalar
-        self.scalar_vconv_int32_to_fp32(self.core_weight_start, scalar_idx_fp32)
+        self.scalar_vconv_int32_to_fp32(self.core_width_start, scalar_idx_fp32)
         # do vadds 0,1,2,3,4 + fp32_scalar
         self.tik_instance.vadds(64, self.idx_ub_fp32, self.idx_ub_fp32, scalar_idx_fp32,
                                 (w_loop_sigment + 63) // 64, 1, 1, 8, 8)
         self.scalar_vconv_int32_to_fp32(w_loop_sigment, scalar_idx_fp32)
 
         def _run_w_loop_default(w_loop_idx, w_do_len, h_loop_offset, h_do_len):
-            w_gm_offset = w_loop_idx * w_loop_sigment + self.core_weight_start
-            self.calcu_out_in_idx(self.resize_scale_w, self.weight_idx_ub,
-                                  self.idx_ub_fp32, self.weight_idx_sigment_num)
+            w_gm_offset = w_loop_idx * w_loop_sigment + self.core_width_start
+            self.calcu_out_in_idx(self.resize_scale_w, self.width_idx_ub,
+                                  self.idx_ub_fp32, self.width_idx_sigment_num)
             self.tik_instance.vadds(64, self.idx_ub_fp32, self.idx_ub_fp32, scalar_idx_fp32,
-                                    (self.weight_idx_sigment_num + 63) // 64, 1, 1, 8, 8)
+                                    (self.width_idx_sigment_num + 63) // 64, 1, 1, 8, 8)
 
             scalar_w_start_idx = self.tik_instance.Scalar("int32", name="scalar_w_start_idx")
             scalar_w_end_idx = self.tik_instance.Scalar("int32", name="scalar_w_end_idx")
-            scalar_w_start_idx.set_as(self.weight_idx_ub[0])
-            scalar_w_end_idx.set_as(self.weight_idx_ub[w_do_len - 1])
+            scalar_w_start_idx.set_as(self.width_idx_ub[0])
+            scalar_w_end_idx.set_as(self.width_idx_ub[w_do_len - 1])
             input_w_len = scalar_w_end_idx - scalar_w_start_idx + 1
 
             # one sigment h and one sigment w
@@ -388,9 +417,9 @@ class ResizeNearestNeighbor:
                             data_move_cbuf_offset = (input_w_len * self.images_shape_c0) * _sigment_idx
                             nc_gm_input_offset = \
                                 (_nc_loop_idx * nc_max_segment + self.core_nc_start + _sigment_idx) \
-                                * self.tiling_in_weight * self.tiling_in_height
+                                * self.tiling_in_width * self.tiling_in_height
                             data_move_gm_offset = \
-                                nc_gm_input_offset + scalar_in_h_idx * self.tiling_in_weight + scalar_w_start_idx
+                                nc_gm_input_offset + scalar_in_h_idx * self.tiling_in_width + scalar_w_start_idx
                             self.tik_instance.data_move(input_l1[data_move_cbuf_offset],
                                                         self.images_gm[data_move_gm_offset * self.images_shape_c0],
                                                         0, 1,
@@ -399,13 +428,13 @@ class ResizeNearestNeighbor:
                         data_move_cbuf_offset = 0
                         nc_gm_input_offset = \
                             (_nc_loop_idx * nc_max_segment + self.core_nc_start) \
-                            * self.tiling_in_weight * self.tiling_in_height
+                            * self.tiling_in_width * self.tiling_in_height
                         data_move_gm_offset = \
-                            nc_gm_input_offset + scalar_in_h_idx * self.tiling_in_weight + scalar_w_start_idx
+                            nc_gm_input_offset + scalar_in_h_idx * self.tiling_in_width + scalar_w_start_idx
                         data_move_burst_num = do_nc_num
                         data_move_burst_len = input_w_len * self.images_shape_c0 // self.block_num
                         data_move_src_stride = \
-                            (self.tiling_in_weight * self.tiling_in_height - input_w_len) \
+                            (self.tiling_in_width * self.tiling_in_height - input_w_len) \
                             * self.images_shape_c0 // self.block_num
                         self.tik_instance.data_move(input_l1[data_move_cbuf_offset],
                                                     self.images_gm[data_move_gm_offset * self.images_shape_c0],
@@ -417,7 +446,7 @@ class ResizeNearestNeighbor:
                     if not is_w_algin:
                         with self.tik_instance.for_range(0, w_do_len) as w_idx:
                             scalar_in_w_idx = self.tik_instance.Scalar("int32", name="scalar_in_w_idx")
-                            scalar_in_w_idx.set_as(self.weight_idx_ub[w_idx])
+                            scalar_in_w_idx.set_as(self.width_idx_ub[w_idx])
                             nc_cbuf_offset = input_w_len * self.images_shape_c0
                             burst_num = do_nc_num
                             burst_len = self.images_shape_c0 // self.block_num
@@ -432,8 +461,8 @@ class ResizeNearestNeighbor:
                     else:
                         # input_w_len
                         scalar_in_w_idx = self.tik_instance.Scalar("int32", name="scalar_in_w_idx")
-                        scalar_in_w_idx.set_as(self.weight_idx_ub[0])
-                        w_algin_num = self.tiling_out_weight // self.tiling_in_weight
+                        scalar_in_w_idx.set_as(self.width_idx_ub[0])
+                        w_algin_num = self.tiling_out_width // self.tiling_in_width
                         with self.tik_instance.for_range(0, input_w_len) as w_input_idx:
                             nc_cbuf_offset = input_w_len * self.images_shape_c0
                             burst_num = do_nc_num
@@ -462,9 +491,9 @@ class ResizeNearestNeighbor:
                         with self.tik_instance.for_range(0, do_nc_num) as _sigment_idx:
                             nc_gm_offset = \
                                 (_nc_loop_idx * nc_max_segment + self.core_nc_start + _sigment_idx) \
-                                * self.tiling_out_weight * self.tiling_out_height
+                                * self.tiling_out_width * self.tiling_out_height
                             output_gm_offset = \
-                                nc_gm_offset + h_gm_offset * self.tiling_out_weight + w_gm_offset
+                                nc_gm_offset + h_gm_offset * self.tiling_out_width + w_gm_offset
                             ub_output_offset = w_do_len * self.images_shape_c0 * _sigment_idx
                             self.tik_instance.data_move(self.out_gm[output_gm_offset * self.images_shape_c0:],
                                                         output_ub[ub_output_offset:], 0, 1,
@@ -473,13 +502,13 @@ class ResizeNearestNeighbor:
                     with self.tik_instance.else_scope():
                         nc_gm_offset = \
                             (_nc_loop_idx * nc_max_segment + self.core_nc_start) \
-                            * self.tiling_out_weight * self.tiling_out_height
-                        output_gm_offset = nc_gm_offset + h_gm_offset * self.tiling_out_weight + w_gm_offset
+                            * self.tiling_out_width * self.tiling_out_height
+                        output_gm_offset = nc_gm_offset + h_gm_offset * self.tiling_out_width + w_gm_offset
                         data_move_ub_offset = 0
                         data_move_burst_num = do_nc_num
                         data_move_burst_len = w_do_len * self.images_shape_c0 // self.block_num
                         data_move_dst_stride = \
-                            (self.tiling_out_weight * self.tiling_out_height - w_do_len) \
+                            (self.tiling_out_width * self.tiling_out_height - w_do_len) \
                             * self.images_shape_c0 // self.block_num
                         self.tik_instance.data_move(self.out_gm[output_gm_offset * self.images_shape_c0:],
                                                     output_ub[data_move_ub_offset:], 0,
@@ -524,19 +553,19 @@ class ResizeNearestNeighbor:
         """
         # h boardcast base input_h cut
         size_h_n = self.tiling_out_height // self.tiling_in_height
-        size_w_n = self.tiling_out_weight // self.tiling_in_weight
-        output_w_size = self.core_weight_num * size_w_n
+        size_w_n = self.tiling_out_width // self.tiling_in_width
+        output_w_size = self.core_width_num * size_w_n
         w_output_size_one_line = self.tik_instance.Scalar("int64", name="input_w_size", init_value=0)
         w_output_size_one_line.set_as(output_w_size)
 
         with self.tik_instance.if_scope(
                 tik.all(self.ub_max_num < output_w_size * self.images_shape_c0,
-                        self.core_weight_num > 0)):
+                        self.core_width_num > 0)):
             w_output_size_one_line.set_as((self.ub_max_num // self.images_shape_c0 // size_w_n) * size_w_n)
         with self.tik_instance.if_scope(w_output_size_one_line == 0):
             w_output_size_one_line.set_as((self.ub_max_num // self.images_shape_c0 // size_w_n) * size_w_n)
-        _w_loop_num = self.core_weight_num // (w_output_size_one_line // size_w_n)
-        _w_tail_num = self.core_weight_num % (w_output_size_one_line // size_w_n)
+        _w_loop_num = self.core_width_num // (w_output_size_one_line // size_w_n)
+        _w_tail_num = self.core_width_num % (w_output_size_one_line // size_w_n)
         _segment_h_num = self.ub_max_num // self.images_shape_c0 // w_output_size_one_line
         _h_loop_num = self.core_height_num // _segment_h_num
         _h_tail_num = self.core_height_num % _segment_h_num
@@ -550,11 +579,11 @@ class ResizeNearestNeighbor:
 
             # copy h * w input to l1
             data_move_gm_offset = \
-                nc_sigment_start * self.tiling_in_height * self.tiling_in_weight + \
-                h_sigment_start * self.tiling_in_weight + w_start_offset
+                nc_sigment_start * self.tiling_in_height * self.tiling_in_width + \
+                h_sigment_start * self.tiling_in_width + w_start_offset
             data_move_burst_num = h_do_len
             data_move_burst_len = w_do_len * self.images_shape_c0 // self.block_num
-            data_move_src_stride = (self.tiling_in_weight - w_do_len) * self.images_shape_c0 // self.block_num
+            data_move_src_stride = (self.tiling_in_width - w_do_len) * self.images_shape_c0 // self.block_num
             data_move_dst_stride = 0
             self.tik_instance.data_move(aicore_mem,
                                         self.images_gm[data_move_gm_offset * self.images_shape_c0],
@@ -594,14 +623,14 @@ class ResizeNearestNeighbor:
                 # copy output one h by one h
                 data_move_src_offset = 0
                 data_move_dst_offset = \
-                    nc_sigment_start * self.tiling_out_height * self.tiling_out_weight + \
-                    h_sigment_start * size_h_n * self.tiling_out_weight + w_start_offset * size_w_n + \
-                    _h_idx * self.tiling_out_weight
+                    nc_sigment_start * self.tiling_out_height * self.tiling_out_width + \
+                    h_sigment_start * size_h_n * self.tiling_out_width + w_start_offset * size_w_n + \
+                    _h_idx * self.tiling_out_width
                 data_move_burst_num = h_do_len
                 data_move_burst_len = w_do_len * size_w_n * self.images_shape_c0 // self.block_num
                 data_move_src_stride = 0
                 data_move_dst_stride = \
-                    (size_h_n * self.tiling_out_weight - w_do_len * size_w_n) \
+                    (size_h_n * self.tiling_out_width - w_do_len * size_w_n) \
                     * self.images_shape_c0 // self.block_num
                 self.tik_instance.data_move(self.out_gm[data_move_dst_offset * self.images_shape_c0:],
                                             self.image_out_ub[data_move_src_offset:],
@@ -612,7 +641,7 @@ class ResizeNearestNeighbor:
                                             data_move_dst_stride)
 
         def _run_w_loop(w_loop_idx, input_w_len):
-            w_sigment_start = w_loop_idx * (w_output_size_one_line // size_w_n) + self.core_weight_start
+            w_sigment_start = w_loop_idx * (w_output_size_one_line // size_w_n) + self.core_width_start
             with self.tik_instance.for_range(0, self.core_nc_num) as nc_idx:
                 with self.tik_instance.for_range(0, _h_loop_num, thread_num=2) as _h_loop_idx:
                     _run_h_loop(_h_loop_idx, _segment_h_num, w_sigment_start, input_w_len, nc_idx)
@@ -631,29 +660,29 @@ class ResizeNearestNeighbor:
         with self.tik_instance.new_stmt_scope():
             height_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
                                                          name="height_input_fp32", scope=tik.scope_ubuf)
-            weight_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                         name="weight_input_fp32", scope=tik.scope_ubuf)
+            width_input_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
+                                                        name="width_input_fp32", scope=tik.scope_ubuf)
             height_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
                                                           name="height_input_int32", scope=tik.scope_ubuf)
-            weight_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
-                                                          name="weight_input_int32", scope=tik.scope_ubuf)
+            width_input_int32 = self.tik_instance.Tensor("int32", (self.block_num * 2,),
+                                                         name="width_input_int32", scope=tik.scope_ubuf)
             height_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
                                                           name="height_output_fp32", scope=tik.scope_ubuf)
-            weight_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
-                                                          name="weight_output_fp32", scope=tik.scope_ubuf)
+            width_output_fp32 = self.tik_instance.Tensor("float32", (self.block_num * 2,),
+                                                         name="width_output_fp32", scope=tik.scope_ubuf)
 
             height_input_int32[0].set_as(self.tiling_in_height)
-            weight_input_int32[0].set_as(self.tiling_in_weight)
+            width_input_int32[0].set_as(self.tiling_in_width)
             height_input_int32[self.block_num].set_as(self.tiling_out_height)
-            weight_input_int32[self.block_num].set_as(self.tiling_out_weight)
+            width_input_int32[self.block_num].set_as(self.tiling_out_width)
             util_tik_comm_func.tik_func_vconv(self.tik_instance, height_input_fp32,
                                               height_input_int32, 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, weight_input_fp32,
-                                              weight_input_int32, 1)
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_input_fp32,
+                                              width_input_int32, 1)
             util_tik_comm_func.tik_func_vconv(self.tik_instance, height_output_fp32,
                                               height_input_int32[self.block_num:], 1)
-            util_tik_comm_func.tik_func_vconv(self.tik_instance, weight_output_fp32,
-                                              weight_input_int32[self.block_num:], 1)
+            util_tik_comm_func.tik_func_vconv(self.tik_instance, width_output_fp32,
+                                              width_input_int32[self.block_num:], 1)
 
             with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_height > 1)):
                 self.tik_instance.vadds(1, height_output_fp32, height_output_fp32, -1.0, 1, 1, 1, 8, 8)
@@ -666,15 +695,15 @@ class ResizeNearestNeighbor:
                                    1, 1, 1, 1, 8, 8, 8)
             self.resize_scale_h.set_as(height_input_fp32[0])
 
-            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_weight > 1)):
-                self.tik_instance.vadds(1, weight_output_fp32, weight_output_fp32, -1.0, 1, 1, 1, 8, 8)
-                self.tik_instance.vadds(1, weight_input_fp32, weight_input_fp32, -1.0, 1, 1, 1, 8, 8)
-            self.tik_instance.vrec(1, weight_output_fp32[self.block_num:], weight_output_fp32, 1, 1, 1, 8, 8)
-            _tik_fuc_vrec_newton(self.tik_instance, weight_output_fp32[self.block_num:], weight_output_fp32,
+            with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_width > 1)):
+                self.tik_instance.vadds(1, width_output_fp32, width_output_fp32, -1.0, 1, 1, 1, 8, 8)
+                self.tik_instance.vadds(1, width_input_fp32, width_input_fp32, -1.0, 1, 1, 1, 8, 8)
+            self.tik_instance.vrec(1, width_output_fp32[self.block_num:], width_output_fp32, 1, 1, 1, 8, 8)
+            _tik_fuc_vrec_newton(self.tik_instance, width_output_fp32[self.block_num:], width_output_fp32,
                                  1, block_num=self.block_num)
-            self.tik_instance.vmul(1, weight_input_fp32, weight_input_fp32, weight_output_fp32[self.block_num:],
+            self.tik_instance.vmul(1, width_input_fp32, width_input_fp32, width_output_fp32[self.block_num:],
                                    1, 1, 1, 1, 8, 8, 8)
-            self.resize_scale_w.set_as(weight_input_fp32[0])
+            self.resize_scale_w.set_as(width_input_fp32[0])
 
     def _do_resize_base_tiling_key(self):
         """
