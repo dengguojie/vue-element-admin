@@ -1535,7 +1535,9 @@ Status DynamicGRUV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   batch = inputTensorDescH.GetShape().GetDim(1);
   hidden_dim = inputTensorDescH.GetShape().GetDim(2);
   input_dim = inputTensorDescX.GetShape().GetDim(2);
-  if (batch % 16 == 0 && hidden_dim % 16 == 0 && input_dim % 16 ==0) {
+
+  t_size = inputTensorDescH.GetShape().GetDim(0);
+  if (batch % 16 == 0 && hidden_dim % 16 == 0 && input_dim % 16 ==0 && t_size != 1) {
     fusion_reduce = true;
   }
   if (PatternFusionUtil::IsUnknownShape(batch) ||
