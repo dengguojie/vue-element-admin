@@ -637,9 +637,9 @@ class ScanFile(object):
         """
         files_list = []
         if os.path.exists(self.directory):
-            files = os.listdir(self.directory)
-            for file in files:
-                file_path = os.path.join(self.directory, file)
+            all_files = os.listdir(self.directory)
+            for each_file in all_files:
+                file_path = os.path.join(self.directory, each_file)
                 if os.path.isdir(file_path):
                     dir_info = os.path.split(file_path)
                     if self.prefix:

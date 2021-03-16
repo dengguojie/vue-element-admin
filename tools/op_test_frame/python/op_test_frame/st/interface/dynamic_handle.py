@@ -27,7 +27,7 @@ def _update_shape_range_in_base_list(base_case):
     return
 
 
-def is_dynamic_shape_update_desc_list(dynamic_shape_support, base_case):
+def check_dynamic_shape_support(dynamic_shape_support, base_case):
     """check operator exist dynamic shape."""
     if dynamic_shape_support and \
             dynamic_shape_support.get('flag') == 'true':

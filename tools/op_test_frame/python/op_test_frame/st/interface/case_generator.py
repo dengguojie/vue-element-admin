@@ -636,7 +636,7 @@ class CaseGenerator:
                 base_case['attr'].append(self._make_attr(key, value))
         # check operator exist dynamic shape.
         dynamic_shape_support = self.op_info.get('dynamicShapeSupport')
-        dynamic_handle.is_dynamic_shape_update_desc_list(
+        dynamic_handle.check_dynamic_shape_support(
             dynamic_shape_support, base_case)
         self._check_desc_valid(base_case, 'output_desc')
 
