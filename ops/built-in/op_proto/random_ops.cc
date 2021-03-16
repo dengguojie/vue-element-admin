@@ -254,6 +254,46 @@ IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
 
 INFER_FUNC_REG(DropOutGenMask, DropOutGenMaskInfer);
 
+IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
+  std::vector<std::string> input_infer_depends = {"shape"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
+  Tensor shape_tensor;
+  if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
+    TensorDesc output_desc = op.GetOutputDesc("y");
+    output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
+    return op.UpdateOutputDesc("y", output_desc);
+  }
+  Shape unused;
+  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
+  Shape shape;
+  if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
+  uint64_t random_count = static_cast<uint64_t>(shape.GetShapeSize());
+  // due to align to 16
+  if (random_count > (INT64_MAX - 15)) {
+    OP_LOGE(op.GetName().c_str(),
+      "Required random count[%llu] exceed INT64_MAX - 15", random_count);
+    return GRAPH_FAILED;
+  }
+  // align to 16
+  random_count = (random_count + 15) & (~15);
+  std::vector<int64_t> out_dims = {static_cast<int64_t>(random_count)};
+  Shape out_shape(out_dims);
+
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(out_shape);
+  output_desc.SetDataType(DT_UINT8);
+  return op.UpdateOutputDesc("y", output_desc);
+}
+
+INFER_FUNC_REG(DropOutGenMaskV3, DropOutGenMaskV3Infer);
+
 IMPLEMT_VERIFIER(Dropout, DropoutVerify) {
   auto dropout_ratio = op.get_attr_dropout_ratio();
   bool flagDropoutRatio = (dropout_ratio < 1 && dropout_ratio > 0);
