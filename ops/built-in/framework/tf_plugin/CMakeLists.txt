@@ -149,6 +149,7 @@ set(_tf_plugins
   decode_jpeg_plugin.cc
   draw_bounding_boxes_plugin.cc
   drop_out_do_mask_plugin.cc
+  drop_out_do_mask_v3_plugin.cc
   dynamic_get_next_plugin.cc
   dynamic_lstm_plugin.cc
   dynamic_plugin.cc

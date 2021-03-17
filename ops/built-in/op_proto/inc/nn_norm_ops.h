@@ -708,7 +708,68 @@ REG_OP(DropOutDoMask)
     .INPUT(keep_prob, TensorType({DT_FLOAT, DT_FLOAT16}))
     .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
     .OP_END_FACTORY_REG(DropOutDoMask)
-	
+
+/**
+*@brief Return "output" according to the algorithm of dropout_do_mask:
+*  scale_x = x *(1 / keep_prob)
+*  output = select(mask == 1, scale_x, 0)
+
+*@par Inputs:
+*Three inputs, including:
+* @li x: A mutable Tensor. Must be one of the following types:
+*     float16, float32
+* @li mask: A mutable Tensor. Must met all of the following rules:
+*     shape of mask should be 1D.
+*     dtype of mask should be uint8.
+*     value of shape should met the following algorithm:
+*     value = (size(x) + 128 - 1) // 128 * 128
+* @li keep_prob: A mutable Tensor. Must met all of the following rules:
+*     shape of "keep_prob" should be (1,) or [1,].
+*     Has the same type as "x" . \n
+
+*@par Output:
+*y: A mutable Tensor. Has the same type as "x".
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(DropOutDoMaskV3)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(mask, TensorType({DT_UINT8}))
+    .INPUT(keep_prob, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OP_END_FACTORY_REG(DropOutDoMaskV3)
+
+/**
+*@brief Return "output" according to the algorithm of dropout_do_mask:
+*  scale_x = x *(1 / keep_prob)
+*  output = select(mask == 1, scale_x, 0)
+
+*@par Inputs:
+*Two inputs, including:
+* @li x: A mutable Tensor. Must be one of the following types:
+*     float16, float32
+* @li mask: A mutable Tensor. Must met all of the following rules:
+*     shape of mask should be 1D.
+*     dtype of mask should be uint8.
+*     value of shape should met the following algorithm:
+*     value = (size(x) + 128 - 1) // 128 * 128
+*@par Attributes:
+* @li keep_prob: A mutable Tensor. Must met all of the following rules:
+*     shape of "keep_prob" should be (1,) or [1,].
+*     Has the same type as "x" . \n
+
+*@par Output:
+*y: A mutable Tensor. Has the same type as "x".
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(DropOutDoMaskV3D)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(mask, TensorType({DT_UINT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .REQUIRED_ATTR(keep_prob, Float)
+    .OP_END_FACTORY_REG(DropOutDoMaskV3D)
+
 /**
 *@brief Scales the input . \n
 

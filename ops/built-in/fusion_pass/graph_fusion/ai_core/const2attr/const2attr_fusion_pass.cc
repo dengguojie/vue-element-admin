@@ -415,6 +415,11 @@ REGISTER_CONST2ATTR("EuclideanNormD")
     .NeedCheckSupported(true)
     .SetConstToAttr(1, "axes", "SetListInt");
 
+REGISTER_CONST2ATTR("DropOutDoMaskV3D")
+    .OriginOpType("DropOutDoMaskV3")
+    .NeedCheckSupported(true)
+    .SetConstToAttr(2, "keep_prob", "SetFloat");
+
 REGISTER_CONST2ATTR("CumulativeLogsumexpD")
     .OriginOpType("CumulativeLogsumexp")
     .NeedCheckSupported(true)

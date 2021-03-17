@@ -548,6 +548,62 @@ COMMON_INFER_FUNC_REG(DropOutDoMask, DropOutDoMaskInferShape);
 VERIFY_FUNC_REG(DropOutDoMask, DropOutDoMaskVerify);
 // ----------------DropOutDoMask Op End-------------------
 
+// ----------------DropOutDoMaskV3Op Start-------------------
+IMPLEMT_VERIFIER(DropOutDoMaskV3, DropOutDoMaskV3Verify) {
+  if (!CheckTwoInputDtypeSame(op, "x", "keep_prob")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskV3InferShape) {
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto x_desc = op_info->MutableInputDesc("x");
+  vector<int64_t> x_shape = x_desc->MutableShape().GetDims();
+  DataType input_dtype = x_desc->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  x_desc->GetShapeRange(input_range);
+  MakeUpShapeRange(x_shape, input_range);
+
+  auto output_desc_y = op_info->MutableOutputDesc("y");
+  output_desc_y->SetShape(GeShape(x_shape));
+  output_desc_y->SetOriginShape(GeShape(x_shape));
+  output_desc_y->SetShapeRange(input_range);
+  output_desc_y->SetDataType(input_dtype);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(DropOutDoMaskV3, DropOutDoMaskV3InferShape);
+VERIFY_FUNC_REG(DropOutDoMaskV3, DropOutDoMaskV3Verify);
+// ----------------DropOutDoMaskV3 Op End-------------------
+
+
+// ----------------DropOutDoMaskV3D Op Start-------------------
+IMPLEMT_VERIFIER(DropOutDoMaskV3D, DropOutDoMaskV3DVerify) {
+  std::vector<float> constAttr;
+  if(!GetConstAttr(op, {"keep_prob"}, constAttr)){
+     OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
+     return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(DropOutDoMaskV3DInferShape) {
+  TensorDesc tensor_desc_output = op.GetOutputDesc("y");
+
+  tensor_desc_output.SetShape(op.GetInputDesc("x").GetShape());
+  tensor_desc_output.SetDataType(op.GetInputDesc("x").GetDataType());
+  (void)op.UpdateOutputDesc("y", tensor_desc_output);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(DropOutDoMaskV3D, DropOutDoMaskV3DInferShape);
+VERIFY_FUNC_REG(DropOutDoMaskV3D, DropOutDoMaskV3DVerify);
+// ----------------DropOutDoMaskV3D Op End-------------------
+
+
 //---------------------------------Scale------------------------------------
 IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   OP_LOGI("Scale", "infer shape begin---");
