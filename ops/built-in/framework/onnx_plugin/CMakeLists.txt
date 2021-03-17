@@ -34,6 +34,7 @@ set(_onnx_plugins
   concat_plugin.cc
   conv2d_plugin.cc
   gather_plugin.cc
+  gather_nd_plugin.cc
   gemm_plugin.cc
   global_average_pool_plugin.cc
   gru_plugin.cc
