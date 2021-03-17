@@ -15,15 +15,14 @@
 """
 conv3d_transpose
 """
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from tbe.dsl.compute import conv3d_backprop_input_compute as conv3d_bp_dx
 from impl.dynamic import check_and_config_para
-from tbe.common.utils import para_check
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from te import tvm
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 
 Nonetype = type(None)
@@ -41,18 +40,18 @@ def _check_output_padding(output_padding, stride, dilation, data_format):
     _, stride_d, stride_h, stride_w, _ = stride
     _, dilation_d, dilation_h, dilation_w, _ = dilation
     if output_padding_d < 0 or (output_padding_d >= dilation_d and output_padding_d >= stride_d):
-        cube_err.raise_err_three_paras(
-            'E62305', 'conv3d_transpose', 'output_padding D', 
+        error_manager_cube.raise_err_three_paras(
+            'E62305', 'conv3d_transpose', 'output_padding D',
             '[{}, {})'.format(str(0), 'max(stride D,dilation D)'), str(output_padding_d))
 
     if output_padding_h < 0 or (output_padding_h >= dilation_h and output_padding_h >= stride_h):
-        cube_err.raise_err_three_paras(
-            'E62305', 'conv3d_transpose', 'output_padding H', 
+        error_manager_cube.raise_err_three_paras(
+            'E62305', 'conv3d_transpose', 'output_padding H',
             '[{}, {})'.format(str(0), 'max(stride H,dilation H)'), str(output_padding_h))
 
     if output_padding_w < 0 or (output_padding_w >= dilation_w and output_padding_w >= stride_w):
-        cube_err.raise_err_three_paras(
-            'E62305', 'conv3d_transpose', 'output_padding W', 
+        error_manager_cube.raise_err_three_paras(
+            'E62305', 'conv3d_transpose', 'output_padding W',
             '[{}, {})'.format(str(0), 'max(stride W,dilation W)'), str(output_padding_w))
 
 
@@ -77,17 +76,15 @@ def _conv3d_transpose_compute(filters, out_backprop, y_input, input_size, stride
         "group_dict": group_dict
     }
 
-    dedx = conv3d_bp_dx.conv3d_dx(
-        filter=filter_frac,
-        out_backprop=dedy,
-        filter_size=shape_filter_ncdhw,
-        input_size=input_sizes,
-        para_dict=para_dict
-    )
+    dedx = tbe.conv3d_backprop_input(filter=filter_frac,
+                                     out_backprop=dedy,
+                                     filter_size=shape_filter_ncdhw,
+                                     input_size=input_sizes,
+                                     para_dict=para_dict)
 
     return {'op_placeholder': [dx_shape, dedy, filter_frac],  'op_res': [dedx]}
 
-@tbe_base.register_operator("Conv3DTranspose")
+@register_operator("Conv3DTranspose")
 @para_check.check_input_type(dict, dict, dict, (Nonetype, dict), (Nonetype, dict),
                              dict, (tuple, list), (tuple, list, str),
                              (tuple, list), int, str, (tuple, list), int, str)
@@ -147,7 +144,7 @@ def conv3d_transpose(input_size, x, filter, # pylint: disable=R0913,R0914
     -------
     None
     """
-    with tbe_base.compute():
+    with tbe.compute():
         res = _conv3d_transpose_compute(filter, x, y, input_size, strides, pads,
                                         dilations, groups, output_padding,
                                         data_format, kernel_name=kernel_name)

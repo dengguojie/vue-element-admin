@@ -15,12 +15,12 @@
 """
 dynamic batch_matmul_v2
 """
-import te.lang.base as tbe_base
-from te.utils import para_check
 from impl.dynamic.batch_matmul import batch_matmul
 from impl.dynamic.batch_matmul import batch_matmul_fuse_compute
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+
 
 @register_operator_compute("BatchMatMul", op_mode="dynamic", support_fusion=False)
 def batch_matmul_v2_fuse_compute(input_x1, input_x2, bias, output_z,

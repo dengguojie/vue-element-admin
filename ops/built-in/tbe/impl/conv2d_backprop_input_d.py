@@ -15,14 +15,13 @@
 """
 conv2d_backprop_input_d
 """
-import te.lang.cce as tbe
-import te.platform as tbe_platform
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
-from te import tvm
-from te.platform import cce_params
-from tbe.common.utils import errormgr
-from tbe.common.utils import para_check
+from impl.util.platform_adapter import error_manager
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 # the dim of shape in conv2d_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -99,8 +98,8 @@ def _cal_min_l1space(out_backprop,  # pylint: disable=invalid-name
     shape_res = util_deconv_comm.get_shape_res(y.get("ori_format"), y.get("ori_shape"))
     filters_dtype = weight.get("dtype")
 
-    c0_size = cce_params.C0_SIZE
-    c0_size_k = cce_params.CUBE_MKN[filters_dtype]['mac'][1]
+    c0_size = tbe_platform.C0_SIZE
+    c0_size_k = tbe_platform.CUBE_MKN[filters_dtype]['mac'][1]
     filter_h_dilation = (shape_filters[2] - 1) * dilations[0] + 1
 
     bl1_size = shape_filters[2] * shape_filters[3] * c0_size * c0_size_k * \
@@ -274,7 +273,7 @@ def _check_conv2dbp_input_para(  # pylint: disable=W0622,C0103,R0913,R0914
         dict_args["param1"] = "input_size"
         dict_args["param2"] = "ori_shape of y"
         dict_args["actual_value"] = "{}, {}".format(input_size, ori_shape_res)
-        raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager.get_error_message(dict_args))
     if len(strides) == 4:
         h_index = data_format.find("H")
         w_index = data_format.find("W")
@@ -333,19 +332,19 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
             "errCode": "E60108",
             "reason": "groups can not be 0",
         }
-        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     if shape_out_backprop[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",
             "reason": "channel of out_backprop % groups must be 0",
         }
-        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     if shape_res[1] % groups != 0:
         args_dict = {
             "errCode": "E60108",
             "reason": "channel of y % groups must be 0",
         }
-        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     util_deconv_comm.check_attr_range("dilations's H", dilations[2], DILATION_MIN, DILATION_MAX)
     util_deconv_comm.check_attr_range("dilations's W", dilations[3], DILATION_MIN, DILATION_MAX)
     util_deconv_comm.check_attr_range("strides's H", strides[0], STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -388,12 +387,12 @@ def _support_situation(  # pylint: disable=W0622,C0103,R0913,R0914
         args_dict = {
             "errCode": "E60024",
         }
-        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
     if ((fmap_w - filter_w_dilation + pad_left + pad_right) // strides[1] + 1) != dedy_w:
         args_dict = {
             "errCode": "E60025",
         }
-        raise RuntimeError(args_dict, errormgr.get_error_message(args_dict))
+        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
 
 def check_supported(  # pylint: disable=W0622,C0103,R0913,R0914
@@ -598,7 +597,7 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
     )
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("conv2d_backprop_input_d")
+@tbe_platform.fusion_manager.register("conv2d_backprop_input_d")
 def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
     filter,
     out_backprop,
@@ -704,13 +703,7 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         "group_dict": group_dict
     }
 
-    res = tbe.conv2d_backprop_input_compute(
-        filter,
-        out_backprop,
-        shape_filters,
-        shape_res,
-        para_dict=para_dict
-    )
+    res = tbe.conv2d_backprop_input(filter, out_backprop, shape_filters, shape_res, para_dict=para_dict)
 
     return res
 
@@ -849,13 +842,11 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
         "group_dict": group_dict
     }
 
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=filter_frac,
-        out_backprop=dedy,
-        filter_sizes=shape_filter,
-        input_sizes=input_sizes,
-        para_dict=para_dict
-    )
+    dedx = tbe.conv2d_backprop_input(filters=filter_frac,
+                                     out_backprop=dedy,
+                                     filter_sizes=shape_filter,
+                                     input_sizes=input_sizes,
+                                     para_dict=para_dict)
     tensor_list = [filter_frac, dedy, dedx]
 
     with tvm.target.cce():
@@ -863,4 +854,4 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
 
     config = {"name": kernel_name, "tensor_list": tensor_list}
 
-    tbe.cce_build_code(sch, config)
+    tbe.build(sch, config)

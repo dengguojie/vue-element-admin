@@ -17,17 +17,17 @@ dynamic mat_mul
 """
 import math
 
-import te
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-import te.platform as tbe_platform
-from te.utils import para_check
-from te import tvm
-from te.utils.error_manager import error_manager_vector
-from te.utils.error_manager import error_manager_util
 from impl.util import fusion_util
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe_register
+from impl.util.platform_adapter import tvm
 
 # General limitation of the size for input shape: 2**32 - 1
 SHAPE_SIZE_LIMIT = 2147483648
@@ -251,9 +251,9 @@ def _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y, trans_a, tran
     shape_x1_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
     shape_x2_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
 
-    m_var = tbe_base.var("m", m_range)
-    k_var = tbe_base.var("k", k_range)
-    n_var = tbe_base.var("n", n_range)
+    m_var = operation.var("m", m_range)
+    k_var = operation.var("k", k_range)
+    n_var = operation.var("n", n_range)
 
     # only support NZ for dynamic mode
     trans_a = not trans_a
@@ -330,7 +330,7 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
         fusion_util.check_fusion_input([bias])
 
     # set fusion build config
-    build_cfg = tbe_platform.get_fusion_build_cfg()
+    build_cfg = tbe_register.get_fusion_buildcfg()
     build_cfg['constant_realize_extent_in_infer_bound'] = False
 
     para_dict = {
@@ -392,7 +392,7 @@ def mat_mul(input_x1, input_x2, bias, offset_w={}, output_y={},
     res : dict
         None
     """
-    with tbe_base.compute():
+    with tbe.compute():
         res = _mat_mul_compute(input_x1, input_x2, bias, offset_w, output_y,
                                trans_a, trans_b, offset_x, kernel_name)
 

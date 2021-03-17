@@ -19,11 +19,12 @@ avg_pool
 """
 
 from impl.dynamic.conv2d import conv2d
-from impl.util.platform_adapter import para_check
-from te.utils.error_manager import error_manager_cube as err_man_cube
 from impl.util import util_select_op_base
-from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import register_operator
+
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVG_KERNEL_SIZE = 20 # maximum ksize
@@ -374,12 +375,8 @@ def avg_pool(x, filter, bias, y, ksize, strides,
                groups=input_c, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
     else:
         if filter is None:
-            err_man_cube.raise_err_input_params_not_expected("dynamic_avg_pool",
-                                                             "filter",
-                                                             "dict",
-                                                             "None")
+            error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool", "filter", "dict",
+                                                                   "None")
         if bias is not None:
-            err_man_cube.raise_err_input_params_not_expected("dynamic_avg_pool",
-                                                             "bias",
-                                                             "None",
-                                                             "dict")
+            error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool", "bias", "None",
+                                                                   "dict")

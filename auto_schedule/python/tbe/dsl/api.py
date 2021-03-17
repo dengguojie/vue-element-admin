@@ -22,6 +22,15 @@ from typing import Dict
 from typing import Optional
 
 from .compute import cast
+from .compute import conv2d_backprop_filter_compute as conv2d_dw_compute
+from .compute import conv2d_backprop_input_compute as conv2d_dx_compute
+from .compute import conv3d_backprop_filter_compute as conv3d_dw_compute
+from .compute import conv3d_backprop_input_compute as conv3d_dx_compute
+from .compute import conv3d_compute
+from .compute import depthwise_conv2d_compute
+from .compute import dilation_compute
+from .compute import gemm_compute
+from .compute import mmad_compute
 from .compute import math
 from .compute import nn
 from .compute import reduce
@@ -1056,3 +1065,320 @@ def schedule(_compute=None):
     :return:
     """
     return operation.schedule(_compute)
+
+
+def conv2d_backprop_filter(input_x, out_backprop, filter_sizes, para_dict):
+    """
+    the DSL interface of conv2d backprop filter compute
+
+    Parameters:
+    ----------
+    x : the featuremap data, tvm.placeholder, 5HD shape
+
+    out_backprop : the grads data, tvm.placeholder, 5HD shape
+
+    filter_sizes : 4-D shape, specifies the filter sizes
+
+    para_dict:
+
+        strides : 2-D shape, specifies in height and width dimension
+
+        padding : 4-D shape, specifies in up/down/left/right dimension
+
+        dilations : 4-D shape, specifies in batch/channel/height/width dimension
+
+        groups : The number of filter's group. Default value is 1.
+
+        res_dtype : the output data type
+
+    Returns
+    -------
+    result tensor of conv2d_backprop_filter compute
+    """
+    return conv2d_dw_compute.conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dict)
+
+
+def conv2d_backprop_input(filters, out_backprop, filter_sizes, input_sizes, para_dict):
+    """
+    DSL interface of conv2d backprop input
+
+    Parameters
+    ----------
+    filters : weight tensor of fractal shape
+
+    out_backprop : 5D dE/dY tensor
+
+    filter_sizes : shape of weight, [N, C, H, W]
+
+    input_sizes : shape of dE/dX, [N, C, H, W]
+
+    para_dict:
+
+        strides : list of strides, [strideh, stridew]
+
+        padding : list of padding, [pad_up, pad_down, pad_left, pad_right]
+
+        dilations : list of dilations, [dilation_n, dilation_c, dilation_h, dilation_w]
+
+        res_dtype : dE/dX data type, "float16" by default
+
+        offset_x : offset of x
+
+        offset_w : offset of w
+
+        fusion_para: the l1 fuison para
+
+        kernel_name : cce kernel name
+
+        group_dict : The params of group convolution.
+
+    Returns
+    ----------
+    dx_ddr: dE/dX tensor
+    """
+    return conv2d_dx_compute.conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_sizes,
+                                                           para_dict)
+
+
+def conv3d_backprop_filter(x, out_backprop, filter_size, para_dict):
+    """
+    DSL interface of conv3d bp dx
+
+    Parameters
+    ----------
+    x : the featuremap data, tvm.placeholder, 6hd shape
+
+    out_backprop : the grads data, tvm.placeholder, 6hd shape
+
+    filter_size : 5-D shape, specifies the filter sizes
+
+    para_dict : dict of parameters
+        strides : 3-D shape, specifies in depth, height and width dimension
+        pads : 6-D shape, specifies in up/down/left/right dimension
+        dilations : 5-D shape, specifies in batch/channel/depth/height/width dimension
+        res_dtype : the output data type
+        kernel_name : conv3d_backprop_filter_cce by default
+        group_dict : group of parameters
+
+    Returns
+    -------
+    result tensor of conv3d_backprop_filter compute
+    """
+    return conv3d_dw_compute.conv3d_dw(x, out_backprop, filter_size, para_dict)
+
+
+def conv3d_backprop_input(filter, out_backprop, filter_size, input_size, para_dict):
+    """
+    DSL interface of conv3d bp dx
+
+    Parameters
+    ----------
+    filter : weight tensor of fractal shape
+
+    out_backprop : 5D dE/dY tensor
+
+    filter_size : shape of weight, [N, C, D, H, W]
+
+    input_size : shape of dE/dX, [N, D, H, W, C]
+
+    para_dict : dict of parameters
+        strides : list of strides, [stridebatch, strided, strideh, stridew, stridechannel]
+        pads : list of padding, [pad_front, pad_tail, pad_up, pad_down, pad_left, pad_right]
+        dilations : [1, 1, 1, 1, 1] by default
+        res_dtype : dE/dX data type, "float16" by default
+        kernel_name : conv3d_backprop_input_cce by default
+        group_dict : group of parameters
+
+    Returns
+    ----------
+    dx_ddr: dE/dX tensor
+    """
+    return conv3d_dx_compute.conv3d_dx(filter, out_backprop, filter_size, input_size, para_dict)
+
+
+def conv3d(x, filter, filter_size, para_dict):
+    """
+    conv
+
+    Parameters
+    ----------
+    x: feature map
+
+    weight: filter
+
+    filter_size : filter_size
+
+    para_dict: dict of params
+
+    Returns
+    -------
+    tensor : res
+    """
+    return conv3d_compute.conv3d(x, filter, filter_size, para_dict)
+
+
+def depthwise_conv2d_backprop_filter(fmap,
+                                     dout,
+                                     kernel_h,
+                                     kernel_w,
+                                     stride,
+                                     pad,
+                                     dilations,
+                                     w_dtype,
+                                     kernel_name="depthwise_conv2d_compute"):
+    """
+    compute of depthwise conv2d backprop filter
+    
+    the interface will be eliminated soon!
+
+    Parameters
+    ----------
+    fmap : tvm tensor
+        feature map tensor in tvm.
+
+    dout : tvm tensor
+        dout tensor in tvm.
+
+    kernel_h: int
+        height of filter.
+
+    kernel_w: int
+        width of filter.
+
+    stride: tuple or list or int
+        stride of convolution.
+
+    pad: list
+        padding added to each dimension of the input.
+
+    w_dtype: str
+        the dtype of dfilter.
+
+    Returns
+    -------
+    depthwise_dfilter_res: tvm tensor
+        the tensor of output.
+    """
+    return depthwise_conv2d_compute.depthwise_conv2d_backprop_filter_d_compute(
+        fmap, dout, kernel_h, kernel_w, stride, pad, dilations, w_dtype, kernel_name)
+
+
+def depthwise_conv2d_backprop_input(input_shape,
+                                    weight,
+                                    dout,
+                                    weight_sizes,
+                                    strides,
+                                    pads,
+                                    kernel_name="depthwise_conv2d_compute"):
+    """
+    Computes the gradients of depthwise convolution with respect to the input.
+
+    the interface will be eliminated soon!
+
+    Parameters
+    ----------
+    input_shape: a list or tuple representing the shape of input,
+                6D format [N, C1, 1, H, W, C0]
+
+    weight: a tensor, 5D with shape [C1, Hf*Wf, 1, C0, C0]
+
+    dout: a tensor, 6D format [N, Co1, 1, Ho, Wo, C0]
+
+    weight_sizes: a list or tuple of two ints,
+                  the height and width of the weight of the convolution
+
+    strides: a list or tuple of two ints, the stride of the sliding window for
+             height and width of the input of the convolution
+
+    pads: padding added to each dimension of the input
+
+    Returns
+    -------
+    dx_res: compute of the gradients of depthwise convolution
+            with respect to the input
+    """
+    return depthwise_conv2d_compute.depthwise_conv2d_backprop_input_d_compute(
+        input_shape, weight, dout, weight_sizes, strides, pads, kernel_name)
+
+
+def depthwise_conv2d(fmap,
+                     weight,
+                     depthwise_res_dtype,
+                     stride,
+                     pad,
+                     dilation,
+                     para_dict,
+                     l1_fusion_para,
+                     kernel_name="depthwise_conv2d_compute"):
+    """
+    algorithm: depthwise_conv2d_compute
+
+    calculating  depthwise convolution compute
+
+    the interface will be eliminated soon!
+
+    Parameters
+    ----------
+    fmap : feature map placehold
+        5-D shape of input tensor [N, C1, H, W, C0]
+
+    weight : filter placehold
+        5-D shape of filter tensor [C1, H, W, Co, C0]
+
+    depthwise_res_dtype : dtype of depthwise UB result
+
+    stride : int or a list/tuple of two ints
+        stride size, or [stride_height, stride_width]
+
+    pad : padding added to each dimension of the input
+
+    dilation : the dilation factor for each dimension of input
+
+    para_dict : bias tensor dict
+
+    Returns
+    -------
+    depthwise_res : result tensor
+       forward depthwise result of out
+    """
+    return depthwise_conv2d_compute.depthwise_conv2d_compute(fmap, weight, depthwise_res_dtype, stride, pad,
+                                                             dilation, para_dict, l1_fusion_para,
+                                                             kernel_name)
+
+
+def dilation(tensor_x, dilations, pads=None, padding_value=0.0):
+    """
+    dilation_compute
+    :param tensor_x: tensor
+    :param dilations: list or tuple
+    :param pads: list or tuple or None
+    :param padding_value: float
+    """
+    return dilation_compute.dilation_compute(tensor_x, dilations, pads, padding_value)
+
+
+def gemm(tensor_a, tensor_b, para_dict):
+    """
+    algorithm: gemm and matmul
+    for gemm:
+        calculating matrix multiplication, C = alpha_num*A*B+  beta_num*C
+    for matmul:
+        caculating matrix multiplication with bias, C = A*B + bias
+
+    Parameters:
+    tensor_a: the first tensor a
+
+    tensor_b: second tensor b with the same type and shape with a
+
+              If tensor_a/tensor_b is int8/uint8,then L0A must be 16*32,L0B
+              must be 32*16.
+              If A is transpose , then AShape classification matrix must be
+              32*16 in gm/L1,then it is 16*32 in L0A.
+              If B is transpose , then BShape classification matrix must be
+              16*32 in gm/L1,then it is 32*16 in L0B.
+
+    para_dict:
+
+    Returns result
+    """
+    return gemm_compute.gemm(tensor_a, tensor_b, para_dict)

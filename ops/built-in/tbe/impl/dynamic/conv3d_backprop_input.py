@@ -15,15 +15,15 @@
 """
 conv3d_backprop_input
 """
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from tbe.dsl.compute import conv3d_backprop_input_compute as conv3d_bp_dx
-from tbe.common.utils import para_check
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.common.utils.errormgr import error_manager_cube as cube_err
 from impl.util import util_common
-from te import tvm
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 
 # the dim of shape in conv_backprop must be 5
@@ -86,7 +86,7 @@ _C0_SIZE = tbe_platform.C0_SIZE
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
     if attr_value < attr_min or attr_value > attr_max:
-        cube_err.raise_err_attr_range_invalid(
+        error_manager_cube.raise_err_attr_range_invalid(
             'conv3d_backprop_input', "[{},{}]".format(attr_min, attr_max),
             attr_name, str(attr_value))
 
@@ -159,7 +159,7 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
     if shape_out_backprop[-1] <= -1:
-        cube_err.raise_err_specific(
+        error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', 'The C dim of outbackprop should not be dynamic')
     shape_out_backprop[-1] = shape_filters[-1]
 
@@ -167,25 +167,25 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
 
 def _check_range(range, range_min=1, range_max=None):
     if range[0] < range_min:
-        cube_err.raise_err_specific(
+        error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', "the lower bound of range should be larger than {}".format(range_min))
     if not range[1]:
         return
     if (range_max is not None) and (range[1] > range_max):
-        cube_err.raise_err_specific(
+        error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', "the upper bound of range should be less than {}".format(range_max))
     if range[0] > range[1]:
-        cube_err.raise_err_specific(
+        error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', "the upper bound of range should be larger than lower bound")
 
 def _check_dynamic_flag(input_size_ndhwc):
     dim_str = "NDHW"
     for i in range(4):
         if input_size_ndhwc[i] < -1:
-            cube_err.raise_err_specific(
+            error_manager_cube.raise_err_specific(
                 'conv3d_backprop_input',"Dynamic flag is -1, but dim {} is {}".format(dim_str[i], input_size_ndhwc[i]))
     if input_size_ndhwc[-1] < 0:
-        cube_err.raise_err_specific(
+        error_manager_cube.raise_err_specific(
             'conv3d_backprop_input',"Dim C does not support dynamic shape")
 
 def _get_output(x_in, k_size, pads, stride, dilation):
@@ -258,26 +258,26 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
                          util_common.ceil(filter_batch, w_k0), w_k0, w_n0)
 
     if input_sizes[0] == -1 or dedy_batch == -1:
-        dedy_batch = tbe_base.var("batch_n", range_input[0])
-        tbe_base.add_exclude_bound_var(dedy_batch)
+        dedy_batch = operation.var("batch_n", range_input[0])
+        operation.add_exclude_bound_var(dedy_batch)
         input_sizes[0] = dedy_batch
     if input_sizes[1] == -1 or dedy_depth == -1:
-        dx_depth = tbe_base.var("dedx_d", range_input[1])
-        dedy_depth = tbe_base.var("dedy_d", range_dedy[1])
-        tbe_base.add_exclude_bound_var(dx_depth)
-        tbe_base.add_exclude_bound_var(dedy_depth)
+        dx_depth = operation.var("dedx_d", range_input[1])
+        dedy_depth = operation.var("dedy_d", range_dedy[1])
+        operation.add_exclude_bound_var(dx_depth)
+        operation.add_exclude_bound_var(dedy_depth)
         input_sizes[1] = dx_depth
     if input_sizes[2] == -1 or dedy_h == -1:
-        dx_h = tbe_base.var("dedx_h", range_input[3])
-        dedy_h = tbe_base.var("dedy_h", range_dedy[3])
-        tbe_base.add_exclude_bound_var(dx_h)
-        tbe_base.add_exclude_bound_var(dedy_h)
+        dx_h = operation.var("dedx_h", range_input[3])
+        dedy_h = operation.var("dedy_h", range_dedy[3])
+        operation.add_exclude_bound_var(dx_h)
+        operation.add_exclude_bound_var(dedy_h)
         input_sizes[2] = dx_h
     if input_sizes[3] == -1 or dedy_w == -1:
-        dx_w = tbe_base.var("dedx_w", range_input[4])
-        dedy_w = tbe_base.var("dedy_w", range_dedy[4])
-        tbe_base.add_exclude_bound_var(dx_w)
-        tbe_base.add_exclude_bound_var(dedy_w)
+        dx_w = operation.var("dedx_w", range_input[4])
+        dedy_w = operation.var("dedy_w", range_dedy[4])
+        operation.add_exclude_bound_var(dx_w)
+        operation.add_exclude_bound_var(dedy_w)
         input_sizes[3] = dx_w
 
     shape_out_backprop = (dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel)
@@ -388,7 +388,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     def _check_shape_error():
 
         if not isinstance(fmap_batch, tvm.expr.Var) and dedy_channel != filter_batch:
-            cube_err.raise_err_specific(
+            error_manager_cube.raise_err_specific(
                 'conv3d_backprop_input', "Shape error: Dedy's C must be equal to Filter'N.")
 
         # check dhw dimension
@@ -399,15 +399,15 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
             fmap_h_padding = fmap_h + pad_up + pad_down
             fmap_w_padding = fmap_w + pad_left + pad_right
             fmap_d_padding = fmap_deep + pad_head + pad_tail
-        
+
             if filter_h_dilation > fmap_h_padding:
-                cube_err.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'H',
+                error_manager_cube.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'H',
                                                str(filter_h_dilation),str(fmap_h_padding))
             if filter_w_dilation > fmap_w_padding:
-                cube_err.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'W',
+                error_manager_cube.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'W',
                                                 str(filter_w_dilation), str(fmap_w_padding))
             if filter_d_dilation > fmap_d_padding:
-                cube_err.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'D',
+                error_manager_cube.raise_err_three_paras('E62507', 'conv3d_backprop_input', 'D',
                                                str(filter_d_dilation), str(fmap_d_padding))
             if ((fmap_h - filter_h_dilation + pad_up + pad_down) // stride_h + 1) != dedy_h:
                 dict_args = {'errCode': 'E60024',}
@@ -447,16 +447,16 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     # pads check
     if isinstance(pads, (tuple, list)) and len(pads) != _CONV_BACKPROP_PAD_SHAPE_DIM:
-        cube_err.raise_err_one_para('E62501', 'conv3d_backprop_input', 'pads')
+        error_manager_cube.raise_err_one_para('E62501', 'conv3d_backprop_input', 'pads')
 
     if isinstance(pads, str) and pads not in ['SAME', 'VALID']:
-        cube_err.raise_err_input_params_not_expected(
+        error_manager_cube.raise_err_input_params_not_expected(
             'conv3d_backprop_input', 'pads', 'SAME or VALID', str(pads))
 
     #dilations check
     dilation_n, dilation_d, dilation_h, dilation_w, dilation_c = dilations
     if dilation_d != 1:
-        cube_err.raise_err_specific('conv3d_backprop_input', "dilation in D dimension only supports 1.")
+        error_manager_cube.raise_err_specific('conv3d_backprop_input', "dilation in D dimension only supports 1.")
 
     # dtype check
     filter_dtype = filter_dtype.lower()
@@ -487,7 +487,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
         pad_var_flag = all(i == -1 for i in pads)
         pad_all_positive_flag = all(i >= 0 for i in pads)
         if not pad_var_flag and not pad_all_positive_flag:
-            cube_err.raise_err_specific(
+            error_manager_cube.raise_err_specific(
                     'conv3d_backprop_input', "pad should be positive")
     # pads compute
     if pads == 'SAME' or pad_var_flag:
@@ -531,7 +531,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
 
     if fmap_h_upper != 1 and fmap_w_upper == 1:
         # Chip Design demand fmap_w must larger than 2 when fmap_h == 1
-        cube_err.raise_err_one_para(
+        error_manager_cube.raise_err_one_para(
             'E62006', 'conv3d_backprop_input', 'Chip Design demand input_size_w must >=2 when input_size_h != 1')
 
     _check_shape_error()
@@ -605,7 +605,7 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
     ori_format_res = y.get("ori_format")
 
     if not(ori_format_res == ori_format_out_backprop == data_format):
-        cube_err.raise_err_specific(
+        error_manager_cube.raise_err_specific(
             'conv3d_backprop_input',"The data format of out_backprop, input_size and data_format should be same")
 
     ori_shape_strides = strides
@@ -638,7 +638,7 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
                             out_backprop_dtype, range_dedy, range_input)
 
     if groups != 1:
-        cube_err.raise_err_specific('conv3d_backprop_input', "group must be 1 now.")
+        error_manager_cube.raise_err_specific('conv3d_backprop_input', "group must be 1 now.")
 
     res = check_conv3dbp_input_params(shape_filters, shape_out_backprop,
                                       input_sizes, shape_strides, pads, groups,
@@ -673,17 +673,15 @@ def _conv3d_backprop_input_compute(filters, out_backprop, y_input, input_size, s
         "group_dict": group_dict
     }
 
-    dedx = conv3d_bp_dx.conv3d_dx(
-        filter=filter_frac,
-        out_backprop=dedy,
-        filter_size=shape_filter_ncdhw,
-        input_size=input_sizes,
-        para_dict=para_dict
-    )
+    dedx = tbe.conv3d_backprop_input(filter=filter_frac,
+                                     out_backprop=dedy,
+                                     filter_size=shape_filter_ncdhw,
+                                     input_size=input_sizes,
+                                     para_dict=para_dict)
 
     return {'op_placeholder': [dx_shape, filter_frac, dedy], 'op_res': [dedx]}
 
-@tbe_base.register_operator("Conv3DBackpropInput")
+@register_operator("Conv3DBackpropInput")
 @para_check.check_input_type(dict, dict, dict, dict,
                              (tuple, list), (tuple, list, str),
                              (tuple, list), int, str, str)
@@ -731,7 +729,7 @@ def conv3d_backprop_input(input_size, filter, # pylint: disable=R0913,R0914
     -------
     None
     """
-    with tbe_base.compute():
+    with tbe.compute():
         res = _conv3d_backprop_input_compute(filter, out_backprop, y, input_size, strides,
                                              pads, dilations, groups, data_format, kernel_name)
 

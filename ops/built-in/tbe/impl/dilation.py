@@ -15,10 +15,9 @@
 """
 dilation
 """
-import te.lang.cce as tbe
-from te import tvm
-from te.utils.error_manager import error_manager_util
-
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 
 # pylint: disable=invalid-name,unused-argument,too-many-arguments
 def _param_check(x, dilations):
@@ -89,7 +88,7 @@ def dilation(x, y, dilations, pads=None, padding_value=0.0, kernel_name="dilatio
         "dtype": dtype
     }
     tensor_x = tvm.placeholder(shape, dtype=dtype, name="x", attrs=attrs)
-    dilated_x = tbe.dilation_compute(tensor_x, dilations, pads, padding_value)
+    dilated_x = tbe.dilation(tensor_x, dilations, pads, padding_value)
 
     with tvm.target.cce():
         s = tbe.auto_schedule(dilated_x)
@@ -98,4 +97,4 @@ def dilation(x, y, dilations, pads=None, padding_value=0.0, kernel_name="dilatio
         "name": kernel_name,
         "tensor_list": (tensor_x, dilated_x)
     }
-    tbe.cce_build_code(s, config)
+    tbe.build(s, config)

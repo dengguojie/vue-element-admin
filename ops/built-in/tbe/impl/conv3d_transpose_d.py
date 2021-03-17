@@ -15,16 +15,15 @@
 """
 conv3d_transpose_d
 """
-import te.lang.cce as tbe
-from te.lang.cce.te_compute import conv3d_backprop_input_compute as conv3d_bp_dx
-import te.platform as tbe_platform
-from tbe.common.utils import para_check
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from te import tvm
 from impl.conv3d_backprop_input_d import check_conv3dbp_input_params
 from impl.util import util_common
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 
 _L1FUSION_INPUT_CTR = 2
@@ -261,7 +260,7 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
 
     if (isinstance(ori_shape_output_padding, (tuple, list)) and
         len(ori_shape_output_padding) != util_common.CONV3D_SHAPE_COMMON_DIM):
-        cube_err.raise_err_one_para('E62006', 'conv3d',
+        error_manager_cube.raise_err_one_para('E62006', 'conv3d',
             'output_padding should be 5-dim list/tuple')
 
     # transform filter shape
@@ -359,7 +358,7 @@ def _process_and_check_input(out_backprop, filters, # pylint: disable=R0913,R091
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
-    return (shape_filters, shape_out_backprop, shape_res, shape_strides, pads, 
+    return (shape_filters, shape_out_backprop, shape_res, shape_strides, pads,
             groups, shape_dilations, filters_dtype, out_backprop_dtype, res_dtype, kernel_name)
 
 
@@ -400,7 +399,7 @@ def check_supported(out_backprop, filters, # pylint: disable=R0913,R0914
                                       bias, offset_w, y_input, input_sizes,
                                       strides, pads, dilations, groups,
                                       data_format, output_padding, offset_x, kernel_name)
-                                      
+
         check_conv3dbp_input_params(shape_filters, shape_out_backprop,
                                     shape_res, shape_strides, pads, groups, shape_dilations,
                                     filters_dtype, out_backprop_dtype,
@@ -559,13 +558,11 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
             "group_dict": group_dict
         }
 
-        dedx = conv3d_bp_dx.conv3d_dx(
-            filter=filters,
-            out_backprop=dedy,
-            filter_size=shape_filter_ncdhw,
-            input_size=input_sizes,
-            para_dict=para_dict
-        )
+        dedx = tbe.conv3d_backprop_input(filter=filters,
+                                         out_backprop=dedy,
+                                         filter_size=shape_filter_ncdhw,
+                                         input_size=input_sizes,
+                                         para_dict=para_dict)
         tensor_list = [dedy, filters, dedx]
 
         with tvm.target.cce():
@@ -576,7 +573,7 @@ def _conv3d_transpose_cce(shape_filter, # pylint: disable=R0913,R0914
             "tensor_list": tensor_list,
             "dummy_placeholder": True
         }
-        tbe.cce_build_code(sch, config)
+        tbe.build(sch, config)
 
     res = check_conv3dbp_input_params(
         shape_filter, shape_out_backprop,

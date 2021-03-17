@@ -17,12 +17,13 @@ dynamic conv2d_backprop_filter
 """
 from __future__ import absolute_import
 
-from te import tvm
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from tbe.common.utils import para_check
-from tbe.common.utils import errormgr
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 
 # the dim of shape in conv_backprop must be 4
@@ -83,7 +84,7 @@ def _ceil(x_1, x_2):
         dict_args['errCode'] = "E60108"
         dict_args['reason'] = "Division by zero"
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
     return (x_1 + x_2 - 1) // x_2
 
 
@@ -105,7 +106,7 @@ def _check_equal(x_1, x_2, param_1, param_2):
         dict_args['actual_value'] = "{}, {}". \
                                     format(x_1, x_2)
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _check_dimensions(shape, name, dimension):
@@ -114,7 +115,7 @@ def _check_dimensions(shape, name, dimension):
         dict_args["errCode"] = "E60107"
         dict_args["param_name"] = name
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _check_type(shape, name, type_set):
@@ -123,7 +124,7 @@ def _check_type(shape, name, type_set):
         dict_args["errCode"] = "E60107"
         dict_args["param_name"] = name
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _check_data_format(data_format, name, format_set=["NHWC", "NCHW"]):
@@ -134,7 +135,7 @@ def _check_data_format(data_format, name, format_set=["NHWC", "NCHW"]):
         dict_args['expected_format_list'] = format_set
         dict_args["format"] = data_format
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _get_nchw_shape(fmap, out_backprop, filters):
@@ -182,7 +183,7 @@ def _get_nchw_shape(fmap, out_backprop, filters):
     for r in x_range:
         if r[0] > r[1]:
             raise RuntimeError("range lower bound should be less equal than \
-                upper bound")
+                upper bound"                                                        )
 
     return x_shape, dedy_shape, dedw_shape, x_range
 
@@ -199,7 +200,7 @@ def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "strides"
             raise RuntimeError(dict_args,
-                               errormgr.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
         if isinstance(pads, (tuple, list)):
             _check_dimensions(pads, "pads", CONV_BACKPROP_SHAPE_DIM)
@@ -247,7 +248,7 @@ def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
             dict_args["pads_value"] = "[{}, {}]".format(pad_up, pad_down)
             dict_args["filter_value"] = str(filter_h_dilation)
             raise RuntimeError(dict_args,
-                               errormgr.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
         if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
             dict_args = dict()
             dict_args["errCode"] = "E64005"
@@ -256,7 +257,7 @@ def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
             dict_args["pads_value"] = "[{}, {}]".format(pad_left, pad_right)
             dict_args["filter_value"] = str(filter_w_dilation)
             raise RuntimeError(dict_args,
-                               errormgr.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
     return strides, pads, dilations
 
@@ -274,28 +275,28 @@ def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw, fmap_range):
         dict_args['actual_value'] = "{}, {}".\
             format(fmap_n, dedy_n)
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     if fmap_nchw[2] == -1 and fmap_nchw[3] == -1 and -1 not in fmap_nchw[:2]:
-        fmap_h = tbe_base.var("fmap_h", bound=fmap_range[2])
-        fmap_w = tbe_base.var("fmap_w", bound=fmap_range[3])
-        dedy_h = tbe_base.var("dedy_h")
-        dedy_w = tbe_base.var("dedy_w")
-        tbe_base.add_exclude_bound_var(fmap_h)
-        tbe_base.add_exclude_bound_var(fmap_w)
-        tbe_base.add_exclude_bound_var(dedy_h)
-        tbe_base.add_exclude_bound_var(dedy_w)
+        fmap_h = operation.var("fmap_h", bound=fmap_range[2])
+        fmap_w = operation.var("fmap_w", bound=fmap_range[3])
+        dedy_h = operation.var("dedy_h")
+        dedy_w = operation.var("dedy_w")
+        operation.add_exclude_bound_var(fmap_h)
+        operation.add_exclude_bound_var(fmap_w)
+        operation.add_exclude_bound_var(dedy_h)
+        operation.add_exclude_bound_var(dedy_w)
         dynamic_mode = "dynamic_hw"
     elif fmap_nchw[0] == -1 and -1 not in fmap_nchw[1:]:
-        fmap_n = tbe_base.var("batch", bound=fmap_range[0])
-        tbe_base.add_exclude_bound_var(fmap_n)
+        fmap_n = operation.var("batch", bound=fmap_range[0])
+        operation.add_exclude_bound_var(fmap_n)
         dynamic_mode = "dynamic_batch"
     else:
         dict_args = dict()
         dict_args["errCode"] = "E60108"
         dict_args["param_name"] = "out_backprop"
         dict_args["reason"] = "only support dynamic_hw and dynamic_batch now."
-        raise RuntimeError(dict_args, errormgr.get_error_message(dict_args))
+        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
     fmap_shape = (fmap_n, fmap_c, fmap_h, fmap_w)
     dedy_shape = (fmap_n, dedy_c, dedy_h, dedy_w)
@@ -339,7 +340,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
             dict_args["attr_name"] = name
             dict_args["value"] = str(value)
             raise RuntimeError(dict_args,
-                               errormgr.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
     def _is_load3d_special():
         # limitation by chip:
@@ -362,7 +363,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
             dict_args['errCode'] = "E60020"
             dict_args['attr_name'] = attr_name
             raise RuntimeError(dict_args,
-                               errormgr.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
     # First : Base check, Mainly required by interface appearance
     # ===========================================================
     # util check
@@ -398,7 +399,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
             'description': "only supports groups=1"
         }
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     if dilation_n != 1 or dilation_c != 1:
         dict_args = {}
@@ -406,7 +407,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
         dict_args["dilation_n"] = str(dilation_n)
         dict_args["dilation_c"] = str(dilation_c)
         raise RuntimeError(dict_args,
-                           errormgr.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     # dtype check
     fmap_dtype = fmap_dtype.lower()
@@ -466,7 +467,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
             "reason": "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1"
         }
         raise RuntimeError(
-            dict_args, errormgr.get_error_message(dict_args)
+            dict_args, error_manager_util.get_error_message(dict_args)
         )
 
     if -1 not in pads:
@@ -507,14 +508,14 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                 dict_args["w_of_x"] = str(upper_fmap_w_padding)
                 dict_args["w_of_filter"] = str(filter_w_dilation)
                 raise RuntimeError(dict_args,
-                                   errormgr.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
             if filter_h_dilation > upper_fmap_h_padding:
                 dict_args = dict()
                 dict_args["errCode"] = "E60014"
                 dict_args["min_h_of_x"] = str(upper_fmap_h_padding)
                 dict_args["h_of_filter"] = str(filter_h_dilation)
                 raise RuntimeError(dict_args,
-                                   errormgr.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
         if dynamic_mode == "dynamic_batch":
             # Third : value check, Mainly required by the convolution rule
             if ((fmap_w - filter_w_dilation + int(pad_left) + int(pad_right)) //
@@ -522,14 +523,14 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                 dict_args = {}
                 dict_args["errCode"] = "E60025"
                 raise RuntimeError(dict_args,
-                                   errormgr.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
 
             if ((fmap_h - filter_h_dilation + int(pad_up) + int(pad_down)) //
                     stride_h + 1) != dedy_h:
                 dict_args = {}
                 dict_args["errCode"] = "E60024"
                 raise RuntimeError(dict_args,
-                                   errormgr.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
 
     _check_axis_hw()
 
@@ -558,7 +559,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                 "for this input shape range, the minimum tiling may exceed \
                 L1_Buffer, please lower the upper_bound of fmap_w and retry"
             raise RuntimeError(dict_args,
-                               errormgr.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
     _min_l1_byte()
 
@@ -616,17 +617,15 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
         "kernel_name": kernel_name
     }
 
-    dedw = tbe.conv2d_backprop_filter_compute(
-        input_x=fmap,
-        out_backprop=dedy,
-        filter_sizes=dedw_nchw,
-        para_dict=para_dict
-    )
+    dedw = tbe.conv2d_backprop_filter(input_x=fmap,
+                                      out_backprop=dedy,
+                                      filter_sizes=dedw_nchw,
+                                      para_dict=para_dict)
 
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
 
 
-@tbe_base.register_operator('Conv2DBackpropFilter')
+@register_operator('Conv2DBackpropFilter')
 @para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
                              (tuple, list), (tuple, list), int, str, str)
 def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
@@ -673,7 +672,7 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
     None
     """
 
-    with tbe_base.compute():
+    with tbe.compute():
         res = _conv2d_backprop_filter_compute(
             x, filter_size, out_backprop, y, strides, pads, dilations,
             groups, data_format, kernel_name)

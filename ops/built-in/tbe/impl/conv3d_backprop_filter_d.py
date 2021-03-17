@@ -15,14 +15,13 @@
 """
 conv3d_backprop_filter_d
 """
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te.lang.cce.te_compute import conv3d_backprop_filter_compute as conv3d_bp_dw
-from tbe.common.utils import para_check
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.common.utils.errormgr import error_manager_cube as cube_err
-from te import tvm
 from impl.util import util_common
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 
 # the dim of shape in CONV3D_BACKPROP must be 5
@@ -114,11 +113,11 @@ def check_supported(x_dict,
 
     The data in L1 buffer should <= the chip's L1 buffer size
     """
-    
+
     try:
         processed_res = _process_input(x_dict, out_backprop, y_dict, filter_size,
                                        strides, pads, dilations, groups, data_format, kernel_name)
-                                   
+
         shape_x, shape_out_backprop, shape_res, strides, pads, groups, dilations, x_dtype,\
                                     out_backprop_dtype, res_dtype, kernel_name = processed_res
         _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
@@ -128,7 +127,7 @@ def check_supported(x_dict,
     except Exception as e:
         print(e)
         return False
-    
+
 
 def _process_input(x_dict,
                    out_backprop,
@@ -220,7 +219,7 @@ def _process_input(x_dict,
                                error_manager_util.get_error_message(args_dict))
 
         if isinstance(pads, (tuple, list)) and len(pads) != 6:
-            cube_err.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
+            error_manager_cube.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
 
     ori_shape_x = x_dict.get("ori_shape")
     ori_shape_out_backprop = out_backprop.get("ori_shape")
@@ -261,7 +260,7 @@ def _process_input(x_dict,
     shape_res = _normalize_shape_ndchw(ori_shape_res,
                                        ori_format_res,
                                        res_format_list,
-                                       'y') 
+                                       'y')
     return (shape_x, shape_out_backprop, shape_res,
             strides, pads, groups, dilations, x_dtype,
             out_backprop_dtype, res_dtype, kernel_name)
@@ -360,7 +359,7 @@ def conv3d_backprop_filter_d(x_dict,
     """
     processed_res = _process_input(x_dict, out_backprop, y_dict, filter_size,
                                    strides, pads, dilations, groups, data_format, kernel_name)
-                                   
+
     shape_x, shape_out_backprop, shape_res, strides, pads, groups, dilations, x_dtype,\
                                 out_backprop_dtype, res_dtype, kernel_name = processed_res
 
@@ -449,7 +448,7 @@ def _check_conv3dbp_filter_params(
     def _check_attr_pads():
         # pads check
         if isinstance(pads, (tuple, list)) and len(pads) != _PADDING_SHAPE_DIM:
-            cube_err.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
+            error_manager_cube.raise_err_one_para('E62501', 'conv3d_backprop_filter', 'pads')
 
         if isinstance(pads, str) and pads not in _PADDING_SUPPORT:
             args_dict = {
@@ -562,7 +561,7 @@ def _check_conv3dbp_filter_params(
     # special cases
     if dedy_w < 2 and dedy_h != 1:
         # Chip Design demand dedy_w must >=2 when dedy_h != 1
-        cube_err.raise_err_specific("conv3d_backprop_filter",
+        error_manager_cube.raise_err_specific("conv3d_backprop_filter",
             "Chip Design demand dedy_w must >=2 when dedy_h != 1.")
 
     # Dedy value limit
@@ -586,11 +585,11 @@ def _check_conv3dbp_filter_params(
 
     def _check_axis_hw():
         if fmap_batch != dedy_batch:
-            cube_err.raise_err_two_paras('E62503', 'conv3d_backprop_filter',
+            error_manager_cube.raise_err_two_paras('E62503', 'conv3d_backprop_filter',
                     str(dedy_batch), str(fmap_batch))
 
         if dedy_channel != filter_batch:
-            cube_err.raise_err_two_paras('E62504', 'conv3d_backprop_filter',
+            error_manager_cube.raise_err_two_paras('E62504', 'conv3d_backprop_filter',
                     str(dedy_channel), str(filter_batch))
 
         if fmap_channel != filter_channel * groups:
@@ -718,9 +717,7 @@ def _conv3d_backprop_filter_cce(shape_x,
     ----------
     None
     """
-    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
-                                                    "Hi3796CV300CS",
-                                                    "SD3403"):
+    if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         res_dtype = "float16"
 
     res = _check_conv3dbp_filter_params(shape_x, shape_out_backprop,
@@ -753,12 +750,10 @@ def _conv3d_backprop_filter_cce(shape_x,
         "group_dict": group_dict
     }
 
-    dedw = conv3d_bp_dw.conv3d_dw(
-        x=fmap,
-        out_backprop=dedy,
-        filter_size=filter_sizes,
-        para_dict=para_dict
-    )
+    dedw = tbe.conv3d_backprop_filter(x=fmap,
+                                      out_backprop=dedy,
+                                      filter_size=filter_sizes,
+                                      para_dict=para_dict)
 
     tensor_list_input = [fmap, dedy]
     with tvm.target.cce():
@@ -769,4 +764,4 @@ def _conv3d_backprop_filter_cce(shape_x,
 
     config = {"name": kernel_name, "tensor_list": tensor_list, "dummy_placeholder": True}
 
-    tbe.cce_build_code(sch, config)
+    tbe.build(sch, config)

@@ -15,15 +15,13 @@
 """
 avg_pool3d_grad_d
 """
-from te import tvm
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te.utils.cce import auto_schedule
-from te.tvm.target import cce
-from tbe.common.utils import para_check
-from tbe.common.utils.errormgr import error_manager_vector
-from tbe.common.utils.errormgr import error_manager_util
 from impl.conv3d_backprop_input_d import conv3d_backprop_input_fusion_compute
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 _BLOCK_SIZE = 16
 _C0_SIZE = tbe_platform.C0_SIZE
@@ -284,7 +282,7 @@ def avg_pool3d_grad_d(grads,
         else:
             kernel_size_reciprocal = 1.0 / (oh * ow * od)
 
-        with cce():
+        with tvm.target.cce():
             grad_tmp = tbe.vmuls(tbe.cast_to(grads, "float32"),
                                  kernel_size_reciprocal)
             if grads_dtype == "float16":
@@ -300,7 +298,7 @@ def avg_pool3d_grad_d(grads,
 
         config = {"name": kernel_name,
                   "tensor_list": tensor_list}
-        tbe.cce_build_code(sch, config)
+        tbe.build(sch, config)
         return
 
     # cube mode
@@ -351,10 +349,10 @@ def avg_pool3d_grad_d(grads,
                                                    kernel_name=kernel_name)
         tensor_list = [grads, filter, res]
 
-    with cce():
-        sch = auto_schedule(tensor_list[-1])
+    with tvm.target.cce():
+        sch = tbe.auto_schedule(tensor_list[-1])
 
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
-    tbe.cce_build_code(sch, config)
+    tbe.build(sch, config)
 

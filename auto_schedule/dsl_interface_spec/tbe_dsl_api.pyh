@@ -121,3 +121,23 @@ def add_exclude_bound_var(var_):
 def compute(_operator=None):
 
 def schedule(_compute=None):
+
+def conv2d_backprop_filter(input_x, out_backprop, filter_sizes, para_dict):
+
+def conv2d_backprop_input(filters, out_backprop, filter_sizes, input_sizes, para_dict):
+
+def conv3d_backprop_filter(x, out_backprop, filter_size, para_dict):
+
+def conv3d_backprop_input(filter, out_backprop, filter_size, input_size, para_dict):
+
+def conv3d(x, filter, filter_size, para_dict):
+
+def depthwise_conv2d_backprop_filter(fmap, dout, kernel_h, kernel_w, stride, pad, dilations, w_dtype, kernel_name="depthwise_conv2d_compute"):
+
+def depthwise_conv2d_backprop_input(input_shape, weight, dout, weight_sizes, strides, pads, kernel_name="depthwise_conv2d_compute"):
+
+def depthwise_conv2d(fmap, weight, depthwise_res_dtype, stride, pad, dilation, para_dict, l1_fusion_para, kernel_name="depthwise_conv2d_compute"):
+
+def dilation(tensor_x, dilations, pads=None, padding_value=0.0):
+
+def gemm(tensor_a, tensor_b, para_dict):

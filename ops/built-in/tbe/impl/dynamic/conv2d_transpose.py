@@ -8,12 +8,13 @@ conv2d_transpose
 
 from __future__ import absolute_import
 
-from te import tvm
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from tbe.common.utils import para_check
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import Conv2dTransposeParaProcess
 from impl.util.util_cube_dynamic import set_default_para
+
 
 H_DIM = 2
 W_DIM = 3
@@ -37,19 +38,21 @@ def _conv2d_transpose_compute(input_size, x, filter, bias, offset_w,
     conv2dbp_para = Conv2dTransposeParaProcess(ori_paras)
     paras = conv2dbp_para.config_paras()
 
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=paras.get("filter_tensor"),
-        out_backprop=paras.get("x_tensor"),
-        filter_sizes=paras.get("filter_shape"),
-        input_sizes=paras.get("input_size"),
-        para_dict={"strides": (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
-                   "padding": conv2dbp_para.pads,
-                   "dilations": conv2dbp_para.dilations,
-                   "res_dtype": default_para.get("res_dtype"),
-                   "tensor_bias": paras.get("bias_tensor"),
-                   "offset_x": offset_x,
-                   "kernel_name": kernel_name,
-                   "group_dict": paras.get("group_para")})
+    dedx = tbe.conv2d_backprop_input(filters=paras.get("filter_tensor"),
+                                     out_backprop=paras.get("x_tensor"),
+                                     filter_sizes=paras.get("filter_shape"),
+                                     input_sizes=paras.get("input_size"),
+                                     para_dict={
+                                         "strides":
+                                         (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
+                                         "padding": conv2dbp_para.pads,
+                                         "dilations": conv2dbp_para.dilations,
+                                         "res_dtype": default_para.get("res_dtype"),
+                                         "tensor_bias": paras.get("bias_tensor"),
+                                         "offset_x": offset_x,
+                                         "kernel_name": kernel_name,
+                                         "group_dict": paras.get("group_para")
+                                     })
 
     if bias:
         return {'op_placeholder': [paras.get("input_tensor"), paras.get("x_tensor"),
@@ -59,7 +62,7 @@ def _conv2d_transpose_compute(input_size, x, filter, bias, offset_w,
             'op_res': [dedx]}
 
 
-@tbe_base.register_operator('Conv2DTranspose')
+@register_operator('Conv2DTranspose')
 @para_check.check_input_type(dict, dict, dict, (type(None), dict), (type(None), dict), dict, (tuple, list),
                              (tuple, list), (tuple, list), int, str, (tuple, list), int, str,
                              (type(None), dict))
@@ -121,7 +124,7 @@ def conv2d_transpose(input_size,  # pylint: disable=W0622,C0103,R0913,R0914
     None
     """
 
-    with tbe_base.compute():
+    with tbe.compute():
         res = _conv2d_transpose_compute(
             input_size, x, filter, bias, offset_w, y,
             strides, pads, dilations, groups, data_format, output_padding, offset_x, kernel_name)

@@ -254,12 +254,17 @@ class PlatformApi:
     get_soc_spec = platform_info.get_soc_spec
     api_check_support = platform_info.api_check_support
     get_bit_len = platform_info.get_bit_len
+    get_L1_info = platform_tbe.common.buildcfg.get_L1_info
 
 
 tbe = platform_tbe.dsl
 para_check = platform_tbe.common.utils.para_check
 shape_util = platform_tbe.common.utils.shape_util
+error_manager = platform_tbe.common.utils.errormgr
 error_manager_vector = platform_tbe.common.utils.errormgr
+error_manager_util = platform_tbe.common.utils.errormgr.error_manager_util
+error_manager_cube = platform_tbe.common.utils.errormgr.error_manager_cube
+tbe_build = platform_tbe.common.buildcfg
 classify = tbe.classify
 operation = tbe_operation
 tik = tbe_tik

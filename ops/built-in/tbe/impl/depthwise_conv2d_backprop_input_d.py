@@ -16,13 +16,14 @@
 Depthwise conv2D backprop input for the computation of
 gradients of depthwise convolution with respect to the input.
 """
-import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils.error_manager import error_manager_util
-from te.utils.error_manager import error_manager_cube
-from te.lang.cce.te_compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe_build
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
+from tbe.dsl.compute.depthwise_conv2d_compute import depthwise_conv2d_backprop_input_d_compute
 from tbe.dsl.static_schedule.depthwise_conv2d_schedule import depthwise_conv2d_backprop_input_d_schedule
-from te import tvm
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 
@@ -379,5 +380,5 @@ def depthwise_conv2d_backprop_input_d(filter,
                                                     strides, pads, kernel_name)
 
     sch = depthwise_conv2d_backprop_input_d_schedule(res)
-    with tbe_platform.build_config:
+    with tbe_build.build_config():
         tvm.build_module.build(sch, [filter_init, dout, res], "cce", name=kernel_name)

@@ -17,13 +17,14 @@ batch_matmul
 """
 import functools
 
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
 from impl import batch_matmul_vector
 from impl.util import util_select_op_base
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
+
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -113,17 +114,17 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     if m_shape % tbe_platform.BLOCK_IN != 0 and m_shape != 1:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                            "input shape M should be 1 or multiple of %d" %
-                                                           tbe_platform.cce_params.BLOCK_IN)
+                                                           tbe_platform.BLOCK_IN)
     if m_shape != 1:
         if km_shape % k_block_size != 0:
             error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                                "input shape K1 should be multiple of %d" %
-                                                               tbe_platform.cce_params.BLOCK_IN)
+                                                               tbe_platform.BLOCK_IN)
 
     if n_shape % tbe_platform.BLOCK_IN != 0 and n_shape != 1:
         error_manager_vector.raise_err_input_shape_invalid('batch_matmul', 'input',
                                                            "input shape N should be 1 or multiple of %d" %
-                                                           tbe_platform.cce_params.BLOCK_IN)
+                                                           tbe_platform.BLOCK_IN)
 
     shape_bias_length = len(shape_bias)
 
@@ -408,7 +409,7 @@ def check_supported(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
     return True
 
 # pylint: disable=simplifiable-if-expression,unexpected-keyword-arg,no-value-for-parameter
-@tbe_platform.fusion_manager.fusion_manager.register("batch_matmul")
+@tbe_platform.fusion_manager.register("batch_matmul")
 def batch_matmul_compute(input_x, input_y, bias=None, offset_w={}, output_z={}, trans_a=False,
                          trans_b=False, offset_x=0, kernel_name="matmul"):
     """
@@ -776,5 +777,5 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
               "name": kernel_name,
               "tensor_list": tensor_list}
 
-    tbe.cce_build_code(schedule, config)
-    tbe_platform.fusion_manager.fusion_manager.set_current_op_pattern("BatchMatmul")
+    tbe.build(schedule, config)
+    tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")

@@ -17,13 +17,15 @@ gemm
 """
 import math
 
-import te.lang.cce as tbe
-import te.platform as tbe_platform
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
-from te import tvm
-from te.utils import error_manager
-from te.utils import para_check
+from impl.util.platform_adapter import error_manager
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
+
+
 
 ALPHA_BETA_SHAPE = [1]
 MAX_INT32_LENGTH = 2147483647
@@ -969,6 +971,6 @@ def gemm(  # pylint: disable=I0011, R0913, R0914
             "name": kernel_name,
             "tensor_list": tensor_list,
         }
-        tbe.cce_build_code(schedule, config)
+        tbe.build(schedule, config)
 
     _gemm_local_compute()

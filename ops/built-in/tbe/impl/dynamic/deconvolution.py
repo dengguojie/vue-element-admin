@@ -8,12 +8,13 @@ deconvolution
 
 from __future__ import absolute_import
 
-from te import tvm
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import para_check
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
 from impl.util.util_cube_dynamic import DeconvolutionParaProcess
 from impl.util.util_cube_dynamic import set_default_para
+
 
 H_DIM = 2
 W_DIM = 3
@@ -33,26 +34,28 @@ def _deconvolution_compute(x, filter, bias, offset_w,
     conv2dbp_para = DeconvolutionParaProcess(ori_paras)
     paras = conv2dbp_para.config_paras()
     default_para = set_default_para()
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=paras.get("filter_tensor"),
-        out_backprop=paras.get("x_tensor"),
-        filter_sizes=paras.get("filter_shape"),
-        input_sizes=paras.get("input_size"),
-        para_dict={"strides": (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
-                   "padding": conv2dbp_para.pads,
-                   "dilations": conv2dbp_para.dilations,
-                   "res_dtype": default_para.get("res_dtype"),
-                   "tensor_bias": paras.get("bias_tensor"),
-                   "offset_x": offset_x,
-                   "kernel_name": kernel_name,
-                   "group_dict": paras.get("group_para")})
+    dedx = tbe.conv2d_backprop_input(filters=paras.get("filter_tensor"),
+                                     out_backprop=paras.get("x_tensor"),
+                                     filter_sizes=paras.get("filter_shape"),
+                                     input_sizes=paras.get("input_size"),
+                                     para_dict={
+                                         "strides":
+                                         (conv2dbp_para.strides[H_DIM], conv2dbp_para.strides[W_DIM]),
+                                         "padding": conv2dbp_para.pads,
+                                         "dilations": conv2dbp_para.dilations,
+                                         "res_dtype": default_para.get("res_dtype"),
+                                         "tensor_bias": paras.get("bias_tensor"),
+                                         "offset_x": offset_x,
+                                         "kernel_name": kernel_name,
+                                         "group_dict": paras.get("group_para")
+                                     })
     if bias:
         return {'op_placeholder': [paras.get("x_tensor"), paras.get("filter_tensor"), paras.get("bias_tensor")],
                 'op_res': [dedx]}
     return {'op_placeholder': [paras.get("x_tensor"), paras.get("filter_tensor")], 'op_res': [dedx]}
 
 
-@tbe_base.register_operator('Deconvolution')
+@register_operator('Deconvolution')
 @para_check.check_input_type(dict, dict, (type(None), dict), (type(None), dict), dict, (tuple, list),
                              (tuple, list), (tuple, list), int, str, int, str,
                              (type(None), dict))
@@ -107,7 +110,7 @@ def deconvolution(x, filter, bias, offset_w, y, strides,
     None
     """
 
-    with tbe_base.compute():
+    with tbe.compute():
         res = _deconvolution_compute(
             x, filter, bias, offset_w, y,
             strides, pads, dilations, groups, data_format, offset_x, kernel_name)

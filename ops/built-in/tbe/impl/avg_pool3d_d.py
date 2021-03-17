@@ -15,15 +15,13 @@
 """
 avg_pool3d_d
 """
-import te.platform as tbe_platform
-from te import tvm
-from te.utils import para_check
-from te.utils.error_manager import error_manager_vector
 from impl.conv3d import conv3d_fusion_compute
-
-from te.tvm.target import cce
-from te.utils.cce import auto_schedule
-import te
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe_build
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -478,7 +476,7 @@ def avg_pool3d_d(x,
 
         _avg_pool3d_schedule(res, sch, ksize_dhw, strides_dhw)
 
-        with tbe_platform.build_config:
+        with tbe_build.build_config():
             tvm.build(sch, [tensor_in, res], "cce", name=kernel_name)
     else:
         dilations = (1, 1, 1, 1, 1)
@@ -503,10 +501,10 @@ def avg_pool3d_d(x,
             mul_n, mul_d, mul_c1, mul_h, mul_w, mul_c0 = multiplier.get('shape')
             mul_shape = (mul_n * mul_d, mul_c1, mul_h * mul_w, mul_c0)
             multiplier = tvm.placeholder(mul_shape, name="multiplier", dtype="float16")
-            res = te.lang.cce.vmul(conv_res, multiplier)
+            res = tbe.vmul(conv_res, multiplier)
             tensor_list = [fmap, filter, multiplier, res]
 
-        with cce():
-            sch = auto_schedule(tensor_list[-1])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(tensor_list[-1])
         config = {"name": kernel_name, "tensor_list": tensor_list}
-        te.lang.cce.cce_build_code(sch, config)
+        tbe.build(sch, config)

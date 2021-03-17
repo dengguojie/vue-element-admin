@@ -17,15 +17,17 @@ dynamic batch_matmul
 """
 import math
 
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-import te.platform as tbe_platform
-from te.utils import para_check
-from te import tvm
-from te.utils.error_manager import error_manager_vector
 from impl.util import fusion_util
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe_register
+from impl.util.platform_adapter import tvm
+
 
 # General limitation of the size for input shape: 2**32 - 1
 SHAPE_SIZE_LIMIT = 2147483648
@@ -263,10 +265,10 @@ def _batch_matmul_compute(input_x1, input_x2, bias, output_z, trans_a, trans_b, 
 
     batch_range, m_range, k_range, n_range = input_range
 
-    m_var = tbe_base.var("m", m_range)
-    k_var = tbe_base.var("k", k_range)
-    n_var = tbe_base.var("n", n_range)
-    batch_var = tbe_base.var("batch", batch_range)
+    m_var = operation.var("m", m_range)
+    k_var = operation.var("k", k_range)
+    n_var = operation.var("n", n_range)
+    batch_var = operation.var("batch", batch_range)
 
     shape_x1_nz = [batch_var, DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
     shape_x2_nz = [DYNAMIC_FLAG, DYNAMIC_FLAG, BLOCK_CUBE, BLOCK_CUBE]
@@ -350,7 +352,7 @@ def batch_matmul_fuse_compute(input_x1, input_x2, bias, output_z,
         fusion_util.check_fusion_input([bias])
 
     # set fusion build config
-    build_cfg = tbe_platform.get_fusion_build_cfg()
+    build_cfg = tbe_register.get_fusion_buildcfg()
     build_cfg['constant_realize_extent_in_infer_bound'] = False
 
     para_dict = {
@@ -409,9 +411,8 @@ def batch_matmul(input_x1, input_x2, bias=None, output_z={},
     res : dict
         None
     """
-    with tbe_base.compute():
-        res = _batch_matmul_compute(input_x1, input_x2, bias, output_z,
-                               trans_a, trans_b, kernel_name)
+    with tbe.compute():
+        res = _batch_matmul_compute(input_x1, input_x2, bias, output_z, trans_a, trans_b, kernel_name)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res.get("op_res"))
@@ -424,4 +425,4 @@ def batch_matmul(input_x1, input_x2, bias=None, output_z={},
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
     tbe.build(sch, config)
-    tbe_platform.fusion_manager.fusion_manager.set_current_op_pattern("BatchMatmul")
+    tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")

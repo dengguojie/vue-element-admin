@@ -19,16 +19,17 @@ from __future__ import absolute_import
 
 import warnings
 import math
-from te import tvm
-import te.lang.cce as tbe
-from te.lang.cce.te_compute import conv3d_compute
-import te.lang.dynamic as dynamic
-import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from tbe.common.utils import para_check
-from tbe.common.utils.errormgr import error_manager_util
-from tbe.common.utils.errormgr import error_manager_cube as cube_err
+
 from impl.util import util_common
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
+
 
 BIAS_LENGTH = 1
 # [strides_batch, strides_depth, strides_height,
@@ -92,7 +93,7 @@ def _check_groups_validation(fmap_cin, filter_cin, groups):
     None
     """
     if fmap_cin != filter_cin * groups:
-        cube_err.raise_err_scene_equal_limitation("conv3d", 'channel of x',
+        error_manager_cube.raise_err_scene_equal_limitation("conv3d", 'channel of x',
                                                   'the product of the filter_channel and groups')
 
 
@@ -100,43 +101,43 @@ def _common_check(shape_filter, stride_dhw):
     _, _, filter_d, filter_h, filter_w = shape_filter
     stride_d, stride_h, stride_w = stride_dhw
     if filter_d < FILTER_DHW_MIN or filter_d > FILTER_DHW_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'weight', 'D',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'weight', 'D',
             '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(filter_d))
 
     if stride_d < STRIDE_MIN or stride_d > STRIDE_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'stride', 'D',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'stride', 'D',
             '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX), str(stride_d))
 
     if filter_h < FILTER_DHW_MIN or filter_h > FILTER_DHW_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'filter', 'H',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'filter', 'H',
             '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(filter_h))
 
     if stride_h < STRIDE_MIN or stride_h > STRIDE_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'stride', 'H',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'stride', 'H',
             '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(stride_h))
 
     if filter_w < FILTER_DHW_MIN or filter_w > FILTER_DHW_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'filter', 'W',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'filter', 'W',
             '[{}, {}]'.format(FILTER_DHW_MIN, FILTER_DHW_MAX), str(filter_w))
 
     if stride_w < STRIDE_MIN or stride_w > STRIDE_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'stride', 'W',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'stride', 'W',
             '[{}, {}]'.format(STRIDE_MIN, STRIDE_MAX), str(stride_w))
 
 
 def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
     filter_dilated_d = (filter_d - 1) * dilation_d + 1
     if fmap_d != DYNAMIC_FLAG and ((fmap_d + pad_d[0] + pad_d[1]) < filter_dilated_d):
-        cube_err.raise_err_three_paras("E62507", "conv3d", "D",
+        error_manager_cube.raise_err_three_paras("E62507", "conv3d", "D",
             str(filter_dilated_d), str(fmap_d + pad_d[0] + pad_d[1]))
 
     if pad_d[0] < PAD_MIN or pad_d[1] < PAD_MIN or pad_d[0] > PAD_MAX or pad_d[1] > PAD_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'D',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'pad', 'D',
             '[{}, {}]'.format(PAD_MIN, PAD_MAX),
             'pad_d[0] = {}, pad_d[1] = {}'.format(pad_d[0], pad_d[1]))
 
     if pad_d[0] >= filter_dilated_d or pad_d[1] >= filter_dilated_d:
-        cube_err.raise_err_specific_user("conv3d",
+        error_manager_cube.raise_err_specific_user("conv3d",
             "the depth of pad can not be less than shape_filter's, \
              actual are {} and {}".format(pad_d[0], pad_d[1]))
 
@@ -144,16 +145,16 @@ def _check_d_dimension(fmap_d, filter_d, pad_d, stride_d, dilation_d):
 def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
     filter_dilated_h = (filter_h - 1) * dilation_h + 1
     if pad_h[0] < PAD_MIN or pad_h[1] < PAD_MIN or pad_h[0] > PAD_MAX or pad_h[1] > PAD_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'H',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'pad', 'H',
             '[{}, {}]'.format(PAD_MIN, PAD_MAX),
             'pad_h[0] = {}, pad_h[1] = {}'.format(pad_h[0], pad_h[1]))
 
     if fmap_h != DYNAMIC_FLAG and ((fmap_h + pad_h[0] + pad_h[1]) < filter_dilated_h):
-        cube_err.raise_err_three_paras("E62507", "conv3d", "H",
+        error_manager_cube.raise_err_three_paras("E62507", "conv3d", "H",
             str(filter_dilated_h), str(fmap_h + pad_h[0] + pad_h[1]))
 
     if pad_h[0] >= filter_dilated_h or pad_h[1] >= filter_dilated_h:
-        cube_err.raise_err_specific_user("conv3d",
+        error_manager_cube.raise_err_specific_user("conv3d",
             "the height of pad can not be less than shape_filter's, \
              actual are {} and {}".format(pad_h[0], pad_h[1]))
 
@@ -161,16 +162,16 @@ def _check_h_dimension(fmap_h, filter_h, pad_h, stride_h, dilation_h):
 def _check_w_dimension(fmap_w, filter_w, pad_w, stride_w, dilation_w):
     filter_dilated_w = (filter_w - 1) * dilation_w + 1
     if pad_w[0] < PAD_MIN or pad_w[1] < PAD_MIN or pad_w[0] > PAD_MAX or pad_w[1] > PAD_MAX:
-        cube_err.raise_err_four_paras('E62003', 'conv3d', 'pad', 'W',
+        error_manager_cube.raise_err_four_paras('E62003', 'conv3d', 'pad', 'W',
             '[{}, {}]'.format(PAD_MIN, PAD_MAX),
             'pad_w[0] = {}, pad_w[1] = {}'.format(pad_w[0], pad_w[1]))
 
     if fmap_w != DYNAMIC_FLAG and (filter_dilated_w > (fmap_w + pad_w[0] + pad_w[1])):
-        cube_err.raise_err_three_paras("E62507", "conv3d", "W",
+        error_manager_cube.raise_err_three_paras("E62507", "conv3d", "W",
             str(filter_dilated_w), str(fmap_w + pad_w[0] + pad_w[1]))
 
     if pad_w[0] >= filter_dilated_w or pad_w[1] >= filter_dilated_w:
-        cube_err.raise_err_specific_user("conv3d",
+        error_manager_cube.raise_err_specific_user("conv3d",
             "the width of pad can not be less than shape_filter's, \
             actual are {} and {}".format(pad_w[0], pad_w[1]))
 
@@ -247,7 +248,7 @@ def _check_conv3d_shape(shape_fm, shape_filter, pads, stride_dhw, dilation_dhw,
     max_feature_map_l1 = block_size_k * tmp * m_bit_ratio[w_dtype]
 
     if max_feature_map_l1 > l1_buffer_size:
-        cube_err.raise_err_specific_user("conv3d",
+        error_manager_cube.raise_err_specific_user("conv3d",
             "Input is too large, the minimum tiling may exceed L1_Buffer")
 
 
@@ -337,7 +338,7 @@ def _format_normalize(fmp_format, w_format, fmp_shape, w_shape, strides,
 
 def _ceil(x_1, x_2):
     if x_2 == 0:
-        cube_err.raise_err_specific("conv3d", "Division by zero")
+        error_manager_cube.raise_err_specific("conv3d", "Division by zero")
 
     return (x_1 + x_2 - 1) // x_2
 
@@ -375,7 +376,7 @@ def _get_fmap_range(in_range, in_shape, in_format):
         fmap_range = [in_range[N_DIM_6D], in_range[D_DIM_6D], (in_shape[1], in_shape[1]),
                       in_range[H_DIM_6D], in_range[W_DIM_6D]]
     else:
-        cube_err.raise_err_equal_invalid('conv3d', 'range_format', 'in_format')
+        error_manager_cube.raise_err_equal_invalid('conv3d', 'range_format', 'in_format')
 
     return [tuple(r) for r in fmap_range]
 
@@ -461,7 +462,7 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
         pad_check_load2d_flag = True if sum(pads) == 0 else False
 
     if y_d_lower < 1:
-        cube_err.raise_err_one_para('E62006', 'conv3d', 'd_out must >= 1')
+        error_manager_cube.raise_err_one_para('E62006', 'conv3d', 'd_out must >= 1')
 
     load2d_pass_flag =  ((w_d == 1) and (w_h == 1) and (w_w == 1) and
                         pad_check_load2d_flag and
@@ -481,10 +482,10 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
         pass
     else:
         if y_w_lower < 2:
-            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand w_out must >=2')
+            error_manager_cube.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand w_out must >=2')
 
         if y_h_lower < 1:
-            cube_err.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand h_out must >=1')
+            error_manager_cube.raise_err_one_para('E62006', 'conv3d', 'Chip Design demand h_out must >=1')
     out_range = [fmap_range[0], (y_d_lower, y_d_upper), (w_n, w_n),
                  (y_h_lower, y_h_upper), (y_w_lower, y_w_upper)]
     fmap_range = [fmap_range_n, fmap_range_d, fmap_range_c,
@@ -495,10 +496,10 @@ def _get_out_range(fmap_range, w_shape, pads, strides, dilations):
 
 def _check_const_dim(dim_value, dim_name):
     if not isinstance(dim_value, int):
-        cube_err.raise_err_specific_user("conv3d",
+        error_manager_cube.raise_err_specific_user("conv3d",
                  "the value of the {} dimension of shape must be int".format(dim_name))
     if dim_value <= 0:
-        cube_err.raise_err_specific_user("conv3d",
+        error_manager_cube.raise_err_specific_user("conv3d",
                  "the value of the {} dimension of shape must be -1 or >0".format(dim_name))
 
 
@@ -511,13 +512,13 @@ def _check_dynamic_mode(in_shape, w_shape):
     c_dim = 1
     fmap_dim_name_lis = ["N", "C", "D", "H", "W"]
     if DYNAMIC_FLAG not in in_shape:
-        cube_err.raise_err_specific_user(
+        error_manager_cube.raise_err_specific_user(
             "conv3d", "need at least one dimension is a variable.")
     if DYNAMIC_FLAG in w_shape:
-        cube_err.raise_err_specific_user(
+        error_manager_cube.raise_err_specific_user(
             "conv3d", "dynamic weight is not supported yet.")
     if in_shape[c_dim] == DYNAMIC_FLAG:
-        cube_err.raise_err_specific_user("conv3d", "dynamic c dimension is not supported yet.")
+        error_manager_cube.raise_err_specific_user("conv3d", "dynamic c dimension is not supported yet.")
     for index, dim in enumerate(in_shape):
         if dim != DYNAMIC_FLAG:
             _check_const_dim(dim, fmap_dim_name_lis[index])
@@ -529,18 +530,18 @@ def _check_variable_range(range_i, mini, maxi=MAX_SHAPE_NUM, name=None):
 
     """
     if not isinstance(range_i, (tuple, list)):
-        cube_err.raise_err_specific_user("conv3d", "type of range must be tuple or list.")
+        error_manager_cube.raise_err_specific_user("conv3d", "type of range must be tuple or list.")
     if len(range_i) != RANGE_DIM_LEN:
-        cube_err.raise_err_specific_user("conv3d", "each dimension of range must be 2.")
+        error_manager_cube.raise_err_specific_user("conv3d", "each dimension of range must be 2.")
     if not isinstance(range_i[0], int):
-        cube_err.raise_err_specific_user("conv3d", "The lower limit of the range must be Int.")
+        error_manager_cube.raise_err_specific_user("conv3d", "The lower limit of the range must be Int.")
     if range_i[1] and (not isinstance(range_i[1], int)):
-        cube_err.raise_err_specific_user("conv3d", "The upper limit of the range must be Int or None.")
+        error_manager_cube.raise_err_specific_user("conv3d", "The upper limit of the range must be Int or None.")
     if range_i[0] < mini or range_i[0] > maxi:
-        cube_err.raise_err_attr_range_invalid(
+        error_manager_cube.raise_err_attr_range_invalid(
             "conv3d", [mini, maxi], name, range_i[0])
     if range_i[1] and (range_i[1] < mini or range_i[1] > maxi):
-        cube_err.raise_err_attr_range_invalid(
+        error_manager_cube.raise_err_attr_range_invalid(
             "conv3d", [mini, maxi], name, range_i[1])
 
 
@@ -571,45 +572,45 @@ def _check_and_config_para(fmap,
     res_dtype = res_dtype.lower()
 
     if len(strides) != STRIDE_LENGTH:
-        cube_err.raise_err_specific_user("conv3d", "strides should be 5d list")
+        error_manager_cube.raise_err_specific_user("conv3d", "strides should be 5d list")
     if len(dilations) != DILATION_LENGTH:
-        cube_err.raise_err_specific_user("conv3d", "dilations should be 5d list")
+        error_manager_cube.raise_err_specific_user("conv3d", "dilations should be 5d list")
 
     # check dilations for it1
     if len(set(dilations)) != 1 or dilations[2] != 1:
-        cube_err.raise_err_three_paras('E62001', 'Conv3D', str(dilations[2]),
+        error_manager_cube.raise_err_three_paras('E62001', 'Conv3D', str(dilations[2]),
             str(dilations[3]), str(dilations[1]))
 
     if len(pads) != PADS_LENGTH:
-        cube_err.raise_err_one_para('E62501', 'conv3d', 'pads')
+        error_manager_cube.raise_err_one_para('E62501', 'conv3d', 'pads')
 
     if len(in_shape) != SHAPE_DIMS:
-        cube_err.raise_err_one_para('E62501', 'conv3d', 'in_shape')
+        error_manager_cube.raise_err_one_para('E62501', 'conv3d', 'in_shape')
 
     para_check.check_shape_rule(w_shape, min_dim=SHAPE_DIMS,
                                 max_dim=SHAPE_DIMS)
 
     if in_format not in FMAP_FORMAT_WHITE_LIST:
-        cube_err.raise_err_input_format_invalid(
+        error_manager_cube.raise_err_input_format_invalid(
             'conv3d', 'input', FMAP_FORMAT_WHITE_LIST, in_format)
 
     if w_format not in FILTER_FORMAT_WHITE_LIST:
-        cube_err.raise_err_input_format_invalid(
+        error_manager_cube.raise_err_input_format_invalid(
             'conv3d', 'weight', FILTER_FORMAT_WHITE_LIST, w_format)
     # shape_fm/shape_filter format is NCDHW
     shape_fm, shape_filter, stride_dhw, dilation_dhw = _format_normalize(
         in_format, w_format, in_shape, w_shape, strides, dilations)
 
     if bias:
-        cube_err.raise_err_specific_user(
+        error_manager_cube.raise_err_specific_user(
             'conv3d', "bias is not supported yet in dynamic conv3d")
 
     if offset_w:
-        cube_err.raise_err_specific_user(
+        error_manager_cube.raise_err_specific_user(
             'conv3d', "offset_w is not supported yet in dynamic conv3d")
 
     if groups != 1:
-        cube_err.raise_err_specific_user(
+        error_manager_cube.raise_err_specific_user(
             'conv3d', "group != 1 is not supported yet in dynamic conv3d")
 
     cin0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
@@ -795,23 +796,23 @@ def _conv3d_compute(fmap,
     mad_dtype = _get_mad_dtype(w_dtype)
     # define var
     if shape_fmp_ndc1hwc0[N_DIM_6D] == DYNAMIC_FLAG:
-        shape_fmp_ndc1hwc0[N_DIM_6D] = tbe_base.var("batch_n", fmap_range[N_DIM_6D])
-        tbe_base.add_exclude_bound_var(shape_fmp_ndc1hwc0[N_DIM_6D])
+        shape_fmp_ndc1hwc0[N_DIM_6D] = operation.var("batch_n", fmap_range[N_DIM_6D])
+        operation.add_exclude_bound_var(shape_fmp_ndc1hwc0[N_DIM_6D])
     if shape_fmp_ndc1hwc0[D_DIM_6D] == DYNAMIC_FLAG:
-        shape_fmp_ndc1hwc0[D_DIM_6D] = tbe_base.var("fmap_d", fmap_range[D_DIM_6D])
-        d_out = tbe_base.var("d_out", out_range[D_DIM_6D])
-        tbe_base.add_exclude_bound_var(shape_fmp_ndc1hwc0[D_DIM_6D])
-        tbe_base.add_exclude_bound_var(d_out)
+        shape_fmp_ndc1hwc0[D_DIM_6D] = operation.var("fmap_d", fmap_range[D_DIM_6D])
+        d_out = operation.var("d_out", out_range[D_DIM_6D])
+        operation.add_exclude_bound_var(shape_fmp_ndc1hwc0[D_DIM_6D])
+        operation.add_exclude_bound_var(d_out)
     if shape_fmp_ndc1hwc0[H_DIM_6D] == DYNAMIC_FLAG:
-        shape_fmp_ndc1hwc0[H_DIM_6D] = tbe_base.var("fmap_h", fmap_range[H_DIM_6D])
-        h_out = tbe_base.var("h_out", out_range[H_DIM_6D])
-        tbe_base.add_exclude_bound_var(shape_fmp_ndc1hwc0[H_DIM_6D])
-        tbe_base.add_exclude_bound_var(h_out)
+        shape_fmp_ndc1hwc0[H_DIM_6D] = operation.var("fmap_h", fmap_range[H_DIM_6D])
+        h_out = operation.var("h_out", out_range[H_DIM_6D])
+        operation.add_exclude_bound_var(shape_fmp_ndc1hwc0[H_DIM_6D])
+        operation.add_exclude_bound_var(h_out)
     if shape_fmp_ndc1hwc0[W_DIM_6D] == DYNAMIC_FLAG:
-        shape_fmp_ndc1hwc0[W_DIM_6D] = tbe_base.var("fmap_w", fmap_range[W_DIM_6D])
-        w_out = tbe_base.var("w_out", out_range[W_DIM_6D])
-        tbe_base.add_exclude_bound_var(shape_fmp_ndc1hwc0[W_DIM_6D])
-        tbe_base.add_exclude_bound_var(shape_fmp_ndc1hwc0[W_DIM_6D])
+        shape_fmp_ndc1hwc0[W_DIM_6D] = operation.var("fmap_w", fmap_range[W_DIM_6D])
+        w_out = operation.var("w_out", out_range[W_DIM_6D])
+        operation.add_exclude_bound_var(shape_fmp_ndc1hwc0[W_DIM_6D])
+        operation.add_exclude_bound_var(shape_fmp_ndc1hwc0[W_DIM_6D])
 
     data = tvm.placeholder(shape_fmp_ndc1hwc0, name='Fmap', dtype=fmp_dtype)
     weight = tvm.placeholder(shape_w_frac_z, name='Filter', dtype=w_dtype)
@@ -832,12 +833,12 @@ def _conv3d_compute(fmap,
         "group_dict": group_dict,
         "correct_range_flag":correct_range_flag,
     }
-    conv_res = conv3d_compute.conv3d(data, weight, shape_filter, para_dict)
+    conv_res = tbe.conv3d(data, weight, shape_filter, para_dict)
 
     return {"op_placeholder": [data, weight], "op_res": [conv_res]}
 
 
-@tbe_base.register_operator("Conv3D")
+@register_operator("Conv3D")
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
     para_check.OPTION_INPUT, para_check.OPTION_INPUT,
@@ -903,7 +904,7 @@ def conv3d(fmap,
     None
     """
 
-    with tbe_base.compute():
+    with tbe.compute():
         res = _conv3d_compute(
             fmap, weight, bias, offset_w, output, strides, pads, dilations,
             groups, data_format, offset_x, kernel_name)

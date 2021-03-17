@@ -15,15 +15,15 @@
 """
 deconvolution
 """
-import te.lang.cce as tbe
-import te.platform as tbe_platform
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
-from te import tvm
-from te.lang.cce.te_compute.cube_util import shape_to_list
-from te.platform import cce_params
-from te.utils import error_manager
-from te.utils import para_check
+from impl.util.platform_adapter import error_manager
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
+from tbe.dsl.compute.cube_util import shape_to_list
+
 
 # the dim of shape in conv_backprop must be 4
 CONV_BACKPROP_SHAPE_DIM = 4
@@ -65,7 +65,7 @@ def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
             "attr_name": attr_name,
             "value": attr_value
         }
-        raise RuntimeError(args_dict, 
+        raise RuntimeError(args_dict,
                            error_manager.get_error_message(args_dict))
 
 
@@ -216,8 +216,8 @@ def _cal_min_l1space(x,  # pylint: disable=invalid-name
         y.get("ori_format"), y.get("ori_shape"))
     filters_dtype = weight.get("dtype")
 
-    c0_size = cce_params.C0_SIZE
-    c0_size_k = cce_params.CUBE_MKN[filters_dtype]['mac'][1]
+    c0_size = tbe_platform.C0_SIZE
+    c0_size_k = tbe_platform.CUBE_MKN[filters_dtype]['mac'][1]
     filter_h_dilation = (shape_filters[2] - 1) * dilations[0] + 1
 
     bl1_size = shape_filters[2] * shape_filters[3] * c0_size * c0_size_k * \
@@ -496,7 +496,7 @@ def _get_deconvolution_fusion_para(input_x, input_y=None):
     return fusion_para
 
 
-@tbe_platform.fusion_manager.fusion_manager.register("deconvolution")
+@tbe_platform.fusion_manager.register("deconvolution")
 def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
     x,
     weight,
@@ -638,13 +638,7 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         "group_dict": group_dict
     }
 
-    res = tbe.conv2d_backprop_input_compute(
-        weight,
-        x,
-        shape_weight,
-        shape_res,
-        para_dict=para_dict
-    )
+    res = tbe.conv2d_backprop_input(weight, x, shape_weight, shape_res, para_dict=para_dict)
 
     return res
 
@@ -847,13 +841,11 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
         "group_dict": group_dict
     }
 
-    dedx = tbe.conv2d_backprop_input_compute(
-        filters=tensor_filter_frac,
-        out_backprop=tensor_dedy,
-        filter_sizes=shape_filter,
-        input_sizes=input_sizes,
-        para_dict=para_dict
-    )
+    dedx = tbe.conv2d_backprop_input(filters=tensor_filter_frac,
+                                     out_backprop=tensor_dedy,
+                                     filter_sizes=shape_filter,
+                                     input_sizes=input_sizes,
+                                     para_dict=para_dict)
 
     if bias:
         tensor_list = [tensor_dedy, tensor_filter_frac, tensor_bias, dedx]
@@ -865,7 +857,7 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
 
     config = {"name": kernel_name, "tensor_list": tensor_list}
 
-    tbe.cce_build_code(sch, config)
+    tbe.build(sch, config)
 
 
 def _get_value(obj, key, default=None):

@@ -86,3 +86,15 @@ from .api import add_build_arg
 from .api import add_exclude_bound_var
 from .api import compute
 from .api import schedule
+
+#cube
+from .api import conv2d_backprop_filter
+from .api import conv2d_backprop_input
+from .api import conv3d_backprop_filter
+from .api import conv3d_backprop_input
+from .api import conv3d
+from .api import depthwise_conv2d_backprop_filter
+from .api import depthwise_conv2d_backprop_input
+from .api import depthwise_conv2d
+from .api import dilation
+from .api import gemm

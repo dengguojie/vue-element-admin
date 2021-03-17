@@ -17,12 +17,13 @@ matmul
 """
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils import shape_util
-from te import tvm
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+
 
 from impl.matmul_vector import matmul_vector_cce
 
@@ -58,7 +59,7 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     """
     shape_len = len(shape_a)
     src_dtype = src_dtype.lower()
-    k_block_size = tbe_platform.cce_params.BLOCK_REDUCE
+    k_block_size = tbe_platform.BLOCK_REDUCE
 
     check_list = ("float16")
 
@@ -103,19 +104,19 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
         error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1",
                                                                "x2", error_detail)
 
-    if m_shape % tbe_platform.cce_params.BLOCK_IN != 0 and m_shape != 1:
-        error_detail = "input shape x1 should be 1 or multiple of %d" % tbe_platform.cce_params.BLOCK_IN
+    if m_shape % tbe_platform.BLOCK_IN != 0 and m_shape != 1:
+        error_detail = "input shape x1 should be 1 or multiple of %d" % tbe_platform.BLOCK_IN
         error_manager_vector.raise_err_input_shape_invalid(
             "mat_mul", "x1", error_detail)
 
     if m_shape != 1:
         if km_shape % k_block_size != 0:
-            error_detail = "input shape x1 should be multiple of %d" % tbe_platform.cce_params.BLOCK_IN
+            error_detail = "input shape x1 should be multiple of %d" % tbe_platform.BLOCK_IN
             error_manager_vector.raise_err_input_shape_invalid(
                 "mat_mul", "x1", error_detail)
 
-    if n_shape % tbe_platform.cce_params.BLOCK_IN != 0 and n_shape != 1:
-        error_detail = "input shape x2 should be 1 or multiple of %d" % tbe_platform.cce_params.BLOCK_IN
+    if n_shape % tbe_platform.BLOCK_IN != 0 and n_shape != 1:
+        error_detail = "input shape x2 should be 1 or multiple of %d" % tbe_platform.BLOCK_IN
         error_manager_vector.raise_err_input_shape_invalid(
             "mat_mul", "x2", error_detail)
     shape_bias_length = len(shape_bias)
@@ -385,7 +386,7 @@ def check_supported(input_x1,
 # pylint: disable=locally-disabled, too-many-arguments,unexpected-keyword-arg,no-value-for-parameter
 # pylint: disable=locally-disabled, simplifiable-if-expression
 # pylint: disable=too-many-locals, too-many-statements, dangerous-default-value
-@tbe_platform.fusion_manager.fusion_manager.register("mat_mul")
+@tbe_platform.fusion_manager.register("mat_mul")
 def mat_mul_compute(input_x1,
                     input_x2,
                     bias,
@@ -507,7 +508,7 @@ def mat_mul_compute_self(input_x1,
     -------
     None
     """
-    cube_vector_split = tbe_platform.cce_conf.get_soc_spec("CUBE_VECTOR_SPLIT")
+    cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
     format_a = input_x1.op.attrs["format"].value
     format_b = input_x2.op.attrs["format"].value
     if format_a == 'FRACTAL_NZ' and not cube_vector_split:
@@ -574,9 +575,9 @@ def _matmul_vector_one_compute(tensor_a, tensor_b, tensor_bias, axis):
                                     param_name_input2="tensor_b")
     tensor_b = tbe.broadcast(tensor_b, shape_max, dtype)
     res_tmp = tbe.vmul(tensor_a, tensor_b)
-    res = tbe.sum(res_tmp, axis=axis)
+    res = tbe.reduce_sum(res_tmp, axis=axis)
 
-    shape_res = tbe.util.shape_to_list(res.shape)
+    shape_res = shape_util.shape_to_list(res.shape)
     if tensor_bias is not None:
         shape_res, shape_bias, shape_max2 = \
             shape_util.broadcast_shapes(shape_res, shape_bias, param_name_input1="res",
@@ -645,7 +646,7 @@ def _matmul_vector_one(shape_a, shape_b, src_type, trans_a, trans_b, bias, kerne
     config = {"print_ir": False,
               "name": kernel_name,
               "tensor_list": tensor_list}
-    tbe.cce_build_code(schedule, config)
+    tbe.build(schedule, config)
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -788,4 +789,4 @@ def mat_mul(input_x1,
               "name": kernel_name,
               "tensor_list": tensor_list}
 
-    tbe.cce_build_code(schedule, config)
+    tbe.build(schedule, config)
