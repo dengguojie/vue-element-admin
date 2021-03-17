@@ -2827,4 +2827,65 @@ IMPLEMT_VERIFIER(EinSum, EinSumVerify) {
 COMMON_INFER_FUNC_REG(EinSum, EinSumInferShape);
 VERIFY_FUNC_REG(EinSum, EinSumVerify);
 // ----------------EinSum-------------------
+
+// ---------------Eye----------------------------
+static bool CheckRows(const Operator &op, const string &attr_num_rows) 
+{
+    int64_t num_rows;
+    op.GetAttr(attr_num_rows, num_rows);
+    if (num_rows <= 0) {
+        return false;
+    }
+    return true;
+}
+
+static bool CheckBatchShape(const Operator &op, const string &attr_batch_shape) 
+{
+    std::vector<int64_t> batch_shape;
+    op.GetAttr(attr_batch_shape, batch_shape);
+    for (int i = 0; i < batch_shape.size(); ++i) {
+        if (batch_shape[i] <= 0) {
+            OP_LOGE(op.GetName().c_str(), "the value of batch_shape less than 0.\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+IMPLEMT_COMMON_INFERFUNC(EyeInferShape) 
+{
+    TensorDesc td = op.GetOutputDesc("y");
+    int64_t num_rows, num_columns;
+    std::vector<int64_t> batch_shape;
+    op.GetAttr("num_rows", num_rows);
+    op.GetAttr("num_columns", num_columns);
+    op.GetAttr("batch_shape", batch_shape);
+
+    if (!CheckRows(op, "num_rows") || !CheckBatchShape(op, "batch_shape")) {
+        return GRAPH_FAILED;
+    }
+    if (num_columns <= 0) {
+        num_columns = num_rows;
+    }
+    std::vector<int64_t> dim_vec;
+    for (int i = 0; i < batch_shape.size(); ++i) {
+        dim_vec.push_back(batch_shape[i]);
+    }
+    dim_vec.push_back(num_rows);
+    dim_vec.push_back(num_columns);
+    td.SetShape(ge::Shape(dim_vec));
+    (void)op.UpdateOutputDesc("y", td);
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(Eye, EyeVerify) 
+{
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(Eye, EyeInferShape);
+
+VERIFY_FUNC_REG(Eye, EyeVerify);
+//--------------Eye END-------------------------------
+
 }  // namespace ge

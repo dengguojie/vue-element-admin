@@ -1097,6 +1097,33 @@ REG_OP(EinSum)
     .REQUIRED_ATTR(equation, String)
     .REQUIRED_ATTR(tensor_size, Int)
     .OP_END_FACTORY_REG(EinSum)
+
+/**
+*@brief Returns a 2-D tensor with ones on the diagonal and zeros elsewhere. \n
+
+*@par Inputs:
+*No inputs
+
+*@par Attributes:
+*@li num_rows: An required int. \n
+*@li num_columns: An optional int.Defaults to 0. \n
+*@li batch_shape: An optional ListInt.Defaults to []. \n
+*@li dtype: An optional int.Defaults to 0. \n
+
+*@par Outputs:
+*y: A Tensor with targeted type and shape. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Pytorch operator Eye. \n
+*/
+REG_OP(Eye)
+    .OUTPUT(y, TensorType::BasicType())    /* "Result, has targeted element type" */
+    .REQUIRED_ATTR(num_rows, Int)
+    .ATTR(num_columns, Int, 0)
+    .ATTR(batch_shape, ListInt, {})
+    .ATTR(dtype, Int, 0)
+    .OP_END_FACTORY_REG(Eye)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATRIX_CALCULATION_OPS_H_
