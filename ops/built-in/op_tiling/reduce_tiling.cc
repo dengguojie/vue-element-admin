@@ -365,20 +365,31 @@ bool Reduce::ChooseAtomic() {
   ubSizeB = compileInfo.max_ub_count;
   ubSizeA = ubSizeB / compileInfo.coef;
 
-  // 1: Check if atomic is enabled
-  // 2: Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
-  // 3: Check normal atomic rules
-  // 4: (Priority) Check if it is outermost_reduce and is larger than or equal to core_num
-  // Layer 0 (Required)
+  // Layer 0 Check if atomic is enabled
   bool atomic_available = compileInfo.atomic;
-  // Layer 1
+  // Layer 1 Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
+  //         Check normal atomic rules
   compileInfo.atomic = total_output_count <= ubSizeB &&
                        total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
                        total_output_count < (int64_t)compileInfo.core_num * block_size / 2 &&
                         total_reduce_count > (int64_t)compileInfo.core_num / 2;
-  // Layer 2
-  // Currently unavailable
-
+  // Layer 2 Check if it is nlast_reduce
+  //         Check if it is in a0, r, a1 pattern and a0 is 0
+  bool is_outermost_nlast_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
+                                             (int32_t)1) != reduce_axis.end() &&
+                                             input_shape[0] == (int32_t)1 &&
+                                             std::find(reduce_axis.begin(), reduce_axis.end(),
+                                             (int32_t)(output_shape.size() - 1)) == reduce_axis.end();
+  // Check if output_shape is smaller than Single Tensor Size Limitation so that r, a ub_split_a schedule won't be used
+  bool output_shape_limitation = total_output_count <= ubSizeB;
+  // Check if outermost reduce axis is larger than or equal to core_num
+  bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * 4;
+  // Check nlast_reduce again
+  bool n_last_reduce_shape_limitation = pattern & 1 == 1 && input_shape[input_shape.size() - 1] < ubSizeB;
+  // AND expression for all checks
+  bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
+  // check extracted here because of 120 characters per line static check rule
+  compileInfo.atomic = compileInfo.atomic || shape_limitation && is_outermost_nlast_reduce;
   // Final
   compileInfo.atomic = atomic_available && compileInfo.atomic;
   return true;
