@@ -35,6 +35,7 @@ class ConvToFullyConnectionFusionPass : public PatternFusionBasePass {
   Status CheckFusionParm(ge::NodePtr convNode);
   Status CheckHWCEqual(const ge::GeTensorDesc& xTensor, const ge::GeTensorDesc& filterTensor);
   int64_t GetDimByAxisName(const ge::GeTensorDesc& tensor, const string& axis);
+  int32_t GetIndexByAxisName(const ge::GeTensorDesc& tensor, const string& axis);
   const string FUSED_OP_TYPE = "Conv2D";
 };
 }  // namespace fe

@@ -826,7 +826,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
     }
   }
   (void)op.UpdateOutputDesc("y", tensordesc_output);
-  OP_LOGI(op.GetName(),c_str(), "leave op_proto inferfunction!");
+  OP_LOGI(op.GetName().c_str(), "leave op_proto inferfunction!");
   return GRAPH_SUCCESS;
 }
 
@@ -6931,7 +6931,7 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
 IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DBackpropFilter Infer Function!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
- 
+
   Tensor filter_sizes_tensor;
   if (GRAPH_SUCCESS != op.GetInputConstData("filter_size", filter_sizes_tensor)) {
     OP_LOGE(op.GetName().c_str(), "get filter_size tensor failed.");

@@ -82,14 +82,53 @@ int64_t ConvToFullyConnectionFusionPass::GetDimByAxisName(const ge::GeTensorDesc
   return shape.GetDim(index);
 }
 
+int32_t ConvToFullyConnectionFusionPass::GetIndexByAxisName(const ge::GeTensorDesc& tensor, const string& axis) {
+  ge::Format format = tensor.GetFormat();
+  int32_t index = 0;
+  auto iter = FE_AXIS_INDEX_OF_FORMAT.find(format);
+  if (iter != FE_AXIS_INDEX_OF_FORMAT.end()) {
+    auto iter2 = iter->second.find(axis);
+    if (iter2 != iter->second.end()) {
+      index = iter2->second;
+    } else {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "Format %s does not support this axis %s",
+              ge::TypeUtils::FormatToSerialString(format).c_str(), axis.c_str());
+      index = -1;
+    }
+  } else {
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Do not support this format %s",
+            ge::TypeUtils::FormatToSerialString(format).c_str());
+    index = -1;
+  }
+  return index;
+}
+
 Status ConvToFullyConnectionFusionPass::CheckHWCEqual(const ge::GeTensorDesc& xTensor,
                                                       const ge::GeTensorDesc& filterTensor) {
-  int64_t xAixsH = GetDimByAxisName(xTensor, "H");
-  int64_t filterAixsH = GetDimByAxisName(filterTensor, "H");
-  int64_t xAixsW = GetDimByAxisName(xTensor, "W");
-  int64_t filterAixsW = GetDimByAxisName(filterTensor, "W");
-  int64_t xAixsC = GetDimByAxisName(xTensor, "C");
-  int64_t filterAixsC = GetDimByAxisName(filterTensor, "C");
+  ge::GeShape shapeX = xTensor.GetShape();
+  ge::GeShape shapeFilter = filterTensor.GetShape();
+  int32_t xAixsIndexH = GetIndexByAxisName(xTensor, "H");
+  int32_t filterAixsIndexH = GetIndexByAxisName(filterTensor, "H");
+  int32_t xAixsIndexW = GetIndexByAxisName(xTensor, "W");
+  int32_t filterAixsIndexW = GetIndexByAxisName(filterTensor, "W");
+  int32_t xAixsIndexC = GetIndexByAxisName(xTensor, "C");
+  int32_t filterAixsIndexC = GetIndexByAxisName(filterTensor, "C");
+  if ((xAixsIndexH == -1) ||
+      (filterAixsIndexH == -1) ||
+      (xAixsIndexW == -1) ||
+      (filterAixsIndexW == -1) ||
+      (xAixsIndexC == -1) ||
+      (filterAixsIndexC == -1)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "ConvToFullyConnectionFusionPass cannot be applied for the format or axis.");
+    return NOT_CHANGED;
+  }
+
+  int64_t xAixsH = shapeX.GetDim(xAixsIndexH);
+  int64_t filterAixsH = shapeFilter.GetDim(filterAixsIndexH);
+  int64_t xAixsW = shapeX.GetDim(xAixsIndexW);
+  int64_t filterAixsW = shapeFilter.GetDim(filterAixsIndexW);
+  int64_t xAixsC = shapeX.GetDim(xAixsIndexC);
+  int64_t filterAixsC = shapeFilter.GetDim(filterAixsIndexC);
 
   if (PatternFusionUtil::IsUnknownShape(xAixsH) ||
       PatternFusionUtil::IsUnknownShape(filterAixsH) ||
