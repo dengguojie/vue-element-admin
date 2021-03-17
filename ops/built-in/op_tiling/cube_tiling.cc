@@ -248,6 +248,10 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
         tilingID = CubeTilingBatch(curShape, opInfo);
     }
     if (tilingID == "0") {
+        if (opInfo.contains("correct_range_flag") && opInfo["correct_range_flag"]) {
+            OP_LOGE(opType.c_str(), "The original range does not meet requirements,"
+                               "new range is generated during op compile, but the shape is not covered by new range");
+        }
         OP_LOGE(opType.c_str(),
                 "This shape is not covered by any tiling, "
                 "please modify range and recompile");

@@ -17,13 +17,14 @@ dynamic conv2d_backprop_filter
 """
 from __future__ import absolute_import
 
-from impl.util.platform_adapter import error_manager_util
+import warnings
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import error_manager_cube
 
 
 # the dim of shape in conv_backprop must be 4
@@ -38,7 +39,8 @@ FMAP_HW_MIN = 1
 
 # DeDy H,W must be in [2,4096]
 DEDY_HW_MAX = 4096
-DEDY_HW_MIN = 2
+DEDY_W_MIN = 2
+DEDY_H_MIN = 1
 
 # filterH, filterW must be in [1,255]
 FILTER_HW_MAX = 255
@@ -77,14 +79,18 @@ PADDING_VAILD = [0, 0, 0, 0]
 # If pads is string , only support "SAME" or "VALID"
 PADDING_SUPPORT = ('SAME', 'VALID')
 
+N_DIM = 0
+C_DIM = 1
+H_DIM = 2
+W_DIM = 3
+
+DYNAMIC_FLAG = -1
+RANGE_DIM_LEN = 2
+
 
 def _ceil(x_1, x_2):
     if x_2 == 0:
-        dict_args = {}
-        dict_args['errCode'] = "E60108"
-        dict_args['reason'] = "Division by zero"
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        error_manager_cube.raise_err_specific("conv2d_backprop_filter", "Division by zero")
     return (x_1 + x_2 - 1) // x_2
 
 
@@ -99,43 +105,25 @@ def _get_pos_from_format(format_in):
 
 def _check_equal(x_1, x_2, param_1, param_2):
     if x_1 != x_2:
-        dict_args = {}
-        dict_args['errCode'] = "E64002"
-        dict_args['param1'] = param_1
-        dict_args['param2'] = param_2
-        dict_args['actual_value'] = "{}, {}". \
-                                    format(x_1, x_2)
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter", param_1,
+                                                  param2)
 
 
 def _check_dimensions(shape, name, dimension):
     if len(shape) != dimension:
-        dict_args = dict()
-        dict_args["errCode"] = "E60107"
-        dict_args["param_name"] = name
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+            "{} should be {}d list".format(name, dimension))
 
 def _check_type(shape, name, type_set):
     if not isinstance(shape, type_set):
-        dict_args = dict()
-        dict_args["errCode"] = "E60107"
-        dict_args["param_name"] = name
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        error_manager_cube.raise_err_specific("conv2d_backprop_filter",
+            "type of {} should in {}".format(name, type_set))
 
 
 def _check_data_format(data_format, name, format_set=["NHWC", "NCHW"]):
     if data_format not in format_set:
-        dict_args = {}
-        dict_args['errCode'] = "E60008"
-        dict_args['param_name'] = name
-        dict_args['expected_format_list'] = format_set
-        dict_args["format"] = data_format
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+            "format of {} should in {}".format(name, format_set))
 
 
 def _get_nchw_shape(fmap, out_backprop, filters):
@@ -148,10 +136,6 @@ def _get_nchw_shape(fmap, out_backprop, filters):
 
         _check_type(dedw_shape, "y", (tuple, list))
         _check_dimensions(dedw_shape, "y", CONV_BACKPROP_SHAPE_DIM)
-
-        _check_data_format(x_format, "x")
-        _check_data_format(dedy_format, "out_backprop")
-        _check_data_format(dedw_format, "res", ["NHWC", "NCHW", "HWCN"])
 
     def _get_shape(shape, ori_format):
         pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(ori_format)
@@ -174,42 +158,17 @@ def _get_nchw_shape(fmap, out_backprop, filters):
     # get range
     if len(x_range) == 4:
         pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(x_format)
-        x_range = [x_range[pos_n], x_range[pos_n], x_range[pos_h], x_range[pos_w]]
+        x_range = [x_range[pos_n], x_range[pos_c], x_range[pos_h], x_range[pos_w]]
     elif len(x_range) == 5:
         x_range = [x_range[0], (x_shape[1], x_shape[1]), x_range[2], x_range[3]]
         x_range = [tuple(r) for r in x_range]
     else:
-        raise RuntimeError("range format should be same as input format")
-    for r in x_range:
-        if r[0] > r[1]:
-            raise RuntimeError("range lower bound should be less equal than \
-                upper bound"                                                        )
+        error_manager_cube.raise_err_equal_invalid('conv2d_backprop_filter', 'range_format', 'in_format')
 
     return x_shape, dedy_shape, dedw_shape, x_range
 
 
 def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
-    def _convert_shape_to_list(shape):
-        for i, var in enumerate(shape):
-            if isinstance(var, tvm.expr.IntImm):
-                shape[i] = var.value
-
-    def _check_attrs_rules():
-        if len(strides) != 4 and len(strides) != 2:
-            dict_args = dict()
-            dict_args["errCode"] = "E60107"
-            dict_args["param_name"] = "strides"
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-
-        if isinstance(pads, (tuple, list)):
-            _check_dimensions(pads, "pads", CONV_BACKPROP_SHAPE_DIM)
-
-        _check_dimensions(dilations, "dilations", CONV_BACKPROP_SHAPE_DIM)
-        _check_data_format(data_format, "data_format")
-
-    _check_attrs_rules()
-
     pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(data_format)
     dilations = [dilations[pos_n], dilations[pos_c],
                  dilations[pos_h], dilations[pos_w]]
@@ -217,10 +176,17 @@ def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
     if len(strides) == 4:
         strides = [strides[pos_h], strides[pos_w]]
 
+    return strides, pads, dilations
+
+
+def _calc_pads(fmap_shape, w_nchw, strides, dilations, pads):
+    """
+    calculate pads
+    """
     # get pads
     stride_h, stride_w = strides
     _, _, dilation_h, dilation_w = dilations
-    _, _, fmap_h, fmap_w = fmap_shape
+    _, _, fmap_h, fmap_w, _ = fmap_shape
     _, _, filter_h, filter_w = w_nchw
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -236,71 +202,58 @@ def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
         pad_up = pad_h // 2
         pad_down = pad_h - pad_up
         pads = [pad_up, pad_down, pad_left, pad_right]
-        _convert_shape_to_list(pads)
     else:
         pads = list(pads)
         pad_up, pad_down, pad_left, pad_right = pads
         if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
-            dict_args = dict()
-            dict_args["errCode"] = "E64005"
-            dict_args["direction"] = 'H'
-            dict_args["pads_dir"] = "pad_up and pad_down"
-            dict_args["pads_value"] = "[{}, {}]".format(pad_up, pad_down)
-            dict_args["filter_value"] = str(filter_h_dilation)
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
-        if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
-            dict_args = dict()
-            dict_args["errCode"] = "E64005"
-            dict_args["direction"] = 'W'
-            dict_args["pads_dir"] = "pad_left and pad_right"
-            dict_args["pads_value"] = "[{}, {}]".format(pad_left, pad_right)
-            dict_args["filter_value"] = str(filter_w_dilation)
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "the height of pad can not be less than shape_filter's, \
+                actual are {} and {}".format(pad_up, pad_down))
 
-    return strides, pads, dilations
+        if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "the width of pad can not be less than shape_filter's, \
+                actual are {} and {}".format(pad_left, pad_right))
+    return pads
+
+
+def _check_const_dim(dim_value, dim_name):
+    if not isinstance(dim_value, int):
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                 "the value of the {} dimension of shape must be int".format(dim_name))
+    if dim_value <= 0:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                 "the value of the {} dimension of shape must be -1 or >0".format(dim_name))
 
 
 def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw, fmap_range):
-    dynamic_mode = None
 
     fmap_n, fmap_c, fmap_h, fmap_w = fmap_nchw
     dedy_n, dedy_c, dedy_h, dedy_w = dedy_nchw
     if fmap_n != dedy_n:
-        dict_args = {}
-        dict_args['errCode'] = "E64002"
-        dict_args['param1'] = "Fmap's N"
-        dict_args['param2'] = "Dedy's N"
-        dict_args['actual_value'] = "{}, {}".\
-            format(fmap_n, dedy_n)
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter", "Fmap's N",
+                                                  "Dedy's N")
+    if DYNAMIC_FLAG not in fmap_nchw:
+        error_manager_cube.raise_err_specific_user(
+            "conv2d_backprop_filter", "need at least one dimension is a variable.")
+    if DYNAMIC_FLAG in dedw_nchw:
+        error_manager_cube.raise_err_specific_user(
+            "conv2d_backprop_filter", "dynamic weight is not supported yet.")
+    if fmap_nchw[C_DIM] == DYNAMIC_FLAG:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+            "dynamic c dimension is not supported yet.")
 
-    if fmap_nchw[2] == -1 and fmap_nchw[3] == -1 and -1 not in fmap_nchw[:2]:
-        fmap_h = operation.var("fmap_h", bound=fmap_range[2])
-        fmap_w = operation.var("fmap_w", bound=fmap_range[3])
-        dedy_h = operation.var("dedy_h")
-        dedy_w = operation.var("dedy_w")
-        operation.add_exclude_bound_var(fmap_h)
-        operation.add_exclude_bound_var(fmap_w)
-        operation.add_exclude_bound_var(dedy_h)
-        operation.add_exclude_bound_var(dedy_w)
-        dynamic_mode = "dynamic_hw"
-    elif fmap_nchw[0] == -1 and -1 not in fmap_nchw[1:]:
-        fmap_n = operation.var("batch", bound=fmap_range[0])
-        operation.add_exclude_bound_var(fmap_n)
-        dynamic_mode = "dynamic_batch"
-    else:
-        dict_args = dict()
-        dict_args["errCode"] = "E60108"
-        dict_args["param_name"] = "out_backprop"
-        dict_args["reason"] = "only support dynamic_hw and dynamic_batch now."
-        raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
+    dim_name_lis = ["N", "C", "H", "W"]
+    for index, dim in enumerate(fmap_nchw):
+        if dim != DYNAMIC_FLAG:
+            _check_const_dim(dim, dim_name_lis[index])
+    for index, dim in enumerate(dedy_nchw):
+        if dim != DYNAMIC_FLAG:
+            _check_const_dim(dim, dim_name_lis[index])
 
     fmap_shape = (fmap_n, fmap_c, fmap_h, fmap_w)
     dedy_shape = (fmap_n, dedy_c, dedy_h, dedy_w)
-    return fmap_shape, dedy_shape, dynamic_mode
+    return fmap_shape, dedy_shape
 
 
 def _get_output(x_in, k_size, pads, stride, dilation):
@@ -308,48 +261,90 @@ def _get_output(x_in, k_size, pads, stride, dilation):
 
 
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
+    correct_range_flag = False
+    fmap_range_n, fmap_range_c, fmap_range_h, fmap_range_w = fmap_range
+    w_n, w_c, w_h, w_w = kernel
     if -1 in pads:
-        out_h_lower = _ceil(fmap_range[2][0], stride[0])
-        out_h_upper = _ceil(fmap_range[2][1], stride[0])
-        out_w_lower = _ceil(fmap_range[3][0], stride[1])
-        out_w_upper = _ceil(fmap_range[3][1], stride[1])
+        # calculate dedy range for pad is SAME
+        out_h_lower = _ceil(fmap_range_h[0], stride[0])
+        if not fmap_range_h[1]:
+            fmap_range_h = (fmap_range_h[0], FMAP_HW_MAX)
+        out_h_upper = _ceil(fmap_range_h[1], stride[0])
+        out_w_lower = _ceil(fmap_range_w[0], stride[1])
+        # the lower limit of w_out is 2
+        if out_w_lower < 2:
+            lower_new = stride[1] + 1
+            fmap_range_w_lower = min(lower_new, fmap_range_w[1]) if fmap_range_w[1] else lower_new
+            fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
+            out_w_lower = _ceil(fmap_range_w[0], stride[1])
+            correct_range_flag = True
+            warnings.warn("The output calculated based on the lower limit of the input w " + \
+                "range is less than 2, and the lower limit of the input w range is corrected " + \
+                "as {}".format(fmap_range_w_lower))
+        if not fmap_range_w[1]:
+            fmap_range_w = (fmap_range_w[0], FMAP_HW_MAX)
+        out_w_upper = _ceil(fmap_range_w[1], stride[1])
     else:
-        out_h_lower = _get_output(fmap_range[2][0], kernel[2],
+        # calcaulate output range for pad is list
+        out_h_lower = _get_output(fmap_range_h[0], w_h,
                                   (pads[0], pads[1]), stride[0], dilation[2])
-        out_h_upper = _get_output(fmap_range[2][1], kernel[2],
-                                  (pads[0], pads[1]), stride[0], dilation[2])
-        out_w_lower = _get_output(fmap_range[3][0], kernel[3],
-                                  (pads[2], pads[3]), stride[1], dilation[3])
-        out_w_upper = _get_output(fmap_range[3][1], kernel[3],
-                                  (pads[2], pads[3]), stride[1], dilation[3])
-    return [(out_shape[0], out_shape[0]), (out_shape[1], out_shape[1]),
-            (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
+        if out_h_lower < 1:
+            fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
+            fmap_range_h = (fmap_range_h_lower, fmap_range_h[1])
+            out_h_lower = _get_output(fmap_range_h[0], w_h,
+                                    (pads[0], pads[1]), stride[0], dilation[2])
+            correct_range_flag = True
+            warnings.warn("The output calculated based on the lower limit of the input h " + \
+                "range is less than 1, and the lower limit of the input h range is corrected " + \
+                "as {}".format(fmap_range_h_lower))
+        if  not fmap_range_h[1]:
+            fmap_range_h = (fmap_range_h[0], FMAP_HW_MAX)
+        out_h_upper = _get_output(fmap_range_h[1], w_h,
+                                    (pads[0], pads[1]), stride[0], dilation[2])
+
+        out_w_lower = _get_output(fmap_range_w[0], w_w,
+                                 (pads[2], pads[3]), stride[1], dilation[3])
+        if out_w_lower < 2:
+            lower_new = w_w + stride[1]
+            fmap_range_w_lower = min(lower_new, fmap_range_w[1]) if fmap_range_w[1] else lower_new
+            fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
+            out_w_lower = _get_output(fmap_range_w[0], w_w,
+                                    (pads[2], pads[3]), stride[1], dilation[3])
+            correct_range_flag = True
+            warnings.warn("The output calculated based on the lower limit of the input w " + \
+                "range is less than 2, and the lower limit of the input w range is corrected " + \
+                "as {}".format(fmap_range_w_lower))
+        if not fmap_range_w[1]:
+            fmap_range_w = (fmap_range_w[0], FMAP_HW_MAX)
+        out_w_upper = _get_output(fmap_range_w[1], w_w,
+                                 (pads[2], pads[3]), stride[1], dilation[3])
+    dedy_range = [fmap_range_n, (out_shape[1], out_shape[1]),
+                  (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
+    fmap_range = [fmap_range_n, fmap_range_c, fmap_range_h, fmap_range_w]
+
+    return dedy_range, fmap_range, correct_range_flag
 
 
 def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                                   pads, dilations, groups, fmap_dtype,
                                   dedy_dtype, dedw_dtype, kernel_name,
-                                  dynamic_mode, fmap_range):
+                                  fmap_range):
 
     def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
         if (not isinstance(value, int)) or value > attr_max \
                 or value < attr_min:
-            dict_args = {}
-            dict_args["errCode"] = "E64001"
-            dict_args["range"] = "[{},{}]".format(attr_min, attr_max)
-            dict_args["attr_name"] = name
-            dict_args["value"] = str(value)
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            error_manager_cube.raise_err_attr_range_invalid(
+                "conv2d_backprop_filter", [attr_min, attr_max], name, str(value))
 
     def _is_load3d_special():
         # limitation by chip:
-        # if kernel h,w in [1,11]
-        # and fmap h/w after padding equals to filter h/w
-        # load3d support h,w is 1
-        if (1 <= filter_h <= 11) and (1 <= filter_w <= 11) \
-            and (int(lower_fmap_h_padding) == filter_h or
-                 int(lower_fmap_w_padding) == filter_w):
+        # load3d instruction not support out_w = 1
+        # only Ascend310 and Hi3796CS can support
+        if (
+            tbe_platform.get_soc_spec("SOC_VERSION") in ["Ascend310", "Hi3796CV300CS", "SD3403"]
+            and dedy_h != 1
+            and dedy_w == 1
+        ):
             return True
         return False
 
@@ -359,61 +354,50 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
         else:
             bit_ratio = BIT_RATIO_DICT.get("float16")
         if attr_value * bit_ratio > DATA_SIZE_MAX:
-            dict_args = {}
-            dict_args['errCode'] = "E60020"
-            dict_args['attr_name'] = attr_name
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "{} must be less than {}, but it is {}.".format(attr_name,
+                DATA_SIZE_MAX, attr_value * bit_ratio))
+
+    def _check_variable_range(range_i, mini, maxi=DATA_SIZE_MAX, name=None):
+        """
+        check variable range
+
+        """
+        if not isinstance(range_i, (tuple, list)):
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "type of range must be tuple or list.")
+        if len(range_i) != RANGE_DIM_LEN:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "each dimension of range must be 2.")
+        if not isinstance(range_i[0], int):
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "The lower limit of the range must be Int.")
+        if range_i[1] and (not isinstance(range_i[1], int)):
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "The upper limit of the range must be Int or None.")
+        if range_i[0] < mini or range_i[0] > maxi:
+            error_manager_cube.raise_err_attr_range_invalid(
+                "conv2d_backprop_filter", [mini, maxi], name, range_i[0])
+        if range_i[1] and (range_i[1] < mini or range_i[1] > maxi):
+            error_manager_cube.raise_err_attr_range_invalid(
+                "conv2d_backprop_filter", [mini, maxi], name, range_i[1])
+
     # First : Base check, Mainly required by interface appearance
     # ===========================================================
     # util check
     para_check.check_kernel_name(kernel_name)
-    dedy_range = _range_correction(fmap_range, dedw_nchw, pads, strides,
-                                   dilations, dedy_shape)
+    # check fmap_range
+    batch_range, _, h_range, w_range = fmap_range
+    _check_variable_range(h_range, FMAP_HW_MIN, FMAP_HW_MAX, "fmap_h")
+    _check_variable_range(w_range, FMAP_HW_MIN, FMAP_HW_MAX, "fmap_w")
+    name_lis = ['fmap_batch', 'fmap_c']
+    for index, dim_range in enumerate(fmap_range[:2]):
+        _check_variable_range(dim_range, 1, name=name_lis[index])
+    dedy_range, fmap_range, correct_range_flag = _range_correction(fmap_range,
+        dedw_nchw, pads, strides, dilations, dedy_shape)
+
     lower_bound, upper_bound = zip(*fmap_range)
-    lower_bound_dedy, upper_bound_dedy = zip(*dedy_range)
-    para_check.check_shape_rule(lower_bound, CONV_BACKPROP_SHAPE_DIM,
-                                CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-    para_check.check_shape_rule(upper_bound, CONV_BACKPROP_SHAPE_DIM,
-                                CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-    para_check.check_shape_rule(dedw_nchw, CONV_BACKPROP_SHAPE_DIM,
-                                CONV_BACKPROP_SHAPE_DIM, DEFAULT_MAX_SHAPE_NUM)
-    # stride check
-    para_check.check_shape_rule(strides,
-                                STRIDES_SHAPE_DIM, STRIDES_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
-    # dilation check
-    para_check.check_shape_rule(dilations,
-                                CONV_BACKPROP_SHAPE_DIM, CONV_BACKPROP_SHAPE_DIM,
-                                DEFAULT_MAX_SHAPE_NUM)
-    dilation_n, dilation_c, dilation_h, dilation_w = dilations
-    _check_attr_range_dw("dilations's H", dilation_h,
-                         DILATION_MIN, DILATION_MAX)
-    _check_attr_range_dw("dilations's W", dilation_w,
-                         DILATION_MIN, DILATION_MAX)
-    # group check
-    if groups != 1:
-        dict_args = {
-            'errCode': 'E50060',
-            'op_name': 'dynamic conv2d_backprop_filter',
-            'description': "only supports groups=1"
-        }
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
-    if dilation_n != 1 or dilation_c != 1:
-        dict_args = {}
-        dict_args["errCode"] = "E60023"
-        dict_args["dilation_n"] = str(dilation_n)
-        dict_args["dilation_c"] = str(dilation_c)
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
-
     # dtype check
-    fmap_dtype = fmap_dtype.lower()
-    dedy_dtype = dedy_dtype.lower()
-    dedw_dtype = dedw_dtype.lower()
-
     para_check.check_dtype_rule(fmap_dtype, ["float16"])
     para_check.check_dtype_rule(dedy_dtype, ["float16"])
     para_check.check_dtype_rule(dedw_dtype, ["float16", "float32"])
@@ -425,14 +409,13 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     fmap_n, dedy_c, dedy_h, dedy_w = dedy_shape
     filter_n, filter_c, filter_h, filter_w = dedw_nchw
     stride_h, stride_w = strides
-
+    dilation_n, dilation_c, dilation_h, dilation_w = dilations
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
 
     _, _, lower_fmap_h, lower_fmap_w = lower_bound
     upper_fmap_n, upper_fmap_c, upper_fmap_h, upper_fmap_w = upper_bound
-    _, _, lower_dedy_h, lower_dedy_w = lower_bound_dedy
-    _, _, upper_dedy_h, upper_dedy_w = upper_bound_dedy
+    dedy_n_range, dedy_c_range, dedy_h_range, dedy_w_range = dedy_range
 
     _, pad, _ = _get_attrs(strides, pads, dilations,
                             "NCHW", fmap_shape, dedw_nchw)
@@ -454,21 +437,15 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     fmap_hw_max = FMAP_HW_MAX
     fmap_h_min, fmap_w_min = FMAP_HW_MIN, FMAP_HW_MIN
     dedy_hw_max = DEDY_HW_MAX
-    dedy_hw_min = DEDY_HW_MIN
+    dedy_hw_min = 2
 
     if _is_load3d_special():
         dedy_hw_min = 1
 
     pads_status = -1 not in pads and sum(pads) != 0
-    if dynamic_mode == "dynamic_hw" and pads_status:
-        dict_args = {
-            "errCode": "E60108",
-            "attr_name": "pads",
-            "reason": "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1"
-        }
-        raise RuntimeError(
-            dict_args, error_manager_util.get_error_message(dict_args)
-        )
+    if (fmap_h == DYNAMIC_FLAG or fmap_w == DYNAMIC_FLAG) and pads_status:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+            "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1")
 
     if -1 not in pads:
         fmap_h_min = max(fmap_h_min, filter_h - pad[0] - pad[1])
@@ -478,21 +455,11 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     _check_attr_range_dw("filter's H", filter_h, FILTER_HW_MIN, FILTER_HW_MAX)
     _check_attr_range_dw("filter's W", filter_w, FILTER_HW_MIN, FILTER_HW_MAX)
 
-    # Fmap value limit
-    _check_attr_range_dw("Fmap's minH", lower_fmap_h, fmap_h_min, fmap_hw_max)
-    _check_attr_range_dw("Fmap's minW", lower_fmap_w, fmap_w_min, fmap_hw_max)
-    _check_attr_range_dw("Fmap's maxH", upper_fmap_h, fmap_h_min, fmap_hw_max)
-    _check_attr_range_dw("Fmap's maxW", upper_fmap_w, fmap_w_min, fmap_hw_max)
-
     # Dedy value limit
-    _check_attr_range_dw("Dedy's minH inferenced from Fmap's minH",
-                         lower_dedy_h, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("Dedy's minW inferenced from Fmap's minW",
-                         lower_dedy_w, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("Dedy's maxH inferenced from Fmap's maxH",
-                         upper_dedy_h, dedy_hw_min, dedy_hw_max)
-    _check_attr_range_dw("Dedy's maxW inferenced from Fmap's maxW",
-                         upper_dedy_w, dedy_hw_min, dedy_hw_max)
+    _check_variable_range(dedy_n_range, 1, name="dedy_n")
+    _check_variable_range(dedy_c_range, 1, name="dedy_c")
+    _check_variable_range(dedy_h_range, min(dedy_hw_min, DEDY_H_MIN), dedy_hw_max, "dedy_h")
+    _check_variable_range(dedy_w_range, min(dedy_hw_min, DEDY_W_MIN), dedy_hw_max, "dedy_w")
 
     # stride value limit
     _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
@@ -501,36 +468,27 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     def _check_axis_hw():
         _check_equal(dedy_c, filter_n, "Dedy's C", "Filter's N")
         _check_equal(fmap_c, filter_c*groups, "Fmap's C", "Filter's C")
-        if -1 not in pads:
+        if pad_left != -1 and pad_right != -1 and fmap_w != DYNAMIC_FLAG:
             if filter_w_dilation > upper_fmap_w_padding:
-                dict_args = dict()
-                dict_args["errCode"] = "E60015"
-                dict_args["w_of_x"] = str(upper_fmap_w_padding)
-                dict_args["w_of_filter"] = str(filter_w_dilation)
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
-            if filter_h_dilation > upper_fmap_h_padding:
-                dict_args = dict()
-                dict_args["errCode"] = "E60014"
-                dict_args["min_h_of_x"] = str(upper_fmap_h_padding)
-                dict_args["h_of_filter"] = str(filter_h_dilation)
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
-        if dynamic_mode == "dynamic_batch":
-            # Third : value check, Mainly required by the convolution rule
-            if ((fmap_w - filter_w_dilation + int(pad_left) + int(pad_right)) //
-                stride_w + 1) != dedy_w:
-                dict_args = {}
-                dict_args["errCode"] = "E60025"
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                    "the w dim of Filter(after dilation) must be less than " + \
+                    "the corresponding dim of input(after padding)")
+            calculated_dedy_w = ((fmap_w - filter_w_dilation + int(pad_left) + int(pad_right)) //
+                                stride_w + 1)
+            if calculated_dedy_w != dedy_w:
+                error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter",
+                    calculated_dedy_w, dedy_w)
 
-            if ((fmap_h - filter_h_dilation + int(pad_up) + int(pad_down)) //
-                    stride_h + 1) != dedy_h:
-                dict_args = {}
-                dict_args["errCode"] = "E60024"
-                raise RuntimeError(dict_args,
-                                   error_manager_util.get_error_message(dict_args))
+        if pad_up != -1 and pad_down != -1 and fmap_h != DYNAMIC_FLAG:
+            if filter_h_dilation > upper_fmap_h_padding:
+                error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                    "the h dim of Filter(after dilation) must be less than " + \
+                    "the corresponding dim of input(after padding)")
+            calculated_dedy_h = ((fmap_h - filter_h_dilation + int(pad_up) + int(pad_down)) //
+                    stride_h + 1)
+            if calculated_dedy_h != dedy_h:
+                error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter",
+                    calculated_dedy_h, dedy_h)
 
     _check_axis_hw()
 
@@ -546,29 +504,23 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
             kl1_min = (C0_SIZE - 1) * stride_w + filter_w_dilation
         else:
             kl1_min = upper_fmap_w
-        if upper_dedy_w % C0_SIZE == 0:
+        if dedy_w_range[1] % C0_SIZE == 0:
             bl1_min_byte = filter_h_dilation * kl1_min * C0_SIZE * 2
         else:
             bl1_min_byte = (filter_h_dilation + stride_h) * kl1_min * C0_SIZE * 2
         l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
         if (al1_min_byte + bl1_min_byte) > l1_size:
-            dict_args = {}
-            dict_args["errCode"] = "E60108"
-            dict_args["op_name"] = "conv2d_backprop_filter"
-            dict_args["reason"] = \
-                "for this input shape range, the minimum tiling may exceed \
-                L1_Buffer, please lower the upper_bound of fmap_w and retry"
-            raise RuntimeError(dict_args,
-                               error_manager_util.get_error_message(dict_args))
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "Input is too large, the minimum tiling may exceed L1_Buffer")
 
     _min_l1_byte()
-
-    upper_fmap_size = upper_fmap_n * _align(upper_fmap_c, C0_SIZE) * \
-        upper_fmap_h * upper_fmap_w
+    if upper_fmap_n:
+        upper_fmap_size = upper_fmap_n * _align(upper_fmap_c, C0_SIZE) * \
+            upper_fmap_h * upper_fmap_w
+        _check_64bits_limitation("fmap_size", upper_fmap_size, dtype=fmap_dtype)
     filter_size = _align(filter_n, C0_SIZE) * _align(filter_c, C0_SIZE) * \
         filter_h * filter_w
-    _check_64bits_limitation("fmap_size", upper_fmap_size, dtype=fmap_dtype)
-    if -1 not in pads:
+    if -1 not in pads and upper_fmap_n:
         upper_dedy_h = (upper_fmap_h + pad_up + pad_down - dilation_h *
                         (filter_h - 1) - 1) // stride_h + 1
         upper_dedy_w = (upper_fmap_w + pad_left + pad_right - dilation_w *
@@ -580,10 +532,76 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     _check_64bits_limitation("filter_size", filter_size, dtype=dedw_dtype)
 
-    fmap_shape = (fmap_n, _ceil(fmap_c, C0_SIZE), fmap_h, fmap_w, C0_SIZE)
-    dedy_shape = (fmap_n, _ceil(dedy_c, C0_SIZE), dedy_h, dedy_w, C0_SIZE)
-    results = (fmap_shape, dedy_shape)
+    fmap_shape = [fmap_n, _ceil(fmap_c, C0_SIZE), fmap_h, fmap_w, C0_SIZE]
+    dedy_shape = [fmap_n, _ceil(dedy_c, C0_SIZE), dedy_h, dedy_w, C0_SIZE]
+    results = (fmap_shape, dedy_shape, dedy_range, fmap_range, correct_range_flag)
     return results
+
+
+def _check_and_config_para(x, filter_size, out_backprop, y,
+                           strides, pads, dilations,
+                           groups, data_format, kernel_name):
+    x_ori_shape = list(x.get("ori_shape"))
+    dedy_ori_shape = list(out_backprop.get("ori_shape"))
+    dedw_ori_shape = list(y.get("ori_shape"))
+    x_dtype = x.get("dtype")
+    dedy_dtype = out_backprop.get("dtype")
+    dedw_dtype = y.get("dtype")
+    x_format = x.get("ori_format")
+    dedy_format = out_backprop.get("ori_format")
+    dedw_format = y.get("ori_format")
+    x_range = x.get("range")
+
+    x_dtype = x_dtype.lower()
+    dedy_dtype = dedy_dtype.lower()
+    dedw_dtype = dedw_dtype.lower()
+    _check_data_format(x_format, "x")
+    _check_data_format(dedy_format, "out_backprop")
+    _check_data_format(dedw_format, "res", ["NHWC", "NCHW", "HWCN"])
+    _check_data_format(data_format, "data_format")
+
+    if len(strides) != CONV_BACKPROP_SHAPE_DIM:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "strides should be 4d list")
+    if len(dilations) != CONV_BACKPROP_SHAPE_DIM:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "dilations should be 4d list")
+
+    if dilations[H_DIM] != 1 or dilations[W_DIM] != 1:
+        error_manager_cube.raise_err_specific_user(
+            "conv2d_backprop_filter", "dilations is not supported in dynamic shape yet.")
+
+    if len(pads) != CONV_BACKPROP_SHAPE_DIM:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "pads should be 4d list")
+
+    para_check.check_shape_rule(dedw_ori_shape, min_dim=CONV_BACKPROP_SHAPE_DIM,
+                                max_dim=CONV_BACKPROP_SHAPE_DIM)
+    if groups != 1:
+        error_manager_cube.raise_err_specific_user(
+            'conv2d_backprop_filter', "group != 1 is not supported yet in dynamic conv2d_backprop_filter")
+    x_nchw, dedy_nchw, dedw_nchw, fmap_range = _get_nchw_shape(x, out_backprop, y)
+
+    fmap_shape, dedy_shape = \
+        _get_input_shape(x_nchw, dedy_nchw, dedw_nchw, fmap_range)
+
+    strides, pads, dilations = _get_attrs(strides, pads, dilations,
+                                          data_format, fmap_shape, dedw_nchw)
+    fmap_shape, dedy_shape, dedy_range, fmap_range, correct_range_flag = _check_conv2dbp_filter_params(
+        fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
+        groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name,
+        fmap_range)
+
+    config_dict = {
+        "fmap_shape": fmap_shape,
+        "dedy_shape": dedy_shape,
+        "dedw_nchw": dedw_nchw,
+        "strides": strides,
+        "pads": pads,
+        "dilations": dilations,
+        "fmap_range": fmap_range,
+        "dedy_range": dedy_range,
+        "correct_range_flag": correct_range_flag,
+    }
+
+    return config_dict
 
 
 def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
@@ -592,29 +610,59 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     x_dtype = x.get("dtype")
     dedy_dtype = out_backprop.get("dtype")
     dedw_dtype = y.get("dtype")
+    x_dtype = x_dtype.lower()
+    dedy_dtype = dedy_dtype.lower()
+    dedw_dtype = dedw_dtype.lower()
 
-    x_nchw, dedy_nchw, dedw_nchw, fmap_range = _get_nchw_shape(x, out_backprop, y)
-    fmap_shape, dedy_shape, dynamic_mode = \
-        _get_input_shape(x_nchw, dedy_nchw, dedw_nchw, fmap_range)
-    strides, pad, dilations = _get_attrs(strides, pads, dilations,
-                                          data_format, fmap_shape, dedw_nchw)
+    config_dict = _check_and_config_para(x, filter_size, out_backprop, y,
+                           strides, pads, dilations,
+                           groups, data_format, kernel_name)
 
-    fmap_shape, dedy_shape = _check_conv2dbp_filter_params(
-        fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
-        groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name, dynamic_mode,
-        fmap_range)
+    fmap_shape = config_dict.get("fmap_shape")
+    dedy_shape = config_dict.get("dedy_shape")
+    dedw_nchw = config_dict.get("dedw_nchw")
+    strides = config_dict.get("strides")
+    pads = config_dict.get("pads")
+    dilations = config_dict.get("dilations")
+    fmap_range = config_dict.get("fmap_range")
+    dedy_range = config_dict.get("dedy_range")
+    correct_range_flag = config_dict.get("correct_range_flag")
+    # define var
+    if fmap_shape[N_DIM] == DYNAMIC_FLAG and dedy_shape[N_DIM] == DYNAMIC_FLAG:
+        fmap_shape[N_DIM] = operation.var("batch", bound=fmap_range[0])
+        dedy_shape[N_DIM] = fmap_shape[N_DIM]
+        operation.add_exclude_bound_var(fmap_shape[N_DIM])
+    if fmap_shape[H_DIM] == DYNAMIC_FLAG:
+        if dedy_shape[H_DIM] != DYNAMIC_FLAG:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "when Fmap's H is -1, Dedy's H must also be")
+        fmap_shape[H_DIM] = operation.var("fmap_h", bound=fmap_range[2])
+        operation.add_exclude_bound_var(fmap_shape[H_DIM])
+        dedy_shape[H_DIM] = operation.var("dedy_h", bound=dedy_range[2])
+        operation.add_exclude_bound_var(dedy_shape[H_DIM])
+    if fmap_shape[W_DIM] == DYNAMIC_FLAG:
+        if dedy_shape[W_DIM] != DYNAMIC_FLAG:
+            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
+                "when Fmap's W is -1, Dedy's W must also be")
+        fmap_shape[W_DIM] = operation.var("fmap_w", bound=fmap_range[3])
+        operation.add_exclude_bound_var(fmap_shape[W_DIM])
+        dedy_shape[W_DIM] = operation.var("dedy_w", bound=dedy_range[3])
+        operation.add_exclude_bound_var(dedy_shape[W_DIM])
 
     fmap = tvm.placeholder(fmap_shape, name="fmap", dtype=x_dtype)
     filter_size = tvm.placeholder([4], name="filter_size", dtype="int32")
     dedy = tvm.placeholder(dedy_shape, name="dedy", dtype=dedy_dtype)
 
+    pads = _calc_pads(fmap_shape, dedw_nchw, strides, dilations, pads)
+
     para_dict = {
         "strides": strides,
-        "padding": pad,
+        "padding": pads,
         "dilations": dilations,
         "groups": groups,
         "res_dtype": dedw_dtype,
-        "kernel_name": kernel_name
+        "kernel_name": kernel_name,
+        "correct_range_flag": correct_range_flag,
     }
 
     dedw = tbe.conv2d_backprop_filter(input_x=fmap,
@@ -626,8 +674,18 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
 
 
 @register_operator('Conv2DBackpropFilter')
-@para_check.check_input_type(dict, dict, dict, dict, (tuple, list),
-                             (tuple, list), (tuple, list), int, str, str)
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.REQUIRED_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_LIST_INT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_STR,
+    para_check.KERNEL_NAME,
+)
 def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
                            dilations=(1, 1, 1, 1), groups=1,
                            data_format='NHWC',
@@ -637,16 +695,19 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
 
     Parameters
     ----------
-    x: dict with keys(shape, dtype and range)
-       input feature map tensor
+    x: dict with keys(ori_shape, ori_format, shape, format, dtype, range)
+        input feature map tensor.
 
-    filter_size: dict, will not be used
+    filter_size: tuple/list of 4 integers
+        The shape of filter. 4-D with shape [filter_height, filter_width, in_channels,
+        out_channels] or [out_channels, filter_height, filter_width, in_channels] or
+        [out_channels, in_channel, filter_height, filter_width].
 
-    out_backprop: dict with keys(shape and dtype)
-                  out_backprop tensor
+    out_backprop: dict with keys(ori_shape, ori_format, shape, format, dtype, range)
+        input weight tensor.
 
-    y: dict with keys(shape and dtype)
-       output tensor, dtype must be assigned
+    y: dict with keys(ori_shape, ori_format, shape, format, dtype, range)
+        output tensor, dtype must be assigned.
 
     strides: tuple/list of 4 integers
              filter move stride
@@ -655,7 +716,7 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
           [pad_top, pad_bottom, pad_left, pad_right]
 
     dilations: tuple/list of 4 integers
-               filter expand size of dilated conv2d_backprop_filter
+        filter expand size of dilated conv2d_backprop_filter. Default to (1, 1, 1, 1).
 
     groups: int
             The number of filter's group. Default value is 1.
@@ -665,7 +726,7 @@ def conv2d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
             Specify the data format of the input and output data.
 
     kernel_name: str
-                 kernel name, default value is "conv2d_backprop_filter"
+            kernel name, default value is "conv2d_backprop_filter"
 
     Returns
     -------

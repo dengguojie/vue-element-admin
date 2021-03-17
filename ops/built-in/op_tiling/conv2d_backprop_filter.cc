@@ -23,7 +23,7 @@
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
 #include "graph/debug/ge_log.h"
-#include "conv_tiling.h"
+#include "cube_tiling.h"
 
 namespace optiling {
 /*
@@ -42,44 +42,37 @@ bool Conv2DBpFilterTiling(const std::string& opType, const TeOpParas& opParas, c
       opParas.inputs[2].tensor[0].shape.size() < 4) {
     return false;
   }
-  std::string mode = opCompileInfo["dynamic_mode"].get<std::string>();
-  GELOGD("dynamic_mode is [%s]", mode.c_str());
-  GELOGD("Current format is %s, Ori format is %s", opParas.inputs[2].tensor[0].format.c_str(),
-         opParas.inputs[2].tensor[0].ori_format.c_str());
 
-  int32_t tilingId = 0;
-  if (mode == "dynamic_hw") {
-    int32_t xH = opParas.inputs[0].tensor[0].shape[2];
-    int32_t xW = opParas.inputs[0].tensor[0].shape[3];
-    int32_t dedyH = opParas.inputs[2].tensor[0].shape[2];
-    int32_t dedyW = opParas.inputs[2].tensor[0].shape[3];
-    tilingId = ConvTiling({xH, xW}, mode, opCompileInfo, runInfo);
-    runInfo.tiling_key = tilingId;
+  GELOGD("Current format is %s, Ori format is %s", opParas.inputs[0].tensor[0].format.c_str(),
+         opParas.inputs[0].tensor[0].ori_format.c_str());
+  int32_t nDim = 0;
+  int32_t hDim = 2;
+  int32_t wDim = 3;
+  int32_t batch = opParas.inputs[0].tensor[0].shape[nDim];
+  int32_t xH = opParas.inputs[0].tensor[0].shape[hDim];
+  int32_t xW = opParas.inputs[0].tensor[0].shape[wDim];
+  int32_t dedyH = opParas.inputs[2].tensor[0].shape[hDim];
+  int32_t dedyW = opParas.inputs[2].tensor[0].shape[wDim];
 
-    ByteBufferPut(runInfo.tiling_data, xH);
-    ByteBufferPut(runInfo.tiling_data, xW);
-    ByteBufferPut(runInfo.tiling_data, dedyH);
-    ByteBufferPut(runInfo.tiling_data, dedyW);
+  int32_t tilingID = CubeTiling(opType, {batch, xH, xW}, opCompileInfo, runInfo);
+  GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, batch, xH, xW, dedyH, dedyW);
 
-    GELOGD("tiling_data is %d, %d, %d, %d, %d", tilingId, xH, xW, dedyH, dedyW);
-  } else if (mode == "dynamic_batch") {
-    int32_t batch = opParas.inputs[0].tensor[0].shape[0];
-    tilingId = ConvTiling({batch}, mode, opCompileInfo, runInfo);
-    runInfo.tiling_key = tilingId;
+  runInfo.tiling_key = tilingID;
+  std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
+
+  if (std::find(varMap.begin(), varMap.end(), "batch") != varMap.end()) {
     ByteBufferPut(runInfo.tiling_data, batch);
+  }
+  if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
+    ByteBufferPut(runInfo.tiling_data, xH);
+    ByteBufferPut(runInfo.tiling_data, dedyH);
 
-    GELOGD("Input info is %d, %d", tilingId, batch);
-  } else {
-    GE_LOGE("mode: %s is not supported", mode.c_str());
-    return false;
+  }
+  if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
+    ByteBufferPut(runInfo.tiling_data, xW);
+    ByteBufferPut(runInfo.tiling_data, dedyW);
   }
 
-  if (tilingId == 0) {
-    GE_LOGE(
-        "This shape is not covered by any tiling, "
-        "please modify range and recompile");
-    return false;
-  }
   return true;
 }
 

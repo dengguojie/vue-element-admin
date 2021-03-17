@@ -37,7 +37,6 @@ set(_optiling_files
   depthwise_conv2d.cc
   conv3d.cc
   conv3d_backprop_filter.cc
-  conv_tiling.cc
   cube_tiling.cc
   deconvolution.cc
   dynamic_atomic_addr_clean.cc

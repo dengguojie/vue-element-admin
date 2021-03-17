@@ -219,7 +219,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.grads_dtype = out_backprop.dtype
         self.res_dtype = res_dtype
 
-        self.pad = list(padding)
+        self.pad = cube_util.shape_to_list(padding)
         self.stride = list(strides)
         self.dilation = list(dilations)
         self.group = groups
@@ -243,9 +243,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         self.conv1d_situation = False
 
         # for dynamic
-        self.dynamic_mode = self._get_dynamic_mode()
-        self.var_map = self._get_var_map()
-        DynamicConv2dBpFilterParams.dynamic_mode = self.dynamic_mode
+        self.dynamic_para = self._get_dynamic_para()
+        self.var_map = self.dynamic_para.get("var_map")
+        DynamicConv2dBpFilterParams.var_map = self.var_map
         DynamicConv2dBpFilterParams.tiling_info_dict = {
             "op_type": 'conv2d_backprop_filter',
             "A_shape": cube_util.shape_to_list(self.grads.shape),
@@ -275,21 +275,37 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             "dynamic_shape_flag": True
         }
 
-    def _get_dynamic_mode(self):
-        if isinstance(self.fmap.shape[0], Var):
-            return "dynamic_batch"
-        if isinstance(self.fmap.shape[2], Var) and \
-                isinstance(self.fmap.shape[3], Var):
-            return "dynamic_hw"
-        return None
+    def _get_dynamic_para(self):
+        n_dim = 0
+        h_dim = 2
+        w_dim = 3
+        fmap_range = []
+        var_map = {}
+        if isinstance(self.fmap.shape[n_dim], Var):
+            fmap_range.append(get_te_var("batch").get_bound())
+            var_map["batch"] = get_te_var("batch").get_tvm_var()
+        else:
+            fmap_range.append((self.fmap.shape[n_dim], self.fmap.shape[n_dim]))
 
-    def _get_var_map(self):
-        var_names = []
-        if self.dynamic_mode == "dynamic_batch":
-            var_names += ["batch"]
-        elif self.dynamic_mode == "dynamic_hw":
-            var_names += ["dedy_h", "dedy_w", "fmap_h", "fmap_w"]
-        return {v: get_te_var(v).get_bound() for v in var_names}
+        if isinstance(self.fmap.shape[h_dim], Var):
+            fmap_range.append(get_te_var("fmap_h").get_bound())
+            var_map["fmap_h"] = get_te_var("fmap_h").get_tvm_var()
+            var_map["dedy_h"] = get_te_var("dedy_h").get_tvm_var()
+        else:
+            fmap_range.append((self.fmap.shape[h_dim], self.fmap.shape[h_dim]))
+
+        if isinstance(self.fmap.shape[w_dim], Var):
+            fmap_range.append(get_te_var("fmap_w").get_bound())
+            var_map["fmap_w"] = get_te_var("fmap_w").get_tvm_var()
+            var_map["dedy_w"] = get_te_var("dedy_w").get_tvm_var()
+        else:
+            fmap_range.append((self.fmap.shape[w_dim], self.fmap.shape[w_dim]))
+
+        dynamic_para = {
+            "fmap_range": fmap_range,
+            "var_map": var_map,
+        }
+        return dynamic_para
 
     def _deconv_dw_input_check_1(self):  # pylint: disable=R0915
         """
@@ -472,29 +488,31 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         _check_groups()
 
         # coupling range check
-        if not self.dynamic_mode:
+        if not isinstance(fmap_height, Var):
             dilation_kernel_height = (kernel_height - 1) * dilationh + 1
-            dilation_kernel_width = (kernel_width - 1) * dilationw + 1
             computed_grads_height = (fmap_height - dilation_kernel_height + \
                                     pad_top + pad_bottom)//stride_height + 1
-            computed_grads_width = (fmap_width - dilation_kernel_width + \
-                                    pad_left + pad_right)//stride_width + 1
             if computed_grads_height != grads_height:
+                dict_args = dict()
                 dict_args["errCode"] = "E60024"
                 error_manager_util.raise_runtime_error(dict_args)
-
-            if computed_grads_width != grads_width:
-                dict_args["errCode"] = "E60025"
-                error_manager_util.raise_runtime_error(dict_args)
-
             fmap_height_after_pad = fmap_height + pad_top + pad_bottom
-            fmap_width_after_pad = fmap_width + pad_left + pad_right
             if dilation_kernel_height > fmap_height_after_pad:
                 dict_args = dict()
                 dict_args["errCode"] = "E60014"
                 dict_args["h_of_x"] = str(fmap_height_after_pad)
                 dict_args["h_of_filter"] = str(dilation_kernel_height)
                 error_manager_util.raise_runtime_error(dict_args)
+
+        if not isinstance(fmap_width, Var):
+            dilation_kernel_width = (kernel_width - 1) * dilationw + 1
+            computed_grads_width = (fmap_width - dilation_kernel_width + \
+                                    pad_left + pad_right)//stride_width + 1
+            if computed_grads_width != grads_width:
+                dict_args = dict()
+                dict_args["errCode"] = "E60025"
+                error_manager_util.raise_runtime_error(dict_args)
+            fmap_width_after_pad = fmap_width + pad_left + pad_right
             if dilation_kernel_width > fmap_width_after_pad:
                 dict_args = dict()
                 dict_args["errCode"] = "E60015"
@@ -502,6 +520,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 dict_args["w_of_filter"] = str(dilation_kernel_width)
                 error_manager_util.raise_runtime_error(dict_args)
 
+        if not self.var_map:
             _check_addressing_rule(self.shape_grads_5hd, 2,
                                     DATA_SIZE_LIMIT_INT64, 'shape_grads_5hd')
             _check_addressing_rule(self.shape_x_5hd, 2, DATA_SIZE_LIMIT_INT64,
@@ -599,7 +618,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
         self._deconv_dw_input_check_1()
         self._deconv_dw_input_check_2()
-        if not self.dynamic_mode:
+        if not self.var_map:
             self._deconv_dw_input_check_3()
         self._compute_group_dict()
         self._deconv_dw_compute()
@@ -756,7 +775,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         grads_fractal = _grads_2_fractal(grads_shape_fractal,
                                          grads_matrix)
         if not self.flag_all_one_case:
-            if not self.dynamic_mode:
+            if not self.var_map:
                 # shape of fmap_original_matrix, corresponding to set_fmatrix
                 fmap_shape_original_matrix = (batch_size,
                                               grads_height*grads_width,
@@ -1245,6 +1264,7 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
     groups = para_dict.get("groups", 1)
     res_dtype = para_dict.get("res_dtype", "float32")
     kernel_name = para_dict.get("kernel_name", "conv2d_backprop_filter_cce")
+    DynamicConv2dBpFilterParams.correct_range_flag = para_dict.get("correct_range_flag", False)
 
     deconv_dw_object = Conv2dBackpropFilter(input_x, out_backprop,
                                             filter_sizes,
@@ -1261,5 +1281,6 @@ def conv2d_backprop_filter_compute(input_x, out_backprop, filter_sizes, para_dic
 
 class DynamicConv2dBpFilterParams:
 
-    dynamic_mode = None
+    var_map = {}
+    correct_range_flag = False
     tiling_info_dict = {}
