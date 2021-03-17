@@ -1104,6 +1104,30 @@ l2loss_mul_addn_pattern_list = [
 ]
 
 softmax_dfs_tag_list = [  # pylint: disable=invalid-name
+    # softmaxgrad fp16
+    [
+        "elewise_single_cast|not_auto_cast",
+        "elewise_binary_mul",
+        "elewise_single_cast",
+        "placeholder",
+        "elewise_binary_sub",
+        "elewise_single_cast",
+        "placeholder",
+        "broadcast_for_tensor",
+        "reduce_sum",
+        "elewise_single_cast|not_auto_cast",
+        "elewise_binary_mul",
+    ],
+    # softmaxgrad fp32
+    [
+        "elewise_binary_mul",
+        "placeholder",
+        "elewise_binary_sub",
+        "placeholder",
+        "broadcast_for_tensor",
+        "reduce_sum",
+        "elewise_binary_mul",
+    ],
     # softmax fp32 last axis, align_factor_32byte = 16
     [
         "elewise_binary_div",
