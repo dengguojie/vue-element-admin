@@ -24,7 +24,20 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "common/util/error_manager/error_manager.h"
+#include "error_code.h"
+#include "securec.h"
 #include "operator.h"
+
+#define AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg) \
+  do { \
+    OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
+  } while(0);
+
+#define AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg) \
+    do { \
+    OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
+  } while(0);
 
 namespace ge {
 
@@ -66,6 +79,17 @@ std::string ConcatString(T arg, Ts... arg_left) {
   oss << ConcatString(arg_left...);
   return oss.str();
 }
+
+std::string GetViewErrorCodeStr(ge::ViewErrorCode errCode);
+
+std::string GetShapeErrMsg(uint32_t index, const std::string& wrong_shape,
+                           const std::string& correct_shape);
+
+std::string GetAttrValueErrMsg(const std::string& attr_name, const std::string& wrong_val,
+                               const std::string& correct_val);
+
+std::string GetAttrSizeErrMsg(const std::string& attr_name, const std::string& wrong_size,
+                              const std::string& correct_size);
 
 /*
  * report input shape error of infer shape

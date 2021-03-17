@@ -100,8 +100,10 @@ IMPLEMT_INFERFUNC(Unique, UniqueInfer) {
 
   GeShape x_shape;
   if (WithRank(x_input, 1, x_shape) != GRAPH_SUCCESS) {
-    ShapeErrReport(0, op.GetName(), DebugString(x_input->GetShape().GetDims()), "1D");
-    OP_LOGE(op.GetName().c_str(), "input x must be 1-D");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(x_input->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -153,6 +155,7 @@ IMPLEMT_INFERFUNC(UniqueExt2, UniqueExt2Infer) {
   y_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
   y_desc.SetDataType(type);
   if (op.UpdateOutputDesc("y", y_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("update description for output y failed"));
     return GRAPH_FAILED;
   }
 
@@ -413,11 +416,10 @@ IMPLEMT_INFERFUNC(ReverseSequence, ReverseSequenceInfer) {
   }
   int64_t input_rank = input_shape.GetDimNum();
   if (seq_dim >= input_rank) {
-    AttrValueErrReport("seq_dim", op.GetName(), ConcatString(seq_dim),
-                       ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
-                                    DebugString(input_shape.GetDims())));
-
-    OP_LOGE(op.GetName().c_str(), "seq_dim must be < rank of x: %ld vs. %ld", seq_dim, input_rank);
+    string err_msg = GetAttrValueErrMsg("seq_dim", ConcatString(seq_dim),
+        ConcatString("< the rank of 0th input[", input_rank, "], 0th input shape is ",
+            DebugString(input_shape.GetDims())));
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (batch_dim >= input_rank) {

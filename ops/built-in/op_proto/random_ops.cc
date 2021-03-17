@@ -256,7 +256,7 @@ INFER_FUNC_REG(DropOutGenMask, DropOutGenMaskInfer);
 
 IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
   std::vector<std::string> input_infer_depends = {"shape"};
-  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
   Tensor shape_tensor;
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {

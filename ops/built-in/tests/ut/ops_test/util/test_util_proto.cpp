@@ -20,6 +20,8 @@
 
 #include <gtest/gtest.h>
 #include "../util/util.h"
+#include "../util/error_util.h"
+#include "../util/error_code.h"
 
 class TestUtil : public testing::Test {
  protected:
@@ -363,4 +365,15 @@ TEST_F(TestUtil, GetNewAxis4NewFormat_NHWC2NHWC) {
   new_axis = ge::GetNewAxis4NewFormat(ori_shape_len, -1, ori_format, new_format, reduce_mode);
   expected_new_axis = {-1};
   EXPECT_EQ(new_axis, expected_new_axis);
+}
+
+TEST_F(TestUtil, AICPU_ERROR_MSG_UTILE) {
+  AICPU_INFER_SHAPE_CALL_ERR_REPORT(string("TestOp"), string("test error msg"));
+  AICPU_INFER_SHAPE_INNER_ERR_REPORT(string("TestOp"), string("test error msg"));
+
+  ge::GetShapeErrMsg(1, "[wrong shape]", "correct shape");
+  ge::GetAttrValueErrMsg("attr", "wrong value", "correct value");
+  ge::GetAttrSizeErrMsg("attr", "wrong size", "correct size");
+
+  ge::GetViewErrorCodeStr(ge::ViewErrorCode::AICPU_INFER_SHAPE_ERROR);
 }

@@ -872,8 +872,7 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
         (value_shape.GetDim(i) != indices_shape.GetDim(i))) {
       err_msg = ConcatString(i, "th dim of input value shape", DebugString(value_shape.GetDims()),
                              " must equal to that of input indices shape", DebugString(indices_shape.GetDims()));
-      InferShapeOtherErrReport(op.GetName(), ConcatString("the ", err_msg));
-      OP_LOGE(op.GetName().c_str(), "The %s.", err_msg.c_str());
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -884,18 +883,16 @@ IMPLEMT_INFERFUNC(TensorArrayScatter, TensorArrayScatterInfer) {
     Shape tensor_shape = shapes_and_types.at(0).at(0).GetShape();
     Shape fed_shape;
     if (SubShape(value_shape, 1, value_shape.GetDimNum(), 1, fed_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      err_msg = ConcatString("subshape from 1 to ", value_shape.GetDimNum(), " of value shape",
-                             DebugString(value_shape.GetDims()), " failed");
-      InferShapeOtherErrReport(op.GetName(), ConcatString("get ", err_msg));
-      OP_LOGE(op.GetName().c_str(), "Get %s.", err_msg.c_str());
+      err_msg = ConcatString("failed to call SubShape function to subshape from 1 to ",
+          value_shape.GetDimNum(), " of value shape", DebugString(value_shape.GetDims()));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), ConcatString("get ", err_msg));
       return GRAPH_FAILED;
     }
 
     if (Merge(tensor_shape, fed_shape, fed_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      err_msg = ConcatString("tensorArray element shape", DebugString(tensor_shape.GetDims()), " and value subshape",
-                             DebugString(fed_shape.GetDims()), " failed");
-      InferShapeOtherErrReport(op.GetName(), ConcatString("merge ", err_msg));
-      OP_LOGE(op.GetName().c_str(), "Merge %s.", err_msg.c_str());
+      err_msg = ConcatString("failed to call Merge function to merge element shape",
+          DebugString(tensor_shape.GetDims()), " and value subshape", DebugString(fed_shape.GetDims()));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }

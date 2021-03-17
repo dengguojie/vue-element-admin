@@ -29,10 +29,34 @@ using namespace ge;
 
 namespace ge {
 
-inline static std::string GetViewErrorCodeStr(ge::ViewErrorCode errCode) {
+std::string GetViewErrorCodeStr(ge::ViewErrorCode errCode) {
   return "E" + std::to_string(errCode);
 }
 
+std::string GetShapeErrMsg(uint32_t index,
+                           const std::string& wrong_shape,
+                           const std::string& correct_shape)
+{
+  std::string msg = ConcatString(index, "th input has wrong shape",
+      wrong_shape, ", it should be ", correct_shape);
+  return msg;
+}
+
+std::string GetAttrValueErrMsg(const std::string& attr_name, const std::string& wrong_val,
+                               const std::string& correct_val)
+{
+  std::string msg = ConcatString("attr[", attr_name, "], has wrong value[",
+      wrong_val, "], it should be ", correct_val);
+  return msg;
+}
+
+std::string GetAttrSizeErrMsg(const std::string& attr_name, const std::string& wrong_size,
+                              const std::string& correct_size)
+{
+  std::string msg = ConcatString("attr[", attr_name, "], has wrong size[",
+      wrong_size, "], it should be ", correct_size);
+  return msg;
+}
 void ShapeErrReport(uint32_t index, const std::string& opname, const std::string& wrong_shape,
                     const std::string& correct_shape) {
   map<string, string> err_map;
