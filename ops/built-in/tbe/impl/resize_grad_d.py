@@ -488,8 +488,10 @@ class UpSampleBicubic2dBackward(object):
         """
         coeffs_ub = self.tik_instance.Tensor("float32", (4,),
                                              name="coeffs_ub", scope=tik.scope_ubuf)
-        input_index_scalar = self.tik_instance.Scalar(
-            "float32", init_value=input_x)
+        temp_scalar = self.tik_instance.Scalar(dtype="int32", init_value=input_x)
+        cast_input_index = self.tik_instance.Scalar(dtype="float32")
+        self.tik_instance.scalar_conv('none', cast_input_index, temp_scalar)
+        input_index_scalar = self.tik_instance.Scalar(dtype="float32", init_value=cast_input_index)
         one_length = self.tik_instance.Scalar(dtype="float32")
         two_length = self.tik_instance.Scalar(dtype="float32")
         three_length = self.tik_instance.Scalar(dtype="float32")
@@ -499,7 +501,7 @@ class UpSampleBicubic2dBackward(object):
             scale = self.scales[1]  # x direction
         else:
             scale = self.scales[0]  # y direction
-        if self.out_size_w > 1:
+        if out_length > 1:
             if self.align_corners:
                 one_length.set_as(out_length - 1)
                 two_length.set_as((out_length - 1) * (out_length - 1))
@@ -760,7 +762,7 @@ class ResizeLinearBackward(object):
 
         # Cal Integer of real_W
         coefficient_W = self.tik_instance.Scalar("int32", name="coefficient_W")
-        coefficient_W.set_as(real_W)
+        self.tik_instance.scalar_conv('floor', coefficient_W, real_W)
 
         # Cal Offset
         offset = self.tik_instance.Scalar(dtype="int32", init_value=1)
@@ -798,14 +800,7 @@ class ResizeLinearBackward(object):
 
         temp_scalar = self.tik_instance.Scalar(self.x_dtype, init_value= temp_ub[block_offset])
 
-        if self.x_dtype == "float16":
-            temp_scalar_32 = self.tik_instance.Scalar("float32", init_value= temp_scalar)
-            num_32 = self.tik_instance.Scalar("float32", init_value= num)
-            temp_res = self.tik_instance.Scalar("float16", init_value= num_32 + temp_scalar_32)
-            temp_ub[block_offset].set_as(temp_res)
-        else:
-            temp_ub[block_offset].set_as(temp_scalar + num)
-
+        temp_ub[block_offset].set_as(temp_scalar + num)
         self.tik_instance.data_move(self.output_gm[block_num * self.data_each_block], temp_ub, 0, 1, 1, 0, 0)
 
     def init_output_gm_as_zero(self):

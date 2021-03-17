@@ -49,7 +49,7 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": res.size(), "shape": res.size(),
                 "param_type": "output"}, [1, 2, 3, 4], [0], [0.0, 0.0],
                "half_pixel", -0.75, 0, 0.0, "cubic", "round_prefer_floor"],
-    "expect": SystemExit,
+    "case_name": "test_is_resize_grad_d_case_cubic_y_1",
     "calc_expect_func": calc_expect_func
 })
 
@@ -59,7 +59,7 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": [1, 1, 1], "shape": [1, 1, 1],
                 "param_type": "output"}, [1, 1, 1], [0], [2.0],
                "half_pixel", -0.75, 0, 0.0, "linear", "round_prefer_floor"],
-    "expect": SystemExit,
+    "case_name": "test_is_resize_grad_d_case_linear_y_1",
     "calc_expect_func": calc_expect_func
 })
 

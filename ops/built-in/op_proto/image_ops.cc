@@ -1574,7 +1574,8 @@ IMPLEMT_COMMON_INFERFUNC(ResizeGradDInferShape) {
 
         return GRAPH_SUCCESS;
     } else if (mode == "cubic") {
-        out_put_desc.SetShape(input_shape);
+        std::vector<int64_t> dim_vec(original_size);
+        out_put_desc.SetShape(Shape(dim_vec));
         out_put_desc.SetDataType(input_dtype);
         out_put_desc.SetFormat(input_format);
         op.UpdateOutputDesc("y", out_put_desc);

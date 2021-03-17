@@ -406,14 +406,14 @@ class ResizeBicubic(object):
 
         # get x_ub1, x_ub2, x_ub3, x_ub4
         # self.in_num <= self.data_each_block
-        with self.tik_instance.if_scope(self.in_num <= self.data_each_block):
+        if self.in_num <= self.data_each_block:
             self.tik_instance.data_move(x_ub_tensor, x_gm, 0, 1, 1, 0, 0)
             x_ub1[0].set_as(x_ub_tensor[nc_move_offset + move_offset1])
             x_ub2[0].set_as(x_ub_tensor[nc_move_offset + move_offset2])
             x_ub3[0].set_as(x_ub_tensor[nc_move_offset + move_offset3])
             x_ub4[0].set_as(x_ub_tensor[nc_move_offset + move_offset4])
         # self.in_num > self.data_each_block
-        with self.tik_instance.else_scope():
+        else:
             max_offset = self.in_num - self.data_each_block
             # Consider the size of the max_offset
             with self.tik_instance.if_scope(nc_move_offset + move_offset1 < max_offset):
@@ -490,9 +490,12 @@ class ResizeBicubic(object):
         coeffs4 = self.tik_instance.Scalar(dtype="float32")
 
         A = self.cubic_coeff_a
+        temp_scalar = self.tik_instance.Scalar(dtype="int32", init_value=input_index)
+        cast_input_index = self.tik_instance.Scalar(dtype="float32")
+        self.tik_instance.scalar_conv('none', cast_input_index, temp_scalar)
 
-        input_index_scalar = self.tik_instance.Scalar(dtype="float32",
-                                                      init_value=input_index)
+        input_index_scalar = self.tik_instance.Scalar(dtype="float32", 
+                                                      init_value=cast_input_index)
         one_length = self.tik_instance.Scalar(dtype="float32")
         two_length = self.tik_instance.Scalar(dtype="float32")
         three_length = self.tik_instance.Scalar(dtype="float32")
@@ -505,7 +508,7 @@ class ResizeBicubic(object):
             scales = self.scales[0]
 
         # Define x1 in different situations, corresponds to compute_data_out function.
-        if self.out_size_w > 1:
+        if out_length > 1:
             if self.coordinate_transformation_mode == "align_corners":
                 one_length.set_as(out_length - 1)
                 two_length.set_as((out_length - 1) * (out_length - 1))
@@ -617,25 +620,36 @@ class ResizeBicubic(object):
         # same as cubic_interp1d function
         if self.out_size_w > 1:
             if self.coordinate_transformation_mode == "align_corners":
-                in_three_length.set_as((self.out_size_w - 1) * (self.out_size_w - 1) *
+                in_three_length.set_as((self.out_size_w - 1) *
+                                       (self.out_size_w - 1) *
                                        (self.out_size_w - 1))
-                out_three_length.set_as((self.out_size_h - 1) * (self.out_size_h - 1) *
-                                        (self.out_size_h - 1))
             else:
                 if self.scales[1] > 0.0:
-                    in_three_length.set_as(self.scales[1] * self.scales[1] *
+                    in_three_length.set_as(self.scales[1] *
+                                           self.scales[1] *
                                            self.scales[1])
                 else:
-                    in_three_length.set_as(self.out_size_w * self.out_size_w *
+                    in_three_length.set_as(self.out_size_w *
+                                           self.out_size_w *
                                            self.out_size_w)
-                if self.scales[0] > 0.0:
-                    out_three_length.set_as(self.scales[0] * self.scales[0] *
-                                            self.scales[0])
-                else:
-                    out_three_length.set_as(self.out_size_h * self.out_size_h *
-                                            self.out_size_h)
         else:
             in_three_length.set_as(1)
+
+        if self.out_size_h > 1:
+            if self.coordinate_transformation_mode == "align_corners":
+                out_three_length.set_as((self.out_size_h - 1) *
+                                        (self.out_size_h - 1) *
+                                        (self.out_size_h - 1))
+            else:
+                if self.scales[0] > 0.0:
+                    out_three_length.set_as(self.scales[0] *
+                                            self.scales[0] *
+                                            self.scales[0])
+                else:
+                    out_three_length.set_as(self.out_size_h *
+                                            self.out_size_h *
+                                            self.out_size_h)
+        else:
             out_three_length.set_as(1)
 
         data_out1 = self.tik_instance.Tensor("float32", (self.data_each_block,),
@@ -666,12 +680,12 @@ class ResizeBicubic(object):
                                            name="temp_ub",
                                            scope=tik.scope_ubuf)
         # self.out_num <= self.data_each_block
-        with self.tik_instance.if_scope(self.out_num <= self.data_each_block):
+        if self.out_num <= self.data_each_block:
             self.tik_instance.data_move(temp_ub, self.output_gm, 0, 1, 1, 0, 0)
             temp_ub[out_move_offset].set_as(data_out[0])
             self.tik_instance.data_move(self.output_gm, temp_ub, 0, 1, 1, 0, 0)
         # self.out_num > self.data_each_block
-        with self.tik_instance.else_scope():
+        else:
             with self.tik_instance.if_scope(out_move_offset < out_max_offset):
                 self.tik_instance.data_move(temp_ub,
                                             self.output_gm[out_move_offset],
@@ -921,8 +935,7 @@ class ResizeLinear(object):
 
         # Cal Integer of real_W
         coefficient_W = self.tik_instance.Scalar("int32", name="coefficient_W")
-        #self.tik_instance.scalar_conv('round', coefficient_W, real_W)
-        coefficient_W.set_as(real_W)
+        self.tik_instance.scalar_conv('floor', coefficient_W, real_W)
 
         # Cal Decimal of real_W
         coefficient_lambda = self.tik_instance.Scalar("float32", name="coefficient_lambda")
@@ -934,18 +947,12 @@ class ResizeLinear(object):
 
         index = self.tik_instance.Scalar("int32", init_value=input_dim_offset + coefficient_W)
         temp2 = self.tik_instance.Scalar(self.x_dtype, init_value=self.get_number_in_global_memory(index))
-        with self.tik_instance.if_scope(self.x_dtype == "float16"):
-            temp2_temp = self.tik_instance.Scalar(dtype="float32", init_value=temp2)
-            temp2.set_as(temp2_temp)
 
         offset = self.tik_instance.Scalar(dtype="int32", init_value=1)
         with self.tik_instance.if_scope(coefficient_W == (self.dim2 - 1)):
             offset.set_as(0)
 
-        temp4 = self.tik_instance.Scalar(dtype="float32", init_value=self.get_number_in_global_memory(offset + index))
-        with self.tik_instance.if_scope(self.x_dtype == "float16"):
-            temp4_temp = self.tik_instance.Scalar(dtype="float32", init_value=temp4)
-            temp4.set_as(temp4_temp)
+        temp4 = self.tik_instance.Scalar(self.x_dtype, init_value=self.get_number_in_global_memory(offset + index))
 
         res = self.tik_instance.Scalar(dtype=self.x_dtype,
                                        init_value=(coefficient_lambda0 * temp2 + coefficient_lambda * temp4))

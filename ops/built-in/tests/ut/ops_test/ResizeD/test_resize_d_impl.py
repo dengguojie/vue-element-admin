@@ -59,7 +59,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 2, 2), "shape": (1, 1, 2, 2),
                 "param_type": "output"}, [2, 2], [0.5, 0.5], [0, 0], "half_pixel", -0.75, 0, 0.0, "cubic"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_case_cubic_y_1"
 })
 
@@ -69,7 +68,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 3, 30), "shape": (1, 1, 3, 30),
                 "param_type": "output"}, [3, 30], [0.5, 0.5], [0, 0], "align_corners", -0.75, 0, 0.0, "cubic"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_case_cubic_y_2"
 })
 
@@ -79,7 +77,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 3, 30), "shape": (1, 1, 3, 30),
                 "param_type": "output"}, [3, 30], [0.0, 0.0], [0, 0], "half_pixel", -0.75, 0, 0.0, "cubic"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_case_cubic_y_3"
 })
 
@@ -89,7 +86,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 2, 2), "shape": (1, 1, 2, 2),
                 "param_type": "output"}, [2, 1], [0.5, 0.5], [0, 0], "half_pixel", -0.75, 0, 0.0, "cubic"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_case_cubic_y_4"
 })
 
@@ -99,7 +95,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1, 2, 2), "shape": (1, 1, 2, 2),
                 "param_type": "output"}, [1, 2], [0.5, 0.5], [0, 0], "half_pixel", -0.75, 0, 0.0, "cubic"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_case_cubic_y_5"
 })
 
@@ -149,7 +144,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (4, 1, 4), "shape": (4, 1, 4),
                 "param_type": "output"}, [4, ], [2.0, ], [2, ], "half_pixel", 0.75, 0, 0.0, "linear"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_precision_case_linear_y_1"
 })
 
@@ -159,7 +153,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (9, 7, 14), "shape": (9, 7, 14),
                 "param_type": "output"}, [14, ], [7.0, ], [7, ], "align_corners", 0.75, 0, 0.0, "linear"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_precision_case_linear_y_2"
 })
 
@@ -169,7 +162,6 @@ ut_case.add_case("Ascend910A", {
                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (627, 2, 18), "shape": (627, 2, 18),
                 "param_type": "output"}, [18, ], [6.0, ], [6, ], "half_pixel", 0.75, 0, 0.0, "linear"],
     "calc_expect_func": calc_expect_func,
-    "expect": SystemExit,
     "case_name": "test_is_resize_d_precision_case_linear_y_3"
 })
 
