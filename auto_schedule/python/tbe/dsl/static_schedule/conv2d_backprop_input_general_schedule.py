@@ -2189,7 +2189,7 @@ def general_schedule(
         # compute the axis's block offset and part offset after split
         howo_mad_align = _align(howo_mad, al0_tiling_m0)
         howo_offset_on_block = _align(_ceil(howo_mad_align, m_dim), m_axis_length_l1)
-        block_offset = ax_core % m_dim * howo_offset_on_block
+        block_offset = ax_core // n_dim // group_dim % m_dim * howo_offset_on_block
         # M axis full load in Al1 or Not
         if c_l0c_hw == m_axis_length_l1:
             m_parts_offset = 0
