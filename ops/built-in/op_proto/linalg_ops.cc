@@ -410,6 +410,77 @@ IMPLEMT_INFERFUNC(SelfAdjointEig, SelfAdjointEigInfer) {
 
 INFER_FUNC_REG(SelfAdjointEig, SelfAdjointEigInfer);
 
+// ----------------Slogdet start-------------------
+IMPLEMT_VERIFIER(Slogdet, SlogdetVerify) {
+    DataType type = op.GetInputDesc("x").GetDataType();
+    if (type != DT_FLOAT16 && type != DT_FLOAT && type != DT_DOUBLE) {
+        OP_LOGE(op.GetName().c_str(), "Expert a floating point tensor as input.");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(Slogdet, SlogdetInfer) {
+    auto x_shape = op.get_input_desc_x().GetShape().GetDims();
+    size_t size_num = x_shape.size();
+    DataType type = op.GetInputDesc("x").GetDataType();
+    if (size_num < 2) {
+        OP_LOGE(op.GetName().c_str(), "The rank of x must be greater than 2");
+        return GRAPH_FAILED;
+    }
+    if (x_shape[size_num - 1] != x_shape[size_num - 2]) {
+        OP_LOGE(op.GetName().c_str(), "Last two dimension of x are not equal");
+        return GRAPH_FAILED;
+    }
+
+    if (size_num == 2) {
+        TensorDesc sign_desc = op.GetOutputDesc("sign");
+        sign_desc.SetShape(Shape({1}));
+        sign_desc.SetDataType(type);
+        op.UpdateOutputDesc("sign", sign_desc);
+
+        TensorDesc y_desc = op.GetOutputDesc("y");
+        y_desc.SetShape(Shape({1}));
+        y_desc.SetDataType(type);
+        op.UpdateOutputDesc("y", y_desc);
+    } else if (x_shape == ge::UNKNOWN_SHAPE) {
+        GE_OP_LOGD(op.GetName().c_str(), "x is unknown shape!");
+        std::vector<std::pair<int64_t, int64_t>> out_range;
+        std::pair<int64_t, int64_t> pair({1, INT64_MAX});
+        out_range.emplace_back(pair);
+        TensorDesc sign_desc = op.GetOutputDesc("sign");
+        sign_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+        sign_desc.SetOriginShape(Shape(ge::UNKNOWN_SHAPE));
+        sign_desc.SetShapeRange(out_range);
+        sign_desc.SetDataType(type);
+        op.UpdateOutputDesc("sign", sign_desc);
+
+        TensorDesc y_desc = op.GetOutputDesc("y");
+        y_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
+        y_desc.SetOriginShape(Shape(ge::UNKNOWN_SHAPE));
+        y_desc.SetShapeRange(out_range);
+        y_desc.SetDataType(type);
+        op.UpdateOutputDesc("y", y_desc);
+    } else {
+        vector<int64_t> shape(x_shape.begin(), (x_shape.end() - 2));
+
+        TensorDesc sign_desc = op.GetOutputDesc("sign");
+        sign_desc.SetShape(Shape(shape));
+        sign_desc.SetDataType(type);
+        op.UpdateOutputDesc("sign", sign_desc);
+
+        TensorDesc y_desc = op.GetOutputDesc("y");
+        y_desc.SetShape(Shape(shape));
+        y_desc.SetDataType(type);
+        op.UpdateOutputDesc("y", y_desc);
+    }
+    return GRAPH_SUCCESS;
+}
+
+VERIFY_FUNC_REG(Slogdet, SlogdetVerify);
+INFER_FUNC_REG(Slogdet, SlogdetInfer);
+// ----------------Slogdet END-------------------
+
 IMPLEMT_INFERFUNC(Svd, SvdInfer) {
   Shape input;
 

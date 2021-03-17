@@ -347,6 +347,34 @@ REG_OP(SelfAdjointEig)
     .OP_END_FACTORY_REG(SelfAdjointEig)
 
 /**
+*@brief Computes the sign and the log of the absolute value of the determinant
+of one or more square matrices . \n
+
+*@par Inputs:
+*The input x is a tensor of shape [N, M, M] whose inner-most 2 dimensions
+form square matrices. Inputs include:
+*x:A Tensor. Must be one of the following types: double, float32, float16
+Shape is [..., M, M] . \n
+
+*@par Outputs:
+*@li y:A Tensor. Has the same type as x.
+*@li sign:A Tensor. Has the same type as x . \n
+
+*@attention Constraints:
+*The input x is a tensor of shape [N, M, M] whose inner-most 2 dimensions
+form square matrices. \n
+
+*@par Third-party framework compatibility
+*Compatible with tensorflow LogMatrixDeterminant operator.
+*/
+
+REG_OP(Slogdet)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(sign, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
+    .OP_END_FACTORY_REG(Slogdet)
+
+/**
 *@brief Computes the singular value decompositions of one or more matrices . \n
 
 *@par Inputs:
