@@ -95,7 +95,7 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
 void MaybeChangeAttr(std::vector<int64_t>& value, int64_t length, int64_t num) {
   if (value.empty()) {
     value = std::vector<int64_t>(length, num);
-  } else if (length == 4) {
+  } else if (length == 4 && num != 0) {
     value.resize(length);
     value[3] = value[1];
     value[2] = value[0];
@@ -188,6 +188,80 @@ Status UpdateTbeAttrFromOp(const Operator& op, TbeAttr& tbe_attr, int dims) {
   return SUCCESS;
 }
 
+void GenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t> strides, 
+                std::vector<int64_t> pads, std::string padding_mode, Operator& input) {
+  // aicpu only supports format=NHWC, so add permute operator to adjust the input 
+  std::vector<int64_t> ksize_transpose = {ksize[0], ksize[2], ksize[3], ksize[1]};
+  std::vector<int64_t> strides_transpose = {strides[0], strides[2], strides[3], strides[1]};
+  auto transposeIn = op::Permute("permuteIn").set_input_x(input).set_attr_order({0, 2, 3, 1});
+
+  std::vector<int64_t> pads_vector(8, 0);
+  bool use_pad = false;
+  for (size_t i = 0; i < pads.size(); i++) {
+    pads_vector[i + 2] = pads[i];
+    if (pads[i] != 0) {
+      use_pad = true;
+      break;
+    }
+  }
+  if (use_pad) {
+    int64_t len = pads_vector.size();
+    TensorDesc tensorDesc(ge::Shape({len}), ge::FORMAT_NHWC, ge::DT_INT32);
+    ge::Tensor pads_tensor(tensorDesc, reinterpret_cast<uint8_t*>(pads_vector.data()), len*sizeof(ge::DT_INT32));
+    auto paddings = op::Const("paddings").set_attr_value(pads_tensor);
+
+    float tmpConst[1] = {-65504.0};
+    TensorDesc valueDesc(ge::Shape({1}), ge::FORMAT_NHWC, ge::DT_FLOAT);
+    ge::Tensor values_tensor(valueDesc, reinterpret_cast<uint8_t*>(tmpConst), sizeof(ge::DT_FLOAT));
+    auto constant_values = op::Const("constant_values").set_attr_value(values_tensor);
+
+    auto padV2 =
+        op::PadV2().set_input_x(transposeIn).set_input_paddings(paddings).set_input_constant_values(constant_values);
+
+    op = op::MaxPool()
+             .set_input_x(padV2)
+             .set_attr_ksize(ksize_transpose)
+             .set_attr_strides(strides_transpose)
+             .set_attr_padding(padding_mode)
+             .set_attr_data_format("NHWC");
+  } else {
+    op = op::MaxPool()
+             .set_input_x(transposeIn)
+             .set_attr_ksize(ksize_transpose)
+             .set_attr_strides(strides_transpose)
+             .set_attr_padding(padding_mode)
+             .set_attr_data_format("NHWC");
+  }
+}
+
+Status UpdateFormat(Operator& op, Format format) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  // update input format
+  ge::GeTensorDesc orgTensorX = op_desc->GetInputDesc("x");
+  orgTensorX.SetOriginFormat(format);
+  orgTensorX.SetFormat(format);
+  auto ret = op_desc->UpdateInputDesc("x", orgTensorX);
+  if (ret != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update input x format failed.");
+    return FAILED;
+  }
+  OP_LOGI(op.GetName().c_str(), "update input x format success, now is %d",
+          op_desc->GetInputDesc("x").GetFormat());
+
+  // update output format
+  ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
+  orgTensorY.SetOriginFormat(format);
+  orgTensorY.SetFormat(format);
+  ret = op_desc->UpdateOutputDesc("y", orgTensorY);
+  if (ret != ge::GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "update output y format failed.");
+    return FAILED;
+  }
+  OP_LOGI(op.GetName().c_str(), "update output y format success, now is %d",
+          op_desc->GetOutputDesc("y").GetFormat());
+  return SUCCESS;
+}
+
 static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
   int dims = 0;
   if (op.GetAttr("dims", dims) != SUCCESS) {
@@ -204,15 +278,27 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
   std::vector<std::pair<Operator, std::vector<size_t>>> outputs;
 
   if (dims == 2) {
-    auto maxpoolv3 = op::MaxPoolV3()
-                         .set_input_x(data0)
-                         .set_attr_ksize(tbe_attr.ksize)
-                         .set_attr_strides(tbe_attr.strides)
-                         .set_attr_padding_mode(tbe_attr.padding_mode)
-                         .set_attr_pads(tbe_attr.pads)
-                         .set_attr_ceil_mode(tbe_attr.ceil_mode == 1)
-                         .set_attr_data_format("NCHW");
-    outputs.emplace_back(maxpoolv3, std::vector<std::size_t>{0});
+    // because of the limitation of tbe operator, use aicpu instead 
+    if (tbe_attr.ksize[2]*tbe_attr.ksize[3] > 255 || (tbe_attr.strides[2] > 63 || tbe_attr.strides[3] > 63)) {
+      Operator aicpu_op;
+      GenAicpuOp(aicpu_op, tbe_attr.ksize, tbe_attr.strides, tbe_attr.pads, "VALID", data0);
+
+      if (UpdateFormat(aicpu_op, ge::FORMAT_NHWC) != SUCCESS) {
+        return FAILED;
+      }
+      auto transposeOut = op::Permute("permuteOut").set_input_x(aicpu_op).set_attr_order({0, 3, 1, 2});
+      outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
+    } else {
+      auto maxpoolv3 = op::MaxPoolV3()
+                          .set_input_x(data0)
+                          .set_attr_ksize(tbe_attr.ksize)
+                          .set_attr_strides(tbe_attr.strides)
+                          .set_attr_padding_mode(tbe_attr.padding_mode)
+                          .set_attr_pads(tbe_attr.pads)
+                          .set_attr_ceil_mode(tbe_attr.ceil_mode == 1)
+                          .set_attr_data_format("NCHW");
+      outputs.emplace_back(maxpoolv3, std::vector<std::size_t>{0});
+    }
   } else {
     auto maxpool3d = op::MaxPool3D()
                          .set_input_x(data0)
@@ -223,31 +309,10 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
                          .set_attr_dilation(tbe_attr.dilation)
                          .set_attr_ceil_mode(tbe_attr.ceil_mode)
                          .set_attr_data_format("NCDHW");
-
-    // update input format
-    ge::TensorDesc orgTensorX = maxpool3d.get_input_desc_x();
-    orgTensorX.SetOriginFormat(ge::FORMAT_NCDHW);
-    orgTensorX.SetFormat(ge::FORMAT_NCDHW);
-    auto ret = maxpool3d.update_input_desc_x(orgTensorX);
-    if (ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE(maxpool3d.GetName().c_str(), "update input x format failed.");
+    if (UpdateFormat(maxpool3d, ge::FORMAT_NCDHW) != SUCCESS) {
       return FAILED;
     }
-    OP_LOGI(maxpool3d.GetName().c_str(), "update input x format success, now is %d",
-            maxpool3d.get_input_desc_x().GetFormat());
-
-    // update output format
-    ge::TensorDesc orgTensorY = maxpool3d.get_output_desc_y();
-    orgTensorY.SetOriginFormat(ge::FORMAT_NCDHW);
-    orgTensorY.SetFormat(ge::FORMAT_NCDHW);
-    ret = maxpool3d.update_output_desc_y(orgTensorY);
-    if (ret != ge::GRAPH_SUCCESS) {
-      OP_LOGE(maxpool3d.GetName().c_str(), "update input y format failed.");
-      return FAILED;
-    }
-    OP_LOGI(maxpool3d.GetName().c_str(), "update input y format success, now is %d",
-            maxpool3d.get_output_desc_y().GetFormat());
-
+ 
     outputs.emplace_back(maxpool3d, std::vector<std::size_t>{0});
   }
 

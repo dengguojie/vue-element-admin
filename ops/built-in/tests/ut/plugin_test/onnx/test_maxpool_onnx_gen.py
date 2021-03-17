@@ -178,6 +178,7 @@ def make_max_pool_v13():
     onnx.save(model, "./test_maxpool_case_v13.onnx")
     onnx.checker.check_model(model)
 
+
 def make_max_pool_v9():
     """2d default v9"""
     x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3, 32, 32])
@@ -202,6 +203,33 @@ def make_max_pool_v9():
     onnx.checker.check_model(model)
 
 
+def make_max_pool_aicpu():
+    """aicpu op"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3, 150, 150])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3, 3, 3])
+    node_def = helper.make_node(
+        'MaxPool',
+        inputs=['x'],
+        outputs=['y'],
+        kernel_shape=[50, 50],
+        strides=[50, 50],
+        auto_pad="NOTSET",
+        dilations=[1, 1]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'MaxPool',
+        [x],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 11
+    onnx.save(model, "./test_maxpool_case_aicpu.onnx")
+    onnx.checker.check_model(model)
+
+
 if __name__ == '__main__':
     make_max_pool()
     make_max_pool1()
@@ -211,3 +239,4 @@ if __name__ == '__main__':
     make_max_pool_v9()
     make_max_pool_v12()
     make_max_pool_v13()
+    make_max_pool_aicpu()
