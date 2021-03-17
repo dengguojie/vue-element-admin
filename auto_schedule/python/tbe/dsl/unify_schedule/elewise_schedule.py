@@ -105,6 +105,7 @@ class ElewiseSchedule:
         self._broadcast_axis_num = {}
 
         self._dtypes = set()
+        self._outs_dtypes = set()
         self._max_dtype_bytes = 4
         self._coexisting_quantity = 1
         self._tensor_space = None
@@ -235,6 +236,7 @@ class ElewiseSchedule:
                 self._broadcast_tensors.add(out)
             self.__dfs_sub_graph(out, visited_tensors)
             self._dtypes.add(out.dtype)
+            self._outs_dtypes.add(out.dtype)
         byte_len = [DTYPE_BYTE_MAPPING[dtype] for dtype in self._dtypes]
         self._max_dtype_bytes = max(byte_len)
 
@@ -383,10 +385,14 @@ class ElewiseSchedule:
 
         base_info = {"000": [self._ub_size - self._correct_factor * self._tmp_ub_size,
                              self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
+
+        outs_contains_uint1 = "uint1" in self._outs_dtypes
+
         const_compile_info = {
             CompileInfo.FLAG_INFO: [True],
             CompileInfo.BASE_INFO: base_info,
             CompileInfo.BROADCAST_AXIS: broadcast_axis,
+            CompileInfo.OUTS_UINT1: outs_contains_uint1,
         }
         const_compile_info.update(get_compile_info())
 
@@ -838,7 +844,7 @@ class ElewiseSchedule:
             self._tensor_space = self._tensor_space // ONE_DIM_ALIGN * ONE_DIM_ALIGN
 
         # improve storage bound by bank conflict(only pure eletwise)
-        cpt_pattern = operation.get_context().get_current_compute()._operator._pattern
+        cpt_pattern = operation.get_context().get_pattern()
         if cpt_pattern == Pattern.ELEMWISE and self._tensor_space > UB_BANK_FACTOR:
             self._tensor_space = \
                 UB_BANK_FACTOR * 2 ** math.floor(math.log2(self._tensor_space / UB_BANK_FACTOR))
@@ -875,6 +881,10 @@ class ElewiseSchedule:
             cpt_schedule.add(CompileInfo.COEXISTING_QUANTITY, self._coexisting_quantity)
             cpt_schedule.add(CompileInfo.UB_SIZE, self._ub_size)
             cpt_schedule.add(CompileInfo.CORE_NUM, util.get_core_num())
+
+        outs_contains_uint1 = "uint1" in self._outs_dtypes or \
+                              operation.get_compile_info().get(CompileInfo.OUTS_UINT1, False)
+        operation.add_compile_info_inner(CompileInfo.OUTS_UINT1, outs_contains_uint1)
 
     def __dfs_sub_graph(self, out, visited_tensors: set):
         for tensor_i in out.op.input_tensors:

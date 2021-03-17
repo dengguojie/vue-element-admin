@@ -142,7 +142,8 @@ bool Eletwise::CalcTiling() {
 
 bool Eletwise::DoBlockTiling() {
   int64_t cur_core = baseInfo.core_num;
-  int64_t ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
+  bool outs_uint1 = op_info.at("_outs_uint1");
+  int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
   block_axis = 0;
   V_OP_TILING_CHECK((!output_shape.empty()),
                     OP_LOGE(op_type.c_str(), "output shape cannot be empty"),
@@ -175,7 +176,8 @@ bool Eletwise::DoUbTiling() {
   ub_factor = block_factor;
   int64_t limit = std::min(max_available_ub, SPLIT_FACTORS.at(baseInfo.max_dtype));
   if (limit < ub_factor) {
-    int64_t ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
+    bool outs_uint1 = op_info.at("_outs_uint1");
+    int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     V_CHECK_GT(limit, 0,
                OP_LOGE(op_type.c_str(), "ub limit error, it is [%d]",limit),
                return false);

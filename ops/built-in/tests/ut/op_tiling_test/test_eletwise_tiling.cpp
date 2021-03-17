@@ -85,7 +85,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling2) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_exp_432.static_op_exp_433
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
 
   std::vector<int64_t> inputA{1, 33, 1089};
   std::vector<int64_t> output{1, 33, 1089};
@@ -123,7 +123,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling3) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_cast_30.static_op_cast_30
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 4, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ], "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 4, 32 ] }, "_elewise_vars": { "210000000": [ 10000, 20000, 30000 ], "210010000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ], "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
 
   std::vector<int64_t> inputA{128, 128, 128, 128};
   std::vector<int64_t> output{128, 128, 128, 128};
@@ -286,7 +286,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling6) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_exp_432.static_op_exp_433
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "2101000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "2101000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
 
   std::vector<int64_t> inputA{1, 33, 1089};
   std::vector<int64_t> output{1, 33, 1089};
@@ -322,7 +322,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling7) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic_op_exp_432.static_op_exp_433
-  std::string compileInfo = R"({ "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "211000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
+  std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "push_status": 0, "_flag_info": [false, false, false, true, false, false], "_base_info": { "100": [ 262144, 4, 2, 32 ] }, "_elewise_vars": { "211000000": [ 10000, 20000, 30000 ] }, "_vars": { "210000000": [ "_dim_0_0", "_block_factor_0", "_ub_factor_0" ] } })";
 
   std::vector<int64_t> inputA{1, 33, 1};
   std::vector<int64_t> inputB{1, 33, 1089};
@@ -535,7 +535,7 @@ TEST_F(EletwiseTiling, Eletwise_tiling12) {
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
   // dynamic real div const tiling
-  std::string compileInfo = R"({"_flag_info": [true],"_base_info": { "000": [ 262144, 2, 3, 32 ] }, "_broadcast_axis": [false], "_fusion_index": [[0], [1], [2]], "_pattern": "ElemWise", "push_status": 0})";
+  std::string compileInfo = R"({ "_outs_uint1": false, "_flag_info": [true],"_base_info": { "000": [ 262144, 2, 3, 32 ] }, "_broadcast_axis": [false], "_fusion_index": [[0], [1], [2]], "_pattern": "ElemWise", "push_status": 0})";
   std::vector<int64_t> inputA{6643712,};
   std::vector<int64_t> inputB{6643712,};
   std::vector<int64_t> output{6643712,};

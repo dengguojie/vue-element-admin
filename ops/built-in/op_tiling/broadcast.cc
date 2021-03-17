@@ -413,7 +413,8 @@ bool Broadcast::DoBlockTiling() {
     }
   }
   if (output_shape.size() == 1) {
-    int64_t ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
+    bool outs_uint1 = op_info.at("_outs_uint1");
+    int64_t ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
     block_factor = std::ceil(block_factor * 1.0 / ele_in_block) * ele_in_block;
     output_shape[0] = block_factor;
     block_dims = std::ceil(multi_core_output * 1.0 / block_factor);
@@ -531,7 +532,8 @@ void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit
     if (ub_axis == shape_len && ub_factor != output_shape[shape_len]) {
       int64_t ele_in_block = BGetElementByType(out_type);
       if (output_shape.size() == 1) {
-        ele_in_block = (out_type == "uint1") ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
+        bool outs_uint1 = op_info.at("_outs_uint1");
+        ele_in_block = outs_uint1 ? ELEWISE_UINT1_REPEATE_NUMS : ELEWISE_REPEATE_NUMS;
       }
       int64_t last_factor = ub_factor;
       int64_t align_factor = std::ceil(ub_factor * 1.0 / ele_in_block);
