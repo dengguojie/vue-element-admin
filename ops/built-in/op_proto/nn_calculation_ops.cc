@@ -3235,7 +3235,7 @@ static bool GetPadConv2D(ge::Operator& op, int32_t ih, int32_t iw, int32_t kh, i
       ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
       return false;
     }
-    OP_LOGE(op.GetName().c_str(),
+    OP_LOGD(op.GetName().c_str(),
             "pads info is [%d,%d,%d,%d].",
             pad_list[0], pad_list[1], pad_list[2], pad_list[3]);
     op.SetAttr("pads", pad_list);
