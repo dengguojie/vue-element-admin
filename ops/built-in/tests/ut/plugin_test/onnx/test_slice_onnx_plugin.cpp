@@ -122,5 +122,5 @@ TEST_F(slice_onnx_plugin_test, slice_onnx_plugin_test_case_6) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 2);
+  EXPECT_EQ(nodes.size(), 5);
 }

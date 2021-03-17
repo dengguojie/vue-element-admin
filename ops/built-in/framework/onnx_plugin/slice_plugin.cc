@@ -12,15 +12,22 @@
  */
 
 #include <vector>
+#include <string>
 #include "op_log.h"
 #include "proto/onnx/ge_onnx.pb.h"
 #include "register/register.h"
+#include "graph.h"
 #include "graph/utils/op_desc_utils.h"
+#include "all_ops.h"
 
+using namespace std;
+using namespace ge;
+using ge::Operator;
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
+using OpDesc = std::shared_ptr<ge::OpDesc>;
 Status ParseParamSlice(const Message* op_src, ge::Operator& op_dest) {
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("Slice", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
@@ -28,65 +35,98 @@ Status ParseParamSlice(const Message* op_src, ge::Operator& op_dest) {
   return SUCCESS;
 }
 
-Status ParseParamSliceV9(const Message* op_src, ge::Operator& op_dest) {
-  const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
+Status ParseParamSliceCall(const Message* op_src, ge::Operator& op_dest) {
+  const NodeProto* node = reinterpret_cast<const NodeProto*>(op_src);
   if (node == nullptr) {
     OP_LOGE("SliceV9", "Dynamic cast op_src to NodeProto failed.");
     return FAILED;
   }
-  std::vector<int> ends;
-  std::vector<int> starts;
-  bool is_have_ends = false;
-  bool is_have_starts = false;
+  std::vector<int64_t> ends = {};
+  std::vector<int64_t> starts = {};
+  std::vector<int64_t> axes = {};
+
+  bool is_have_axes = false;
   for (auto attr : node->attribute()) {
     if (attr.name() == "ends") {
-      is_have_ends = true;
       int num = attr.ints_size();
       for (int i = 0; i < num; ++i) {
         ends.push_back(attr.ints(i));
       }
     } else if (attr.name() == "starts") {
-      is_have_starts = true;
       int num = attr.ints_size();
       for (int i = 0; i < num; ++i) {
         starts.push_back(attr.ints(i));
       }
+    } else if (attr.name() == "axes") {
+      is_have_axes = true;
+      int num = attr.ints_size();
+      for (int i = 0; i < num; ++i) {
+        axes.push_back(attr.ints(i));
+      }
+      op_dest.SetAttr("axes", axes);
     }
   }
-  if (!is_have_starts || !is_have_ends) {
+  if (ends.empty() || starts.empty()) {
     OP_LOGE("SliceV9", "attr must have ends and starts");
     return FAILED;
   }
-  int size = starts.size();
-  std::vector<int> strides(size, 1);
+
   op_dest.SetAttr("end", ends);
   op_dest.SetAttr("begin", starts);
-  op_dest.SetAttr("strides", strides);
+  op_dest.SetAttr("is_have_axes", is_have_axes);
+  op_dest.SetAttr("original_type", "ai.onnx::9::Slice");
+  OpDesc op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  op_desc->AddDynamicInputDesc("x", 1);
+  op_desc->AddDynamicOutputDesc("y", 1);
   return SUCCESS;
 }
 
-REGISTER_CUSTOM_OP("StridedSliceD")
-  .FrameworkType(ONNX)
-  .OriginOpType({"ai.onnx::9::Slice",
-                 "ai.onnx::10::Slice"})
-  .ParseParamsFn(ParseParamSliceV9)
-  .ImplyType(ImplyType::TVM);
+ge::Operator MakeConstOp(const ge::Operator& op, const std::string& attr_name) {
+  std::vector<int64_t> val = {};
+  op.GetAttr(attr_name, val);
+  ge::TensorDesc desc;
+  std::vector<int64_t> dims(1, val.size());
+  ge::Shape shape(dims);
+  desc.SetDataType(ge::DT_INT64);
+  desc.SetFormat(ge::FORMAT_ND);
+  desc.SetShape(shape);
+
+  ge::Tensor tensor(desc, reinterpret_cast<uint8_t*>(val.data()), val.size() * sizeof(int64_t));
+  ge::Operator const_op = op::Const(attr_name).set_attr_value(tensor);
+  return const_op;
+}
+
+Status ParseOpToGraphSlice(const ge::Operator& op, Graph& graph) {
+  auto data_op = op::Data("input1").set_attr_index(0);
+  auto const_op = MakeConstOp(op, "begin");
+  auto const_op1 = MakeConstOp(op, "end");
+  auto slice_op =
+      op::StridedSliceV2("StridedSliceV2").set_input_x(data_op).set_input_begin(const_op).set_input_end(const_op1);
+
+  bool is_have_axes = false;
+  op.GetAttr("is_have_axes", is_have_axes);
+  if (is_have_axes) {
+    auto const_op2 = MakeConstOp(op, "axes");
+    slice_op.set_input_axes(const_op2);
+  }
+
+  std::vector<ge::Operator> inputs{data_op};
+  std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
+  output_indexs.emplace_back(slice_op, std::vector<size_t>{0});
+  graph.SetInputs(inputs).SetOutputs(output_indexs);
+  return SUCCESS;
+}
+
+REGISTER_CUSTOM_OP("PartitionedCall")
+    .FrameworkType(ONNX)
+    .OriginOpType("ai.onnx::9::Slice")
+    .ParseParamsFn(ParseParamSliceCall)
+    .ParseOpToGraphFn(ParseOpToGraphSlice)
+    .ImplyType(ImplyType::TVM);
 
 REGISTER_CUSTOM_OP("StridedSliceV2")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::11::Slice")
-  .ParseParamsFn(ParseParamSlice)
-  .ImplyType(ImplyType::TVM);
-
-REGISTER_CUSTOM_OP("StridedSliceV2")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::12::Slice")
-  .ParseParamsFn(ParseParamSlice)
-  .ImplyType(ImplyType::TVM);
-
-REGISTER_CUSTOM_OP("StridedSliceV2")
-  .FrameworkType(ONNX)
-  .OriginOpType("ai.onnx::13::Slice")
-  .ParseParamsFn(ParseParamSlice)
-  .ImplyType(ImplyType::TVM);
+    .FrameworkType(ONNX)
+    .OriginOpType({"ai.onnx::11::Slice", "ai.onnx::10::Slice", "ai.onnx::12::Slice", "ai.onnx::13::Slice"})
+    .ParseParamsFn(ParseParamSlice)
+    .ImplyType(ImplyType::TVM);
 }  // namespace domi
