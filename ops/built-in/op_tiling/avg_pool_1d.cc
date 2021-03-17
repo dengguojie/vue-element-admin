@@ -94,19 +94,18 @@ bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, cons
   bool ceil_mode = op_compile_info_json["ceil_mode"].get<bool>();
   int32_t fmap_wo;
   if (ceil_mode) {
-      fmap_wo = (fmap_w + pad_l + pad_r - ksize + strides - 1) / strides + 1;
-      if ((fmap_wo - 1) * strides >= fmap_w + pad_l) {
-          fmap_wo -= 1;
-      }
+    fmap_wo = (fmap_w + pad_l + pad_r - ksize + strides - 1) / strides + 1;
   } else {
-      fmap_wo = (fmap_w + pad_l + pad_r - ksize) / strides + 1;
+    fmap_wo = (fmap_w + pad_l + pad_r - ksize) / strides + 1;
   }
-
+  if (pad_l) {
+    if ((fmap_wo - 1) * strides >= fmap_w + pad_l) {
+      fmap_wo -= 1;
+    }
+  }
 
   int32_t block_dim;
   vector<int32_t> tiling_data = GetTilingData(fmap_nc1h, wo, max_w_in_ub, core_num, block_dim);
-  // put tiling key
-  ByteBufferPut(run_info.tiling_data, tiling_data[0]);
   ByteBufferPut(run_info.tiling_data, fmap_nc1h);
   ByteBufferPut(run_info.tiling_data, fmap_w);
   ByteBufferPut(run_info.tiling_data, fmap_wo);
@@ -115,6 +114,7 @@ bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, cons
   }
 
   run_info.block_dim = block_dim;
+  run_info.tiling_key = tiling_data[0];
 
   GELOGI("AvgPool1DTiling end.");
   return true;
