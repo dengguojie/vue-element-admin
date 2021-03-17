@@ -65,7 +65,7 @@ def op_select_format(x, y, weight, output,
     shape_fz_n = 16
 
     if input_ori_format in support_ori_format \
-            or len(input_ori_shape) == len(input_ori_format):
+            and len(input_ori_shape) == len(input_ori_format):
         if input_ori_shape[input_ori_format.index("C")] % shape_fz_c0 == 0 \
                 and input_ori_shape[input_ori_format.index("N")] % shape_fz_n == 0:
             is_support_fz = True

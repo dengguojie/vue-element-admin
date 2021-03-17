@@ -188,28 +188,24 @@ IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
     InferElewiseTwoInput(x1_data_slice, y_data_slice, x1_dims, y_dims);
     InferElewiseTwoInput(x2_data_slice, y_data_slice, x2_dims, y_dims);
   } else {
-    if ((x1_format == FORMAT_NC1HWC0 && (x2_dims.size() == 0 || x2_dims.size() == 1)) ||
-        ((x1_dims.size() == 0 || x1_dims.size() == 1) && x2_format == FORMAT_NC1HWC0)) {
+    if ((x1_format == FORMAT_NC1HWC0 && x2_dims.size() <= 1) ||
+        (x1_dims.size() <= 1 && x2_format == FORMAT_NC1HWC0)) {
       // 5HD+ND
       InferElewiseTwoInputdif(x1_data_slice, y_data_slice, x1_dims, y_dims, 1);
       InferElewiseTwoInputdif(x2_data_slice, y_data_slice, x2_dims, y_dims, 1);
-    } else if ((x1_format == FORMAT_FRACTAL_NZ && (x2_dims.size() == 0 || x2_dims.size() == 1)) ||
-               ((x1_dims.size() == 0 || x1_dims.size() == 1) && x2_format == FORMAT_FRACTAL_NZ)) {
+    } else if ((x1_format == FORMAT_FRACTAL_NZ && x2_dims.size() <= 1) ||
+               (x1_dims.size() <= 1 && x2_format == FORMAT_FRACTAL_NZ)) {
       // NZ+ND
       InferElewiseTwoInputdif(x1_data_slice, y_data_slice, x1_dims, y_dims, y_dims.size() - 3);
       InferElewiseTwoInputdif(x2_data_slice, y_data_slice, x2_dims, y_dims, y_dims.size() - 3);
-    } else if ((x1_format == FORMAT_FRACTAL_Z && (x2_dims.size() == 0 || x2_dims.size() == 1)) ||
-               ((x1_dims.size() == 0 || x1_dims.size() == 1) && x2_format == FORMAT_FRACTAL_Z)) {
+    } else if ((x1_format == FORMAT_FRACTAL_Z && x2_dims.size() <= 1) ||
+               (x1_dims.size() <= 1 && x2_format == FORMAT_FRACTAL_Z)) {
       // F_Z+ND
       InferElewiseTwoInputdif(x1_data_slice, y_data_slice, x1_dims, y_dims, 0);
       InferElewiseTwoInputdif(x2_data_slice, y_data_slice, x2_dims, y_dims, 0);
     } else {
-      for (size_t i = 0; i < x1_dims.size(); i++) {
-        x1_data_slice.push_back({});
-      }
-      for (size_t i = 0; i < x2_dims.size(); i++) {
-        x2_data_slice.push_back({});
-      }
+      x1_data_slice.assign(x1_dims.size(), {});
+      x2_data_slice.assign(x2_dims.size(), {});
     }
   }
 
