@@ -123,8 +123,12 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   new_desc->UpdateOutputDesc(0, new_output_desc);
   new_node = graph.AddNode(new_desc);
   Operator new_op = ge::OpDescUtils::CreateOperatorFromNode(new_node);
-  new_op.SetAttr("transpose_x1", false);
-  new_op.SetAttr("transpose_x2", false);
+  bool adj_x1 = false;
+  bool adj_x2 = false;
+  op.GetAttr("adj_x1", adj_x1);
+  op.GetAttr("adj_x2", adj_x2);
+  new_op.SetAttr("transpose_x1", adj_x1);
+  new_op.SetAttr("transpose_x2", adj_x2);
   return SUCCESS;
 }
 
