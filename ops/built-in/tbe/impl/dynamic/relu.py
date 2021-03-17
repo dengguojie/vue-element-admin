@@ -25,7 +25,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
-from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
@@ -35,21 +34,6 @@ CONST_ZERO = 0
 
 # pylint: disable=invalid-name,unused-argument,redefined-argument-from-local
 @register_operator_compute("Relu", op_mode="dynamic", support_fusion=True)
-def relu_fusion_compute(input_x, output_y, kernel_name="relu"):
-    """
-    relu_fusion_compute
-    """
-    fusion_util.check_fusion_input([input_x])
-
-    dict_x = fusion_util.extract_dict(input_x)
-    shape_x = fusion_util.normalize_shape([dict_x])[0]
-    ph_x = fusion_util.create_placeholder(input_x, shape_x)
-
-    res = relu_compute(ph_x, output_y, kernel_name)
-
-    return {"op_placeholder": [ph_x], "op_res": [res]}
-
-
 def relu_compute(x, y, kernel_name="relu"):
     """
     Algrithm : relu(x) = max(x, 0)

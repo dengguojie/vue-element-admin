@@ -19,7 +19,6 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
-from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
@@ -30,26 +29,9 @@ from impl.util import util_common
 SHAPE_SIZE_LIMIT = 2147483648
 SIZE_SIXTEEN = 16
 
-# pylint: disable=too-many-locals,unused-variable,invalid-name
-@register_operator_compute("Add", op_mode="dynamic", support_fusion=True)
-def add_fusion_compute(input_x, input_y, output_z, kernel_name="add"):
-    """
-    add_fusion_compute
-    """
-    fusion_util.check_fusion_input([input_x, input_y])
-
-    dict_x = fusion_util.extract_dict(input_x)
-    dict_y = fusion_util.extract_dict(input_y)
-    shape_x, shape_y = fusion_util.normalize_shape([dict_x, dict_y])
-    ph_x = fusion_util.create_placeholder(input_x, shape_x)
-    ph_y = fusion_util.create_placeholder(input_y, shape_y)
-
-    res = add_compute(ph_x, ph_y, output_z, kernel_name)
-
-    return {"op_placeholder": [ph_x, ph_y], "op_res": [res]}
-
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
+@register_operator_compute("Add", op_mode="dynamic", support_fusion=True)
 def add_compute(input_x, input_y, output_z, kernel_name="add"):
     """
     calculating data's add, c = a + b
