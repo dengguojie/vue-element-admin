@@ -106,7 +106,6 @@ def get_fp16(value):
     :param value:
     :return:
     """
-
     if value != 0:
         reslut = 0x3c00
         data = numpy.float16(value).tobytes()
@@ -125,7 +124,6 @@ def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic, output_format="NC1H
     :param is_dynamic:
     :return:
     """
-
     if dtype == "float16":
         size = 2
         c0 = 16
@@ -667,12 +665,10 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     :param cur_cce_product:
     :return:
     """
-
-    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
+    if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         spr2 = 0
         if aipp_config.get('input_format') in \
-                ["YUV420SP_U8", "YUYV_U8", "YUV422SP_U8",
-                 "AYUV444_U8", "YUV400_U8"]:
+                ("YUV420SP_U8", "YUYV_U8", "YUV422SP_U8", "AYUV444_U8", "YUV400_U8"):
             if ('csc_switch' in aipp_config) and \
                     (aipp_config.get('csc_switch') == 1):
                 if 'matrix_r2c0' in aipp_config:
@@ -798,7 +794,7 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
         if 'output_bias_2' in aipp_config:
             spr4 = spr4 | (aipp_config.get('output_bias_2') & 0xff) << 32
         if aipp_config.get('input_format') in \
-                ["YUV420SP_U8", "YUYV_U8", "YUV422SP_U8", "AYUV444_U8", "YUV400_U8"]:
+                ("YUV420SP_U8", "YUYV_U8", "YUV422SP_U8", "AYUV444_U8", "YUV400_U8"):
             if 'input_bias_0' in aipp_config:
                 spr4 = spr4 | (aipp_config.get('input_bias_0') & 0xff) << 40
             if 'input_bias_1' in aipp_config:
@@ -816,7 +812,7 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
                                 tvm.const(spr4, dtype="uint64")))
 
     spr5 = 0
-    if aipp_config.get('input_format') in ["RAW10", "RAW12", "RAW16", "uint16"] \
+    if aipp_config.get('input_format') in ("RAW10", "RAW12", "RAW16", "uint16") \
             and dtype == "float16":
         spr5 = 0
         if 'mean_chn_0' in aipp_config:
@@ -883,11 +879,11 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     if 'cpadding_value' in aipp_config:
         spr9 = spr9 | (aipp_config.get('cpadding_value') & 0xff)
     if 'rbuv_swap_switch' in aipp_config:
-        if aipp_config.get('input_format') not in ["YUV400_U8", "RAW10", "RAW12", "RAW16"]:
+        if aipp_config.get('input_format') not in ("YUV400_U8", "RAW10", "RAW12", "RAW16"):
             spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 16
             spr9 = spr9 | (aipp_config.get('rbuv_swap_switch') & 0x1) << 17
     if 'ax_swap_switch' in aipp_config:
-        if aipp_config.get('input_format') in ["XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"]:
+        if aipp_config.get('input_format') in ("XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"):
             spr9 = spr9 | (aipp_config.get('ax_swap_switch') & 0x1) << 18
     if 'input_format' in aipp_config:
         if aipp_config.get('input_format') == "YUV420SP_U8":
@@ -935,7 +931,7 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     n = 8
     if 'raw_rgbir_to_f16_n' in aipp_config:
         n = aipp_config.get('raw_rgbir_to_f16_n')
-    if aipp_config.get('input_format') in ["RAW10", "RAW12", "RAW16", "uint16"] \
+    if aipp_config.get('input_format') in ("RAW10", "RAW12", "RAW16", "uint16") \
             and dtype == "float16":
         # [33:30]: raw_to_f16_n
         # the n = 8
@@ -945,11 +941,11 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     if output_format == "NC1HWC0_C04":
         spr9 = spr9 | (1 << 40)
 
-    if aipp_config.get('input_format') in ["RGB16", "RGB20", "RGB24",
-                                           "RGB16_IR", "RGB24_IR"]:
+    if aipp_config.get('input_format') in ("RGB16", "RGB20", "RGB24",
+                                           "RGB16_IR", "RGB24_IR"):
         spr9 = spr9 | (n << 30)
 
-    if aipp_config.get('input_format') in ["RGB20", "RGB24", "RGB24_IR"]:
+    if aipp_config.get('input_format') in ("RGB20", "RGB24", "RGB24_IR"):
         mean_chn_2 = 0
         mean_chn_3 = 0
         if 'mean_chn_2' in aipp_config:
@@ -1629,12 +1625,25 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                   aipp_config.get("load_start_pos_w"))
                     raise_runtime_error(cause_desc)
 
+                if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
+                       (aipp_config.get("crop_size_h") % 2 != 0 or aipp_config.get("crop_size_w") % 2 != 0):
+                    cause_desc = "when input_format is YUV420SP_U8, " \
+                                 "crop_size_h[%d] and crop_size_w[%d] must be even" % \
+                                 (aipp_config.get("crop_size_h"), aipp_config.get("crop_size_w"))
+                    raise_runtime_error(cause_desc)
+
             if aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
                 if aipp_config.get("load_start_pos_w") % 2 != 0:
                     cause_desc = "when input_format is %s, " \
                                  "load_start_pos_w[%d] must be even" % \
                                  (aipp_config.get('input_format'),
                                   aipp_config.get("load_start_pos_w"))
+                    raise_runtime_error(cause_desc)
+                
+                if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
+                       aipp_config.get("crop_size_w") % 2 != 0:
+                    cause_desc = "when input_format is %s, crop_size_w[%d] must be even" % \
+                                 (aipp_config.get('input_format'), aipp_config.get("crop_size_w"))
                     raise_runtime_error(cause_desc)
 
         if ('resize' in aipp_config and aipp_config.get('resize') == 1):
