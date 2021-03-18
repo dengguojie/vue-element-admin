@@ -16,6 +16,9 @@
 file util module
 """
 import os
+import stat
+
+DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
 def _mkdir_without_file_exist_err(dir_path, mode):
@@ -27,7 +30,7 @@ def _mkdir_without_file_exist_err(dir_path, mode):
         raise
 
 
-def makedirs(path, mode):
+def makedirs(path, mode=DATA_DIR_MODES):
     """
     like sheel makedir
     :param path: dirs path

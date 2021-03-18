@@ -288,6 +288,9 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
     logger.log_info("multiprocessing cpu count: %d" % cpu_count)
     logger.log_info("multiprocess_run_args count: %d" % total_count)
 
+    if simulator_mode == "esl":
+        cpu_count = 1
+
     if total_count < cpu_count:
         total_args = []
         for _, soc_args in multiprocess_run_args.items():
@@ -317,14 +320,8 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
         test_report.console_print()
 
     if cov_report and len(multiprocess_run_args) > 0:
-        total_cov_data_file = os.path.join(cov_report_path, ".coverage")
-        cov = coverage.Coverage(source="impl", data_file=total_cov_data_file)
-        combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in os.listdir(cov_combine_dir)]
-        cov.combine(combine_files)
-        cov.save()
-        cov.load()
-        cov.html_report(directory=cov_report_path)
-        os.removedirs(cov_combine_dir)
+        _combine_coverage(cov_report_path, cov_combine_dir)
+
     print("end run ops ut time: %s" % datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"))
     if load_has_err:
         logger.log_err("Has error in case files, you can see error log by key word 'import case file failed'.")
@@ -332,3 +329,14 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
     if test_report.err_cnt > 0 or test_report.failed_cnt > 0:
         run_result = FAILED
     return run_result
+
+
+def _combine_coverage(cov_report_path, cov_combine_dir):
+    total_cov_data_file = os.path.join(cov_report_path, ".coverage")
+    cov = coverage.Coverage(source="impl", data_file=total_cov_data_file)
+    combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in os.listdir(cov_combine_dir)]
+    cov.combine(combine_files)
+    cov.save()
+    cov.load()
+    cov.html_report(directory=cov_report_path)
+    os.removedirs(cov_combine_dir)

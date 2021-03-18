@@ -21,6 +21,8 @@ import os
 import sys
 import json
 import ctypes
+import shutil
+
 from typing import List
 from typing import Dict
 from typing import Union
@@ -30,6 +32,7 @@ import numpy as np
 from op_test_frame.runtime import AscendRTSApi
 from op_test_frame.common import dtype_trans
 from op_test_frame.utils import shape_utils
+from op_test_frame.utils import file_util
 
 
 class AscendOpKernel:
@@ -185,8 +188,8 @@ class AscendOp:
         return kernel_input_list, kernel_output_list
 
     def compile(self, *args, **kwargs) -> AscendOpKernel:
-        import tbe # pylint: disable=import-outside-toplevel
-        import tbe.common.context.op_info as operator_info # pylint: disable=import-outside-toplevel
+        import tbe  # pylint: disable=import-outside-toplevel
+        import tbe.common.context.op_info as operator_info  # pylint: disable=import-outside-toplevel
         op_func = self._load_op_func()
         try:
             with tbe.common.context.op_context.OpContext("dynamic"):
@@ -302,11 +305,51 @@ class AscendOpKernelRunner:
                                           soc_version=soc_version,
                                           simulator_lib_path=simulator_lib_path,
                                           simulator_dump_path=simulator_dump_path)
+        self._simulator_mode = simulator_mode
+        self._simulator_dump_path = simulator_dump_path
+        if self._simulator_mode == "esl":
+            self._prepare_esl()
         self.ascend_device.set_device(device_id=device_id)
         self._stream = self.ascend_device.create_stream()
         self._kernel_params = []
         self.profiling = profiling
         self.profiling_times = profiling_times
+
+    @staticmethod
+    def _prepare_esl():
+        if os.path.exists("./log"):
+            shutil.rmtree("./log")
+        file_util.makedirs("./log")
+        file_list = os.listdir("./")
+        base_path = os.path.realpath("./")
+        for file_name in file_list:
+            file_path = os.path.join(base_path, file_name)
+            if os.path.isfile(file_path) and (
+                    file_name.endswith("_summary_log") or file_name.endswith("wave.vcd")
+                    or file_name.endswith("log.toml") or file_name.endswith("dirSaveDump.txt")
+                    or file_name.endswith("log.log") or file_name.endswith("log1.dump")):
+                os.remove(file_path)
+
+    def _collect_esl_log(self):
+        if os.path.exists("./log"):
+            if os.path.exists(self._simulator_dump_path):
+                dst_log_full_path = os.path.join(self._simulator_dump_path, "log")
+                if os.path.exists(dst_log_full_path):
+                    shutil.rmtree(dst_log_full_path)
+                shutil.move(os.path.realpath("./log"), self._simulator_dump_path)
+            summary_log_path = os.path.join(self._simulator_dump_path, "summary_log")
+            if os.path.exists(summary_log_path):
+                shutil.rmtree(summary_log_path)
+            file_util.makedirs(summary_log_path)
+            file_list = os.listdir("./")
+            base_path = os.path.realpath("./")
+            for file_name in file_list:
+                file_path = os.path.join(base_path, file_name)
+                if os.path.isfile(file_path) and (
+                        file_name.endswith("_summary_log") or file_name.endswith("wave.vcd")
+                        or file_name.endswith("log.toml") or file_name.endswith("dirSaveDump.txt")
+                        or file_name.endswith("log.log") or file_name.endswith("log1.dump")):
+                    shutil.move(file_path, summary_log_path)
 
     def __enter__(self):
         return self
@@ -316,6 +359,8 @@ class AscendOpKernelRunner:
             kernel_param.release_device()
         self.ascend_device.destroy_stream(self._stream)
         self.ascend_device.reset(self.device_id)
+        if self._simulator_mode == "esl":
+            self._collect_esl_log()
 
     def build_kernel_param(self, data, shape=None, dtype=None) -> AscendOpKernelParam:
         if isinstance(data, str):
@@ -396,7 +441,7 @@ class AscendOpKernelRunner:
         if self.profiling:
             self.ascend_device.start_online_profiling(self._stream, self.profiling_times)
         if not kernel.is_registered_to_device():
-            registered_binary = self.ascend_device.register_device_binary_kernel(kernel.bin_path)
+            registered_binary = self.ascend_device.register_device_binary_kernel(kernel.bin_path, magic=kernel.magic)
             stub_func_p = self.ascend_device.register_function(registered_binary, kernel.stub_func_name, 0)
             kernel.set_stub_func_p(stub_func_p)
 

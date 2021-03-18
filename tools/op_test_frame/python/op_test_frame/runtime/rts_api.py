@@ -63,6 +63,13 @@ class rtDeviceInfo_t(ctypes.Structure):
                 ('ts_num', ctypes.c_uint32), ]
 
 
+_MODEL_SO_LIST = {
+    "pv": ("lib_pvmodel.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so"),
+    "ca": ("libcamodel.so", "libtsch_camodel.so", "libnpu_drv_camodel.so", "libruntime_camodel.so"),
+    "tm": ("libpem_davinci.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so"),
+    "esl": ("libnpu_drv_camodel.so", "libruntime_camodel.so")
+}
+
 # to avoid release kernel name pointer
 kernel_name_cache = []
 
@@ -137,12 +144,7 @@ class AscendRTSApi:
                 simulator_lib_dir
             )
 
-        model_so_list = {
-            "pv": ("lib_pvmodel.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so"),
-            "ca": ("libcamodel.so", "libtsch_camodel.so", "libnpu_drv_camodel.so", "libruntime_camodel.so"),
-            "tm": ("libpem_davinci.so", "libtsch.so", "libnpu_drv_pvmodel.so", "libruntime_cmodel.so")
-        }
-        simulator_so_list = model_so_list[simulator_mode]
+        simulator_so_list = _MODEL_SO_LIST[simulator_mode]
         so_full_path_list = []
         for so_name in simulator_so_list:
             so_path = os.path.join(simulator_lib_dir, so_name)
@@ -176,8 +178,9 @@ class AscendRTSApi:
         logger.log_info("start load ascend simulator")
         if not isinstance(simulator_mode, str):
             raise TypeError("simulator_mode need to be a str, actual is: %s." % str(type(simulator_mode)))
-        if simulator_mode not in ["pv", "ca", "tm"]:
-            raise ValueError("simulator_mode need to be 'pv', 'ca' or 'tm', actual is %s" % simulator_mode)
+        if simulator_mode not in _MODEL_SO_LIST.keys():
+            raise ValueError(
+                "simulator_mode need to be %s, actual is %s" % ("/".join(_MODEL_SO_LIST.keys()), simulator_mode))
         simulator_dump_path = os.path.realpath(simulator_dump_path)
         if not os.path.exists(simulator_dump_path):
             raise RuntimeError("simulator_dump_path is not exist.")
@@ -333,7 +336,7 @@ class AscendRTSApi:
         rt_error = self.rtsdll.rtStreamDestroy(stream)
         self.parse_error(rt_error, "rtStreamDestroy")
 
-    def register_device_binary_kernel(self, kernel_path: str):
+    def register_device_binary_kernel(self, kernel_path: str, magic="RT_DEV_BINARY_MAGIC_ELF"):
         """
         Register device kernel on current thread
 
@@ -341,17 +344,21 @@ class AscendRTSApi:
         ----------
         kernel_path: str
             path to device kernel binary
+        magic: str
+            kernel magic, see kernel.json after compile op
 
         Returns
         -------
         rts_binary_handle : a void pointer
         """
+        if not magic:
+            magic = "RT_DEV_BINARY_MAGIC_ELF"
         kernel = file_util.read_file(kernel_path)
         c_kernel_p = ctypes.c_char_p(kernel)
         rts_device_binary = rtDevBinary_t(data=c_kernel_p,
                                           length=ctypes.c_uint64(len(kernel)),
                                           version=ctypes.c_uint32(0),
-                                          magic=ctypes.c_uint32(rts_info.RT_DEV_BINARY_MAGIC_ELF))
+                                          magic=ctypes.c_uint32(rts_info.magic_map[magic]))
         rts_binary_handle = ctypes.c_void_p()
         self.rtsdll.rtDevBinaryRegister.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtDevBinaryRegister(ctypes.c_void_p(ctypes.addressof(rts_device_binary)),
