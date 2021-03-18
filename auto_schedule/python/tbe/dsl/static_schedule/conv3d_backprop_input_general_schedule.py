@@ -458,8 +458,9 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         return d_factor
 
     def _dfactor_dynamic(var_map):
-        ext = compute_util.align((al0_tiling_dfactor - 1), stride_d)
-        estimate_d = compute_util.align((bl0_tiling_kd - 1), stride_d) + ext + 1
+        ext = (al0_tiling_dfactor - 1 + stride_d - 1) // stride_d
+        b_factor = min(kd_tiling_l1_factor * kd_tiling_l1_factor, b_ddr_kd)
+        estimate_d = (b_factor - 1 + stride_d - 1) // stride_d + ext + 1
         if "dedy_d" in var_map:
             d_factor = tvm.min(estimate_d, dy_depth)
         else:
@@ -1029,6 +1030,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
         al0_tiling_dfactor = 1
         kd_factor = 1
         tiling["block_dim"][-1] = 1
+        bl1_tiling_kdparts = 1
     kd_tiling_l1_factor = bl1_tiling_kdparts
     (batch_outer, al1_at_ddr_m_outer, batch_inner, bl1_at_ddr_n_outer, bl1_at_ddr_n_inner,
     col_at_ddr_axis, cddr_m_outer_inner, _, c_ddr_deep_outer, _) = _l0c_procees()
@@ -1193,6 +1195,18 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 al1_h, al1_w = a_l1.shape[3], a_l1.shape[4]
             return al1_bound, al1_h
 
+        def _get_bl1_bound():
+            if len(tiling["BL1_shape"]) != 0:
+                n_bound = tiling["BL1_shape"][1] * tiling["CL0_matrix"][0] * tiling["CL0_matrix"][2]
+                k_bound = tiling["BL1_shape"][0]
+                d_bound = min(tiling["BL1_shape"][-1] * bl0_tiling_kd, b_ddr_kd)
+            else:
+                k_bound = b_ddr_n1 // (real_g * b_ddr_kd) * b_ddr_n0
+                n_parts = compute_util.align(b_ddr_k1 * b_ddr_k0, tiling["CL0_matrix"][0] * tiling["CL0_matrix"][2])
+                n_bound = compute_util.int_ceil_div(n_parts, tiling["block_dim"][1])
+                d_bound = b_ddr_kd
+            return n_bound * k_bound * d_bound
+
         def _set_aub_bound(al1_h):
             if stride_h > 1 or stride_w > 1:
                 d_factor = _dfactor_dynamic(var_map)
@@ -1213,7 +1227,6 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                             aub_h,
                             aub_h + 1)
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0 * d_factor
-                aub_bound = aub_co1 * aub_h * dy_w * aub_co0 * d_factor
                 sch[a_zero].set_storage_bound(a_filling_bound)
                 sch[a_filling].set_storage_bound(a_filling_bound)
                 sch[a_vn].set_storage_bound(a_filling_bound)
@@ -1224,6 +1237,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                               al1_h + padu)
         sch[a_l1].buffer_tile((None, None), (None, None), (None, None), (None, extent_h), (None, None), (None, None))
         sch[a_l1].set_storage_bound(al1_bound)
+        sch[b_l1].set_storage_bound(_get_bl1_bound())
         sch[a_col].set_storage_bound(_get_al0_bound())
         _set_aub_bound(al1_h)
         if "dedy_d" in var_map:

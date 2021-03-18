@@ -82,6 +82,8 @@ _DATA_SIZE_MAX = 9223372036854775807
 _PADDING_VAILD = [0, 0, 0, 0, 0, 0]
 # align with 16 for chips
 _C0_SIZE = tbe_platform.C0_SIZE
+_DIM_STR = "NDHW"
+_DIM_MAP = {"N": [0, 0], "D": [1, 1], "H": [2, 3], "W": [3, 4]}
 
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
@@ -179,11 +181,11 @@ def _check_range(range, range_min=1, range_max=None):
             'conv3d_backprop_input', "the upper bound of range should be larger than lower bound")
 
 def _check_dynamic_flag(input_size_ndhwc):
-    dim_str = "NDHW"
     for i in range(4):
         if input_size_ndhwc[i] < -1:
             error_manager_cube.raise_err_specific(
-                'conv3d_backprop_input',"Dynamic flag is -1, but dim {} is {}".format(dim_str[i], input_size_ndhwc[i]))
+                'conv3d_backprop_input',"Dynamic flag is -1, but dim {} is {}".format(
+                    _DIM_STR[i], input_size_ndhwc[i]))
     if input_size_ndhwc[-1] < 0:
         error_manager_cube.raise_err_specific(
             'conv3d_backprop_input',"Dim C does not support dynamic shape")
@@ -192,6 +194,16 @@ def _get_output(x_in, k_size, pads, stride, dilation):
     if not x_in:
         return None
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+
+def _range_to_fix(shape, range_ori):
+    # if N/D/H/W dim is not dynamic, change corresponding upper and lower bound in range
+    for i in range(4):
+        if shape[i] != -1:
+            dim = _DIM_STR[i]
+            range_idx = _DIM_MAP[dim][1]
+            shape_idx = _DIM_MAP[dim][0]
+            range_ori[range_idx] = (shape[shape_idx], shape[shape_idx])
+    return range_ori
 
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0 = fmap_range
@@ -628,6 +640,8 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
         c1_value = util_common.ceil(input_sizes[-1], _C0_SIZE)
         range_input = [range_input[0], range_input[1], (c1_value, c1_value),
                        range_input[2], range_input[3], (_C0_SIZE, _C0_SIZE)]
+    # modify range of non_dynamic dim
+    range_input = _range_to_fix(input_sizes, list(range_input))
     # get range_dedy
     range_dedy, range_input = _range_correction(range_input, shape_filters, pads, shape_strides,
                                                 shape_dilations, shape_out_backprop)

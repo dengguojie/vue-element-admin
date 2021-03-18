@@ -420,7 +420,7 @@ def check_supported(out_backprop, filters, # pylint: disable=R0913,R0914
     para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT,
     para_check.KERNEL_NAME)
 def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
-                       bias, offset_w, y_input, input_sizes,
+                       bias, offset_w, y_input, input_size,
                        strides, pads, dilations=(1, 1, 1, 1, 1), groups=1,
                        data_format="NDHWC",
                        output_padding=[0, 0, 0, 0, 0],
@@ -445,7 +445,7 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
     y_input: A dict with keys(shape and dtype)
        Conv3d_transpose output tensor, dtype must be assigned
 
-    input_sizes: The shape of feature map
+    input_size: The shape of feature map
         5-D with shape [batch, depth, height, weight, channels]
 
     strides: A tuple/list of 5 integers
@@ -480,7 +480,7 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
         pads, groups, shape_dilations, filters_dtype, out_backprop_dtype,
         res_dtype, kernel_name) = _process_and_check_input(
                                       out_backprop, filters,
-                                      bias, offset_w, y_input, input_sizes,
+                                      bias, offset_w, y_input, input_size,
                                       strides, pads, dilations, groups,
                                       data_format, output_padding, offset_x, kernel_name)
 

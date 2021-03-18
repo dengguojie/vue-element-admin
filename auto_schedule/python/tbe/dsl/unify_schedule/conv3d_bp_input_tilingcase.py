@@ -120,8 +120,12 @@ class Conv3dBpInputTiling(CubeTilingOp):
             bl0_tiling_kd = tiling["BL0_matrix"][-1]
         else:
             bl0_tiling_kd = kernel_d
-        ext = ((al0_tiling_dfactor - 1) + stride_d - 1) // stride_d * stride_d
-        estimate_d = ((bl0_tiling_kd - 1) + stride_d -1) // stride_d * stride_d + ext + 1
+        if tiling.get("BL1_shape"):
+            b_factor = min(tiling["BL1_shape"][-1] * bl0_tiling_kd, kernel_d)
+        else:
+            b_factor = kernel_d
+        ext = ((al0_tiling_dfactor - 1) + stride_d - 1) // stride_d
+        estimate_d = ((b_factor - 1) + stride_d -1) // stride_d + ext + 1
         d_factor = min(estimate_d, dedy_d)
         return d_factor
 
@@ -376,11 +380,13 @@ class Conv3dBpInputTiling(CubeTilingOp):
         n_range_min, n_range_max = self.get_batch_range(n_o, paras)
         tiling_range_n = [n_range_min, n_range_max]
 
+        if not self._check_tiling_match(tiling, w_o, h_o, d_o) or h_o > H_RANGE or w_o > W_RANGE:
+            return tiling_range_n + [0, 0, 0, 0, 0, 0]
+        h_range_min, h_range_max = self.get_h_range(h_o, tiling, paras)
+
         w_range_min, w_range_max = self.get_w_range(h_o, w_o, d_o, tiling, paras)
 
         d_range_min, d_range_max = self.get_d_range(h_o, w_range_min, w_range_max, d_o, tiling, paras)
-
-        h_range_min, h_range_max = self.get_h_range(h_o, tiling, paras)
 
         w_range_max = _modify_max_range()
 
@@ -406,21 +412,21 @@ class Conv3dBpInputTiling(CubeTilingOp):
         """
         var_range = OrderedDict()
         if "batch_n" in self.var_map:
-            var_range['batch_n'] = (coverage[0], coverage[1])
+            var_range['batch_n'] = (TilingUtils.trans_to_int(coverage[0]), TilingUtils.trans_to_int(coverage[1]))
         if "dedy_d" in self.var_map:
-            dx_d_low, dx_d_high = coverage[2], coverage[3]
+            dx_d_low, dx_d_high = TilingUtils.trans_to_int(coverage[2]), TilingUtils.trans_to_int(coverage[3])
             dedy_d_low = self._get_dedy_d(dx_d_low, self.stride_d)
             dedy_d_high = self._get_dedy_d(dx_d_high, self.stride_d)
             var_range['dedx_d'] = (dx_d_low, dx_d_high)
             var_range['dedy_d'] = (dedy_d_low, dedy_d_high)
         if "dedy_h" in self.var_map:
-            dx_h_low, dx_h_high = coverage[4], coverage[5]
+            dx_h_low, dx_h_high = TilingUtils.trans_to_int(coverage[4]), TilingUtils.trans_to_int(coverage[5])
             dedy_h_low = self._get_dedy_h(dx_h_low, self.stride_h)
             dedy_h_high = self._get_dedy_h(dx_h_high, self.stride_h)
             var_range['dedx_h'] = (dx_h_low, dx_h_high)
             var_range['dedy_h'] = (dedy_h_low, dedy_h_high)
         if "dedy_w" in self.var_map:
-            dx_w_low, dx_w_high = coverage[6], coverage[7]
+            dx_w_low, dx_w_high = TilingUtils.trans_to_int(coverage[6]), TilingUtils.trans_to_int(coverage[7])
             dedy_w_low = self._get_dedy_w(dx_w_low, self.stride_w)
             dedy_w_high = self._get_dedy_w(dx_w_high, self.stride_w)
             var_range['dedx_w'] = (dx_w_low, dx_w_high)
@@ -559,6 +565,13 @@ class Conv3dBpInputTiling(CubeTilingOp):
         tiling = copy.deepcopy(tiling_in)
         if tiling["AL1_shape"]:
             tiling["AL1_shape"][0] = tiling["AL1_shape"][0] // (self.k_h * self.k_w * TilingUtils.CUBE_SIZE)
+        else:
+            al1_k_modify = (self.k_cout + TilingUtils.CUBE_SIZE - 1) // TilingUtils.CUBE_SIZE
+            m0 = tbe_platform.CUBE_MKN[self.c_type]["mac"][0]
+            m_aligned = (c_shape[2] * c_shape[3] + m0 - 1) // m0
+            cl0_tiling_mc = tiling_in["CL0_matrix"][1]
+            m_dim = tiling_in["block_dim"][2]
+            tiling["AL1_shape"] = [al1_k_modify, m_aligned // cl0_tiling_mc // m_dim]
         if tiling["BL1_shape"]:
             tiling["BL1_shape"][0] = tiling["BL1_shape"][0] // (self.k_h * self.k_w * TilingUtils.CUBE_SIZE)
         return tiling
@@ -627,7 +640,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         # fmap size in L1 (d * M * K * db * 2byte)
         fmap_l1_size = (d_factor * al1_bound * tiling["AL1_shape"][0] *
                         TilingUtils.FP16_K * tiling["manual_pingpong_buffer"]["AL1_pbuffer"] * TilingUtils.FP16_SIZE)
-        
+
         # filter size
         if tiling["BL1_shape"] is None:
             # not using BL1
@@ -657,7 +670,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
         aub_tiling_k_factor = aub_tiling_k // (self.k_h * self.k_w * TilingUtils.CUBE_SIZE)
         aub_tiling_m_factor = aub_tiling_m
 
-        d_factor = self._get_d_factor(tiling, self.stride_d, self.stride_d, dy_d)
+        d_factor = self._get_d_factor(tiling, self.stride_d, self.k_d, dy_d)
 
         dedy_ub_size = ((d_factor * aub_tiling_k_factor * dy_w * TilingUtils.CUBE_SIZE * TilingUtils.FP16_SIZE *
                         TilingUtils.icd(aub_tiling_m_factor, self.stride_h)) *
