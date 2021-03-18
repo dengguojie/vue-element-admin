@@ -645,6 +645,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     fusion_para = para_dict.get("fusion_para")
     kernel_name = para_dict.get("kernel_name", "conv2d_backprop_input_cce")
     group_dict = para_dict.get("group_dict")
+    is_fusion_flag = para_dict.get("is_fusion_flag")
 
     def ceil(lhs, rhs):
         return (lhs + rhs - 1) // rhs
@@ -686,7 +687,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
                 and (strides[0] > 1 or strides[1] > 1)):
             opti_strategy = (1 + strides[0] * strides[1]) * cube_util.shape_to_list(
                 out_backprop.shape)[3] * tbe_platform.CUBE_MKN[res_dtype]["mac"][2] * BIT_RATIO_DICT[res_dtype]
-            if caller_name.endswith("_compute") or opti_strategy > tbe_platform_info.get_soc_spec("UB_SIZE"):
+            if (caller_name.endswith("_compute") or is_fusion_flag) or \
+                opti_strategy > tbe_platform_info.get_soc_spec("UB_SIZE"):
                 return True
         return False
 

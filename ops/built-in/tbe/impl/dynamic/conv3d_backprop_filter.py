@@ -18,13 +18,16 @@ dynamic conv3d_backprop_filter
 from __future__ import absolute_import
 
 import warnings
-from te import tvm
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-import te.lang.base as tbe_base
-from te.utils import para_check
-from te.utils import error_manager
+
 from impl.util import util_common
+from impl.util.platform_adapter import error_manager_cube
+from impl.util.platform_adapter import error_manager_util
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 
 
 # the dim of shape in conv_backprop must be 5
@@ -93,7 +96,7 @@ def _check_equal(x_1, x_2, param_1, param_2):
         dict_args['actual_value'] = "{}, {}". \
                                     format(x_1, x_2)
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _check_dimensions(shape, name, dimension):
@@ -102,7 +105,7 @@ def _check_dimensions(shape, name, dimension):
         dict_args["errCode"] = "E60107"
         dict_args["param_name"] = name
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _check_type(shape, name, type_set):
@@ -111,7 +114,7 @@ def _check_type(shape, name, type_set):
         dict_args["errCode"] = "E60107"
         dict_args["param_name"] = name
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _check_data_format(data_format, name, format_set=("NDHWC", "NCDHW")):
@@ -122,7 +125,7 @@ def _check_data_format(data_format, name, format_set=("NDHWC", "NCDHW")):
         dict_args['expected_format_list'] = format_set
         dict_args["format"] = data_format
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
 
 def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_format):
@@ -181,7 +184,7 @@ def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
             dict_args["errCode"] = "E60107"
             dict_args["param_name"] = "strides"
             raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
         if isinstance(pads, (tuple, list)):
             _check_dimensions(pads, "pads", _PADDING_SHAPE_DIM)
@@ -215,7 +218,7 @@ def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
             dict_args["pads_value"] = "[{}, {}]".format(pad_front, pad_back)
             dict_args["filter_value"] = str(filter_d_dilation)
             raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
     if -1 in [pad_up, pad_down]:
         pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
         pad_h = tvm.max(pad_h, 0)
@@ -230,7 +233,7 @@ def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
             dict_args["pads_value"] = "[{}, {}]".format(pad_up, pad_down)
             dict_args["filter_value"] = str(filter_h_dilation)
             raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
     if -1 in [pad_left, pad_right]:
         pad_w = util_common.align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
         pad_w = tvm.max(pad_w, 0)
@@ -245,7 +248,7 @@ def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
             dict_args["pads_value"] = "[{}, {}]".format(pad_left, pad_right)
             dict_args["filter_value"] = str(filter_w_dilation)
             raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
     pads = [pad_front, pad_back, pad_up, pad_down, pad_left, pad_right]
     _convert_shape_to_list(pads)
@@ -265,29 +268,29 @@ def _gen_input_shape(fmap_ndhwc, dedy_ndhwc, fmap_range):
         dict_args['actual_value'] = "{}, {}".\
             format(fmap_n, dedy_n)
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     if fmap_n == -1:
-        fmap_n = tbe_base.var("batch_n", bound=fmap_range[0])
-        tbe_base.add_exclude_bound_var(fmap_n)
+        fmap_n = operation.var("batch_n", bound=fmap_range[0])
+        operation.add_exclude_bound_var(fmap_n)
 
     if fmap_d == -1:
-        fmap_d = tbe_base.var("fmap_d", bound=fmap_range[1])
-        dedy_d = tbe_base.var("dedy_d")
-        tbe_base.add_exclude_bound_var(fmap_d)
-        tbe_base.add_exclude_bound_var(dedy_d)
+        fmap_d = operation.var("fmap_d", bound=fmap_range[1])
+        dedy_d = operation.var("dedy_d")
+        operation.add_exclude_bound_var(fmap_d)
+        operation.add_exclude_bound_var(dedy_d)
 
     if fmap_h == -1:
-        fmap_h = tbe_base.var("fmap_h", bound=fmap_range[2])
-        dedy_h = tbe_base.var("dedy_h")
-        tbe_base.add_exclude_bound_var(fmap_h)
-        tbe_base.add_exclude_bound_var(dedy_h)
+        fmap_h = operation.var("fmap_h", bound=fmap_range[2])
+        dedy_h = operation.var("dedy_h")
+        operation.add_exclude_bound_var(fmap_h)
+        operation.add_exclude_bound_var(dedy_h)
 
     if fmap_w == -1:
-        fmap_w = tbe_base.var("fmap_w", bound=fmap_range[3])
-        dedy_w = tbe_base.var("dedy_w")
-        tbe_base.add_exclude_bound_var(fmap_w)
-        tbe_base.add_exclude_bound_var(dedy_w)
+        fmap_w = operation.var("fmap_w", bound=fmap_range[3])
+        dedy_w = operation.var("dedy_w")
+        operation.add_exclude_bound_var(fmap_w)
+        operation.add_exclude_bound_var(dedy_w)
 
     fmap_shape = (fmap_n, fmap_d, fmap_h, fmap_w, fmap_c)
     dedy_shape = (fmap_n, dedy_d, dedy_h, dedy_w, dedy_c)
@@ -310,8 +313,8 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         if out_d_lower < 1:
             fmap_range_d_lower = min(weight_d, fmap_range[1][1]) if fmap_range[1][1] else weight_d
             fmap_range[1] = (fmap_range_d_lower, fmap_range[1][1])
-            out_d_lower = _get_output(fmap_range[1][0], weight_d,    
-                                (pad_front, pad_back), stride[1], dilation[1]) 
+            out_d_lower = _get_output(fmap_range[1][0], weight_d,
+                                (pad_front, pad_back), stride[1], dilation[1])
             warnings.warn("feature map range has been corrected due to invalid output shape D")
         out_d_upper = _get_output(fmap_range[1][1], weight_d,
                                   (pad_front, pad_back), stride[1], dilation[1])
@@ -364,7 +367,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
             dict_args["attr_name"] = name
             dict_args["value"] = str(value)
             raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
 
     def _check_64bits_limitation(attr_name, attr_value, dtype=None):
@@ -377,7 +380,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
             dict_args['errCode'] = "E60020"
             dict_args['attr_name'] = attr_name
             raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
     # First : Base check, Mainly required by interface appearance
     # ============================================================
     # util check
@@ -413,7 +416,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
             'description': "only supports groups=1"
         }
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     if dilation_n != 1 or dilation_c != 1:
         dict_args = {}
@@ -421,7 +424,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
         dict_args["dilation_n"] = str(dilation_n)
         dict_args["dilation_c"] = str(dilation_c)
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     # dtype check
     fmap_dtype = fmap_dtype.lower()
@@ -458,7 +461,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
             'error_desc': 'Chip Design demand dedy_w must >=2 when dedy_h != 1'
         }
         raise RuntimeError(dict_args,
-                           error_manager.get_error_message(dict_args))
+                           error_manager_util.get_error_message(dict_args))
 
     pad = _get_pads_attr(strides, pads, dilations,
                             "NDHWC", fmap_shape, dedw_ndhwc)
@@ -532,13 +535,13 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                 dict_args["d_of_x"] = str(upper_fmap_d_padding)
                 dict_args["d_of_filter"] = str(filter_d_dilation)
                 raise RuntimeError(dict_args,
-                                   error_manager.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
             if (isinstance(fmap_d, int) and
                 ((fmap_d - filter_d_dilation + int(pad_front) + int(pad_back)) // stride_d + 1) != dedy_d):
                 dict_args = {}
                 dict_args["errCode"] = "E60023"
                 raise RuntimeError(dict_args,
-                                   error_manager.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
 
         if -1 not in pads[2:4]:
             if filter_h_dilation > upper_fmap_h_padding:
@@ -547,13 +550,13 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                 dict_args["h_of_x"] = str(upper_fmap_h_padding)
                 dict_args["h_of_filter"] = str(filter_h_dilation)
                 raise RuntimeError(dict_args,
-                                   error_manager.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
             if (isinstance(fmap_h, int) and
                 ((fmap_h - filter_h_dilation + int(pad_up) + int(pad_down)) // stride_h + 1) != dedy_h):
                 dict_args = {}
                 dict_args["errCode"] = "E60024"
                 raise RuntimeError(dict_args,
-                                   error_manager.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
         if -1 not in pads[4:]:
             if filter_w_dilation > upper_fmap_w_padding:
                 dict_args = dict()
@@ -561,15 +564,15 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                 dict_args["w_of_x"] = str(upper_fmap_w_padding)
                 dict_args["w_of_filter"] = str(filter_w_dilation)
                 raise RuntimeError(dict_args,
-                                   error_manager.get_error_message(dict_args))
-        
+                                   error_manager_util.get_error_message(dict_args))
+
             # Third : value check, Mainly required by the convolution rule
             if (isinstance(fmap_w, int) and
                 ((fmap_w - filter_w_dilation + int(pad_left) + int(pad_right)) // stride_w + 1) != dedy_w):
                 dict_args = {}
                 dict_args["errCode"] = "E60025"
                 raise RuntimeError(dict_args,
-                                   error_manager.get_error_message(dict_args))
+                                   error_manager_util.get_error_message(dict_args))
 
     _check_axis_dhw()
 
@@ -589,7 +592,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                 "for this input shape range, the minimum tiling may exceed \
                 L1_Buffer, please lower the upper_bound of fmap_w and retry"
             raise RuntimeError(dict_args,
-                               error_manager.get_error_message(dict_args))
+                               error_manager_util.get_error_message(dict_args))
 
     _min_l1_byte()
 
@@ -627,18 +630,18 @@ def _conv3d_backprop_filter_compute(x, filter_size, out_backprop, y,
                                    dilations, dedy_ndhwc)
 
     fmap_shape, dedy_shape = _gen_input_shape(x_ndhwc, dedy_ndhwc, fmap_range)
-   
+
     group_dict = util_common.calculate_group(x_ndhwc[-1], dedy_ndhwc[-1],
                                              groups, _C0_SIZE, _C0_SIZE)
 
     pad = _get_pads_attr(strides, pads, dilations,
                          data_format, fmap_shape, dedw_ndhwc)
-   
+
     fmap_shape, dedy_shape = _check_conv3dbp_filter_params(
         fmap_shape, dedy_shape, dedw_ndhwc, strides, pads, dilations,
         groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name,
         fmap_range, dedy_range)
-    
+
     fmap = tvm.placeholder(fmap_shape, name="fmap", dtype=x_dtype)
     filter_size = tvm.placeholder([_CONV_BACKPROP_SHAPE_DIM], name="filter_size", dtype="int32")
     dedy = tvm.placeholder(dedy_shape, name="dedy", dtype=dedy_dtype)
@@ -653,18 +656,13 @@ def _conv3d_backprop_filter_compute(x, filter_size, out_backprop, y,
         "res_dtype": dedw_dtype,
         "kernel_name": kernel_name
     }
-   
-    dedw = tbe.conv3d_dw(
-        x=fmap,
-        out_backprop=dedy,
-        filter_size=dedw_ndchw,
-        para_dict=para_dict
-    )
+
+    dedw = tbe.conv3d_backprop_filter(x=fmap, out_backprop=dedy, filter_size=dedw_ndchw, para_dict=para_dict)
 
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
 
 
-@tbe_base.register_operator('Conv3DBackpropFilter')
+@register_operator('Conv3DBackpropFilter')
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT,
     para_check.REQUIRED_INPUT,
@@ -720,8 +718,8 @@ def conv3d_backprop_filter(x, filter_size, out_backprop, y, strides, pads,
     -------
     None
     """
-    
-    with tbe_base.compute():
+
+    with tbe.compute():
         res = _conv3d_backprop_filter_compute(
             x, filter_size, out_backprop, y, strides, pads, dilations,
             groups, data_format, kernel_name)

@@ -590,7 +590,8 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
         "tensor_bias": bias,
         "offset_x": offset_x,
         "kernel_name": kernel_name,
-        "group_dict": group_dict
+        "group_dict": group_dict,
+        "is_fusion_flag": True
     }
 
     res = tbe.conv2d_backprop_input(filter, x, shape_filter, shape_res, para_dict=para_dict)
