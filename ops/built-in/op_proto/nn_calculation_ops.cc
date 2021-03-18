@@ -2058,6 +2058,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   op.GetAttr("strides", stride_list);
   std::vector<int32_t> dilation_list;
   op.GetAttr("dilations", dilation_list);
+  std::vector<int32_t> input_sizes;
+  op.GetAttr("input_size", input_sizes);
   int32_t ih = 0;
   int32_t iw = 0;
   int32_t strh = 0;
@@ -2126,6 +2128,14 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
     kw = filter_shape[1];
   }
 
+  auto y_desc = op.GetOutputDesc("y");
+  auto y_format = y_desc.GetOriginFormat();
+  std::string y_format_str = format2str[y_format];
+  int32_t n_y_position = y_format_str.find("N");
+  int32_t c_y_position = y_format_str.find("C");
+  int32_t h_y_position = y_format_str.find("H");
+  int32_t w_y_position = y_format_str.find("W");
+
   // get pads
   std::vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
@@ -2152,6 +2162,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
 
   for(int i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 1) {
+      int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
         int64_t cin_start = y_data_slice[i][0] * kh * kw;
         int64_t cin_end = (y_data_slice[i][1] + 1) * kh * kw - 1;
@@ -2159,6 +2170,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
         if(!AttrUtils::SetListListInt(tensor_desc_filter, ge::ATTR_NAME_DATA_SLICE, filter_data_slice)) {
           return GRAPH_FAILED;
         }
+        input_sizes[c_y_position] = y_extend * 16;
+        op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
         return GRAPH_SUCCESS;
       } else if(i == 2 && (kh != 1 || strh != 1)) {
@@ -2168,6 +2181,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
         if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
           return GRAPH_FAILED;
         }
+        input_sizes[h_y_position] = y_extend;
+        op.SetAttr("input_size", input_sizes);
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in H success");
         return GRAPH_SUCCESS;
@@ -2178,6 +2193,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
         if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
           return GRAPH_FAILED;
         }
+        input_sizes[w_y_position] = y_extend;
+        op.SetAttr("input_size", input_sizes);
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in W success");
         return GRAPH_SUCCESS;
@@ -2189,6 +2206,14 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
         if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
           return GRAPH_FAILED;
         }
+        if (i == 2) {
+          input_sizes[h_y_position] = y_extend;
+        } else if (i == 3) {
+          input_sizes[w_y_position] = y_extend;
+        } else {
+          input_sizes[n_y_position] = y_extend;
+        }
+        op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in N/H/W without overlap success");
         return GRAPH_SUCCESS;
       }
@@ -2590,6 +2615,9 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
   op.GetAttr("strides", stride_list);
   std::vector<int32_t> dilation_list;
   op.GetAttr("dilations", dilation_list);
+  std::vector<int32_t> input_sizes;
+  op.GetAttr("input_size", input_sizes);
+
   int32_t ih = 0;
   int32_t iw = 0;
   int32_t strh = 0;
@@ -2657,6 +2685,14 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
     kw = filter_shape[1];
   }
 
+  auto y_desc = op.GetOutputDesc("y");
+  auto y_format = y_desc.GetOriginFormat();
+  std::string y_format_str = format2str[y_format];
+  int32_t n_y_position = y_format_str.find("N");
+  int32_t c_y_position = y_format_str.find("C");
+  int32_t h_y_position = y_format_str.find("H");
+  int32_t w_y_position = y_format_str.find("W");
+
   // get pads
   std::vector<int32_t> pad_list;
   op.GetAttr("pads", pad_list);
@@ -2683,6 +2719,7 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
 
   for(int i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 1) {
+      int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
         int64_t cin_start = y_data_slice[i][0] * kh * kw;
         int64_t cin_end = (y_data_slice[i][1] + 1) * kh * kw - 1;
@@ -2690,6 +2727,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
         if(!AttrUtils::SetListListInt(tensor_desc_filter, ge::ATTR_NAME_DATA_SLICE, filter_data_slice)) {
           return GRAPH_FAILED;
         }
+        input_sizes[c_y_position] = y_extend * 16;
+        op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
         return GRAPH_SUCCESS;
       } else if(i == 2 && (kh != 1 || strh != 1)) {
@@ -2699,6 +2738,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
         if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
           return GRAPH_FAILED;
         }
+        input_sizes[h_y_position] = y_extend;
+        op.SetAttr("input_size", input_sizes);
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in H success");
         return GRAPH_SUCCESS;
@@ -2709,6 +2750,8 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
         if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
           return GRAPH_FAILED;
         }
+        input_sizes[w_y_position] = y_extend;
+        op.SetAttr("input_size", input_sizes);
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in W success");
         return GRAPH_SUCCESS;
@@ -2720,6 +2763,14 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInputD, Conv2DBackpropInputDInferDataSlic
         if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
           return GRAPH_FAILED;
         }
+        if (i == 2) {
+          input_sizes[h_y_position] = y_extend;
+        } else if (i == 3) {
+          input_sizes[w_y_position] = y_extend;
+        } else {
+          input_sizes[n_y_position] = y_extend;
+        }
+        op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in N/H/W without overlap success");
         return GRAPH_SUCCESS;
       }
@@ -8262,8 +8313,10 @@ static graphStatus VerifyConv2DTransposeInput(const ge::Operator& op) {
 bool InferConv2DTransposeDataSlice(ge::Operator& op) {
   auto x_tensor = op.GetInputDesc("x");
   auto w_tensor = op.GetInputDesc("filter");
+  auto y_tensor = op.GetOutputDesc("y");
   auto x_format = x_tensor.GetOriginFormat();
   auto w_format = w_tensor.GetOriginFormat();
+  auto y_format = y_tensor.GetOriginFormat();
   auto x_shape = x_tensor.GetOriginShape().GetDims();
   auto w_shape = w_tensor.GetOriginShape().GetDims();
   auto x_dtype = x_tensor.GetDataType();
@@ -8288,12 +8341,28 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
+  vector<int32_t> input_sizes;
+  if (op.GetAttr("input_size", input_sizes) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "op get input_size failed.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = "Conv2DTransposeD";
+    err_map["param_name"] = "input_size";
+    std::string report_error_code = "E50030";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
   std::string x_format_str = format2str[x_format];
   std::string w_format_str = format2str[w_format];
+  std::string y_format_str = format2str[y_format];
   int32_t h_input_position = x_format_str.find("H");
   int32_t w_input_position = x_format_str.find("W");
   int32_t h_filter_position = w_format_str.find("H");
   int32_t w_filter_position = w_format_str.find("W");
+  int32_t n_y_position = y_format_str.find("N");
+  int32_t c_y_position = y_format_str.find("C");
+  int32_t h_y_position = y_format_str.find("H");
+  int32_t w_y_position = y_format_str.find("W");
 
   int32_t ih = x_shape[h_input_position];
   int32_t iw = x_shape[w_input_position];
@@ -8337,6 +8406,7 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
   }
   for(int i = 0; i < y_data_slice.size(); i++) {
     if (y_data_slice[i].size() > 1) {
+      int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
       if (i == 1) {
         if (x_dtype != DT_INT8) {
           int64_t cin_start = y_data_slice[i][0] * kh * kw;
@@ -8348,6 +8418,8 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
         if(!AttrUtils::SetListListInt(tensor_desc_w, ge::ATTR_NAME_DATA_SLICE, w_data_slice)) {
           return false;
         }
+        input_sizes[c_y_position] = y_extend * 16;
+        op.SetAttr("input_size", input_sizes);
         OP_LOGI(op.GetName().c_str(), "infer input in Cin success");
         return true;
       } else if(i == 2 && (kh != 1 || strh != 1)) {
@@ -8357,6 +8429,8 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
         if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
           return false;
         }
+        input_sizes[h_y_position] = y_extend;
+        op.SetAttr("input_size", input_sizes);
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in H success");
         return true;
@@ -8367,6 +8441,8 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
         if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
           return false;
         }
+        input_sizes[w_y_position] = y_extend;
+        op.SetAttr("input_size", input_sizes);
         op.SetAttr("pads", pad_list);
         OP_LOGI(op.GetName().c_str(), "infer input in W success");
         return true;
@@ -8378,6 +8454,14 @@ bool InferConv2DTransposeDataSlice(ge::Operator& op) {
          if(!AttrUtils::SetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice)) {
            return false;
          }
+         if (i == 2) {
+           input_sizes[h_y_position] = y_extend;
+         } else if (i == 3) {
+           input_sizes[w_y_position] = y_extend;
+         } else {
+           input_sizes[n_y_position] = y_extend;
+         }
+         op.SetAttr("input_size", input_sizes);
          OP_LOGI(op.GetName().c_str(), "infer input in N/H/W without overlap success");
          return true;
       }

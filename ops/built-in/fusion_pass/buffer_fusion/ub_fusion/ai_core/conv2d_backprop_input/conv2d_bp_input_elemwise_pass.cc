@@ -23,6 +23,8 @@
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
 
 namespace fe {
 
@@ -71,6 +73,63 @@ vector<BufferFusionPattern*> TbeDxElemwisePass::DefinePatterns() {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name0.c_str());
 
   return patterns;
+}
+
+void TbeDxElemwisePass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> deconv_nodes = GetMatchedNodesByDescName(PATTERN_DX, mapping);
+  if (deconv_nodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Deconv node not matched");
+    return;
+  }
+  vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
+  if (elemwise_nodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
+    return;
+  }
+
+  int inpre = 0;
+  string op_slice_info_str = "";
+  for (auto deconv_node: deconv_nodes) {
+    inpre = deconv_node->GetInDataNodes().size() - 1;
+    ge::AttrUtils::GetStr(deconv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
+  }
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+
+  OpCalcInfo op_calc_info;
+  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
+  auto split_maps = op_calc_info.GetAxisSplitMapVec();
+  if (split_maps.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "axis split map vector is empty");
+    return;
+  }
+  // when deconv + prelu, add one input
+  if (elemwise_nodes[0]->GetType() == "PRelu") {
+    inpre += 1;
+    vector<int64_t> cout_dim = {1};
+    vector<int64_t> split_flag = {0};
+    for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+      auto output_split_infos = (*it).GetOutputSplitInfoVec();
+      if (output_split_infos.empty()) {
+        OP_LOGW(FUSED_OP_TYPE.c_str(), "output_split_infos is empty");
+        return;
+      }
+      if (output_split_infos[0].GetAxis()[0] == 1) {
+        InputSplitInfo input_split_info;
+        input_split_info.SetIndex(inpre);
+        input_split_info.SetAxis(cout_dim);
+        input_split_info.SetHeadOverLap(split_flag);
+        input_split_info.SetTailOverLap(split_flag);
+        (*it).AddInputSplitInfo(input_split_info);
+      }
+    }
+    op_calc_info.SetAxisSplitMaps(split_maps);
+    SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
+  }
+
+  for (auto fusion_node : fusion_nodes) {
+    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
+  }
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
 }
 
 /*

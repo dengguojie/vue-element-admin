@@ -25,6 +25,7 @@
 #include <vector>
 #include <string>
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_base.h"
+#include "common/lxfusion_json_util.h"
 
 namespace fe {
 
@@ -41,6 +42,8 @@ class TbeDxDeqElemQuantPass : public BufferFusionPassBase {
   Status GetFusionNodes(const BufferFusionMapping& mapping, vector<ge::NodePtr>& fusion_nodes) override;
 
  private:
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
+  void DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis);
   const std::string FUSED_OP_TYPE = "FusedOp";
 };
 

@@ -23,6 +23,8 @@
 #include "pattern_fusion_util.h"
 #include "op_log.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
 
 namespace fe {
 
@@ -128,6 +130,115 @@ vector<BufferFusionPattern*> TbeDxDeqElemQuantPass::DefinePatterns() {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to define %s pass pattern.", pass_name2.c_str());
 
   return patterns;
+}
+
+void TbeDxDeqElemQuantPass::DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps, int axis) {
+  std::vector<AxisSplitMap> temp_maps;
+  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+    bool del_axis = false;
+    auto input_split_infos = (*it).GetInputSplitInfoVec();
+    for (auto input_split_info : input_split_infos) {
+      if (!input_split_info.GetAxis().empty()) {
+        if (input_split_info.GetAxis()[0] == axis) {
+          del_axis = true;
+        }
+      }
+    }
+    if (!del_axis) {
+      temp_maps.push_back(*it);
+    }
+  }
+  split_maps = temp_maps;
+}
+
+void TbeDxDeqElemQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> deconv_nodes = GetMatchedNodesByDescName(PATTERN_DX, mapping);
+  if (deconv_nodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Deconv node not matched");
+    return;
+  }
+  vector<ge::NodePtr> elemwise_nodes = GetMatchedNodesByDescName(PATTERN_ELEM, mapping);
+  if (elemwise_nodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Elemwise node not matched");
+    return;
+  }
+  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
+  if (dequant_nodes.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Dequant node not matched");
+    return;
+  }
+  bool cut_cout_flag = false;
+  vector<int64_t> deq_scale_shape;
+  for (auto dequant_node : dequant_nodes) {
+    deq_scale_shape = dequant_node->GetOpDesc()->GetInputDesc("deq_scale").GetOriginShape().GetDims();
+    if(!(deq_scale_shape.size() == 1 && deq_scale_shape[0] == 1)) {
+      cut_cout_flag = true;
+    }
+  }
+  vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
+  if (!quant_nodes.empty()) {
+    cut_cout_flag = false;
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "the fusion with quant");
+  }
+
+  int inpre = 0;
+  string op_slice_info_str = "";
+  for (auto deconv_node: deconv_nodes) {
+    inpre = deconv_node->GetInDataNodes().size() - 1;
+    ge::AttrUtils::GetStr(deconv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
+  }
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+
+  OpCalcInfo op_calc_info;
+  GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
+  auto split_maps = op_calc_info.GetAxisSplitMapVec();
+  if (split_maps.empty()) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "axis split map vector is empty");
+    return;
+  }
+
+  int c_dim = 1;
+  if (!cut_cout_flag) {
+    DelSplitInfoByAxis(split_maps, c_dim);
+  }
+
+   // when deconv + dequant + prelu, add two input, else add one
+  int deq_inpre = inpre + 1;
+  int elem_inpre = inpre + 2;
+  vector<int64_t> cout_dim = {1};
+  vector<int64_t> split_flag = {0};
+  for(auto it = split_maps.begin(); it != split_maps.end(); ++it) {
+    auto input_split_infos = (*it).GetInputSplitInfoVec();
+    auto output_split_infos = (*it).GetOutputSplitInfoVec();
+    if (output_split_infos.empty()) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "output_split_infos is empty");
+      return;
+    }
+    if (output_split_infos[0].GetAxis()[0] == 1) {
+      if (cut_cout_flag) {
+        InputSplitInfo input_split_info_deq;
+        input_split_info_deq.SetIndex(deq_inpre);
+        input_split_info_deq.SetAxis(cout_dim);
+        input_split_info_deq.SetHeadOverLap(split_flag);
+        input_split_info_deq.SetTailOverLap(split_flag);
+        (*it).AddInputSplitInfo(input_split_info_deq);
+        if (elemwise_nodes[0]->GetType() == "PRelu") {
+          InputSplitInfo input_split_info_elem;
+          input_split_info_elem.SetIndex(elem_inpre);
+          input_split_info_elem.SetAxis(cout_dim);
+          input_split_info_elem.SetHeadOverLap(split_flag);
+          input_split_info_elem.SetTailOverLap(split_flag);
+          (*it).AddInputSplitInfo(input_split_info_elem);
+        }
+      }
+    }
+  }
+  op_calc_info.SetAxisSplitMaps(split_maps);
+  SetFusionOpSliceInfoToJson(op_calc_info, op_slice_info_str);
+  for (auto fusion_node : fusion_nodes) {
+    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, op_slice_info_str);
+  }
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
 }
 
 /*
