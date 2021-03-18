@@ -49,7 +49,7 @@ def mish_compute(input_x, output_y, kernel_name="mish"):
     add_exp_val = tbe.vadds(exp_val, tvm.const(1, dtype))
     pow_var = tbe.vmul(add_exp_val, add_exp_val)
     add_val = tbe.vadds(pow_var, tvm.const(1, dtype))
-    rec_val = tbe.vrec(add_val)
+    rec_val = tbe.vrec(add_val, priority_flag=0)
     mul_val = tbe.vmuls(rec_val, tvm.const(-2, dtype=dtype))
     add_val2 = tbe.vadds(mul_val, tvm.const(1, dtype=dtype))
     res = tbe.vmul(input_x, add_val2)
