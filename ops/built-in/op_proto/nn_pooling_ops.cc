@@ -6759,7 +6759,6 @@ VERIFY_FUNC_REG(MaxPoolGradWithArgmaxV1, MaxPoolGradWithArgmaxV1Verify);
 
 // ------------MaxPoolWithArgmaxV1 Op Begin----------------
 struct MaxPoolWithArgmaxParam {
-  int input_size;
   int pad;
   int dilation;
   int kernel_size;
@@ -6767,26 +6766,24 @@ struct MaxPoolWithArgmaxParam {
   bool ceil_mode;
 };
 
-int CalMax(const MaxPoolWithArgmaxParam &maxpool) {
+int CalMax(const MaxPoolWithArgmaxParam &maxpool, int input_size) {
   const uint32_t G_DIM_C = 1;
   const uint32_t G_DIM_H = 2;
   int max_size = 0;
   int temp = 0;
-  int input_size = maxpool.input_size;
   int pad = maxpool.pad;
   int dilation = maxpool.dilation;
   int kernel_size = maxpool.kernel_size;
   int stride = maxpool.stride;
   bool ceil_mode = maxpool.ceil_mode;
   if (stride == 0) {
-    return 0;
+     return 0;
   }
-  temp =
-      input_size + G_DIM_H * pad - dilation * (kernel_size - G_DIM_C) - G_DIM_C;
+  temp = input_size + G_DIM_H * pad - dilation * (kernel_size - G_DIM_C) - G_DIM_C;
   if (ceil_mode) {
-    max_size = (temp + stride - G_DIM_C) / stride + G_DIM_C;
+      max_size = (temp + stride - G_DIM_C) / stride + G_DIM_C;
   } else {
-    max_size = temp / stride + G_DIM_C;
+      max_size = temp / stride + G_DIM_C;
   }
   return max_size;
 }
@@ -6795,18 +6792,18 @@ int CalCeil(int a, int b) {
   const uint32_t G_DIM_C = 1;
   int r = 0;
   if (b == 0) {
-    return 0;
+     return 0;
   }
 
   if (a % b == 0) {
-    r = a / b;
+      r = a / b;
   } else {
-    r = a / b + G_DIM_C;
+      r = a / b + G_DIM_C;
   }
   return r;
 }
 
-int CalMaskH(int max_h, int max_w, int kernel_h, int kernel_w, int input_c0) {
+int CalMaskH(int max_h, int kernel_h, int kernel_w) {
   int mask_h = 0;
   mask_h = kernel_h * kernel_w;
   return mask_h;
@@ -6826,14 +6823,27 @@ IMPLEMT_VERIFIER(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV1Verify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
-  TensorDesc output_max = op.GetOutputDesc("y");
-  TensorDesc output_mask = op.GetOutputDesc("argmax");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto output_max = op_info->MutableOutputDesc("y");
+  auto output_mask = op_info->MutableOutputDesc("argmax");
+  auto shape = input_desc->MutableShape();
 
-  auto tensor_desc = op.GetInputDesc(0);
-  auto shape = tensor_desc.GetShape();
+  std::vector<int64_t> input_dims = shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
 
-  std::vector<int64_t> vec_max, vec_mask, vec_pads, vec_dilation, vec_kernel,
-      vec_strides;
+  if (IsUnknownRankShape(input_dims)) {
+      OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input [-1, -1, -1, -1].");
+      input_dims = {-1, -1, -1, -1};
+  } else {
+      input_desc->GetShapeRange(input_range);
+  }
+  MakeUpShapeRange(input_dims, input_range);
+
+  std::vector<int64_t> vec_max, vec_mask, vec_pads, vec_dilation, vec_kernel, vec_strides;
+  std::vector<std::pair<int64_t, int64_t>> max_range, mask_range;
+  std::pair<int64_t, int64_t> max_h_range_dim, mask_h_range_dim, max_w_range_dim, mask_w_range_dim;
+
   int batch_size, c1_size, input_h, input_w, kernel_h, kernel_w;
   int input_c0 = 16;
   bool ceil_mode = false;
@@ -6853,22 +6863,49 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
   kernel_h = vec_kernel[G_DIM_C];
   kernel_w = vec_kernel[G_DIM_H];
 
-  MaxPoolWithArgmaxParam maxpool_h = {input_h,
-                                      static_cast<int>(vec_pads[G_DIM_C]),
-                                      static_cast<int>(vec_dilation[G_DIM_C]),
-                                      kernel_h,
-                                      static_cast<int>(vec_strides[G_DIM_C]),
-                                      ceil_mode};
-  MaxPoolWithArgmaxParam maxpool_w = {input_w,
-                                      static_cast<int>(vec_pads[G_DIM_H]),
-                                      static_cast<int>(vec_dilation[G_DIM_H]),
-                                      kernel_w,
-                                      static_cast<int>(vec_strides[G_DIM_H]),
-                                      ceil_mode};
-  int max_h = CalMax(maxpool_h);
-  int max_w = CalMax(maxpool_w);
-  int mask_h = CalMaskH(max_h, max_w, kernel_h, kernel_w, input_c0);
-  int mask_w = CalMaskW(max_h, max_w, kernel_h, kernel_w, input_c0);
+  MaxPoolWithArgmaxParam maxpool_h = {static_cast<int>(vec_pads[G_DIM_C]), static_cast<int>(vec_dilation[G_DIM_C]),
+  kernel_h, static_cast<int>(vec_strides[G_DIM_C]), ceil_mode};
+  MaxPoolWithArgmaxParam maxpool_w = {static_cast<int>(vec_pads[G_DIM_H]), static_cast<int>(vec_dilation[G_DIM_H]),
+  kernel_w, static_cast<int>(vec_strides[G_DIM_H]), ceil_mode};
+
+  int max_h = -1;
+  int max_w = -1;
+  int mask_h = -1;
+  int mask_w = -1;
+  int max_h_range0 = 1;
+  int max_h_range1 = -1;
+  auto dim_h_range = input_range[2];
+  auto dim_w_range = input_range[3];
+
+  if (input_h != -1) {
+      max_h = CalMax(maxpool_h, input_h);
+      mask_h = CalMaskH(max_h, kernel_h, kernel_w);
+      max_h_range_dim = std::pair<int64_t, int64_t>{max_h, max_h};
+      mask_h_range_dim = std::pair<int64_t, int64_t>{mask_h, mask_h};
+  } else {
+      int max_h_range0 = dim_h_range.first == 1 ? 1 : CalMax(maxpool_h, dim_h_range.first);
+      int max_h_range1 = dim_h_range.second == -1 ? -1 : CalMax(maxpool_h, dim_h_range.second);
+      int mask_h_rang0 = dim_h_range.first == 1 ? 1 : CalMaskH(max_h_range0, kernel_h, kernel_w);
+      int mask_h_rang1 = dim_h_range.first == -1 ? -1 : CalMaskH(max_h_range1, kernel_h, kernel_w);
+      max_h_range_dim = std::pair<int64_t, int64_t>{max_h_range0, max_h_range1};
+      mask_h_range_dim = std::pair<int64_t, int64_t>{mask_h_rang0, mask_h_rang1};
+  }
+
+  if (input_w != -1) {
+      max_w = CalMax(maxpool_w, input_w);
+      mask_w = CalMaskW(max_h, max_w, kernel_h, kernel_w, input_c0);
+      max_w_range_dim = std::pair<int64_t, int64_t>{max_w, max_w};
+      mask_w_range_dim = std::pair<int64_t, int64_t>{mask_w, mask_w};
+  } else {
+      int max_w_range0 = dim_w_range.first == 1 ? 1 : CalMax(maxpool_w, dim_w_range.first);
+      int max_w_range1 = dim_w_range.second == -1 ? -1 : CalMax(maxpool_w, dim_w_range.second);
+      int mask_w_rang0 = dim_w_range.first == 1 ? 1 : CalMaskW(max_h_range0, max_w_range0, kernel_h,
+                                                               kernel_w, input_c0);
+      int mask_w_rang1 = dim_w_range.first == -1 ? -1 : CalMaskW(max_h_range1, max_w_range1, kernel_h,
+                                                                 kernel_w, input_c0);
+      max_w_range_dim = std::pair<int64_t, int64_t>{max_w_range0, max_w_range1};
+      mask_w_range_dim = std::pair<int64_t, int64_t>{mask_w_rang0, mask_w_rang1};
+    }
 
   vec_max.push_back(batch_size);
   vec_max.push_back(c1_size);
@@ -6878,18 +6915,26 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
   vec_mask.push_back(c1_size);
   vec_mask.push_back(mask_h);
   vec_mask.push_back(mask_w);
+  max_range.push_back(input_range[0]);
+  max_range.push_back(input_range[1]);
+  max_range.push_back(max_h_range_dim);
+  max_range.push_back(max_w_range_dim);
+  mask_range.push_back(input_range[0]);
+  mask_range.push_back(input_range[1]);
+  mask_range.push_back(mask_h_range_dim);
+  mask_range.push_back(mask_w_range_dim);
 
-  ge::Shape max_shape = ge::Shape(vec_max);
-  ge::Shape mask_shape = ge::Shape(vec_mask);
+  OP_LOGD(op.GetName().c_str(), "max_shape[%d,%d]", vec_max[2], vec_max[3]);
+  OP_LOGD(op.GetName().c_str(), "mask_shape[%d,%d]", vec_mask[2], vec_mask[3]);
+  OP_LOGD(op.GetName().c_str(), "max_range[%d,%d]", max_h_range_dim.first, max_h_range_dim.second);
+  OP_LOGD(op.GetName().c_str(), "max_range[%d,%d]", max_w_range_dim.first, max_w_range_dim.second);
+  OP_LOGD(op.GetName().c_str(), "mask_range[%d,%d]", mask_h_range_dim.first, mask_h_range_dim.second);
+  OP_LOGD(op.GetName().c_str(), "mask_range[%d,%d]", mask_w_range_dim.first, mask_w_range_dim.second);
 
-  output_max.SetShape(max_shape);
-  output_max.SetDataType(op.GetInputDesc("x").GetDataType());
-  output_max.SetFormat(op.GetInputDesc("x").GetFormat());
-  output_mask.SetShape(mask_shape);
-  output_mask.SetFormat(op.GetInputDesc("x").GetFormat());
-
-  (void)op.UpdateOutputDesc("y", output_max);
-  (void)op.UpdateOutputDesc("argmax", output_mask);
+  output_max->SetShape(GeShape(vec_max));
+  output_max->SetShapeRange(max_range);
+  output_mask->SetShape(GeShape(vec_mask));
+  output_mask->SetShapeRange(mask_range);
   return GRAPH_SUCCESS;
 }
 

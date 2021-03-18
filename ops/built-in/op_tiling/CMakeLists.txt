@@ -99,6 +99,7 @@ set(_optiling_files
   softmax_tiling.cc
   embedding_dense_grad.cc
   one_hot.cc
+  maxpoolwithargmaxv1.cc
 )
 
 set(_op_tiling_include

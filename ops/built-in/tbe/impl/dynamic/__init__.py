@@ -253,3 +253,4 @@ from .bitwise_and import bitwise_and
 from .bitwise_or import bitwise_or
 from .bitwise_xor import bitwise_xor
 from .prelu import prelu
+from .max_pool_with_argmaxv1 import max_pool_with_argmax_v1
