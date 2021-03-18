@@ -70,6 +70,26 @@ def test_pooling_get_op_support_info(test_arg):
 
 ut_case.add_cust_test_func(test_func=test_pooling_get_op_support_info)
 
+def test_pooling_sd3403(test_arg):
+    from impl.pooling import pooling
+    from te import platform as cce_conf
+    cce_conf.cce_conf.te_set_version("SD3403", core_type="AiCore")
+    pooling({"shape": (1, 2, 64, 64, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, 64, 64),"ori_format": "NCHW"},
+            None,
+            None,
+            {"shape": (1, 2, 1, 1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, 1, 1),"ori_format": "NCHW"},
+            (64, 64),
+            (1, 1),
+            0,
+            1,
+            (0, 0, 0, 0),
+            True,
+            0,
+            (1, 1, 1, 1),
+            "pooling_cce",
+            "high_precision")
+    cce_conf.cce_conf.te_set_version(test_arg)
+ut_case.add_cust_test_func(test_func=test_pooling_sd3403)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

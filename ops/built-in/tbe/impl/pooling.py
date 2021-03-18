@@ -369,6 +369,20 @@ def pooling_compute(x, matrix, y, window, stride,
     in_valid_shape = fusion_params.get("in_valid_shape")
     in_slice_offset = fusion_params.get("in_slice_offset")
     l1_fusion_type = fusion_params.get("l1_fusion_type")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
+    if all([impl_mode == "high_precision", mode == "GAP", cce_product in ("Hi3796CV300CS", "SD3403")]):
+        # L1 fusion not support
+        if l1_fusion_type != -1:
+            error_manager_vector.raise_err_specific_reson("pooling", "global avg pooling not support L1 fusion")
+        # get window size
+        window_h = window[0]
+        window_w = window[1]
+        size_h_const = tvm.const(1.0/window_h, dtype=x.dtype)
+        size_w_const = tvm.const(1.0/window_w, dtype=x.dtype)
+        input_x_vmuls = tbe.vmuls(x, size_h_const)
+        input_x_sum = tbe.sum(input_x_vmuls, axis=[2, 3])
+        res = tbe.vmuls(input_x_sum, size_w_const)
+        return res
 
     if in_select_read_flag:
         select_tensor_in = tvm.compute(in_valid_shape,
