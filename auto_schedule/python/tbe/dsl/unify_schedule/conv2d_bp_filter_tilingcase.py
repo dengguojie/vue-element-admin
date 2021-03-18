@@ -267,7 +267,8 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             self._set_padding_list(x_h_low, x_w_low)
             dedy_h_low = self._get_output_h(x_h_low)
             dedy_w_low = self._get_output_w(x_w_low)
-            self._set_padding_list(x_h_high, x_w_high)
+            if x_h_high and x_w_high:
+                self._set_padding_list(x_h_high, x_w_high)
             dedy_h_high = self._get_output_h(x_h_high)
             dedy_w_high = self._get_output_w(x_w_high)
 
@@ -287,7 +288,7 @@ class Conv2dBpFilterTiling(CubeTilingOp):
                 "var_range": var_range, "block_dim": block_dims,
                 "correct_range_flag": correct_range_flag}
 
-    def get_default_tiling(self, w_bound):
+    def get_default_tiling(self, w_bound=None):
         return {
             'AUB_shape': [1, 0, 0, 0], 'BUB_shape': None,
             'AL1_shape': [utils.CUBE_SIZE, 1, 1],
@@ -566,10 +567,14 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         return seed_tiling_flag[:-3] == local_tiling_flag[:-3]
 
     def _get_output_h(self, h_i):
+        if not h_i:
+            return None
         return (h_i + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
                 (self.k_h - 1) - 1) // self.stride_h + 1
 
     def _get_output_w(self, w_i):
+        if not w_i:
+            return None
         return (w_i + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w *
                 (self.k_w - 1) - 1) // self.stride_w + 1
 

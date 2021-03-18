@@ -106,7 +106,7 @@ def _get_pos_from_format(format_in):
 def _check_equal(x_1, x_2, param_1, param_2):
     if x_1 != x_2:
         error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter", param_1,
-                                                  param2)
+                                                  param_2)
 
 
 def _check_dimensions(shape, name, dimension):
@@ -267,9 +267,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     if -1 in pads:
         # calculate dedy range for pad is SAME
         out_h_lower = _ceil(fmap_range_h[0], stride[0])
-        if not fmap_range_h[1]:
-            fmap_range_h = (fmap_range_h[0], FMAP_HW_MAX)
-        out_h_upper = _ceil(fmap_range_h[1], stride[0])
+        out_h_upper = FMAP_HW_MAX
+        if fmap_range_h[1]:
+            out_h_upper = _ceil(fmap_range_h[1], stride[0])
         out_w_lower = _ceil(fmap_range_w[0], stride[1])
         # the lower limit of w_out is 2
         if out_w_lower < 2:
@@ -281,9 +281,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
             warnings.warn("The output calculated based on the lower limit of the input w " + \
                 "range is less than 2, and the lower limit of the input w range is corrected " + \
                 "as {}".format(fmap_range_w_lower))
-        if not fmap_range_w[1]:
-            fmap_range_w = (fmap_range_w[0], FMAP_HW_MAX)
-        out_w_upper = _ceil(fmap_range_w[1], stride[1])
+        out_w_upper = FMAP_HW_MAX
+        if  fmap_range_w[1]:
+            out_w_upper = _ceil(fmap_range_w[1], stride[1])
     else:
         # calcaulate output range for pad is list
         out_h_lower = _get_output(fmap_range_h[0], w_h,
@@ -297,9 +297,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
             warnings.warn("The output calculated based on the lower limit of the input h " + \
                 "range is less than 1, and the lower limit of the input h range is corrected " + \
                 "as {}".format(fmap_range_h_lower))
-        if  not fmap_range_h[1]:
-            fmap_range_h = (fmap_range_h[0], FMAP_HW_MAX)
-        out_h_upper = _get_output(fmap_range_h[1], w_h,
+        out_h_upper = FMAP_HW_MAX
+        if fmap_range_h[1]:
+            out_h_upper = _get_output(fmap_range_h[1], w_h,
                                     (pads[0], pads[1]), stride[0], dilation[2])
 
         out_w_lower = _get_output(fmap_range_w[0], w_w,
@@ -314,9 +314,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
             warnings.warn("The output calculated based on the lower limit of the input w " + \
                 "range is less than 2, and the lower limit of the input w range is corrected " + \
                 "as {}".format(fmap_range_w_lower))
-        if not fmap_range_w[1]:
-            fmap_range_w = (fmap_range_w[0], FMAP_HW_MAX)
-        out_w_upper = _get_output(fmap_range_w[1], w_w,
+        out_w_upper = FMAP_HW_MAX
+        if fmap_range_w[1]:
+            out_w_upper = _get_output(fmap_range_w[1], w_w,
                                  (pads[2], pads[3]), stride[1], dilation[3])
     dedy_range = [fmap_range_n, (out_shape[1], out_shape[1]),
                   (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
@@ -386,6 +386,10 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     # ===========================================================
     # util check
     para_check.check_kernel_name(kernel_name)
+    stride_h, stride_w = strides
+    # stride value limit
+    _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
+    _check_attr_range_dw("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
     # check fmap_range
     batch_range, _, h_range, w_range = fmap_range
     _check_variable_range(h_range, FMAP_HW_MIN, FMAP_HW_MAX, "fmap_h")
@@ -408,7 +412,6 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     fmap_n, fmap_c, fmap_h, fmap_w = fmap_shape
     fmap_n, dedy_c, dedy_h, dedy_w = dedy_shape
     filter_n, filter_c, filter_h, filter_w = dedw_nchw
-    stride_h, stride_w = strides
     dilation_n, dilation_c, dilation_h, dilation_w = dilations
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
@@ -424,8 +427,12 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     _, upper_pad, _ = _get_attrs(strides, pads, dilations, "NCHW",
                                  upper_bound, dedw_nchw)
     upper_pad_up, upper_pad_down, upper_pad_left, upper_pad_right = upper_pad
-    upper_fmap_w_padding = upper_fmap_w + upper_pad_left + upper_pad_right
-    upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
+    upper_fmap_w_padding = None
+    upper_fmap_h_padding = None
+    if upper_fmap_w:
+        upper_fmap_w_padding = upper_fmap_w + upper_pad_left + upper_pad_right
+    if upper_fmap_h:
+        upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
 
     _, lower_pad, _ = _get_attrs(strides, pads, dilations, "NCHW",
                                  lower_bound, dedw_nchw)
@@ -460,10 +467,6 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     _check_variable_range(dedy_c_range, 1, name="dedy_c")
     _check_variable_range(dedy_h_range, min(dedy_hw_min, DEDY_H_MIN), dedy_hw_max, "dedy_h")
     _check_variable_range(dedy_w_range, min(dedy_hw_min, DEDY_W_MIN), dedy_hw_max, "dedy_w")
-
-    # stride value limit
-    _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
-    _check_attr_range_dw("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
 
     def _check_axis_hw():
         _check_equal(dedy_c, filter_n, "Dedy's C", "Filter's N")
@@ -503,7 +506,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
         if _is_conv1d_situation():
             kl1_min = (C0_SIZE - 1) * stride_w + filter_w_dilation
         else:
-            kl1_min = upper_fmap_w
+            kl1_min = upper_fmap_w if upper_fmap_w else FMAP_HW_MAX
         if dedy_w_range[1] % C0_SIZE == 0:
             bl1_min_byte = filter_h_dilation * kl1_min * C0_SIZE * 2
         else:
@@ -514,13 +517,14 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                 "Input is too large, the minimum tiling may exceed L1_Buffer")
 
     _min_l1_byte()
-    if upper_fmap_n:
+    check_limitation_flag = True if (upper_fmap_n and upper_fmap_h and upper_fmap_w) else False
+    if check_limitation_flag:
         upper_fmap_size = upper_fmap_n * _align(upper_fmap_c, C0_SIZE) * \
             upper_fmap_h * upper_fmap_w
         _check_64bits_limitation("fmap_size", upper_fmap_size, dtype=fmap_dtype)
     filter_size = _align(filter_n, C0_SIZE) * _align(filter_c, C0_SIZE) * \
         filter_h * filter_w
-    if -1 not in pads and upper_fmap_n:
+    if -1 not in pads and check_limitation_flag:
         upper_dedy_h = (upper_fmap_h + pad_up + pad_down - dilation_h *
                         (filter_h - 1) - 1) // stride_h + 1
         upper_dedy_w = (upper_fmap_w + pad_left + pad_right - dilation_w *
@@ -560,6 +564,10 @@ def _check_and_config_para(x, filter_size, out_backprop, y,
     _check_data_format(dedw_format, "res", ["NHWC", "NCHW", "HWCN"])
     _check_data_format(data_format, "data_format")
 
+    if x_format != data_format:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "in_format != data_format")
+    if dedy_format != data_format:
+        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "in_format != data_format")
     if len(strides) != CONV_BACKPROP_SHAPE_DIM:
         error_manager_cube.raise_err_specific_user("conv2d_backprop_filter", "strides should be 4d list")
     if len(dilations) != CONV_BACKPROP_SHAPE_DIM:
