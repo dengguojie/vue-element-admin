@@ -779,7 +779,7 @@ class ResizeBilinearV2Grad(object):
                 self.data_move(self.output_gm, output_ub, [gm_offset, 0], num=max_move_num)
                 self.data_move(self.output_gm, output_ub2, [gm_offset2, 0], num=max_move_num)
 
-                loop_init.set_as(loop_init + 1)
+                loop_init.set_as(scalar.w_idx // use_max_w)
                 scalar.next_loop.set_as(0)
                 self.dup_zero(output_ub, num=self.tensor_size // 2)
                 self.dup_zero(output_ub2, num=self.tensor_size // 2)
