@@ -19,25 +19,25 @@ namespace ge {
 // ----------------SigmoidCrossEntropyWithLogitsGradV2 Begin-------------------
 IMPLEMT_VERIFIER(SigmoidCrossEntropyWithLogitsGradV2,
                  SigmoidCrossEntropyWithLogitsGradV2Verity) {
-  std::vector<int64_t> predict_shape_dim =
-      op.GetInputDesc("predict").GetShape().GetDims();
-  std::vector<int64_t> target_shape_dim =
-      op.GetInputDesc("target").GetShape().GetDims();
-  for (size_t i = 0; i < predict_shape_dim.size(); i++) {
-    if ((predict_shape_dim[i] != target_shape_dim[i])) {
-      printf(op.GetName().c_str(),
-             "the input shape of predict and target should be same");
-      return GRAPH_FAILED;
+    std::vector<int64_t> predict_shape_dim =
+        op.GetInputDesc("predict").GetShape().GetDims();
+    std::vector<int64_t> target_shape_dim =
+        op.GetInputDesc("target").GetShape().GetDims();
+    for (size_t i = 0; i < predict_shape_dim.size(); i++) {
+        if ((predict_shape_dim[i] != target_shape_dim[i])) {
+            printf(op.GetName().c_str(),
+                "the input shape of predict and target should be same");
+            return GRAPH_FAILED;
+        }
     }
-  }
-  return GRAPH_SUCCESS;
+    return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsGradV2InferShape) {
-  if (OneInOneOutDynamicInfer(op, "predict", {"gradient"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+    if (OneInOneOutDynamicInfer(op, "predict", {"gradient"})) {
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGradV2,

@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef GE_OP_LP_NORM_H_
-#define GE_OP_LP_NORM_H_
+#ifndef GE_OP_LP_NORM_H
+#define GE_OP_LP_NORM_H
 
 #include "graph/operator_reg.h"
 #include "graph/operator.h"
@@ -49,4 +49,4 @@ REG_OP(LpNorm)
     .OP_END_FACTORY_REG(LpNorm)
 }  // namespace ge
 
-#endif  // GE_OP_LP_NORM_H_
+#endif  // GE_OP_LP_NORM_H

@@ -13,26 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "mask_fill.h"
+#include "masked_fill.h"
 
 namespace ge {
 // ----------------MaskedFill Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(InferMaskedFillShape) {
-  // ge::Operator op;
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "mask", "y", is_dynamic_output)){
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
+    // ge::Operator op;
+    bool is_dynamic_output = true;
+    if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "mask", "y", is_dynamic_output)){
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(MaskedFill, MaskedFillVerify) {
-  auto input_type_mask = op.GetInputDesc("mask").GetDataType();
-  if (input_type_mask != DT_BOOL) {
-    return GRAPH_FAILED;
-  }
+    auto input_type_mask = op.GetInputDesc("mask").GetDataType();
+    if (input_type_mask != DT_BOOL) {
+      return GRAPH_FAILED;
+    }
 
-  return GRAPH_SUCCESS;
+    return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(MaskedFill, InferMaskedFillShape);

@@ -13,24 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_H_
-#define GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_H_
+#ifndef GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_H
+#define GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_H
 
 #include "graph/operator_reg.h"
 
 namespace ge {
 /**
-*@brief Computes the sigmoid cross entropy loss of "predict" and "target" . \n
+* @brief Computes the sigmoid cross entropy loss of "predict" and "target" . \n
 
-*@par Inputs:
+* @par Inputs:
 * Two inputs, including:
-*@li predict: A multi-dimensional Tensor of type float16 or float32, specifying the predictive value.
-*@li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value . \n
+* @li predict: A multi-dimensional Tensor of type float16 or float32, specifying the predictive value.
+* @li target: A multi-dimensional Tensor of type float16 or float32, specifying the target value . \n
+* @par Outputs:
+* loss: Sigmoid cross entropy between the predictive value and target value. Has the same dimensions as "predict" . \n
 
-*@par Outputs:
-*loss: Sigmoid cross entropy between the predictive value and target value. Has the same dimensions as "predict" . \n
-
-*@par Third-party framework compatibility
+* @par Third-party framework compatibility
 * Compatible with the scenario where "reduction" is set to "none"of PyTorch operator SigmoidCrossEntropyWithLogitsGrad.
 */
 REG_OP(SigmoidCrossEntropyWithLogitsGrad)

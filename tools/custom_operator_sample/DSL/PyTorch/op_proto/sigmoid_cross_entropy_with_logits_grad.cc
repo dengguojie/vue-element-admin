@@ -18,23 +18,12 @@
 namespace ge {
 // ----------------SigmoidCrossEntropyWithLogitsGrad-------------------
 IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsGradInferShape) {
-  if (TwoInOneOutDynamicInferNoBroadcast(op, "predict", "target", {"gradient"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+    if (TwoInOneOutDynamicInferNoBroadcast(op, "predict", "target", {"gradient"})) {
+        return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogitsGrad, SigmoidCrossEntropyWithLogitsGradInferShape);
 // ---------------SigmoidCrossEntropyWithLogitsGrad END-----------------
-
-// -------------------SigmoidCrossEntropyWithLogits---------------------
-IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsInferShape) {
-  if (TwoInOneOutDynamicInferNoBroadcast(op, "predict", "target", {"loss"})) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
-}
-
-COMMON_INFER_FUNC_REG(SigmoidCrossEntropyWithLogits, SigmoidCrossEntropyWithLogitsInferShape);
-// ------------------SigmoidCrossEntropyWithLogits END------------------
 }  // namespace ge

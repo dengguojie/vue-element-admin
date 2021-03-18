@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef GE_OP_MASKED_FILL_H_
-#define GE_OP_MASKED_FILL_H_
+#ifndef GE_OP_MASKED_FILL_H
+#define GE_OP_MASKED_FILL_H
 #include "graph/operator_reg.h"
 
 namespace ge {
@@ -38,4 +38,4 @@ REG_OP(MaskedFill)
     .OP_END_FACTORY_REG(MaskedFill)
 }  // namespace ge
 
-#endif  // GE_OP_MASKED_FILL_H_
+#endif  // GE_OP_MASKED_FILL_H

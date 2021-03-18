@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_V2_H_
-#define GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_V2_H_
+#ifndef GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_V2_H
+#define GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_V2_H
 
 #include "graph/operator_reg.h"
 
@@ -49,4 +49,4 @@ REG_OP(SigmoidCrossEntropyWithLogitsGradV2)
     .OP_END_FACTORY_REG(SigmoidCrossEntropyWithLogitsGradV2)
 }  // namespace ge
 
-#endif  // GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_V2_H_
+#endif  // GE_OP_SIGMOID_CROSS_ENTROPY_WITH_LOGITS_GRAD_V2_H
