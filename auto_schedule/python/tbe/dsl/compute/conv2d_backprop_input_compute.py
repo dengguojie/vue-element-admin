@@ -510,7 +510,10 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         bl1_size = filter_w * tbe_platform.C0_SIZE * c0_size_k * BIT_RATIO_DICT.get(filters.dtype)
 
         al1_w_value = dy_w * stride_w
-        al1_size = al1_w_value * c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
+        al1_h_value = 1
+        if dx_w % tbe_platform.C0_SIZE != 0:
+            al1_h_value += 1
+        al1_size = al1_h_value * al1_w_value * c0_size_k * BIT_RATIO_DICT.get(out_backprop.dtype)
 
         if _is_conv1d_situation():
             load3d_stride = 1

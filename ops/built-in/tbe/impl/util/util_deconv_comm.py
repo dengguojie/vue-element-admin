@@ -567,8 +567,11 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         c0_size = cce_params.C0_SIZE
         c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
         w_value = dedy_w * stride_w
+        h_value_max = 1
+        if fmap_w % c0_size != 0:
+            h_value_max += 1
 
-        a_l1_size = w_value * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype)
+        a_l1_size = h_value_max * w_value * c0_size_k * BIT_RATIO_DICT.get(out_backprop_dtype)
         if _is_conv1d_situation():
             load3d_stride = 1
             a_l1_m_length = (c0_size - 1) * load3d_stride + filter_w_dilation

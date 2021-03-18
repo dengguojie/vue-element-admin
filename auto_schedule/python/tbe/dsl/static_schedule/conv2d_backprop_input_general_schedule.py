@@ -750,7 +750,7 @@ def general_schedule(
 
         if not _check_tiling(tiling):
             tiling = {}
-            _, cin1, k_w, k_h, _ = filter_shape
+            _, cin1, k_h, k_w, _ = filter_shape
             bit_dir = {
                 "float32": 16,
                 "int32": 16,
