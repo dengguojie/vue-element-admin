@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (C)  2020. Huawei Technologies Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,20 +24,20 @@
 namespace ge {
 // ----------------SortV2 Begin-------------------
 IMPLEMT_INFERFUNC(SortV2, SortV2InferShape) {
-  TensorDesc tensordesc_input = op.GetInputDesc("x");
-  Shape input_shape = tensordesc_input.GetShape();
-  DataType input_dtype = tensordesc_input.GetDataType();
-  std::vector<int64_t> dims_input = input_shape.GetDims();
+    TensorDesc tensordesc_input = op.GetInputDesc("x");
+    Shape input_shape = tensordesc_input.GetShape();
+    DataType input_dtype = tensordesc_input.GetDataType();
+    std::vector<int64_t> dims_input = input_shape.GetDims();
 
-  TensorDesc tensordesc_output1 = op.GetOutputDesc("y");
+    TensorDesc tensordesc_output1 = op.GetOutputDesc("y");
 
-  tensordesc_output1.SetShape(ge::Shape(dims_input));
+    tensordesc_output1.SetShape(ge::Shape(dims_input));
 
-  tensordesc_output1.SetDataType(input_dtype);
+    tensordesc_output1.SetDataType(input_dtype);
 
-  (void)op.UpdateOutputDesc("y", tensordesc_output1);
+    (void)op.UpdateOutputDesc("y", tensordesc_output1);
 
-  return GRAPH_SUCCESS;
+    return GRAPH_SUCCESS;
 }
 
 IMPLEMT_VERIFIER(SortV2, SortV2Verify) { return GRAPH_SUCCESS; }

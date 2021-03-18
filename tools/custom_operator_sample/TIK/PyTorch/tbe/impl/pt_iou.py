@@ -17,7 +17,6 @@ iou
 """
 import te
 from te.platform.fusion_manager import fusion_manager
-from te.utils.op_utils import *
 from te import tik
 from te import platform as tbe_platform
 from topi.cce import util

@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (C)  2020. Huawei Technologies Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,16 +25,14 @@
 #include "graph/operator.h"
 
 namespace ge {
-
 REG_OP(DecodeBboxV2)
-    .INPUT(boxes, TensorType({DT_FLOAT16,DT_FLOAT}))
-    .INPUT(anchors, TensorType({DT_FLOAT16,DT_FLOAT}))
-    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT}))
+    .INPUT(boxes, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(anchors, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .ATTR(scales, ListFloat, {1.0, 1.0, 1.0, 1.0})
     .ATTR(decode_clip, Float, 0.0)
     .ATTR(reversed_box, Bool, false)
     .OP_END_FACTORY_REG(DecodeBboxV2)
-
 }  // namespace ge
 
 #endif  // GE_OP_DecodeBboxV2_H

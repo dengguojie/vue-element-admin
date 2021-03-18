@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (C)  2020. Huawei Technologies Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,14 +25,12 @@
 #include "graph/operator.h"
 
 namespace ge {
-
 REG_OP(SortV2)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .ATTR(axis, Int, -1)
     .ATTR(descending, Bool, false)
     .OP_END_FACTORY_REG(SortV2)
-
 }  // namespace ge
 
 #endif  // GE_OP_SortV2_H

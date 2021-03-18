@@ -1,5 +1,5 @@
-/**
- * Copyright 2019 Huawei Technologies Co., Ltd
+/*
+ * Copyright (C)  2020. Huawei Technologies Co., Ltd. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,103 +19,106 @@
  * \brief
  */
 #include "register/register.h"
-#include "graph/utils/attr_utils.h"
-#include "graph/utils/op_desc_utils.h"
-#include "proto/tensorflow/node_def.pb.h"
+#include "graph/ascend_string.h"
 
-#include "tensorflow_fusion_op_parser_util.h"
-#include "op_log.h"
-
-using domi::tensorflow::NodeDef;
-using domi::tensorflow::TensorProto;
-using google::protobuf::Message;
-using std::vector;
 
 namespace domi {
+    namespace {
+        const char *const K_BOXES_UNPACK = "/unstack";
+        const char *const K_BOXES_DIV = "RealDiv";
+        const size_t K_REAL_DIV_INPUT_SIZE = 2;
+        const size_t K_SCALE_SIZE = 4;
+    }  // namespace
 
-static const char* const kBoxesUnpack = "/unstack";
-static const char* const kBoxesDiv = "RealDiv";
+    Status ParseFloatFromConstNode(const ge::Operator *node, float &value)
+    {
+        if (node == nullptr) {
+            return FAILED;
+        }
+        ge::Tensor tensor;
+        auto ret = node->GetAttr("value", tensor);
+        if (ret != ge::GRAPH_SUCCESS) {
+            ge::AscendString opName;
+            ge::graphStatus getNameStatus = node->GetName(opName);
+            if (getNameStatus != ge::GRAPH_SUCCESS) {
+                return FAILED;
+            }
+            return FAILED;
+        }
+        uint8_t *dataAddr = tensor.GetData();
+        value = *(reinterpret_cast<float *>(dataAddr));
+        return SUCCESS;
+    }
 
-Status ParseValueFromConstV2(const vector<const NodeDef*>& v_input_const, const string& names, float& value) {
-  for (auto nodeDef : v_input_const) {
-    string name = nodeDef->name();
-    if (name == names) {
-      if (ParseParamFromConst(nodeDef, value) != SUCCESS) {
-        OP_LOGE("ParseParamFromConst data from const NodeDef %s failed", nodeDef->name().c_str());
-        return PARAM_INVALID;
-      }
-      return SUCCESS;
+    Status DecodeBboxV2GetStatus(std::map <std::string, std::string> &scales_const_name_map, ge::Operator &op_dest)
+    {
+        std::vector<float> scales_list = {1.0, 1.0, 1.0, 1.0};
+        if (scales_const_name_map.size() != K_SCALE_SIZE) {
+            ge::AscendString opName;
+            ge::graphStatus ret = op_dest.GetName(opName);
+            if (ret != ge::GRAPH_SUCCESS) {
+                return FAILED;
+            }
+        } else {
+            size_t i = 0;
+            for (const auto &name_pair : scales_const_name_map) {
+                float scale_value = 1.0;
+                auto ret = ParseFloatFromConstNode(node_map[name_pair.second], scale_value);
+                if (ret != SUCCESS) {
+                    return ret;
+                }
+                scales_list[i++] = scale_value;
+            }
+        }
+        op_dest.SetAttr("scales", scales_list);
+        return SUCCESS;
     }
-  }
-  return FAILED;
-}
 
-Status DecodeBboxV2Params(const std::vector<const google::protobuf::Message*> insideNodes, ge::Operator& op) {
-  auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (opDesc == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "Get op desc failed.");
-    return FAILED;
-  }
-  vector<const NodeDef*> v_input_const;
-  std::string div_node_name;
-  vector<string> v_const_str;
-  for (auto node : insideNodes) {
-    const NodeDef* node_def = reinterpret_cast<const NodeDef*>(node);
-    if (node_def == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "Node_def is nullptr.");
-      return FAILED;
-    }
-    v_input_const.push_back(node_def);
-    OP_LOGD(op.GetName().c_str(), "DecodeBoxV2 NodeDef is %s ", node_def->name().c_str());
-    if (node_def->op() == kBoxesDiv) {
-      if (node_def->input(0).find(kBoxesUnpack) != string::npos) {
-        div_node_name = node_def->input(1);
-        v_const_str.push_back(div_node_name);
-      }
-    }
-  }
-  float scale = 1.0;
-  float scale_1 = 1.0;
-  float scale_2 = 1.0;
-  float scale_3 = 1.0;
-  if (v_const_str.size() != 4) {
-    OP_LOGI(op.GetName().c_str(), "Boxes don't need to scale.");
-  } else {
-    if (ParseValueFromConstV2(v_input_const, v_const_str[0], scale) != SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Convert div const failed");
-      return PARAM_INVALID;
-    }
-    if (ParseValueFromConstV2(v_input_const, v_const_str[1], scale_1) != SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Convert div_1 const failed");
-      return PARAM_INVALID;
-    }
-    if (ParseValueFromConstV2(v_input_const, v_const_str[2], scale_2) != SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Convert div_2 const failed");
-      return PARAM_INVALID;
-    }
-    if (ParseValueFromConstV2(v_input_const, v_const_str[3], scale_3) != SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Convert div_3 const failed");
-      return PARAM_INVALID;
-    }
-  }
-  std::vector<float> scales_list;
-  scales_list.push_back(scale);
-  scales_list.push_back(scale_1);
-  scales_list.push_back(scale_2);
-  scales_list.push_back(scale_3);
-  if (!ge::AttrUtils::SetListFloat(opDesc, "scales", scales_list)) {
-    OP_LOGE(op.GetName().c_str(), "Set scales_list failed.");
-    return FAILED;
-  }
-  OP_LOGD(op.GetName().c_str(), "DecodeBboxV2's attr scales is [%.1f, %.1f, %.1f, %.1f]", scales_list[0],
-          scales_list[1], scales_list[2], scales_list[3]);
+    Status DecodeBboxV2ParseParams(const std::vector <ge::Operator> &inside_nodes, ge::Operator &op_dest)
+    {
+        std::map <std::string, std::string> scales_const_name_map;
+        std::map<string, const ge::Operator *> node_map;
+        for (const auto &node : inside_nodes) {
+            ge::AscendString op_type;
+            ge::graphStatus ret = node.GetOpType(op_type);
+            if (ret != ge::GRAPH_SUCCESS) {
+                return FAILED;
+            }
+            ge::AscendString op_name;
+            ret = node.GetName(op_name);
+            string str_op_name;
+            if (op_name.GetString() != nullptr) {
+                str_op_name = op_name.GetString();
+            }
+            if (op_type == K_BOXES_DIV) {
+                if (node.GetInputsSize() < K_REAL_DIV_INPUT_SIZE) {
+                    return FAILED;
+                }
+                ge::AscendString input_unpack_name0;
+                ret = node.GetInputDesc(0).GetName(input_unpack_name0);
+                string str_input_unpack_name0;
+                if (input_unpack_name0.GetString() != nullptr) {
+                    str_input_unpack_name0 = input_unpack_name0.GetString();
+                }
+                ge::AscendString input_unpack_name1;
+                ret = node.GetInputDesc(1).GetName(input_unpack_name1);
+                string str_input_unpack_name1;
+                if (input_unpack_name1.GetString() != nullptr) {
+                    str_input_unpack_name1 = input_unpack_name1.GetString();
+                }
+                if (str_input_unpack_name0.find(K_BOXES_UNPACK) != string::npos) {
+                    scales_const_name_map.insert({str_op_name, str_input_unpack_name1});
+                }
+            }
+            node_map[str_op_name] = &node;
+        }
 
-  return SUCCESS;
-}
+        return DecodeBboxV2GetStatus(scales_const_name_map, op_dest)
+    }
 
-REGISTER_CUSTOM_OP("DecodeBboxV2")
+    REGISTER_CUSTOM_OP("DecodeBboxV2")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("DecodeBboxV2")
-    .FusionParseParamsFn(DecodeBboxV2Params)
+    .FusionParseParamsFn(DecodeBboxV2ParseParams)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi

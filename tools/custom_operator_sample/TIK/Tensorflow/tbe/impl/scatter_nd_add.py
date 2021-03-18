@@ -661,7 +661,6 @@ class Scatter():
                                         repeat_times, 1, 1,
                                         compute_repeat_strid,
                                         compute_repeat_strid)
-                # src1_ub * (1/src2_ub)
                 self.tik_instance.vmul(mask, dst_ub, src1_ub, src2_ub,
                                        repeat_times, 1, 1, 1,
                                        compute_repeat_strid,

@@ -22,7 +22,7 @@ import te.platform as tbe_platform
 
 RESERVE_SIZE = 2 * 1024
 PROPOSAL_NUM = 8
-BOLCk_SIZE = 16
+BOLCK_SIZE = 16
 VAL_INDEX = 4
 MIN_VAL = -65504
 
@@ -166,8 +166,8 @@ def vms4(tik_instance, total, input_ub, dest_pos_ub):
     ----------
     """
     # record the lists info
-    length = total // BOLCk_SIZE
-    num_list = [BOLCk_SIZE] * length
+    length = total // BOLCK_SIZE
+    num_list = [BOLCK_SIZE] * length
 
     src_pos_ub = 0
     while len(num_list) > 1:
@@ -188,7 +188,7 @@ def vms4(tik_instance, total, input_ub, dest_pos_ub):
             elif res == 1:
                 tik_instance.data_move(input_ub[dest_pos_ub + offset * PROPOSAL_NUM],
                                        input_ub[src_pos_ub + offset * PROPOSAL_NUM], 0, 1,
-                                       num_list[index] * PROPOSAL_NUM // BOLCk_SIZE, 0, 0)
+                                       num_list[index] * PROPOSAL_NUM // BOLCK_SIZE, 0, 0)
             else:
                 break
             index += 1
@@ -207,9 +207,9 @@ def pick(tik_instance, descending, temp, offset, i0, k, totalnum, data_out, inpu
     """
     # dest position in UB
     dest_pos_ub = k * PROPOSAL_NUM
-    repeat_times = k // BOLCk_SIZE
+    repeat_times = k // BOLCK_SIZE
     with tik_instance.for_range(0, num_gm) as i:
-        tik_instance.data_move(input_ub[0], temp[offset + k * i * PROPOSAL_NUM], 0, 1, (k * PROPOSAL_NUM) // BOLCk_SIZE,
+        tik_instance.data_move(input_ub[0], temp[offset + k * i * PROPOSAL_NUM], 0, 1, (k * PROPOSAL_NUM) // BOLCK_SIZE,
                                0, 0)
         # ascend
         with tik_instance.if_scope(descending is False):
@@ -246,21 +246,21 @@ def sort_in_ub(tik_instance, input_ub, num, i, k, input_gm, temp, index, offset)
     """
     # dest position in UB
     dest_pos_ub = k * PROPOSAL_NUM
-    repeat_times = k // BOLCk_SIZE
+    repeat_times = k // BOLCK_SIZE
     # 1. Move data from OUT to UB
     tik_instance.data_move(input_ub[dest_pos_ub], input_gm[index + i * k], 0, 1, repeat_times, 0, 0)
 
     with tik_instance.if_scope(num < (i + 1) * k):
         # aline for k
         aline = k - num % k
-        Min = tik_instance.Scalar('float16', init_value=-65504)
+        min_scalar = tik_instance.Scalar('float16', init_value=-65504)
         # Add ineffective object for 16 alignment
-        with tik_instance.for_range(0, aline % BOLCk_SIZE) as j:
-            input_ub[dest_pos_ub + num % k + j].set_as(Min)
+        with tik_instance.for_range(0, aline % BOLCK_SIZE) as j:
+            input_ub[dest_pos_ub + num % k + j].set_as(min_scalar)
         # Add ineffective object for k alignment
-        with tik_instance.if_scope(aline > BOLCk_SIZE - 1):
-            tik_instance.vec_dup(BOLCk_SIZE, input_ub[dest_pos_ub + num % k + aline % BOLCk_SIZE], Min,
-                                 aline // BOLCk_SIZE, 1)
+        with tik_instance.if_scope(aline > BOLCK_SIZE - 1):
+            tik_instance.vec_dup(BOLCK_SIZE, input_ub[dest_pos_ub + num % k + aline % BOLCK_SIZE], min_scalar,
+                                 aline // BOLCK_SIZE, 1)
 
     tik_instance.vconcat(input_ub[0], input_ub[dest_pos_ub], repeat_times, VAL_INDEX)
 
@@ -272,7 +272,7 @@ def sort_in_ub(tik_instance, input_ub, num, i, k, input_gm, temp, index, offset)
 
     # 4. Move Data from UB to OUT
     tik_instance.data_move(temp[offset + i * k * PROPOSAL_NUM], input_ub[dest_pos_ub], 0, 1,
-                           k * PROPOSAL_NUM // BOLCk_SIZE, 0, 0)
+                           k * PROPOSAL_NUM // BOLCK_SIZE, 0, 0)
 
     return temp
 
@@ -297,10 +297,10 @@ def sort_in_gm(tik_instance, k, temp, num_gm, batchsize, input_ub, offset):
         dest_pos_ub.set_as(batchsize * PROPOSAL_NUM)
 
         tik_instance.data_move(input_ub[src_pos_ub + k * PROPOSAL_NUM], temp[offset], 0, 1,
-                               (k * PROPOSAL_NUM) // BOLCk_SIZE, 0, 0)
+                               (k * PROPOSAL_NUM) // BOLCK_SIZE, 0, 0)
         with tik_instance.for_range(1, num_gm - tail) as i:
             tik_instance.data_move(input_ub[src_pos_ub], temp[offset + k * i * PROPOSAL_NUM], 0, 1,
-                                   (k * PROPOSAL_NUM) // BOLCk_SIZE, 0, 0)
+                                   (k * PROPOSAL_NUM) // BOLCK_SIZE, 0, 0)
 
             tik_instance.vmrgsort4(input_ub[dest_pos_ub],
                                    [input_ub[src_pos_ub], input_ub[src_pos_ub + k * PROPOSAL_NUM],
@@ -308,14 +308,14 @@ def sort_in_gm(tik_instance, k, temp, num_gm, batchsize, input_ub, offset):
                                    valid_bit="0011", repeat_times=1)
 
             tik_instance.data_move(temp[offset + k * (i - 1) * PROPOSAL_NUM], input_ub[dest_pos_ub], 0, 1,
-                                   (k * PROPOSAL_NUM) // BOLCk_SIZE, 0, 0)
+                                   (k * PROPOSAL_NUM) // BOLCK_SIZE, 0, 0)
 
             dest_pos_ub.set_as(src_pos_ub)
             src_pos_ub.set_as(batchsize * PROPOSAL_NUM - dest_pos_ub)
 
         # Move Data from UB to GM
         tik_instance.data_move(temp[offset + k * (num_gm - tail - 1) * PROPOSAL_NUM],
-                               input_ub[src_pos_ub + k * PROPOSAL_NUM], 0, 1, (k * PROPOSAL_NUM) // BOLCk_SIZE, 0, 0)
+                               input_ub[src_pos_ub + k * PROPOSAL_NUM], 0, 1, (k * PROPOSAL_NUM) // BOLCK_SIZE, 0, 0)
 
     return temp
 
@@ -334,7 +334,7 @@ def tune(tik_instance, batchsize, k, num, totalnum, rounds, descending, data_out
     ----------
     """
     offset = k - num % k
-    use_num = batchsize * BOLCk_SIZE if totalnum > batchsize * BOLCk_SIZE else totalnum
+    use_num = batchsize * BOLCK_SIZE if totalnum > batchsize * BOLCK_SIZE else totalnum
 
     batchs = totalnum // use_num
     batchs = batchs if totalnum % use_num == 0 else (batchs + 1)
@@ -344,14 +344,14 @@ def tune(tik_instance, batchsize, k, num, totalnum, rounds, descending, data_out
         with tik_instance.for_range(0, batchs) as j:
             with tik_instance.if_scope(descending is False):
                 tik_instance.data_move(float_ub[0], data_out[i * totalnum + offset + j * use_num], 0, 1,
-                                       use_num // BOLCk_SIZE, 0, 0)
+                                       use_num // BOLCK_SIZE, 0, 0)
                 tik_instance.data_move(data_out_[i * num + j * use_num], float_ub[0], 0, 1,
-                                       use_num // BOLCk_SIZE, 0, 0)
+                                       use_num // BOLCK_SIZE, 0, 0)
             with tik_instance.else_scope():
                 tik_instance.data_move(float_ub[0], data_out[i * totalnum + j * use_num], 0, 1,
-                                       use_num // BOLCk_SIZE, 0, 0)
+                                       use_num // BOLCK_SIZE, 0, 0)
                 tik_instance.data_move(data_out_[i * num + j * use_num], float_ub[0], 0, 1,
-                                       use_num // BOLCk_SIZE, 0, 0)
+                                       use_num // BOLCK_SIZE, 0, 0)
     return data_out_
 
 

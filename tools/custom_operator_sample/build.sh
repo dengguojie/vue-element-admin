@@ -72,11 +72,11 @@ cp ${TF_PLUGIN_CMAKELIST} ${DST_DIR}/DSL/Tensorflow/framework/tf_plugin
 ##############3. copy TIK ###################
 #3.1 Tensorflow
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/TIK/Tensorflow/
-cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/Tensorflow/
-#cp ${TF_PLUGIN_CMAKELIST} ${DST_DIR}/TIK/Tensorflow/framework/tf_plugin
+cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/Tensorflow/tbe
+cp ${TF_PLUGIN_CMAKELIST} ${DST_DIR}/TIK/Tensorflow/framework/tf_plugin
 #3.2 PyTorch
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/TIK/PyTorch/
-cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/PyTorch/
+cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/TIK/PyTorch/tbe
 
 #3.3 Mindspore
 #NA
