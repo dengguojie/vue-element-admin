@@ -122,6 +122,7 @@ DTYPE_TO_NUMPY_MAP = {
     'uint32': np.uint32,
     'uint64': np.uint64,
     'bool': np.bool,
+    'double': np.double,
     'UNDEFINED': 'UNDEFINED',
     'RESERVED': 'RESERVED'
 }
@@ -137,7 +138,8 @@ DTYPE_TO_TYPE_MAP = {
     "DT_UINT8": "uint8",
     "DT_UINT16": "uint16",
     "DT_FLOAT16": "float16",
-    "DT_FLOAT32": "float"
+    "DT_FLOAT32": "float",
+    "DT_DOUBLE": "double"
 }
 
 DTYPE_TO_MINDSPORE_MAP = {
