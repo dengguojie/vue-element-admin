@@ -752,6 +752,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         "dynamic_shape_flag": True
     }
     DynamicConv2dBpInputParams.var_map = DeconvParam.var_map
+    DynamicConv2dBpInputParams.dynamic_para = {"correct_range_flag": para_dict.get("correct_range_flag", False)}
 
     if (filter_h == 1 and filter_w == 1 and cube_util.check_pad_zero(padding)
             and not switch_to_general_scheme):
@@ -797,3 +798,4 @@ class DynamicConv2dBpInputParams:  # pylint: disable=R0903
 
     tiling_info_dict = {}
     var_map = {}
+    dynamic_para = {}

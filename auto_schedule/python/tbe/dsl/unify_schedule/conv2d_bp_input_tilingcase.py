@@ -343,8 +343,9 @@ class Conv2dBpInputTiling(CubeTilingOp):
             dedy_w_high = self.get_output_w(dx_w_high)
             var_range['dx_w'] = (dx_w_low, dx_w_high)
             var_range['dedy_w'] = (dedy_w_low, dedy_w_high)
+        correct_range_flag = DynamicConv2dBpInputParams.dynamic_para.get("correct_range_flag", False)
 
-        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
+        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range, "correct_range_flag": correct_range_flag}
 
     def get_default_tiling(self, w_lower_bound=1):
         """

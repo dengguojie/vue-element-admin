@@ -17,6 +17,7 @@ public function for cube dynamic
 """
 
 from __future__ import absolute_import
+import warnings
 import math
 import copy
 
@@ -253,6 +254,14 @@ class CubeParaProcess:
                 return x_in
             return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
+        def _get_lower_input(y_in, k_size, pads, stride, dilation):
+            if not y_in:
+                return y_in
+            # dilation = 1
+            return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1]
+
+        correct_range_flag = False
+        new_in_range = copy.deepcopy(in_range)
         if DYNAMIC_FLAG in self.pads:
             out_h_lower = ceil_div(in_range[H_DIM][0], self.strides[H_DIM])
             out_h_upper = ceil_div(in_range[H_DIM][1], self.strides[H_DIM])
@@ -271,12 +280,26 @@ class CubeParaProcess:
             out_w_upper = _get_output(in_range[W_DIM][1], w_shape[W_DIM],
                                       (self.pads[2], self.pads[3]), self.strides[W_DIM],
                                       self.dilations[W_DIM])
-        if out_h_lower <= 0 or out_w_lower <= 0:
-            err_man.raise_err_specific_user(self.op_type, "lower output_range of h/w must be more than 0!")
+        if out_h_lower < self.valid_paras.get("nhw_min"):
+            out_h_lower = max(out_h_lower, self.valid_paras.get("nhw_min"))
+            new_in_range[H_DIM] = (_get_lower_input(out_h_lower, w_shape[H_DIM], (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                      self.dilations[H_DIM]), new_in_range[H_DIM][1])
+            correct_range_flag = True
+            warnings.warn("The output calculated based on the lower limit of the input h "+
+                "range is less than 1, and the lower limit of the output h range is corrected "+
+                "as {}".format(out_h_lower))
+        if out_w_lower < self.valid_paras.get("nhw_min"):
+            out_w_lower = max(out_w_lower, self.valid_paras.get("nhw_min"))
+            new_in_range[W_DIM] = (_get_lower_input(out_w_lower, w_shape[W_DIM], (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                      self.dilations[W_DIM]), new_in_range[W_DIM][1])
+            correct_range_flag = True
+            warnings.warn("The output calculated based on the lower limit of the input w "+
+                "range is less than 1, and the lower limit of the output w range is corrected "+
+                "as {}".format(out_w_lower))
         if out_range:
             return [out_range[N_DIM], out_range[C_DIM], (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
         return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
-                (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
+                (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)], correct_range_flag, new_in_range
 
     def check_pads(self, dy_shape, op_type):
         """
@@ -511,17 +534,17 @@ class Conv2dParaProcess(CubeParaProcess):
 
         self.check_support_valid(in_shape_nchw, w_shape_nchw)
         self.get_attr_nchw(self.data_format)
-        y_range = self.get_output_range(w_shape_nchw, in_range_nchw)
+        y_range, correct_range_flag, new_in_range_nchw = self.get_output_range(w_shape_nchw, in_range_nchw)
         self.check_range_valid(out_shape_nchw, y_range, "output", self.data_format)
 
         group_para = self.set_group_para(in_shape_nchw, w_shape_nchw, self.dtype)
         in_shape_nchw, w_shape_nchw, in_shape_nc1hwc0, w_shape_frac_z = self._calc_shape(
-            in_shape_nchw, w_shape_nchw, in_range_nchw, y_range, group_para)
+            in_shape_nchw, w_shape_nchw, new_in_range_nchw, y_range, group_para)
         self.calc_pads(in_shape_nc1hwc0, w_shape_nchw)
 
         return {"in_shape_nc1hwc0": in_shape_nc1hwc0, "w_shape_frac_z": w_shape_frac_z,
                 "w_shape": w_shape_nchw, "group_para": group_para, "padding_mode": padding_mode,
-                "pooling_mode": self.pooling_mode}
+                "pooling_mode": self.pooling_mode, "correct_range_flag": correct_range_flag}
 
     def config_paras(self):
         """
@@ -544,7 +567,8 @@ class Conv2dParaProcess(CubeParaProcess):
         return {"input_tensor": input_tensor, "weight_tensor": weight_tensor, "bias_tensor": bias_tensor,
                 "w_shape": param.get("w_shape"), "in_shape_nc1hwc0": param.get("in_shape_nc1hwc0"),
                 "w_shape_frac_z": param.get("w_shape_frac_z"), "group_para": param.get("group_para"),
-                "padding_mode": param.get("padding_mode"), "pooling_mode": param.get("pooling_mode")}
+                "padding_mode": param.get("padding_mode"), "pooling_mode": param.get("pooling_mode"),
+                "correct_range_flag": param.get("correct_range_flag", False)}
 
 class Conv2dBackpropParaProcess(CubeParaProcess):
     """
@@ -648,7 +672,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
                                              group_dict=group_para)
             self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-            dy_range_nchw = self.get_output_range(filter_shape_nchw, dx_range_nchw)
+            dy_range_nchw, correct_range_flag, new_dx_range_nchw = self.get_output_range(filter_shape_nchw, dx_range_nchw)
 
 
         output_range = copy.deepcopy(dy_range_nchw)
@@ -662,7 +686,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
                 output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
         self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
 
-        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, dx_range_nchw, group_para
+        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, new_dx_range_nchw, group_para, correct_range_flag
 
     def check_paras(self):
         """
@@ -694,14 +718,14 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.check_para_dim(self.dilations, "dilations")
         self.check_para_dim(self.pads, "pads")
 
-        dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw, group_para = self.infer_shape_and_range()
+        dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw, group_para, correct_range_flag = self.infer_shape_and_range()
 
         dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_shape_nc1hwc0, filter_shape_frac_z = self._calc_shape(
             dy_shape_nchw, filter_shape_nchw, input_size_nchw, dy_range_nchw, input_range_nchw)
         self.calc_pads(input_size_nchw, filter_shape_nchw)
 
         return {"dy_shape_nc1hwc0": dy_shape_nc1hwc0, "filter_shape_frac_z": filter_shape_frac_z,
-                "filter_shape": filter_shape_nchw, "input_size": input_size_nchw, "group_para": group_para}
+                "filter_shape": filter_shape_nchw, "input_size": input_size_nchw, "group_para": group_para, "correct_range_flag": correct_range_flag}
 
     def config_paras(self):
         """
@@ -714,7 +738,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
 
         return {"dy_tensor": dy_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
                 "filter_shape": param.get("filter_shape"), "input_size": param.get("input_size"),
-                "group_para": param.get("group_para")}
+                "group_para": param.get("group_para"), "correct_range_flag": param.get("correct_range_flag", False)}
 
 
 class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
@@ -762,40 +786,103 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
             # dilation = 1
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1] + stride - 1
 
+        def _get_output(x_in, k_size, pads, stride, dilation):
+            if not x_in:
+                return x_in
+            return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+
+        correct_range_flag = False
+        new_dy_range = copy.deepcopy(dy_range)
         if DYNAMIC_FLAG in self.pads:
             dx_h_lower = (dy_range[H_DIM][0]-1) * self.strides[H_DIM]+1
             if not dy_range[H_DIM][1]:
                 dx_h_upper = dy_range[H_DIM][1]
             else:
-                dx_h_upper = min(dy_range[H_DIM][1] * self.strides[H_DIM], self.valid_paras.get("hw_max"))
+                dx_h_upper = dy_range[H_DIM][1] * self.strides[H_DIM]
+                if dx_h_upper > self.valid_paras.get("hw_max"):
+                    dx_h_upper = min(dx_h_upper, self.valid_paras.get("hw_max"))
+                    new_dy_range[H_DIM] = (new_dy_range[H_DIM][0], _get_output(dx_h_upper, w_shape[H_DIM],
+                                            (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                            self.dilations[H_DIM]))
+                    correct_range_flag = True
+                    warnings.warn("The input calculated based on the upper limit of the output h "+
+                        "range is more than 4096, and the upper limit of the input h range is corrected "+
+                        "as {}".format(dx_h_upper))
+
             dx_w_lower = (dy_range[W_DIM][0]-1) * self.strides[W_DIM]+1
             if not dy_range[W_DIM][1]:
                 dx_w_upper = dy_range[W_DIM][1]
             else:
-                dx_w_upper = min(dy_range[W_DIM][1] * self.strides[W_DIM], self.valid_paras.get("hw_max"))
+                dx_w_upper = dy_range[W_DIM][1] * self.strides[W_DIM]
+                if dx_w_upper > self.valid_paras.get("hw_max"):
+                    dx_w_upper = min(dx_w_upper, self.valid_paras.get("hw_max"))
+                    new_dy_range[W_DIM] = (new_dy_range[W_DIM][0], _get_output(dx_w_upper, w_shape[W_DIM],
+                                            (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                            self.dilations[W_DIM]))
+                    correct_range_flag = True
+                    warnings.warn("The input calculated based on the upper limit of the output w "+
+                        "range is more than 4096, and the upper limit of the input w range is corrected "+
+                        "as {}".format(dx_w_upper))
         else:
-            dx_h_lower = max(_get_lower_input(dy_range[H_DIM][0], w_shape[H_DIM],
+            dx_h_lower = _get_lower_input(dy_range[H_DIM][0], w_shape[H_DIM],
                                       (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                      self.dilations[H_DIM]), self.valid_paras.get("nhw_min"))
+                                      self.dilations[H_DIM])
+            if dx_h_lower < self.valid_paras.get("nhw_min"):
+                dx_h_lower = max(dx_h_lower, self.valid_paras.get("nhw_min"))
+                new_dy_range[H_DIM] = (_get_output(dx_h_lower, w_shape[H_DIM],
+                                        (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                        self.dilations[H_DIM]), new_dy_range[H_DIM][1])
+                correct_range_flag = True
+                warnings.warn("The input calculated based on the lower limit of the output h "+
+                    "range is less than 1, and the lower limit of the input h range is corrected "+
+                    "as {}".format(dx_h_lower))
             if not dy_range[H_DIM][1]:
                 dx_h_upper = dy_range[H_DIM][1]
             else:
-                dx_h_upper = min(_get_higher_input(dy_range[H_DIM][1], w_shape[H_DIM],
+                dx_h_upper = _get_higher_input(dy_range[H_DIM][1], w_shape[H_DIM],
                                           (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                          self.dilations[H_DIM]), self.valid_paras.get("hw_max"))
-            dx_w_lower = max(_get_lower_input(dy_range[W_DIM][0], w_shape[W_DIM],
+                                          self.dilations[H_DIM])
+                if dx_h_upper > self.valid_paras.get("hw_max"):
+                    dx_h_upper = min(dx_h_upper, self.valid_paras.get("hw_max"))
+                    new_dy_range[H_DIM] = (new_dy_range[H_DIM][0], _get_output(dx_h_upper, w_shape[H_DIM],
+                                            (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                            self.dilations[H_DIM]))
+                    correct_range_flag = True
+                    warnings.warn("The input calculated based on the upper limit of the output h "+
+                        "range is more than 4096, and the upper limit of the input h range is corrected "+
+                        "as {}".format(dx_h_upper))
+
+            dx_w_lower = _get_lower_input(dy_range[W_DIM][0], w_shape[W_DIM],
                                       (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                      self.dilations[W_DIM]), self.valid_paras.get("nhw_min"))
+                                      self.dilations[W_DIM])
+            if dx_w_lower < self.valid_paras.get("nhw_min"):
+                dx_w_lower = max(dx_w_lower, self.valid_paras.get("nhw_min"))
+                new_dy_range[W_DIM] = (_get_output(dx_w_lower, w_shape[W_DIM],
+                                        (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                        self.dilations[W_DIM]), new_dy_range[W_DIM][1])
+                correct_range_flag = True
+                warnings.warn("The input calculated based on the lower limit of the output w "+
+                    "range is less than 1, and the lower limit of the input w range is corrected "+
+                    "as {}".format(dx_w_lower))
             if not dy_range[W_DIM][1]:
                 dx_w_upper = dy_range[W_DIM][1]
             else:
-                dx_w_upper = min(_get_higher_input(dy_range[W_DIM][1], w_shape[W_DIM],
+                dx_w_upper = _get_higher_input(dy_range[W_DIM][1], w_shape[W_DIM],
                                           (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                          self.dilations[W_DIM]), self.valid_paras.get("hw_max"))
+                                          self.dilations[W_DIM])
+                if dx_w_upper > self.valid_paras.get("hw_max"):
+                    dx_w_upper = min(dx_w_upper, self.valid_paras.get("hw_max"))
+                    new_dy_range[W_DIM] = (new_dy_range[W_DIM][0], _get_output(dx_w_upper, w_shape[W_DIM],
+                                            (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                            self.dilations[W_DIM]))
+                    correct_range_flag = True
+                    warnings.warn("The input calculated based on the upper limit of the output w "+
+                        "range is more than 4096, and the upper limit of the input w range is corrected "+
+                        "as {}".format(dx_w_upper))
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
         return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
-                (dx_h_lower, dx_h_upper), (dx_w_lower,  dx_w_upper)]
+                (dx_h_lower, dx_h_upper), (dx_w_lower,  dx_w_upper)], correct_range_flag, new_dy_range
 
     def infer_shape_and_range(self):
         """
@@ -848,11 +935,11 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
                 else:
                     output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
-            dx_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
+            dx_range_nchw, correct_range_flag, new_dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
 
         self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, dx_range_nchw, group_para
+        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, new_dy_range_nchw, dx_range_nchw, group_para, correct_range_flag
 
 
     def config_paras(self):
@@ -871,7 +958,7 @@ class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):
 
         return {"x_tensor": x_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
                 "bias_tensor": bias_tensor, "filter_shape": param.get("filter_shape"),
-                "input_size": param.get("input_size"), "group_para": param.get("group_para")}
+                "input_size": param.get("input_size"), "group_para": param.get("group_para"), "correct_range_flag": param.get("correct_range_flag", False)}
 
 
 class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
@@ -918,28 +1005,72 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
             # dilation = 1
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1]
 
-        dx_h_lower = max(_get_input(dy_range[H_DIM][0], w_shape[H_DIM],
+        def _get_output(x_in, k_size, pads, stride, dilation):
+            if not x_in:
+                return x_in
+            return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
+
+        correct_range_flag = False
+        new_dy_range = copy.deepcopy(dy_range)
+
+        dx_h_lower = _get_input(dy_range[H_DIM][0], w_shape[H_DIM],
                                   (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                  self.dilations[H_DIM]), self.valid_paras.get("nhw_min"))
+                                  self.dilations[H_DIM])
+        if dx_h_lower < self.valid_paras.get("nhw_min"):
+            dx_h_lower = max(dx_h_lower, self.valid_paras.get("nhw_min"))
+            new_dy_range[H_DIM] = (_get_output(dx_h_lower, w_shape[H_DIM],
+                                    (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                    self.dilations[H_DIM]), new_dy_range[H_DIM][1])
+            correct_range_flag = True
+            warnings.warn("The input calculated based on the lower limit of the output h "+
+                "range is less than 1, and the lower limit of the input h range is corrected "+
+                "as {}".format(dx_h_lower))
         if not dy_range[H_DIM][1]:
             dx_h_upper = dy_range[H_DIM][1]
         else:
-            dx_h_upper = min(_get_input(dy_range[H_DIM][1], w_shape[H_DIM],
+            dx_h_upper = _get_input(dy_range[H_DIM][1], w_shape[H_DIM],
                                       (self.pads[0], self.pads[1]), self.strides[H_DIM],
-                                      self.dilations[H_DIM]), self.valid_paras.get("hw_max"))
-        dx_w_lower = max(_get_input(dy_range[W_DIM][0], w_shape[W_DIM],
+                                      self.dilations[H_DIM])
+            if dx_h_upper > self.valid_paras.get("hw_max"):
+                dx_h_upper = min(dx_h_upper, self.valid_paras.get("hw_max"))
+                new_dy_range[H_DIM] = (new_dy_range[H_DIM][0], _get_output(dx_h_upper, w_shape[H_DIM],
+                                        (self.pads[0], self.pads[1]), self.strides[H_DIM],
+                                        self.dilations[H_DIM]))
+                correct_range_flag = True
+                warnings.warn("The input calculated based on the upper limit of the output h "+
+                    "range is more than 4096, and the upper limit of the input h range is corrected "+
+                    "as {}".format(dx_h_upper))
+        dx_w_lower = _get_input(dy_range[W_DIM][0], w_shape[W_DIM],
                                   (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                  self.dilations[W_DIM]), self.valid_paras.get("nhw_min"))
+                                  self.dilations[W_DIM])
+        if dx_w_lower < self.valid_paras.get("nhw_min"):
+            dx_w_lower = max(dx_w_lower, self.valid_paras.get("nhw_min"))
+            new_dy_range[W_DIM] = (_get_output(dx_w_lower, w_shape[W_DIM],
+                                    (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                    self.dilations[W_DIM]), new_dy_range[W_DIM][1])
+            correct_range_flag = True
+            warnings.warn("The input calculated based on the lower limit of the output w "+
+                "range is less than 1, and the lower limit of the input w range is corrected "+
+                "as {}".format(dx_w_lower))
         if not dy_range[W_DIM][1]:
             dx_w_upper = dy_range[W_DIM][1]
         else:
-            dx_w_upper = min(_get_input(dy_range[W_DIM][1], w_shape[W_DIM],
+            dx_w_upper = _get_input(dy_range[W_DIM][1], w_shape[W_DIM],
                                       (self.pads[2], self.pads[3]), self.strides[W_DIM],
-                                      self.dilations[W_DIM]), self.valid_paras.get("hw_max"))
+                                      self.dilations[W_DIM])
+            if dx_w_upper > self.valid_paras.get("hw_max"):
+                dx_w_upper = min(dx_w_upper, self.valid_paras.get("hw_max"))
+                new_dy_range[W_DIM] = (new_dy_range[W_DIM][0], _get_output(dx_w_upper, w_shape[W_DIM],
+                                        (self.pads[2], self.pads[3]), self.strides[W_DIM],
+                                        self.dilations[W_DIM]))
+                correct_range_flag = True
+                warnings.warn("The input calculated based on the upper limit of the output w "+
+                    "range is more than 4096, and the upper limit of the input w range is corrected "+
+                    "as {}".format(dx_w_upper))
         if dx_range:
             return [dx_range[N_DIM], dx_range[C_DIM], (dx_h_lower, dx_h_upper), (dx_w_lower, dx_w_upper)]
         return [dy_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
-                (dx_h_lower, dx_h_upper), (dx_w_lower,  dx_w_upper)]
+                (dx_h_lower, dx_h_upper), (dx_w_lower,  dx_w_upper)], correct_range_flag, new_dy_range
 
     def infer_shape_and_range(self):
         """
@@ -992,11 +1123,11 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
                 else:
                     output_range[W_DIM] = (output_range[W_DIM][0], output_range[W_DIM][1] * self.strides[W_DIM])
             self.check_range_valid(dy_shape_nchw, output_range, "out_backprop", self.data_format)
-            dx_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
+            dx_range_nchw, correct_range_flag, new_dy_range_nchw = self.get_input_range(filter_shape_nchw, dy_range_nchw)
 
         self.check_range_valid(dx_shape_nchw, dx_range_nchw, "input_size", self.data_format)
 
-        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, dy_range_nchw, dx_range_nchw, group_para
+        return dy_shape_nchw, filter_shape_nchw, dx_shape_nchw, new_dy_range_nchw, dx_range_nchw, group_para, correct_range_flag
 
 
     def config_paras(self):
@@ -1019,4 +1150,4 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
 
         return {"x_tensor": x_tensor, "filter_tensor": filter_tensor,
                 "bias_tensor": bias_tensor, "filter_shape": param.get("filter_shape"),
-                "input_size": param.get("input_size"), "group_para": param.get("group_para")}
+                "input_size": param.get("input_size"), "group_para": param.get("group_para"), "correct_range_flag": param.get("correct_range_flag", False)}

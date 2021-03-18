@@ -2073,7 +2073,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         dynamic_para = {
             "fmap_range": fmap_range,
-            "var_map": var_map
+            "var_map": var_map,
+            "correct_range_flag": para_dict.get("correct_range_flag", False)
         }
         return dynamic_para
 

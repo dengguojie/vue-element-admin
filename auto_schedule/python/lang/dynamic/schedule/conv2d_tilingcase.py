@@ -263,8 +263,9 @@ class Conv2dTiling(CubeTilingOp):
             var_range['fmap_w'] = (coverage[4], coverage[5])
             var_range['wo'] = (self.get_output_w(var_range['fmap_w'][0]),
                                self.get_output_w(var_range['fmap_w'][1]))
+        correct_range_flag = ConvParam.dynamic_para.get("correct_range_flag", False)
 
-        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
+        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range, "correct_range_flag": correct_range_flag}
 
     def _get_al1_bound(self, tiling, curent_size):
         """

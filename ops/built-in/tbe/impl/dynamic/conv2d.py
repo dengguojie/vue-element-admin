@@ -149,7 +149,8 @@ def _conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads, dil
                    "weight_fracz_shape": paras.get("w_shape_frac_z"),
                    "weight_ori_shape_nchw": paras.get("w_shape"),
                    "padding_mode": paras.get("padding_mode"),
-                   "pooling_mode": paras.get("pooling_mode")},
+                   "pooling_mode": paras.get("pooling_mode"),
+                   "correct_range_flag": paras.get("correct_range_flag", False)},
                   optim_dict=default_para.get("optim_dict"),
                   dsl_flag=dsl_flag)
 

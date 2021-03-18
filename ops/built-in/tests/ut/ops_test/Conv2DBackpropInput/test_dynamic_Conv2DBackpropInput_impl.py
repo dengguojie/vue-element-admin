@@ -116,6 +116,20 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_input_case4",
                                         "failed"))
 
+# general, dynamic_hw,N dim's range is (1, None)
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_input_case([32, 16, 5, 5], [4, 32, -1, -1], [4, 16, -1, -1],[4],
+                                        "float16", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        ((4, 4), (32, 32), (1, None), (1, None)),
+                                        ((4, 4), (16, 16), (1, None), (1, None)),
+                                        ((4, 4)),
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1), 1, "NCHW",
+                                        "dynamic_conv2d_backprop_input_case5",
+                                        "success"))
+
+
 if __name__ == '__main__':
     import tbe
     with tbe.common.context.op_context.OpContext("dynamic"):

@@ -48,7 +48,8 @@ def _conv2d_backprop_input_compute(input_size, filters, out_backprop, y, strides
                                          "dilations": conv2dbp_para.dilations,
                                          "res_dtype": default_para.get("res_dtype"),
                                          "kernel_name": kernel_name,
-                                         "group_dict": paras.get("group_para")
+                                         "group_dict": paras.get("group_para"),
+                                         "correct_range_flag": paras.get("correct_range_flag", False)
                                      })
 
     return {'op_placeholder': [paras.get("input_tensor"), paras.get("filter_tensor"), paras.get("dy_tensor")],

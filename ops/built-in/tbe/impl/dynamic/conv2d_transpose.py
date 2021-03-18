@@ -51,7 +51,8 @@ def _conv2d_transpose_compute(input_size, x, filter, bias, offset_w,
                                          "tensor_bias": paras.get("bias_tensor"),
                                          "offset_x": offset_x,
                                          "kernel_name": kernel_name,
-                                         "group_dict": paras.get("group_para")
+                                         "group_dict": paras.get("group_para"),
+                                         "correct_range_flag": paras.get("correct_range_flag", False)
                                      })
 
     if bias:
