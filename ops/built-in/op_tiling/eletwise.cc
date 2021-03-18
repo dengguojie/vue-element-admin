@@ -157,19 +157,6 @@ bool Eletwise::DoBlockTiling() {
   return true;
 }
 
-int64_t GetBankConflictUbFactor(int64_t ub_factor) {
-    const std::vector<int64_t> ub_factor_list = {
-            32768, 16384, 8192, 4096, 2048, 1024, 512, 256, 128
-    };
-
-    for (size_t i = 0; i < ub_factor_list.size(); i++) {
-        if (ub_factor >= ub_factor_list[i]) {
-            return ub_factor_list[i];
-        }
-    }
-
-    return ub_factor;
-}
 
 bool Eletwise::DoUbTiling() {
   ub_axis = 0;
@@ -189,10 +176,6 @@ bool Eletwise::DoUbTiling() {
       ub_factor = std::floor(adjust_factor * 1.0 / ele_in_block) * ele_in_block;
     }
   }
-
-  // only eletwise fix ub_factor
-  ub_factor = GetBankConflictUbFactor(ub_factor);
-
   return true;
 }
 
