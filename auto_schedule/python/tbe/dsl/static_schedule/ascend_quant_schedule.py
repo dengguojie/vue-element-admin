@@ -270,10 +270,6 @@ def _set_buffer_emit_insn(sch, tensor_list, axis_inner, attr_dic):
         sch[tensor_map.get(CAST_I8_NAME)].op.axis[0], round_emit_insn)
     sch[tensor_map.get(INPUT_NAME)].emit_insn(
         sch[tensor_map.get(INPUT_NAME)].op.axis[0], in_dma)
-    align_length = attr_dic.get("HWC0")
-    l1_fusion_flag = attr_dic.get("l1_fusion_flag")
-    if l1_fusion_flag != -1 and align_length > 0:
-        sch[res].bind_buffer(res.op.axis[1], align_length, 0)
     sch[res].emit_insn(axis_inner, 'dma_copy')
 
 
@@ -465,8 +461,7 @@ def ascend_quant_schedule(res, input_tensors):
             "input_c1": res.op.attrs['c1_dim'].value,
             "l1_fusion_flag": res.op.attrs['l1_fusion_flag'].value,
             'input_format': res.op.attrs['input_format'],
-            'addr_type': res.op.attrs['addr_type'].value,
-            'HWC0': res.op.attrs['HWC0'].value
+            'addr_type': res.op.attrs['addr_type'].value
         }
         l1_fusion_flag = attr_dic.get("l1_fusion_flag")
         if "input_x" in tensor_map:
@@ -541,7 +536,6 @@ class QuantSchedule(ElewiseSchedule):
             'c1_dim'].value
         self.attrs["addr_type"] = self._quant_output_tensor.op.attrs[
             'addr_type']
-        self.attrs["HWC0"] = self._quant_output_tensor.op.attrs['HWC0']
 
     def _calculate_emit_insn_map(self, tensor):
         """

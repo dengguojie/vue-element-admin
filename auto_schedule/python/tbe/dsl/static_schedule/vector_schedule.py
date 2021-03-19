@@ -270,10 +270,7 @@ class VectorSchedule(object):
 
         for tensor in out_tensors:
             # get output tensor L1 fusion params
-            if tensor.op.name.find("write_select") >= 0:
-                __get_ele_fusion_params(tensor.op.input_tensors[0])
-            else:
-                __get_ele_fusion_params(tensor)
+            __get_ele_fusion_params(tensor)
 
     def _get_l1fuison_flag(self):
         """
@@ -352,10 +349,7 @@ class VectorSchedule(object):
         out_l1_flag = self._fusion_params.get("out_l1_flag", False)
         if self._is_l1fusion and out_l1_flag:
             for i in self._out_tensors:
-                out_select_write_flag = i.op.name.find("write_select") >= 0
-                # write_select scope: ub->gm
-                if not out_select_write_flag:
-                    self._schedule[i].set_scope(self._l1_fusion_scope)
+                self._schedule[i].set_scope(self._l1_fusion_scope)
 
         if self._out_tensors:
             if self._input_tensors:
@@ -519,23 +513,6 @@ class VectorSchedule(object):
         self._recursive_double_buffer(temp_write_buffer)
 
     def _do_emit_insn(self):
-        # do bind_buffer if need to select write
-        # only support 5hd to select write
-        for out_tensor in self._out_tensors:
-            fused_select_write = out_tensor.op.name.find("write_select") >= 0
-            if fused_select_write:
-                if len(out_tensor.shape) == 5:
-                    hwc0 = out_tensor.op.attrs["HWC0"].value
-                    self._schedule[out_tensor].bind_buffer(
-                        out_tensor.op.axis[1], hwc0, 0)
-                else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90003"
-                    dict_args["detailed_cause"] = "select write only support" \
-                                                  " 5HD! while out_tensor " \
-                                                  "shape len is [%s]" % len(out_tensor.shape)
-                    raise RuntimeError(dict_args, get_error_message(dict_args))
-
         for stage in self._emit_insn_map:
             scope_iter_var = self._emit_insn_map[stage]["scope"]
             instruction = self._emit_insn_map[stage]["instruction"]

@@ -328,7 +328,7 @@ def bninference_d_compute(x, mean, variance, scale, bias, y,
 
     fuse_y = y
     if y is None:
-        fuse_y = {"addr_type": 0, "valid_shape": [], "slice_offset": []}
+        fuse_y = {"addr_type": 0}
 
     # if l1 fusion x format must 5hd
     l1_fusion_type = x.op.attrs["L1_fusion_type"].value if "L1_fusion_type" in x.op.attrs else -1
@@ -442,10 +442,6 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
     fusion_params
     """
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    in_l1_flag_list = []
-    in_valid_shape_list = []
-    in_slice_offset_list = []
-    in_select_read_flag_list = []
     is_l1_depth_fusion = False
 
     input_tensor = [x, mean, variance, scale, bias]
@@ -459,40 +455,15 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
                     error_manager_vector.raise_err_specific_reson("bninference",
                                         "bninference does not support l1 width fusion")
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-            in_l1_flag = x.op.attrs["addr_type"].value == 1 \
-                if "addr_type" in x.op.attrs else False
-            in_l1_flag_list.append(in_l1_flag)
-            in_valid_shape = x.op.attrs["valid_shape"] \
-                if "valid_shape" in x.op.attrs else []
-            in_valid_shape_list.append(in_valid_shape)
-            in_slice_offset = x.op.attrs["slice_offset"] \
-                if "slice_offset" in x.op.attrs else []
-            in_slice_offset_list.append(in_slice_offset)
-            in_select_read_flag = x.op.tag == "read_select_5d"
-            in_select_read_flag_list.append(in_select_read_flag)
 
     l1_fusion_type = 0 if is_l1_depth_fusion else -1
 
     out_l1_flag = False
-    out_valid_shape = []
-    out_slice_offset = []
-    out_select_write_flag = False
     if y is not None:
         out_l1_flag = y.get("addr_type", 0) == 1
-        out_valid_shape = y.get("valid_shape", [])
-        out_slice_offset = y.get("slice_offset", [])
-        out_select_write_flag = bool(out_valid_shape)
 
-    fusion_params = {"is_l1fusion": is_l1_depth_fusion,
-                     "l1_fusion_type": l1_fusion_type,
-                     "in_l1_flag": in_l1_flag_list,
-                     "in_select_read_flag": in_select_read_flag_list,
-                     "in_valid_shape": in_valid_shape_list,
-                     "in_slice_offset": in_slice_offset_list,
-                     "out_l1_flag": out_l1_flag,
-                     "out_select_write_flag": out_select_write_flag,
-                     "out_valid_shape": out_valid_shape,
-                     "out_slice_offset": out_slice_offset}
+    fusion_params = {"l1_fusion_type": l1_fusion_type,
+                     "out_l1_flag": out_l1_flag}
     return fusion_params
 
 
@@ -664,11 +635,7 @@ def get_l1_paras(x):
             error_manager_vector.raise_err_specific_reson("bninference",
                                         "bninference does not support l1 width fusion")
     addr_type = x.get("addr_type", 0)
-    valid_shape = x.get("valid_shape", [])
-    slice_offset = x.get("slice_offset", [])
     attr_x = {"addr_type": addr_type,
-              "valid_shape": valid_shape,
-              "slice_offset": slice_offset,
               "L1_fusion_type": l1_fusion_type}
     return attr_x, l1_fusion_type
 

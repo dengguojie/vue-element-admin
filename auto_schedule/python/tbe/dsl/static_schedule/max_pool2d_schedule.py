@@ -486,11 +486,9 @@ def schedule(res, sch_list):
     sch = sch_list[0]
     context = {}
 
-    fused_select_write = res.op.name.find("write_select") >= 0
     # fused strided_write
     fused_strided_write = res.op.tag == STRIDED_WRITE_TAG
     # place holder
-    context["fused_select_write"] = fused_select_write
     context["fused_strided_write"] = fused_strided_write
 
     def _preprocess_fusion():
@@ -499,7 +497,7 @@ def schedule(res, sch_list):
         quant_tensors = None
         hwc0 = None
 
-        if fused_select_write or fused_strided_write:
+        if fused_strided_write:
             before_res = res.op.input_tensors[0]
             fused_ascend_quant = before_res.op.tag == ASCEND_QUANT_TAG
             context["fused_quant"] = fused_ascend_quant
@@ -507,14 +505,13 @@ def schedule(res, sch_list):
             fused_ascend_quant = res.op.tag == ASCEND_QUANT_TAG
             context["fused_quant"] = fused_ascend_quant
 
-        if (fused_select_write and fused_ascend_quant) or \
-                (fused_strided_write and fused_ascend_quant):
+        if (fused_strided_write and fused_ascend_quant):
             res_select_or_strided_write = res
             quant_res = res_select_or_strided_write.op.input_tensors[0]
 
             quant_tensors = _crawl_quant_tensor(res)
             pool_res = quant_tensors["input_ub"].op.input_tensors[0]
-        elif fused_select_write or fused_strided_write:
+        elif fused_strided_write:
             res_select_or_strided_write = res
             pool_res = res_select_or_strided_write.op.input_tensors[0]
         elif fused_ascend_quant:
@@ -555,7 +552,6 @@ def schedule(res, sch_list):
     cce_params.cceEmitParamsIns.insert_params(fusion_params)
 
     l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
-    in_select_read_flag = fusion_params.get("in_select_read_flag")
     is_l1fusion = l1_fusion_type in (L1_DEPTH_FUSION, L1_BREADTH_FUSION)
     in_l1_flag = fusion_params.get("in_l1_flag", False)
     out_l1_flag = fusion_params.get("out_l1_flag", False)
@@ -590,16 +586,15 @@ def schedule(res, sch_list):
     context["bind_core_axis"] = bind_core_axis
 
     round_mode_temp = None
-    # select_write and stirded_write compute inline
-    is_select_or_stride_write_quant = (fused_select_write and fused_quant) or \
-                                      (fused_strided_write and fused_quant)
-    is_select_or_stride_write = fused_select_write or fused_strided_write
-    if is_select_or_stride_write_quant:
+    # stirded_write compute inline
+    is_stride_write_quant = (fused_strided_write and fused_quant)
+    is_stride_write = fused_strided_write
+    if is_stride_write_quant:
         # get quant round_mode
         round_mode_temp = quant_res.op.attrs["round_mode"]
         sch[quant_res].compute_inline()
         quant_res = res_select_or_strided_write
-    elif is_select_or_stride_write:
+    elif is_stride_write:
         sch[pool_res].compute_inline()
         pool_res = res_select_or_strided_write
     # tiling
@@ -664,7 +659,7 @@ def schedule(res, sch_list):
         # schedule quant
         if fused_quant:
             # To get "round_mode" in fusion-pooling+quant+others
-            if fused_strided_write or fused_select_write:
+            if fused_strided_write:
                 round_mode = round_mode_temp
             else:
                 round_mode = res.op.attrs["round_mode"]
@@ -702,18 +697,6 @@ def schedule(res, sch_list):
 
     _stirde_write_for_ub_fusion()
 
-    # use for L1 fusion select write
-    def _select_write_for_l1_fusion():
-        if fused_select_write:
-            if fused_quant:
-                hwc0 = res.op.attrs["HWC0"].value
-                sch[res].bind_buffer(res.op.axis[1], hwc0, 0)
-            else:
-                hwc0 = pool_res.op.attrs["HWC0"].value
-                sch[pool_res].bind_buffer(pool_res.op.axis[1], hwc0, 0)
-
-    _select_write_for_l1_fusion()
-
     # schedule pool
     _schedule_pool(pool_res, sch, pool_tensors, context)
 
@@ -733,7 +716,7 @@ def schedule(res, sch_list):
     _l1_fusion_set_scope()
 
     # L1 fusion
-    if (l1_fusion_type == L1_BREADTH_FUSION) or in_select_read_flag:
+    if l1_fusion_type == L1_BREADTH_FUSION:
         sch[tensor_in_ub].emit_insn(tensor_in_ub.op.axis[0], 'dma_copy')
 
     sch[res].emit_insn(res1i, "dma_copy")

@@ -40,10 +40,6 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
     fusion_params
     """
     # 0: L1 depth fusion, 1: L1 width fusion, -1: no L1 fusion
-    in_l1_flag_list = []
-    in_valid_shape_list = []
-    in_slice_offset_list = []
-    in_select_read_flag_list = []
     is_l1_depth_fusion = False
 
     for i in range(0, x_tensor_num):
@@ -54,17 +50,6 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
             if l1_fusion_type == 1:
                 error_manager_vector.raise_err_specific_reson("eltwise", "eltwise does not support l1 width fusion")
         is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-        in_l1_flag = x_tensor[i].op.attrs["addr_type"].value == 1 \
-            if "addr_type" in x_tensor[i].op.attrs else False
-        in_l1_flag_list.append(in_l1_flag)
-        in_valid_shape = x_tensor[i].op.attrs["valid_shape"] \
-            if "valid_shape" in x_tensor[i].op.attrs else []
-        in_valid_shape_list.append(in_valid_shape)
-        in_slice_offset = x_tensor[i].op.attrs["slice_offset"] \
-            if "slice_offset" in x_tensor[i].op.attrs else []
-        in_slice_offset_list.append(in_slice_offset)
-        in_select_read_flag = x_tensor[i].op.tag == "read_select_5d"
-        in_select_read_flag_list.append(in_select_read_flag)
 
     l1_fusion_type = 0 if is_l1_depth_fusion is True else -1
     if l1_fusion_type != -1 and y.get("format").upper() != 'NC1HWC0':
@@ -73,25 +58,11 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
                                                           y.get("format").upper())
 
     out_l1_flag = False
-    out_valid_shape = []
-    out_slice_offset = []
-    out_select_write_flag = False
     if y is not None:
         out_l1_flag = y.get("addr_type", 0) == 1
-        out_valid_shape = y.get("valid_shape", [])
-        out_slice_offset = y.get("slice_offset", [])
-        out_select_write_flag = bool(out_valid_shape)
 
-    fusion_params = {"is_l1fusion": is_l1_depth_fusion,
-                     "l1_fusion_type": l1_fusion_type,
-                     "in_l1_flag": in_l1_flag_list,
-                     "in_select_read_flag": in_select_read_flag_list,
-                     "in_valid_shape": in_valid_shape_list,
-                     "in_slice_offset": in_slice_offset_list,
-                     "out_l1_flag": out_l1_flag,
-                     "out_select_write_flag": out_select_write_flag,
-                     "out_valid_shape": out_valid_shape,
-                     "out_slice_offset": out_slice_offset}
+    fusion_params = {"l1_fusion_type": l1_fusion_type,
+                     "out_l1_flag": out_l1_flag}
     return fusion_params
 
 
@@ -245,11 +216,7 @@ def eltwise(x, y, mode=1, coeff=[], kernel_name="eltwise"):
                     error_manager_vector.raise_err_specific_reson("eltwise", "eltwise does not support l1 width fusion")
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
             addr_type = x[i].get("addr_type", 0)
-            valid_shape = x[i].get("valid_shape", [])
-            slice_offset = x[i].get("slice_offset", [])
             attr_x = {"addr_type": addr_type,
-                      "valid_shape": valid_shape,
-                      "slice_offset": slice_offset,
                       "L1_fusion_type": l1_fusion_type}
             datan_tmp = tvm.placeholder(fuseshape, name=datan_name,
                                         dtype=dtype, attrs=attr_x)

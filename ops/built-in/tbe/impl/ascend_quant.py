@@ -60,41 +60,18 @@ def _check_l1_fusion(x, y):
     check the l1 fusion parameters
     """
     x_addr_type = x.get("addr_type", 0)
-    x_valid_shape = x.get("valid_shape", [])
-    x_slice_offset = x.get("slice_offset", [])
     x_l1_fusion_type = x.get("L1_fusion_type", -1)
-
-    y_valid_shape = y.get("valid_shape", [])
     y_l1_fusion_type = y.get("L1_fusion_type", -1)
 
     if x_l1_fusion_type not in (-1, 0):
         rule = "quant L1_fusion_type only  support (-1, 0)"
-        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type",
-                                                                        x_l1_fusion_type)
+        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type", x_l1_fusion_type)
 
     if y_l1_fusion_type not in (-1, 0):
         rule = "quant L1_fusion_type only  support (-1, 0)"
-        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type",
-                                                                        y_l1_fusion_type)
-
-    if x_valid_shape and len(x_valid_shape) != 5:
-        rule = "the len of valid shape should be 5"
-        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "valid_shape",
-                                                                        x_valid_shape)
-
-    if y_valid_shape and len(y_valid_shape) != 5:
-        rule = "the len of valid shape should be 5"
-        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "valid_shape",
-                                                                        y_valid_shape)
-
-    if x_slice_offset and len(x_slice_offset) != 5:
-        rule = "the len of slice_offset shape should be 5"
-        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "slice_offset",
-                                                                        x_slice_offset)
+        error_manager_vector.raise_err_check_params_rules("ascend_quant", rule, "L1_fusion_type", y_l1_fusion_type)
 
     attr = {"addr_type": x_addr_type,
-            "valid_shape": x_valid_shape,
-            "slice_offset": x_slice_offset,
             "L1_fusion_type": x_l1_fusion_type}
 
     return x_l1_fusion_type, y_l1_fusion_type, attr
@@ -147,37 +124,14 @@ def _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index):
     """
     generate lambda func
     """
-    x_shape = shape_util.shape_to_list(x.shape)
     dtype = x.dtype
-    x_slice_offset = _get_input_attr(x, "slice_offset", [], True)
-    l1_fusion_flag = _get_input_attr(x, "l1_fusion_flag", -1, False)
-    if not x_slice_offset:
-        x_slice_offset = [0, 0, 0, 0, 0]
-
-    if l1_fusion_flag != -1:
-        x_w = x_shape[3]
-        n_offset, _, h_offset, w_offset, _ = x_slice_offset
-        if c1_dim % 2 == 0:
-            input_ub = tvm.compute(in_shape,
-                                   lambda n, c1, m, c0: x(n + n_offset, c1, (m // x_w) + h_offset,
-                                                          (m % x_w) + w_offset, c0),
-                                   name="input_ub", attrs={"c_out": c1_dim})
-        else:
-            input_ub = tvm.compute(
-                read_shape,
-                lambda n, c1, m, c0: tvm.select(c1 <= in_shape[c1_index] - 1,
-                                                x(n + n_offset, c1, (m // x_w) + h_offset, (m % x_w) + w_offset, c0),
-                                                tvm.const(0, dtype=dtype)),
-                name='input_ub', attrs={"c_out": c1_dim})
+    if c1_dim % 2 == 0:
+        input_ub = tvm.compute(in_shape, lambda *i: x(*i), name="input_ub", attrs={"c_out": c1_dim})
     else:
-        if c1_dim % 2 == 0:
-            input_ub = tvm.compute(in_shape, lambda *i: x(*i), name="input_ub", attrs={"c_out": c1_dim})
-        else:
-            input_ub = tvm.compute(read_shape,
-                                   lambda *indice: tvm.select(indice[c1_index] <= in_shape[c1_index] - 1,
-                                                              x(*indice),
-                                                              tvm.const(0, dtype=dtype)),
-                                   name='input_ub', attrs={"c_out": c1_dim})
+        zero = tvm.const(0, dtype=dtype)
+        input_ub = tvm.compute(read_shape,
+                               lambda *indice: tvm.select(indice[c1_index] <= in_shape[c1_index] - 1, x(*indice), zero),
+                               name='input_ub', attrs={"c_out": c1_dim})
     return input_ub
 
 
@@ -343,21 +297,9 @@ def _get_input_l1_info(x):
     """
     get the l1 fusion info from input tensor
     """
-    x_valid_shape = _get_input_attr(x, "valid_shape", [], True)
-    x_slice_offset = _get_input_attr(x, "slice_offset", [], True)
     l1_fusion_flag = _get_input_attr(x, "l1_fusion_flag", -1, False)
-    if not x_slice_offset:
-        x_slice_offset = [0, 0, 0, 0, 0]
-    x_shape = shape_util.shape_to_list(x.shape)
-    in_shape = x_shape
-
-    if l1_fusion_flag != -1:
-        v_shape = shape_util.shape_to_list(x_valid_shape)
-        if v_shape:
-            in_shape = [v_shape[0], v_shape[1], v_shape[2] * v_shape[3], v_shape[4]]
-        else:
-            in_shape = [x_shape[0], x_shape[1], x_shape[2] * x_shape[3], x_shape[4]]
-    return x_valid_shape, x_slice_offset, in_shape, l1_fusion_flag
+    in_shape = shape_util.shape_to_list(x.shape)
+    return in_shape, l1_fusion_flag
 
 
 def _get_out_l1_info(y):
@@ -365,19 +307,11 @@ def _get_out_l1_info(y):
     get the l1 fusion info from output tensor
     """
     y_addr_type = 0
-    y_valid_shape = []
     if isinstance(y, dict):
         y_addr_type = y.get("addr_type", 0)
-        y_valid_shape = y.get("valid_shape", [])
     elif isinstance(y, tvm.tensor.Tensor):
         y_addr_type = _get_input_attr(y, "addr_type", 0, False)
-        y_valid_shape = _get_input_attr(y, "valid_shape", [], True)
-
-    hwc0 = 0
-    if y_valid_shape:
-        _, _, h_valid, w_valid, c0_valid = y_valid_shape
-        hwc0 = h_valid * w_valid * c0_valid
-    return y_addr_type, y_valid_shape, hwc0
+    return y_addr_type
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("ascend_quant")
@@ -406,8 +340,8 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
     None
     """
     dtype = x.dtype
-    _, _, in_shape, l1_fusion_flag = _get_input_l1_info(x)
-    y_addr_type, _, hwc0 = _get_out_l1_info(y)
+    in_shape, l1_fusion_flag = _get_input_l1_info(x)
+    y_addr_type = _get_out_l1_info(y)
 
     nz_format_flag = util.is_nz_format(x, True)
 
@@ -439,8 +373,7 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
                              "input_format": tensor_format,
                              "c1_dim": c1_dim,
                              "l1_fusion_flag": l1_fusion_flag,
-                             "addr_type": y_addr_type,
-                             "HWC0": hwc0})
+                             "addr_type": y_addr_type})
     return res
 
 
@@ -487,16 +420,13 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", kerne
 
     if input_format == "NC1HWC0":
         if x_l1_fusion_type != -1:
-            input_shape = shape
             attr["l1_fusion_flag"] = x_l1_fusion_type
-        else:
-            # change to N,C1,H*W,C0
-            input_shape = (shape[0], shape[1], shape[2] * shape[3], shape[4])
+        # change to N,C1,H*W,C0
+        input_shape = (shape[0], shape[1], shape[2] * shape[3], shape[4])
     else:
         if x_l1_fusion_type != -1:
             rule = "FRACTAL_NZ not support L1 fusion"
-            error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "L1_fusion_type",
-                                                                            x_l1_fusion_type)
+            error_manager_vector.raise_err_check_params_rules(kernel_name, rule, "L1_fusion_type", x_l1_fusion_type)
         batch = 1
         if len(shape) > 4:
             batch = functools.reduce(lambda x, y: x * y, shape[:-4])

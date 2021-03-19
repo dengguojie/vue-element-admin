@@ -45,35 +45,13 @@ def get_fusion_params(x_tensor, y):
         if l1_fusion_type == 1:
             error_manager_vector.raise_err_specific_reson("leaky_relu",
                                         "leaky_relu does not support l1 width fusion")
-    is_l1_depth_fusion = l1_fusion_type == 0
-    in_l1_flag = x_tensor.op.attrs["addr_type"].value == 1 \
-        if "addr_type" in x_tensor.op.attrs else False
-    in_valid_shape = x_tensor.op.attrs["valid_shape"] \
-        if "valid_shape" in x_tensor.op.attrs else []
-    in_slice_offset = x_tensor.op.attrs["slice_offset"] \
-        if "slice_offset" in x_tensor.op.attrs else []
-    in_select_read_flag = x_tensor.op.tag == "read_select_5d"
 
     out_l1_flag = False
-    out_valid_shape = []
-    out_slice_offset = []
-    out_select_write_flag = False
     if y is not None:
         out_l1_flag = y.get("addr_type", 0) == 1
-        out_valid_shape = y.get("valid_shape", [])
-        out_slice_offset = y.get("slice_offset", [])
-        out_select_write_flag = bool(out_valid_shape)
 
-    fusion_params = {"is_l1fusion": is_l1_depth_fusion,
-                     "l1_fusion_type": l1_fusion_type,
-                     "in_l1_flag": in_l1_flag,
-                     "in_select_read_flag": in_select_read_flag,
-                     "in_valid_shape": in_valid_shape,
-                     "in_slice_offset": in_slice_offset,
-                     "out_l1_flag": out_l1_flag,
-                     "out_select_write_flag": out_select_write_flag,
-                     "out_valid_shape": out_valid_shape,
-                     "out_slice_offset": out_slice_offset}
+    fusion_params = {"l1_fusion_type": l1_fusion_type,
+                     "out_l1_flag": out_l1_flag}
     return fusion_params
 
 
@@ -141,11 +119,7 @@ def leaky_relu(x, y, negative_slope=0, kernel_name="leaky_relu"):
                                         "leaky_relu does not support l1 width fusion")
     is_l1_depth_fusion = l1_fusion_type == 0
     addr_type = x.get("addr_type", 0)
-    valid_shape = x.get("valid_shape", [])
-    slice_offset = x.get("slice_offset", [])
     attr_x = {"addr_type": addr_type,
-              "valid_shape": valid_shape,
-              "slice_offset": slice_offset,
               "L1_fusion_type": l1_fusion_type}
 
     input_data_x = tvm.placeholder(fuseshape, name="input_data_x",

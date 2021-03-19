@@ -115,13 +115,13 @@ def calc_expect_func(x, y, scale, offset, sqrt_mode, round_mode):
         out_data = out_data.astype("int8")
     return out_data
 
-ut_case.add_precision_case("all", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
                                               {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
                                               1.0, 0.0, False, "Floor"],
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
-ut_case.add_precision_case("all", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
+ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1,2,4,4,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,2,4,4,16),"ori_format": "NC1HWC0", "param_type": "input","value_range":[-10,10]},
                                               {"shape": (1,1,4,4,32), "dtype": "int8", "format": "NC1HWC0", "ori_shape": (1,1,4,4,32),"ori_format": "NC1HWC0", "param_type": "output"},
                                               1.0, 0.0, False, "Trunc"],
                                    "calc_expect_func": calc_expect_func,

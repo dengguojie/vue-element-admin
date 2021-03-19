@@ -310,13 +310,7 @@ class ElewiseSchedule(VectorSchedule):
         visited_list : list
             record tensors which has been visited.
         """
-        # get read_select tensor
-        self.get_read_select_tensor(tensor)
-
         for in_tensor in list(tensor.op.input_tensors):
-            # get read_select tensor
-            self.get_read_select_tensor(tensor)
-
             if not (in_tensor in self._spec_node_list
                     or isinstance(in_tensor.op, tvm.tensor.PlaceholderOp)):
                 if in_tensor not in self._mid_tensor_dst_tensor_map.keys():
@@ -355,12 +349,6 @@ class ElewiseSchedule(VectorSchedule):
             self.__gen_reversed_subgraph_list(in_tensor, tensor_list,
                                               visited_list)
             tensor_list.append(in_tensor)
-
-    def get_read_select_tensor(self, in_tensor):
-        """get read_select tensor"""
-        # read_select+eltwise fusion: compute_inline this tensor
-        if in_tensor.op.name.find("output_ub_5d") >= 0:
-            self._cache_write_exclude_tensors.append(in_tensor)
 
     def apply_broadcast_not_last_axis_tensors(self, in_tensor):
         """Apply broadcast not last axis tensors"""
@@ -414,12 +402,6 @@ class ElewiseSchedule(VectorSchedule):
         -------
         list : read buffers
         """
-        # eltwise+write_select fusion: compute_inline this tensor
-        # write_select is one input one output, so select input_tensors[0]
-        if self._last_output_tensor.op.name.find("write_select") >= 0:
-            self._cache_write_exclude_tensors.append(
-                self._last_output_tensor.op.input_tensors[0])
-
         for i in self._mid_tensors:
             if i not in self._cache_write_exclude_tensors:
                 self._cache_write_tensors.append(i)
