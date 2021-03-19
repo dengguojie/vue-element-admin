@@ -98,9 +98,9 @@ class DeconvParam(object):
         return self.para_map.get(key, None)
 
 
-class Conv2d_Dx_Opti_Schedule:
+class Conv2dDxOptiSchedule:
     """
-    class of conv2d_dx_opti_schedule
+    class of Conv2dDxOptiSchedule
     """
     def __init__(self):
         self.dx_para = DeconvParam()
@@ -1730,7 +1730,8 @@ class Conv2d_Dx_Opti_Schedule:
             g_inner,
             overload_axis,
             overload_flag_gm,
-            l0c_m_outer
+            l0c_m_outer,
+            reorder_flag
         )
 
 
@@ -2095,28 +2096,67 @@ class Conv2d_Dx_Opti_Schedule:
 
         def _attach_al1_bl1():
             # attach tensor of al1 and bl1 to c_l0c
-            al1_attach_at_cl0 = True if (al1_parts[0] != 1 or (l0c_multi_group_flag and al1_parts[2] == 1)) else False
-            if al1_attach_at_cl0:
-                sch[a_l1].compute_at(sch[c_l0c], al1_at_l0c_axis)
-                if self.dx_para.get_para_map("load3d_flag"):
-                    sch[a_l0a_before].compute_at(sch[c_l0c], al1_at_l0c_axis)
-            elif TILING["AL1_shape"]:
-                sch[a_l1].compute_at(sch[c_gm], al1_at_c_axis)
-                if self.dx_para.get_para_map("load3d_flag"):
-                    sch[a_l0a_before].compute_at(sch[c_gm], al1_at_c_axis)
-            else:
-                sch[a_l1].compute_at(sch[c_gm], batch_in_out_axis)
-                if self.dx_para.get_para_map("load3d_flag"):
-                    sch[a_l0a_before].compute_at(sch[c_gm], batch_in_out_axis)
+            def _al1_attach():
+                al1_attach_at_cl0 = al1_parts[0] != 1 or (l0c_multi_group_flag and al1_parts[2] == 1)
+                if al1_attach_at_cl0:
+                    al1_compute_axis = al1_at_l0c_axis
+                    if TILING["A_overhead_opt_flag"]:
+                        sch[a_l1].allocate_at(sch[c_l0c], al1_compute_axis)
+                        al1_compute_axis = al0_m_out
+                    sch[a_l1].compute_at(sch[c_l0c], al1_compute_axis)
+                    if self.dx_para.get_para_map("load3d_flag"):
+                        sch[a_l0a_before].compute_at(sch[c_l0c], al1_compute_axis)
+                elif TILING["AL1_shape"]:
+                    al1_compute_scope = c_gm
+                    al1_compute_axis = al1_at_c_axis
+                    if TILING["A_overhead_opt_flag"]:
+                        run_once_axis = [bl1_at_c_axis, noii_axis] if reorder_flag else []
+                        sch[a_l1].allocate_at(sch[c_gm], al1_compute_axis, run_once_axes=run_once_axis)
+                        al1_compute_axis = al0_m_out
+                        al1_compute_scope = c_l0c
+                    sch[a_l1].compute_at(sch[al1_compute_scope], al1_compute_axis)
+                    if self.dx_para.get_para_map("load3d_flag"):
+                        sch[a_l0a_before].compute_at(sch[al1_compute_scope], al1_compute_axis)
+                else:
+                    al1_compute_axis = batch_in_out_axis
+                    al1_compute_scope = c_gm
+                    if TILING["A_overhead_opt_flag"]:
+                        sch[a_l1].allocate_at(sch[c_gm], al1_compute_axis,
+                                            run_once_axes=[bl1_at_c_axis, noii_axis])
+                        al1_compute_scope = c_l0c
+                        al1_compute_axis = al0_m_out
+                    sch[a_l1].compute_at(sch[al1_compute_scope], al1_compute_axis)
+                    if self.dx_para.get_para_map("load3d_flag"):
+                        sch[a_l0a_before].compute_at(sch[al1_compute_scope], al1_compute_axis)
 
-            bl1_attach_at_cl0 = True if (bl1_parts[0] != 1 or (l0c_multi_group_flag and bl1_parts[2] == 1)) else False
-
-            if bl1_attach_at_cl0:
-                sch[b_l1].compute_at(sch[c_l0c], bl1_at_l0c_axis)
-            elif TILING["BL1_shape"]: # bl1_parts[0] == 1
-                sch[b_l1].compute_at(sch[c_gm], bl1_at_c_axis)
-            else:  # TILING["BL1_shape"]=[]
-                sch[b_l1].compute_at(sch[c_gm], batch_in_out_axis)
+            def _bl1_attach():
+                
+                bl1_attach_at_cl0 = bl1_parts[0] != 1 or (l0c_multi_group_flag and bl1_parts[2] == 1)
+                if bl1_attach_at_cl0:
+                    bl1_compute_axis = bl1_at_l0c_axis
+                    if TILING["B_overhead_opt_flag"]:
+                        sch[b_l1].allocate_at(sch[c_l0c], bl1_compute_axis)
+                        bl1_compute_axis = bl0_n_outer
+                    sch[b_l1].compute_at(sch[c_l0c], bl1_compute_axis)
+                elif TILING["BL1_shape"]: # bl1_parts[0] == 1
+                    bl1_compute_axis = bl1_at_c_axis
+                    bl1_compute_scope = c_gm
+                    if TILING["B_overhead_opt_flag"]:
+                        run_once_axis = [al1_at_c_axis] if reorder_flag else [al1_at_c_axis, tile_axis]
+                        sch[b_l1].allocate_at(sch[c_gm], bl1_compute_axis, run_once_axes=run_once_axis)
+                        bl1_compute_axis = bl0_compute_axis
+                        bl1_compute_scope = bl0_compute_scope
+                    sch[b_l1].compute_at(sch[bl1_compute_scope], bl1_compute_axis)
+                else:  # TILING["BL1_shape"]=[]
+                    bl1_compute_axis = batch_in_out_axis
+                    bl1_compute_scope = c_gm
+                    if TILING["B_overhead_opt_flag"]:
+                        sch[b_l1].allocate_at(sch[c_gm], bl1_compute_axis, run_once_axes=[al1_at_c_axis, tile_axis])
+                        bl1_compute_axis = bl0_compute_axis
+                        bl1_compute_scope = bl0_compute_scope
+                    sch[b_l1].compute_at(sch[bl1_compute_scope], bl1_compute_axis)
+            _al1_attach()
+            _bl1_attach()
 
         def _do_double_buffer(fusion_type):
             # a_l1 b_l1
@@ -2622,7 +2662,8 @@ class Conv2d_Dx_Opti_Schedule:
             g_inner,
             overload_axis,
             overload_flag_gm,
-            l0c_m_outer
+            l0c_m_outer,
+            reorder_flag
         ) = self._get_l0c_and_l1_axis(
             sch, c_gm, l0c_factor, al1_parts, bl1_parts, num_batch, g_extend, var_map, l0c_multi_group_flag
         )
@@ -2680,10 +2721,15 @@ class Conv2d_Dx_Opti_Schedule:
             comput axis equal with l0c
             """
             if l0c_multi_group_flag and bl0_axis_factor[2] > 1:
+                bl0_compute_axis = c_slice_axis
+                bl0_compute_scope = c_gm
                 sch[b_l0b].compute_at(sch[c_gm], c_slice_axis)
             else:
+                bl0_compute_axis = bl0_n_outer
+                bl0_compute_scope = c_l0c
                 sch[b_l0b].compute_at(sch[c_l0c], bl0_n_outer)
-        _bl0_attach()
+            return bl0_compute_axis, bl0_compute_scope
+        bl0_compute_axis, bl0_compute_scope = _bl0_attach()
         self._print_ir_conv("attach l0a/l0b", sch)
 
         # split and get axis of al1_at_l0c_axis, bl1_at_l0c_axis
@@ -2833,6 +2879,6 @@ def opti_schedule(tensor, sch_list, tiling_case=None, var_range=None):
     :return: schedule
     -------------------------------------------------------------------
     """
-    dx_sch = Conv2d_Dx_Opti_Schedule()
+    dx_sch = Conv2dDxOptiSchedule()
     sch = dx_sch.opti_schedule(tensor, sch_list, tiling_case, var_range)
     return sch
