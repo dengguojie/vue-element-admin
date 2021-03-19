@@ -26,7 +26,7 @@
 #include <vector>
 #include <algorithm>
 #include "graph/operator.h"
-#include "op_log.h"
+#include "util/op_log.h"
 #include "common/util/error_manager/error_manager.h"
 #include "util/common_shape_fns.h"
 #include "util/error_util.h"

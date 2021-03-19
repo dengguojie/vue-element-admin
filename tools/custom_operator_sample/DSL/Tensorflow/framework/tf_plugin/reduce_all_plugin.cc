@@ -15,33 +15,15 @@
  */
 
 /*!
- * \file elewise_calculation_ops.cpp
+ * \file reduce_all_plugin.cpp
  * \brief
  */
-#include "add.h"
-#include <string>
-#include <vector>
+#include "register/register.h"
 
-namespace ge {
-
-IMPLEMT_VERIFIER(Add, AddVerify) {
-  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-IMPLEMT_COMMON_INFERFUNC(AddInferShape) {
-  bool is_dynamic_output = true;
-  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
-    return GRAPH_FAILED;
-  }
-
-  return GRAPH_SUCCESS;
-}
-
-INFER_DATA_SLICE_FUNC_REG(Add, ElewiseTwoInputInferDataSlice);
-COMMON_INFER_FUNC_REG(Add, AddInferShape);
-VERIFY_FUNC_REG(Add, AddVerify);
-
-}  // namespace ge
+namespace domi {
+REGISTER_CUSTOM_OP("ReduceAll")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("All")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::TVM);
+}  // namespace domi

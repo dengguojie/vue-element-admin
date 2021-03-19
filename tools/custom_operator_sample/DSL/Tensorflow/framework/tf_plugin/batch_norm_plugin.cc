@@ -15,15 +15,17 @@
  */
 
 /*!
- * \file add_plugin.cpp
+ * \file batch_norm_plugin.cpp
  * \brief
  */
 #include "register/register.h"
 
 namespace domi {
-REGISTER_CUSTOM_OP("Add")
+REGISTER_CUSTOM_OP("BatchNorm")
     .FrameworkType(TENSORFLOW)
-    .OriginOpType("Add")
+    .OriginOpType({"FusedBatchNormV3", "FusedBatchNorm", "FusedBatchNormV2"})
     .ParseParamsFn(AutoMappingFn)
+    .DelInputWithCond(3, "is_training", true)
+    .DelInputWithCond(4, "is_training", true)
     .ImplyType(ImplyType::TVM);
 }  // namespace domi
