@@ -1200,10 +1200,13 @@ IMPLEMT_VERIFIER(ApproximateEqual, ApproximateEqualVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ApproximateEqualInferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(op.GetInputDesc("x1").GetShape());
-  tensordesc_output.SetDataType(DT_BOOL);
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->MutableOutputDesc("y")->SetDataType(DT_BOOL);
   return GRAPH_SUCCESS;
 }
 
