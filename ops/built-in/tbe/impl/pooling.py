@@ -489,18 +489,18 @@ def pooling(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
         is_use_matrix = True
     # avg pooling calls conv2d interface to implement
     if modes == "AVG" and matrix and is_use_matrix:
-        input_c = input_shape[1]
+        input_ori_shape = x.get("ori_shape")
+        input_c = input_ori_shape[1]
         # get real pad
         out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right \
             = tbe.get_caffe_out_size_and_pad(ceil_mode, input_h, input_w, window[0], window[1], stride[0], stride[1],
                                              dilation[0], dilation[1], pad[0], pad[1], pad[2], pad[3])
         pad = (pad_top, pad_bottom, pad_left, pad_right)
-        filter_n = input_c
         offset_w = None
         dilations = (1, 1, 1, 1)
         strides = (1, 1, stride[0], stride[1])
         conv2d(x, matrix, bias, offset_w, y, strides, pad, dilations,
-               groups=filter_n, data_format=input_dtype, offset_x=offset_x,
+               groups=input_c, data_format=input_dtype, offset_x=offset_x,
                kernel_name=kernel_name)
     else:
         # set tensor attrs
