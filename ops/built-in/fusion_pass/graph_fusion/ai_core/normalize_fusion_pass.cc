@@ -102,8 +102,8 @@ Status NormalizeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   unsigned int shapeSize = input_shape_vector.size();
  
   FUSION_PASS_CHECK(
-    shapeSize != 4,
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node %s's Only Support 4 dim", fusedNode->GetName().c_str()),
+    shapeSize != 4 && shapeSize != 2,
+    OP_LOGE(FUSED_OP_TYPE.c_str(), "Node %s's Only Support 4 dim and 2 dim", fusedNode->GetName().c_str()),
     return PARAM_INVALID);
   
   if (across_spatial) {
