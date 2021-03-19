@@ -116,9 +116,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
             )
             return dy_zero
 
-        def _write_select(dy_h):
-            if valid_shape:
-                dy_h = valid_shape[2]
+        def _write_select():
             shape_dy_filling = (
                 dy_batch,
                 kernel_cout1,
@@ -126,24 +124,15 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                 dy_w * stride_w,
                 kernel_cout0
             )
-            if valid_shape and (stride_h > 1 or stride_w > 1 or input_mem == 0):
-                dy_read = tvm.compute(
-                    valid_shape,
-                    lambda n, c1, h, w, c0: dy_ddr[n, c1, h + slice_offset[2], w, c0],
-                    name="dy_selet_read",
-                    tag="dy_selet_read"
-                )
-            else:
-                dy_read = dy_ddr
             if stride_h == 1 and stride_w == 1:
-                dy_filling = dy_read
+                dy_filling = dy_ddr
             else:
                 dy_zero = _fill_zero(shape_dy_filling)
                 dy_filling = tvm.compute(
                     shape_dy_filling,
                     lambda batch_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx: tvm.select(
                         tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0),
-                        dy_read[
+                        dy_ddr[
                             batch_idx,
                             kernel_cout1_idx,
                             ho_idx // stride_h,
@@ -162,7 +151,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
                     tag="stride_filling",
                     attrs={"stride_expand": (self._stride_h, self._stride_w)}
                 )
-            return dy_filling, shape_dy_filling, dy_h
+            return dy_filling, shape_dy_filling
 
         def _write_select_dynamic(dy_h):
             shape_dy_filling = (
@@ -206,10 +195,6 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         fusion_para = self._fusion_para
         DeConvPattern.fusion_para_map = fusion_para
         DeConvPattern.dedy = dy_ddr
-        l1_fusion_type = fusion_para.get("l1_fusion_type")
-        input_mem = fusion_para.get("input_memory_type")
-        valid_shape = fusion_para.get("valid_shape")
-        slice_offset = fusion_para.get("slice_offset")
 
         dy_batch, kernel_cout1, dy_h, dy_w, kernel_cout0 = cube_util.shape_to_list(dy_ddr.shape)
         stride_h, stride_w = self._stride_h, self._stride_w
@@ -220,7 +205,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         if self._var_map:
             dy_filling, shape_dy_filling, dy_h = _write_select_dynamic(dy_h)
         else:
-            dy_filling, shape_dy_filling, dy_h = _write_select(dy_h)
+            dy_filling, shape_dy_filling = _write_select()
 
         new_stride = (1, 1)
         new_hw = (dy_h * stride_h, dy_w * stride_w)
@@ -333,16 +318,11 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
             dy_col = pat_conv.generate_a(dy_filling_l1, self._real_g,
                                          self._cou1_g, self._var_map)
         else:
-            offset = 0
-            if l1_fusion_type != -1 and input_mem == 1 and valid_shape:
-                offset = slice_offset[2]
             dy_col = pat_conv.generate_a(
                 dy_filling,
                 self._real_g,
                 self._cou1_g,
-                self._var_map,
-                slice_offset=offset,
-                valid_shape=valid_shape)
+                self._var_map)
 
         return dy_col
 

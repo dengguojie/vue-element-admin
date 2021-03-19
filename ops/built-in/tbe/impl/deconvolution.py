@@ -223,7 +223,7 @@ def _cal_min_l1space(x,  # pylint: disable=invalid-name
     bl1_size = shape_filters[2] * shape_filters[3] * c0_size * c0_size_k * \
                util_deconv_comm.BIT_RATIO_DICT.get(filters_dtype)
     al1_size = 0
-    if (list(pads) != [0, 0, 0, 0] or list(shape_filters[2:]) != [1, 1]) \
+    if (list(pads)[::2] != [0, 0] or list(shape_filters[2:]) != [1, 1]) \
             and list(strides) != [1, 1]:
         al1_size = _cal_al1_size()
     return al1_size + bl1_size
@@ -411,10 +411,6 @@ def deconvolution(  # pylint: disable=invalid-name,R0913,R0914,W0613
 
     # get fusion para in L1 fusion
     fusion_para = _get_deconvolution_fusion_para(x, y)
-    valid_shape = fusion_para.get("valid_shape")
-    if valid_shape and valid_shape[2] == shape_x[2]:
-        fusion_para["valid_shape"] = ()
-        fusion_para["slice_offset"] = ()
 
     dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
 
@@ -445,7 +441,6 @@ def _get_deconvolution_fusion_para(input_x, input_y=None):
     """
     input_memory_type = _get_value(input_x, "addr_type", 0)
     valid_shape = _get_value(input_x, "valid_shape", ())
-    slice_offset = _get_value(input_x, "slice_offset", ())
     l1_fusion_type = _get_value(input_x, "L1_fusion_type", -1)
     fmap_l1_addr_flag = _get_value(input_x, "L1_addr_flag", False)
     fmap_l1_valid_size = _get_value(input_x, "L1_valid_size", 0)
@@ -468,19 +463,13 @@ def _get_deconvolution_fusion_para(input_x, input_y=None):
             "output_memory_type": str(output_memory_type),
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
-    if valid_shape and not slice_offset:
-        reason = "valid shape exists, slice shape cannot be []"
-        args_dict = {"errCode": "E60108", "reason": reason}
-        raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
     valid_shape = shape_to_list(valid_shape)
-    slice_offset = shape_to_list(slice_offset)
     if not l1_fusion_enable_flag:
         input_memory_type = 0
         if input_y is not None:
             output_memory_type = 0
         valid_shape = []
-        slice_offset = []
         l1_fusion_type = -1
         fmap_l1_addr_flag = False
         fmap_l1_valid_size = 0
@@ -488,7 +477,6 @@ def _get_deconvolution_fusion_para(input_x, input_y=None):
         "input_memory_type": input_memory_type,
         "output_memory_type": output_memory_type,
         "valid_shape": valid_shape,
-        "slice_offset": slice_offset,
         "l1_fusion_type": l1_fusion_type,
         "fmap_l1_addr_flag": fmap_l1_addr_flag,
         "fmap_l1_valid_size": fmap_l1_valid_size,
@@ -592,11 +580,6 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
     shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
     shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
     dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
-
-    valid_shape = fusion_para.get("valid_shape")
-    if valid_shape and valid_shape[2] == shape_x[2]:
-        fusion_para["valid_shape"] = ()
-        fusion_para["slice_offset"] = ()
 
     group_dict = util_deconv_comm.calculate_group(
         shape_x,
@@ -720,18 +703,6 @@ def _deconvolution_cce(  # pylint: disable=R0913, R0914
     Returns : None
     ----------
     """
-
-
-    if not fusion_para:
-        fusion_para = {
-            "input_memory_type": 0,
-            "output_memory_type": 0,
-            "valid_shape": (),
-            "slice_offset": (),
-            "l1_fusion_type": -1,
-            "fmap_l1_addr_flag": False,
-            "fmap_l1_valid_size": 0,
-        }
 
     if filter_dtype == "int8" and x_dtype == "int8":
         # NCHW means (groups * cout_ori, cin_ori, hk,wk), but it means

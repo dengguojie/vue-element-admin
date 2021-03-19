@@ -1119,18 +1119,10 @@ class Conv2d_Dx_Opti_Schedule:
 
         def _get_l1_fusion_para():
             fusion_para = DeConvKernelSize1Pattern.fusion_para
-            self.dx_para.update_para_map(
-                "input_memory_type", [fusion_para["input_memory_type"]]
-            )
-            self.dx_para.update_para_map("valid_shape", fusion_para["valid_shape"])
-            self.dx_para.update_para_map("slice_offset", fusion_para["slice_offset"])
+            self.dx_para.update_para_map("input_memory_type", [fusion_para["input_memory_type"]])
             self.dx_para.update_para_map("l1_fusion_type", fusion_para["l1_fusion_type"])
-            self.dx_para.update_para_map(
-                "fmap_l1_addr_flag", fusion_para["fmap_l1_addr_flag"]
-            )
-            self.dx_para.update_para_map(
-                "fmap_l1_valid_size", fusion_para["fmap_l1_valid_size"]
-            )
+            self.dx_para.update_para_map("fmap_l1_addr_flag", fusion_para["fmap_l1_addr_flag"])
+            self.dx_para.update_para_map("fmap_l1_valid_size", fusion_para["fmap_l1_valid_size"])
 
             load3d_flag = bool(fusion_para["l1_fusion_type"] != -1)
             self.dx_para.update_para_map("load3d_flag", load3d_flag)
@@ -2306,8 +2298,6 @@ class Conv2d_Dx_Opti_Schedule:
 
         def _intrin_mapping(fusion_type):  # pylint: disable=R0915,R0912
             def _l1fusion_intrin():
-                valid_shape = self.dx_para.get_para_map("valid_shape")
-                slice_offset = self.dx_para.get_para_map("slice_offset")
                 if TILING["AL1_shape"] is not None:
                     if self.dx_para.get_para_map("input_memory_type")[0] == 1:
                         sch[a_l1].emit_insn(a_l1.op.axis[0], "phony_insn")
@@ -2316,7 +2306,6 @@ class Conv2d_Dx_Opti_Schedule:
                         if self.dx_para.get_para_map("l1_fusion_type") != -1:
                             sch[a_l1].pragma(a_l1.op.axis[0], "jump_data", 1)
                 if self.dx_para.get_para_map("load3d_flag"):
-                    conv_fm_h = valid_shape[2] if valid_shape else a_l1.shape[2]
                     setfmatrix_dict = {
                         "conv_kernel_h": 1,
                         "conv_kernel_w": 1,
@@ -2327,24 +2316,15 @@ class Conv2d_Dx_Opti_Schedule:
                         "conv_stride_h": 1,
                         "conv_stride_w": 1,
                         "conv_fm_c": a_l1.shape[1] * a_l1.shape[4],
-                        "conv_fm_h": conv_fm_h,
+                        "conv_fm_h": a_l1.shape[2],
                         "conv_fm_w": a_l1.shape[3]
                     }
-                    if (
-                        valid_shape
-                        and self.dx_para.get_para_map("input_memory_type")[0] == 1
-                    ):
-                        setfmatrix_dict["conv_fm_offset_h"] = slice_offset[2]
                     sch[a_l0a_before].emit_insn(
                         a_l0a_before.op.axis[0], "set_fmatrix", setfmatrix_dict
                     )
                     sch[a_l0a].emit_insn(a_l0a.op.axis[1], "im2col")
                 else:
                     sch[a_l0a].emit_insn(a_l0a.op.axis[0], "dma_copy")
-                if self.dx_para.get_para_map("write_select"):
-                    sch[c_gm.op.input_tensors[0]].compute_inline()
-                    align_length = c_gm.op.attrs["HWC0"]
-                    sch[c_gm].bind_buffer(c_gm.op.axis[1], align_length, 0)
 
             _l1fusion_intrin()
             sch[b_l1].emit_insn(b_l1.op.axis[0], "dma_copy")
@@ -2359,17 +2339,8 @@ class Conv2d_Dx_Opti_Schedule:
                     sch[c_ub].emit_insn(c_ub.op.axis[0], "dma_copy")
 
             if DOUBLE_TENSOR_OUT:
-                if self.dx_para.get_para_map("write_select1"):
-                    sch[DOUBLE_TENSOR_OUT[0].op.input_tensors[0]].compute_inline()
-                    align_length = DOUBLE_TENSOR_OUT[0].op.attrs["HWC0"]
-                    sch[DOUBLE_TENSOR_OUT[0]].bind_buffer(DOUBLE_TENSOR_OUT[0].op.axis[1], align_length, 0)
                 sch[DOUBLE_TENSOR_OUT[0]].emit_insn(DOUBLE_TENSOR_OUT[0].op.axis[0], "dma_copy")
-                if self.dx_para.get_para_map("write_select2"):
-                    sch[DOUBLE_TENSOR_OUT[1].op.input_tensors[0]].compute_inline()
-                    align_length = DOUBLE_TENSOR_OUT[1].op.attrs["HWC0"]
-                    sch[DOUBLE_TENSOR_OUT[1]].bind_buffer(DOUBLE_TENSOR_OUT[1].op.axis[1], align_length, 0)
                 sch[DOUBLE_TENSOR_OUT[1]].emit_insn(DOUBLE_TENSOR_OUT[1].op.axis[0], "dma_copy")
-
                 sch[c_gm].emit_insn(l0c_n_inner_inner, "phony_insn")
             else:
                 sch[c_gm].emit_insn(l0c_n_inner_inner, "dma_copy")
@@ -2495,20 +2466,9 @@ class Conv2d_Dx_Opti_Schedule:
             if res.op.tag == "conv_virtual_res":
                 DOUBLE_TENSOR_OUT.append(res.op.input_tensors[0])
                 DOUBLE_TENSOR_OUT.append(res.op.input_tensors[1])
-                write_select_flag1 = bool(res.op.input_tensors[0].op.tag == "write_select")
-                write_select_flag2 = bool(res.op.input_tensors[1].op.tag == "write_select")
-                self.dx_para.update_para_map("write_select1", write_select_flag1)
-                self.dx_para.update_para_map("write_select2", write_select_flag2)
                 res_before_write_select = res.op.input_tensors[0]
-                if write_select_flag1:
-                    res_before_write_select = res_before_write_select.op.input_tensors[0]
             else:
-                write_select_flag = bool(res.op.tag == "write_select")
-                self.dx_para.update_para_map("write_select", write_select_flag)
-                if write_select_flag:
-                    res_before_write_select = res.op.input_tensors[0]
-                else:
-                    res_before_write_select = res
+                res_before_write_select = res
 
             return res_before_write_select
 
@@ -2520,8 +2480,6 @@ class Conv2d_Dx_Opti_Schedule:
                     fusion_type_num = 1
                 else:
                     fusion_type_num = 2
-            if self.dx_para.get_para_map("write_select"):
-                fusion_type_num += 20
             self.dx_para.update_para_map("fusion_type_num", fusion_type_num)
 
         def _handle_dynamic_shape():

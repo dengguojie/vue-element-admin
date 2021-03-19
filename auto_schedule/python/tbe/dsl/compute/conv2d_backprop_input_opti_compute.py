@@ -213,8 +213,6 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         self._img_w = wo_dim
         hw_dim = int_ceil_div(wo_dim * ho_dim, self._m0)
         real_hwdim = ho_dim * wo_dim
-        valid_shape = self._fusion_para.get("valid_shape")
-        slice_offset = self._fusion_para.get("slice_offset")
         input_mem = self._fusion_para.get("input_memory_type")
         l1_fusion_type = self._fusion_para.get("l1_fusion_type")
 
@@ -222,7 +220,6 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         from_l1_flag = bool(input_mem == 1 and l1_fusion_type != -1)
         # ddr in select read
         from_ddr_flag = bool(input_mem == 0 and l1_fusion_type != -1)
-        h_offset = slice_offset[2] if slice_offset else 0
         if from_l1_flag:
             pat_conv = cube_util.ConvDslPattern(
                 kernel_h=1,
@@ -232,15 +229,12 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 dilations=(1, 1),
                 offset_x=0
             )
-            dedy_col = pat_conv.generate_a(
-                dedy, self._g_extend, self._dy_c1_extend, slice_offset=h_offset, valid_shape=valid_shape
-            )
+            dedy_col = pat_conv.generate_a(dedy, self._g_extend, self._dy_c1_extend)
         elif from_ddr_flag:
-            if not valid_shape:
-                valid_shape = (batch_dim, co1_dim, ho_dim, wo_dim, co0_dim)
+            shape = (batch_dim, co1_dim, ho_dim, wo_dim, co0_dim)
             dedy_col = tvm.compute(
-                valid_shape,
-                lambda n, co1, h, w, co0: dedy(n, co1, h + h_offset, w, co0),
+                shape,
+                lambda *indices: dedy(*indices),
                 name=dedy.name + "_col"
             )
             pat_conv = cube_util.ConvDslPattern(
@@ -251,17 +245,13 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 dilations=(1, 1),
                 offset_x=0
             )
-            dedy_col = pat_conv.generate_a(
-                dedy_col, self._g_extend, self._dy_c1_extend, slice_offset=0, valid_shape=valid_shape
-            )
+            dedy_col = pat_conv.generate_a(dedy_col, self._g_extend, self._dy_c1_extend)
         else:
             # dma copy from DDR(NCHW) to L1(n,c1,h*w,c0),C=groups*C_ori
             shape = (batch_dim, co1_dim, real_hwdim, co0_dim)
             dedy_col = tvm.compute(
                 shape,
-                lambda n, co1, m1, co0: dedy(
-                    n, co1, tvm.floordiv(m1, wo_dim), tvm.floormod(m1, wo_dim), co0
-                ),
+                lambda n, co1, m1, co0: dedy(n, co1, tvm.floordiv(m1, wo_dim), tvm.floormod(m1, wo_dim), co0),
                 name=dedy.name + "_col"
             )
 

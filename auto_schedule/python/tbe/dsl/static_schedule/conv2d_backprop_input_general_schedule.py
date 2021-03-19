@@ -189,8 +189,6 @@ def general_schedule(
     l1_fusion_type = int(fusion_para.get("l1_fusion_type"))
     input_mem = [fusion_para.get("input_memory_type")]
     out_mem = fusion_para.get("output_memory_type")
-    valid_shape = fusion_para.get("valid_shape")
-    slice_offset = fusion_para.get("slice_offset")
     out_mem = _set_output_mem()
     fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
     fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
@@ -352,43 +350,26 @@ def general_schedule(
                     sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
                     tensor_map["a_l1"] = a_l1
                     sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
-                    if valid_shape:
-                        read_select = a_filling.op.input_tensors[0]
-                        a_ddr = read_select.op.input_tensors[0]
-                        if l1_fusion_type == 0 and input_mem[0] == 0:
-                            sch[read_select].set_scope(tbe_platform_info.scope_ubuf)
-                            tensor_map["a_ub"] = read_select
-                        elif input_mem[0] == 1:
-                            sch[read_select].set_scope(tbe_platform_info.scope_ubuf)
-                            tensor_map["a_ub"] = read_select
-                            sch[a_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
-                        elif l1_fusion_type == 1:
-                            sch[read_select].set_scope(tbe_platform_info.scope_cbuf_fusion)
-                            tensor_map["a_l1_full"] = read_select
-                            a_ub = sch.cache_read(
-                                read_select, tbe_platform_info.scope_ubuf, [a_filling]
-                            )
-                            tensor_map["a_ub"] = a_ub
-                    else:
-                        a_ddr = a_filling.op.input_tensors[0]
-                        if input_mem[0] == 0 and l1_fusion_type != 1:
-                            a_ub = sch.cache_read(
-                                a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
-                            )
-                        elif input_mem[0] == 1:
-                            a_ub = sch.cache_read(
-                                a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
-                            )
-                            sch[a_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
-                        elif l1_fusion_type == 1:
-                            a_l1_full = sch.cache_read(
-                                a_ddr, tbe_platform_info.scope_cbuf_fusion, [a_filling]
-                            )
-                            tensor_map["a_l1_full"] = a_l1_full
-                            a_ub = sch.cache_read(
-                                a_l1_full, tbe_platform_info.scope_ubuf, [a_filling]
-                            )
-                        tensor_map["a_ub"] = a_ub
+
+                    a_ddr = a_filling.op.input_tensors[0]
+                    if input_mem[0] == 0 and l1_fusion_type != 1:
+                        a_ub = sch.cache_read(
+                            a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
+                        )
+                    elif input_mem[0] == 1:
+                        a_ub = sch.cache_read(
+                            a_ddr, tbe_platform_info.scope_ubuf, [a_filling]
+                        )
+                        sch[a_ddr].set_scope(tbe_platform_info.scope_cbuf_fusion)
+                    elif l1_fusion_type == 1:
+                        a_l1_full = sch.cache_read(
+                            a_ddr, tbe_platform_info.scope_cbuf_fusion, [a_filling]
+                        )
+                        tensor_map["a_l1_full"] = a_l1_full
+                        a_ub = sch.cache_read(
+                            a_l1_full, tbe_platform_info.scope_ubuf, [a_filling]
+                        )
+                    tensor_map["a_ub"] = a_ub
                     if tensor_map.get("a_l1_full") is not None:
                         a_l1_full = tensor_map.get("a_l1_full")
                         al1_shape = a_l1_full.shape
@@ -404,13 +385,7 @@ def general_schedule(
                     tensor_attr["stride_w"] = stride_w
 
                 def _fill_a():
-                    if valid_shape and input_mem[0] == 0:
-                        a_l1 = a_col_before.op.input_tensors[0]
-                        a_ddr = a_l1.op.input_tensors[0]
-                        stride_h = 1
-                        stride_w = 1
-                        sch[a_l1].set_scope(tbe_platform_info.scope_cbuf_fusion)
-                    elif a_col_before.op.input_tensors[0].op.tag == "dy_l1_modify":
+                    if a_col_before.op.input_tensors[0].op.tag == "dy_l1_modify":
                         a_l1 = a_col_before.op.input_tensors[0]
                         a_ddr = a_l1.op.input_tensors[0]
                         stride_h = 1
@@ -586,17 +561,9 @@ def general_schedule(
                 sch[tensor_map["c_ub_cut"]].compute_inline()
             return fusion_param
 
-        def _set_doubleout_selectflag():
-            if double_out_tensor:
-                tensor_attr["write_select1"] = bool(double_out_tensor[0].op.tag == "write_select")
-                tensor_attr["write_select2"] = bool(double_out_tensor[1].op.tag == "write_select")
-
         tensor_map = {}
         tensor_attr = {}
         all_tensor, leaf_tensor = _get_all_tensors(deconv_res)
-        if c_ddr.op.tag == "write_select":
-            tensor_attr["write_select"] = True
-        _set_doubleout_selectflag()
 
         if deconv_res.op.tag == "requant_remove_pad":
             tensor_attr["n0_32_flag"] = True
@@ -708,9 +675,6 @@ def general_schedule(
         # deconv + relu is 3
         elif "elewise" in deconv_res.op.tag:
             fusion_type = 3
-        # when in write mode ++20
-        if tensor_attr.get("write_select"):
-            fusion_type += 20
         return fusion_type
 
     def _get_deconv_out():
@@ -718,13 +682,8 @@ def general_schedule(
             double_out_tensor.append(c_ddr.op.input_tensors[0])
             double_out_tensor.append(c_ddr.op.input_tensors[1])
             deconv_res = c_ddr.op.input_tensors[0]
-            if deconv_res.op.tag == "write_select":
-                deconv_res = deconv_res.op.input_tensors[0]
         else:
-            if c_ddr.op.tag == "write_select":
-                deconv_res = c_ddr.op.input_tensors[0]
-            else:
-                deconv_res = c_ddr
+            deconv_res = c_ddr
 
         return deconv_res
 
@@ -867,13 +826,7 @@ def general_schedule(
     _, _, dx_h, dx_w, _ = output_shape
     output_shape_g = [g_after, output_shape[0], cin1_g] + output_shape[2:]
 
-    def _get_img_shape():
-        img_shape = cube_util.shape_to_list(a_ddr.shape)
-        if l1_fusion_type != -1 and valid_shape:
-            img_shape = list(valid_shape)
-        return img_shape
-
-    img_shape = _get_img_shape()
+    img_shape = cube_util.shape_to_list(a_ddr.shape)
     _, dy_cout1, dy_h, dy_w, _ = img_shape  # pylint: disable=W0632
     img_shape_g = [g_after, img_shape[0], cou1_g] + img_shape[2:]
     # conv1d_situation
@@ -1880,17 +1833,8 @@ def general_schedule(
             al1_insn, _, _ = sch_agent[a_l1].nlast_scopes(3)
             sch_agent[a_l1].emit_insn(al1_insn, "dma_copy")
         setfmatrix_dict["conv_fm_c"] = a_l1.shape[1] * a_l1.shape[4]
-        setfmatrix_dict["conv_fm_h"] = valid_shape[2] if valid_shape else a_l1.shape[2]
+        setfmatrix_dict["conv_fm_h"] = a_l1.shape[2]
         setfmatrix_dict["conv_fm_w"] = a_l1.shape[3]
-        offset_flag = (
-            (input_mem[0] == 1)
-            and (l1_fusion_type != -1)
-            and (stride_h == 1)
-            and (stride_w == 1)
-            and valid_shape
-        )
-        if offset_flag:
-            setfmatrix_dict["conv_fm_offset_h"] = slice_offset[2]
         sch_agent[a_col_before].emit_insn(
             a_col_before.op.axis[0], 'set_fmatrix', setfmatrix_dict)
         sch_agent[a_col].emit_insn(a_col.op.axis[1], 'im2col')
@@ -2024,22 +1968,10 @@ def general_schedule(
         sch_agent[c_col].emit_insn(scope_insn, "mad", mad_dict)
 
         if not double_out_tensor:
-            if tensor_attr.get("write_select"):
-                sch[c_ddr.op.input_tensors[0]].compute_inline()
-                align_length = int(c_ddr.op.attrs["HWC0"])
-                sch[c_ddr].bind_buffer(c_ddr.op.axis[1], align_length, 0)
             sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "dma_copy")
         else:
             sch[c_ddr].emit_insn(sch_agent[c_ddr].nlast_scopes(2)[0], "phony_insn")
-            if tensor_attr.get("write_select1"):
-                sch[double_out_tensor[0].op.input_tensors[0]].compute_inline()
-                align_length = int(double_out_tensor[0].op.attrs["HWC0"])
-                sch[double_out_tensor[0]].bind_buffer(double_out_tensor[0].op.axis[1], align_length, 0)
             sch[double_out_tensor[0]].emit_insn(sch_agent[double_out_tensor[0]].nlast_scopes(2)[0], "dma_copy")
-            if tensor_attr.get("write_select2"):
-                sch[double_out_tensor[1].op.input_tensors[0]].compute_inline()
-                align_length = int(double_out_tensor[1].op.attrs["HWC0"])
-                sch[double_out_tensor[1]].bind_buffer(double_out_tensor[1].op.axis[1], align_length, 0)
             sch[double_out_tensor[1]].emit_insn(sch_agent[double_out_tensor[1]].nlast_scopes(2)[0], "dma_copy")
 
         overload_flag = _check_overload_dy()

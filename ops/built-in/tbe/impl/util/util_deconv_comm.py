@@ -557,7 +557,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     def _check_l1_size_limit():
         def _l1fusion_size_limit(l1_size):
             l1fusion_l1_size = 0
-            if pads != [0, 0, 0, 0] or [filter_h, filter_w] != [1, 1]:
+            if list(pads)[::2] != [0, 0] or [filter_h, filter_w] != [1, 1]:
                 if stride_h > 1 or stride_w > 1:
                     l1fusion_l1_size = l1_size
             return l1fusion_l1_size
@@ -619,64 +619,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
             return False
         return True
 
-    def fusion_para_check(fusion_para, shape_out_backprop):
-        c0_k = cce_params.CUBE_MKN[filter_dtype]["mac"][1]
-
-        def handle_valid_shape():
-            if not slice_offset:
-                reason = "valid shape exists, slice shape cannot be []"
-                args_dict = {
-                    "errCode": "E60108",
-                    "reason": reason
-                }
-                raise RuntimeError(args_dict,
-                                   err_man.get_error_message(args_dict))
-
-            if slice_offset[2] >= shape_out_backprop[2] \
-                    or slice_offset[2] < 0:
-                reason = "invalid slice_offset"
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": reason,
-                    "value": str(slice_offset)
-                }
-                raise RuntimeError(args_dict,
-                                   err_man.get_error_message(args_dict))
-            if slice_offset[0] != 0 or slice_offset[1] != 0 \
-                    or slice_offset[3] != 0 or slice_offset[4] != 0:
-                reason = "invalid slice_offset"
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": reason,
-                    "value": str(slice_offset)
-                }
-                raise RuntimeError(args_dict,
-                                   err_man.get_error_message(args_dict))
-            if valid_shape[2] + slice_offset[2] > shape_out_backprop[2] \
-                    or valid_shape[2] + slice_offset[2] < 0:
-                reason = "invalid valid_shape"
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": reason,
-                    "value": str(valid_shape)
-                }
-                raise RuntimeError(args_dict,
-                                   err_man.get_error_message(args_dict))
-            if valid_shape[0] != shape_out_backprop[0] \
-                    or valid_shape[3] != shape_out_backprop[3] \
-                    or valid_shape[1]*valid_shape[4] \
-                    != (shape_out_backprop[1] + c0_k - 1) // c0_k * c0_k:
-                reason = "invalid valid_shape"
-                args_dict = {
-                    "errCode": "E60114",
-                    "reason": reason,
-                    "value": str(valid_shape)
-                }
-                raise RuntimeError(args_dict,
-                                   err_man.get_error_message(args_dict))
-
-        valid_shape = fusion_para.get("valid_shape")
-        slice_offset = fusion_para.get("slice_offset")
+    def _fusion_para_check(fusion_para):
         l1_fusion_type = fusion_para.get("l1_fusion_type")
         input_memory_type = fusion_para.get("input_memory_type")
         output_memory_type = fusion_para.get("output_memory_type")
@@ -697,16 +640,12 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 raise RuntimeError(args_dict,
                                    err_man.get_error_message(args_dict))
 
-        if valid_shape:
-            handle_valid_shape()
-
-    def modify_fusion_para(fusion_para, input_h,
+    def _modify_fusion_para(fusion_para, input_h,
                            input_hw_mini, output_hw_mini):
         if fusion_para is None:
             fusion_para = {"input_memory_type": 0,
                            "output_memory_type": 0,
                            "valid_shape": (),
-                           "slice_offset": (),
                            "l1_fusion_type": -1,
                            "fmap_l1_addr_flag": False,
                            "fmap_l1_valid_size": 0}
@@ -803,7 +742,8 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     dedy_hw_max, fmap_hw_max = DEDY_HW_MAX, FMAP_HW_MAX
 
     fusion_para, dedy_h, dedy_hw_min, fmap_hw_min \
-        = modify_fusion_para(fusion_para, dedy_h, dedy_hw_min, fmap_hw_min)
+        = _modify_fusion_para(fusion_para, dedy_h, dedy_hw_min, fmap_hw_min)
+    shape_out_backprop = (dedy_batch, dedy_channel, dedy_h, dedy_w)
 
     # exchange h and w will not change date in memmory
     if _need_change_hw():
@@ -877,6 +817,6 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
         shape_filter, shape_out_backprop, input_sizes, strides, pads,
         dilations, filter_dtype, out_backprop_dtype, res_dtype, kernel_name)
 
-    fusion_para_check(fusion_para, shape_out_backprop)
+    _fusion_para_check(fusion_para)
 
     return result

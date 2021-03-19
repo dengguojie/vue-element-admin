@@ -340,7 +340,6 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     dy_filling_hw_max, dx_hw_max = DY_FILLING_HW_MAX, DX_HW_MAX
 
     if fusion_para and fusion_para.get("valid_shape"):
-        dy_h = fusion_para.get("valid_shape")[2]
         dy_filling_hw_min = 1
         dx_hw_min = 1
     # limitation by chip:
@@ -490,7 +489,7 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
         def _l1fusion_size_limit(l1_size):
             l1fusion_l1_size = 0
             if (
-                padding != [0, 0, 0, 0]
+                list(padding)[::2] != [0, 0]
                 or [filter_h, filter_w] != [1, 1]
                 or switch_to_general_scheme
             ):
@@ -658,8 +657,6 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
         fusion_para = {
             "input_memory_type": 0,
             "output_memory_type": 0,
-            "valid_shape": (),
-            "slice_offset": (),
             "l1_fusion_type": -1,
             "fmap_l1_addr_flag": False,
             "fmap_l1_valid_size": 0
