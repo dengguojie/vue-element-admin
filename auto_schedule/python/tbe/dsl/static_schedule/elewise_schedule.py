@@ -1418,7 +1418,7 @@ class CceOp:
         min_data_cnt_each_core = \
             min_factor_at_start_axis * data_cnt_behand_split_axis
         if data_cnt_behand_reduce_axis <= max_ub_count or \
-                min_data_cnt_each_core < d_align_factor or aicore_count == 1:
+                min_data_cnt_each_core < d_align_factor:
             # scne 1: (cut_b:n, cut_u:n)
             split_axis = beg_axis_no_behand_reduce_axis
             rfactor = dim_val_at_start_axis
