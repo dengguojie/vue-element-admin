@@ -1675,7 +1675,15 @@ IMPLEMT_VERIFIER(LarsV2Update, LarsV2UpdateInferVerify) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(LarsV2Update, ELMTWISE_INFER_SHAPEANDTYPE("g", "g_new"));
+IMPLEMT_COMMON_INFERFUNC(LarsV2UpdateInferShape) {
+  bool is_dynamic_output = true;
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "w", "g", "g_new", is_dynamic_output)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(LarsV2Update, LarsV2UpdateInferShape);
 VERIFY_FUNC_REG(LarsV2Update, LarsV2UpdateInferVerify);
 // ----------------LarsV2Update End-------------------
 
