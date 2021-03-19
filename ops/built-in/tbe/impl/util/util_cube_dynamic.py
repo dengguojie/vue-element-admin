@@ -132,6 +132,9 @@ class CubeParaProcess:
         if self.dilations[H_DIM] != 1 or self.dilations[W_DIM] != 1:
             err_man.raise_err_specific_user(
                 self.op_type, "dilations is not supported in dynamic shape yet.")
+        if in_shape[C_DIM] == DYNAMIC_FLAG:
+            err_man.raise_err_specific_user(
+                self.op_type, "dynamic c dimension is not supported yet.")
 
     def check_range_valid(self, shape, dyn_range, name, in_format):
         """
@@ -162,8 +165,6 @@ class CubeParaProcess:
                     if in_range[0] > in_range[1]:
                         err_man.raise_err_specific_user(self.op_type, "upper bound must be greater than lower bound.")
 
-        if shape[C_DIM] == DYNAMIC_FLAG:
-            err_man.raise_err_specific_user(self.op_type, "dynamic c dimension is not supported yet.")
         for index, dim in enumerate(zip(shape, dyn_range)):
             if dim[0] == DYNAMIC_FLAG:
                 if not dim[1]:
