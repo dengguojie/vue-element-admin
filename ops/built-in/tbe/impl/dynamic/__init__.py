@@ -54,6 +54,7 @@ from .sigmoid_cross_entropy_with_logits_grad import sigmoid_cross_entropy_with_l
 from .relu import relu
 from .relu_v2 import relu_v2
 from .relu_grad_v2 import relu_grad_v2
+from .apply_adadelta_d import apply_adadelta_d
 from .relu6_d import relu6_d
 from .adam_apply_one_assign import adam_apply_one_assign
 from .sigmoid_cross_entropy_with_logits_grad_v2 import sigmoid_cross_entropy_with_logits_grad_v2

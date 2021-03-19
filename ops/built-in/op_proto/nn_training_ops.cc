@@ -1155,9 +1155,15 @@ IMPLEMT_VERIFIER(ApplyAdadeltaD, ApplyAdadeltaDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdadeltaDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdadeltaD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
-  ApplyInferShapeAndDtype(op, "accum_update", "accum_update");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "accum", {"accum"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "accum_update", {"accum_update"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
