@@ -41,6 +41,7 @@ from .gather_v2 import gather_v2
 from .kl_div import kl_div
 from .bias import bias
 from .bninference_d import bninference_d
+from .bn_training_reduce import bn_training_reduce
 from .scatter_nd import scatter_nd
 from .scatter_add import scatter_add
 from .scatter_update import scatter_update

@@ -24,6 +24,7 @@ set(_optiling_files
   avg_pool_1d.cc
   bias.cc
   bias_add.cc
+  bn_reduce.cc
   bninference_d.cc
   bn_reduce_grad.cc
   concat.cc
