@@ -1204,67 +1204,22 @@ class Nz2NDCompute:
                 repeat_times = MAX_REPEAT
 
                 # order
-                with tik_instance.for_range(
-                        0, vector_repeat_merchant_c) as j:
+                if input_y_ub.dtype.lower() == "float16":
+                    with tik_instance.for_range(0, burstlen_gm2ub) as rp_idx:
+                        tik_instance.data_move(input_y_ub[rp_idx * nburst_gm2ub * 16], input_x_ub[rp_idx * 16],
+                                               0, nburst_gm2ub, 1, src_blk_stride - 1, 0)
+                else:
                     with tik_instance.for_range(
-                            0, vector_repeat_merchant_d) as i:
+                            0, vector_repeat_merchant_c) as j:
+                        with tik_instance.for_range(
+                                0, vector_repeat_merchant_d) as i:
 
-                        tik_instance.vadds(
-                            self.mask,
-                            input_y_ub[i * dst_ub_gap +
-                                       j * tail_block_d *
-                                       16 * MAX_REPEAT],
-                            input_x_ub[i * src_ub_gap +
-                                       j * MAX_REPEAT * 16],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
-                        # fp32 need twice
-                        if self.mask == 64:
                             tik_instance.vadds(
                                 self.mask,
                                 input_y_ub[i * dst_ub_gap +
-                                           8 + j * tail_block_d *
-                                           16 * MAX_REPEAT],
-                                input_x_ub[i * src_ub_gap +
-                                           8 + j * MAX_REPEAT * 16],
-                                0,
-                                repeat_times,
-                                dst_blk_stride,
-                                src_blk_stride,
-                                dst_rep_stride,
-                                src_rep_stride)
-
-                    if vector_repeat_remainder_d != 0:
-                        vadds_mask = int(vector_repeat_remainder_d /
-                                         MASK * self.mask)
-                        tik_instance.vadds(
-                            vadds_mask,
-                            input_y_ub[vector_repeat_merchant_d *
-                                       dst_ub_gap + j *
-                                       tail_block_d * 16 * MAX_REPEAT],
-                            input_x_ub[vector_repeat_merchant_d *
-                                       src_ub_gap + j *
-                                       MAX_REPEAT * 16],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
-
-                        if self.mask == 64:
-                            tik_instance.vadds(
-                                vadds_mask,
-                                input_y_ub[vector_repeat_merchant_d *
-                                           dst_ub_gap + 8 +
                                            j * tail_block_d *
                                            16 * MAX_REPEAT],
-                                input_x_ub[vector_repeat_merchant_d *
-                                           src_ub_gap + 8 +
+                                input_x_ub[i * src_ub_gap +
                                            j * MAX_REPEAT * 16],
                                 0,
                                 repeat_times,
@@ -1272,75 +1227,68 @@ class Nz2NDCompute:
                                 src_blk_stride,
                                 dst_rep_stride,
                                 src_rep_stride)
+                            # fp32 need twice
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    self.mask,
+                                    input_y_ub[i * dst_ub_gap +
+                                               8 + j * tail_block_d *
+                                               16 * MAX_REPEAT],
+                                    input_x_ub[i * src_ub_gap +
+                                               8 + j * MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
 
-                if vector_repeat_remainder_c != 0:
-                    repeat_times = vector_repeat_remainder_c
-                    with tik_instance.for_range(
-                            0, vector_repeat_merchant_d) as i:
-
-                        tik_instance.vadds(
-                            self.mask,
-                            input_y_ub[i * dst_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       tail_block_d * 16 * MAX_REPEAT],
-                            input_x_ub[i * src_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       MAX_REPEAT * 16],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
-
-                        # fp32 need twice
-                        if self.mask == 64:
-                            tik_instance.vadds(
-                                self.mask,
-                                input_y_ub[i * dst_ub_gap +
-                                           8 +
-                                           vector_repeat_merchant_c *
-                                           tail_block_d * 16 *
-                                           MAX_REPEAT],
-                                input_x_ub[i * src_ub_gap + 8 +
-                                           vector_repeat_merchant_c *
-                                           MAX_REPEAT * 16],
-                                0,
-                                repeat_times,
-                                dst_blk_stride,
-                                src_blk_stride,
-                                dst_rep_stride,
-                                src_rep_stride)
-
-                    if vector_repeat_remainder_d != 0:
-                        vadds_mask = int(vector_repeat_remainder_d / MASK * self.mask)
-                        tik_instance.vadds(
-                            vadds_mask,
-                            input_y_ub[vector_repeat_merchant_d *
-                                       dst_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       tail_block_d * 16 * MAX_REPEAT],
-                            input_x_ub[vector_repeat_merchant_d *
-                                       src_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       MAX_REPEAT * 16],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
-
-                        if self.mask == 64:
+                        if vector_repeat_remainder_d != 0:
+                            vadds_mask = int(vector_repeat_remainder_d /
+                                             MASK * self.mask)
                             tik_instance.vadds(
                                 vadds_mask,
                                 input_y_ub[vector_repeat_merchant_d *
-                                           dst_ub_gap + 8 +
-                                           vector_repeat_merchant_c *
-                                           tail_block_d * 16 *
-                                           MAX_REPEAT],
+                                           dst_ub_gap + j *
+                                           tail_block_d * 16 * MAX_REPEAT],
                                 input_x_ub[vector_repeat_merchant_d *
-                                           src_ub_gap + 8 +
+                                           src_ub_gap + j *
+                                           MAX_REPEAT * 16],
+                                0,
+                                repeat_times,
+                                dst_blk_stride,
+                                src_blk_stride,
+                                dst_rep_stride,
+                                src_rep_stride)
+
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    vadds_mask,
+                                    input_y_ub[vector_repeat_merchant_d *
+                                               dst_ub_gap + 8 +
+                                               j * tail_block_d *
+                                               16 * MAX_REPEAT],
+                                    input_x_ub[vector_repeat_merchant_d *
+                                               src_ub_gap + 8 +
+                                               j * MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
+
+                    if vector_repeat_remainder_c != 0:
+                        repeat_times = vector_repeat_remainder_c
+                        with tik_instance.for_range(
+                                0, vector_repeat_merchant_d) as i:
+
+                            tik_instance.vadds(
+                                self.mask,
+                                input_y_ub[i * dst_ub_gap +
+                                           vector_repeat_merchant_c *
+                                           tail_block_d * 16 * MAX_REPEAT],
+                                input_x_ub[i * src_ub_gap +
                                            vector_repeat_merchant_c *
                                            MAX_REPEAT * 16],
                                 0,
@@ -1349,6 +1297,63 @@ class Nz2NDCompute:
                                 src_blk_stride,
                                 dst_rep_stride,
                                 src_rep_stride)
+
+                            # fp32 need twice
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    self.mask,
+                                    input_y_ub[i * dst_ub_gap +
+                                               8 +
+                                               vector_repeat_merchant_c *
+                                               tail_block_d * 16 *
+                                               MAX_REPEAT],
+                                    input_x_ub[i * src_ub_gap + 8 +
+                                               vector_repeat_merchant_c *
+                                               MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
+
+                        if vector_repeat_remainder_d != 0:
+                            vadds_mask = int(vector_repeat_remainder_d / MASK * self.mask)
+                            tik_instance.vadds(
+                                vadds_mask,
+                                input_y_ub[vector_repeat_merchant_d *
+                                           dst_ub_gap +
+                                           vector_repeat_merchant_c *
+                                           tail_block_d * 16 * MAX_REPEAT],
+                                input_x_ub[vector_repeat_merchant_d *
+                                           src_ub_gap +
+                                           vector_repeat_merchant_c *
+                                           MAX_REPEAT * 16],
+                                0,
+                                repeat_times,
+                                dst_blk_stride,
+                                src_blk_stride,
+                                dst_rep_stride,
+                                src_rep_stride)
+
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    vadds_mask,
+                                    input_y_ub[vector_repeat_merchant_d *
+                                               dst_ub_gap + 8 +
+                                               vector_repeat_merchant_c *
+                                               tail_block_d * 16 *
+                                               MAX_REPEAT],
+                                    input_x_ub[vector_repeat_merchant_d *
+                                               src_ub_gap + 8 +
+                                               vector_repeat_merchant_c *
+                                               MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
 
                 # out
                 dst_gm = acture_memory * merchant
@@ -1445,32 +1450,90 @@ class Nz2NDCompute:
                 repeat_times = MAX_REPEAT
 
                 # order
-                with tik_instance.for_range(
-                        0, vector_repeat_merchant_c) as j:
+                if input_y_ub.dtype.lower() == "float16":
+                    with tik_instance.for_range(0, burstlen_gm2ub) as rp_idx:
+                        tik_instance.data_move(input_y_ub[rp_idx * nburst_gm2ub * 16], input_x_ub[rp_idx * 16],
+                                               0, nburst_gm2ub, 1, src_blk_stride - 1, 0)
+                else:
                     with tik_instance.for_range(
-                            0, vector_repeat_merchant_d) as i:
+                            0, vector_repeat_merchant_c) as j:
+                        with tik_instance.for_range(
+                                0, vector_repeat_merchant_d) as i:
 
-                        tik_instance.vadds(self.mask,
-                                           input_y_ub[i * dst_ub_gap +
-                                                      j * tail_block_d *
-                                                      16 * MAX_REPEAT],
-                                           input_x_ub[i * src_ub_gap +
-                                                      j * MAX_REPEAT * 16],
-                                           0,
-                                           repeat_times,
-                                           dst_blk_stride,
-                                           src_blk_stride,
-                                           dst_rep_stride,
-                                           src_rep_stride)
-                        # fp32 need twice
-                        if self.mask == 64:
+                            tik_instance.vadds(self.mask,
+                                               input_y_ub[i * dst_ub_gap +
+                                                          j * tail_block_d *
+                                                          16 * MAX_REPEAT],
+                                               input_x_ub[i * src_ub_gap +
+                                                          j * MAX_REPEAT * 16],
+                                               0,
+                                               repeat_times,
+                                               dst_blk_stride,
+                                               src_blk_stride,
+                                               dst_rep_stride,
+                                               src_rep_stride)
+                            # fp32 need twice
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    self.mask,
+                                    input_y_ub[i * dst_ub_gap +
+                                               8 + j * tail_block_d *
+                                               16 * MAX_REPEAT],
+                                    input_x_ub[i * src_ub_gap +
+                                               8 + j * MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
+
+                        if vector_repeat_remainder_d != 0:
+                            vadds_mask = int(vector_repeat_remainder_d /
+                                             MASK * self.mask)
+                            tik_instance.vadds(
+                                vadds_mask,
+                                input_y_ub[vector_repeat_merchant_d *
+                                           dst_ub_gap + j * tail_block_d *
+                                           16 * MAX_REPEAT],
+                                input_x_ub[vector_repeat_merchant_d *
+                                           src_ub_gap + j * MAX_REPEAT * 16],
+                                0,
+                                repeat_times,
+                                dst_blk_stride,
+                                src_blk_stride,
+                                dst_rep_stride,
+                                src_rep_stride)
+
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    vadds_mask,
+                                    input_y_ub[vector_repeat_merchant_d *
+                                               dst_ub_gap + 8 + j *
+                                               tail_block_d * 16 * MAX_REPEAT],
+                                    input_x_ub[vector_repeat_merchant_d *
+                                               src_ub_gap + 8 + j *
+                                               MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
+
+                    if vector_repeat_remainder_c != 0:
+                        repeat_times = vector_repeat_remainder_c
+                        with tik_instance.for_range(
+                                0, vector_repeat_merchant_d) as i:
+
                             tik_instance.vadds(
                                 self.mask,
                                 input_y_ub[i * dst_ub_gap +
-                                           8 + j * tail_block_d *
-                                           16 * MAX_REPEAT],
+                                           vector_repeat_merchant_c *
+                                           tail_block_d * 16 * MAX_REPEAT],
                                 input_x_ub[i * src_ub_gap +
-                                           8 + j * MAX_REPEAT * 16],
+                                           vector_repeat_merchant_c *
+                                           MAX_REPEAT * 16],
                                 0,
                                 repeat_times,
                                 dst_blk_stride,
@@ -1478,105 +1541,34 @@ class Nz2NDCompute:
                                 dst_rep_stride,
                                 src_rep_stride)
 
-                    if vector_repeat_remainder_d != 0:
-                        vadds_mask = int(vector_repeat_remainder_d /
-                                         MASK * self.mask)
-                        tik_instance.vadds(
-                            vadds_mask,
-                            input_y_ub[vector_repeat_merchant_d *
-                                       dst_ub_gap + j * tail_block_d *
-                                       16 * MAX_REPEAT],
-                            input_x_ub[vector_repeat_merchant_d *
-                                       src_ub_gap + j * MAX_REPEAT * 16],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
+                            # fp32 need twice
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    self.mask,
+                                    input_y_ub[i * dst_ub_gap + 8 +
+                                               vector_repeat_merchant_c *
+                                               tail_block_d * 16 * MAX_REPEAT],
+                                    input_x_ub[i * src_ub_gap + 8 +
+                                               vector_repeat_merchant_c *
+                                               MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
 
-                        if self.mask == 64:
+                        if vector_repeat_remainder_d != 0:
+                            vadds_mask = int(vector_repeat_remainder_d /
+                                             MASK * self.mask)
                             tik_instance.vadds(
                                 vadds_mask,
                                 input_y_ub[vector_repeat_merchant_d *
-                                           dst_ub_gap + 8 + j *
-                                           tail_block_d * 16 * MAX_REPEAT],
-                                input_x_ub[vector_repeat_merchant_d *
-                                           src_ub_gap + 8 + j *
-                                           MAX_REPEAT * 16],
-                                0,
-                                repeat_times,
-                                dst_blk_stride,
-                                src_blk_stride,
-                                dst_rep_stride,
-                                src_rep_stride)
-
-                if vector_repeat_remainder_c != 0:
-                    repeat_times = vector_repeat_remainder_c
-                    with tik_instance.for_range(
-                            0, vector_repeat_merchant_d) as i:
-
-                        tik_instance.vadds(
-                            self.mask,
-                            input_y_ub[i * dst_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       tail_block_d * 16 * MAX_REPEAT],
-                            input_x_ub[i * src_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       MAX_REPEAT * 16],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
-
-                        # fp32 need twice
-                        if self.mask == 64:
-                            tik_instance.vadds(
-                                self.mask,
-                                input_y_ub[i * dst_ub_gap + 8 +
-                                           vector_repeat_merchant_c *
-                                           tail_block_d * 16 * MAX_REPEAT],
-                                input_x_ub[i * src_ub_gap + 8 +
-                                           vector_repeat_merchant_c *
-                                           MAX_REPEAT * 16],
-                                0,
-                                repeat_times,
-                                dst_blk_stride,
-                                src_blk_stride,
-                                dst_rep_stride,
-                                src_rep_stride)
-
-                    if vector_repeat_remainder_d != 0:
-                        vadds_mask = int(vector_repeat_remainder_d /
-                                         MASK * self.mask)
-                        tik_instance.vadds(
-                            vadds_mask,
-                            input_y_ub[vector_repeat_merchant_d *
-                                       dst_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       tail_block_d * 16 * MAX_REPEAT],
-                            input_x_ub[vector_repeat_merchant_d *
-                                       src_ub_gap +
-                                       vector_repeat_merchant_c *
-                                       MAX_REPEAT * 16],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
-
-                        if self.mask == 64:
-                            tik_instance.vadds(
-                                vadds_mask,
-                                input_y_ub[vector_repeat_merchant_d *
-                                           dst_ub_gap + 8 +
+                                           dst_ub_gap +
                                            vector_repeat_merchant_c *
                                            tail_block_d * 16 * MAX_REPEAT],
                                 input_x_ub[vector_repeat_merchant_d *
-                                           src_ub_gap + 8 +
+                                           src_ub_gap +
                                            vector_repeat_merchant_c *
                                            MAX_REPEAT * 16],
                                 0,
@@ -1585,6 +1577,24 @@ class Nz2NDCompute:
                                 src_blk_stride,
                                 dst_rep_stride,
                                 src_rep_stride)
+
+                            if self.mask == 64:
+                                tik_instance.vadds(
+                                    vadds_mask,
+                                    input_y_ub[vector_repeat_merchant_d *
+                                               dst_ub_gap + 8 +
+                                               vector_repeat_merchant_c *
+                                               tail_block_d * 16 * MAX_REPEAT],
+                                    input_x_ub[vector_repeat_merchant_d *
+                                               src_ub_gap + 8 +
+                                               vector_repeat_merchant_c *
+                                               MAX_REPEAT * 16],
+                                    0,
+                                    repeat_times,
+                                    dst_blk_stride,
+                                    src_blk_stride,
+                                    dst_rep_stride,
+                                    src_rep_stride)
 
                 # out
                 # in this branch, tail_d = 0,  nburst_ub2gm  also can be 1
@@ -2322,24 +2332,43 @@ class Nz2NDCompute:
                 repeat_times = 16
 
                 # order
-                with tik_instance.for_range(
-                        0, vector_repeat_merchant) as i:
+                if input_y_ub.dtype.lower() == "float16":
+                    with tik_instance.for_range(0, burstlen_gm2ub) as rp_idx:
+                        tik_instance.data_move(input_y_ub[rp_idx * nburst_gm2ub * 16], input_x_ub[rp_idx * 16],
+                                               0, nburst_gm2ub, 1, src_blk_stride - 1, 0)
+                else:
+                    with tik_instance.for_range(
+                            0, vector_repeat_merchant) as i:
 
-                    tik_instance.vadds(self.mask,
-                                       input_y_ub[i * dst_ub_gap],
-                                       input_x_ub[i * src_ub_gap],
-                                       0,
-                                       repeat_times,
-                                       dst_blk_stride,
-                                       src_blk_stride,
-                                       dst_rep_stride,
-                                       src_rep_stride)
-                    # fp32 need twice
-                    if self.mask == 64:
+                        tik_instance.vadds(self.mask,
+                                           input_y_ub[i * dst_ub_gap],
+                                           input_x_ub[i * src_ub_gap],
+                                           0,
+                                           repeat_times,
+                                           dst_blk_stride,
+                                           src_blk_stride,
+                                           dst_rep_stride,
+                                           src_rep_stride)
+                        # fp32 need twice
+                        if self.mask == 64:
+                            tik_instance.vadds(
+                                self.mask,
+                                input_y_ub[i * dst_ub_gap + 8],
+                                input_x_ub[i * src_ub_gap + 8],
+                                0,
+                                repeat_times,
+                                dst_blk_stride,
+                                src_blk_stride,
+                                dst_rep_stride,
+                                src_rep_stride)
+
+                    if vector_repeat_remainder != 0:
+                        vadds_mask = int(vector_repeat_remainder /
+                                         MASK * self.mask)
                         tik_instance.vadds(
-                            self.mask,
-                            input_y_ub[i * dst_ub_gap + 8],
-                            input_x_ub[i * src_ub_gap + 8],
+                            vadds_mask,
+                            input_y_ub[vector_repeat_merchant * dst_ub_gap],
+                            input_x_ub[vector_repeat_merchant * src_ub_gap],
                             0,
                             repeat_times,
                             dst_blk_stride,
@@ -2347,34 +2376,20 @@ class Nz2NDCompute:
                             dst_rep_stride,
                             src_rep_stride)
 
-                if vector_repeat_remainder != 0:
-                    vadds_mask = int(vector_repeat_remainder /
-                                     MASK * self.mask)
-                    tik_instance.vadds(
-                        vadds_mask,
-                        input_y_ub[vector_repeat_merchant * dst_ub_gap],
-                        input_x_ub[vector_repeat_merchant * src_ub_gap],
-                        0,
-                        repeat_times,
-                        dst_blk_stride,
-                        src_blk_stride,
-                        dst_rep_stride,
-                        src_rep_stride)
-
-                    if self.mask == 64:
-                        dst_y_ub = vector_repeat_merchant * \
-                                   dst_ub_gap + 8
-                        src_x_ub = vector_repeat_merchant * \
-                                   src_ub_gap + 8
-                        tik_instance.vadds(vadds_mask,
-                                           input_y_ub[dst_y_ub],
-                                           input_x_ub[src_x_ub],
-                                           0,
-                                           repeat_times,
-                                           dst_blk_stride,
-                                           src_blk_stride,
-                                           dst_rep_stride,
-                                           src_rep_stride)
+                        if self.mask == 64:
+                            dst_y_ub = vector_repeat_merchant * \
+                                       dst_ub_gap + 8
+                            src_x_ub = vector_repeat_merchant * \
+                                       src_ub_gap + 8
+                            tik_instance.vadds(vadds_mask,
+                                               input_y_ub[dst_y_ub],
+                                               input_x_ub[src_x_ub],
+                                               0,
+                                               repeat_times,
+                                               dst_blk_stride,
+                                               src_blk_stride,
+                                               dst_rep_stride,
+                                               src_rep_stride)
 
                 # out
                 dst_gm = acture_memory * merchant + \
@@ -2475,22 +2490,42 @@ class Nz2NDCompute:
                 repeat_times = 16
 
                 # order
-                with tik_instance.for_range(0, vector_repeat_merchant) as i:
+                if input_y_ub.dtype.lower() == "float16":
+                    with tik_instance.for_range(0, burstlen_gm2ub) as rp_idx:
+                        tik_instance.data_move(input_y_ub[rp_idx * nburst_gm2ub * 16], input_x_ub[rp_idx * 16],
+                                               0, nburst_gm2ub, 1, src_blk_stride - 1, 0)
+                else:
+                    with tik_instance.for_range(0, vector_repeat_merchant) as i:
 
-                    tik_instance.vadds(self.mask,
-                                       input_y_ub[i * dst_ub_gap],
-                                       input_x_ub[i * src_ub_gap],
-                                       0,
-                                       repeat_times,
-                                       dst_blk_stride,
-                                       src_blk_stride,
-                                       dst_rep_stride,
-                                       src_rep_stride)
-                    # fp32 need twice
-                    if self.mask == 64:
                         tik_instance.vadds(self.mask,
-                                           input_y_ub[i * dst_ub_gap + 8],
-                                           input_x_ub[i * src_ub_gap + 8],
+                                           input_y_ub[i * dst_ub_gap],
+                                           input_x_ub[i * src_ub_gap],
+                                           0,
+                                           repeat_times,
+                                           dst_blk_stride,
+                                           src_blk_stride,
+                                           dst_rep_stride,
+                                           src_rep_stride)
+                        # fp32 need twice
+                        if self.mask == 64:
+                            tik_instance.vadds(self.mask,
+                                               input_y_ub[i * dst_ub_gap + 8],
+                                               input_x_ub[i * src_ub_gap + 8],
+                                               0,
+                                               repeat_times,
+                                               dst_blk_stride,
+                                               src_blk_stride,
+                                               dst_rep_stride,
+                                               src_rep_stride)
+
+                    if vector_repeat_remainder != 0:
+                        vadds_mask = int(vector_repeat_remainder /
+                                         MASK * self.mask)
+                        tik_instance.vadds(vadds_mask,
+                                           input_y_ub[vector_repeat_merchant *
+                                                      dst_ub_gap],
+                                           input_x_ub[vector_repeat_merchant *
+                                                      src_ub_gap],
                                            0,
                                            repeat_times,
                                            dst_blk_stride,
@@ -2498,34 +2533,19 @@ class Nz2NDCompute:
                                            dst_rep_stride,
                                            src_rep_stride)
 
-                if vector_repeat_remainder != 0:
-                    vadds_mask = int(vector_repeat_remainder /
-                                     MASK * self.mask)
-                    tik_instance.vadds(vadds_mask,
-                                       input_y_ub[vector_repeat_merchant *
-                                                  dst_ub_gap],
-                                       input_x_ub[vector_repeat_merchant *
-                                                  src_ub_gap],
-                                       0,
-                                       repeat_times,
-                                       dst_blk_stride,
-                                       src_blk_stride,
-                                       dst_rep_stride,
-                                       src_rep_stride)
-
-                    if self.mask == 64:
-                        tik_instance.vadds(
-                            vadds_mask,
-                            input_y_ub[vector_repeat_merchant *
-                                       dst_ub_gap + 8],
-                            input_x_ub[vector_repeat_merchant *
-                                       src_ub_gap + 8],
-                            0,
-                            repeat_times,
-                            dst_blk_stride,
-                            src_blk_stride,
-                            dst_rep_stride,
-                            src_rep_stride)
+                        if self.mask == 64:
+                            tik_instance.vadds(
+                                vadds_mask,
+                                input_y_ub[vector_repeat_merchant *
+                                           dst_ub_gap + 8],
+                                input_x_ub[vector_repeat_merchant *
+                                           src_ub_gap + 8],
+                                0,
+                                repeat_times,
+                                dst_blk_stride,
+                                src_blk_stride,
+                                dst_rep_stride,
+                                src_rep_stride)
 
                 # out
                 dst_gm = acture_memory * merchant + \
@@ -4425,51 +4445,56 @@ class Nz2NDCompute:
                     repeat_times = 16
 
                     # order
-                    with tik_instance.for_range(0, vector_repeat_merchant) as i:
+                    if input_y_ub.dtype.lower() == "float16":
+                        with tik_instance.for_range(0, burstlen_gm2ub) as rp_idx:
+                            tik_instance.data_move(input_y_ub[rp_idx * num_gm * 16], input_x_ub[rp_idx * 16],
+                                                   0, num_gm, 1, src_blk_stride - 1, 0)
+                    else:
+                        with tik_instance.for_range(0, vector_repeat_merchant) as i:
 
-                        tik_instance.vadds(self.mask,
-                                           input_y_ub[i * dst_ub_gap],
-                                           input_x_ub[i * src_ub_gap],
-                                           0,
-                                           repeat_times,
-                                           dst_blk_stride,
-                                           src_blk_stride,
-                                           dst_rep_stride,
-                                           src_rep_stride)
-                        # fp32 need twice
-                        if self.mask == 64:
                             tik_instance.vadds(self.mask,
-                                               input_y_ub[i * dst_ub_gap + 8],
-                                               input_x_ub[i * src_ub_gap + 8],
+                                               input_y_ub[i * dst_ub_gap],
+                                               input_x_ub[i * src_ub_gap],
                                                0,
                                                repeat_times,
                                                dst_blk_stride,
                                                src_blk_stride,
                                                dst_rep_stride,
                                                src_rep_stride)
+                            # fp32 need twice
+                            if self.mask == 64:
+                                tik_instance.vadds(self.mask,
+                                                   input_y_ub[i * dst_ub_gap + 8],
+                                                   input_x_ub[i * src_ub_gap + 8],
+                                                   0,
+                                                   repeat_times,
+                                                   dst_blk_stride,
+                                                   src_blk_stride,
+                                                   dst_rep_stride,
+                                                   src_rep_stride)
 
-                    if vector_repeat_remainder != 0:
-                        vadds_mask = int(vector_repeat_remainder / MASK * self.mask)
-                        tik_instance.vadds(vadds_mask,
-                                           input_y_ub[vector_repeat_merchant * dst_ub_gap],
-                                           input_x_ub[vector_repeat_merchant * src_ub_gap],
-                                           0,
-                                           repeat_times,
-                                           dst_blk_stride,
-                                           src_blk_stride,
-                                           dst_rep_stride,
-                                           src_rep_stride)
-
-                        if self.mask == 64:
+                        if vector_repeat_remainder != 0:
+                            vadds_mask = int(vector_repeat_remainder / MASK * self.mask)
                             tik_instance.vadds(vadds_mask,
-                                               input_y_ub[vector_repeat_merchant * dst_ub_gap + 8],
-                                               input_x_ub[vector_repeat_merchant * src_ub_gap + 8],
+                                               input_y_ub[vector_repeat_merchant * dst_ub_gap],
+                                               input_x_ub[vector_repeat_merchant * src_ub_gap],
                                                0,
                                                repeat_times,
                                                dst_blk_stride,
                                                src_blk_stride,
                                                dst_rep_stride,
                                                src_rep_stride)
+
+                            if self.mask == 64:
+                                tik_instance.vadds(vadds_mask,
+                                                   input_y_ub[vector_repeat_merchant * dst_ub_gap + 8],
+                                                   input_x_ub[vector_repeat_merchant * src_ub_gap + 8],
+                                                   0,
+                                                   repeat_times,
+                                                   dst_blk_stride,
+                                                   src_blk_stride,
+                                                   dst_rep_stride,
+                                                   src_rep_stride)
 
                     # out
                     dst_gm = acture_memory * merchant + remainder * self.output_shape[-1] * 16
@@ -4576,51 +4601,56 @@ class Nz2NDCompute:
                     repeat_times = 16
 
                     # order
-                    with tik_instance.for_range(0, vector_repeat_merchant) as i:
+                    if input_y_ub.dtype.lower() == "float16":
+                        with tik_instance.for_range(0, burstlen_gm2ub) as rp_idx:
+                            tik_instance.data_move(input_y_ub[rp_idx * nburst_gm2ub * 16], input_x_ub[rp_idx * 16],
+                                                   0, nburst_gm2ub, 1, src_blk_stride - 1, 0)
+                    else:
+                        with tik_instance.for_range(0, vector_repeat_merchant) as i:
 
-                        tik_instance.vadds(self.mask,
-                                           input_y_ub[i * dst_ub_gap],
-                                           input_x_ub[i * src_ub_gap],
-                                           0,
-                                           repeat_times,
-                                           dst_blk_stride,
-                                           src_blk_stride,
-                                           dst_rep_stride,
-                                           src_rep_stride)
-                        # fp32 need twice
-                        if self.mask == 64:
                             tik_instance.vadds(self.mask,
-                                               input_y_ub[i * dst_ub_gap + 8],
-                                               input_x_ub[i * src_ub_gap + 8],
+                                               input_y_ub[i * dst_ub_gap],
+                                               input_x_ub[i * src_ub_gap],
                                                0,
                                                repeat_times,
                                                dst_blk_stride,
                                                src_blk_stride,
                                                dst_rep_stride,
                                                src_rep_stride)
+                            # fp32 need twice
+                            if self.mask == 64:
+                                tik_instance.vadds(self.mask,
+                                                   input_y_ub[i * dst_ub_gap + 8],
+                                                   input_x_ub[i * src_ub_gap + 8],
+                                                   0,
+                                                   repeat_times,
+                                                   dst_blk_stride,
+                                                   src_blk_stride,
+                                                   dst_rep_stride,
+                                                   src_rep_stride)
 
-                    if vector_repeat_remainder != 0:
-                        vadds_mask = int(vector_repeat_remainder / MASK * self.mask)
-                        tik_instance.vadds(vadds_mask,
-                                           input_y_ub[vector_repeat_merchant * dst_ub_gap],
-                                           input_x_ub[vector_repeat_merchant * src_ub_gap],
-                                           0,
-                                           repeat_times,
-                                           dst_blk_stride,
-                                           src_blk_stride,
-                                           dst_rep_stride,
-                                           src_rep_stride)
-
-                        if self.mask == 64:
+                        if vector_repeat_remainder != 0:
+                            vadds_mask = int(vector_repeat_remainder / MASK * self.mask)
                             tik_instance.vadds(vadds_mask,
-                                               input_y_ub[vector_repeat_merchant * dst_ub_gap + 8],
-                                               input_x_ub[vector_repeat_merchant * src_ub_gap + 8],
+                                               input_y_ub[vector_repeat_merchant * dst_ub_gap],
+                                               input_x_ub[vector_repeat_merchant * src_ub_gap],
                                                0,
                                                repeat_times,
                                                dst_blk_stride,
                                                src_blk_stride,
                                                dst_rep_stride,
                                                src_rep_stride)
+
+                            if self.mask == 64:
+                                tik_instance.vadds(vadds_mask,
+                                                   input_y_ub[vector_repeat_merchant * dst_ub_gap + 8],
+                                                   input_x_ub[vector_repeat_merchant * src_ub_gap + 8],
+                                                   0,
+                                                   repeat_times,
+                                                   dst_blk_stride,
+                                                   src_blk_stride,
+                                                   dst_rep_stride,
+                                                   src_rep_stride)
 
                     # out
                     dst_gm = acture_memory * merchant + remainder * self.output_shape[-1] * 16
@@ -4727,53 +4757,58 @@ class Nz2NDCompute:
                         repeat_times = 16
 
                         # order
-                        with tik_instance.for_range(0, vector_repeat_merchant) as i:
+                        if input_y_ub.dtype.lower() == "float16":
+                            with tik_instance.for_range(0, burstlen_gm2ub) as rp_idx:
+                                tik_instance.data_move(input_y_ub[rp_idx * nburst_gm2ub * 16], input_x_ub[rp_idx * 16],
+                                                       0, nburst_gm2ub, 1, src_blk_stride - 1, 0)
+                        else:
+                            with tik_instance.for_range(0, vector_repeat_merchant) as i:
 
-                            tik_instance.vadds(self.mask,
-                                               input_y_ub[i * dst_ub_gap],
-                                               input_x_ub[i * src_ub_gap],
-                                               0,
-                                               repeat_times,
-                                               dst_blk_stride,
-                                               src_blk_stride,
-                                               dst_rep_stride,
-                                               src_rep_stride)
-                            # fp32 need twice
-                            if self.mask == 64:
                                 tik_instance.vadds(self.mask,
-                                                   input_y_ub[i * dst_ub_gap + 8],
-                                                   input_x_ub[i * src_ub_gap + 8],
+                                                   input_y_ub[i * dst_ub_gap],
+                                                   input_x_ub[i * src_ub_gap],
                                                    0,
                                                    repeat_times,
                                                    dst_blk_stride,
                                                    src_blk_stride,
                                                    dst_rep_stride,
                                                    src_rep_stride)
+                                # fp32 need twice
+                                if self.mask == 64:
+                                    tik_instance.vadds(self.mask,
+                                                       input_y_ub[i * dst_ub_gap + 8],
+                                                       input_x_ub[i * src_ub_gap + 8],
+                                                       0,
+                                                       repeat_times,
+                                                       dst_blk_stride,
+                                                       src_blk_stride,
+                                                       dst_rep_stride,
+                                                       src_rep_stride)
 
-                        if vector_repeat_remainder != 0:
-                            vadds_mask = int(vector_repeat_remainder / MASK * self.mask)
-                            tik_instance.vadds(vadds_mask,
-                                               input_y_ub[vector_repeat_merchant * dst_ub_gap],
-                                               input_x_ub[vector_repeat_merchant * src_ub_gap],
-                                               0,
-                                               repeat_times,
-                                               dst_blk_stride,
-                                               src_blk_stride,
-                                               dst_rep_stride,
-                                               src_rep_stride)
-
-                            if self.mask == 64:
-                                dst_y_ub = vector_repeat_merchant * dst_ub_gap + 8
-                                src_x_ub = vector_repeat_merchant * src_ub_gap + 8
+                            if vector_repeat_remainder != 0:
+                                vadds_mask = int(vector_repeat_remainder / MASK * self.mask)
                                 tik_instance.vadds(vadds_mask,
-                                                   input_y_ub[dst_y_ub],
-                                                   input_x_ub[src_x_ub],
+                                                   input_y_ub[vector_repeat_merchant * dst_ub_gap],
+                                                   input_x_ub[vector_repeat_merchant * src_ub_gap],
                                                    0,
                                                    repeat_times,
                                                    dst_blk_stride,
                                                    src_blk_stride,
                                                    dst_rep_stride,
                                                    src_rep_stride)
+
+                                if self.mask == 64:
+                                    dst_y_ub = vector_repeat_merchant * dst_ub_gap + 8
+                                    src_x_ub = vector_repeat_merchant * src_ub_gap + 8
+                                    tik_instance.vadds(vadds_mask,
+                                                       input_y_ub[dst_y_ub],
+                                                       input_x_ub[src_x_ub],
+                                                       0,
+                                                       repeat_times,
+                                                       dst_blk_stride,
+                                                       src_blk_stride,
+                                                       dst_rep_stride,
+                                                       src_rep_stride)
 
                         # out
                         dst_gm = acture_memory * merchant + remainder * self.output_shape[-1] * 16
