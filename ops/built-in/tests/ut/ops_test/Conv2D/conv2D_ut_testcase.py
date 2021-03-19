@@ -4,34 +4,34 @@ conv2D_ut_testcase = [
  # platform, inputs, weights, bias, offset_w, outputs, strides, pads, dilations, expect
 # ============ success =====================
 # ============ base case 910 ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ base case 310 int 8===============
-["Ascend310", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'int8'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["Ascend310", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 32), 'ori_format': 'NHWC', 'dtype': 'int8'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ base case C0=4 ===============
-["all", {'ori_shape': (4, 64, 64, 4), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (3, 3, 4, 1), 'ori_format': 'HWCN', 'dtype': 'float16', "format":'FRACTAL_Z_C04'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["all", {'ori_shape': (4, 64, 64, 4), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (3, 3, 4, 1), 'ori_format': 'HWCN', 'dtype': 'float16', "format":'FRACTAL_Z_C04'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ base case bias ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 1, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (16), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 1, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (16), "dtype": "float16"}, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ base case wo=1 hw!=1 ===============
-["all", {'ori_shape': (1, 32, 7, 1), 'ori_format': 'NCHW', 'dtype': 'int8'}, {'ori_shape': (32, 32, 1, 1), 'ori_format': 'NCHW', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
+["all", {'ori_shape': (1, 32, 7, 1), 'shape': (1, 1, 7, 1, 32), 'ori_format': 'NCHW', 'dtype': 'int8'}, {'ori_shape': (32, 32, 1, 1), 'ori_format': 'NCHW', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), "success"],
 # ============ RuntimeError ===============
 # ============ base case C0=4   H and W are both equal to 1 ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 4, 1), 'ori_format': 'HWCN', 'dtype': 'float16', "format":'FRACTAL_Z_C04'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 4, 1), 'ori_format': 'HWCN', 'dtype': 'float16', "format":'FRACTAL_Z_C04'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ strides no 4d ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ pads no 4d ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ dilations no 4d ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1), RuntimeError],
 # ============ weights_format not in ["NCHW", "NHWC", "HWCN"] ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'WCNH', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'WCNH', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ inputs_format not in ["NCHW", "NHWC"] ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'WCNH', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (64, 4, 16, 4, 16), 'ori_format': 'WCNH', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ weights no 4d ===============
-["all", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ inputs no 4d ===============
-["all", {'ori_shape': (4, 64, 64), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
+["all", {'ori_shape': (4, 64, 64), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'float16'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'float16'}, None, None, {'dtype': 'float16'}, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), RuntimeError],
 # ============ Quant conv does not support dilate > 1 ===============
-["Ascend310", {'ori_shape': (4, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'int8'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (2, 2, 2, 2), RuntimeError],
+["Ascend310", {'ori_shape': (4, 64, 64, 16), 'shape': (4, 1, 64, 64, 16), 'ori_format': 'NHWC', 'dtype': 'int8'}, {'ori_shape': (1, 1, 16, 1), 'ori_format': 'HWCN', 'dtype': 'int8'}, None, None, {'dtype': 'int32'}, (1, 1, 1, 1), (0, 0, 0, 0), (2, 2, 2, 2), RuntimeError],
  ]
 
 conv2D_op_select_ut_testcase = [

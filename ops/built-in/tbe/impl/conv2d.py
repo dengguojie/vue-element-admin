@@ -282,7 +282,6 @@ def conv2d(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
     if offset_w is None:
         use_offset_w = False
 
-
     _conv_layer_cce(shape_fm, shape_filter, in_dtype, w_dtype, res_dtype,
                     padh, padw, strideh, stridew, dlt_h, dlt_w,
                     offset_x, groups=groups, offset_w=use_offset_w,
@@ -362,11 +361,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         optim_dict = {"c0_optim_flg": False, "use_v200_c04_flg": False}
 
     if fusion_para is None:
-        fusion_para = {"input_memory_type": 0, "output_memory_type": 0,
-                       "valid_shape": (), "slice_offset": (), \
-                       "l1_fusion_type": -1, \
-                       "fmap_l1_addr_flag": 0, \
-                       "fmap_l1_valid_size": -1}
+        fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1}
 
     in_dtype = in_dtype.lower()
     w_dtype = w_dtype.lower()
@@ -384,7 +379,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
                                                               strideh, stridew, in_dtype, w_dtype,
                                                               res_dtype, offset_w_dtype, bias,
                                                               kernel_name, dilateh, dilatew,
-                                                              optim_dict, fusion_para, groups)
+                                                              optim_dict, groups)
 
     c0_val = 16
     if in_dtype == "int8":
@@ -403,18 +398,15 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         shape_in, shape_w, in_dtype, w_dtype, optim_dict, cout1_opt, c1_opt, group_opt, c1in_ori_align)
     tensor_list = []
     with tvm.target.cce():
-        data = tvm.placeholder(
-            fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
+        data = tvm.placeholder(fmap_shape_nc1hwc0, name='Fmap', dtype=in_dtype)
         tensor_list.append(data)
-        weight = tvm.placeholder(
-            filter_shape_frac_z, name='Filter', dtype=w_dtype)
+        weight = tvm.placeholder(filter_shape_frac_z, name='Filter', dtype=w_dtype)
         tensor_list.append(weight)
         bias_tensor = None
         offset_w_tensor = None
 
         if bias:
-            bias_tensor = tvm.placeholder((cout_ori * groups,), name='bias_tensor',
-                                          dtype=res_dtype)
+            bias_tensor = tvm.placeholder((cout_ori * groups,), name='bias_tensor', dtype=res_dtype)
             tensor_list.append(bias_tensor)
         conv_res = conv(data, weight,
                         para_dict={"bias_tensor": bias_tensor,

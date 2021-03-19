@@ -78,8 +78,10 @@ def is_support_v200():
     if soc_version in ("Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS", "SD3403"):
         return True
     return False
+
+
 def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
-                     pad_left, pad_right, strideh, stridew, in_dtype, w_dtype, fusion_para,
+                     pad_left, pad_right, strideh, stridew, in_dtype, w_dtype,
                      optim_dict=None, dilateh=1, dilatew=1, dynamic_para=None, groups=1):
     """
 
@@ -107,98 +109,11 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     w_dtype : the weight data type
 
-    fusion_para: the config for Lx Fusion
-
     Returns
     -------
     None
 
     """
-
-    def fusion_para_check(fusion_para, pad_top, pad_bottom, shape_in):
-        """
-        Check Lx fusion para.
-        """
-        def handle_valid_shape():
-            """
-            Check valid shape in lx fusion para.
-            """
-            if not slice_offset:
-                err_man.raise_err_specific("conv2d",
-                                           "if valid_shape exists, "
-                                           + "offset can not be []")
-            slice_offset_check_flg = (slice_offset[2] < shape_in[2]) and \
-                (slice_offset[2] >= 0) \
-                and slice_offset[0] == 0 and slice_offset[1] == 0 and \
-                slice_offset[3] == 0 and slice_offset[4] == 0
-
-            valid_shape_check_flg = (valid_shape[2] + slice_offset[2] <=
-                                     shape_in[2]) and (valid_shape[2] >= 0) \
-                and valid_shape[0] == shape_in[0] and valid_shape[3] == shape_in[3]
-
-            if not slice_offset_check_flg:
-                err_man.raise_err_check_the_validity_of_one_variable("conv2d",
-                                                                     "Invalid valid_shape",
-                                                                     str(slice_offset))
-            if not valid_shape_check_flg:
-                err_man.raise_err_check_the_validity_of_variable("conv2d",
-                                                                 "Invalid valid_shape",
-                                                                 str(valid_shape), str(shape_in))
-
-            if fusion_para.get("input_memory_type") == 1:
-                if slice_offset[2] == 0 and pad_bottom != 0:
-                    err_man.raise_err_scene_limitation("conv2d", "first",
-                                                       "pad_bottom", "0")
-                if slice_offset[2] == (shape_in[2] - valid_shape[2]) and \
-                        pad_top != 0:
-                    err_man.raise_err_scene_limitation("conv2d", "last",
-                                                       "pad_top", "0")
-                if (slice_offset[2] > 0 and slice_offset[2] <
-                        (shape_in[2] - valid_shape[2])) and \
-                        (pad_top != 0 or pad_bottom != 0):
-                    err_man.raise_err_scene_limitation("conv2d", "middle",
-                                                       "pad_top and pad_bottom", "0")
-
-        if fusion_para is None:
-            fusion_para = {"input_memory_type": 0,
-                           "output_memory_type": 0,
-                           "valid_shape": (),
-                           "slice_offset": (),
-                           "l1_fusion_type": -1,
-                           "fmap_l1_addr_flag": False,
-                           "fmap_l1_valid_size": -1}
-
-        valid_shape = fusion_para.get("valid_shape")
-        slice_offset = fusion_para.get("slice_offset")
-        l1_fusion_type = fusion_para.get("l1_fusion_type")
-        input_memory_type = fusion_para.get("input_memory_type")
-        output_memory_type = fusion_para.get("output_memory_type")
-
-        if l1_fusion_type == -1:
-            if input_memory_type == 1 or output_memory_type == 1:
-                err_man.raise_err_check_the_validity_of_variable("conv2d",
-                                                                 "input_memory_type/output_memory_type"
-                                                                 + " must be 0 when l1_fusion_type is -1",
-                                                                 str(input_memory_type), str(output_memory_type))
-
-        if valid_shape:
-            handle_valid_shape()
-
-    def _l1_buffer_size_check(max_feature_map_l1, fusion_para, dynamic_para=None):
-        """
-        Check for not bigger than L1 size.
-        """
-        l1_buffer_size = get_soc_spec("L1_SIZE")
-        l1_fusion_type = fusion_para.get("l1_fusion_type")
-        if l1_fusion_type in (0, 1):
-            pass
-        elif int(max_feature_map_l1) > l1_buffer_size:
-            if not dynamic_para:
-                err_man.raise_err_specific("conv2d", "Input is too large, the minimum tiling may exceed L1_Buffer")
-            else:
-                err_man.raise_err_specific("conv2d",
-                                           "Input range is too large, the minimum tiling may exceed L1_Buffer")
-
     def conv1d_split_w_flag_set():
         """
         For load2d case and load3d cases, set a conv1d_split_w_flag and
@@ -357,23 +272,17 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     if ci0 <= 0:
         err_man.raise_err_specific("conv2d", "ci0 must > 0")
     shape_in_fusion_para_check = shape_in
-    shape_in_fusion_para_check[1] = shape_in_fusion_para_check[1]//groups
-    fusion_para_check(fusion_para, pad_top, pad_bottom, shape_in_fusion_para_check)
+    shape_in_fusion_para_check[1] = shape_in_fusion_para_check[1] // groups
 
     # check for not bigger than L1
     m_bit_ratio = {"float16": 2, "int8": 1}
     point_per_w = math.floor((w_i - wk_dilation + pad_left + pad_right) / stridew) + 1
     w_in = math.floor(config['mac'][0] / point_per_w) + 2
     tmp = ((int(w_in) - 1) * strideh + hk_dilation) * w_i
-    max_feature_map_l1 = ci0 * tmp * m_bit_ratio[w_dtype]
-    if conv1d_split_w_flag:
-        conv1d_filter_size = (shape_w[3] - 1) * wk_dilation + 1
-        conv1d_min_l1 = (config['mac'][0] - 1) * stridew + conv1d_filter_size
-        max_feature_map_l1 = ci0 * conv1d_min_l1 * m_bit_ratio[w_dtype]
-    if not load2d_split_w_flag_set():
-        _l1_buffer_size_check(max_feature_map_l1, fusion_para)
 
     return shape_in, shape_w
+
+
 def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
                           dilations, offset_x, groups, kernel_name,
                           data_format="NCHW", options=None):
@@ -422,17 +331,6 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     else:
         err_man.raise_err_should_be_4d("conv2d", "pads shape")
 
-    fusion_para = _conv2d_compute_fusion_para(inputs)
-
-    valid_shape = fusion_para.get("valid_shape")
-    if valid_shape and valid_shape[2] == shape_fm[2]:
-        valid_shape = ()
-        fusion_para["valid_shape"] = ()
-        fusion_para["slice_offset"] = ()
-    if valid_shape:
-        input_h = valid_shape[2]
-        input_w = valid_shape[3]
-
     strideh = _trans_stride(input_h, weight_h, strideh, padh, dlt_h)
     stridew = _trans_stride(input_w, weight_w, stridew, padw, dlt_w)
 
@@ -445,6 +343,11 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
     c1_opt = math.ceil(cin_ori*enlarge/c0_val)
     cout1_opt = math.ceil(cout_ori*enlarge/16)
     group_opt = math.ceil(groups/enlarge)
+
+    fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"].value if "L1_addr_flag" in inputs.op.attrs else "nothing"
+    fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"].value if "L1_valid_size" in inputs.op.attrs else -1
+    fusion_para = {"fmap_l1_addr_flag": fmap_l1_addr_flag,
+                   "fmap_l1_valid_size": fmap_l1_valid_size}
 
     para_dict = {"pad_h": padh, "pad_w": padw, "stride_h": strideh,
                  "stride_w": stridew, "dilate_h": dlt_h, "dilate_w": dlt_w,
@@ -470,9 +373,6 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
             err_man.raise_err_specific_user("conv2d", "weight shape does "\
                 + "not support that H and W are both equal to 1 when C0=4.")
 
-        if fusion_para["input_memory_type"] == 1:
-            err_man.raise_err_specific_input_shape("conv2d", "c0 optim not "\
-                + "support fmap from L1 directly (instead of DDR)")
         if inputs.shape[-1].value == 4:
             use_v200_c04_flg = True
 
@@ -489,6 +389,7 @@ def calc_para_from_tensor(inputs, weights, bias, offset_w, strides, pads,
 def calc_para_from_dict(inputs, weights, strides, pads,
                         dilations, outputs, data_format="NCHW"):
     shape_x = inputs.get("ori_shape")
+    shape_x_5hd = inputs.get("shape")
     shape_w = weights.get("ori_shape")
 
     if len(strides) != 4:
@@ -505,20 +406,17 @@ def calc_para_from_dict(inputs, weights, strides, pads,
     if (not isinstance(shape_x, (tuple, list))) or len(shape_x) != 4:
         err_man.raise_err_should_be_4d("conv2d", "inputs")
 
-
     if (not isinstance(shape_w, (tuple, list))) or len(shape_w) != 4:
         err_man.raise_err_should_be_4d("conv2d", "weights")
 
     format_x = inputs.get("ori_format")
     all_fmt = ["NCHW", "NHWC"]
     if format_x not in all_fmt:
-        err_man.raise_err_input_format_invalid("conv2d", \
-            "inputs", ["NCHW", "NHWC"], format_x)
-    pos_n = format_x.find('N')
+        err_man.raise_err_input_format_invalid("conv2d", "inputs", ["NCHW", "NHWC"], format_x)
+
     pos_c = format_x.find('C')
-    pos_h = format_x.find('H')
-    pos_w = format_x.find('W')
-    shape_fm = [shape_x[pos_n], shape_x[pos_c], shape_x[pos_h], shape_x[pos_w]]
+    # only c is original value when lxfusion split batch and h.
+    shape_fm = [shape_x_5hd[0], shape_x[pos_c], shape_x_5hd[2], shape_x_5hd[3]] # [Ni, Ci, Hi, Wi]
 
     pos_attr_h = data_format.find('H')
     pos_attr_w = data_format.find('W')
@@ -542,18 +440,8 @@ def calc_para_from_dict(inputs, weights, strides, pads,
 
     fusion_para = _conv2d_fusion_para(inputs, outputs)
 
-    valid_shape = fusion_para.get("valid_shape")
-    if valid_shape and valid_shape[2] == shape_fm[2]:
-        valid_shape = ()
-        fusion_para["valid_shape"] = ()
-        fusion_para["slice_offset"] = ()
-
-    if valid_shape:
-        input_h = valid_shape[2]
-        input_w = valid_shape[3]
-    else:
-        input_h = shape_fm[2]
-        input_w = shape_fm[3]
+    input_h = shape_fm[2]
+    input_w = shape_fm[3]
 
     strideh = _trans_stride(input_h, shape_filter[2], strideh, padh, dlt_h)
     stridew = _trans_stride(input_w, shape_filter[3], stridew, padw, dlt_w)
@@ -566,10 +454,6 @@ def calc_para_from_dict(inputs, weights, strides, pads,
             err_man.raise_err_specific_user("conv2d", "weight shape "\
                 + "does not support that H and W are both "\
                 + "equal to 1 when C0=4.")
-        if fusion_para["input_memory_type"] == 1:
-            err_man.raise_err_specific_input_shape("conv2d", \
-                "c0 optim not support fmap "\
-                + "from L1 directly (instead of DDR)")
         if inputs.get("format") == "NC1HWC0_C04":
             use_v200_c04_flg = True
 
@@ -581,12 +465,12 @@ def calc_para_from_dict(inputs, weights, strides, pads,
 
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, int), (list, int),
-                             int, int, str, str, str, str,
-                             bool, str, int, int, dict, dict, int)
+                       int, int, str, str, str, str,
+                       bool, str, int, int, dict, int)
 def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
                               in_dtype, w_dtype, res_dtype, offset_w_dtype,
                               bias, kernel_name, dilateh=1, dilatew=1,
-                              optim_dict=None, fusion_para=None, groups=1):
+                              optim_dict=None, groups=1):
     """
 
     Parameters
@@ -612,8 +496,6 @@ def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
     offset_w_dtype: weight offset data type, default 'int32'
 
     bias: the tag for bias or not
-
-    fusion_para: the config for L1 or L2 Fusion
 
     kernel_name: cce kernel name
 
@@ -664,17 +546,10 @@ def conv_layer_cce_para_check(shape_in, shape_w, padh, padw, strideh, stridew,
             err_man.raise_err_specific_user("conv2d", "Invalid "\
                 + "config for c0=4 optimize feature.")
 
-    if fusion_para is None:
-        fusion_para = {"input_memory_type": 0, "output_memory_type": 0,
-                       "valid_shape": (), "slice_offset": (), \
-                       "l1_fusion_type": -1, \
-                       "fmap_l1_addr_flag": 0, \
-                       "fmap_l1_valid_size": -1}
-
     shape_in, shape_w = check_conv_shape(shape_in, shape_w,
                                          pad_top, pad_bottom,
                                          pad_left, pad_right, strideh, stridew,
-                                         in_dtype, w_dtype, fusion_para,
+                                         in_dtype, w_dtype,
                                          optim_dict, dilateh, dilatew, groups=groups)
 
     return shape_in, shape_w
@@ -724,60 +599,6 @@ def conv_layer_cce_shape_calc(shape_in, shape_w, in_dtype, \
     return fmap_shape_nc1hwc0, filter_shape_frac_z
 
 
-def _conv2d_compute_fusion_para(inputs):
-    """
-    get L2 fusion para for conv2d_compute
-    """
-    input_memory_type = inputs.op.attrs["addr_type"].value \
-        if "addr_type" in inputs.op.attrs else 0
-    valid_shape = inputs.op.attrs["valid_shape"] \
-        if "valid_shape" in inputs.op.attrs else ()
-    slice_offset = inputs.op.attrs["slice_offset"] \
-        if "slice_offset" in inputs.op.attrs else ()
-    l1_fusion_type = inputs.op.attrs["L1_fusion_type"].value \
-    if "L1_fusion_type" in inputs.op.attrs else -1
-
-    fmap_l1_addr_flag = inputs.op.attrs["L1_addr_flag"].value \
-        if "L1_addr_flag" in inputs.op.attrs else "nothing"
-    fmap_l1_valid_size = inputs.op.attrs["L1_valid_size"].value \
-        if "L1_valid_size" in inputs.op.attrs else -1
-
-    l1_fusion_enable_flag = tbe_platform.get_L1_info("L1_fusion_enabled")
-    if not l1_fusion_enable_flag:
-        l1_fusion_type = -1
-
-    valid_shape = _shape_to_list(valid_shape)
-    slice_offset = _shape_to_list(slice_offset)
-
-    l2_fusion_enable_flag = tbe_platform.get_L1_info("L2_fusion_enabled")
-    l1_fusion_enable_flag = tbe_platform.get_L1_info("L1_fusion_enabled")
-
-    if (not l2_fusion_enable_flag) and (not l1_fusion_enable_flag):
-        input_memory_type = 0
-        valid_shape = []
-        slice_offset = []
-        l1_fusion_type = -1
-
-    if (l2_fusion_enable_flag or (not l1_fusion_enable_flag)) and (input_memory_type == 1 or l1_fusion_type != -1):
-        err_man.raise_err_specific_user("conv2d", "if enable L2 fusion and"\
-            + "not enable L1 fusion, input_memory_type must not be 1 or L1 fusion type can't equal -1")
-
-    if input_memory_type not in (0, 1, 2):
-        err_man.raise_err_input_mem_type("conv2d", input_memory_type)
-    if valid_shape and not slice_offset:
-        err_man.raise_err_specific_user("conv2d", "if valid_shape exists "\
-            + "slice_offset can not be []")
-
-    fusion_para = {"input_memory_type": input_memory_type,
-                   "output_memory_type": "fuse_flag",
-                   "valid_shape": valid_shape, "slice_offset": slice_offset,
-                   "l1_fusion_type": l1_fusion_type, \
-                   "fmap_l1_addr_flag": fmap_l1_addr_flag, \
-                   "fmap_l1_valid_size": fmap_l1_valid_size}
-
-    return fusion_para
-
-
 def _trans_stride(input_size, kernel, stride, pad, dlt):
     """
     transform stride
@@ -808,56 +629,11 @@ def _trans_stride(input_size, kernel, stride, pad, dlt):
 
 def _conv2d_fusion_para(inputs, outputs):
     """
-    get L2 fusion para for conv2d
+    get fmap_l1_addr_flag for conv2d
     """
-    input_memory_type = inputs.get("addr_type") \
-        if "addr_type" in inputs else 0
-    output_memory_type = outputs.get("addr_type") \
-        if "addr_type" in outputs else 0
-    valid_shape = inputs.get("valid_shape") \
-        if "valid_shape" in inputs else ()
-    slice_offset = inputs.get("slice_offset") \
-        if "slice_offset" in inputs else ()
-    l1_fusion_type = inputs.get("L1_fusion_type") \
-        if "L1_fusion_type" in inputs else -1
-
     fmap_l1_addr_flag = inputs.get("L1_addr_flag", "nothing")
     fmap_l1_valid_size = inputs.get("L1_valid_size", -1)
-
-    l1_fusion_enable_flag = tbe_platform.get_L1_info("L1_fusion_enabled")
-    if not l1_fusion_enable_flag:
-        l1_fusion_type = -1
-
-    valid_shape = _shape_to_list(valid_shape)
-    slice_offset = _shape_to_list(slice_offset)
-
-    l2_fusion_enable_flag = tbe_platform.get_L1_info("L2_fusion_enabled")
-
-    if not l2_fusion_enable_flag and (not l1_fusion_enable_flag):
-        input_memory_type = 0
-        output_memory_type = 0
-        valid_shape = []
-        slice_offset = []
-        l1_fusion_type = -1
-
-    if (l2_fusion_enable_flag or (not l1_fusion_enable_flag)) and (input_memory_type == 1 or l1_fusion_type != -1):
-        err_man.raise_err_specific_user("conv2d", "if enable L2 fusion and"\
-            + "not enable L1 fusion, input_memory_type must not be 1 or L1 fusion type can't equal -1")
-
-    if input_memory_type not in (0, 1, 2):
-        err_man.raise_err_input_mem_type("conv2d", input_memory_type)
-    if output_memory_type not in (0, 1, 2):
-        err_man.raise_err_output_mem_type("conv2d", output_memory_type)
-    if valid_shape and not slice_offset:
-        err_man.raise_err_specific_user("conv2d", "if valid_shape exists "\
-           + "slice_offset can not be []")
-
-    fusion_para = {"input_memory_type": input_memory_type,
-                   "output_memory_type": output_memory_type,
-                   "valid_shape": valid_shape, "slice_offset": slice_offset, \
-                   "l1_fusion_type": l1_fusion_type, \
-                   "fmap_l1_addr_flag": fmap_l1_addr_flag, \
-                   "fmap_l1_valid_size": fmap_l1_valid_size}
+    fusion_para = {"fmap_l1_addr_flag": fmap_l1_addr_flag, "fmap_l1_valid_size": fmap_l1_valid_size}
 
     return fusion_para
 

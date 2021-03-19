@@ -30,6 +30,7 @@ from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.register import set_fusion_buildcfg
 from tbe.common.utils.errormgr import error_manager_cube as err_man
+from te.tvm.buffer_manager import get_buffer_manager
 
 # tiling check
 TILING_AL1_SHAPWE_DIM = 4
@@ -157,6 +158,7 @@ def delete_op(del_op, body_ops, sch, dtype=None):
                 del body_ops[i]
                 break
 
+
 def check_conv_bn1(outs):
     """
     check conv + bn1
@@ -206,14 +208,6 @@ def check_doubleout_quant_v200(outs):
     -------
 
     """
-    def _parse_outputs(outs):
-        """
-        parse the result tensors of requants16.
-        """
-        out_s8 = outs[0].op.input_tensors[0] if outs[0].op.tag == "write_select" else outs[0]
-        relu_s16 = outs[1].op.input_tensors[0] if outs[1].op.tag == "write_select" else outs[1]
-        return out_s8, relu_s16
-
     if isinstance(outs, tvm.tensor.Tensor) or not isinstance(outs, list) or len(outs) != 2:
         return False
 
@@ -227,7 +221,7 @@ def check_doubleout_quant_v200(outs):
     #   /   \
     #  s8  s16
 
-    out_s8, relu_s16 = _parse_outputs(outs)
+    out_s8, relu_s16 = outs
 
     if ("requant_s16_vadd" not in relu_s16.op.tag) or ("requant_s16_data_transfer" not in out_s8.op.tag):
         return False
@@ -250,13 +244,13 @@ def check_doubleout_quant_v200(outs):
     return True
 
 
-def check_doubleout_dequant_v100(outs):
+def check_doubleout_dequant(outs):
     """
     checkout conv + dequant + quant double output
 
     Parameters
     ----------
-    outs : true when check_dequant_addrelu_quant_db_v100
+    outs : true when v100 and v200 conv_dequant_(eltwise)_quant doubleout
 
     Returns
 
@@ -274,12 +268,12 @@ def check_doubleout_dequant_v100(outs):
 
     out_fp16, out_s8 = outs
 
-    if out_fp16.op.tag in ("write_select", "conv2d_data_rm"):
+    if out_fp16.op.tag == "conv2d_data_rm":
         ori_out_fp16 = out_fp16.op.input_tensors[0]
     else:
         ori_out_fp16 = out_fp16
 
-    if out_s8.op.tag in ("write_select", "conv2d_data_rm"):
+    if out_s8.op.tag == "conv2d_data_rm":
         ori_out_s8 = out_s8.op.input_tensors[0]
     else:
         ori_out_s8 = out_s8
@@ -350,41 +344,20 @@ def reget_tensor_list(outs):
         process the out tensors in conv + dequants16 + requant16 doubleout.
         """
         out_s8, relu_s16 = outs
-        if "addr_type" in out_s8.op.attrs:
-            out_s8_addr = out_s8.op.attrs["addr_type"].value
-        else:
-            out_s8_addr = DDR_SCOPE
-
-        if "addr_type" in relu_s16.op.attrs:
-            out_s16_addr = relu_s16.op.attrs["addr_type"].value
-        else:
-            out_s16_addr = DDR_SCOPE
-
         res_remove_pad_u8 = tvm.compute(out_s8.shape,
                                         lambda i, j, k, l: out_s8(i, j, k, l),
                                         name='res_remove_pad_u8',
-                                        tag='res_remove_pad_u8',
-                                        attrs={"addr_type": out_s8_addr})
+                                        tag='res_remove_pad_u8')
         res_remove_pad_s16 = tvm.compute(relu_s16.shape,
                                          lambda i, j, k, l:
                                          relu_s16(i, j, k, l),
                                          name='res_remove_pad_s16',
-                                         tag='res_remove_pad_s16',
-                                         attrs={"addr_type": out_s16_addr})
+                                         tag='res_remove_pad_s16')
         ConvParam.tensor_map["res_remove_pad_u8"] = res_remove_pad_u8
         ConvParam.tensor_map["res_remove_pad_s16"] = res_remove_pad_s16
 
-        if "write_select" in out_s8.op.tag:
-            ConvParam.tensor_map["reqs16_s8_ws_flag"] = True
-            ConvParam.tensor_map["c_ub_reform"] = out_s8.op.input_tensors[0]
-        else:
-            ConvParam.tensor_map["c_ub_reform"] = out_s8
-
-        if "write_select" in relu_s16.op.tag:
-            ConvParam.tensor_map["reqs16_s16_ws_flag"] = True
-            ConvParam.tensor_map["c_double_output_s16"] = relu_s16.op.input_tensors[0]
-        else:
-            ConvParam.tensor_map["c_double_output_s16"] = relu_s16
+        ConvParam.tensor_map["c_ub_reform"] = out_s8
+        ConvParam.tensor_map["c_double_output_s16"] = relu_s16
 
         virtual_res = tvm.compute(out_s8.shape,
                                   lambda i, j, k, l:
@@ -515,31 +488,17 @@ def reget_tensor_list(outs):
         ConvParam.convbn1_flag = True # used in cce_schedule
     elif check_doubleout_quant_v200(outs):
         outputs = _process_doubleout_quant_v200(outs)
-    elif check_doubleout_dequant_v100(outs):
+    elif check_doubleout_dequant(outs):
         out_fp16, out_s8 = outs
-
-        if "write_select" in out_fp16.op.name:
-            res_out_fp16 = out_fp16
-        else:
-            if "addr_type" in out_fp16.op.attrs:
-                out_fp16_addr = out_fp16.op.attrs["addr_type"].value
-            else:
-                out_fp16_addr = DDR_SCOPE
-
-            res_out_fp16 = tvm.compute(out_fp16.shape,
-                                       lambda *indice: out_fp16(*indice),
-                                       name='res_out_fp16',
-                                       tag='res_out_fp16',
-                                       attrs={"addr_type": out_fp16_addr})
+        res_out_fp16 = tvm.compute(out_fp16.shape,
+                                   lambda *indice: out_fp16(*indice),
+                                   name='res_out_fp16',
+                                   tag='res_out_fp16')
 
         ConvParam.tensor_map["res_out_fp16"] = res_out_fp16
         ConvParam.tensor_map["res_out_s8"] = out_s8
-        ConvParam.tensor_map["dequant_doubleout_flag"] = True
-        if "write_select" in out_s8.op.tag:
-            ConvParam.tensor_map["deq_s8_ws_flag"] = True
+        ConvParam.dequant_doubleout_flag = True
 
-        if "write_select" in out_fp16.op.tag:
-            ConvParam.tensor_map["deq_fp16_ws_flag"] = True
         if len(out_s8.shape) == 4: # batch, cout1, hout*wout, cout0
             virtual_res = tvm.compute(out_s8.shape,
                                       lambda i, j, k, l:
@@ -558,6 +517,7 @@ def reget_tensor_list(outs):
                                       tag="conv_virtual_res")
         else:
             err_man.raise_err_specific("double out", "invalid double out shape")
+
         ConvParam.tensor_map["virtual_res"] = virtual_res
 
         outputs = [virtual_res, res_out_fp16, out_s8]
@@ -725,12 +685,10 @@ class CceConvOp:
         self._convbn1_flag = False
         self._input_memory_type = []
         self._output_memory_type = []
-        self._valid_shape = []
         self._l1_fusion_type = -1
         self._fmap_l1_addr_flag = "nothing"
         self._fmap_l1_valid_size = -1
         self._vector_read_select = False
-        self._write_select = False
         self._v200_data_flow_type = None
         self._lhisi_data_flow_type = None
         self.overload_flag = False
@@ -928,7 +886,7 @@ class CceConvOp:
                     return True
                 return False
 
-            def handle_l1_fusion():
+            def check_l1fusion_tiling():
                 """
                 avoid cyclomatic complexity, check tiling in L1 fusion situation
                 """
@@ -974,7 +932,7 @@ class CceConvOp:
             if check_default_tiling():
                 return False
 
-            handle_l1_fusion()
+            check_l1fusion_tiling()
 
             if tiling["AL1_shape"] != []:
                 if len(tiling["AL1_shape"]) != TILING_AL1_SHAPWE_DIM:
@@ -1066,8 +1024,7 @@ class CceConvOp:
                         return True
                     if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
                         return True
-                    if ("dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs) or \
-                            ("fusion_fmap_select" in lop["next_op"][0]["op"]):
+                    if "dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs:
                         return True
                     if lop["dst_buffer"].name == 'compress_index' or lop["dst_buffer"].name == "Filter":
                         return True
@@ -1231,9 +1188,11 @@ class CceConvOp:
                              "pooling_stride": pooling_stride,
                              "special_mode": special_mode_dict,
                              "placeholder_fmap_5hd_shape": list(ConvParam.dim_map["fmap_5hd_shape"])}
+
                 if tilingdict_flag:
                     self._tiling_info_dict = info_dict
                     return dict()
+
                 tiling_new = get_tiling(info_dict)
                 return tiling_new
 
@@ -2108,17 +2067,13 @@ class CceConvOp:
 
             def config_setfmatrix(setfmatrix_dict):
                 """
-                config setfmatrix for emit insa
+                config setfmatrix for emit insn.
                 """
-                def handle_valid_shape(setfmatrix_dict):
+                def config_conv_fm_h(setfmatrix_dict):
                     """
                     conv_fm_h may change in valid_shape situation
                     """
-                    if self._valid_shape:
-                        setfmatrix_dict["conv_fm_h"] = self._valid_shape[2]
-                        if self._input_memory_type[0] == 1:
-                            setfmatrix_dict["conv_fm_offset_h"] = ConvParam.fusion_para.get("slice_offset")[2]
-                    elif self._aipp_fuse_flag:
+                    if self._aipp_fuse_flag:
                         setfmatrix_dict["conv_fm_h"] = al1.shape[2].value
                     else:
                         setfmatrix_dict["conv_fm_h"] = fmap.shape[2]
@@ -2129,9 +2084,7 @@ class CceConvOp:
                     """
                     config setfmatrix for emit insa
                     """
-                    if self._input_memory_type[0] == 1:
-                        sch[al1].emit_insn(al1.op.axis[0], 'phony_insn')
-                    elif self._aipp_fuse_flag:
+                    if self._aipp_fuse_flag:
                         aipp_map = al1.op.attrs
                         aipp_map['spr_0'] = al1.op.axis[0]
                         aipp_map_res = {"spr_0": al1.op.axis[0],
@@ -2157,9 +2110,9 @@ class CceConvOp:
                                            "load_image_to_cbuf", aipp_map_res)
                     else:
                         if not self._pre_relu_fused_flag:
-                            sch[al1].emit_insn(al1.op.axis[0],
-                                               'dma_copy', {"mem_align": 1})
-                        if self._l1_fusion_type in (0, 1):
+                            sch[al1].emit_insn(al1.op.axis[0], 'dma_copy', {"mem_align": 1})
+                        # l1fusion + fmap ddr in
+                        if self._input_memory_type[0] != 1 and self._l1_fusion_type in (0, 1):
                             sch[al1].pragma(al1.op.axis[0], 'jump_data', 1)
 
                 def update_conv_fm_w(setfmatrix_dict):
@@ -2263,16 +2216,13 @@ class CceConvOp:
                     if strided_read_flag or sread_strideh_flag or self._aipp_fuse_flag:
                         # AL1 is the true feature map while
                         # fmap in tensor_map is the input of strided_read.
-                        setfmatrix_dict[
-                            "conv_fm_c"] = al1.shape[1]*al1.shape[4]
+                        setfmatrix_dict["conv_fm_c"] = al1.shape[1]*al1.shape[4]
                     elif sread_load2d_flag:
-                        setfmatrix_dict[
-                            "conv_fm_c"] = al1.shape[1]*al1.shape[3]
+                        setfmatrix_dict["conv_fm_c"] = al1.shape[1]*al1.shape[3]
                     else:
-                        setfmatrix_dict[
-                            "conv_fm_c"] = fmap.shape[1]*fmap.shape[4]
+                        setfmatrix_dict["conv_fm_c"] = fmap.shape[1]*fmap.shape[4]
 
-                    setfmatrix_dict = handle_valid_shape(setfmatrix_dict)
+                    setfmatrix_dict = config_conv_fm_h(setfmatrix_dict)
                     setfmatrix_dict = update_conv_fm_w(setfmatrix_dict)
                     al1_emit_insn()
 
@@ -2314,7 +2264,7 @@ class CceConvOp:
                 unzip_max_ratios: (8x: 64 4x: 32)
                 unzip_channels: numbers of decompress engines
                 unzip_is_tight: compress model, tightly or not
-                :return: unzip_engines, unzip_max_ratios,
+                return: unzip_engines, unzip_max_ratios,
                          unzip_channels,unzip_is_tight
                 """
                 unzip_engines, unzip_max_ratios, unzip_channels, unzip_is_tight = get_soc_spec("UNZIP")
@@ -2324,9 +2274,9 @@ class CceConvOp:
             def get_byte_size(weight_dtype, weight_shape):
                 """
                 function: calculate  byte size, according to weight dtype
-                :param weight_dtype: the dtype of weight
-                :param weight_shape:
-                :return: if weight dtype is float16, size*2;
+                param weight_dtype: the dtype of weight
+                param weight_shape:
+                return: if weight dtype is float16, size*2;
                          if weight dtype is int 8, byte size*1.
                 weight_shape_size:
                 weight_compress_tiling_size:
@@ -2355,8 +2305,8 @@ class CceConvOp:
             def get_all_factor(k_or_n_number):
                 """
                 function: Calculate the common divisor of the k-axis or n-axis
-                :param k_or_n_number: number of bl0_matrix[0] or bl0_matrix[1]
-                :return: k_or_n_number_list
+                param k_or_n_number: number of bl0_matrix[0] or bl0_matrix[1]
+                return: k_or_n_number_list
                 """
                 k_or_n_number_list = []
                 for i in range(1, k_or_n_number + 1):
@@ -2368,9 +2318,9 @@ class CceConvOp:
                 """
                 function: get proper number of k_or_n_number,
                 to calculate proper basic compressed block size
-                :param k_or_n_number: number of bl0_matrix[0] or bl0_matrix[1]
-                :param block_size_last: all size of bl0_matrix or last 3 of it
-                :return: proper number k or n
+                param k_or_n_number: number of bl0_matrix[0] or bl0_matrix[1]
+                param block_size_last: all size of bl0_matrix or last 3 of it
+                return: proper number k or n
                 """
                 k_or_n_number_list = get_all_factor(k_or_n_number)
                 for number in k_or_n_number_list:
@@ -2855,11 +2805,8 @@ class CceConvOp:
             """
             add a cache write stage at the end for v100 dequant+eletwise fusion
             """
-            wselect_swrite_flag = "strided_write" in res.op.name and "write_select" in res.op.input_tensors[0].op.name
-
             if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16:
-                if "dequant_remove_pad" not in res.op.tag and "write_select" not in res.op.name and \
-                        not ConvParam.swrite_dequant_flag and not wselect_swrite_flag and \
+                if "dequant_remove_pad" not in res.op.tag and not ConvParam.swrite_dequant_flag and \
                         not ConvParam.invalid_data_rm_flag:
                     c_ub_res = sch.cache_write(res_c, cce.scope_ubuf)
                     tensor_map["c_ub_res"] = c_ub_res
@@ -2942,14 +2889,18 @@ class CceConvOp:
             for lop in self._op_graph.input_ops:
                 elewise_flag, dequant_flag, tmp_read_map = get_flag_and_read_map(lop)
                 if elewise_flag:
-                    if "addr_type" in lop["dst_buffer"].op.attrs:
-                        self._input_memory_type.append(
-                            lop["dst_buffer"].op.attrs["addr_type"].value)
-                        if lop["dst_buffer"].op.attrs["addr_type"].value == L1_FUSION_SCOPE:
-                            sch[lop["dst_buffer"]].set_scope(
-                                cce.scope_cbuf_fusion)
+                    #===================process eltwise memory type================
+                    if ConvParam.fusion_para["lxfusion_enable_flag"]:
+                        fm2_tensor_info = get_buffer_manager().get_tensor_info(lop["dst_buffer"])
+                        if fm2_tensor_info:
+                            if fm2_tensor_info.get_buffer_scope() == "global":
+                                ConvParam.fusion_para["input_memory_type"].append(DDR_SCOPE)
+                            elif fm2_tensor_info.get_buffer_scope() == "local.L1_Fusion":
+                                ConvParam.fusion_para["input_memory_type"].append(L1_FUSION_SCOPE)
                     else:
-                        self._input_memory_type.append(DDR_SCOPE)
+                        ConvParam.fusion_para["input_memory_type"].append(DDR_SCOPE)
+                    #================================================================
+
                     if not self._vector_read_select:
                         tmp_cache_buffer = self._schedule.cache_read(
                             lop["dst_buffer"],
@@ -2970,7 +2921,6 @@ class CceConvOp:
                 v100_quant_continue_flag = \
                     "convolution" in lop["op"] or \
                     "convolution_bias_ub_brc" in tmp_read_map[0].op.name or \
-                    "fusion_fmap_select" in tmp_read_map[0].op.name or \
                     "fmap_l1" in tmp_read_map[0].op.name or \
                     "aipp_res_convolution" in tmp_read_map[0].op.tag or \
                     "weight_unzip" in tmp_read_map[0].op.name or\
@@ -3130,50 +3080,12 @@ class CceConvOp:
                 sch[bias_ub_brc].set_scope(cce.scope_ubuf)
 
             return bias_l0c, c_col_bias, bias_ub_brc, bias_ub
-            # for multi core pass must assert all buffer in one for Loop
-
-        def set_output_memory_type():
-            """
-            set output scope for Lx fusion situation.
-            """
-            def _process_addr(res):
-                """
-                process the addr_type of res tensor to decide whether to open L1 fusion.
-                """
-                if "addr_type" in res.op.attrs:
-                    addr_type = res.op.attrs["addr_type"].value
-                    if addr_type == L1_FUSION_SCOPE:
-                        sch[res].set_scope(cce.scope_cbuf_fusion)
-                    return addr_type
-                return DDR_SCOPE
-
-            if self._output_memory_type == "fuse_flag":
-                if "dequant_doubleout_flag" in tensor_map:
-                    fp16_addr_type = _process_addr(tensor_map["res_out_fp16"])
-                    s8_addr_type = _process_addr(tensor_map["res_out_s8"])
-                    self._output_memory_type = [fp16_addr_type, s8_addr_type]
-                elif self._v200_data_flow_type == DataFlowType.S16ELTWISES8S16:
-                    s16_addr_type = _process_addr(tensor_map["res_remove_pad_s16"])
-                    s8_addr_type = _process_addr(tensor_map["res_remove_pad_u8"])
-                    self._output_memory_type = [s16_addr_type, s8_addr_type]
-                else:
-                    res_addr_type = _process_addr(res_c)
-                    self._output_memory_type = [res_addr_type]
-            else:
-                if self._output_memory_type == L1_FUSION_SCOPE:
-                    sch[res_c].set_scope(cce.scope_cbuf_fusion)
-                self._output_memory_type = [self._output_memory_type]
 
         def _mini_or_hisi_checkout_quant_dequant(tensor_map):
             """
             calculate double_num and update tensor_map for v100 situation
             """
-            if "write_select" in res.op.name or ("strided_write" in res.op.name and \
-                    "write_select" in res.op.input_tensors[0].op.name):
-                self._write_select = True
-                double_num, tensor_map = checkout_quant_dequant(res.op.input_tensors[0], tensor_map)
-            else:
-                double_num, tensor_map = checkout_quant_dequant(res, tensor_map)
+            double_num, tensor_map = checkout_quant_dequant(res, tensor_map)
             return double_num, tensor_map
 
         def _input_cache_read():
@@ -3196,11 +3108,6 @@ class CceConvOp:
                         sch[output_ub_5d].op.axis[2],
                         output_ub_5d.shape[3].value*output_ub_5d.shape[4].value,
                         0)
-                    temp = lop["dst_buffer"]
-                    if "addr_type" in temp.op.attrs and int(temp.op.attrs["addr_type"]) == L1_FUSION_SCOPE:
-                        sch[temp].set_scope(cce.scope_cbuf_fusion)
-                    if "addr_type" in lop["dst_buffer"].op.attrs:
-                        self._input_memory_type.append(lop["dst_buffer"].op.attrs["addr_type"].value)
 
                 if self._lhisi_data_flow_type:
                     return True
@@ -3214,30 +3121,16 @@ class CceConvOp:
                 if "dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs:
                     handle_dma_copy()
                     return True
-                if "fusion_fmap_select" in lop["next_op"][0]["op"]:
-                    return True
                 if lop["dst_buffer"].name == 'compress_index' or lop["dst_buffer"].name == "Filter":
                     return True
 
                 return False
-
-            def handle_l1_fusion(lop):
-                """
-                special handle of L1 fusion input
-                """
-                if "addr_type" in lop["dst_buffer"].op.attrs and \
-                        int(lop["dst_buffer"].op.attrs["addr_type"]) == L1_FUSION_SCOPE:
-                    sch[lop["dst_buffer"]].set_scope(cce.scope_cbuf_fusion)
 
             for lop in self._op_graph.input_ops:
                 # mean_matrix do not need to cache_read
                 if _cache_read_continue(lop) or lop["op"] == "mean_matrix":
                     continue
 
-                if "addr_type" in lop["dst_buffer"].op.attrs and \
-                        "conv_vector_bias_add" not in lop["next_op"][0]["op"]:
-                    self._input_memory_type.append(lop["dst_buffer"].op.attrs["addr_type"].value)
-                handle_l1_fusion(lop)
                 fm2_flag = False
                 tmp_read_map = []
                 for nop in lop["next_op"]:
@@ -3301,13 +3194,11 @@ class CceConvOp:
                 True means go on comput at process.
                 False means no need go on.
                 """
-                continue_flg = self._lhisi_data_flow_type or (lop["op"] == "conv_vector_remove_pad") or \
+                continue_flag = self._lhisi_data_flow_type or (lop["op"] == "conv_vector_remove_pad") or \
                         (self._v200_data_flow_type is not None) or (lop["op"] == "mean_out" and self._convbn1_flag) or \
                         ("pooling2d_max" in lop["op"]) or (self._pre_relu_fused_flag and \
                         "conv_vector_bias_add" not in lop["op"])
-                read_write_select_flg = ("fusion_fmap_select" in lop["op"]) or \
-                        ("write_select" in lop["op"] and not ConvParam.swrite_flag)
-                return continue_flg or read_write_select_flg
+                return continue_flag
 
             def _body_ops_major_compute_at_handle(lop, pooling_bias_add, pooling_relu):
                 """
@@ -3476,8 +3367,7 @@ class CceConvOp:
                 if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
                     sch[lop['cache_buffer']].compute_at(sch[res_c], cout1_group_inner_outer)
                     return True
-                if ("dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs) or \
-                        ("fusion_fmap_select" in lop["next_op"][0]["op"]):
+                if "dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs:
                     # in body_op
                     return True
                 if lop["dst_buffer"].name == 'compress_index' or lop["dst_buffer"].name == "Filter":
@@ -3941,13 +3831,12 @@ class CceConvOp:
             self._var_range = var_range
             self._schedule = sch_list[0]
             self._convbn1_flag = convbn1_flag
-            self._l1_fusion_type = int(ConvParam.fusion_para.get("l1_fusion_type", -1))
-            self._fmap_l1_addr_flag = ConvParam.fusion_para.get("fmap_l1_addr_flag", 1)
-            self._fmap_l1_valid_size = ConvParam.fusion_para.get("fmap_l1_valid_size", -1)
-            self._input_memory_type = [ConvParam.fusion_para.get("input_memory_type")]
-            self._output_memory_type = ConvParam.fusion_para.get("output_memory_type")
-            self._valid_shape = ConvParam.fusion_para.get("valid_shape")
             self._op_graph = AutoScheduleOp(res)
+            self._l1_fusion_type = ConvParam.fusion_para.get("l1_fusion_type")
+            self._fmap_l1_addr_flag = ConvParam.fusion_para.get("fmap_l1_addr_flag")
+            self._fmap_l1_valid_size = ConvParam.fusion_para.get("fmap_l1_valid_size")
+            self._input_memory_type = ConvParam.fusion_para.get("input_memory_type")
+            self._output_memory_type = ConvParam.fusion_para.get("output_memory_type")
             self.unzip_parameters["weight_zip_flag"] = self._op_graph.weight_zip_flag
             self._v200_data_flow_type = ConvParam.tensor_map.get("v200_data_flow_type")
             self._conv1d_split_w_flag = ConvParam.conv1d_split_w_flag
@@ -3956,10 +3845,10 @@ class CceConvOp:
             self._aipp_fuse_flag = ConvParam.aipp_fuse_flag
             self._fused_flag = ConvParam.tensor_map["conv_vector_fused_flag"]
             if MaxPoolParam.tensor_map["is_conv_pool_fused"] and \
-            self._max_pool_tensor_map["window_size"] == 3:
+                    self._max_pool_tensor_map["window_size"] == 3:
                 self.conv_pool_fused_flag = True
             if MaxPoolParam.tensor_map["is_conv_pool_fused"] and \
-            self._max_pool_tensor_map["window_size"] == 2:
+                    self._max_pool_tensor_map["window_size"] == 2:
                 self.conv_pool_2_2_fused_flag = True
             self._compute_at_buffer = []
             self._compute_at_axis = []
@@ -3968,6 +3857,15 @@ class CceConvOp:
             if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
             ("virtual_res" in res.op.name or res.dtype == "int8"):
                 self._quant_fusion_muti_groups_in_cl0 = True
+
+        def _process_lxfusion_allocate_root():
+            """
+            fix res tensor inferbound error in lxfusion doubleout cases.
+            """
+            allocate_tensor_list = ConvParam.fusion_para["allocate_root_tensor"]
+            if allocate_tensor_list:
+                for tensor in allocate_tensor_list:
+                    sch[tensor].allocate_root()
 
         def set_overload_flag(overload_flag, param, noi):
             """
@@ -4261,8 +4159,7 @@ class CceConvOp:
         _handle_var_range()
 
         self._pre_relu_fused_flag = ConvParam.pre_relu_flag
-        double_num, tensor_map = \
-            _mini_or_hisi_checkout_quant_dequant(tensor_map)
+        double_num, tensor_map = _mini_or_hisi_checkout_quant_dequant(tensor_map)
         double_operand_num_fetch()
         ahead_operand_num_fetch()
         if is_support_v200() or tensor_map['c_col'].dtype != "int32":
@@ -4305,7 +4202,7 @@ class CceConvOp:
                         delete_op("quant", self._op_graph.body_ops, sch)
 
                     # v100 conv_dequant_single_eltwise_quant_data_rm doubleout
-                    if "dequant_doubleout_flag" in tensor_map:
+                    if ConvParam.dequant_doubleout_flag:
                         delete_op("quant", self._op_graph.body_ops, sch)
                         delete_op("conv2d_data_rm", self._op_graph.body_ops, sch, "float16")
                     # conv_eltwise_data_rm
@@ -4357,35 +4254,7 @@ class CceConvOp:
                     if j["op"] == del_op:
                         del self._op_graph.body_ops[i]
 
-        if is_support_v200():
-            # singleout
-            if res.op.tag == "write_select":
-                sch[res.op.input_tensors[0]].compute_inline()
-                if self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION:
-                    # v200 conv+deq+add+relu+quant singleout writeselect
-                    for i, j in enumerate(self._op_graph.body_ops):
-                        if j["op"] == "quant":
-                            del self._op_graph.body_ops[i]
-
-            # v200 conv+deq+add+relu+quant doubleout writeselect
-            if res.op.name == "conv_virtual_res":
-                if res.op.input_tensors[0].op.tag == "write_select":
-                    sch[res.op.input_tensors[0].op.input_tensors[0]].compute_inline()
-                    for i, j in enumerate(self._op_graph.body_ops):
-                        if j["op"] == "quant":
-                            del self._op_graph.body_ops[i]
-
-                if res.op.input_tensors[1].op.tag == "write_select":
-                    sch[res.op.input_tensors[1].op.input_tensors[0]].compute_inline()
-
-            # v200 conv + dequants16 + requants16 doubleout writeselect
-            if res.op.name == "virtual_res":
-                # res_write_select_0
-                if res.op.input_tensors[0].op.input_tensors[0].op.tag == "write_select":
-                    sch[res.op.input_tensors[0].op.input_tensors[0]].compute_inline()
-                # res_write_select_1
-                if res.op.input_tensors[1].op.input_tensors[0].op.tag == "write_select":
-                    sch[res.op.input_tensors[1].op.input_tensors[0]].compute_inline()
+        _process_lxfusion_allocate_root()
 
         if "c_ub" in tensor_map.keys():
             c_ub = tensor_map["c_ub"]
@@ -4432,6 +4301,7 @@ class CceConvOp:
         strideh_opti_flag = tensor_map["strideh_opti_flag"]
         c0_optim_flg = tensor_map["c0_optim_flg"]
         c04_v200_flag = tensor_map["c04_v200_flag"]
+
         if "int32_bias" in tensor_map.keys():
             bias_l0c, c_col_bias, bias_ub_brc, bias_ub = _quant_bias_set_scope()
 
@@ -4455,10 +4325,6 @@ class CceConvOp:
             sch[fmap_sread].compute_inline()
         else:
             sread_load2d_flag = False
-
-        if self._valid_shape and self._input_memory_type[0] != 1:
-            if not tensor_map["strideh_opti_flag"] and not l0a_load2d_flag:
-                fusion_fmap_select = tensor_map['fusion_fmap_select']
 
         config = CUBE_MKN[weight.dtype]
 
@@ -4504,13 +4370,12 @@ class CceConvOp:
                 and not self.conv_pool_2_2_fused_flag:
             has_vector_flag = (c_ub.op.attrs['no_vector'].value == 0)
 
-        if self._convbn1_flag or "write_select" in \
-                self._op_graph.output_ops[0]["op"]:
+        if self._convbn1_flag:
             has_vector_flag = 0
 
         if (has_vector_flag and self._fused_flag and res.op.name != "conv_virtual_res") or \
                 (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and
-                 res.op.name != "conv_virtual_res" and res.op.tag != "quant" and not self._write_select):
+                 res.op.name != "conv_virtual_res" and res.op.tag != "quant"):
             if not ConvParam.swrite_flag and not ConvParam.invalid_data_rm_flag:
                 res_ub = sch.cache_write(res, cce.scope_ubuf)
                 self._op_graph.output_ops[0]["tensorize_axis"] = self._schedule[res_ub].op.axis[0]
@@ -4518,7 +4383,6 @@ class CceConvOp:
 
         tiling = ConvParam.tiling
         multiout_ub2 = get_multiout_ub2(multi_out)
-        set_output_memory_type()
 
         if tiling is None:
             tiling = tiling_fetch()
@@ -4604,58 +4468,31 @@ class CceConvOp:
                     else:
                         al1 = sch.cache_read(fmap, cce.scope_cbuf, [fmap_col])
             else:
-                # fmap DDR in  and read select
-                if self._input_memory_type[0] in (0, 2) and self._valid_shape and \
-                        not tensor_map["strideh_opti_flag"]:
+                if strideh_opti_flag or strided_read_flag or self._aipp_fuse_flag:
+                    fmap_cbuf_nc1hwc0 = fmap_col_before.op.input_tensors[0]
                     if self._l1_fusion_type in (0, 1):
-                        sch[fusion_fmap_select].set_scope(cce.scope_cbuf_fusion)
+                        sch[fmap_cbuf_nc1hwc0].set_scope(cce.scope_cbuf_fusion)
                     else:
-                        sch[fusion_fmap_select].set_scope(cce.scope_cbuf)
-                    fmap_cbuf_nc1hwc0 = fusion_fmap_select
-                # fmap L1 in
-                elif self._input_memory_type[0] == 1:
-                    sch[fmap].set_scope(cce.scope_cbuf_fusion)
-                    fmap_cbuf_nc1hwc0 = sch.cache_read(fmap,
-                                                       cce.scope_cbuf_fusion,
-                                                       [fmap_col_before])
-                    if self._valid_shape:
-                        sch[fmap_cbuf_nc1hwc0].buffer_tile(
-                            (None, None),
-                            (None, None),
-                            (-ConvParam.padding[0], fmap.shape[2] +
-                             ConvParam.padding[0] + ConvParam.padding[1]),
-                            (-ConvParam.padding[2], fmap.shape[3] +
-                             ConvParam.padding[2] + ConvParam.padding[3]),
-                            (None, None))
-                # DDR in
+                        sch[fmap_cbuf_nc1hwc0].set_scope(cce.scope_cbuf)
                 else:
-                    if strideh_opti_flag or strided_read_flag \
-                            or self._aipp_fuse_flag:
-                        fmap_cbuf_nc1hwc0 = fmap_col_before.op.input_tensors[0]
-                        if self._l1_fusion_type in (0, 1):
-                            sch[fmap_cbuf_nc1hwc0].set_scope(cce.scope_cbuf_fusion)
-                        else:
-                            sch[fmap_cbuf_nc1hwc0].set_scope(cce.scope_cbuf)
-                    elif self._l1_fusion_type in (0, 1):
-                        fmap_cbuf_nc1hwc0 = sch.cache_read(
-                            fmap, cce.scope_cbuf_fusion, [fmap_col_before])
+                    if self._l1_fusion_type in (0, 1):
+                        fmap_cbuf_nc1hwc0 = sch.cache_read(fmap, cce.scope_cbuf_fusion, [fmap_col_before])
                     else:
-                        fmap_cbuf_nc1hwc0 = sch.cache_read(
-                            fmap, cce.scope_cbuf, [fmap_col_before])
+                        fmap_cbuf_nc1hwc0 = sch.cache_read(fmap, cce.scope_cbuf, [fmap_col_before])
 
                 al1 = fmap_cbuf_nc1hwc0
                 sch[fmap_col_before].set_scope(cce.scope_cbuf)
 
         al1_shape = al1.shape
-        if self._l1_fusion_type == 1 or self._input_memory_type[0] == 1:
+
+        if self._l1_fusion_type == 1: # AL1 must full load when L1_fusion_type is breadth fusion
             sch[al1].buffer_align(
                 (1, 1),
                 (1, 1),
                 (al1_shape[2], al1_shape[2]),
                 (al1_shape[3], al1_shape[3]),
                 (1, 1))
-        elif self._aipp_fuse_flag and \
-                al1.op.attrs["input_format"] == "YUV420SP_U8":
+        elif self._aipp_fuse_flag and al1.op.attrs["input_format"] == "YUV420SP_U8":
             sch[al1].buffer_align((1, 1), (1, 1), (2, 2), (1, 1), (1, 1))
         elif c04_v200_flag:
             sch[al1].buffer_align(
@@ -5494,8 +5331,7 @@ class CceConvOp:
                     self._schedule[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0], 'vector_dup')
                 if lop["op"] == "broadcast_for_tensor":
                     sch[lop["dst_buffer"]].compute_inline()
-                if "fusion_fmap_select" in lop["op"]:
-                    continue
+
                 if is_support_v220():
                     self.__pragma_for_op(lop, fmap, c_pragma_axis=c_pragma_axis, tiling=tiling)
                 elif self._convbn1_flag:
@@ -5575,8 +5411,6 @@ class CceConvOp:
                 return True
             if "dma_copy" in lop["next_op"][0]["dst_buffer"].op.attrs:
                 return True
-            if "fusion_fmap_select" in lop["next_op"][0]["op"]:
-                return True
 
             return False
 
@@ -5629,17 +5463,12 @@ class CceConvOp:
             process dma move list.
             """
             dma_move_list = ["quant", "res_out_fp16"]
-            if is_support_v200():
-                if "deq_s8_ws_flag" in ConvParam.tensor_map:
-                    dma_move_list[0] = "write_select"
-                if "deq_fp16_ws_flag" in ConvParam.tensor_map:
-                    dma_move_list[1] = "write_select"
-            if ConvParam.invalid_data_rm_flag:
-                dma_move_list = ["conv2d_data_rm", "res_out_fp16"]
             if ConvParam.swrite_dequant_flag:
                 dma_move_list = ["strided_write", "res_out_fp16"]
             if ConvParam.conv_reluv2_flag:
                 dma_move_list = ["res_reluv2_fp16", "res_mask_u8"]
+            if ConvParam.invalid_data_rm_flag:
+                dma_move_list = ["conv2d_data_rm", "res_out_fp16"]
             return dma_move_list
 
         def _lhisi_data_flow_type_emit_insn(tiling=None):
@@ -5647,27 +5476,7 @@ class CceConvOp:
             Emit insn for ops in lhisi dataflow.
             """
             def _handle_lx_fusion_lhisi_data_flow():
-                if 'write_select' in lop["op"]:
-                    if ConvParam.swrite_flag:
-                        self._schedule[lop["dst_buffer"]].compute_inline()
-                        if lop["dst_buffer"].op.input_tensors[0].op.tag in (
-                                "dequant_remove_pad", "requant_remove_pad", "quant"):
-                            self._schedule[lop["dst_buffer"].op.input_tensors[0]].compute_inline()
-                        align_length = int(lop["dst_buffer"].op.attrs["HWC0"])
-                        self._schedule[self._res_tensor].bind_buffer(self._res_tensor.op.axis[1], align_length, 0)
-                        self._schedule[self._res_tensor].emit_insn(c_pragma_axis, 'dma_copy')
-                    else:
-                        align_length = int(cache_buffer.op.attrs["HWC0"])
-                        self._schedule[cache_buffer].bind_buffer(lop["dst_buffer"].op.axis[1], align_length, 0)
-                        if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16S8:
-                            self._schedule[cache_buffer].allocate_root()
-                            self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
-                        elif self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION:
-                            self._schedule[cache_buffer].allocate_root()
-                            self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
-                        else:
-                            self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'dma_copy')
-                elif "output_ub" in lop["op"]:
+                if "output_ub" in lop["op"]:
                     self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
 
             def _reform_emit_insn_optimize():
@@ -5691,7 +5500,7 @@ class CceConvOp:
                     self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
                 if not self._conv_quant_fused_flag:
                     if self._lhisi_data_flow_type == DataFlowTypeLhisi.S32TOFP16S8 or \
-                            self._write_select or ConvParam.conv_reluv2_flag or \
+                            ConvParam.conv_reluv2_flag or \
                             (self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and \
                             self._res_tensor.op.tag == "conv_virtual_res"):
                         self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
@@ -5732,39 +5541,8 @@ class CceConvOp:
             """
             Process the pragma for lx fusion.
             """
-            if 'write_select' in lop["op"]:
-                if ConvParam.swrite_flag:
-                    # write_select
-                    self._schedule[lop["dst_buffer"]].compute_inline()
-                    # remove pad
-                    if lop["dst_buffer"].op.input_tensors[0].op.tag in (
-                            "dequant_remove_pad", "requant_remove_pad", "quant"):
-                        self._schedule[lop["dst_buffer"].op.input_tensors[0]].compute_inline()
-
-                    align_length = int(lop["dst_buffer"].op.attrs["HWC0"])
-                    self._schedule[self._res_tensor].bind_buffer(self._res_tensor.op.axis[1], align_length, 0)
-                    self._schedule[self._res_tensor].emit_insn(c_pragma_axis, 'dma_copy')
-
-                else:
-                    align_length = int(lop["dst_buffer"].op.attrs["HWC0"])
-                    if self._v200_data_flow_type == DataFlowType.S16ELTWISES8S16:
-                        res_s8 = ConvParam.tensor_map["res_remove_pad_u8"]
-                        res_s16 = ConvParam.tensor_map["res_remove_pad_s16"]
-                        if lop["dst_buffer"].dtype == "int8":
-                            self._schedule[res_s8].allocate_root()
-                            self._schedule[res_s8].bind_buffer(res_s8.op.axis[1], align_length, 0)
-                        else:
-                            self._schedule[res_s16].allocate_root()
-                            self._schedule[res_s16].bind_buffer(res_s16.op.axis[1], align_length, 0)
-
-                        self._schedule[lop["dst_buffer"]].emit_insn(lop["dst_buffer"].op.axis[0], 'dma_copy')
-                    else:
-                        self._schedule[lop["dst_buffer"]].bind_buffer(lop["dst_buffer"].op.axis[1], align_length, 0)
-                        self._schedule[lop["dst_buffer"]].emit_insn(c_pragma_axis, 'dma_copy')
-            elif "output_ub" in lop["op"]:
+            if "output_ub" in lop["op"]:
                 self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0], 'dma_copy')
-            else:
-                pass
 
         def _vector_ci32():
             """
@@ -5831,8 +5609,7 @@ class CceConvOp:
             v200s_remove_pad_flag = False
             v200s_remove_pad_flag = lop["op"] in (
                 "dequant_remove_pad", "requant_remove_pad", "dequant_s16_remove_pad") and \
-                self._v200_data_flow_type in (DataFlowType.S32TOS8, DataFlowType.S32TOS16, DataFlowType.S32TOFP16) and \
-                not self._write_select
+                self._v200_data_flow_type in (DataFlowType.S32TOS8, DataFlowType.S32TOS16, DataFlowType.S32TOFP16)
             return v200s_remove_pad_flag
 
         op_cmd = lop["op"].split("_")
@@ -5899,13 +5676,11 @@ class CceConvOp:
             __convolution_c_emit_insn()
         elif lop["op"] == 'conv_vector_remove_pad':
             handle_remove_pad()
-        elif lop["op"] == "requant_s16_data_transfer" and self._v200_data_flow_type == DataFlowType.S16ELTWISES8 and \
-                not self._write_select:
+        elif lop["op"] == "requant_s16_data_transfer" and self._v200_data_flow_type == DataFlowType.S16ELTWISES8:
             self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'dma_copy')
         elif v200s_remove_pad():
             self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'dma_copy')
-        elif lop["op"] == "dequant_remove_pad" and self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION and \
-                not self._write_select:
+        elif lop["op"] == "dequant_remove_pad" and self._v200_data_flow_type == DataFlowType.V200_GENERAL_FUSION:
             self._schedule[cache_buffer].emit_insn(self._schedule[cache_buffer].op.axis[0], "dma_copy")
         elif lop["op"] == 'pooling2d_max_max_pool_res':
             self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'dma_copy')
@@ -5935,6 +5710,7 @@ class AutoScheduleOp:
             self._end_op = self.get_op_by_tensor(self._res_tensor)
             self.__analyse_input_output()
             self.__analyse_v200_data_flow_type()
+            self.__analyse_lxfusion_info()
             self.__analyse_fused_double_operand_num()
             self.__analyse_fusion_type()
 
@@ -6120,13 +5896,12 @@ class AutoScheduleOp:
             "dequant_scale": DataFlowType.S32TOFP16,
             "dequant_remove_padded_column": DataFlowType.S32TOFP16}
         out_src = self.output_ops[0]['src_buffer'][0].op.tag
-        if self._res_tensor.op.tag in ("write_select", "strided_write"):
+        if self._res_tensor.op.tag == "strided_write":
             res_src = self.output_ops[0]['src_buffer'][0].op.input_tensors[0]
             out_src = res_src.op.tag
-            if self._res_tensor.op.input_tensors[0].op.tag == "write_select":
-                out_src = res_src.op.input_tensors[0].op.tag
 
         weight = ConvParam.tensor_map["filter"]
+        ConvParam.tensor_map["v200_data_flow_type"] = None
         if out_src in tag_to_type_map.keys():
             ConvParam.tensor_map["v200_data_flow_type"] = tag_to_type_map[out_src]
         elif is_support_v200() and weight.dtype == "int8" \
@@ -6144,6 +5919,84 @@ class AutoScheduleOp:
         tmp = self.fused_double_operand_num
         total_ub_op_num = len(self.body_ops) - CONV_OP_NUM
         self.fused_double_operand_num = tmp if tmp <= total_ub_op_num else total_ub_op_num
+
+    def __analyse_lxfusion_info(self):
+        """
+        fetch lx fusion parameters from get_tensor_info.
+        """
+        def _fetch_tensor_scope(tensor, buffer_manager):
+            """
+            fetch tensor scope in lxfusion.
+            """
+            scope_dict = {"global": 0, "local.L1_Fusion": 1}
+            tensor_info = buffer_manager.get_tensor_info(tensor)
+            if tensor_info:
+                tensor_scope = scope_dict[tensor_info.get_buffer_scope()]
+            else:
+                tensor_scope = 0
+            return tensor_scope
+
+        def _fetch_writeselect_info(tensor, buffer_manager, allocate_root_flag=False):
+            """
+            check result tensor for writeselect.
+            """
+            tensor_info = buffer_manager.get_tensor_info(tensor)
+            if tensor_info:
+                ori_shape = buffer_manager.get_tensor_info(tensor).get_buffer_shape()
+                thread_shape = buffer_manager.get_tensor_info(tensor).get_buffer_thread_shape()
+                # thread_shape and ori_shape must not be []
+                if (not ori_shape) or (not thread_shape):
+                    return False
+                write_select_flag = ori_shape[2] != thread_shape[2] # check h_out
+                if write_select_flag and allocate_root_flag:
+                    ConvParam.fusion_para["allocate_root_tensor"].append(tensor)
+                return write_select_flag
+            return False
+
+        if ConvParam.fusion_para["lxfusion_enable_flag"]:
+            buffer_manager = get_buffer_manager()
+            tensor_list = buffer_manager.get_tensor_list()
+
+            if ConvParam.dequant_doubleout_flag:
+                tensor_list.insert(-1, ConvParam.tensor_map["res_out_fp16"])
+                buffer_manager.set_tensor_list(tensor_list)
+
+                res_fp16_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_out_fp16"], buffer_manager)
+                res_s8_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_out_s8"], buffer_manager)
+                ConvParam.fusion_para["output_memory_type"] = [res_fp16_scope, res_s8_scope]
+
+                res_fp16_wsinfo = _fetch_writeselect_info(ConvParam.tensor_map["res_out_fp16"], buffer_manager, True)
+                res_s8_wsinfo = _fetch_writeselect_info(ConvParam.tensor_map["res_out_s8"], buffer_manager, True)
+                ConvParam.fusion_para["write_select_flag"] = res_fp16_wsinfo or res_s8_wsinfo
+
+            elif ConvParam.tensor_map["v200_data_flow_type"] == DataFlowType.S16ELTWISES8S16:
+                tensor_list[-2] = ConvParam.tensor_map["res_remove_pad_u8"]
+                tensor_list[-1] = ConvParam.tensor_map["res_remove_pad_s16"]
+                buffer_manager.set_tensor_list(tensor_list)
+
+                res_s16_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_remove_pad_s16"], buffer_manager)
+                res_s8_scope = _fetch_tensor_scope(ConvParam.tensor_map["res_remove_pad_u8"], buffer_manager)
+                ConvParam.fusion_para["output_memory_type"] = [res_s16_scope, res_s8_scope]
+
+                res_s16_wsinfo = _fetch_writeselect_info(ConvParam.tensor_map["res_remove_pad_s16"],
+                                                         buffer_manager, True)
+                res_s8_wsinfo = _fetch_writeselect_info(ConvParam.tensor_map["res_remove_pad_u8"], buffer_manager, True)
+                ConvParam.fusion_para["write_select_flag"] = res_s16_wsinfo or res_s8_wsinfo
+
+            else:
+                res_scope = _fetch_tensor_scope(self._res_tensor, buffer_manager)
+                ConvParam.fusion_para["output_memory_type"] = [res_scope]
+
+                res_wsinfo = _fetch_writeselect_info(self._res_tensor, buffer_manager)
+                ConvParam.fusion_para["write_select_flag"] = res_wsinfo
+        else:
+            if ConvParam.dequant_doubleout_flag or \
+                    ConvParam.tensor_map["v200_data_flow_type"] == DataFlowType.S16ELTWISES8S16:
+                ConvParam.fusion_para["output_memory_type"] = [DDR_SCOPE, DDR_SCOPE]
+            else:
+                ConvParam.fusion_para["output_memory_type"] = [DDR_SCOPE]
+
+            ConvParam.fusion_para["write_select_flag"] = False
 
     def __analyse_fusion_type(self):
         """
@@ -6248,6 +6101,10 @@ class AutoScheduleOp:
                 "1_2_7_8": PATTERN_CONVFP16_ELE_QUANT_DOUBLEOUT_BIAS,
                 "1_8": PATTERN_CONVFP16_RELUV2_DOUBLEOUT
             }
+
+            # process writeselect op delete
+            if ConvParam.fusion_para["write_select_flag"]:
+                fusion_type_list = "{}_5".format(fusion_type_list)
 
             # look up the fusion_type_dict for a given fusion_type_list
             # with its ops' number, type and order all fixed and return 0

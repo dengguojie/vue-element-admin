@@ -233,8 +233,7 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
         optim_dict = {"c0_optim_flg": False}
 
     if fusion_para is None:
-        fusion_para = {"input_memory_type": 0, "output_memory_type": 0,
-                       "valid_shape": (), "slice_offset": (),  "l1_fusion_type": -1}
+        fusion_para = {"fmap_l1_addr_flag": 0, "fmap_l1_valid_size": -1}
     in_dtype = in_dtype.lower()
     w_dtype = w_dtype.lower()
     index_dtype = index_dtype.lower()
@@ -253,7 +252,7 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
 
     shape_in, shape_w = util_conv2d.conv_layer_cce_para_check(
         shape_in, shape_w, padh, padw, strideh, stridew, in_dtype, w_dtype, res_dtype,
-        offset_w_dtype, bias, kernel_name, dilateh, dilatew, optim_dict, fusion_para, groups)
+        offset_w_dtype, bias, kernel_name, dilateh, dilatew, optim_dict, groups)
 
     c0_val = 16
     if w_dtype == "int8":

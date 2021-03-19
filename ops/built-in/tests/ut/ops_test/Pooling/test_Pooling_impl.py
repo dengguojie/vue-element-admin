@@ -43,10 +43,10 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
-case6 = {"params": [{"shape": (13, 1, 2, 768, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (13, 2, 768, 13),"ori_format": "NCHW"},
+case6 = {"params": [{"shape": (13, 1, 6, 768, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (13, 13, 6, 768),"ori_format": "NCHW"},
                     {"shape": (9, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 3, 3),"ori_format": "NCHW"},
                     None,
-                    {"shape": (13, 1, 2, 768, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (13, 2, 768, 13),"ori_format": "NCHW"},
+                    {"shape": (13, 1, 6, 768, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (13, 6, 768, 13),"ori_format": "NCHW"},
                     (1, 1,), (1, 1), 0, 1],
          "case_name": "pooling_16",
          "expect": "success",

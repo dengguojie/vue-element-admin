@@ -34,15 +34,15 @@ def is_support_v200():
     return new_is_support_v200()
 
 def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
-                     pad_left, pad_right, strideh, stridew, in_dtype, w_dtype, fusion_para,
+                     pad_left, pad_right, strideh, stridew, in_dtype, w_dtype,
                      optim_dict=None, dilateh=1, dilatew=1, dynamic_para=None, groups=1):
     """
 
     Parameters
     ----------
-    shape_in : shape of data_in
+    shape_in: shape of data_in
 
-    shape_w : shape of filter
+    shape_w: shape of filter
 
     padh: the padding shape in H
 
@@ -58,11 +58,9 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     optim_dict: optimize feature dict
 
-    in_dtype : the feature map data type
+    in_dtype: the feature map data type
 
-    w_dtype : the weight data type
-
-    fusion_para: the config for Lx Fusion
+    w_dtype: the weight data type
 
     Returns
     -------
@@ -74,7 +72,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
                   DeprecationWarning)
     from tbe.dsl.compute.conv_compute import check_conv_shape as new_check_conv_shape
     return new_check_conv_shape(shape_in, shape_w, pad_top, pad_bottom, pad_left,
-                                pad_right, strideh, stridew, in_dtype, w_dtype, fusion_para,
+                                pad_right, strideh, stridew, in_dtype, w_dtype,
                                 optim_dict, dilateh, dilatew, dynamic_para, groups)
 
 
