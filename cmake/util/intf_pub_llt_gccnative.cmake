@@ -44,8 +44,6 @@ target_link_options(intf_llt_pub INTERFACE
 target_link_libraries(intf_llt_pub INTERFACE
   gtest
   gtest_main
-  gmock
-  gmock_main
   gcov
   pthread
 )
