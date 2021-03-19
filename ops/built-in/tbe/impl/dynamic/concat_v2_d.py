@@ -1325,6 +1325,9 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
     -------
     tik instance
     """
+    if not util_common.is_unknown_rank_input(input_values):
+        _check_params(input_values, axis)
+
     # update axis base on input format
     for _, _input_dict in enumerate(input_values):
         ori_shape = _input_dict.get("ori_shape")
@@ -1334,9 +1337,6 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
             ori_format = _input_dict.get("ori_format")
             axis = util_common.update_axis_for_other_format(ori_shape, axis, input_format, ori_format)
             break
-
-    if not util_common.is_unknown_rank_input(input_values):
-        _check_params(input_values, axis)
 
     concat_instance = ConcatV2(input_values, axis, kernel_name)
     return concat_instance.concat_compute()
