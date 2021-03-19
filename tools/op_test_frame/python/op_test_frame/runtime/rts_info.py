@@ -23,7 +23,7 @@ RT_DEV_BINARY_MAGIC_ELF = 0x43554245
 RT_DEV_BINARY_MAGIC_ELF_AICPU = 0x41415243
 RT_DEV_BINARY_MAGIC_ELF_AIVEC = 0x41415246
 
-magic_map = {
+MAGIC_MAP = {
     "RT_DEV_BINARY_MAGIC_ELF_AIVEC": RT_DEV_BINARY_MAGIC_ELF_AIVEC,
     "RT_DEV_BINARY_MAGIC_ELF_AIVECTOR": RT_DEV_BINARY_MAGIC_ELF_AIVEC,
     "RT_DEV_BINARY_MAGIC_ELF": RT_DEV_BINARY_MAGIC_ELF,
@@ -33,7 +33,7 @@ magic_map = {
     "RT_DEV_BINARY_MAGIC_PLAIN": RT_DEV_BINARY_MAGIC_PLAIN
 }
 
-rt_memory_type = {
+RT_MEMORY_TYPE = {
     "RT_MEMORY_DEFAULT": 0,
     "RT_MEMORY_HBM": 2,
     "RT_MEMORY_DDR": 4,
@@ -48,7 +48,7 @@ rt_memory_type = {
     "RT_MEMORY_L2": 0x20000
 }
 
-rt_module_type = {
+RT_MODULE_TYPE = {
     "MODULE_TYPE_SYSTEM": 0,
     "MODULE_TYPE_AICPU": 1,
     "MODULE_TYPE_CCPU": 2,
@@ -58,7 +58,7 @@ rt_module_type = {
     "MODULE_TYPE_PCIE": 6
 }
 
-rt_info_type = {
+RT_INFO_TYPE = {
     "INFO_TYPE_ENV": 0,
     "INFO_TYPE_VERSION": 1,
     "INFO_TYPE_MASTERID": 2,
@@ -72,7 +72,7 @@ rt_info_type = {
     "INFO_TYPE_ENDIAN": 10
 }
 
-rt_memory_policy = {
+RT_MEMORY_POLICY = {
     "RT_MEMORY_POLICY_NONE": 0x0,
     "RT_MEMORY_POLICY_HUGE_PAGE_FIRST": 0x400,
     "RT_MEMORY_POLICY_HUGE_PAGE_ONLY": 0x800,
@@ -82,7 +82,7 @@ rt_memory_policy = {
     "RT_MEMORY_POLICY_DEFAULT_PAGE_ONLY_P2P": 0x8000
 }
 
-rt_memcpy_kind = {
+RT_MEMCPY_KIND = {
     "RT_MEMCPY_HOST_TO_HOST": 0,
     "RT_MEMCPY_HOST_TO_DEVICE": 1,
     "RT_MEMCPY_DEVICE_TO_HOST": 2,
@@ -94,7 +94,7 @@ rt_memcpy_kind = {
     "RT_MEMCPY_RESERVED": 8
 }
 
-memory_info_type = {
+MEMORY_INFO_TYPE = {
     "RT_MEMORYINFO_DDR": 0,
     "RT_MEMORYINFO_HBM": 1,
     "RT_MEMORYINFO_DDR_HUGE": 2,
@@ -107,18 +107,18 @@ memory_info_type = {
     "RT_MEMORYINFO_HBM_P2P_NORMAL": 9,
 }
 
-rt_context_mode = {
+RT_CONTEXT_MODE = {
     "RT_CTX_NORMAL_MODE": 0,
     "RT_CTX_GEN_MODE": 1
 }
 
-rt_kernel_flags = {
+RT_KERNEL_FLAGS = {
     "default": 0x00,
     "convert": 0x01,
     "dumpflag": 0x02
 }
 
-rt_func_mode_dict = {
+RT_FUNC_MODE_DICT = {
     "FUNC_MODE_NORMAL": 0,
     "FUNC_MODE_PCTRACE_USERPROFILE_RECORDLOOP": 1,
     "FUNC_MODE_PCTRACE_USERPROFILE_SKIPLOOP": 2,
@@ -127,13 +127,13 @@ rt_func_mode_dict = {
     "FUNC_MODE_BUTT": 5,
 }
 
-rt_env_type = {
+RT_ENV_TYPE = {
     0: "FPGA",
     1: "EMU",
     2: "ESL"
 }
 
-rt_error_type_dict = {
+RT_ERROR_TYPE_DICT = {
     0x00000000: "UNKNOWN",
     0x00010000: "DEVICE",
     0x00020000: "DRV",
@@ -161,7 +161,7 @@ rt_error_type_dict = {
     0x00FF0000: "RESERVED"
 }
 
-rt_error_code_dict = {
+RT_ERROR_CODE_DICT = {
     0x00000000: ("RT_ERROR_UNKNOWN_UNKNOWN0",
                  "RT_ERROR_UNKNOWN_UNKNOWN1",
                  "RT_ERROR_UNKNOWN_UNKNOWN2",

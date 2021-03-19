@@ -210,8 +210,8 @@ class AscendRTSApi:
 
     def get_device_info(self, device_id: int, module_type: str, info_type: str):
         c_info = (ctypes.c_int64 * 8)()
-        module_type = rts_info.rt_module_type[module_type]
-        info_type = rts_info.rt_info_type[info_type]
+        module_type = rts_info.RT_MODULE_TYPE[module_type]
+        info_type = rts_info.RT_INFO_TYPE[info_type]
         self.rtsdll.rtGetDeviceInfo.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtGetDeviceInfo(ctypes.c_uint32(device_id),
                                                ctypes.c_int32(module_type),
@@ -219,7 +219,7 @@ class AscendRTSApi:
                                                c_info)
         self.parse_error(rt_error, "rtGetDeviceInfo")
         result = int(c_info[0])
-        if info_type == rts_info.rt_info_type["INFO_TYPE_ENV"]:
+        if info_type == rts_info.RT_INFO_TYPE["INFO_TYPE_ENV"]:
             info_dict = {
                 0: "FPGA",
                 1: "EMU",
@@ -247,7 +247,7 @@ class AscendRTSApi:
         c_context_p = ctypes.c_void_p(ctypes.addressof(c_context))
         self.rtsdll.rtCtxCreate.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtCtxCreate(c_context_p,
-                                           ctypes.c_uint32(rts_info.rt_context_mode[context_mode]),
+                                           ctypes.c_uint32(rts_info.RT_CONTEXT_MODE[context_mode]),
                                            ctypes.c_int32(self.device_id))
         self.parse_error(rt_error, "rtCtxCreate")
         self.context = c_context
@@ -358,7 +358,7 @@ class AscendRTSApi:
         rts_device_binary = rtDevBinary_t(data=c_kernel_p,
                                           length=ctypes.c_uint64(len(kernel)),
                                           version=ctypes.c_uint32(0),
-                                          magic=ctypes.c_uint32(rts_info.magic_map[magic]))
+                                          magic=ctypes.c_uint32(rts_info.MAGIC_MAP[magic]))
         rts_binary_handle = ctypes.c_void_p()
         self.rtsdll.rtDevBinaryRegister.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtDevBinaryRegister(ctypes.c_void_p(ctypes.addressof(rts_device_binary)),
@@ -531,7 +531,7 @@ class AscendRTSApi:
         self.rtsdll.rtMemcpy.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtMemcpy(c_memory_p, c_memory_size,
                                         c_data_p, c_data_size,
-                                        rts_info.rt_memcpy_kind[memcpy_kind])
+                                        rts_info.RT_MEMCPY_KIND[memcpy_kind])
         try:
             self.parse_error(rt_error, "rtMemcpy")
         except:
@@ -598,8 +598,8 @@ class AscendRTSApi:
         self.rtsdll.rtMalloc.restype = ctypes.c_uint64
         rt_error = self.rtsdll.rtMalloc(ctypes.c_void_p(ctypes.addressof(c_memory_p)),
                                         c_memory_size,
-                                        rts_info.rt_memory_type[memory_type]
-                                        | rts_info.rt_memory_policy[memory_policy])
+                                        rts_info.RT_MEMORY_TYPE[memory_type]
+                                        | rts_info.RT_MEMORY_POLICY[memory_policy])
         self.parse_error(rt_error, "rtMalloc", ", trying to allocate %d bytes" % memory_size)
         return c_memory_p
 
@@ -690,9 +690,9 @@ class AscendRTSApi:
         if self.camodel:
             if error_code == 3:
                 return "CAMODEL_NULL_CONTEXT"
-        if error_code >= len(rts_info.rt_error_code_dict[error_type]):
+        if error_code >= len(rts_info.RT_ERROR_CODE_DICT[error_type]):
             raise RuntimeError("Received invalid runtime error code: " + hex(0x07000000 + error_type + error_code))
-        return rts_info.rt_error_code_dict[error_type][error_code]
+        return rts_info.RT_ERROR_CODE_DICT[error_type][error_code]
 
     def parse_error(self, rt_error: ctypes.c_uint64, rt_api_name: str, extra_info: str = "") -> None:
         if isinstance(rt_error, ctypes.c_uint64):
@@ -710,19 +710,19 @@ class AscendRTSApi:
         if rt_error_magic != 0x07000000 and not self.camodel:
             raise RuntimeError("Received invalid runtime error code:" + hex(rt_error) + extra_info)
         rt_error_type = rt_error & 0x00FF0000
-        if rt_error_type not in rts_info.rt_error_code_dict and not self.camodel:
+        if rt_error_type not in rts_info.RT_ERROR_CODE_DICT and not self.camodel:
             raise RuntimeError("Received invalid runtime error type: " + hex(rt_error) + extra_info)
         rt_error_code = rt_error & 0x0000FFFF
         raise RuntimeError("Runtime API call " + "() failed:"
                            + self._parse_error_code(rt_error_type, rt_error_code) + extra_info)
 
     def get_memory_info_ex(self, memory_info_type: str):
-        if memory_info_type not in rts_info.memory_info_type:
+        if memory_info_type not in rts_info.MEMORY_INFO_TYPE:
             raise RuntimeError("Invalid memory info type: %s" % memory_info_type)
         _free = (ctypes.c_size_t * 1)()
         _total = (ctypes.c_size_t * 1)()
         self.rtsdll.rtMemGetInfoEx.restype = ctypes.c_uint64
-        rt_error = self.rtsdll.rtMemGetInfoEx(rts_info.memory_info_type[memory_info_type],
+        rt_error = self.rtsdll.rtMemGetInfoEx(rts_info.MEMORY_INFO_TYPE[memory_info_type],
                                               _free,
                                               _total)
         self.parse_error(rt_error, "rtMemGetInfoEx")
