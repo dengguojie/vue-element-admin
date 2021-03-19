@@ -65,6 +65,9 @@ _VALUE_MAP_IN_REDUCE_ZERO = {
     },
 }
 
+NAME_INDEX = [0]
+
+
 # pylint: disable=too-many-branches
 @decorator
 def _para_check_of_reduce(func, *args, **kwargs):
@@ -146,9 +149,6 @@ def _para_check_of_reduce(func, *args, **kwargs):
         return func(raw_tensor, axis, keepdims)
 
     return func(*args, **kwargs)
-
-
-NAME_INDEX = [0]
 
 
 # pylint: disable=redefined-builtin

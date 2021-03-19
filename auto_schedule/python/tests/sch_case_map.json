@@ -8,6 +8,9 @@
     ],
     "auto_schedule/python/tbe/dsl/compute/nn.py":[
         "broadcast"
+    ],
+    "auto_schedule/python/tbe/dsl/compute/reduce.py":[
+        "reduce_max"
     ]
 
 }
