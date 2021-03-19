@@ -435,10 +435,16 @@ IMPLEMT_VERIFIER(ApplyAdagradDAD, ApplyAdagradDADVerify) {
 
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdagradDADInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ApplyAdagradDAD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "gradient_accumulator", "gradient_accumulator");
-  ApplyInferShapeAndDtype(op, "gradient_squared_accumulator", "gradient_squared_accumulator");
+  OP_LOGI(op.GetName().c_str(), "Enter ApplyCenteredRMSPropD op_proto inferfunction!");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "gradient_accumulator", {"gradient_accumulator"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "gradient_squared_accumulator", {"gradient_squared_accumulator"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

@@ -35,6 +35,7 @@ from .unsorted_segment_min import unsorted_segment_min
 from .unsorted_segment_max import unsorted_segment_max
 from .unsorted_segment_prod import unsorted_segment_prod
 from .gather_nd import gather_nd
+from .apply_adagrad_da_d import apply_adagrad_da_d
 from .gather import gather
 from .gather_v2 import gather_v2
 from .kl_div import kl_div
