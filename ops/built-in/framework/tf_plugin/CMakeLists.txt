@@ -323,6 +323,7 @@ set(_tf_plugins
   resize_nearest_neighbor_grad_plugin.cc
   resize_nearest_neighbor_plugin.cc
   reverse_v2_plugin.cc
+  reverse_sequence_plugin.cc
   rint_plugin.cc
   roi_align_plugin.cc
   round_plugin.cc
