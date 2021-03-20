@@ -123,12 +123,18 @@ def op_select_format(input_values,
     # charge the concat_dim whether align
     align_len = 16
     is_concat_dim_align = True
+    align_len_for_uint8 = 32
+    is_concat_dim_align_for_uint8 = True
     for i, input_shape in enumerate(data_list[0:len(data_list) - 1]):
         if -2 in input_shape:
             is_concat_dim_align = False
+            is_concat_dim_align_for_uint8 = False
             break
         if input_shape[concat_dim] % align_len != 0:
             is_concat_dim_align = False
+        if input_shape[concat_dim] % align_len_for_uint8 != 0:
+            is_concat_dim_align_for_uint8 = False
+        if not (is_concat_dim_align_for_uint8 and is_concat_dim_align):
             break
 
     # charge whether support 5HD 6HD
@@ -136,6 +142,7 @@ def op_select_format(input_values,
         util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) \
         + util_common.get_fused_format_str(["N", "H", "W", "C"])
     is_support_hd = False
+    is_support_hd_for_uint8 = False
     is_support_fz = False
     if ori_format in hd_support_format and len(ori_format) == shape_len:
         is_concat_with_c = ori_format[concat_dim] == "C"
@@ -145,6 +152,8 @@ def op_select_format(input_values,
         # 2. concat the tensor with c, and the C dim size align C0 for all input
         if not is_concat_with_c or (is_concat_with_c and is_concat_dim_align):
             is_support_hd = True
+        if not is_concat_with_c or (is_concat_with_c and is_concat_dim_align_for_uint8):
+            is_support_hd_for_uint8 = True
         # fz condition:
         # 1. do not concat the tensor with nc dim
         # 2. concat the tensor with nc, and the NC dim size align C0 for all input
@@ -176,6 +185,11 @@ def op_select_format(input_values,
         other_format = "NC1HWC0" if shape_len == 4 else "NDC1HWC0"
         dtype_base_out = dtype_base_out + other_data_type
         format_base_out = format_base_out + [other_format] * len(other_data_type)
+    if is_support_hd_for_uint8:
+        other_format = "NC1HWC0" if shape_len == 4 else "NDC1HWC0"
+        other_data_type_uint8 = ["int8", "uint8"]
+        dtype_base_out = dtype_base_out + other_data_type_uint8
+        format_base_out = format_base_out + [other_format] * len(other_data_type_uint8)
     if is_support_fz and not util_common.is_dynamic_input(input_values):
         other_format = "FRACTAL_Z" if shape_len == 4 else "FRACTAL_Z_3D"
         dtype_base_out = dtype_base_out + other_data_type

@@ -88,8 +88,8 @@ TEST_F(combined_non_max_suppression_fusion_test, combined_non_max_suppression_fu
             findTranspose = true;
         }
     }
-    EXPECT_EQ(findTranspose, false);
-    // EXPECT_EQ(findTranspose, true);
+    // EXPECT_EQ(findTranspose, false);
+    EXPECT_EQ(findTranspose, true);
 }
 
 TEST_F(combined_non_max_suppression_fusion_test, combined_non_max_suppression_fusion_test_2) {

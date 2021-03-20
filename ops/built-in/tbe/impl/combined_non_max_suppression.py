@@ -87,6 +87,9 @@ class CombinedNonMaxSuppression:
         # parsing input
         _, self.boxes_classes, _, _ = self.boxes_shape
         self.batch, self.classes, self.boxes_num = self.scores_shape
+        if self.classes == self.boxes_classes and self.boxes_classes == 1:
+            if self.max_size_per_class > self.max_total_size:
+                self.max_size_per_class = self.max_total_size
         self.check_par()
         # whether down the boxes to avoid fp16 overflow
         self.down_flag = False

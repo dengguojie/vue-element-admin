@@ -69,10 +69,23 @@ case4 = {"params": [[{"ori_shape": (-2,), "dtype": "float16", "format": "NHWC",
          "format_expect": [],
          "support_expect": True}
 
+case5 = {"params": [[{"shape": (128, 128, 128, 128), "dtype": "float16", "format": "NHWC",
+                      "ori_shape": (128, 128, 128, 128), "ori_format": "NHWC"},
+                     {"shape": (128, 128, 128, 128), "dtype": "float16", "format": "NHWC",
+                      "ori_shape": (128, 128, 128, 128), "ori_format": "NHWC"}],
+                    {"shape": (128, 128, 128, 128), "dtype": "float16", "format": "NHWC",
+                     "ori_shape": (128, 128, 128, 128), "ori_format": "NHWC"},
+                    -1],
+         "case_name": "concat_d_op_select_format_1",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310"], case1)
 ut_case.add_case(["Ascend310"], case2)
 ut_case.add_case(["Ascend310"], case3)
 ut_case.add_case(["Ascend310"], case4)
+ut_case.add_case(["Ascend310"], case5)
 
 if __name__ == "__main__":
     # ut_case.run()
