@@ -693,11 +693,15 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 if op_param:
                     if isinstance(op_param, dict) and op_param.get("param_type") == "input":
                         param_desc_list.append("REQUIRED_INPUT")
-                    if isinstance(op_param, (tuple, list)) and op_param[0].get("param_type") == "input":
+                    if isinstance(op_param, (tuple, list)) and \
+                            isinstance(op_param[0], dict) and \
+                            op_param[0].get("param_type") == "input":
                         param_desc_list.append("DYNAMIC_INPUT")
                     if isinstance(op_param, dict) and op_param.get("param_type") == "output":
                         param_desc_list.append("REQUIRED_OUTPUT")
-                    if isinstance(op_param, (tuple, list)) and op_param[0].get("param_type") == "output":
+                    if isinstance(op_param, (tuple, list)) and \
+                            isinstance(op_param[0], dict) and \
+                            op_param[0].get("param_type") == "output":
                         param_desc_list.append("DYNAMIC_OUTPUT")
                 else:
                     if idx == 0:
@@ -712,7 +716,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     def _build_tiling_args(self, op_params):
 
         def _add_to_list(param, param_name, param_list):
-            if isinstance(param, (tuple, list)):
+            if isinstance(param, (tuple, list)) and isinstance(param[0], dict):
                 dynamic_params = []
                 for one in param:
                     dynamic_param = {
@@ -726,7 +730,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                         dynamic_param["const_value"] = one.get("value").tolist()
                     dynamic_params.append(dynamic_param)
                 param_list.append(dynamic_params)
-            else:
+            elif isinstance(param, dict):
                 one_param = {
                     "shape": param.get("run_shape"),
                     "dtype": param.get("dtype"),

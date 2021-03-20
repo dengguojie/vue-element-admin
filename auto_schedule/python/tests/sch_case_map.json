@@ -12,7 +12,7 @@
         "broadcast"
     ],
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
-        "reduce_max"
+        "reduce_max",
+        "reduce_sum"
     ]
-
 }
