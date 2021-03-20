@@ -90,7 +90,7 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
 # pylint: disable=locally-disabled,too-many-statements,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("basic_lstm_cell_v2")
 def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
-                               expose_hidden, product_info, impl_mode):
+                               expose_hidden, product_info, impl_mode="high_performance"):
     """
     the compute for LSTM op, return the compute object
     """

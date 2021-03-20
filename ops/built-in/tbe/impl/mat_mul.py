@@ -672,12 +672,12 @@ def mat_mul(input_x1,
     input_x1: dict
         A dict object, contains a matrix(2D Tensor) 's type and
         shape and format, the type can be float16,
-        float32, int32, the shape must be 2-dimensional,
+        float32, int32, the origin shape must be 2-dimensional,
         the format can be [ND, NHWC, FRACTAL_NZ]
     input_x2: dict
         A dict object, contains a matrix(2D Tensor) 's type and
         shape and format, the type can be float16,
-        float32, int32, the shape must be 2-dimensional,
+        float32, int32, the origin shape must be 2-dimensional,
         the format can be [ND, NHWC, FRACTAL_NZ]
     bias: dict
         A dict object, contanis a 1-dimensional tensor's info:
@@ -687,7 +687,7 @@ def mat_mul(input_x1,
     output_y: dict
         A dict object, contains a matrix(2D Tensor) 's type and
         shape and format, the type can be float16,
-        float32, int32, the shape must be 2-dimensional,
+        float32, int32, the origin shape must be 2-dimensional,
         the format can be [ND, NHWC, FRACTAL_NZ]
     trans_a: bool
         If True, shape_a == transposed before multiplication
