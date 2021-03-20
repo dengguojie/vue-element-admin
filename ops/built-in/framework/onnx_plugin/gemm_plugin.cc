@@ -52,6 +52,17 @@ Status ParseParamsGemm(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("transpose_x1", trans_a);
   op_dest.SetAttr("transpose_x2", trans_b);
 
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
+  if (op_desc == nullptr) {
+    OP_LOGE("Gemm", "Get op desc failed.");
+    return FAILED;
+  }
+  //The fmap should be NCHW
+  ge::GeTensorDesc output_y_desc = op_desc->GetOutputDesc(0);
+  output_y_desc.SetOriginFormat(ge::FORMAT_NCHW);
+  output_y_desc.SetFormat(ge::FORMAT_NCHW);
+  op_desc->UpdateOutputDesc(0, output_y_desc);
+
   return SUCCESS;
 }
 
