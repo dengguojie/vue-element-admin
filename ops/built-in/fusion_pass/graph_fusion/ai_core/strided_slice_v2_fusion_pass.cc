@@ -81,6 +81,14 @@ bool ConstToAttrStridedSliceV2Pass::AutoRemoveInput(ge::ComputeGraph &graph,
     ge::GraphUtils::RemoveEdge(const_anchor_ptr, in_anchor_ptr);
     ge::NodePtr const_node_1 = const_anchor_ptr->GetOwnerNode();
     if (PatternFusionUtil::GetOutEdgeSize(const_node_1) == 0) {
+      for (auto &const_peer_control_anchor : const_node_1->GetInControlAnchor()->GetPeerOutControlAnchors()){
+        FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(const_peer_control_anchor, const_node_1->GetInControlAnchor()) != SUCCESS,
+                          OP_LOGE(FUSEDNODE.c_str(), "Remove out control edge failed."), return FAILED);
+        FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(const_peer_control_anchor, p_node->GetInControlAnchor()) != SUCCESS,
+                          OP_LOGE(FUSEDNODE.c_str(), "Faile to add input control edge for fusion node: %s.", 
+                                  p_node->GetName().c_str()),
+                          return FAILED);
+      }
       FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(const_node_1),
                         OP_LOGE(FUSEDNODE.c_str(), "Remove Node[%s] failed",
                                 const_node_1->GetName().c_str()),
