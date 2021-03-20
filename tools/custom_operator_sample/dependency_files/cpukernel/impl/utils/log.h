@@ -20,7 +20,6 @@
 #include <stdio.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include "toolchain/slog.h"
 
 inline long GetTid() {
   thread_local static long tid = syscall(__NR_gettid);
@@ -46,21 +45,21 @@ const char KERNEL_MODULE[] = "AICPU";
   printf("[EVENT] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, \
          __FILE__, __FUNCTION__, __LINE__, GetTid(), ##__VA_ARGS__)
 #else
-#define KERNEL_LOG_DEBUG(fmt, ...)                                            \
-  dlog_debug(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
-             __LINE__, GetTid(), ##__VA_ARGS__)
-#define KERNEL_LOG_INFO(fmt, ...)                                            \
-  dlog_info(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
-            __LINE__, GetTid(), ##__VA_ARGS__)
-#define KERNEL_LOG_WARN(fmt, ...)                                            \
-  dlog_warn(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
-            __LINE__, GetTid(), ##__VA_ARGS__)
-#define KERNEL_LOG_ERROR(fmt, ...)                                            \
-  dlog_error(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
-             __LINE__, GetTid(), ##__VA_ARGS__)
-#define KERNEL_LOG_EVENT(fmt, ...)                                            \
-  dlog_event(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
-             __LINE__, GetTid(), ##__VA_ARGS__)
+#define KERNEL_LOG_DEBUG(fmt, ...)                                    \
+  printf("[DEBUG] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, \
+         __FILE__, __FUNCTION__, __LINE__, GetTid(), ##__VA_ARGS__)
+#define KERNEL_LOG_INFO(fmt, ...)                                              \
+  printf("[INFO] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, __FILE__, \
+         __FUNCTION__, __LINE__, GetTid(), ##__VA_ARGS__)
+#define KERNEL_LOG_WARN(fmt, ...)                                              \
+  printf("[WARN] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, __FILE__, \
+         __FUNCTION__, __LINE__, GetTid(), ##__VA_ARGS__)
+#define KERNEL_LOG_ERROR(fmt, ...)                                    \
+  printf("[ERROR] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, \
+         __FILE__, __FUNCTION__, __LINE__, GetTid(), ##__VA_ARGS__)
+#define KERNEL_LOG_EVENT(fmt, ...)                                    \
+  printf("[EVENT] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, \
+         __FILE__, __FUNCTION__, __LINE__, GetTid(), ##__VA_ARGS__)
 #endif
 
 #define KERNEL_CHECK_NULLPTR_VOID(value, logText...) \
