@@ -306,11 +306,11 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm, max_num):
             with tik_instance.else_scope():
                 # Mean sizeof(in_num) <= 32B
                 _move_in(0, block_num, src_gm, obj.buf)
-                max_num.set_as(0)
+                obj.push_value.set_as(0)
                 with tik_instance.for_range(0, in_num) as i:
                     obj.help_buf[i] = obj.buf[i]
                 with tik_instance.for_range(in_num, block_num) as i:
-                    obj.help_buf[i] = max_num
+                    obj.help_buf[i] = obj.push_value
                 _move_out(0, block_num, dst_gm, obj.help_buf)
 
         with tik_instance.else_scope():

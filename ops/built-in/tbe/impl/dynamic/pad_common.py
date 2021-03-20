@@ -116,6 +116,9 @@ def init_params(obj):
     _init(obj.tiling_buf, obj.new_padding_bottom,
           in_dict.get("new_padding_bottom")[0], in_dict.get("new_padding_bottom")[1])
 
+    # push_value for inject scalar to buf
+    obj.push_value = obj.tik_instance.Scalar(obj.dtype, name="push_value_", init_value=0)
+
 
 def calc_axis_amount(pads, mark):
     """
@@ -254,6 +257,8 @@ class PadInit:
         self.recur_gm2buf_mk = None
         self.prod_new_in = None
         self.prod_new_out = None
+
+        self.push_value = None
 
         self.tiling_arg_kind = None
         self.tiling_arg_num = None
