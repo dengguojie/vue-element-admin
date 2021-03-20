@@ -50,7 +50,9 @@ namespace domi {
         return SUCCESS;
     }
 
-    Status DecodeBboxV2GetStatus(std::map <std::string, std::string> &scales_const_name_map, ge::Operator &op_dest)
+    Status DecodeBboxV2GetStatus(std::map <std::string, std::string> &scales_const_name_map,
+                                 std::map<string, const ge::Operator *> node_map,
+                                 ge::Operator &op_dest)
     {
         std::vector<float> scales_list = {1.0, 1.0, 1.0, 1.0};
         if (scales_const_name_map.size() != K_SCALE_SIZE) {
@@ -113,7 +115,7 @@ namespace domi {
             node_map[str_op_name] = &node;
         }
 
-        return DecodeBboxV2GetStatus(scales_const_name_map, op_dest)
+        return DecodeBboxV2GetStatus(scales_const_name_map, node_map, op_dest);
     }
 
     REGISTER_CUSTOM_OP("DecodeBboxV2")
