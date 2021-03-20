@@ -331,7 +331,7 @@ def im2col_fractal_v2(shape, img2col_para):
         return tvm.select(
             tvm.any(back_h < padding[0], back_h > fmap.shape[2] + padding[0] - 1, back_w < padding[2],
                     back_w > fmap.shape[3] + padding[2] - 1), tvm.const(0, fmap.dtype),
-            fmap(batch, back_c1 + group * c1_extend, back_h - padding[0], back_w - padding[2], block_size_w))
+            fmap(group, batch, back_c1, back_h - padding[0], back_w - padding[2], block_size_w))
 
     return tvm.compute(shape,
                        lambda *idx: __im2col_idx(idx),
@@ -544,7 +544,10 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         -------
         a_col : a_im2col_fractal tensor
         """
-        a_batch, a_c1, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)
+        if var_map:
+            _, a_batch, _, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)
+        else:
+            a_batch, a_c1, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)
         if valid_shape:
             a_batch, a_c1, a_h, a_w, a_c0 = valid_shape
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
@@ -561,8 +564,8 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         else:
             _, width_out = self.cal_howo(a_h, a_w)
 
-        a_im2col_row_major_shape = (a_batch, height_out * width_out, a_c1, kernel_h, kernel_w, a_c0)
         if not var_map:
+            a_im2col_row_major_shape = (a_batch, height_out * width_out, a_c1, kernel_h, kernel_w, a_c0)
             a_row_major = im2col_row_major(a_im2col_row_major_shape,
                                            feature_map,
                                            kernel_w,

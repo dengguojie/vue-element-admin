@@ -134,6 +134,7 @@ from .log1p import log1p
 from .sigmoid_grad import sigmoid_grad
 from .sqrt_grad import sqrt_grad
 from .zeros_like import zeros_like
+from .depthwise_conv2d_backprop_input import depthwise_conv2d_backprop_input
 from .conv2d_backprop_input import conv2d_backprop_input
 from .conv2d_backprop_filter import conv2d_backprop_filter
 from .conv2d_transpose import conv2d_transpose

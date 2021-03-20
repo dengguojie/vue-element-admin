@@ -80,4 +80,5 @@ bool Conv2DBpInputTiling(const std::string& opType, const TeOpParas& opParas, co
 
 // register tiling interface of the conv2d_backprop_input
 REGISTER_OP_TILING_FUNC_BUFFERED(Conv2DBackpropInput, Conv2DBpInputTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(DepthwiseConv2DBackpropInput, Conv2DBpInputTiling);
 }  // namespace optiling

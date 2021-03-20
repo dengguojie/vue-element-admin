@@ -305,32 +305,23 @@ def general_schedule(
             tensor_attr["dilations"] = dilations
 
             def _fill_a_tensormap_dynamic():
-                if (
-                    a_col_before.op.input_tensors[0].op.tag == "dy_l1"
-                    or a_col_before.op.input_tensors[0].op.tag == "dy_l1_cut"
-                ):
-                    a_l1 = a_col_before.op.input_tensors[0]
+                a_l1 = a_col_before.op.input_tensors[0]
+                sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
+                stride_h, stride_w = cube_util.shape_to_list(a_l1.op.attrs["stride_expand"])
+                if stride_h > 1 or stride_w > 1:
                     dy_vn = a_l1.op.input_tensors[0]
                     a_zero = dy_vn.op.input_tensors[0]
-
                     a_filling = dy_vn.op.input_tensors[1]
                     a_ddr = a_filling.op.input_tensors[0]
-                    stride_h, stride_w = cube_util.shape_to_list(a_filling.op.attrs["stride_expand"])
-
                     sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
                     sch[dy_vn].set_scope(tbe_platform_info.scope_ubuf)
                     sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
-                    sch[a_l1].set_scope(tbe_platform_info.scope_cbuf)
-                    tensor_map["a_l1"] = a_l1
                     tensor_map["a_filling"] = a_filling
                     tensor_map["dy_vn"] = dy_vn
                     tensor_map["a_zero"] = a_zero
                 else:
-                    a_ddr = a_col_before.op.input_tensors[0]  # dEdY in ddr
-                    stride_h = 1
-                    stride_w = 1
-                    a_l1 = sch.cache_read(a_ddr, tbe_platform_info.scope_cbuf, [a_col_before])
-                    tensor_map["a_l1"] = a_l1
+                    a_ddr = a_l1.op.input_tensors[0]  # dEdY in ddr
+                tensor_map["a_l1"] = a_l1
                 tensor_map["a_ddr"] = a_ddr
                 tensor_attr["stride_h"] = stride_h
                 tensor_attr["stride_w"] = stride_w
@@ -827,7 +818,7 @@ def general_schedule(
     output_shape_g = [g_after, output_shape[0], cin1_g] + output_shape[2:]
 
     img_shape = cube_util.shape_to_list(a_ddr.shape)
-    _, dy_cout1, dy_h, dy_w, _ = img_shape  # pylint: disable=W0632
+    dy_h, dy_w = img_shape[2:4]  # pylint: disable=W0632
     img_shape_g = [g_after, img_shape[0], cou1_g] + img_shape[2:]
     # conv1d_situation
     def _check_conv1d_situation():
@@ -1029,6 +1020,7 @@ def general_schedule(
                                  cub_tiling_nc_factor == cin1_g and cl0_tiling_g == 2 and cub_tiling_g == 2)
             if not quant_fusion_rule:
                 _raise_dx_general_err("illegal tiling in dequant + quant or requant fusion scene.")
+
     def _tiling_check_factor():
         if (kernel_w * kernel_h * cou1_g) % al0_tiling_ka != 0:
             _raise_dx_general_err("Co1*Hk*Wk % ka != 0")
@@ -1175,8 +1167,8 @@ def general_schedule(
     l0c_pbuffer = tiling.get("manual_pingpong_buffer").get("CL0_pbuffer")
     cub_pbuffer = tiling.get("manual_pingpong_buffer").get("CUB_pbuffer")
 
-    _, al1_co1, _, _, al1_co0 = cube_util.shape_to_list(a_l1.shape)
-    _, _, _, c_l0c_hw, _ = cube_util.shape_to_list(c_col.shape)
+    al1_co0 = cube_util.shape_to_list(a_l1.shape)[-1]
+    c_l0c_hw = cube_util.shape_to_list(c_col.shape)[3]
     if w_trans_flag:
         # G*Cout1*Hk*Wk, Cin1, Cin0, Cout0
         bl1_co1, bl1_k1, _, bl1_co0 = list(i.value for i in b_l1.shape)
@@ -1591,7 +1583,7 @@ def general_schedule(
     def _aub_process():
         if stride_h > 1 or stride_w > 1:
             aub_tiling_k, aub_tiling_m, _, _ = tiling.get("AUB_shape")
-            _, _, _, filling_w, _ = cube_util.shape_to_list(a_filling.shape)
+            filling_w = cube_util.shape_to_list(a_filling.shape)[3]
             if aub_tiling_m == 0:
                 sch_agent.same_attach(a_filling, a_l1)
             else:
@@ -1604,13 +1596,23 @@ def general_schedule(
                 ub_shape_k = aub_tiling_k // (kernel_h * kernel_w * 16)
                 if ub_shape_k == 0:
                     ub_shape_k = 1
-                ub_shape = [
-                    1,
-                    ub_shape_k,
-                    aub_h,
-                    aub_w + kernel_w - 1,
-                    al1_co0
-                ]
+                if var_map:
+                    ub_shape = [
+                        al1_tiling_g,
+                        1,
+                        ub_shape_k,
+                        aub_h,
+                        aub_w + kernel_w - 1,
+                        al1_co0
+                    ]
+                else:
+                    ub_shape = [
+                        1,
+                        ub_shape_k,
+                        aub_h,
+                        aub_w + kernel_w - 1,
+                        al1_co0
+                    ]
                 sch_agent.attach_at(a_filling, a_l1, ub_shape)
             if var_map:
                 sch_agent.same_attach(dy_vn, a_filling)
@@ -1850,11 +1852,13 @@ def general_schedule(
             "conv_padding_right": padr,
             "conv_stride_h": 1,
             "conv_stride_w": 1,
-            "conv_fm_c": a_l1.shape[1] * a_l1.shape[4],
-            "conv_fm_c1": a_l1.shape[1],
-            "conv_fm_h": a_l1.shape[2],
-            "conv_fm_w": a_l1.shape[3],
-            "conv_fm_c0": a_l1.shape[4]
+            "conv_fm_c": a_l1.shape[2] * a_l1.shape[5],
+            "conv_fm_c1": a_l1.shape[2],
+            "conv_fm_h": a_l1.shape[3],
+            "conv_fm_w": a_l1.shape[4],
+            "conv_fm_c0": a_l1.shape[5],
+            "group_flag": 1,
+            "l1_group_flag": 1
         }
         setfmatrix_dict_0 = {
             "set_fmatrix": 0,
@@ -1866,25 +1870,20 @@ def general_schedule(
             "conv_padding_right": padr,
             "conv_stride_h": 1,
             "conv_stride_w": 1,
-            "conv_fm_c": a_l1.shape[1] * a_l1.shape[4],
-            "conv_fm_c1": a_l1.shape[1],
-            "conv_fm_h": a_l1.shape[2],
-            "conv_fm_w": a_l1.shape[3],
-            "conv_fm_c0": a_l1.shape[4],
-            "group_flag": 1
+            "conv_fm_c": a_l1.shape[2] * a_l1.shape[5],
+            "conv_fm_c1": a_l1.shape[2],
+            "conv_fm_h": a_l1.shape[3],
+            "conv_fm_w": a_l1.shape[4],
+            "conv_fm_c0": a_l1.shape[5],
+            "group_flag": 1,
+            "l1_group_flag": 1
         }
         if stride_h == 1 and stride_w == 1:
             sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", setfmatrix_dict)
         else:
-            afill_n, afill_c, afill_h, afill_w, _ = sch_agent[
-                a_filling
-            ].get_active_scopes()
-            afill_w_outer, afill_w_inner = sch_agent[a_filling].split(
-                afill_w, factor=stride_w
-            )
-            afill_h_outer, afill_h_inner = sch_agent[a_filling].split(
-                afill_h, factor=stride_h
-            )
+            afill_n, afill_c, afill_h, afill_w, _ = sch_agent[a_filling].get_active_scopes()
+            afill_w_outer, afill_w_inner = sch_agent[a_filling].split(afill_w, factor=stride_w)
+            afill_h_outer, afill_h_inner = sch_agent[a_filling].split(afill_h, factor=stride_h)
 
             sch_agent[a_filling].reorder(
                 afill_h_inner,
@@ -1997,14 +1996,14 @@ def general_schedule(
                 al1_h, al1_w = _get_al1_m_extent(al1_m)
                 al1_bound = al1_c * al1_h * al1_w
             else:
-                al1_m = _ceil(a_l1.shape[2] * a_l1.shape[3], cl0_tiling_m0) * cl0_tiling_m0
-                al1_c = al1_co1 * al1_co0
+                al1_h, al1_w = a_l1.shape[3], a_l1.shape[4]
+                al1_m = _ceil(al1_h * al1_w, cl0_tiling_m0) * cl0_tiling_m0
+                al1_c = cou1_g * al1_co0
                 al1_bound = al1_c * al1_m
-                al1_h, al1_w = a_l1.shape[2], a_l1.shape[3]
 
-            return al1_bound, al1_h
+            return al1_bound, al1_h, al1_w
 
-        def _set_aub_bound(al1_h):
+        def _set_aub_bound(al1_h, al1_w):
             _, _, _, dx_w, _ = output_shape
             if stride_h > 1 or stride_w > 1:
                 aub_co0 = tbe_platform.CUBE_MKN[c_col.dtype]["mac"][1]
@@ -2015,7 +2014,7 @@ def general_schedule(
                     aub_co1 = min(aub_co1, al1_co1)
                 aub_filling_w = dy_w * stride_w
                 aub_h = (aub_tiling_m + stride_h - 1) // stride_h
-                al1_m = _ceil(a_l1.shape[2] * a_l1.shape[3], cl0_tiling_m0) * cl0_tiling_m0
+                al1_m = _ceil(al1_h * al1_w, cl0_tiling_m0) * cl0_tiling_m0
                 if len(tiling["AL1_shape"]) != 0:
                     multi_m_al1 = tiling["AL1_shape"][1]
                     al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
@@ -2034,9 +2033,9 @@ def general_schedule(
                 sch[dy_vn].set_storage_bound(a_filling_bound)
                 sch[a_zero].set_storage_bound(a_filling_bound)
 
-        al1_bound, al1_h = _get_al1_bound()
+        al1_bound, al1_h, al1_w = _get_al1_bound()
         sch[a_l1].set_storage_bound(al1_bound)
-        _set_aub_bound(al1_h)
+        _set_aub_bound(al1_h, al1_w)
         if "batch_n" in var_map:
             sch.set_var_range(a_ddr.shape[0], *var_range.get("batch_n"))
             sch.set_var_range(output_shape[0], *var_range.get("batch_n"))

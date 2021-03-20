@@ -2473,12 +2473,9 @@ class Conv2dDxOptiSchedule:
                 al1_bound = al1_m * k_al1
             else:
                 al1_bound = (
-                    dedy_shape_nc1hwc0[1]
-                    * _int_ceil_div_tvm(
-                        dedy_shape_nc1hwc0[2] * dedy_shape_nc1hwc0[3], tiling_m0
-                    )
-                    * tiling_m0
-                    * dedy_shape_nc1hwc0[4]
+                    DIM_MAP[cube_util.GroupDictKeys.dy_c1_extend]
+                    * _int_ceil_div_tvm(dedy_shape_nc1hwc0[2] * dedy_shape_nc1hwc0[3], tiling_m0)
+                    * tiling_m0 * dedy_shape_nc1hwc0[4]
                 )
             return al1_bound
 
