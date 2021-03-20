@@ -16,7 +16,7 @@ case1 = {
     "support_expect": True
 }
 
-ut_case.add_case(["Ascend910A", "Ascend610", "Ascend710"], case1)
+# ut_case.add_case(["Ascend910A", "Ascend610", "Ascend710"], case1)
 
 with te.op.dynamic():
     ut_case.run(["Ascend910A", "Ascend610", "Ascend710"])

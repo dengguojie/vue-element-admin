@@ -20,6 +20,7 @@ from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_build
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from tbe.dsl.compute.cube_util import shape_to_list
@@ -447,7 +448,7 @@ def _get_deconvolution_fusion_para(input_x, input_y=None):
     output_memory_type = (
         _get_value(input_y, "addr_type", 0) if input_y is not None else "fuse_flag"
     )
-    l1_fusion_enable_flag = tbe_platform.get_L1_info("L1_fusion_enabled")
+    l1_fusion_enable_flag = tbe_build.get_L1_info("L1_fusion_enabled")
     if input_memory_type not in (MEMORY_DDR, MEMORY_L1, MEMORY_L2):
         args_dict = {
             "errCode": "E65008",
