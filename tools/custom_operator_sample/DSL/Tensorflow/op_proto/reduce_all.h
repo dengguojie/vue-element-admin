@@ -24,23 +24,22 @@
 #include "graph/operator_reg.h"
 
 namespace ge {
-
 /**
-*@brief Calculates the "logical sum" of elements of a tensor in a dimension . \n
+* @brief Calculates the "logical sum" of elements of a tensor in a dimension . \n
 
-*@par Inputs:
-*One input:
-*x: The boolean tensor to reduce . \n
+* @par Inputs:
+* One input:
+* x: The boolean tensor to reduce . \n
 
-*@par Attributes:
-*@li keep_dims: A bool. If true, retains reduced dimensions with length 1.
-*@li axis: The dimensions to reduce. If None, reduces all dimensions.
-*Must be in the range [- rank (input_sensor), rank (input_sensor)) . \n
+* @par Attributes:
+* @li keep_dims: A bool. If true, retains reduced dimensions with length 1.
+* @li axis: The dimensions to reduce. If None, reduces all dimensions.
+* Must be in the range [- rank (input_sensor), rank (input_sensor)) . \n
 
-*@par Outputs:
-*y: The reduced tensor . \n
+* @par Outputs:
+* y: The reduced tensor . \n
 
-*@par Third-party framework compatibility
+* @par Third-party framework compatibility
 * Compatible with the TensorFlow operator ReduceAll.
 *
 * @par Restrictions:
@@ -52,5 +51,5 @@ REG_OP(ReduceAllD)
     .REQUIRED_ATTR(axes, ListInt)
     .ATTR(keep_dims, Bool, false)
     .OP_END_FACTORY_REG(ReduceAllD)
-
 } //namespace ge
+#endif  // REDUCE_ALL_H_

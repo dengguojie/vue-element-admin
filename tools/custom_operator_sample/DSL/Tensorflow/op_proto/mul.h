@@ -23,10 +23,9 @@
 #include "graph/operator_reg.h"
 
 namespace ge {
-
 /**
 * @brief Returns x1 * x2 element-wise.
-* y = x1 * x2
+* "y = x1 * x2"
 
 * @par Inputs:
 * @li x1: A Tensor. Must be one of the following types: float16, float32,
@@ -55,7 +54,6 @@ REG_OP(Mul)
                            DI_UINT16, DT_INT16, DT_INT32, DT_INT64,
                            DT_COMPLEX64, DT_COMPLEX128}))
     .OP_END_FACTORY_REG(Mul)
-
 }  // namespace ge
 
 #endif  // MUL_H_
