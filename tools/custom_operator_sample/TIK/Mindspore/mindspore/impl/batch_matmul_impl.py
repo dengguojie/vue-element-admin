@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""batch_matmul_impl"""
+"""BatchMatmul op"""
 
 from te import tik
 from topi.cce import util
+from mindspore.ops.op_info_register import op_info_register
+from mindspore.ops.op_info_register import TBERegOp
+from mindspore.ops.op_info_register import DataType
 
-from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
 batch_matmul_op_info = TBERegOp("BatchMatmul") \
     .fusion_type("OPAQUE") \
@@ -43,53 +45,53 @@ def _get_flattern_shape(shape):
 
 def _inner_matmul_new(tik_instance, dtype, input1, input1_index, input2, input2_index, res, res_index):
     """_inner_matmul_new"""
-    input_1_local_UB = tik_instance.Tensor(dtype, [128], name="input_1_local_UB", scope=tik.scope_ubuf)
-    t_1_0_local_UB = tik_instance.Tensor(dtype, [64 * 128], name="t_1_0_local_UB", scope=tik.scope_ubuf)
-    tik_instance.data_move(input_1_local_UB, input1[input1_index], 0, 1, 16, 0, 0)
+    input_1_local_ub = tik_instance.Tensor(dtype, [128], name="input_1_local_ub", scope=tik.scope_ubuf)
+    t_1_0_local_ub = tik_instance.Tensor(dtype, [64 * 128], name="t_1_0_local_ub", scope=tik.scope_ubuf)
+    tik_instance.data_move(input_1_local_ub, input1[input1_index], 0, 1, 16, 0, 0)
     with tik_instance.for_range(0, 2) as vec_i:
-        tik_instance.vadds(64, t_1_0_local_UB[vec_i * 64], input_1_local_UB[vec_i * 64], 0, 64, 1, 1, 16, 0)
+        tik_instance.vadds(64, t_1_0_local_ub[vec_i * 64], input_1_local_ub[vec_i * 64], 0, 64, 1, 1, 16, 0)
     with tik_instance.for_range(0, 2, thread_num=2) as thread_idx2:
-        input_2_local_UB = tik_instance.Tensor(dtype, [64 * 128], name="input_2_local_UB",
+        input_2_local_ub = tik_instance.Tensor(dtype, [64 * 128], name="input_2_local_ub",
                                                scope=tik.scope_ubuf)
-        t_1_local_UB = input_2_local_UB
-        bisec_last_axis_local_UB = input_2_local_UB
-        matmul_hybrid_f_t_local_UB = tik_instance.Tensor(dtype, [64], name="matmul_hybrid_f_t_local_UB",
+        t_1_local_ub = input_2_local_ub
+        bisec_last_axis_local_ub = input_2_local_ub
+        matmul_hybrid_f_t_local_ub = tik_instance.Tensor(dtype, [64], name="matmul_hybrid_f_t_local_ub",
                                                          scope=tik.scope_ubuf)
-        matmul_hybrid_f_t_local_UB_dst_tmp = tik_instance.Tensor(dtype, [64],
-                                                                 name="matmul_hybrid_f_t_local_UB_dst_tmp",
+        matmul_hybrid_f_t_local_ub_dst_tmp = tik_instance.Tensor(dtype, [64],
+                                                                 name="matmul_hybrid_f_t_local_ub_dst_tmp",
                                                                  scope=tik.scope_ubuf)
-        tik_instance.vector_dup(64, matmul_hybrid_f_t_local_UB, 0, 1, 1, 8)
-        tik_instance.data_move(input_2_local_UB, input2[input2_index + thread_idx2 * 8192], 0, 1, 1024, 0, 0)
-        tik_instance.vmul(64, t_1_local_UB, t_1_0_local_UB, input_2_local_UB, 128, 1, 1, 1, 8, 8, 8)
-        tik_instance.vadd(64, bisec_last_axis_local_UB, t_1_local_UB, t_1_local_UB[64], 64, 1, 1, 1,
+        tik_instance.vector_dup(64, matmul_hybrid_f_t_local_ub, 0, 1, 1, 8)
+        tik_instance.data_move(input_2_local_ub, input2[input2_index + thread_idx2 * 8192], 0, 1, 1024, 0, 0)
+        tik_instance.vmul(64, t_1_local_ub, t_1_0_local_ub, input_2_local_ub, 128, 1, 1, 1, 8, 8, 8)
+        tik_instance.vadd(64, bisec_last_axis_local_ub, t_1_local_ub, t_1_local_ub[64], 64, 1, 1, 1,
                           16, 16, 16)
-        tik_instance.vector_dup(64, matmul_hybrid_f_t_local_UB_dst_tmp, 0, 1, 1, 8)
+        tik_instance.vector_dup(64, matmul_hybrid_f_t_local_ub_dst_tmp, 0, 1, 1, 8)
         with tik_instance.for_range(0, 64) as cc6:
-            tik_instance.vcadd(64, matmul_hybrid_f_t_local_UB_dst_tmp[cc6], bisec_last_axis_local_UB[cc6 * 128],
+            tik_instance.vcadd(64, matmul_hybrid_f_t_local_ub_dst_tmp[cc6], bisec_last_axis_local_ub[cc6 * 128],
                                1, 1, 1, 8)
-        tik_instance.vadd(64, matmul_hybrid_f_t_local_UB, matmul_hybrid_f_t_local_UB_dst_tmp,
-                          matmul_hybrid_f_t_local_UB, 1, 1, 1, 1, 8, 8, 8)
+        tik_instance.vadd(64, matmul_hybrid_f_t_local_ub, matmul_hybrid_f_t_local_ub_dst_tmp,
+                          matmul_hybrid_f_t_local_ub, 1, 1, 1, 1, 8, 8, 8)
         tik_instance.data_move(res[res_index + thread_idx2 * 64],
-                               matmul_hybrid_f_t_local_UB, 0, 1, 8, 0, 0)
+                               matmul_hybrid_f_t_local_ub, 0, 1, 8, 0, 0)
 
 
 def _inner_matmul_new_1_64_32_64(tik_instance, dtype, input1, input1_index, input2, input2_index, res, res_index):
     """_inner_matmul_new_1_64_32_64"""
-    input_1_local_UB = tik_instance.Tensor(dtype, [64], name="input_1_local_UB", scope=tik.scope_ubuf)
-    tik_instance.data_move(input_1_local_UB, input1[input1_index], 0, 1, 8, 0, 0)
+    input_1_local_ub = tik_instance.Tensor(dtype, [64], name="input_1_local_ub", scope=tik.scope_ubuf)
+    tik_instance.data_move(input_1_local_ub, input1[input1_index], 0, 1, 8, 0, 0)
     with tik_instance.for_range(0, 2, thread_num=2) as thread_idx2:
-        input_2_local_UB = tik_instance.Tensor(dtype, [32 * 64], name="input_2_local_UB",
+        input_2_local_ub = tik_instance.Tensor(dtype, [32 * 64], name="input_2_local_ub",
                                                scope=tik.scope_ubuf)
-        t_1_local_UB = input_2_local_UB
-        matmul_hybrid_f_t_local_UB = tik_instance.Tensor(dtype, [32], name="matmul_hybrid_f_t_local_UB",
+        t_1_local_ub = input_2_local_ub
+        matmul_hybrid_f_t_local_ub = tik_instance.Tensor(dtype, [32], name="matmul_hybrid_f_t_local_ub",
                                                          scope=tik.scope_ubuf)
-        tik_instance.data_move(input_2_local_UB, input2[input2_index + thread_idx2 * 2048], 0, 1, 256, 0, 0)
-        tik_instance.vmul(64, t_1_local_UB, input_1_local_UB, input_2_local_UB, 32, 1, 1, 1, 8, 0, 8)
+        tik_instance.data_move(input_2_local_ub, input2[input2_index + thread_idx2 * 2048], 0, 1, 256, 0, 0)
+        tik_instance.vmul(64, t_1_local_ub, input_1_local_ub, input_2_local_ub, 32, 1, 1, 1, 8, 0, 8)
         with tik_instance.for_range(0, 32) as cc6:
-            tik_instance.vcadd(64, matmul_hybrid_f_t_local_UB[cc6], t_1_local_UB[cc6 * 64],
+            tik_instance.vcadd(64, matmul_hybrid_f_t_local_ub[cc6], t_1_local_ub[cc6 * 64],
                                1, 1, 1, 8)
         tik_instance.data_move(res[res_index + thread_idx2 * 32],
-                               matmul_hybrid_f_t_local_UB, 0, 1, 4, 0, 0)
+                               matmul_hybrid_f_t_local_ub, 0, 1, 4, 0, 0)
 
 
 def process_input_shape_640(input_shape, tik_instance, dtype, input1, input2, res):
@@ -99,46 +101,48 @@ def process_input_shape_640(input_shape, tik_instance, dtype, input1, input2, re
             with tik_instance.for_range(0, 11) as cc1_db:
                 with tik_instance.for_range(0, 2, thread_num=2) as thread_idx:
                     with tik_instance.if_scope(((((block_idx % 6) * 22) + (cc1_db * 2) + thread_idx) < 128)):
-                        input_1_local_UB = tik_instance.Tensor(dtype, [128], name="input_1_local_UB",
+                        input_1_local_ub = tik_instance.Tensor(dtype, [128], name="input_1_local_ub",
                                                                scope=tik.scope_ubuf)
-                        t_1_0_local_UB = tik_instance.Tensor(dtype, [64 * 128], name="t_1_0_local_UB",
+                        t_1_0_local_ub = tik_instance.Tensor(dtype, [64 * 128], name="t_1_0_local_ub",
                                                              scope=tik.scope_ubuf)
-                        tik_instance.data_move(input_1_local_UB, input1[
+                        tik_instance.data_move(input_1_local_ub, input1[
                             (block_idx // 6) * 16384 + (block_idx % 6) * 2816 + cc1_db * 256 + thread_idx * 128], 0, 1,
                                                16, 0, 0)
                         with tik_instance.for_range(0, 2) as vec_i:
-                            tik_instance.vadds(64, t_1_0_local_UB[vec_i * 64], input_1_local_UB[vec_i * 64], 0,
+                            tik_instance.vadds(64, t_1_0_local_ub[vec_i * 64], input_1_local_ub[vec_i * 64], 0,
                                                64, 1, 1, 16, 0)
                         with tik_instance.for_range(0, 2, thread_num=2) as thread_idx2:
-                            input_2_local_UB = tik_instance.Tensor(dtype, [64 * 128], name="input_2_local_UB",
+                            input_2_local_ub = tik_instance.Tensor(dtype, [64 * 128], name="input_2_local_ub",
                                                                    scope=tik.scope_ubuf)
-                            t_1_local_UB = input_2_local_UB
-                            bisec_last_axis_local_UB = input_2_local_UB
-                            matmul_hybrid_f_t_local_UB = tik_instance.Tensor(dtype, [64],
-                                                                             name="matmul_hybrid_f_t_local_UB",
+                            t_1_local_ub = input_2_local_ub
+                            bisec_last_axis_local_ub = input_2_local_ub
+                            matmul_hybrid_f_t_local_ub = tik_instance.Tensor(dtype, [64],
+                                                                             name="matmul_hybrid_f_t_local_ub",
                                                                              scope=tik.scope_ubuf)
-                            matmul_hybrid_f_t_local_UB_dst_tmp = tik_instance.Tensor(
+                            matmul_hybrid_f_t_local_ub_dst_tmp = tik_instance.Tensor(
                                 dtype, [64],
-                                name="matmul_hybrid_f_t_local_UB_dst_tmp",
+                                name="matmul_hybrid_f_t_local_ub_dst_tmp",
                                 scope=tik.scope_ubuf)
-                            tik_instance.vector_dup(64, matmul_hybrid_f_t_local_UB, 0, 1, 1, 8)
-                            tik_instance.data_move(input_2_local_UB,
+                            tik_instance.vector_dup(64, matmul_hybrid_f_t_local_ub, 0, 1, 1, 8)
+                            tik_instance.data_move(input_2_local_ub,
                                                    input2[(block_idx // 6) * 16384 + thread_idx2 * 8192], 0, 1,
                                                    1024, 0, 0)
-                            tik_instance.vmul(64, t_1_local_UB, t_1_0_local_UB, input_2_local_UB, 128, 1, 1, 1, 8, 8, 8)
-                            tik_instance.vadd(64, bisec_last_axis_local_UB, t_1_local_UB, t_1_local_UB[64], 64, 1, 1, 1,
+                            tik_instance.vmul(64, t_1_local_ub, t_1_0_local_ub, input_2_local_ub,
+                                              128, 1, 1, 1, 8, 8, 8)
+                            tik_instance.vadd(64, bisec_last_axis_local_ub, t_1_local_ub, t_1_local_ub[64],
+                                              64, 1, 1, 1,
                                               16, 16, 16)
-                            tik_instance.vector_dup(64, matmul_hybrid_f_t_local_UB_dst_tmp, 0, 1, 1, 8)
+                            tik_instance.vector_dup(64, matmul_hybrid_f_t_local_ub_dst_tmp, 0, 1, 1, 8)
                             with tik_instance.for_range(0, 64) as cc6:
-                                tik_instance.vcadd(64, matmul_hybrid_f_t_local_UB_dst_tmp[cc6],
-                                                   bisec_last_axis_local_UB[cc6 * 128],
+                                tik_instance.vcadd(64, matmul_hybrid_f_t_local_ub_dst_tmp[cc6],
+                                                   bisec_last_axis_local_ub[cc6 * 128],
                                                    1, 1, 1, 8)
-                            tik_instance.vadd(64, matmul_hybrid_f_t_local_UB, matmul_hybrid_f_t_local_UB_dst_tmp,
-                                              matmul_hybrid_f_t_local_UB, 1, 1, 1, 1, 8, 8, 8)
+                            tik_instance.vadd(64, matmul_hybrid_f_t_local_ub, matmul_hybrid_f_t_local_ub_dst_tmp,
+                                              matmul_hybrid_f_t_local_ub, 1, 1, 1, 1, 8, 8, 8)
                             tik_instance.data_move(
                                 res[(block_idx // 6) * 16384 + (block_idx % 6) * 2816 + cc1_db * 256 +
                                     thread_idx * 128 + thread_idx2 * 64],
-                                matmul_hybrid_f_t_local_UB, 0, 1, 8, 0, 0)
+                                matmul_hybrid_f_t_local_ub, 0, 1, 8, 0, 0)
 
 
 def process_input_shape_1152(input_shape, tik_instance, dtype, input1, input2, res):
@@ -164,7 +168,7 @@ def process_input_shape_1152(input_shape, tik_instance, dtype, input1, input2, r
 
 
 @op_info_register(batch_matmul_op_info)
-def BatchMatmul(input_x1, input_x2, transpose_a=False, transpose_b=True, kernel_name="batch_matmul"):
+def batch_matmul(input_x1, input_x2, transpose_a=False, transpose_b=True, kernel_name="batch_matmul"):
     """Custom BatchMatmul"""
     if util.get_product_version() == util.VERSION_MINI:
         tik_instance = tik.Tik(tik.Dprofile("v100", "mini"))

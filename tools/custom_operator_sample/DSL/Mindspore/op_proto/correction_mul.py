@@ -4,7 +4,9 @@ import mindspore.context as context
 from mindspore.common import dtype as mstype
 from mindspore._checkparam import Validator as validator
 from mindspore._checkparam import Rel
-from mindspore.ops import prim_attr_register, PrimitiveWithInfer
+from mindspore.ops import prim_attr_register
+from mindspore.ops import PrimitiveWithInfer
+
 
 class CorrectionMul(PrimitiveWithInfer):
     """
@@ -21,7 +23,7 @@ class CorrectionMul(PrimitiveWithInfer):
         - **out** (Tensor) - Tensor has the same shape as x.
 
     Examples:
-        >>> correction_mul = ops.CorrectionMul()
+        >>> correction_mul = CorrectionMul()
         >>> input_x = Tensor(np.random.randint(-8, 12, (3, 4)), mindspore.float32)
         >>> batch_std = Tensor(np.array([1.5, 3, 2]), mindspore.float32)
         >>> running_std = Tensor(np.array([2, 1.2, 0.5]), mindspore.float32)

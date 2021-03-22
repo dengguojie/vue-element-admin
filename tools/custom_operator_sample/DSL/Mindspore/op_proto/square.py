@@ -14,11 +14,14 @@
 # ============================================================================
 import numpy as np
 from mindspore import Tensor
-from mindspore.ops import prim_attr_register, PrimitiveWithInfer
+from mindspore.ops import prim_attr_register
+from mindspore.ops import PrimitiveWithInfer
 
-# y = x^2
-class CusSquare(PrimitiveWithInfer):
-    """Custom Square definition"""
+
+class Square(PrimitiveWithInfer):
+    """Custom Square definition
+        y = x^2
+     """
     from square_impl import square_impl
 
     @prim_attr_register

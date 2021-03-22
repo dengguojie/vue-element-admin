@@ -14,12 +14,15 @@
 # ============================================================================
 
 """CorrectionMul op"""
+
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
-from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
+from mindspore.ops.op_info_register import op_info_register
+from mindspore.ops.op_info_register import TBERegOp
+from mindspore.ops.op_info_register import DataType
 
 SHAPE_SIZE_LIMIT = 2147483648
 
@@ -48,6 +51,7 @@ def _correction_mul_tbe():
     return
 
 
+# pylint: disable=unused-argument
 @fusion_manager.register("correction_mul")
 def correction_mul_compute(x, batch_std, running_std, kernel_name="correction_mul"):
     """CorrectionMul compute"""
@@ -59,7 +63,7 @@ def correction_mul_compute(x, batch_std, running_std, kernel_name="correction_mu
 
 
 @util.check_input_type(dict, dict, int, str)
-def correction_mul(x, batch_std, channel, kernel_name="correction_mul"):
+def correction_mul(x, batch_std, running_std, y, channel, kernel_name="correction_mul"):
     """CorrectionMul op"""
     shape = x.get("shape")
     data_format = x.get("format")
@@ -68,7 +72,7 @@ def correction_mul(x, batch_std, channel, kernel_name="correction_mul"):
     util.check_shape_size(shape, SHAPE_SIZE_LIMIT)
     check_list = ["float16", "float32"]
     inp_dtype = x.get("dtype").lower()
-    if not inp_dtype in check_list:
+    if inp_dtype not in check_list:
         raise RuntimeError("Dtype of input only support float16, float32")
 
     x_t = tvm.placeholder(shape, name="x", dtype=inp_dtype)

@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-from mindspore.ops import prim_attr_register, PrimitiveWithInfer
+from mindspore.ops import prim_attr_register
+from mindspore.ops import PrimitiveWithInfer
 
 
-# sum = input1 + input2 + const_bias
-class CusAdd3(PrimitiveWithInfer):
-    """Custom add3 definition"""
+class Add3(PrimitiveWithInfer):
+    """Custom add3 definition
+        sum = input1 + input2 + const_bias
+    """
 
+    # pylint: disable=unused-argument
     @prim_attr_register
     def __init__(self, const_bias=0.0):
         self.init_prim_io_names(inputs=['input1', 'input2'], outputs=['sum3'])

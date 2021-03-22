@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-from __future__ import absolute_import
+"""Square op"""
 
+from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
+from mindspore.ops.op_info_register import op_info_register
+from mindspore.ops.op_info_register import TBERegOp
+from mindspore.ops.op_info_register import DataType
 
-from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
 
+# pylint: disable=unused-argument
 @fusion_manager.register("square")
-def square_compute(input_x):
+def square_compute(input_x, output_y):
     """
     algorithm: square
     calculating data's square,y= x*x
@@ -46,7 +50,7 @@ def square_compute(input_x):
     return res
 
 
-cus_square_op_info = TBERegOp("Square") \
+square_op_info = TBERegOp("Square") \
     .fusion_type("OPAQUE") \
     .async_flag(False) \
     .binfile_name("square.so") \
@@ -60,8 +64,8 @@ cus_square_op_info = TBERegOp("Square") \
     .get_op_info()
 
 
-@op_info_register(cus_square_op_info)
-def square_impl(input_x, kernel_name="square_impl"):
+@op_info_register(square_op_info)
+def square_impl(input_x, output_y, kernel_name="square_impl"):
     """
     algorithm: square
     calculating data's square,y= x*x
@@ -86,7 +90,7 @@ def square_impl(input_x, kernel_name="square_impl"):
     data = tvm.placeholder(shape, name="data", dtype=dtype.lower())
 
     with tvm.target.cce():
-        res = square_compute(data)
+        res = square_compute(data, output_y)
         sch = generic.auto_schedule(res)
 
     config = {"print_ir": False,

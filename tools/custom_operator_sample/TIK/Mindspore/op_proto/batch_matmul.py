@@ -1,8 +1,10 @@
 import numpy as np
 from mindspore import Tensor
-from mindspore.ops import prim_attr_register, PrimitiveWithInfer
+from mindspore.ops import prim_attr_register
+from mindspore.ops import PrimitiveWithInfer
 
-class CusBatchMatMul(PrimitiveWithInfer):
+
+class BatchMatmul(PrimitiveWithInfer):
     """
     Multiplies matrix `a` by matrix `b` in batch.
 
@@ -19,7 +21,7 @@ class CusBatchMatMul(PrimitiveWithInfer):
     Examples:
         >>> input_x = Tensor(np.ones(shape=[2, 128, 128]), mindspore.float32)
         >>> input_y = Tensor(np.ones(shape=[2, 128, 128]), mindspore.float32)
-        >>> cus_batch_matmul = ops.BatchMatmul()
+        >>> cus_batch_matmul = BatchMatmul()
         >>> output = cus_batch_matmul(input_x, input_y)
     """
 
@@ -27,7 +29,7 @@ class CusBatchMatMul(PrimitiveWithInfer):
     def __init__(self):
         """Initialize BatchMatMul"""
         self.init_prim_io_names(inputs=['x1', 'x2'], outputs=['y'])
-        from batch_matmul_impl import BatchMatmul
+        from batch_matmul_impl import batch_matmul
 
     def infer_shape(self, data1_shape, data2_shape):
         return data1_shape

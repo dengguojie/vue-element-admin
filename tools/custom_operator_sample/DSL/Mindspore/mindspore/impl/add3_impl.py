@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""Add3 op"""
+
 from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from topi.cce import util
-from mindspore.ops.op_info_register import op_info_register, TBERegOp, DataType
+from mindspore.ops.op_info_register import op_info_register
+from mindspore.ops.op_info_register import TBERegOp
+from mindspore.ops.op_info_register import DataType
+
 
 @fusion_manager.register("add3")
 def add3_compute(input1, input2, const_bias):
@@ -43,8 +48,9 @@ add3_op_info = TBERegOp("Add3") \
     .get_op_info()
 
 
+# pylint: disable=unused-argument
 @op_info_register(add3_op_info)
-def add3_impl(input1, const_bias, kernel_name="add3_impl"):
+def add3_impl(input1, inptu2, sum1, const_bias, kernel_name="add3_impl"):
     shape = input1.get("shape")
     shape = util.shape_refine(shape)
     dtype = input1.get("dtype").lower()
