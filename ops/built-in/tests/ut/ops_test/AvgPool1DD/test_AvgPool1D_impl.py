@@ -35,6 +35,20 @@ ut_case.add_case(["Ascend910"], {"params": [
     "expect": "success",
     "case_name": "test_avg_pool1d_001"})
 
+ut_case.add_case(["Ascend910"], {"params": [
+    {'shape': (63, 1, 1, 3, 16), 'dtype': "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+     "ori_shape": (63, 1, 1, 3, 16)},
+    {'shape': (63, 1, 1, 2, 16), 'dtype': "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+     "ori_shape": (63, 1, 1, 2, 16)},
+    {'shape': (63, 1, 1, 2, 16), 'dtype': "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+     "ori_shape": (63, 1, 1, 2, 16)},
+    1,
+    97,
+    [0, 0],
+    False,
+    False],
+    "expect": "success",
+    "case_name": "test_avg_pool1d_002"})
 
 def avgpool_1d_matrix(shape_input, kernel, stride, pads, ceil_mode, count_include_pad):
     w_in = shape_input[3]
@@ -166,6 +180,19 @@ def div_rtn(x, y):
         q -= 1
     return q
 
+
+ut_case.add_precision_case("all", {
+    "params": [{'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+                'ori_shape': (63, 1, 1, 3, 16), 'shape': (63, 1, 1, 3, 16), "param_type": "input"},
+               {'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+                "value": avgpool_1d_matrix((63, 1, 1, 3, 16), 1, 97, [0, 0], False, False).astype("float16"),
+                'ori_shape': (63, 1, 1, 3, 16), 'shape': (63, 1, 1, 3, 16), "param_type": "input"},
+               {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+                "ori_shape": (63, 1, 1, 1, 16), "shape": (63, 1, 1, 1, 16), "param_type": "output"},
+               1, 97, [0, 0], False, False],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+})
 
 ut_case.add_precision_case("all", {
     "params": [{'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",

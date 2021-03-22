@@ -153,7 +153,11 @@ def avg_pool_1d_compute(x,
             tensor_w = tensor_w_tmp
             reduce_tensor_list.append(tensor_w)
     elif kernel == 1:
-        tensor_w = tensor_mid_shape_in_ub
+        tensor_w = tvm.compute(
+                re_shape,
+                lambda fused_axis, w, c0: tensor_mid_shape_in_ub(fused_axis, w * stride, c0) + 0,
+                name="tensor_w")
+        reduce_tensor_list.append(tensor_w)
 
     tensor_list = [x, div, tensor_mid_shape_in_ub]
     res = tvm.compute(re_shape,
