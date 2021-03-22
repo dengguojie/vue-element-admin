@@ -1105,7 +1105,7 @@ class UnsortedSegment(object):
 
             scalar_in_list = False
             for ele in scalar_list:
-                if isinstance(ele, tik_scalar.Scalar):
+                if not (isinstance(ele, int) or isinstance(ele, dict)):
                     scalar_in_list = True
 
             if scalar_in_list:
@@ -1120,7 +1120,7 @@ class UnsortedSegment(object):
 
             index = 0
             for ele in scalar_list:
-                if isinstance(ele, tik_scalar.Scalar):
+                if not (isinstance(ele, int) or isinstance(ele, dict)):
                     ele.set_as(self.obj_ub_tensor.tiling_ub[index])
                 index = index + 1
 

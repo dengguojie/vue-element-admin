@@ -26,6 +26,10 @@ ut_case.add_case("Ascend910A",
                  gen_dynamic_unsorted_case([-1, 16, 10419, 3], [[3, 16], [16, 16], [10419, 10419], [3, 3]],
                                            -1, [[8, 8]], "float32", "success"))
 
+ut_case.add_case("Ascend910A",
+                 gen_dynamic_unsorted_case([-1, 16, 10419, 3], [[3, 16], [16, 16], [10419, 10419], [3, 3]],
+                                           -1, [[8, 16]], "float32", "success"))
+
 ut_case.add_case("Ascend910A", gen_dynamic_unsorted_case([-1, 16, 419], [[1508, 1518], [16, 16], [419, 419]],
                                                          -1, [[8, 16]], "float16", "success"))
 
