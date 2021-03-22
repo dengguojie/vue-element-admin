@@ -31,8 +31,8 @@ SHAPE_SIZE_LIMIT = 1 << 30
 @fusion_manager.register("drop_out_do_mask_v3_d")
 def drop_out_do_mask_v3_d_compute(input_tensor: tvm.tensor.Tensor,
                                   input_mask: tvm.tensor.Tensor,
-                                  input_keep_prob: float,
                                   output,
+                                  input_keep_prob: float,
                                   kernel_name="drop_out_do_mask_v3_d"):
     input_dtype = input_tensor.dtype
     input_mask = te.lang.cce.cast_to(input_mask, input_dtype)
@@ -103,7 +103,7 @@ def drop_out_do_mask_v3_d(input_tensor, input_mask, output, input_keep_prob,
     input_tensor, input_mask = _get_placeholder([input_tensor, input_mask],
                                                 input_name_list)
     output = drop_out_do_mask_v3_d_compute(input_tensor, input_mask,
-                                           input_keep_prob, output)
+                                           output, input_keep_prob)
 
     build_list = [input_tensor, input_mask, output]
     config = {"name": kernel_name, "tensor_list": build_list}
