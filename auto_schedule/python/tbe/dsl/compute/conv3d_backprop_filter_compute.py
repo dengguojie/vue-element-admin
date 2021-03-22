@@ -597,7 +597,7 @@ class Conv3dBackpropFilter:
                 stride_hw = self.stride[1:]
                 pad_hw = self.pad[2:]
                 im2col_para = (fmap_l1, kernel_height, kernel_width, pad_hw, stride_hw,
-                               grads_width, 1, cin_ori)
+                               grads_width, self.dilation, cin_ori)
                 self.shape_list['fmap_fmap_matrix'] = fmap_shape_fractal
                 fmap_fractal = cube_util.im2col_fractal_v2(
                     fmap_shape_fractal, im2col_para)
@@ -1089,3 +1089,4 @@ class DynamicConv3dBpFilterParams:
     dynamic_mode = None
     tiling_info_dict = {}
     var_map = {}
+    flag_all_one_case = None

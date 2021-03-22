@@ -285,6 +285,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             ddr_reduce = res_ddr
             batch_dim_factor = compute_util.int_ceil_div(batch_fmap * depth_grads, block_dim_batch)
             batch_dim_factor = tvm.max(1, batch_dim_factor)
+            batch_dim_npart = compute_util.int_ceil_div(batch_fmap * depth_grads, batch_dim_factor)
 
             batch, real_k = sch[res_cc].op.reduce_axis
             batch_core, batch_in = sch[res_cc].split(batch, batch_dim_factor)
@@ -310,7 +311,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             res_cc = sch.rfactor(res_ddr, fused_atomic_write)
             sch[res_cc].set_scope(tbe_platform_info.scope_cc)
             res_ub = sch.cache_read(res_cc, tbe_platform_info.scope_ubuf, [res_ddr])
-            return res_cc, res_ub, res_ddr, ub_reduce, ddr_reduce
+            return res_cc, res_ub, res_ddr, ub_reduce, ddr_reduce, batch_dim_factor, batch_dim_npart
 
         def _full_k_check():
             """
@@ -567,8 +568,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             if pad_front != 0 or pad_back != 0:
                 batch_do_axis = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
-                    block_dim_batch) * compute_util.int_ceil_div(batch_fmap * depth_grads,
-                                        block_dim_batch) + batch_insn_o
+                    batch_dim_npart) * batch_dim_factor + batch_insn_o
 
                 dk_c1_axis = (
                     (block % (block_dim_cin)) *
@@ -596,9 +596,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     tvm.any(
                         tvm.all((batch_do_axis % depth_grads - 1) * stride_depth +
                                 dk_c1_axis // c1_fmap_info < pad_front,
-                                axis_k_reduce_for_mad <= 0, batch_do_axis %
-                                compute_util.int_ceil_div(batch_fmap * depth_grads, block_dim_batch) <
-                                depth_grads),
+                                axis_k_reduce_for_mad <= 0,
+                                batch_do_axis % batch_dim_factor < depth_grads),
                         batch_insn_o + axis_k_reduce_for_mad <= 0)
                 }
 
@@ -848,21 +847,31 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             tiling = get_tiling.get_tiling(info_dict)
         else:
             tiling = dynamic_para.get("tiling_strategy")
-        
+
         _tiling_shape_check()
         _tiling_buffer_check()
         # if no valid tiling found, the flag is as follows
         if tiling["AL0_matrix"][2] == _DEFAULT_TILING_CASE:
             tiling = default_tiling
 
-        batch_num = batch_grads * depth_grads
+        batch_num = batch_fmap * depth_grads
         if tiling.get("AUB_shape"):
             block_dim_hw = tiling.get("AUB_shape")[0]
         else:
             block_dim_hw = 1
+
         block_dim_batch = tiling.get("block_dim")[0]
-        if isinstance(batch_fmap, Var):
-            block_dim_batch = tvm.min(block_dim_batch, batch_fmap * depth_grads)
+        factor_var = tvm.var("factor_var")
+        if isinstance(batch_fmap, Var) or isinstance(depth_fmap, Var):
+            block_dim_batch = tvm.min(block_dim_batch, batch_num)
+            batch_dim_factor = compute_util.int_ceil_div(batch_num, block_dim_batch)
+            batch_dim_npart = compute_util.int_ceil_div(batch_num, batch_dim_factor)
+            sch.set_var_value(factor_var,
+                tvm.select(tvm.any(tvm.floormod(depth_grads, batch_dim_factor) == 0,
+                                   tvm.floormod(batch_dim_factor, depth_grads) == 0),
+                           batch_dim_npart,
+                           batch_fmap))
+            block_dim_batch = factor_var
 
         block_dim_cout = tiling.get("block_dim")[2]
         block_dim_cin = tiling.get("block_dim")[1]
@@ -958,11 +967,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
         reduce_split_mode = _reduce_split_mode()
         grads_l1_tiling_factor_k, fmap_l1_tiling_factor_k = \
                                                     _compute_tiling_factors()
-        
-        dw_cc, dw_ub, dw_ddr, dw_ub_reduce, dw_ddr_reduce \
+
+        dw_cc, dw_ub, dw_ddr, dw_ub_reduce, dw_ddr_reduce, batch_dim_factor, batch_dim_npart \
             = _atomic_add(sch, dw_cc, dw_ub, dw_ddr)
 
-        batch_num_sc = batch_num // block_dim_batch
+        batch_num_sc = compute_util.int_ceil_div(batch_num, block_dim_batch)
 
         # #############################split axis N##########################
         g_multicore, g_axis = sch[dw_ddr].split(
