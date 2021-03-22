@@ -38,7 +38,17 @@ def test_nd_2_nz_1(test_args):
                "ND", "FRACTAL_NZ")
     cce_conf.cce_conf.te_set_version(test_args)
 
+def test_nd_2_nz_2(test_args):
+    from impl.trans_data import trans_data
+    from te import platform as cce_conf
+    cce_conf.cce_conf.te_set_version("Hi3796CV300CS")
+    trans_data({"shape": (8, 1, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (4, 128),"ori_format": "ND"},
+               {"shape": (4, 128), "dtype": "int32", "format": "ND", "ori_shape": (4, 128),"ori_format": "ND"},
+               "FRACTAL_NZ", "ND")
+    cce_conf.cce_conf.te_set_version(test_args)
+
 ut_case.add_cust_test_func(test_func=test_nd_2_nz_1)
+ut_case.add_cust_test_func(test_func=test_nd_2_nz_2)
 ut_case.add_case("Ascend310", gen_trans_data_case((1, 64, 1, 16, 16), (1, 16, 1024), "float32", "nz2nd_1", "success"))
 ut_case.add_case("Ascend310", gen_trans_data_case((25, 32, 1, 16, 16), (25, 16, 512), "float16", "nz2nd_2", "success"))
 ut_case.add_case("Ascend910A", gen_trans_data_case((32, 32, 16, 16), (512, 512), "float16", "nz2nd_4", "success"))
@@ -72,8 +82,7 @@ if __name__ == '__main__':
     ut_case.run("Ascend910")
     exit(0)
 
-# ut_case.add_case("Ascend910", gen_trans_data_case((1, 64, 1, 16, 16), (1, 1024, 1, 16), "float32", "nz2nchw_1", "success", "NCHW"))
-
 if __name__ == '__main__':
     ut_case.run("Ascend910")
+    ut_case.run("Hi3796CV300CS")
     exit(0)

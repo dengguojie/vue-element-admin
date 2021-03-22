@@ -105,6 +105,10 @@ class Nz2NDCompute:
 
         self.maximum_size_ub = int(TOTAL_UB_MEMORY // self.num_bit)
 
+        support_s322f32 = tbe_platform.cce_conf.api_check_support("tik.vconv", "f322s32")
+        support_f322s32 = tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32")
+        self.support_s32_f32_flag = (support_s322f32 and support_f322s32)
+
     def calc_element(self, shape):
 
         sum_result = 1
@@ -1038,7 +1042,7 @@ class Nz2NDCompute:
     def pattern_case_zero(self, tik_instance, params, dtype):
         pattern = params.get("pattern")
         if dtype == "int32":
-            if not tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32"):
+            if not self.support_s32_f32_flag:
                 if pattern == 0:
                     self.nz2nd_normal_case0_int32_mini(tik_instance, params)
                 else:
@@ -1056,7 +1060,7 @@ class Nz2NDCompute:
 
     def pattern_case_one(self, tik_instance, params, dtype):
         if dtype == "int32":
-            if not tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32"):
+            if not self.support_s32_f32_flag:
                 self.nz2nd_special_case0_int32_mini(tik_instance, params)
             else:
                 self.nz2nd_special_case0_int32(tik_instance, params)
@@ -1070,14 +1074,14 @@ class Nz2NDCompute:
         pattern = params.get("pattern")
         if dtype == "int32":
             if pattern == 0:
-                if not tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32"):
+                if not self.support_s32_f32_flag:
                     self.nz2nd_special_case2_int32_pattern_zero_mini(
                         tik_instance, params)
                 else:
                     self.nz2nd_special_case2_int32_pattern_zero(
                         tik_instance, params)
             else:
-                if not tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32"):
+                if not self.support_s32_f32_flag:
                     self.nz2nd_special_case2_int32_mini(tik_instance, params)
                 else:
                     self.nz2nd_special_case2_int32(tik_instance, params)
@@ -7255,7 +7259,7 @@ class Nz2NDCompute:
         """
         tik_instance = self.set_tik_instance()
         if self.dtype == "int32":
-            if not tbe_platform.cce_conf.api_check_support("tik.vconv", "s322f32"):
+            if not self.support_s32_f32_flag:
                 self.maximum_size_ub = TOTAL_UB_MEMORY // self.num_bit
             else:
                 self.maximum_size_ub = int(TOTAL_UB_MEMORY * 2 // self.num_bit) // 3
