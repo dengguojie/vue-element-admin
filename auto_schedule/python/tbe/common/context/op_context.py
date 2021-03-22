@@ -40,7 +40,7 @@ class OpContext:
     Op Context
     """
 
-    def __init__(self, op_mode):
+    def __init__(self, op_mode=None):
         # type: (str) -> None
         """
 
@@ -75,6 +75,15 @@ class OpContext:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         _get_contexts().pop()
+
+    def set_op_mode(self, op_mode):
+        # type: (str) -> None
+        """
+
+        :param op_mode: dynamic, static, pre-static
+        :return:
+        """
+        self._op_mode = op_mode
 
     def get_op_mode(self):
         # type: () -> str
