@@ -1599,7 +1599,13 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxVarsPerChannel, FakeQuantWithMinMaxVarsPerCha
 // ----------------FakeQuantWithMinMaxVarsPerChannel----------------------------
 
 // ----------------Rint-----------------------------
-COMMON_INFER_FUNC_REG(Rint, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(RintInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Rint, RintInferShape);
 // ----------------Rint END-------------------------
 
 // --------------------------------BiasAdd-------------------------------------
@@ -2049,7 +2055,13 @@ VERIFY_FUNC_REG(Pow, PowVerify);
 // -------------------Pow END------------------------
 
 // ----------------Round-------------------------------------
-COMMON_INFER_FUNC_REG(Round, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(RoundInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(Round, RoundInferShape);
 // ----------------Round END---------------------------------
 
 // ---------------------------------ArgMin--------------------------------------

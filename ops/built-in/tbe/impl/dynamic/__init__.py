@@ -211,6 +211,8 @@ from .asinh import asinh
 from .asinh_grad import asinh_grad
 from .expm1 import expm1
 from .floor import floor
+from .rint import rint
+from .round import round
 from .leaky_relu import leaky_relu
 from .mod import mod
 from .power import power
