@@ -2490,15 +2490,142 @@ COMMON_INFER_FUNC_REG(ArgMinWithValue, ArgMinWithValueInferShape);
 // ---------------------------ArgMinWithValue-----------------------------------
 
 // ----------------Eltwise-------------------
+static const int64_t ALL_EMPTY_TENSOR = 11;
+static const int64_t ONLY_EMPTY_AND_UNKNOWN_RANK_TENSOR = 12;
+static const int64_t HAS_STATIC_WITHOUT_UNKNOWN_SHAPE_TENSOR = 2;
+static const int64_t HAS_UNKNOWN_SHAPE_TENSOR = 3;
+int64_t GetEltwiseConstValue(ge::Operator& op) {
+  int64_t tensor_num;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
+    OpsGetAttrErrReport(op.GetName(), "N");
+    OP_LOGE(op.GetName().c_str(), "The eltwise op GetOpAttr failed!");
+  }
+  return tensor_num;
+}
+
+int64_t EltwiseInferClassify(ge::Operator& op, int64_t &tensor_num) {
+  int64_t empty_num = 0;
+  int64_t static_num = 0;
+  int64_t unknown_shape_num = 0;
+  int64_t unknown_rank_num = 0;
+
+  for (int64_t i = 0; i < tensor_num; i++) {
+    vector<int64_t> tempVector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+    if (tempVector.empty()) {
+      empty_num++;
+      continue;
+    } 
+    if (IsUnKnownShape(tempVector)) {
+      unknown_shape_num++;
+      continue;
+    } 
+    if (IsUnknownRankShape(tempVector)) {
+      unknown_rank_num++;
+      continue;
+    } 
+    static_num++;
+  }
+  
+  if (tensor_num == empty_num + unknown_rank_num) {
+    if (tensor_num == empty_num) {
+      return ALL_EMPTY_TENSOR;
+    } 
+    return ONLY_EMPTY_AND_UNKNOWN_RANK_TENSOR;
+  } 
+  if (unknown_shape_num == 0) {
+    return HAS_STATIC_WITHOUT_UNKNOWN_SHAPE_TENSOR;
+  } 
+  return HAS_UNKNOWN_SHAPE_TENSOR;
+}
+
 IMPLEMT_COMMON_INFERFUNC(EltwiseInferShape) {
-  uint32_t first_input_index = 0;
-  TensorDesc td = op.GetDynamicInputDesc("x", first_input_index);
-  auto x_shape = td.GetShape().GetDims();
-  auto x_dtype = td.GetDataType();
-  TensorDesc td1 = op.GetOutputDesc("y");
-  td1.SetShape(ge::Shape(x_shape));
-  td1.SetDataType((DataType)x_dtype);
-  (void)op.UpdateOutputDesc("y", td1);
+  /*
+  eltwise has four type inputs:
+  1.empty 2.static shape 3.-1 4.-2
+  The combinations bring 15 scenes, and the 15 scenes can be classify into 4 categories:
+  1.input with no range and output no need range, and it can be divided half:
+    1.1 all input is empty
+    1.2 input only contains empty and -2 shape
+  2.input contains static shape and with no -1 shape
+  3.input contains -1 shape
+  */
+  int64_t tensor_num = GetEltwiseConstValue(op);
+  int64_t infer_classify = EltwiseInferClassify(op, tensor_num);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_desc = op_info->MutableOutputDesc("y");
+  // condition 1: all input shape is empty
+  if (infer_classify == ALL_EMPTY_TENSOR) {
+    std::vector<int64_t> shape_vector = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    output_desc->SetShape(GeShape(shape_vector));
+    output_desc->SetDataType(x_dtype);
+  // condition 2: all input is -2 or only empty and -2
+  } else if (infer_classify == ONLY_EMPTY_AND_UNKNOWN_RANK_TENSOR) {
+    std::vector<int64_t> shape_vector = {-2};
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    output_desc->SetShape(GeShape(shape_vector));
+    output_desc->SetDataType(x_dtype);
+  // condition 3: contains static shape and no -1 shape
+  } else if (infer_classify == HAS_STATIC_WITHOUT_UNKNOWN_SHAPE_TENSOR) {
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    std::vector<int64_t> shape_vector = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
+    for (int64_t i = 0; i < tensor_num; i++) {
+      std::vector<int64_t> temp_vector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+      if (!shape_vector.empty() && !IsUnknownRankShape(shape_vector)) {
+        shape_vector = temp_vector;
+        break;
+      }
+    }
+    std::vector<std::pair<int64_t,int64_t>> out_range;
+    MakeUpShapeRange(shape_vector, out_range);
+    output_desc->SetShape(GeShape(shape_vector));
+    output_desc->SetShapeRange(out_range);
+    output_desc->SetDataType(x_dtype);
+  // condition 4: contains -1 shape, range need to choose the intersection
+  } else {
+    Shape out_shape = op.GetDynamicInputDesc("x", 0).GetShape();
+    DataType x_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
+    std::vector<int64_t> out_vector;
+    std::vector<std::pair<int64_t, int64_t>> out_range;
+    // Init the output shape and range
+    for (int64_t i = 0; i < tensor_num; i++) {
+      std::vector<int64_t> temp_vector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+      if (!temp_vector.empty() && !IsUnknownRankShape(temp_vector)) {
+        out_vector = temp_vector;
+        op.GetDynamicInputDesc("x", i).GetShapeRange(out_range);
+        MakeUpShapeRange(out_vector, out_range);
+        break;
+      }
+    }
+    // compute the shape dims and range intersection
+    for (int64_t i = 0; i < tensor_num; i++) {
+      std::vector<int64_t> temp_vector = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
+      if (temp_vector.empty() || IsUnknownRankShape(temp_vector)) {
+        continue;
+      }
+      std::vector<std::pair<int64_t, int64_t>> temp_range;
+      op.GetDynamicInputDesc("x", i).GetShapeRange(temp_range);
+      MakeUpShapeRange(temp_vector, temp_range);
+      for (size_t j = 0; j < temp_vector.size(); j++) {
+        // two condition: const == const; const > -1
+        if (temp_vector[j] >= out_vector[j]) {
+          out_vector[j] = temp_vector[j];
+          // update range: left choose the max value
+          if (temp_range[j].first >= out_range[j].first) {
+            out_range[j].first = temp_range[j].first;
+          }
+          // update range: right choose the miner value but when it was > 0
+          if ((temp_range[j].second <= out_range[j].second && temp_range[j].second > 0) ||
+              (out_range[j].second == -1 && temp_range[j].second != -1)) {
+            out_range[j].second = temp_range[j].second;
+          }
+        }
+      }
+    }
+    output_desc->SetShape(GeShape(out_vector));
+    output_desc->SetShapeRange(out_range);
+    output_desc->SetDataType(x_dtype);
+  }
   return GRAPH_SUCCESS;
 }
 
