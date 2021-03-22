@@ -327,7 +327,11 @@ def im2col_fractal_v2(shape, img2col_para):
         back_c1 = virtual_w // block_size // kernel_w // kernel_h
         back_h = (virtual_h // fmap_wo) * stride[0] + (col_w // kernel_w % kernel_h)
         back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)
-
+        if len(fmap.shape) == 5:
+            return tvm.select(
+                tvm.any(back_h < padding[0], back_h > fmap.shape[2] + padding[0] - 1, back_w < padding[2],
+                        back_w > fmap.shape[3] + padding[2] - 1), tvm.const(0, fmap.dtype),
+                fmap(batch, back_c1 + group * c1_extend, back_h - padding[0], back_w - padding[2], block_size_w))
         return tvm.select(
             tvm.any(back_h < padding[0], back_h > fmap.shape[2] + padding[0] - 1, back_w < padding[2],
                     back_w > fmap.shape[3] + padding[2] - 1), tvm.const(0, fmap.dtype),
@@ -545,7 +549,7 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         a_col : a_im2col_fractal tensor
         """
         if var_map:
-            _, a_batch, _, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)
+            a_batch, _, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)[-5:]
         else:
             a_batch, a_c1, a_h, a_w, a_c0 = shape_to_list(feature_map.shape)
         if valid_shape:
