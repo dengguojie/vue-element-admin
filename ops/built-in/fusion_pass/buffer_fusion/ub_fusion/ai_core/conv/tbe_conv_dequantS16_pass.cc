@@ -148,7 +148,7 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
   fusion_nodes = GetMatchedNodes(mapping);
   auto req_matched = GetMatchedNodesByDescName(kPatternRequantS16, mapping);
   if (req_matched.size() == 1) {
-    uint32_t in_pre = 0;
+    size_t in_pre = 0;
     std::string deq_name;
     auto conv_matched = GetMatchedNodesByDescName(kPatternConv, mapping);
     in_pre += conv_matched.at(0)->GetInDataNodes().size() - 1;
@@ -172,8 +172,8 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
       in_pos = 2;
     }
     in_pre += in_pos == 0 ? 1 : 2;
-    OP_LOGD(fused_op_type_.c_str(), "get reuse input over, fuse index is:: %d, single index is %d",
-            int(in_pre), int(in_pos));
+    OP_LOGD(fused_op_type_.c_str(), "get reuse input over, fuse index is:: %zu, single index is %u",
+            in_pre, in_pos);
     auto input_out = req_s16_node->GetInDataAnchor(in_pos)->GetPeerOutAnchor();
     FUSION_PASS_CHECK(input_out == nullptr,
                       OP_LOGD(fused_op_type_.c_str(), "node %s input is null", req_s16_node->GetName().c_str()),
@@ -183,29 +183,37 @@ Status ConvDequantS16FusionPass::GetFusionNodes(const BufferFusionMapping &mappi
       OP_LOGD(fused_op_type_.c_str(), "memory reuse only support requants16 input single-refer scene");
       return SUCCESS;
     }
-    auto all_out_desc = req_s16_desc->GetAllOutputsDesc();
-    if (all_out_desc.size() < 2) {
+    if (req_s16_desc->GetOutputsSize() < 2) {
       OP_LOGD(fused_op_type_.c_str(), "memory reuse only support requants16 double-out scene");
       return SUCCESS;
     }
     // bind output reuse tensor desc with input
-    int out_pos = 0;
-    for (auto out_desc : all_out_desc) {
-      if (out_desc.GetDataType() == DT_INT16) {
+    for (uint32_t out_pos = 0; out_pos < req_s16_desc->GetOutputsSize(); ++out_pos) {
+      auto out_desc = req_s16_desc->MutableOutputDesc(out_pos);
+      if(out_desc == nullptr) {
+        OP_LOGD(fused_op_type_.c_str(), "out_desc %u is null", out_pos);
+        continue;
+      }
+      if (out_desc->GetDataType() == DT_INT16) {
         if (!IsShapeEqual(req_s16_node, in_pos, out_pos)) {
           OP_LOGD(fused_op_type_.c_str(),
                   "[Node:%s type:%s] input memory size is not equal with output",
                   req_s16_node->GetName().c_str(), req_s16_node->GetType().c_str());
           break;
         }
-        TensorUtils::SetReuseInput(out_desc, true);
-        TensorUtils::SetReuseInputIndex(out_desc, in_pre);
-        req_s16_desc->UpdateOutputDesc(out_pos, out_desc);
+        // reuse rollback if compile failed
+        std::vector<string> roll_back_attrs = {"reuse_input"};
+        bool ret = ge::AttrUtils::SetListStr(req_s16_desc, "_rollback_if_failed", roll_back_attrs);
+        if (!ret) {
+          OP_LOGD(fused_op_type_.c_str(), "set reuse rollback attr failed");
+          break;
+        }
+        TensorUtils::SetReuseInput(*out_desc.get(), true);
+        TensorUtils::SetReuseInputIndex(*out_desc.get(), in_pre);
         OP_LOGD(fused_op_type_.c_str(),
-                "set reuse tags over, output position is %d, index is: %d", out_pos, int(in_pre));
+                "set reuse tags over, output position is %u, index is: %zu", out_pos, in_pre);
         break;
       }
-      out_pos++;
     }
   }
   OP_LOGD(fused_op_type_.c_str(), "End to do TbeConvDequantS16FusionPass!");

@@ -376,11 +376,21 @@ static void SetMemoryReuse(const BufferFusionMapping &mapping) {
       }
       OP_LOGD(fused_op_type_.c_str(), "get reuse input over, fuse index is: %zu, single index is %u", in_pre, in_pos);
       OpDescPtr relu_desc = relu_node->GetOpDesc();
-      auto out_desc = relu_desc->GetOutputDesc(0);
+      auto out_desc = relu_desc->MutableOutputDesc(0);
+      if(out_desc == nullptr) {
+        OP_LOGD(fused_op_type_.c_str(), "out_desc %d is null", 0);
+        break;
+      }
+      // reuse rollback if compile failed
+      std::vector<string> roll_back_attrs = {"reuse_input"};
+      bool ret = ge::AttrUtils::SetListStr(relu_desc, "_rollback_if_failed", roll_back_attrs);
+      if (!ret) {
+        OP_LOGD(fused_op_type_.c_str(), "set reuse rollback attr failed");
+        break;
+      }
       // bind output reuse tensor desc with input
-      TensorUtils::SetReuseInput(out_desc, true);
-      TensorUtils::SetReuseInputIndex(out_desc, in_pre);
-      relu_desc->UpdateOutputDesc(0, out_desc);
+      TensorUtils::SetReuseInput(*out_desc.get(), true);
+      TensorUtils::SetReuseInputIndex(*out_desc.get(), in_pre);
       OP_LOGD(fused_op_type_.c_str(), "set reuse tags over, output position is %d, index is: %zu", 0, in_pre);
       break;
     }
