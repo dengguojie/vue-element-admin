@@ -2,10 +2,12 @@
     "auto_schedule/python/tbe/dsl/compute/util.py":[
         "broadcast",
         "vadd",
+        "vsub",
         "vmul"
     ],
     "auto_schedule/python/tbe/dsl/compute/math.py":[
         "vadd",
+        "vsub",
         "vmul",
         "dsl_cpu/test_math_cpu_impl.py"
     ],
