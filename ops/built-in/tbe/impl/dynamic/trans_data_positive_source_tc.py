@@ -343,6 +343,7 @@ def _copy_data_out_1011(copy_out_args, cl_offset_args):
     with tik_inst.new_stmt_scope():
         src_stride = tik_inst.Scalar()
         dst_stride = tik_inst.Scalar()
+        cur_cl_idx = tik_inst.Scalar()
         c1_cnt = tdc.ceil_div(pl_c_size, c0_size)
         with tik_inst.for_range(0, c1_cnt) as c1_idx:
             gather_c0_args = (tik_inst, src_ub, ub_offset, pl_c_size, c0_size,
@@ -350,10 +351,10 @@ def _copy_data_out_1011(copy_out_args, cl_offset_args):
             _gather_c0_for_out(gather_c0_args)  # transfer dhc0n to dhnc0
 
             with tik_inst.for_range(0, pln_cl_size) as cl_idx:  # dhwnc0, move out nc0 per loop
-                if mc_on_cl:
-                    cur_cl_idx = (cl_lp_idx + block_idx * nlc_src_cl_lp_cnt) * src_cl_lp_unit + cl_idx
-                else:
-                    cur_cl_idx = cl_lp_idx * src_cl_lp_unit + cl_idx
+                with tik_inst.if_scope(mc_on_cl == 1):
+                    cur_cl_idx.set_as((cl_lp_idx + block_idx * nlc_src_cl_lp_cnt) * src_cl_lp_unit + cl_idx)
+                with tik_inst.else_scope():
+                    cur_cl_idx.set_as(cl_lp_idx * src_cl_lp_unit + cl_idx)
                 cl_out_offset = _get_cl_offset(cl_offset_args, cur_cl_idx)
                 tik_inst.data_move(dst_out_gm[c1_idx * c_step_out + cl_out_offset],
                                    src_ub[ub_offset + cl_idx * vnc_line_cnt * c0_size],
@@ -480,7 +481,6 @@ def trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name=
         with tik_inst.if_scope(block_idx < used_core_cnt):
             tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt]
             with tik_inst.if_scope(tiling_mode == 1010):
-                # tp_args = tiling_params[1:33]
                 tp_args = tiling_params[1:32]
                 _func_transform_1010(tensor_args, tp_args)
             with tik_inst.if_scope(tiling_mode == 1011):

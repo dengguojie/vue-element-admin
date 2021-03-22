@@ -167,6 +167,16 @@ ut_case.add_case(["all"],
                  gen_transdata_case((-1, -1, -1, -1),
                                     (32, 32, 32, 32),
                                     "float16", "CHWN", "CHWH", "case_27", RuntimeError))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (2, 23, 35, 35, 32),
+                                    "float16", "NDHWC", "FRACTAL_Z_3D", "case_28", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (2, 3, 20, 20, 16),
+                                    "float16", "NC1HWC0", "FRACTAL_Z", "case_29", "success"))
                                     
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):
