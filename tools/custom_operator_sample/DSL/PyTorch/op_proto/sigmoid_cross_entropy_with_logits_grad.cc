@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "sigmoid_cross_entropy_with_logits_grad.h"
+#include "util/util.h"
 
 namespace ge {
 // ----------------SigmoidCrossEntropyWithLogitsGrad-------------------

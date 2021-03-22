@@ -32,9 +32,6 @@ IMPLEMT_COMMON_INFERFUNC(LpNormInfer) {
     bool keep_dim = false;
     int32_t indice;
     (void)op.GetAttr("keepdim", keep_dim);
-    if (op.GetAttr("axes", x_axes) != GRAPH_SUCCESS) {
-        OP_LOGI(op.GetName().c_str(), "axes will use default value");
-    }
     if (x_axes.empty()) {
         for (int32_t i = 0; i < dim_num; i++) {
             new_axes.push_back(i);

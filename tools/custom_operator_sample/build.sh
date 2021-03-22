@@ -90,8 +90,21 @@ cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/Tensorflow/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/DSL/Tensorflow/
 cp ${TF_PLUGIN_CMAKELIST} ${DST_DIR}/DSL/Tensorflow/framework/tf_plugin
 #2.2 PyTorch
-#cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/PyTorch
-
+cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/PyTorch/
+cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/DSL/PyTorch/tbe/
+# copy metadef dependency.
+mkdir -p ${DST_DIR}/DSL/PyTorch/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/graph ${DST_DIR}/DSL/PyTorch/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/inc ${DST_DIR}/DSL/PyTorch/metadef
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_DIR}/DSL/PyTorch/framework
+cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/DSL/PyTorch/framework
+#copy cann/ops dependency.
+cp -r ${CODE_ROOT_DIR}/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/PyTorch/op_proto
+#copy op_log.h
+mkdir -p ${DST_DIR}/DSL/PyTorch/log
+cp -r ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/PyTorch/log
+#copy CMakeList.txt modified for dependency.
+cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/PyTorch/op_proto/CMakeLists.txt ${DST_DIR}/DSL/PyTorch/op_proto
 #2.3 MindSpore
 #NA
 

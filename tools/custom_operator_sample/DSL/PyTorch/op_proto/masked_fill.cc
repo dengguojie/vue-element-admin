@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "masked_fill.h"
+#include "util/util.h"
 
 namespace ge {
 // ----------------MaskedFill Begin-------------------
@@ -29,7 +30,7 @@ IMPLEMT_COMMON_INFERFUNC(InferMaskedFillShape) {
 IMPLEMT_VERIFIER(MaskedFill, MaskedFillVerify) {
     auto input_type_mask = op.GetInputDesc("mask").GetDataType();
     if (input_type_mask != DT_BOOL) {
-      return GRAPH_FAILED;
+        return GRAPH_FAILED;
     }
 
     return GRAPH_SUCCESS;
