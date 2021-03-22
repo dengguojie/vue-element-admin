@@ -239,7 +239,7 @@ class RoiAlign:
             if self.roisn_effect:
                 roisn_ub = self.tik_inst.Tensor("int32", (8, ), \
                                                 scope=tbe_platform.scope_ubuf, name="roisn_ub")
-                self.tik_inst.data_move(roisn_ub, self.roisn[0, 0], 0, 1, 1, 0, 0)
+                self.tik_inst.data_move(roisn_ub, self.roisn, 0, 1, 1, 0, 0)
                 self.roi_actual_num_ub = self.tik_inst.Scalar("int32")
                 self.roi_actual_num_ub.set_as(roisn_ub[0])
             else:
