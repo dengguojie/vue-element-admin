@@ -88,7 +88,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
     }
 
     bool keep_dims;
-    if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+    if (op.GetAttr(keep_dims_name, keep_dims) != GRAPH_SUCCESS) {
         OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
         return false;
     }
@@ -114,7 +114,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
 
     Tensor data;
     // axis unknown
-    if (GRAPH_SUCCESS != op.GetInputConstData(axis_name, data)) {
+    if (op.GetInputConstData(axis_name, data) != GRAPH_SUCCESS) {
         OP_LOGI(op.GetName().c_str(), "GetInputConstData of %s failed, enter axis unknown scenario.", axis_name.c_str());
 
         std::vector<int64_t> oShapeVector;
@@ -249,7 +249,7 @@ static bool InferReduceShape(const ge::Operator& op, const string& input_name, c
 
 static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, const size_t& axis_size,
                             const string& keep_dims_name, bool& keep_dims) {
-    if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+    if (op.GetAttr(keep_dims_name, keep_dims) != GRAPH_SUCCESS) {
         OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
         return false;
     }
@@ -258,11 +258,11 @@ static bool CheckReduceInfo(const ge::Operator& op, const size_t& input_size, co
 
 static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, const string& keep_dims_name,
                              const string& axis_name, bool& keep_dims, std::vector<int64_t>& axis) {
-    if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+    if (op.GetAttr(keep_dims_name, keep_dims) != GRAPH_SUCCESS) {
         OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
         return false;
     }
-    if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
+    if (op.GetAttr(axis_name, axis) != GRAPH_SUCCESS) {
         OpsGetAttrErrReport(op.GetName(), axis_name);
         OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
         return false;
@@ -628,14 +628,14 @@ static bool InferReduceDShape(const ge::Operator& op, const string& input_name, 
     }
 
     std::vector<int64_t> axis;
-    if (GRAPH_SUCCESS != op.GetAttr(axis_name, axis)) {
+    if (op.GetAttr(axis_name, axis) != GRAPH_SUCCESS) {
         OpsGetAttrErrReport(op.GetName(), axis_name);
         OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", axis_name.c_str());
         return false;
     }
 
     bool keep_dims;
-    if (GRAPH_SUCCESS != op.GetAttr(keep_dims_name, keep_dims)) {
+    if (op.GetAttr(keep_dims_name, keep_dims) != GRAPH_SUCCESS) {
         OpsGetAttrErrReport(op.GetName(), keep_dims_name);
         OP_LOGE(op.GetName().c_str(), "GetAttr of %s failed.", keep_dims_name.c_str());
         return false;

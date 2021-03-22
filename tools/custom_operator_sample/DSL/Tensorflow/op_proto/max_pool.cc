@@ -298,6 +298,4 @@ IMPLEMT_INFER_DATA_SLICE(MaxPool, MaxPoolInferDataSlice) {
 INFER_FUNC_REG(MaxPool, MaxPoolInferShape);
 VERIFY_FUNC_REG(MaxPool, MaxPoolVerify);
 INFER_DATA_SLICE_FUNC_REG(MaxPool, MaxPoolInferDataSlice);
-// ----------------MaxPool-------------------
-
 }  // namespace ge

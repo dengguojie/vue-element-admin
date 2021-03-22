@@ -18,8 +18,8 @@
  * \file mul.h
  * \brief
  */
-#ifndef MUL_H_
-#define MUL_H_
+#ifndef MUL_H
+#define MUL_H
 #include "graph/operator_reg.h"
 
 namespace ge {
@@ -55,5 +55,4 @@ REG_OP(Mul)
                            DT_COMPLEX64, DT_COMPLEX128}))
     .OP_END_FACTORY_REG(Mul)
 }  // namespace ge
-
-#endif  // MUL_H_
+#endif  // MUL_H

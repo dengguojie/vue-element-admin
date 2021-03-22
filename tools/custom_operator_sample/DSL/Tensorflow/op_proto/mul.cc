@@ -76,12 +76,12 @@ bool InferShapeForMaximumAndMinimum(Operator& op) {
       return false;
     }
     if (attr_grad_x) {
-        if(!OneInOneOutDynamicInfer(op,"x1",{"y1"})){
+        if(!OneInOneOutDynamicInfer(op, "x1", {"y1"})) {
             return false;
         }
     }
     if (attr_grad_y) {
-        if(!OneInOneOutDynamicInfer(op,"x2",{"y2"})){
+        if(!OneInOneOutDynamicInfer(op, "x2", {"y2"})) {
             return false;
         }
     }
@@ -105,7 +105,6 @@ IMPLEMT_COMMON_INFERFUNC(OneInOneOutCommonInferShape) {
     return GRAPH_FAILED;
 }
 
-// --------------------------elewise data slice begin--------------------------
 static void InferElewiseTwoInput(vector<vector<int64_t>>& in_data_slice, const vector<vector<int64_t>> out_data_slice,
                                  const vector<int64_t> in_dims, const vector<int64_t> out_dims) {
     if (in_dims.size() == out_dims.size()) {

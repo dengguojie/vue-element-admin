@@ -18,8 +18,8 @@
  * \file reduce_all.h
  * \brief
  */
-#ifndef REDUCE_ALL_H_
-#define REDUCE_ALL_H_
+#ifndef REDUCE_ALL_H
+#define REDUCE_ALL_H
 
 #include "graph/operator_reg.h"
 
@@ -52,4 +52,4 @@ REG_OP(ReduceAllD)
     .ATTR(keep_dims, Bool, false)
     .OP_END_FACTORY_REG(ReduceAllD)
 } //namespace ge
-#endif  // REDUCE_ALL_H_
+#endif  // REDUCE_ALL_H

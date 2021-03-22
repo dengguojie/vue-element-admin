@@ -58,6 +58,4 @@ IMPLEMT_INFERFUNC(BatchNorm, BatchNormInferShape) {
 
 INFER_FUNC_REG(BatchNorm, BatchNormInferShape);
 VERIFY_FUNC_REG(BatchNorm, BatchNormVerify);
-// -----------------------------BatchNorm END----------------------------
-
 }  // namespace ge

@@ -18,8 +18,8 @@
  * \file max_pool.h
  * \brief
  */
-#ifndef MAX_POOL_H_
-#define  MAX_POOL_H_
+#ifndef MAX_POOL_H
+#define  MAX_POOL_H
 
 #include "graph/operator_reg.h"
 #include "graph/operator.h"
@@ -48,7 +48,7 @@ namespace ge {
 
 * @attention Constraints:
 * @li "ksize" is a list that has length 4: ksize[0] = 1 or ksize[3] = 1,
-* "ksize[1] * ksize[2] <= 255.
+* "ksize[1] * ksize[2] <= 255".
 * @li "stride is a list that has length 4: strides[0] = 1 or strides[3] = 1,
 * "strides[1] <= 63, strides[0] >= 1, strides[2] <= 63, strides[2] >= 1".
 * @li "padding" is either "SAME" or "VALID".
@@ -69,4 +69,4 @@ REG_OP(MaxPool)
     .ATTR(data_format, String, "NHWC")
     .OP_END_FACTORY_REG(MaxPool)
 }  // namespace ge
-#endif  // MAX_POOL_H_
+#endif  // MAX_POOL_H

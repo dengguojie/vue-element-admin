@@ -18,8 +18,8 @@
  * \file batch_norm.h
  * \brief
  */
-#ifndef BATCH_NORM_H_
-#define BATCH_NORM_H_
+#ifndef BATCH_NORM_H
+#define BATCH_NORM_H
 
 #include "graph/operator_reg.h"
 
@@ -68,12 +68,12 @@ then "reserve_space_1" has the same value as "mean" and "reserve_space_2" has th
 * @li Compatible with the TensorFlow operator fused_batch_norm_v2.
 */
 REG_OP(BatchNorm)
-    .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(scale, TensorType({DT_FLOAT}))
     .INPUT(offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(mean, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(variance, TensorType({DT_FLOAT}))
-    .OUTPUT(y, TensorType({DT_FLOAT16,DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(batch_mean, TensorType({DT_FLOAT}))
     .OUTPUT(batch_variance, TensorType({DT_FLOAT}))
     .OUTPUT(reserve_space_1, TensorType({DT_FLOAT}))
@@ -83,5 +83,4 @@ REG_OP(BatchNorm)
     .ATTR(is_training, Bool, true)
     .OP_END_FACTORY_REG(BatchNorm)
 }  // namespace ge
-
-#endif  // BATCH_NORM_H_
+#endif  // BATCH_NORM_H
