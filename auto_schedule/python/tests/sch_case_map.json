@@ -6,10 +6,12 @@
     ],
     "auto_schedule/python/tbe/dsl/compute/math.py":[
         "vadd",
-        "vmul"
+        "vmul",
+        "dsl_cpu/test_math_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/nn.py":[
-        "broadcast"
+        "broadcast",
+        "dsl_cpu/test_nn_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
         "reduce_max",
