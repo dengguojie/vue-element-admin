@@ -104,6 +104,7 @@ sed -i 's/#include <utils\/Log.h>/#include <util\/Log.h>/g' ${DST_DIR}/DSL/Tenso
 cp -r ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/cpukernel/impl/utils/log.h ${DST_DIR}/DSL/Tensorflow/op_proto/util
 # copy CMakeLists.txt modified for dependency
 cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/op_proto/CMakeLists.txt ${DST_DIR}/DSL/Tensorflow/op_proto
+sed -i '28d' ${DST_DIR}/DSL/Tensorflow/op_proto/CMakeLists.txt
 sed -i '7,10d' ${DST_DIR}/DSL/Tensorflow/op_proto/CMakeLists.txt
 #2.2 PyTorch
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/PyTorch/

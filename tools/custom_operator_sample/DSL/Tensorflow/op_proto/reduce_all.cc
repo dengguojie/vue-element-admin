@@ -280,7 +280,7 @@ static void GetTensorValue(const GeTensorPtr& data, std::vector<int64_t>& vec_di
     int32_t size = data->GetData().GetSize() / sizeof(T);
     void* data_ptr = (void*)data->GetData().GetData();
     if (data_ptr == nullptr) {
-        eturn;
+        return;
     }
     for (int32_t i = 0; i < size; i++) {
         T dim = *((T*)data_ptr + i);
