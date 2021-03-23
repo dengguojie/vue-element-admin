@@ -193,7 +193,7 @@ void GenAicpuOp(Operator& op, std::vector<int64_t> ksize, std::vector<int64_t> s
   // aicpu only supports format=NHWC, so add permute operator to adjust the input 
   std::vector<int64_t> ksize_transpose = {ksize[0], ksize[2], ksize[3], ksize[1]};
   std::vector<int64_t> strides_transpose = {strides[0], strides[2], strides[3], strides[1]};
-  auto transposeIn = op::Permute("permuteIn").set_input_x(input).set_attr_order({0, 2, 3, 1});
+  auto transposeIn = op::TransposeD("permuteIn").set_input_x(input).set_attr_perm({0, 2, 3, 1});
 
   std::vector<int64_t> pads_vector(8, 0);
   bool use_pad = false;
@@ -286,7 +286,19 @@ static Status ParseOpToGraphMaxPool(const Operator& op, Graph& graph) {
       if (UpdateFormat(aicpu_op, ge::FORMAT_NHWC) != SUCCESS) {
         return FAILED;
       }
-      auto transposeOut = op::Permute("permuteOut").set_input_x(aicpu_op).set_attr_order({0, 3, 1, 2});
+      auto transposeOut = op::TransposeD("permuteOut").set_input_x(aicpu_op).set_attr_perm({0, 3, 1, 2});
+      // update output format
+      auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(transposeOut);
+      ge::GeTensorDesc orgTensorY = op_desc->GetOutputDesc("y");
+      orgTensorY.SetOriginFormat(ge::FORMAT_NCHW);
+      orgTensorY.SetFormat(ge::FORMAT_NCHW);
+      auto ret = op_desc->UpdateOutputDesc("y", orgTensorY);
+      if (ret != ge::GRAPH_SUCCESS) {
+        OP_LOGE(transposeOut.GetName().c_str(), "update output y format failed.");
+        return FAILED;
+      }
+      OP_LOGI(transposeOut.GetName().c_str(), "update output y format success, now is %d",
+              op_desc->GetOutputDesc("y").GetFormat());
       outputs.emplace_back(transposeOut, std::vector<std::size_t>{0});
     } else {
       auto maxpoolv3 = op::MaxPoolV3()
