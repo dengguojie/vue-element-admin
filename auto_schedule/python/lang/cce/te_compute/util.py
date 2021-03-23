@@ -215,7 +215,7 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "reduce_prod": {
         "AllSoc": ("float16",),
-        VERSION_MINI: ("float16",),  # int32: nlst/last support
+        VERSION_MINI: ("float16", "float32"),  # int32: nlst/last support
         VERSION_CLOUD: ("float16", "float32"),
         VERSION_MINI_NG1: ("float16", "float32"),
         VERSION_MINI_NG1M: ("float16", "float32"),

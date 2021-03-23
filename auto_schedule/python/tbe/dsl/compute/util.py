@@ -243,7 +243,7 @@ DSL_CHECK_SUPPORT_MAP = {
     },
     "reduce_prod": {
         "AllSoc": ("float16",),
-        ASCEND_310: ("float16",),  # int32: nlst/last support
+        ASCEND_310: ("float16", "float32"),  # int32: nlst/last support
         ASCEND_910: ("float16", "float32"),
         ASCEND_920A: ("float16", "float32"),
         ASCEND_710: ("float16", "float32"),
