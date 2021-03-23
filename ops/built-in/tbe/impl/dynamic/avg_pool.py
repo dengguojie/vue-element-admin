@@ -271,33 +271,23 @@ def _check_filter_window(fmap, filter, window, stride):
         raise RuntimeError("In op[%s], the [%s] should less than [%s] when filter is None"
                            % ('avgpool', 'stride', str(MAX_CUBE_STRIDE)))
     if filter_format not in ("NCHW", "NHWC"):
-        raise RuntimeError("In op[%s], the ori_format of filter"
+        raise RuntimeError("In op[%s], the ori_format of filter "
                                        "should be [%s] or [%s]"
                            % ('avgpool', 'NCHW', 'NHWC'))
     h_index = filter_format.index("H")
     w_index = filter_format.index("W")
     c_index = filter_format.index("C")
     n_index = filter_format.index("N")
-    ksize_h = filter_shape[h_index]
-    ksize_w = filter_shape[w_index]
-    if ksize_h * ksize_w > AVG_KERNEL_SIZE_H_MUL_W:
-        raise RuntimeError("In op[%s], the ksize_h * ksize_w"
-                           "should be less than [%s],"
-                           % ('avgpool', str(AVG_KERNEL_SIZE_H_MUL_W)))
-    if ksize_h > AVG_KERNEL_SIZE or ksize_w > AVG_KERNEL_SIZE:
-        raise RuntimeError("In op[%s], the ksize_h and ksize_w"
-                           "should be less than [%s],"
-                           % ('avgpool', str(AVG_KERNEL_SIZE)))
     if filter_shape[h_index] != window[0] or filter_shape[w_index] != window[1]:
-        raise RuntimeError("In op[%s], the h_shape of filter"
+        raise RuntimeError("In op[%s], the h_shape of filter "
                                        "should be equal with [%s],"
                            % ('avgpool', 'ksize'))
     if filter_shape[c_index] != 1:
-        raise RuntimeError("In op[%s], the c_shape of filter"
+        raise RuntimeError("In op[%s], the c_shape of filter "
                                        "should be [%s],"
                            % ('avgpool', '1'))
     if filter_shape[n_index] != fmap_shape[fmap.get("ori_format").index("C")]:
-        raise RuntimeError("In op[%s], the N shape of filter"
+        raise RuntimeError("In op[%s], the N shape of filter "
                                        "should be equal with C shape of fmap,"
                            % ('avgpool'))
 
@@ -347,6 +337,15 @@ def avg_pool(x, filter, bias, y, ksize, strides,
     input_format = x.get("ori_format")
     output_dtype = y.get("dtype")
     output_dtype = output_dtype.lower()
+    output_format = y.get("ori_format")
+    if not output_format:
+        y["ori_format"] = input_format
+    elif output_format not in ("NCHW", "NHWC"):
+        error_manager_cube.raise_err_one_para("E62006", "avg_pool",
+                                              "output_format should be 'NCHW or 'NHWC'")
+
+    _avg_pool_check_rule(input_shape, input_dtype, output_dtype, ksize, strides, padding,
+                         data_format, offset_x, kernel_name)
     if input_format == "NCHW":
         input_c, input_h, input_w = input_shape[1:4]
         stride = [-1, -1, strides[2], strides[3]]
@@ -357,12 +356,6 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         window = [ksize[1], ksize[2]]
     else:
         raise RuntimeError("Unsupported input format!")
-
-    _avg_pool_check_rule(input_shape, input_dtype, output_dtype, ksize, strides, padding,
-                         data_format, offset_x, kernel_name)
-
-    tbe_context.get_context().add_compile_info("strideh", stride[0])
-    tbe_context.get_context().add_compile_info("stridew", stride[1])
 
     if bias is None and filter is not None:
         dilations = (1, 1, 1, 1)

@@ -152,8 +152,6 @@ class CubeParaProcess:
                 if not isinstance(in_range, (tuple, list)):
                     err_man.raise_err_specific_user(self.op_type, "type of range must be tuple or list.")
                 valid_lower, valid_upper = dim_valid_dict.get(dim)
-                if len(in_range) != RANGE_DIM_LEN:
-                    err_man.raise_err_specific_user(self.op_type, "each dimension of range must be 2.")
                 if not (isinstance(in_range[0], int) and isinstance(in_range[1], int)):
                     err_man.raise_err_specific_user(self.op_type, "each dimension of range must be int.")
                 if not in_range[0] or in_range[0] < valid_lower:
@@ -170,6 +168,8 @@ class CubeParaProcess:
             if dim[0] == DYNAMIC_FLAG:
                 if not dim[1]:
                     err_man.raise_err_specific_user(self.op_type, "must specify range when shape is -1")
+                if len(dim[1]) != RANGE_DIM_LEN:
+                    err_man.raise_err_specific_user(self.op_type, "each dimension of range must be 2.")
                 if dim[1][1]:
                     _check_range(dim[1], index)
 
