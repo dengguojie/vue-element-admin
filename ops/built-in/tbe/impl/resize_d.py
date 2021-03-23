@@ -78,11 +78,10 @@ class ResizeBicubic(object):
         Bicubic main part.
         """
         # (N,M) to (N,M)
-        with self.tik_instance.if_scope(self.out_size_h == self.in_size_h
-                                        and self.out_size_w == self.in_size_w):
+        if self.out_size_h == self.in_size_h and self.out_size_w == self.in_size_w:
             self.input_output_samesize()
         # (N,M) to (N1,M1)
-        with self.tik_instance.else_scope():
+        else:
             with self.tik_instance.for_range(0, self.out_size_h) as out_h_index:
                 temp_scalar1 = self.tik_instance.Scalar(dtype="int32", init_value=out_h_index)
                 out_h_index_scalar = self.tik_instance.Scalar(dtype="float32")
@@ -257,14 +256,14 @@ class ResizeBicubic(object):
         loop_time = self.in_num // self.ub_tensor_size
         burst_len = math.ceil(self.ub_tensor_size / self.data_each_block)
         # self.in_num >= self.ub_tensor_size 63488
-        with self.tik_instance.if_scope(loop_time > 0):
+        if loop_time > 0:
             with self.tik_instance.for_range(0, loop_time) as loop_index:
                 offset = loop_index * self.ub_tensor_size
                 self.tik_instance.data_move(x_ub, self.x_gm[offset], 0, 1,
                                             burst_len, 0, 0)
                 self.tik_instance.data_move(self.output_gm[offset], x_ub, 0, 1,
                                             burst_len, 0, 0)
-            offset = loop_time * self.ub_tensor_size
+        offset = loop_time * self.ub_tensor_size
         last_num = self.in_num % self.ub_tensor_size
         # self.in_num < self.ub_tensor_size
         if last_num > 0:

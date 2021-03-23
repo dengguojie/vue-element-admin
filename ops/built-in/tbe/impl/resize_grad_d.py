@@ -210,20 +210,9 @@ class UpSampleBicubic2dBackward(object):
         -------
         tik_instance
         """
-        in_h_scalar = self.tik_instance.Scalar(dtype="int32")
-        in_h_scalar.set_as(self.in_size_h)
-        in_w_scalar = self.tik_instance.Scalar(dtype="int32")
-        in_w_scalar.set_as(self.in_size_w)
-        out_h_scalar = self.tik_instance.Scalar(dtype="int32")
-        out_h_scalar.set_as(self.out_size_h)
-        out_w_scalar = self.tik_instance.Scalar(dtype="int32")
-        out_w_scalar.set_as(self.out_size_w)
-        with self.tik_instance.if_scope(in_h_scalar == out_h_scalar):
-            with self.tik_instance.if_scope(in_w_scalar == out_w_scalar):
-                self.upsamplebicubic2d_backward_compute_same_size()
-            with self.tik_instance.else_scope():
-                self.upsamplebicubic2d_backward_compute_general()
-        with self.tik_instance.else_scope():
+        if self.in_size_h == self.out_size_h and self.in_size_w == self.out_size_w:
+            self.upsamplebicubic2d_backward_compute_same_size()
+        else:
             self.upsamplebicubic2d_backward_compute_general()
 
         self.tik_instance.BuildCCE(
