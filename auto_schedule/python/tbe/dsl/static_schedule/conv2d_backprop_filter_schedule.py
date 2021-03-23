@@ -698,6 +698,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             setfmatrix_dict_0["conv_fm_h"] = featuremap_height
             setfmatrix_dict_0["conv_fm_w"] = featuremap_width
             setfmatrix_dict_0["group_flag"] = 1
+            setfmatrix_dict_0["l1_group_flag"] = 1
 
             if self.var_map and not flag_all_one_case:
                 setfmatrix_dict_0["set_fmatrix"] = 0
@@ -1424,12 +1425,20 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 else:
                     kbl1_data = tiling["BL1_shape"][0]
                 hw_extend =\
-                    (kbl1_data-1)*stride_width + kw_dilation
-                sch[fmap_l1].buffer_tile((None, None),
-                                         (None, None),
-                                         (None, None),
-                                         (hw_offset_with_pad, hw_extend),
-                                         (None, None))
+                    (kbl1_data - 1) * stride_width + kw_dilation
+                if self.var_map:
+                    sch[fmap_l1].buffer_tile((None, None),
+                                            (None, None),
+                                            (None, None),
+                                            (None, None),
+                                            (hw_offset_with_pad, hw_extend),
+                                            (None, None))
+                else:
+                    sch[fmap_l1].buffer_tile((None, None),
+                                            (None, None),
+                                            (None, None),
+                                            (hw_offset_with_pad, hw_extend),
+                                            (None, None))
 
         def _get_bl1_bound():
             """
@@ -1595,10 +1604,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
                 if 'batch' in self.var_map:
                     # multi_core offset
+                    block_div = block_dim_cout * block_dim_cin * block_dim_group
                     multi_core_offset = tvm.floordiv(
-                                            tvm.floordiv(fused_multi_core,
-                                                         block_dim_cout *
-                                                         block_dim_cin),
+                                            tvm.floordiv(fused_multi_core, block_div),
                                             tvm.floordiv(batch_fmap - 1,
                                                          _ceil_div(batch_fmap,
                                                                    block_dim_batch)) +
@@ -1613,7 +1621,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
                 elif 'fmap_h' in self.var_map or 'fmap_w' in self.var_map:
                     # multi_core offset
-                    block_div = (block_dim_batch * block_dim_cout * block_dim_cin)
+                    block_div = (block_dim_batch * block_dim_cout * block_dim_cin * block_dim_group)
                     multi_core_offset = fused_multi_core // block_div * \
                                       hw_single_core_factor
 
@@ -1648,11 +1656,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     hi_min, hi_extent = hi_min, hi_extent
                 else:
                     hi_min, hi_extent = None, None
-
-                sch[fmap_l1].buffer_tile((None, None), (None, None),
-                                         (hi_min, hi_extent),
-                                         (wi_min, wi_extent),
-                                         (None, None))
+                sch[fmap_l1].buffer_tile((None, None), (None, None), (None, None),
+                                        (hi_min, hi_extent),
+                                        (wi_min, wi_extent),
+                                        (None, None))
 
             # mem management in dynamic mode
             sch[grads_matrix].set_storage_bound(al1_bound)

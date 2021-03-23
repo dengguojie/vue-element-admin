@@ -78,4 +78,5 @@ bool Conv2DBpFilterTiling(const std::string& opType, const TeOpParas& opParas, c
 
 // register tiling interface of the conv2d_backprop_filter
 REGISTER_OP_TILING_FUNC_BUFFERED(Conv2DBackpropFilter, Conv2DBpFilterTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(DepthwiseConv2DBackpropFilter, Conv2DBpFilterTiling);
 }  // namespace optiling

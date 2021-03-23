@@ -607,6 +607,13 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             "cin_ori": fmap_c,
             "cout_ori": cout
         }
+        tiling_info_dict_tmp = DynamicConv2dBpFilterParams.tiling_info_dict
+        tiling_info_dict_tmp["group"] = group_dict["real_g"]
+        tiling_info_dict_tmp["A_shape"][1] = group_dict["cout_g"] // c0_size
+        tiling_info_dict_tmp["B_shape"][1] = group_dict["cin1_g"]
+        tiling_info_dict_tmp["C_shape"][0] = group_dict["cout_g"]
+        tiling_info_dict_tmp["C_shape"][1] = group_dict["cin1_g"]
+        DynamicConv2dBpFilterParams.tiling_info_dict = tiling_info_dict_tmp
         self.group_dict = group_dict
 
     def _deconv_dw_access(self):
@@ -800,15 +807,13 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 fmap_fractal = self._fmap_2_fractal(fmap_shape_fmap_matrix,
                                                 fmap_matrix, fmap_dtype)
             else:
-                fmap_l1_shape = (batch_size, fmap_channel_1,
-                                             fmap_height, fmap_width, fmap_c0)
-
-                def _lambda_func_dynamic_fmap(*params):
-                    return self.fmap(*params)
-                # move fmap to l1
-                fmap_l1 = tvm.compute(fmap_l1_shape, _lambda_func_dynamic_fmap,
-                                    name='dw_fmap_l1', tag="dw_fmap_l1",
-                                    attrs={'group_dict': self.group_dict})
+                fmap_l1_shape = (real_g, batch_size, fmap_c1_g,
+                                    fmap_height, fmap_width, fmap_c0)
+                fmap_l1 = tvm.compute(fmap_l1_shape,
+                                        lambda g, n, c1, h, w, c0:
+                                        self.fmap(n, c1 + g * fmap_c1_g, h, w, c0),
+                                        name='dw_fmap_l1', tag='dw_fmap_l1',
+                                        attrs={'group_dict':self.group_dict})
 
                 fmap_shape_fmap_matrix = (real_g,
                                           batch_size,
@@ -1209,17 +1214,15 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             back_h = (virtual_h // fmap_wo) * stride[0] + \
                                              (col_w // kernel_w % kernel_h)
             back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)
-
+            indices = (group, batch, back_c1,
+                        back_h - padding[0],
+                        back_w - padding[2], block_size_w)
             return tvm.select(tvm.any(back_h < padding[0], \
                                     back_h > fmap.shape[2] + padding[0] - 1,
                                     back_w < padding[2], \
                                     back_w > fmap.shape[3] + padding[2] - 1),
                             tvm.const(0, fmap.dtype),
-                            fmap(batch,
-                                 back_c1 + group*self.group_dict["cin1_g"],
-                                 back_h - padding[0],
-                                 back_w - padding[2],
-                                 block_size_w))
+                            fmap(*indices))
         return tvm.compute(shape,
                         lambda *idx: __im2col_idx(idx),
                         name='img2col_fractal_v2',
