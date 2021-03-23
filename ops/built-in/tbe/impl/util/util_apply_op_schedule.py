@@ -37,21 +37,6 @@ OUTER_AXIS_IDX = 1
 INNER_AXIS_IDX = 2
 
 
-def _custom_build_config():
-    """
-    return build_config with double_buffer_non_reuse
-
-    Parameters
-    ----------
-
-    Returns
-    ----------
-    build_config with double_buffer_non_reuse
-    """
-    config = build_config_update(build_config, "double_buffer_non_reuse", True)
-    return config
-
-
 def _get_custom_max_ub_count(compute_width):
     """
     get the max split num based on dtype
@@ -137,19 +122,9 @@ def _cache_and_inline(sch, cache_list, inline_compute_list,
         buffer_write_list.append(
             sch.cache_write(write_tensor, cce_params.scope_ubuf))
 
-    if ir_tensor_list is not None:
-        print('----------- after cache_read/cache_write IR -----------')
-        with _custom_build_config():
-            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
-
     # compute_inline
     for inline_tensor in inline_compute_list:
         sch[inline_tensor].compute_inline()
-
-    if ir_tensor_list is not None:
-        print('----------- after compute_inline IR -----------')
-        with _custom_build_config():
-            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     return {'read': buffer_read_list, 'write': buffer_write_list}
 
@@ -510,10 +485,6 @@ def _common_apply_op_schedule(outs, rewrite_back_map, compute_width,
 
     # create origin schedule
     sch = create_schedule([out_tensor.op for out_tensor in outs])
-    if ir_tensor_list is not None:
-        print('----------- origin IR -----------')
-        with _custom_build_config():
-            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     # cache and inline
     buffer_list = _cache_and_inline(sch, cache_list, inline_compute_list,
@@ -526,27 +497,15 @@ def _common_apply_op_schedule(outs, rewrite_back_map, compute_width,
     axes = _execute_split_core(sch, out, shape, split_axis, rfactor)
 
     _execute_compute_at(sch, out, buffer_list, axes, scalar_name)
-    if ir_tensor_list is not None:
-        print('----------- after compute_at IR -----------')
-        with _custom_build_config():
-            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     _execute_insn_emit(sch, buffer_list, cache_list, op_dict)
     # for muti-outs, the outs is a group, the old dma coy can't deal it,
     # so we add a group_gm_to_ub to deal the situation
     sch[out].emit_insn(axes[INNER_AXIS_IDX], "group_gm_to_ub")
-    if ir_tensor_list is not None:
-        print('----------- after emit_insn IR -----------')
-        with _custom_build_config():
-            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     _enable_double_buffer(sch, buffer_list)
 
     _execute_rewrite_inputs(sch, buffer_list, rewrite_back_map, axes)
-    if ir_tensor_list is not None:
-        print('----------- after reuse input IR -----------')
-        with _custom_build_config():
-            print(build_module.lower(sch, ir_tensor_list, simple_mode=True))
 
     return sch
 
@@ -607,13 +566,13 @@ class ApplyOpConfig:
     TensorName = collections.namedtuple('TensorName', 'all scalar reuse')
     TensorOptions = collections.namedtuple('TensorOptions',
                                            'attrs build dtype')
-    TensorOptions.__new__.__defaults__ = (None, _custom_build_config(),
+    TensorOptions.__new__.__defaults__ = (None, None,
                                           ('float16', 'float32'))
 
     def __init__(self,
                  args,
                  name,
-                 options=TensorOptions(None, _custom_build_config(),
+                 options=TensorOptions(None, None,
                                        ('float16', 'float32'))):
         self.args = args
         self.name = name
@@ -725,6 +684,9 @@ def common_apply_op_process(config, kernel_name, same_flag=True):
                                     config.name.scalar)
 
     # build
-    with config.options.build:
+    build_config_new = build_config
+    if config.options.build is not None:
+        build_config_new = config.options.build
+    with build_config_new:
         build_module.build(sch, input_tensors + list(outs),
                            "cce", name=kernel_name)
