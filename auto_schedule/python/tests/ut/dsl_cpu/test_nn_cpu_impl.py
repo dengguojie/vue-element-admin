@@ -52,7 +52,7 @@ def test_vmaddrelu_cpu_api(soc):
     c = tvm.nd.array(np.random.uniform(size=n).astype(input3.dtype), ctx)
     d = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
-    func_vmaddrelu(a, b, c ,d)
+    func_vmaddrelu(a, b, c, d)
     # 3.verify the correctness of ouput
     try:
         tvm.testing.assert_allclose(d.asnumpy(), np.maximum(0, a.asnumpy() * c.asnumpy() + b.asnumpy()),

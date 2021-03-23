@@ -18,5 +18,15 @@
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
         "reduce_max",
         "reduce_sum"
+    ],
+    "auto_schedule/python/lang/cce/te_compute/dim_conv.py":[
+        "dsl_cpu/test_dim_conv_cpu_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/compute/inplace.py":[
+        "dsl_cpu/test_inplace_cpu_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/compute/cast.py":[
+        "dsl_cpu/test_cast_cpu_impl.py"
     ]
+
 }
