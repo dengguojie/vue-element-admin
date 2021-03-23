@@ -556,7 +556,7 @@ class VnchwConv(object):
                                 self.dst_image[
                                     index_n * self.chw +
                                     index_cm * self.hw +
-                                    (h_st + ((w_st + 8) // self.dst_width)) * self.w
+                                    (h_st + ((w_st + 8) // self.dst_width)) * self.w +
                                     (w_st + 8) % self.dst_width],
                                 output_ub_fp32
                                 [(index_cm - dst_C_st) % 8 * 2 + 1,
