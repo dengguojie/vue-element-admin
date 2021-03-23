@@ -109,8 +109,8 @@ Status ParseOpToGraphMultinomial(const ge::Operator &op, Graph &graph) {
   ge::Shape shape(dims);
   ge::TensorDesc tensor_desc(shape);
   tensor_desc.SetDataType(DT_INT32);
-  std::vector<int> val(1, sample_size);
-  ge::Tensor tensor(tensor_desc, reinterpret_cast<uint8_t*>(val.data()),sizeof(int));
+  std::vector<int32_t> val(1, sample_size);
+  ge::Tensor tensor(tensor_desc, reinterpret_cast<uint8_t*>(val.data()), sizeof(int32_t));
   auto data_op = op::Data("input1").set_attr_index(0);
   auto const_op = op::Const("data1").set_attr_value(tensor);
   auto muti_op = op::Multinomial("Muti")
