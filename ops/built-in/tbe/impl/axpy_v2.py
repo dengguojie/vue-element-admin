@@ -36,6 +36,9 @@ SIZE_SIXTEEN = 16
 
 
 def generate_param(dtypes, formats):
+    """
+    generate param
+    """
     dtype_x1, dtype_x2, dtype_alpha, dtype_output = dtypes
     format_x1, format_x2, format_alpha, format_output = formats
 
@@ -55,21 +58,28 @@ def generate_param(dtypes, formats):
 
 
 def get_format_same(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_formats):
+    """
+    get format
+    """
     for dtype in dtype_list:
-        dtype_total = dtype_total + [dtype] * len(format_list)
+        dtype_total = dtype_total + [dtype] * len(format_list) * 2
 
-    alpha_dtypes = alpha_dtypes * len(dtype_total)
-    alpha_formats = alpha_formats * len(dtype_total)
-    dtype_total = dtype_total * 2
+    alpha_dtypes2 = []
+    for dtype in alpha_dtypes:
+        alpha_dtypes2 = alpha_dtypes2 + [dtype] * (len(dtype_total) // 2)
+    alpha_formats = alpha_formats * (len(dtype_total) // 2)
     format_list = format_list * len(dtype_list) * 2
 
-    dtypes = [dtype_total, dtype_total, alpha_dtypes, dtype_total]
+    dtypes = [dtype_total, dtype_total, alpha_dtypes2, dtype_total]
     formats = [format_list, format_list, alpha_formats, format_list]
     return dtypes, formats
 
 
 def get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_formats, len_format_list, format_nz,
                    format_nd):
+    """
+    get format
+    """
     for dtype in dtype_list:
         dtype_total = dtype_total + [dtype] * len(format_list)
     format_list = format_list * len_format_list
@@ -92,6 +102,7 @@ def get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_for
 
 
 # op select format
+# pylint: disable=unused-argument
 def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
     """
     select format dynamically
@@ -442,6 +453,7 @@ def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
     return res
 
 
+# pylint: disable=unused-argument
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_OUTPUT, KERNEL_NAME)
 def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
     """
