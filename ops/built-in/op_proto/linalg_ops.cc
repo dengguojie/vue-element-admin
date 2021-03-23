@@ -87,8 +87,7 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
     OP_LOGE(op.GetName().c_str(), "Op Ger two inputs' data type doesn't match.");
     return GRAPH_FAILED;
   }
-  // size_t x_size_num = op.GetInputDesc("x").GetShape().GetDims().size();
-  // size_t vec2_size_num = op.GetInputDesc("vec2").GetShape().GetDims().size();
+
   Shape x_shape = op.GetInputDesc("x").GetShape();
   Shape vec2_shape = op.GetInputDesc("vec2").GetShape();
   if (x_shape.GetDims().size() != 1 || vec2_shape.GetDims().size() != 1) {
@@ -98,7 +97,6 @@ IMPLEMT_INFERFUNC(Ger, GerInfer) {
 
   Shape y_shape;
   Concatenate(x_shape, vec2_shape, y_shape);
-
   TensorDesc y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(Shape(y_shape));
   y_desc.SetDataType(x_type);
