@@ -60,31 +60,6 @@ class MaxpoolGradCustom(MaxpoolGardObject):
         super(MaxpoolGradCustom, self).__init__(grad, argmax, input_x, ksize, strides, padding,
                                                 dilation, ceil_mode)
 
-    def clean_fp16_multi_repeat(self, data_vmul_ub_col2img_fp16, dtype_size):
-        """
-        The fun just for clean ub
-        """
-        v_rep_clear_time = data_vmul_ub_col2img_fp16.shape[0] * dtype_size // ONE_REPEAT
-        v_rep_clear_cycle = v_rep_clear_time // V_MAX_REPEAT
-        v_rep_clear_last = v_rep_clear_time % V_MAX_REPEAT
-        temp_clear = v_rep_clear_last * constant.MASK128
-        v_res_clear_last = data_vmul_ub_col2img_fp16.shape[0] - v_rep_clear_cycle * V_MAX_REPEAT - temp_clear
-        if v_rep_clear_cycle > 0:
-            with self.tik_instance.for_range(0, v_rep_clear_cycle, thread_num=1) as cycle:
-                self.tik_instance.vector_dup(constant.MASK128,
-                                             data_vmul_ub_col2img_fp16[cycle * V_MAX_REPEAT * FP16_MAX],
-                                             0, V_MAX_REPEAT, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
-        if v_rep_clear_last != 0:
-            self.tik_instance.vector_dup(constant.MASK128,
-                                         data_vmul_ub_col2img_fp16[v_rep_clear_cycle * V_MAX_REPEAT * FP16_MAX],
-                                         0, v_rep_clear_last, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
-
-        if v_res_clear_last != 0:
-            v_res_start = v_rep_clear_cycle * V_MAX_REPEAT * FP16_MAX + v_rep_clear_last * FP16_MAX
-            v_res_repeat = v_res_clear_last // 16
-            self.tik_instance.vector_dup(16, data_vmul_ub_col2img_fp16[v_res_start],
-                                         0, v_res_repeat, constant.STRIDE_ONE, 1)
-
     def _data_move_from_out_to_l1buf(self, output_l1, input_data, src_addr, length, dtype_size):
         repeat_time = length * dtype_size // BLOCK_SIZE
         max_repeat_time = 65535

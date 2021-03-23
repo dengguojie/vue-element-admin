@@ -6748,6 +6748,8 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolGradWithArgmaxV1InferShape) {
   auto tensor_desc = op.GetInputDesc("x");
   auto shape = tensor_desc.GetShape();
   output_y.SetShape(shape);
+  DataType data_type = tensor_desc.GetDataType();
+  output_y.SetDataType(data_type);
   (void)op.UpdateOutputDesc("y", output_y);
   return GRAPH_SUCCESS;
 }

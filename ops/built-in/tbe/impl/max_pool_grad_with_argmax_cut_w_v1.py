@@ -177,7 +177,7 @@ class MaxpoolGardObject(MaxpoolGradBase):
                                     in_burstlen.set_as(dyw - loopw * (wo_max - 1))
 
                             self.clean_fp32_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
-
+                            self.clean_fp16_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
                             self.clean_max_ub(data_max_ub, dtype)
 
                             self.tik_instance.data_move(
@@ -468,7 +468,7 @@ class MaxpoolGardObject(MaxpoolGradBase):
                                     in_burstlen.set_as(dyw - loopw * (wo_max - 1))
 
                             self.clean_fp32_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
-
+                            self.clean_fp16_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
                             self.clean_max_ub(data_max_ub, dtype)
 
                             self.tik_instance.data_move(data_max_ub,
@@ -654,6 +654,7 @@ class MaxpoolGardObject(MaxpoolGradBase):
                                 with self.tik_instance.if_scope(loopw == w_cycle - 1):
                                     in_burstlen.set_as(dyw - loopw * (wo_max - 1))
                             self.clean_fp32_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
+                            self.clean_fp16_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
                             self.clean_max_ub(data_max_ub, dtype)
 
                             self.tik_instance.data_move(

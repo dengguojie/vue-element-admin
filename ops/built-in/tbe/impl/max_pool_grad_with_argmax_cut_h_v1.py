@@ -36,7 +36,7 @@ L1_SIZE = CceProductParams().getParams("L1_Buffer")
 
 # pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments
 # pylint: too-many-locals,simplifiable-if-statement,too-many-branches,too-many-statements
-class MaxpoolGradBase():
+class MaxpoolGradBase(object):
     """
     parameter for max_pool_grad_with_pool
     """
@@ -268,10 +268,6 @@ class MaxpoolGradBase():
                     data_vmul_ub_col2img_fp32 = \
                         self.tik_instance.Tensor("float32", (col2img_w * channel * col2img_h + 64,),
                                                  name="data_vmul_ub_col2img_fp32", scope=tik.scope_ubuf)
-                    # 33x13x16+128
-                    data_vmul_ub_col2img_fp16 = \
-                        self.tik_instance.Tensor(dtype, (col2img_w * channel * col2img_h + 128,),
-                                                 name="data_vmul_ub_col2img_fp16", scope=tik.scope_ubuf)
                     # mask define 6x16
                     data_mask_length = ((ho_max * wo_max + 127) // 128) * 128
                     data_mask_ub = self.tik_instance.Tensor("uint16", (data_mask_length,),
@@ -322,68 +318,77 @@ class MaxpoolGradBase():
                             mask_repeat_time = kernelh * kernelw * mask_one_window // 16
                             self._move_mask_to_l1(data_mask_l1, data_mask, mask_idx, mask_repeat_time)
 
-                        with self.tik_instance.for_range(0, kernelh * kernelw) as mask_id:  # 7 x 7
-                            with self.tik_instance.for_range(0, in_nburst) as cycle:  # 12
-                                if true_val is True:
-                                    self.tik_instance.data_move(
-                                        data_mask_ub[cycle * wo_max],
-                                        data_mask_l1[(new_looph + cycle) * dyw + mask_one_window * mask_id],
-                                        constant.SID, 1, wo_max // 16, 0, 0)
-                                else:
-                                    # mask copy gm to ub 9 x 16
-                                    self.tik_instance.data_move(data_mask_ub[cycle * wo_max], data_mask[
-                                        block_num * nc1 * mask_one_window * kernelw * kernelh +
-                                        loopc1 * mask_one_window * kernelw * kernelh + (new_looph + cycle) * dyw +
-                                        mask_one_window * mask_id], constant.SID, 1, wo_max // 16, 0, 0)
+                        with self.tik_instance.new_stmt_scope():
+                            with self.tik_instance.for_range(0, kernelh * kernelw) as mask_id:  # 7 x 7
+                                with self.tik_instance.for_range(0, in_nburst) as cycle:  # 12
+                                    if true_val is True:
+                                        self.tik_instance.data_move(
+                                            data_mask_ub[cycle * wo_max],
+                                            data_mask_l1[(new_looph + cycle) * dyw + mask_one_window * mask_id],
+                                            constant.SID, 1, wo_max // 16, 0, 0)
+                                    else:
+                                        # mask copy gm to ub 9 x 16
+                                        self.tik_instance.data_move(data_mask_ub[cycle * wo_max], data_mask[
+                                            block_num * nc1 * mask_one_window * kernelw * kernelh +
+                                            loopc1 * mask_one_window * kernelw * kernelh + (new_looph + cycle) * dyw +
+                                            mask_one_window * mask_id], constant.SID, 1, wo_max // 16, 0, 0)
 
-                            # 16 x 6 x 16
-                            data_vsel_ub = self.tik_instance.Tensor(dtype, (ho_max * wo_max * channel,),
-                                                                    name="data_vsel_ub", scope=tik.scope_ubuf)
-                            data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (ho_max * wo_max * channel,),
-                                                                         name="data_vsel_ub_fp32",
-                                                                         scope=tik.scope_ubuf)
-                            if v_rep_time > 0:  # 12
-                                with self.tik_instance.for_range(0, v_rep_time, thread_num=1) as cycle:
-                                    # 一次抽取8个mask，用来比较128个数
-                                    cmpmask = self.tik_instance.mov_tensor_to_cmpmask(data_mask_ub[cycle * MASK_MAX])
+                                # 16 x 6 x 16
+                                data_vsel_ub = self.tik_instance.Tensor(dtype, (ho_max * wo_max * channel,),
+                                                                        name="data_vsel_ub", scope=tik.scope_ubuf)
+                                data_vsel_ub_fp32 = self.tik_instance.Tensor("float32", (ho_max * wo_max * channel,),
+                                                                             name="data_vsel_ub_fp32",
+                                                                             scope=tik.scope_ubuf)
+                                if v_rep_time > 0:  # 12
+                                    with self.tik_instance.for_range(0, v_rep_time, thread_num=1) as cycle:
+                                        # extract 8 mask, compare 128 number
+                                        cmpmask = self.tik_instance.mov_tensor_to_cmpmask(
+                                            data_mask_ub[cycle * MASK_MAX])
 
-                                    # 单次计算128个数， 16x6x16->12x128
-                                    self.tik_instance.vsel(constant.MASK128, 0, data_vsel_ub[cycle * FP16_MAX],
-                                                           cmpmask, data_max_ub[cycle * FP16_MAX],
-                                                           data_vsel_ub_zero[0], constant.REPEAT_TIME_ONCE,
-                                                           constant.STRIDE_ONE, constant.STRIDE_ONE,
-                                                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
-                                                           constant.REPEAT_STRIDE_EIGHT,
-                                                           constant.REPEAT_STRIDE_EIGHT)
+                                        # calc 128 number everytime, 16x6x16->12x128
+                                        self.tik_instance.vsel(constant.MASK128, 0, data_vsel_ub[cycle * FP16_MAX],
+                                                               cmpmask, data_max_ub[cycle * FP16_MAX],
+                                                               data_vsel_ub_zero[0], constant.REPEAT_TIME_ONCE,
+                                                               constant.STRIDE_ONE, constant.STRIDE_ONE,
+                                                               constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
+                                                               constant.REPEAT_STRIDE_EIGHT,
+                                                               constant.REPEAT_STRIDE_EIGHT)
 
-                            # fp16 to fp32
-                            if v_rep_cycle_fp32 > 0:  # 0
-                                with self.tik_instance.for_range(0, v_rep_cycle_fp32, thread_num=1) as cycle:
+                                # fp16 to fp32
+                                if v_rep_cycle_fp32 > 0:  # 0
+                                    with self.tik_instance.for_range(0, v_rep_cycle_fp32, thread_num=1) as cycle:
+                                        self.tik_instance.vconv(constant.MASK64, "",
+                                                                data_vsel_ub_fp32[cycle * V_MAX_REPEAT * FP32_MAX],
+                                                                data_vsel_ub[cycle * V_MAX_REPEAT * FP32_MAX],
+                                                                V_MAX_REPEAT, constant.STRIDE_ONE, constant.STRIDE_ONE,
+                                                                constant.REPEAT_STRIDE_EIGHT,
+                                                                constant.REPEAT_STRIDE_FOUR)
+
+                                if v_rep_last_fp32 != 0:  # 24 x 64
                                     self.tik_instance.vconv(constant.MASK64, "",
-                                                            data_vsel_ub_fp32[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                            data_vsel_ub[cycle * V_MAX_REPEAT * FP32_MAX],
-                                                            V_MAX_REPEAT, constant.STRIDE_ONE, constant.STRIDE_ONE,
+                                                            data_vsel_ub_fp32[
+                                                                v_rep_cycle_fp32 * V_MAX_REPEAT * FP32_MAX],
+                                                            data_vsel_ub[v_rep_cycle_fp32 * V_MAX_REPEAT * FP32_MAX],
+                                                            v_rep_last_fp32, constant.STRIDE_ONE, constant.STRIDE_ONE,
                                                             constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_FOUR)
 
-                            if v_rep_last_fp32 != 0:  # 24 x 64
-                                self.tik_instance.vconv(constant.MASK64, "",
-                                                        data_vsel_ub_fp32[v_rep_cycle_fp32 * V_MAX_REPEAT * FP32_MAX],
-                                                        data_vsel_ub[v_rep_cycle_fp32 * V_MAX_REPEAT * FP32_MAX],
-                                                        v_rep_last_fp32, constant.STRIDE_ONE, constant.STRIDE_ONE,
-                                                        constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_FOUR)
+                                # col2img
+                                fetch_filter_w = mask_id % kernelw
+                                fetch_filter_h = mask_id // kernelw
+                                left_top_w = 0
+                                left_top_h = 0
 
-                            # col2img
-                            fetch_filter_w = mask_id % kernelw
-                            fetch_filter_h = mask_id // kernelw
-                            left_top_w = 0
-                            left_top_h = 0
-
-                            self.tik_instance.col2img(data_vmul_ub_col2img_fp32[0],  # 33x13x16 + 64
-                                                      data_vsel_ub_fp32[0],  # 16x6x16
-                                                      (0, 0, 0, 0), col2img_h, col2img_w, fetch_filter_w,
-                                                      fetch_filter_h, left_top_w, left_top_h,
-                                                      stridew, strideh, kernelw, kernelh, self.dilation[1],
-                                                      self.dilation[2], ho_max * wo_max // 16)
+                                self.tik_instance.col2img(data_vmul_ub_col2img_fp32[0],  # 33x13x16 + 64
+                                                          data_vsel_ub_fp32[0],  # 16x6x16
+                                                          (0, 0, 0, 0), col2img_h, col2img_w, fetch_filter_w,
+                                                          fetch_filter_h, left_top_w, left_top_h,
+                                                          stridew, strideh, kernelw, kernelh, self.dilation[1],
+                                                          self.dilation[2], ho_max * wo_max // 16)
+                        # 33x13x16+128
+                        data_vmul_ub_col2img_fp16 = \
+                            self.tik_instance.Tensor(dtype, (col2img_w * channel * col2img_h + 128,),
+                                                     name="data_vmul_ub_col2img_fp16", scope=tik.scope_ubuf)
+                        self.clean_fp16_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
 
                         # convert fp32 to fp16
                         if v_rep_cycle_col > 0:  # 0
@@ -470,8 +475,8 @@ class MaxpoolGradBase():
 
         ho_count = math.ceil(self.blocknum // (batch * channel1))
         if hoverlap == 0:
-            ho_every = dyh // ho_count  # 迭代次数
-            ho_last = dyh - ho_every * (ho_count - 1)  # 剩余次数
+            ho_every = dyh // ho_count
+            ho_last = dyh - ho_every * (ho_count - 1)
         else:
             ho_every = (dyh + ho_count - 1) // ho_count
             if ho_every == 1:
@@ -627,6 +632,7 @@ class MaxpoolGradBase():
                                                                 new_looph) * dyw)
 
                         self.clean_fp32_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
+                        self.clean_fp16_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
                         self.clean_max_ub(data_max_ub, dtype)
                         self.tik_instance.data_move(data_max_ub,
                                                     data_input[in_src_address],
@@ -805,6 +811,7 @@ class MaxpoolGradBase():
                                 in_nburst.set_as(ho_every - looph * (ho_max_every - 1))
 
                         self.clean_fp32_multi_repeat(data_vmul_ub_col2img_fp32, dtype_size * 2)
+                        self.clean_fp16_multi_repeat(data_vmul_ub_col2img_fp16, dtype_size)
                         self.clean_max_ub(data_max_ub, dtype)
                         self.tik_instance.data_move(data_max_ub,
                                                     data_input[in_src_address],
@@ -931,7 +938,7 @@ class MaxpoolGradBase():
                                                         (ho_max_every - 1) - 1) * strideh)
 
                             dst_address.set_as(dst_address + ((block_h * (ho_every - 1) + looph * (ho_max_every - 1) -
-                                                               pad_top + 1) * strideh + 1) * dxw * channel)
+                                                               pad_top + 1) * strideh + pad_top) * dxw * channel)
 
                             with self.tik_instance.if_scope(block_h == 0):  # 1
                                 with self.tik_instance.if_scope(looph == 0):  # 0
@@ -948,38 +955,6 @@ class MaxpoolGradBase():
                                    outputs=data_output, enable_l2=False)
 
         return self.tik_instance
-
-    def clean_gm(self, dtype, num, start_index, data_output):
-        """
-        The fun just for clean gm
-        """
-        clear_cycle = num // 256
-        last_cycle = num % 256 // 16
-        if clear_cycle != 0:
-            data_ub_zero_256 = self.tik_instance.Tensor(dtype, (256,),
-                                                        name="data_ub_zero_256",
-                                                        scope=tik.scope_ubuf)
-            self.clean_fp16_one_repeat(data_ub_zero_256, dtype)
-            with self.tik_instance.for_range(0, clear_cycle) as cycle:
-                self.tik_instance.data_move(data_output[start_index + 256 * cycle],
-                                            data_ub_zero_256[0],
-                                            constant.SID, constant.DEFAULT_NBURST,
-                                            16,
-                                            constant.STRIDE_ZERO,
-                                            constant.STRIDE_ZERO)
-        if last_cycle != 0:
-            data_ub_zero = self.tik_instance.Tensor(dtype, (16,),
-                                                    name="data_ub_zero",
-                                                    scope=tik.scope_ubuf)
-            self.clean_fp16_one_repeat(data_ub_zero, dtype)
-            with self.tik_instance.for_range(0, last_cycle) as cycle:
-                self.tik_instance.data_move(
-                    data_output[start_index + 256 * clear_cycle + 16 * cycle],
-                    data_ub_zero[0],
-                    constant.SID, constant.DEFAULT_NBURST,
-                    1,
-                    constant.STRIDE_ZERO,
-                    constant.STRIDE_ZERO)
 
     def clean_max_ub(self, data_max_ub, dtype):
         """
@@ -1058,4 +1033,28 @@ class MaxpoolGradBase():
         if v_res_time != 0:
             res_repeat_time = v_res_time * dtype_size // constant.BLOCK_SIZE
             self.tik_instance.vector_dup(8, data_vmul_ub_col2img_fp32[v_res_last], 0, res_repeat_time,
+                                         constant.STRIDE_ONE, 1)
+
+    def clean_fp16_multi_repeat(self, data_vmul_ub_col2img_fp16, dtype_size):
+        """
+        The fun just for clean ub
+        """
+        v_rep_clear_time = data_vmul_ub_col2img_fp16.shape[0] * dtype_size // ONE_REPEAT
+        v_rep_clear_cycle = v_rep_clear_time // V_MAX_REPEAT  # 1
+        v_rep_clear_last = v_rep_clear_time % V_MAX_REPEAT  # 250
+        v_res_last = v_rep_clear_cycle * V_MAX_REPEAT * FP16_MAX + v_rep_clear_last * FP16_MAX
+        v_res_time = data_vmul_ub_col2img_fp16.shape[0] - v_res_last
+        mask = 16
+        if v_rep_clear_cycle > 0:
+            with self.tik_instance.for_range(0, v_rep_clear_cycle, thread_num=1) as cycle:
+                self.tik_instance.vector_dup(constant.MASK128,
+                                             data_vmul_ub_col2img_fp16[cycle * V_MAX_REPEAT * FP16_MAX],
+                                             0, V_MAX_REPEAT, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
+        if v_rep_clear_last != 0:
+            self.tik_instance.vector_dup(constant.MASK128,
+                                         data_vmul_ub_col2img_fp16[v_rep_clear_cycle * V_MAX_REPEAT * FP16_MAX],
+                                         0, v_rep_clear_last, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
+        if v_res_time != 0:
+            res_repeat_time = v_res_time * dtype_size // constant.BLOCK_SIZE
+            self.tik_instance.vector_dup(mask, data_vmul_ub_col2img_fp16[v_res_last], 0, res_repeat_time,
                                          constant.STRIDE_ONE, 1)
