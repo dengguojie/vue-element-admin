@@ -99,6 +99,7 @@ set(_onnx_plugins
   reduceL1_plugin.cc
   embedding_bag_plugin.cc
   space_to_depth_plugin.cc
+  max_roi_pool_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include

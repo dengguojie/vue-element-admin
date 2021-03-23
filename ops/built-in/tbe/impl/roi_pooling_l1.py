@@ -32,7 +32,7 @@ class RoiClassL1(roi_pooling_base.RoiClass):
         -------
         None
         """
-        super().__init__()
+        super(RoiClassL1, self).__init__()
         self.l1_byte_size = None
         self.c1_loops = None
         self.c1_num_in_l1 = None
@@ -119,20 +119,29 @@ class RoiClassL1(roi_pooling_base.RoiClass):
 
         self.x = self.tik_instance.Tensor(self.dtype, self.shape, name="x",
                                           scope=tbe_platform.scope_gm)
-
-        self.rois = self.tik_instance.Tensor(self.dtype,
-                                             shape=(self.feature_batch,
-                                                    5, self.roi_max_num),
-                                             name="rois", scope=tbe_platform.scope_gm)
-
-        self.y = self.tik_instance.Tensor(self.dtype,
-                                          shape=(self.feature_batch * \
-                                                 self.roi_max_num,
-                                                 self.shape[roi_pooling_base.INDEX_C1],
-                                                 self.pooled_h, self.pooled_w,
-                                                 self.shape[roi_pooling_base.INDEX_C0]),
-                                          name="y",
-                                          scope=tbe_platform.scope_gm)
+        if self.mode == self.MODE_3D_ROIS:
+            self.rois = self.tik_instance.Tensor(self.dtype,
+                                                 shape=(self.feature_batch,
+                                                        5, self.roi_max_num),
+                                                 name="rois", scope=tbe_platform.scope_gm)
+            self.y = \
+                self.tik_instance.Tensor(self.dtype,
+                                         shape=(self.feature_batch * self.roi_max_num,
+                                                self.shape[roi_pooling_base.INDEX_C1],
+                                                self.pooled_h, self.pooled_w,
+                                                self.shape[roi_pooling_base.INDEX_C0]), name="y",
+                                         scope=tbe_platform.scope_gm)
+        elif self.mode == self.MODE_2D_ROIS:
+            self.rois = self.tik_instance.Tensor(self.dtype,
+                                                 shape=(self.roi_max_num, 5),
+                                                 name="rois", scope=tbe_platform.scope_gm)
+            self.y = \
+                self.tik_instance.Tensor(self.dtype,
+                                         shape=(self.rois_shape[0],
+                                                self.shape[roi_pooling_base.INDEX_C1],
+                                                self.pooled_h, self.pooled_w,
+                                                self.shape[roi_pooling_base.INDEX_C0]), name="y",
+                                         scope=tbe_platform.scope_gm)
 
         if self.feature_batch == 1:
             self.proposal_pooling_multibatch()

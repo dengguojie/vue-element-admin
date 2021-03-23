@@ -69,5 +69,5 @@ TEST_F(ROIPoolingProtoTest, roi_pooling_verify_test_3) {
   op.SetAttr("spatial_scale_w", 0.0625f);
 
   auto status = op.VerifyAllAttr(true);
-  EXPECT_EQ(status, ge::GRAPH_FAILED);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);  // support 2D rois
 }

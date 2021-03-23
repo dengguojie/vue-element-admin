@@ -140,6 +140,10 @@ class RoiClass():
         self.x = None
         self.rois = None
         self.y = None
+        self.MODE_2D_ROIS = "2D_ROIS"
+        self.MODE_3D_ROIS = "3D_ROIS"
+        self.MODE_UNDIFINED = "UNDIFINED_MODE"
+        self.mode = self.MODE_UNDIFINED
 
     def init_param(self, pooled_hw, dicts, spatial_scale_list, kernel_name):
         """
@@ -184,7 +188,12 @@ class RoiClass():
         self.device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
         self.proposal_num_per_tiling = 128
-        self.roi_max_num = self.rois_shape[2]
+        if len(self.rois_shape) == 2:  # [num_rois, 5]
+            self.mode = self.MODE_2D_ROIS
+            self.roi_max_num = ((self.rois_shape[0] + 15) // 16) * 16
+        else:
+            self.mode = self.MODE_3D_ROIS
+            self.roi_max_num = self.rois_shape[2]
 
     def cal_output_offset_with_actualnum(self, batch_id):
         """
@@ -229,6 +238,10 @@ class RoiClass():
                                         self.roi_actual_num[batch_id, 0], \
                                         0, 1, 1, 0, 0, 0)
             self.roi_actual_num_ub.set_as(roi_actual_num_ub_tmp[0])
+        
+        if self.mode == self.MODE_2D_ROIS:
+            self.ouput_proposal_offset.set_as(0)
+            self.roi_actual_num_ub.set_as(self.rois_shape[0])
 
     def cal_output_offset_without_actualnum(self, batch_id):
         """
@@ -246,6 +259,9 @@ class RoiClass():
         self.ouput_proposal_offset.set_as(batch_id*self.roi_max_num)
         self.roi_actual_num_ub = self.tik_instance.Scalar("int32")
         self.roi_actual_num_ub.set_as(self.roi_max_num)
+        if self.mode == self.MODE_2D_ROIS:
+            self.ouput_proposal_offset.set_as(0)
+            self.roi_actual_num_ub.set_as(self.rois_shape[0])
 
     def space_alloc(self, batch_id):
         """
@@ -375,59 +391,111 @@ class RoiClass():
                         shape=(5, self.proposal_num_per_tiling), \
                         name="proposals_ub", scope=tbe_platform.scope_ubuf)
 
-            if self.tiling_num == 1:
-                self.proposal_ub_validnum.set_as(self.roi_max_num - \
-                        tiling_index*self.proposal_num_per_tiling)
-
-                self.tik_instance.data_move(
-                    proposals_ub[0, 0],
-                    self.rois[blockid, 0,
-                              tiling_index*self.proposal_num_per_tiling],
-                    0,
-                    5,
-                    ((self.roi_max_num - tiling_index * \
-                      self.proposal_num_per_tiling) * \
-                      TYPELEN_DICT[self.dtype]) // 32,
-                    (self.tiling_num - 1) * self.proposal_num_per_tiling * \
-                            TYPELEN_DICT[self.dtype] // 32,
-                    (self.proposal_num_per_tiling - self.roi_max_num) * \
-                            TYPELEN_DICT[self.dtype] // 32)
-
-            else:
-                with self.tik_instance.if_scope(
-                        tiling_index == (self.tiling_num - 1)):
+            if self.mode == self.MODE_3D_ROIS:
+                if self.tiling_num == 1:
                     self.proposal_ub_validnum.set_as(self.roi_max_num - \
-                        tiling_index*self.proposal_num_per_tiling)
+                        tiling_index * self.proposal_num_per_tiling)
 
                     self.tik_instance.data_move(
                         proposals_ub[0, 0],
                         self.rois[blockid, 0,
-                                  tiling_index*self.proposal_num_per_tiling],
+                                  tiling_index * self.proposal_num_per_tiling],
                         0,
                         5,
-                        (self.roi_max_num - tiling_index * \
+                        ((self.roi_max_num - tiling_index * \
                             self.proposal_num_per_tiling) * \
+                            TYPELEN_DICT[self.dtype]) // 32,
+                        (self.tiling_num - 1) * self.proposal_num_per_tiling * \
                             TYPELEN_DICT[self.dtype] // 32,
-                        (self.tiling_num - 1)*self.proposal_num_per_tiling * \
-                            TYPELEN_DICT[self.dtype] // 32,
-                        (self.proposal_num_per_tiling - (self.roi_max_num - \
-                            tiling_index * self.proposal_num_per_tiling)) * \
+                        (self.proposal_num_per_tiling - self.roi_max_num) * \
                             TYPELEN_DICT[self.dtype] // 32)
+                else:
+                    with self.tik_instance.if_scope(
+                        tiling_index == (self.tiling_num - 1)): 
+                        self.proposal_ub_validnum.set_as(self.roi_max_num - \
+                            tiling_index * self.proposal_num_per_tiling)
 
-                with self.tik_instance.else_scope():
-                    self.proposal_ub_validnum.set_as(
-                        self.proposal_num_per_tiling)
+                        self.tik_instance.data_move(
+                            proposals_ub[0, 0],
+                            self.rois[blockid, 0,
+                                      tiling_index * self.proposal_num_per_tiling],
+                            0,
+                            5,
+                            (self.roi_max_num - tiling_index * \
+                                self.proposal_num_per_tiling) * \
+                                TYPELEN_DICT[self.dtype] // 32,
+                            (self.tiling_num - 1)*self.proposal_num_per_tiling * \
+                                TYPELEN_DICT[self.dtype] // 32,
+                            (self.proposal_num_per_tiling - (self.roi_max_num - \
+                                tiling_index * self.proposal_num_per_tiling)) * \
+                                TYPELEN_DICT[self.dtype] // 32)
+
+                    with self.tik_instance.else_scope():
+                        self.proposal_ub_validnum.set_as(self.proposal_num_per_tiling)
+                        self.tik_instance.data_move(
+                            proposals_ub[0, 0],
+                            self.rois[blockid, 0, tiling_index * \
+                                self.proposal_num_per_tiling],
+                            0,
+                            5,
+                            self.proposal_num_per_tiling * \
+                                TYPELEN_DICT[self.dtype] // 32,
+                            (self.roi_max_num - self.proposal_num_per_tiling) * \
+                                TYPELEN_DICT[self.dtype] // 32,
+                            0)
+
+            elif self.mode == self.MODE_2D_ROIS:
+                proposals_ub_no_transpose = \
+                    self.tik_instance.Tensor(self.dtype, \
+                    shape=(self.proposal_num_per_tiling, 5), \
+                    name="proposals_ub_no_transpose", scope=tbe_platform.scope_ubuf)
+                upper_range = self.proposal_num_per_tiling
+
+                if self.tiling_num == 1:        
+                    self.proposal_ub_validnum.set_as(self.rois_shape[0])
                     self.tik_instance.data_move(
-                        proposals_ub[0, 0],
-                        self.rois[blockid, 0, tiling_index * \
-                                  self.proposal_num_per_tiling],
+                        proposals_ub_no_transpose[0, 0],
+                        self.rois[0, 0],
                         0,
-                        5,
-                        self.proposal_num_per_tiling * \
-                            TYPELEN_DICT[self.dtype] // 32,
-                        (self.roi_max_num - self.proposal_num_per_tiling)  *\
-                            TYPELEN_DICT[self.dtype] // 32,
+                        1,
+                        5 * (self.roi_max_num * TYPELEN_DICT[self.dtype]) // 32,
+                        0,
                         0)
+                    upper_range = self.rois_shape[0]
+                else:
+                    with self.tik_instance.if_scope(
+                        tiling_index == (self.tiling_num - 1)):
+                        self.proposal_ub_validnum.set_as(self.rois_shape[0] - \
+                            tiling_index * self.proposal_num_per_tiling)
+
+                        self.tik_instance.data_move(
+                            proposals_ub_no_transpose[0, 0],
+                            self.rois[tiling_index * self.proposal_num_per_tiling, 0],
+                            0,
+                            1,
+                            5 * ((self.roi_max_num - tiling_index * \
+                                self.proposal_num_per_tiling) * \
+                                TYPELEN_DICT[self.dtype]) // 32,
+                            0,
+                            0)
+                        upper_range =  self.rois_shape[0] -tiling_index * \
+                            self.proposal_num_per_tiling
+
+                    with self.tik_instance.else_scope():
+                        self.proposal_ub_validnum.set_as(self.proposal_num_per_tiling)
+                        self.tik_instance.data_move(
+                            proposals_ub_no_transpose[0, 0],
+                            self.rois[tiling_index * self.proposal_num_per_tiling, 0],
+                            0,
+                            1,
+                            5 * self.proposal_num_per_tiling * \
+                                TYPELEN_DICT[self.dtype] // 32,
+                            0,
+                            0)
+
+                with self.tik_instance.for_range(0, 5) as i:
+                    with self.tik_instance.for_range(0, upper_range) as j:
+                        proposals_ub[i, j] = proposals_ub_no_transpose[j, i]
 
             self.tik_instance.vec_muls(
                 256 // TYPELEN_DICT[self.dtype], proposals_ub[1, 0],

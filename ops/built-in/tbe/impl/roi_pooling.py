@@ -342,10 +342,12 @@ def _safe_check(dicts, kernel_name):
             " but actually they are [%s]." % error_info['real_dtypes'])
 
     para_check.check_shape(x_shape, min_rank=5, max_rank=5, param_name="input_x")
-    para_check.check_shape(rois_shape, min_rank=3, max_rank=3, param_name="input_rois")
+    para_check.check_shape(rois_shape, min_rank=2, max_rank=3, param_name="input_rois")
     para_check.check_shape(y_shape, min_rank=5, max_rank=5, param_name="output_y")
-
-    roi_max_num = rois_shape[2]
+    if len(rois_shape) == 2: # [num_rois, 5] 
+        roi_max_num = ((rois_shape[0] + 15) // 16) * 16
+    else:
+        roi_max_num = rois_shape[2]
     if roi_max_num > 6000 or roi_max_num % 16 != 0:
         error_info = {'errCode': 'E81013', 'real_rois_shape[2]': str(rois_shape[2])}
         raise RuntimeError(

@@ -450,7 +450,7 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
                 with self.tik_instance.else_scope():
                     self.tik_instance.data_move(
                         self.proposal_fm_data,
-                        self.x[batch_id, (self.c1_looptime-1)*FOUR_C0, 0, 0, 0],
+                        self.x[batch_id, (self.c1_looptime - 1) * FOUR_C0, 0, 0, 0],
                         0, 1, burst_len_l, 0, 0)
 
                 with self.tik_instance.for_range(0, self.proposal_ub_validnum,
@@ -585,17 +585,29 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
                 dtype="int32", shape=(self.feature_batch, DIGIT_8),
                 name="roi_actual_num", scope=tbe_platform.scope_gm)
 
-        self.rois = self.tik_instance.Tensor(
-            self.dtype, shape=(self.feature_batch, 5, self.roi_max_num),
-            name="rois", scope=tbe_platform.scope_gm)
-        self.y = self.tik_instance.Tensor(
-            self.dtype,
-            shape=(self.feature_batch*self.roi_max_num,
-                   self.shape[roi_pooling_base.INDEX_C1],
-                   self.pooled_h, self.pooled_w,
-                   self.shape[roi_pooling_base.INDEX_C0]),
-            name="y", scope=tbe_platform.scope_gm)
-
+        if self.mode == self.MODE_3D_ROIS:
+            self.rois = self.tik_instance.Tensor(self.dtype,
+                                                 shape=(self.feature_batch,
+                                                        5, self.roi_max_num),
+                                                 name="rois", scope=tbe_platform.scope_gm)
+            self.y = \
+                self.tik_instance.Tensor(self.dtype,
+                                         shape=(self.feature_batch * self.roi_max_num,
+                                                self.shape[roi_pooling_base.INDEX_C1],
+                                                self.pooled_h, self.pooled_w,
+                                                self.shape[roi_pooling_base.INDEX_C0]), name="y",
+                                         scope=tbe_platform.scope_gm)
+        elif self.mode == self.MODE_2D_ROIS:
+            self.rois = self.tik_instance.Tensor(self.dtype,
+                                                 shape=(self.roi_max_num, 5),
+                                                 name="rois", scope=tbe_platform.scope_gm)
+            self.y = \
+                self.tik_instance.Tensor(self.dtype,
+                                         shape=(self.rois_shape[0],
+                                                self.shape[roi_pooling_base.INDEX_C1],
+                                                self.pooled_h, self.pooled_w,
+                                                self.shape[roi_pooling_base.INDEX_C0]), name="y",
+                                         scope=tbe_platform.scope_gm)
         if self.dtype == FP16:
             align_factor = DIGIT_8
         else:

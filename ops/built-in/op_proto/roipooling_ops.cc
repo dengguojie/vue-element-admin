@@ -39,20 +39,24 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
   auto xShape = op.get_input_desc_x().GetShape().GetDims();
   auto xDtype = op.get_input_desc_x().GetDataType();
   auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
-  CHECK(roisShape.size() < 3, OP_LOGE(op.GetName().c_str(), "rois shape is smaller than 3!"),
+  CHECK(roisShape.size() < 2, OP_LOGE(op.GetName().c_str(), "rois shape is smaller than 2!"),
       return GRAPH_FAILED);
-  auto roi_max_num = roisShape[2];
 
   int64_t inputN, inputC1, poolH, poolW;
   CHECK(xShape.size() < 2, OP_LOGE(op.GetName().c_str(), "x shape is smaller than 2!"),
-        return GRAPH_FAILED);
+      return GRAPH_FAILED);
   inputN = xShape[0];
   inputC1 = xShape[1];
 
   poolH = pooled_h;
   poolW = pooled_w;
-
-  vector<int64_t> yShape({roi_max_num * inputN, inputC1, poolH, poolW});
+  int64_t output_n = 0;
+  if(roisShape.size() == 3) {
+    output_n = roisShape[2] * inputN;
+  } else if(roisShape.size() == 2) {
+    output_n = roisShape[0];
+  }
+  vector<int64_t> yShape({output_n, inputC1, poolH, poolW});
 
   auto outdesc = op.GetOutputDesc("y");
   outdesc.SetShape(Shape(yShape));
@@ -71,22 +75,33 @@ IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
   }
 
   int64_t roisDimNum = op.get_input_desc_rois().GetShape().GetDimNum();
-  if (roisDimNum != 3) {
-    OpsOneInputShapeErrReport(op.GetName(), "rois shape dim", "The input shape of rois not equal 3!");
-    OP_LOGE(op.GetName().c_str(), "The input shape of rois not equal 3, please check!");
-    return GRAPH_FAILED;
-  }
-  auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
-  auto roi_max_num = roisShape[2];
-  if (roi_max_num > 6000 || roi_max_num % 16 != 0) {
+  int64_t roi_max_num = 0;
+  if (roisDimNum == 3) {
+    auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
+    roi_max_num = roisShape[2];
+    if (roi_max_num > 6000 || roi_max_num % 16 != 0) {
     OpsOneInputShapeErrReport(op.GetName(), "dim 2 of rois shape",
-                              "the dim 2 of rois shape can not be greater than 6000 and can be divided by 16!");
+        "the dim 2 of rois shape can not be greater than 6000 and can be divided by 16!");
     OP_LOGE(op.GetName().c_str(), "The dim 2 of rois shape can not be greater than 6000 and can be divided by 16!");
     return GRAPH_FAILED;
+    }
+  } else if (roisDimNum == 2) {
+    auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
+    roi_max_num = roisShape[0];
+    if (roi_max_num > 6000) {
+      OpsOneInputShapeErrReport(op.GetName(), "dim 2 of rois shape",
+          "the dim 2 of rois shape can not be greater than 6000!");
+      OP_LOGE(op.GetName().c_str(), "The dim 2 of rois shape can not be greater than 6000!");
+    return GRAPH_FAILED;
+    }
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(), "rois shape dim", "The input shape of rois not equal 3 or 2!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of rois not equal 3  or 2, please check!");
+    return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
+  
 
 INFER_FUNC_REG(ROIPooling, ROIPoolingInferShape);
 VERIFY_FUNC_REG(ROIPooling, ROIPoolingVerify);
