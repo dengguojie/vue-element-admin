@@ -241,6 +241,7 @@ REGISTER_CONST2ATTR("Conv3DTransposeD").OriginOpType("Conv3DTranspose").SetConst
 
 REGISTER_CONST2ATTR("DepthwiseConv2DBackpropFilterD")
     .OriginOpType("DepthwiseConv2DBackpropFilter")
+    .NeedCheckSupported(true)
     .SetConstToAttr(1, "filter_size", "SetListInt");
 
 REGISTER_CONST2ATTR("DepthwiseConv2DBackpropInputD")

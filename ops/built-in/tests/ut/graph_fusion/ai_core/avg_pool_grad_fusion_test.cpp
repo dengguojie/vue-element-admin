@@ -27,7 +27,7 @@ protected:
 TEST_F(avg_pool_grad_fusion_test, avg_pool_grad_fusion_test_1) {
     ge::Graph graph("avg_pool_grad_fusion_test_1");
     auto avg_pool_grad_input_data = op::Data("avg_pool_grad_input_data");
-    std::vector<int64_t> dims{32, -1, 28, 22};
+    std::vector<int64_t> dims{32, 28, 28, 22};
     ge::Shape shape(dims);
     ge::TensorDesc tensorDesc(shape, ge::FORMAT_NHWC, ge::DT_FLOAT16);
     avg_pool_grad_input_data.update_input_desc_x(tensorDesc);
@@ -66,8 +66,8 @@ TEST_F(avg_pool_grad_fusion_test, avg_pool_grad_fusion_test_1) {
     std::map<std::string, fe::FusionInfo> bufferFusionInfoMap;
     fe::FusionStatisticRecorder &fusionStatisticInst = fe::FusionStatisticRecorder::Instance();
     fusionStatisticInst.GetAndClearFusionInfo("0_0", graphFusionInfoMap, bufferFusionInfoMap);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolGradFusionPass"].GetMatchTimes(), 0);
-    EXPECT_EQ(graphFusionInfoMap["AvgPoolGradFusionPass"].GetEffectTimes(), 0);
+    EXPECT_EQ(graphFusionInfoMap["AvgPoolGradFusionPass"].GetMatchTimes(), 1);
+    EXPECT_EQ(graphFusionInfoMap["AvgPoolGradFusionPass"].GetEffectTimes(), 1);
 }
 
 TEST_F(avg_pool_grad_fusion_test, avg_pool_grad_fusion_test_2) {

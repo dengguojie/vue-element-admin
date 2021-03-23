@@ -22,6 +22,7 @@ set(_optiling_files
   assign.cc
   avg_pool.cc
   avg_pool_1d.cc
+  avg_pool_grad.cc
   bias.cc
   bias_add.cc
   bn_reduce.cc
