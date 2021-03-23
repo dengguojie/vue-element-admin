@@ -34,6 +34,7 @@ from tbe.tvm.expr import Expr
 W_DELTA = 1
 H_LEN = 400
 W_LEN = 400
+LARGE_M = 10000
 MIN_STEP = 16
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
@@ -174,6 +175,46 @@ class Conv2dBpInputTiling(CubeTilingOp):
                     return False
         return True
 
+    def _modify_tiling_for_large_m(self, tiling_mess):
+        """
+        modify tiling for case with large m when stride > 1, only for kh == 1 and kw == 1
+
+        Parameters
+        ----------
+        tiling_mess: tiling message with tiling and info
+
+        Returns
+        -------
+        tiling_mess
+        """
+        tiling = tiling_mess.get("tiling")
+        ori_m = tiling_mess.get("C_shape")[2] * tiling_mess.get("C_shape")[3]
+        if ((self.stride_h > 1 or self.stride_w > 1) and
+            self.k_h == 1 and self.k_w == 1 and ori_m > LARGE_M and tiling["AL0_matrix"][0] == 1):
+            max_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+            l0a_size = tbe_platform_info.get_soc_spec("L0A_SIZE")
+            l0c_size = tbe_platform_info.get_soc_spec("L0C_SIZE")
+
+            # use max core nums
+            core_num = reduce(lambda x, y: x * y, tiling["block_dim"])
+            if core_num < max_core_num:
+                tiling["block_dim"][2] = max_core_num // (core_num // tiling["block_dim"][2])
+
+            cur_m = ori_m // tiling["block_dim"][2]
+
+            # use max buffer size
+            while (self.check_tiling_ub(tiling_mess) and cur_m > tiling["CUB_matrix"][1] * 16
+                and reduce(lambda x, y: x * y, tiling["AL0_matrix"]) < l0a_size
+                and reduce(lambda x, y: x * y, tiling["CL0_matrix"]) < l0c_size):
+                tiling["CUB_matrix"][1] += 1
+                tiling["AL0_matrix"][0] = tiling["CL0_matrix"][1] = tiling["CUB_matrix"][1]
+                tiling_mess["tiling"] = tiling
+            tiling["CUB_matrix"][1] -= 1
+            tiling["AL0_matrix"][0] = tiling["CL0_matrix"][1] = tiling["CUB_matrix"][1]
+
+        tiling_mess["tiling"] = tiling
+        return tiling_mess
+
     def get_costmodel_tiling(self, shape):
         """
         get tiling using cost model
@@ -201,9 +242,10 @@ class Conv2dBpInputTiling(CubeTilingOp):
             self.tiling_info[pad] = 0
 
         cost_seeds = get_tiling(self.tiling_info)
-        tiling = self._check_and_set_default_tiling(cost_seeds[0])
+        tiling_mess = self._check_and_set_default_tiling(cost_seeds[0])
+        tiling_mess = self._modify_tiling_for_large_m(tiling_mess)
 
-        return tiling
+        return tiling_mess
 
     def get_tiling_range(self, tiling_in, c_shape):
         """
