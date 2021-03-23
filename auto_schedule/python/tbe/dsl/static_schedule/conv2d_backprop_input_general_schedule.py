@@ -312,7 +312,15 @@ def general_schedule(
                     dy_vn = a_l1.op.input_tensors[0]
                     a_zero = dy_vn.op.input_tensors[0]
                     a_filling = dy_vn.op.input_tensors[1]
-                    a_ddr = a_filling.op.input_tensors[0]
+                    if a_filling.op.input_tensors[0].op.tag == "dy_avg":
+                        a_avg = a_filling.op.input_tensors[0]
+                        tensor_map["a_avg"] = a_avg
+                        sch[a_avg].set_scope(tbe_platform_info.scope_ubuf)
+                        a_ddr = a_avg.op.input_tensors[0]
+                        a_ub = sch.cache_read(a_ddr, tbe_platform_info.scope_ubuf, [a_avg])
+                        tensor_map["a_ub"] = a_ub
+                    else:
+                        a_ddr = a_filling.op.input_tensors[0]
                     sch[a_zero].set_scope(tbe_platform_info.scope_ubuf)
                     sch[dy_vn].set_scope(tbe_platform_info.scope_ubuf)
                     sch[a_filling].set_scope(tbe_platform_info.scope_ubuf)
@@ -320,11 +328,32 @@ def general_schedule(
                     tensor_map["dy_vn"] = dy_vn
                     tensor_map["a_zero"] = a_zero
                 else:
-                    a_ddr = a_l1.op.input_tensors[0]  # dEdY in ddr
+                    if a_l1.op.input_tensors[0].op.tag == "dy_avg":
+                        a_avg = a_l1.op.input_tensors[0]
+                        tensor_map["a_avg"] = a_avg
+                        sch[a_avg].set_scope(tbe_platform_info.scope_ubuf)
+                        a_ddr = a_avg.op.input_tensors[0]
+                        a_ub = sch.cache_read(a_ddr, tbe_platform_info.scope_ubuf, [a_avg])
+                        tensor_map["a_ub"] = a_ub
+                    else:
+                        a_ddr = a_l1.op.input_tensors[0]  # dEdY in ddr
                 tensor_map["a_l1"] = a_l1
                 tensor_map["a_ddr"] = a_ddr
                 tensor_attr["stride_h"] = stride_h
                 tensor_attr["stride_w"] = stride_w
+                if "a_avg" in tensor_map:
+                    if a_avg.op.input_tensors[1].op.tag == "mean_matrix_rec":
+                        mean_matrix_rec = a_avg.op.input_tensors[1]
+                        tensor_map["mean_matrix_rec"] = mean_matrix_rec
+                        sch[mean_matrix_rec].set_scope(tbe_platform_info.scope_ubuf)
+                        mean_matrix_fp16 = mean_matrix_rec.op.input_tensors[0]
+                    else:
+                        mean_matrix_fp16 = a_avg.op.input_tensors[1]
+                    tensor_map["mean_matrix_fp16"] = mean_matrix_fp16
+                    sch[mean_matrix_fp16].set_scope(tbe_platform_info.scope_ubuf)
+                    mean_matrix = mean_matrix_fp16.op.input_tensors[0]
+                    tensor_map["mean_matrix"] = mean_matrix
+                    sch[mean_matrix].set_scope(tbe_platform_info.scope_ubuf)
 
             def _fill_a_tensormap():  # pylint: disable=R0915
                 def _fill_a_dilate():
@@ -791,6 +820,11 @@ def general_schedule(
     c_add_bias = tensor_map.get("c_add_bias")
     bias_l0c = tensor_map.get("bias_l0c")
     bias_ub_brc = tensor_map.get("bias_ub_brc")
+    # dynamic avgpoolgrad
+    a_avg = tensor_map.get("a_avg")
+    mean_matrix_fp16 = tensor_map.get("mean_matrix_fp16")
+    mean_matrix = tensor_map.get("mean_matrix")
+    mean_matrix_rec = tensor_map.get("mean_matrix_rec")
 
     output_shape = tensor_attr.get("output_shape")
     padding = tensor_attr.get("padding")
@@ -1616,10 +1650,33 @@ def general_schedule(
                 sch_agent.attach_at(a_filling, a_l1, ub_shape)
             if var_map:
                 sch_agent.same_attach(dy_vn, a_filling)
+                if "a_avg" in tensor_map:
+                    sch_agent.same_attach(a_avg, a_filling)
+                    sch_agent.same_attach(mean_matrix, a_filling)
+                    sch_agent.same_attach(mean_matrix_fp16, a_filling)
+                    sch_agent.same_attach(a_ub, a_filling)
+                    if "mean_matrix_rec" in tensor_map:
+                        sch_agent.same_attach(mean_matrix_rec, a_filling)
             else:
                 sch_agent.same_attach(a_ub, a_filling)
             sch_agent.same_attach(a_zero, a_filling)
-
+        else:
+            filling_w = cube_util.shape_to_list(a_avg.shape)[3]
+            ub_shape = [
+                al1_tiling_g,
+                1,
+                1,
+                1,
+                filling_w + kernel_w - 1,
+                al1_co0
+            ]
+            sch_agent.attach_at(a_avg, a_l1, ub_shape)
+            sch_agent.same_attach(mean_matrix, a_avg)
+            sch_agent.same_attach(mean_matrix_fp16, a_avg)
+            sch_agent.same_attach(a_ub, a_avg)
+            if "mean_matrix_rec" in tensor_map:
+                sch_agent.same_attach(mean_matrix_rec, a_avg)
+                    
     def _attach_bias():
         split_bias_flag = tiling.get("CUB_channel_wise_flag")
         if c_add_bias is not None:
@@ -1646,7 +1703,7 @@ def general_schedule(
                 _bl1_process()
                 _al1_process()
 
-        if stride_h > 1 or stride_w > 1:
+        if stride_h > 1 or stride_w > 1 or "a_avg" in tensor_map:
             _aub_process()
 
     def _double_buffer():
@@ -1664,7 +1721,7 @@ def general_schedule(
                     sch[input_tensor_mem].preload()
 
         if stride_h > 1 or stride_w > 1:
-            if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2:
+            if tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2 and "a_avg" not in tensor_map:
                 sch[a_filling].double_buffer()
                 sch[a_zero].double_buffer()
                 if var_map:
@@ -1698,7 +1755,7 @@ def general_schedule(
                 sch[bias_ub_brc].double_buffer()
                 sch[bias_ub_brc].preload()
 
-        if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == 2:
+        if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == 2 and "a_avg" not in tensor_map:
             sch[c_ub].double_buffer()
             if bias_add_vector is not None:
                 sch[bias_add_vector].double_buffer()
@@ -1878,7 +1935,10 @@ def general_schedule(
             "group_flag": 1,
             "l1_group_flag": 1
         }
-        if stride_h == 1 and stride_w == 1:
+        if "a_avg" in tensor_map and stride_h == 1 and stride_w == 1:
+            c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
+            sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)
+        elif stride_h == 1 and stride_w == 1:
             sch[a_l1].emit_insn(a_l1.op.axis[0], "dma_copy", setfmatrix_dict)
         else:
             afill_n, afill_c, afill_h, afill_w, _ = sch_agent[a_filling].get_active_scopes()
@@ -1905,6 +1965,15 @@ def general_schedule(
             c1_inner, _, _, _ = sch_agent[a_l1].nlast_scopes(4)
             sch_agent[a_l1].emit_insn(c1_inner, "dma_copy", setfmatrix_dict)
         sch[a_col].emit_insn(a_col.op.axis[1], 'im2col_v2', setfmatrix_dict_0)
+        if "a_avg" in tensor_map:
+            sch_agent[a_ub].emit_insn(sch_agent[a_ub].op.axis[0], "dma_copy")
+            sch_agent[a_avg].emit_insn(a_avg.op.axis[0], "vector_auto")
+            sch_agent[mean_matrix_fp16].emit_insn(mean_matrix_fp16.op.axis[0], "vector_conv")
+            sch_agent[mean_matrix].emit_insn(mean_matrix.op.axis[-1], "vector_dup")
+            sch_agent[mean_matrix].reused_by(a_avg)
+            if "mean_matrix_rec" in tensor_map:
+                sch_agent[mean_matrix_rec].emit_insn(mean_matrix_rec.op.axis[0], "vector_rec")
+                sch_agent[mean_matrix].reused_by(mean_matrix_rec)
 
     def _emit_insn():  # pylint: disable=R0914,R0915
         sch_agent[b_l1].emit_insn(sch_agent[b_l1].op.axis[0], "dma_copy")
@@ -2020,18 +2089,28 @@ def general_schedule(
                     al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
                 # for aub_tiling_m is 1, then aub_h must be 1
                 if aub_tiling_m != 1:
+                    dx_hw = _align(dx_h * dx_w, BRC_STANDARD_BLOCK_SIZE)
+                    dim_mod_var = tvm.var("dim_mod_var")
+                    sch.set_var_value(dim_mod_var, tvm.floormod(dx_hw, m_dim))
                     hw_mod_var = tvm.var("hw_mod_var")
-                    sch.set_var_value(hw_mod_var, tvm.floormod(dx_h * dx_w, al1_m))
+                    sch.set_var_value(hw_mod_var, tvm.floormod(_ceil(dx_hw, m_dim), al1_m))
                     aub_h = tvm.select(
                             tvm.all((tvm.floormod(al1_h, stride_h) == 0).asnode(),
                                     (tvm.floormod(al1_m, dx_w) == 0).asnode(),
-                                    (hw_mod_var == 0).asnode()),
+                                    (hw_mod_var == 0).asnode(),
+                                    (dim_mod_var == 0).asnode()),
                             aub_h,
                             aub_h + 1)
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0
                 sch[a_filling].set_storage_bound(a_filling_bound)
                 sch[dy_vn].set_storage_bound(a_filling_bound)
                 sch[a_zero].set_storage_bound(a_filling_bound)
+                if "a_avg" in tensor_map:
+                    aub_bound = aub_co1 * aub_h * dy_w * aub_co0
+                    sch[a_ub].set_storage_bound(aub_bound)
+                    sch[a_avg].set_storage_bound(aub_bound)
+                    sch[mean_matrix].set_storage_bound(aub_bound)
+                    sch[mean_matrix_fp16].set_storage_bound(aub_bound)
 
         al1_bound, al1_h, al1_w = _get_al1_bound()
         sch[a_l1].set_storage_bound(al1_bound)

@@ -648,6 +648,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     kernel_name = para_dict.get("kernel_name", "conv2d_backprop_input_cce")
     group_dict = para_dict.get("group_dict")
     is_fusion_flag = para_dict.get("is_fusion_flag")
+    pooling_mode = para_dict.get("pooling_mode")
 
     def ceil(lhs, rhs):
         return (lhs + rhs - 1) // rhs
@@ -766,8 +767,46 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             offset_x=offset_x,
             group_dict=group_dict,
             var_map=DeconvParam.var_map,
+            pooling_mode=pooling_mode
         )
     else:
+        # dynamic avg_pool_grad: dy_grad /= mean_matrix
+        if pooling_mode is "AVG":
+            mean_matrix_shape = [shape_dy[2], shape_dy[3], shape_dy[4]]
+            mean_matrix = tvm.compute(
+                mean_matrix_shape,
+                lambda h, w, c0: 
+                (tvm.max(
+                    (tvm.min(h * strides[0] - padding[0] + filter_h, dx_h) - tvm.max(h * strides[0] - padding[0], 0)) * 
+                    (tvm.min(w * strides[1] - padding[2] + filter_w, dx_w) - tvm.max(w * strides[1] - padding[2], 0)),
+                    1)).astype("int"),
+                name="mean_matrix",
+                tag="mean_matrix")
+            mean_matrix_fp16 = tvm.compute(
+                mean_matrix_shape,
+                lambda *index: mean_matrix(*index).astype(out_backprop.dtype),
+                name="mean_matrix_fp16",
+                tag="mean_matrix_fp16") 
+            if "Ascend310" in tbe_platform_info.get_soc_spec("SOC_VERSION"):
+                mean_matrix_rec = tvm.compute(
+                    mean_matrix_shape,
+                    lambda *index: 1 / mean_matrix_fp16(*index),
+                    name="mean_matrix_rec",
+                    tag="mean_matrix_rec")
+                dy_avg = tvm.compute(
+                    shape_dy,
+                    lambda n, c1, h, w, c0: 
+                    (out_backprop(n, c1, h, w, c0) * mean_matrix_rec(h, w, c0)).astype(out_backprop.dtype),
+                    name="dy_avg",
+                    tag="dy_avg")
+            else:
+                dy_avg = tvm.compute(
+                    shape_dy,
+                    lambda n, c1, h, w, c0: 
+                    tvm.div(out_backprop(n, c1, h, w, c0), mean_matrix_fp16(h, w, c0)).astype(out_backprop.dtype),
+                    name="dy_avg",
+                    tag="dy_avg")
+            out_backprop = dy_avg
         pattc = DeConvPattern(
             filter_sizes,
             strides=strides,
@@ -779,6 +818,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             kernel_name=kernel_name,
             group_dict=group_dict,
             var_map=DeconvParam.var_map,
+            pooling_mode=pooling_mode
         )
 
     dy_col = pattc.generate_a(out_backprop)

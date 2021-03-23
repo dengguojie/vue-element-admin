@@ -19,6 +19,7 @@ dynamic operator
 from __future__ import absolute_import as _abs
 from .avg_pool_1d import avg_pool_1d
 from .avg_pool import avg_pool
+from .avg_pool_grad import avg_pool_grad
 from .embedding_dense_grad import embedding_dense_grad
 from .one_hot import one_hot
 from .apply_proximal_adagrad_d import apply_proximal_adagrad_d

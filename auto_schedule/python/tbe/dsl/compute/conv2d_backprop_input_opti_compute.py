@@ -69,7 +69,8 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         kernel_name,
         offset_x,
         group_dict,
-        var_map
+        var_map,
+        pooling_mode
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_size
@@ -106,6 +107,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         self._dy_c1_extend = self._group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
         self._groups_ori = self._group_dict.get(cube_util.GroupDictKeys.groups)
         self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self.pooling_mode = pooling_mode
 
     def _get_dilate_tensor(  # pylint:disable=R0913,R0914
         self,

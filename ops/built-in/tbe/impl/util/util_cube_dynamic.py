@@ -591,6 +591,7 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
             self.input_size = paras.get("input_size")
         else:
             self.input_size = {"ori_shape": INPUT_SIZE_DEFAULT_SHAPE}
+        self.pooling_mode = paras.get("pooling_mode")
 
     def _calc_shape(self, dy_shape, filter_shape, input_size, dy_range, input_range, group_para):
         """
@@ -741,7 +742,8 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
         self.calc_pads(input_size_nchw, filter_shape_nchw)
 
         return {"dy_shape_nc1hwc0": dy_shape_nc1hwc0, "filter_shape_frac_z": filter_shape_frac_z,
-                "filter_shape": filter_shape_nchw, "input_size": input_size_nchw, "group_para": group_para, "correct_range_flag": correct_range_flag}
+                "filter_shape": filter_shape_nchw, "input_size": input_size_nchw, "group_para": group_para,
+                "correct_range_flag": correct_range_flag, "pooling_mode": self.pooling_mode}
 
     def config_paras(self):
         """
@@ -754,7 +756,8 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
 
         return {"dy_tensor": dy_tensor, "filter_tensor": filter_tensor, "input_tensor": input_tensor,
                 "filter_shape": param.get("filter_shape"), "input_size": param.get("input_size"),
-                "group_para": param.get("group_para"), "correct_range_flag": param.get("correct_range_flag", False)}
+                "group_para": param.get("group_para"), "correct_range_flag": param.get("correct_range_flag", False),
+                "pooling_mode": param.get("pooling_mode")}
 
 
 class Conv2dTransposeParaProcess(Conv2dBackpropParaProcess):

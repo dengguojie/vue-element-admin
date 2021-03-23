@@ -64,7 +64,8 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         fusion_para,
         kernel_name,
         group_dict,
-        var_map
+        var_map,
+        pooling_mode
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_sizes
@@ -84,6 +85,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         self._cou1_g = self._group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
         self._cin1_g = self._group_dict.get(cube_util.GroupDictKeys.dx_c1_extend)
         self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self.pooling_mode = pooling_mode
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
         """
@@ -243,7 +245,11 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
             dy_filling_l1 = tvm.compute(
                 dy_l1_shape_6d_cut,
                 lambda g_idx, batch_idx, cout1_g_idx, ho_idx, wo_idx, cout0_idx:
-                    dy_filling[batch_idx, cout1_g_idx + g_idx * self._cou1_g, ho_idx, wo_idx, cout0_idx],
+                    dy_filling[batch_idx, 
+                               cout1_g_idx + g_idx * self._cou1_g,
+                               ho_idx - shape_up_modify,
+                               wo_idx - shape_left_modify, 
+                               cout0_idx],
                 name="dy_l1_6d_cut",
                 tag="dy_l1_6d_cut",
                 attrs={"stride_expand": (self._stride_h, self._stride_w)}
