@@ -150,6 +150,12 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1, 304, 64, 8), "dtype"
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
+ut_case.add_precision_case("all", {"params": [{"shape": (120, 10), "dtype": "float16", "format": "ND", "ori_shape": (120, 10), "ori_format": "ND", "param_type": "input"},
+                                              {"shape": (1592, 1482), "dtype": "float16", "format": "ND", "ori_shape": (1592, 1482), "ori_format": "ND", "param_type": "output"},
+                                              [[689, 783], [689, 783]]],
+                                   "calc_expect_func": calc_expect_func,
+                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   })
 # ============ auto gen ["Ascend910"] test cases end =================
 
 if __name__ == '__main__':
