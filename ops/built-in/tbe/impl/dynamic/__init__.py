@@ -21,6 +21,7 @@ from .avg_pool_1d import avg_pool_1d
 from .avg_pool import avg_pool
 from .embedding_dense_grad import embedding_dense_grad
 from .one_hot import one_hot
+from .apply_proximal_adagrad_d import apply_proximal_adagrad_d
 from .arg_max_v2 import arg_max_v2
 from .arg_min import arg_min
 from .arg_max_with_value import arg_max_with_value

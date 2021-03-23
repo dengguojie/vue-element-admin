@@ -920,9 +920,12 @@ IMPLEMT_VERIFIER(ApplyProximalAdagradD, ApplyProximalAdagradDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyProximalAdagradDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyProximalAdagradD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    if (OneInOneOutDynamicInfer(op, "accum", {"accum"})) {
+    return GRAPH_SUCCESS;
+    }
+  }
+  return GRAPH_FAILED;
 }
 
 COMMON_INFER_FUNC_REG(ApplyProximalAdagradD, ApplyProximalAdagradDInferShape);
