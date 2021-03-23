@@ -19,9 +19,11 @@ import functools
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as cce
+import math
 
-A = 16807 # Prime number for LCG calculation
-MAX = 2147483647 # Maximum period of LCG
+A = 509.0 # Prime number for LCG calculation
+MAX = 1023.0 # Maximum period of LCG
+BIAS = math.sqrt(2)
 
 
 def _ceil_div(value, factor):
@@ -133,31 +135,25 @@ class DropoutV2(object):
             self.tik_instance.data_move(self.seed_ub, self.seed_gm[seed_offset], 0, 1,
                                         _ceil_div(self.x_ub_size, self.block_num_seed), 0, 0)
             with self.tik_instance.if_scope(index < self.aicore_use - 1):
-                self._dropout_compute_each_core(move_offset, seed_offset, self.data_num_each_core)
+                self._dropout_compute_each_core(move_offset, self.data_num_each_core)
             with self.tik_instance.else_scope():
-                self._dropout_compute_each_core(move_offset, seed_offset, self.data_num_last_core, True)
+                self._dropout_compute_each_core(move_offset, self.data_num_last_core, True)
 
-            seed_out_offset = 64
-            with self.tik_instance.if_scope(index < all_aicore - 1):
-                seed_offset_ = (index + 1) * self.x_ub_size
-                self.tik_instance.data_move(self.new_seed_gm[seed_offset_ - seed_out_offset], self.seed_ub, 0, 1,
-                                            _ceil_div(self.x_ub_size, self.block_num_seed), 0, 0)
-            with self.tik_instance.else_scope():
-                seed_offset_ = 0
-                self.tik_instance.data_move(self.new_seed_gm[self.x_ub_size * all_aicore - seed_out_offset],
-                                            self.seed_ub, 0, 1,
-                                            _ceil_div(seed_out_offset, self.block_num_seed), 0, 0)
-                self.tik_instance.data_move(self.new_seed_gm[seed_offset_], self.seed_ub[seed_out_offset], 0, 1,
-                                            _ceil_div(self.x_ub_size - seed_out_offset, self.block_num_seed), 0, 0)
+            seed_offset_ = index * self.x_ub_size
+            seed_out_offset = 8
+
+            self.tik_instance.data_move(self.new_seed_gm[seed_offset_], self.seed_ub[seed_out_offset], 0, 1,
+                                        _ceil_div((self.x_ub_size - 8), self.block_num_seed), 0, 0)
+            self.tik_instance.data_move(self.new_seed_gm[((index + 1) * self.x_ub_size) - seed_out_offset],
+                                        self.seed_ub, 0, 1, _ceil_div(8, self.block_num_seed), 0, 0)
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.x_gm, self.seed_gm],
                                    outputs=[self.y_gm, self.mask_gm, self.new_seed_gm])
         return self.tik_instance
 
-    def _dropout_compute_each_core(self, data_offset, seed_offset, process_len, is_last_core=False):
+    def _dropout_compute_each_core(self, data_offset, process_len, is_last_core=False):
         """
         :param data_offset: x_gm offset
-        :param seed_offset: seed_gm_offset
         :param process_len: the length of the data calculated this time. It is aligned to 8 when data in fp32 or aligned
                             to 16 when data in fp16, except for the last core = True
         :param is_last_core: when it is true, should process tail data
@@ -263,18 +259,20 @@ class DropoutV2(object):
         """
         repeat_time = int(repeat_time)
         a = self.tik_instance.Scalar(dtype="float32", init_value=A)
-        m = self.tik_instance.Scalar(dtype="float32", init_value=1.0 / MAX)
+        bias = self.tik_instance.Scalar(dtype="float32", init_value=BIAS)
+        m = self.tik_instance.Scalar(dtype="float32", init_value=A / MAX)
+        self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_ub[offset], m, repeat_time, 8, 8)
         self.tik_instance.vec_muls(mask, self.seed_ub[offset], self.seed_ub[offset], a, repeat_time, 8, 8)
-        self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_ub[offset], m, repeat_time, 8,
-                                   8)
-        self.tik_instance.vec_conv(mask, 'floor', self.seed_tmp_int[offset], self.seed_drop_ub[offset], repeat_time, 8,
-                                   8)
+        self.tik_instance.vec_adds(mask, self.seed_ub[offset], self.seed_ub[offset], bias, repeat_time, 8, 8)
+        self.tik_instance.vec_conv(mask, 'floor', self.seed_tmp_int[offset], self.seed_drop_ub[offset], repeat_time,
+                                   8, 8)
         self.tik_instance.vec_conv(mask, "", self.seed_drop_ub[offset], self.seed_tmp_int[offset], repeat_time, 8,
                                    8)
         self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_drop_ub[offset], MAX, repeat_time, 8,
                                    8)
         self.tik_instance.vec_sub(mask, self.seed_ub[offset], self.seed_ub[offset], self.seed_drop_ub[offset],
                                   repeat_time, 8, 8, 8)
+        self.tik_instance.vec_abs(mask, self.seed_ub[offset], self.seed_ub[offset], repeat_time, 8, 8)
 
     def _gen_mask(self, mask, repeat_time, offset):
         """
