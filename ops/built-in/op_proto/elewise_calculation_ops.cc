@@ -3107,9 +3107,18 @@ IMPLEMT_VERIFIER(FusedMulAddN, FusedMulAddNVerify) {
   return GRAPH_SUCCESS;
 }
 
-COMMON_INFER_FUNC_REG(FusedMulAddN, ELMTWISE_INFER_SHAPEANDTYPE("x1", "y"));
+IMPLEMT_COMMON_INFERFUNC(FusedMulAddNInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter FusedMulAddNInferShape");
+  if (OneInOneOutDynamicInfer(op, "x1", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(FusedMulAddN, FusedMulAddNInferShape);
 VERIFY_FUNC_REG(FusedMulAddN, FusedMulAddNVerify);
 // ----------------FusedMulAddN END------------------
+
 // ----------------FusedMulAddNL2loss-------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(FusedMulAddNL2loss, FusedMulAddNL2lossVerify) {
