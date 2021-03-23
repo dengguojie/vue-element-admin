@@ -198,7 +198,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew.push_back(axisC0);
   }
 
-  if (srcFormat == "ND" && dstFormat == "FRACTAL_NZ") {
+  if ((srcFormat == "ND" || srcFormat == "NHWC" || srcFormat == "NCHW") && (dstFormat == "FRACTAL_NZ")) {
     realSrcFormat = "HNC";
     realDstFormat = "HCNT";
     int64_t axisN;
