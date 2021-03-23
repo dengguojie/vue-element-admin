@@ -72,7 +72,7 @@ def schedule_cce(outs, option=None):
         return None
 
     tiling_case_func = operation.get_tiling_case(pattern)
-    tiling_case_ret = tiling_case_func(outs, option)
+    tiling_case_ret = tiling_case_func(original_outs, option)
 
     schedules = []
     schedule_func = operation.get_schedule(pattern)

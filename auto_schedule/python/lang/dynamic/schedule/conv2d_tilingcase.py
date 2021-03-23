@@ -54,7 +54,6 @@ def calc_conv2d(outs, option=None):
     list of dict, each dict for a tiling case
     """
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    outs = reget_tensor_list(outs)
     var_names = ["batch_n", "fmap_h", "fmap_w"]
     conv_info = ConvParam.tiling_info_dict
     tgt_area = {}

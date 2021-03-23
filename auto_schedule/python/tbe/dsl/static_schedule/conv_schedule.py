@@ -551,7 +551,6 @@ def check_dynamic_quantfuse_doubleout(tensor_list, outs):
             tensor_list = tensor_list[:-2]
             tensor_list.append(outs[1])
             tensor_list.append(outs[2])
-            ConvParam.conv_deq_req_double_out = False
     if ConvParam.conv_reluv2_flag:
         tensor_list = tensor_list[: -2]
         tensor_list.extend(outs[1:])
@@ -1991,23 +1990,6 @@ class CceConvOp:
 
             _l1_double_buffer()
             _l0_double_buffer()
-
-            if self._var_map and (self._fused_flag or "fp16_bias" in tensor_map):
-                ub_tensor_dynamic = self._res_tensor.op.input_tensors[0]
-                reuse_tensors = []
-                if self._fused_flag:
-                    res_ub_dynamic = self._op_graph.output_ops[0]["dst_buffer"]
-                    reuse_tensors.append(res_ub_dynamic)
-                while ub_tensor_dynamic.op.tag != "convolution_C_UB":
-                    if "input_ub" not in ub_tensor_dynamic.op.name:
-                        reuse_tensors.append(ub_tensor_dynamic)
-                    ub_tensor_dynamic = ub_tensor_dynamic.op.input_tensors[0]
-
-                sch[c_ub].reused_by(*reuse_tensors)
-                if double_buffer_flag["CUB_pbuffer"] == 2 or double_buffer_flag["UBG_pbuffer"] == 2:
-                    for tensor in reuse_tensors:
-                        sch[tensor].double_buffer()
-                    sch[c_ub].double_buffer()
 
             if double_buffer_flag["CUB_pbuffer"] == 2:
                 sch[c_ub].double_buffer()
@@ -4153,6 +4135,37 @@ class CceConvOp:
                 sch.set_var_range(self._var_map['batch_n'], batch_range[0],
                                   batch_range[1])
 
+        def _handle_dynamic_scope():
+            """
+            handle dynamic scope and strorage bound
+            """
+            sch[al1].set_storage_bound(get_al1_bound())
+            # disable_allocate
+            sch.disable_allocate(cce.scope_cbuf)
+            sch.disable_allocate(cce.scope_ca)
+            sch.disable_allocate(cce.scope_cb)
+            sch.disable_allocate(cce.scope_cc)
+            ub_storage_bound_size = tiling["CUB_matrix"][0]*tiling["CUB_matrix"][1]*\
+                                    tiling["CUB_matrix"][2]*tiling["CUB_matrix"][3]
+            for lop in self._op_graph.body_ops:
+                if ("convolution" in lop["op"] or "mad" in lop["op"]) and \
+                    ("convolution_C" not in lop["op"] or "convolution_C_UB" not in lop["op"]):
+                    continue
+                if "fmap_l1" in lop["op"]:
+                    continue
+                if "bias_ub" in lop["op"]:
+                    continue
+                sch[lop["dst_buffer"]].set_storage_bound(ub_storage_bound_size)
+
+            # mem_unique
+            sch[al1].mem_unique()
+            sch[fmap_col].mem_unique()
+            if tiling["BL1_shape"] is not None:
+                sch[bl1].mem_unique()
+            sch[bl0].mem_unique()
+            if "int32_bias" not in tensor_map.keys():
+                sch[c_col].mem_unique()
+
         self_init()
         tensor_map = ConvParam.tensor_map
         sch = self._schedule
@@ -5365,25 +5378,7 @@ class CceConvOp:
 
         _conv_pooling_optm()
         if self._var_map:
-            sch[al1].set_storage_bound(get_al1_bound())
-            # disable_allocate
-            sch.disable_allocate(cce.scope_cbuf)
-            sch.disable_allocate(cce.scope_ca)
-            sch.disable_allocate(cce.scope_cb)
-            sch.disable_allocate(cce.scope_cc)
-            sch.disable_allocate(cce.scope_ubuf)
-
-            # mem_unique
-            sch[al1].mem_unique()
-            sch[fmap_col].mem_unique()
-            if tiling["BL1_shape"] is not None:
-                sch[bl1].mem_unique()
-            sch[bl0].mem_unique()
-            if "int32_bias" not in tensor_map.keys():
-                sch[c_col].mem_unique()
-            if not self._fused_flag and "fp16_bias" not in tensor_map.keys():
-                sch[c_ub].mem_unique()
-
+            _handle_dynamic_scope()
             return True
 
         _remove_padded_column()
@@ -5479,19 +5474,6 @@ class CceConvOp:
                 if "output_ub" in lop["op"]:
                     self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_copy')
 
-            def _reform_emit_insn_optimize():
-                """
-                Optimize the pragma for reform tensor.
-                """
-                if hw_in_ub > c_reform_vector.shape[2].value and hw_floor_align >= 16:
-                    abatch, ac1, ahw = axis_list
-                    ahwo, ahwi = self._schedule[c_reform_vector].split(ahw, hw_floor_align)
-                    self._schedule[c_reform_vector].reorder(abatch, ahwo, ac1, coo, ahwi)
-                    self._schedule[c_reform_vector].emit_insn(ac1, "vector_auto")
-                else:
-                    self._schedule[c_reform_vector].reorder(coo, *axis_list)
-                    self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
-
             def _op_in_dma_move_list():
                 """
                 Op in dma_move_list
@@ -5507,22 +5489,42 @@ class CceConvOp:
                     else:
                         self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'dma_copy')
 
+            def _handle_dyn_quant_inline():
+                """
+                dynamic quant stage not used
+                """
+                if self._var_map and self._conv_quant_fused_flag:
+                    if "quant" in lop["op"]:
+                        self._schedule[lop["dst_buffer"]].compute_inline()
+
+            def _handle_reform_emit_insn_optimize():
+                """
+                handle reform stage emit insn
+                """
+                c_reform_vector = lop['dst_buffer']
+                ndim = len(self._schedule[c_reform_vector].op.axis)
+                factor = CUBE_MKN["float16"]["mac"][1]
+                coo, _ = self._schedule[c_reform_vector].split(
+                    self._schedule[c_reform_vector].op.axis[ndim - 1], factor)
+                axis_list = self._schedule[c_reform_vector].op.axis[0:ndim - 1]
+                if "fmap_h" in self._var_map or "fmap_w" in self._var_map:
+                    self._schedule[c_reform_vector].reorder(coo, *axis_list)
+                    self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
+                else:
+                    hw_in_ub = tiling["CUB_matrix"][1]*tiling["CUB_matrix"][3]
+                    hw_floor_align = c_reform_vector.shape[2].value // 16*16
+                    if hw_in_ub > c_reform_vector.shape[2].value and hw_floor_align >= 16:
+                        abatch, ac1, ahw = axis_list
+                        ahwo, ahwi = self._schedule[c_reform_vector].split(ahw, hw_floor_align)
+                        self._schedule[c_reform_vector].reorder(abatch, ahwo, ac1, coo, ahwi)
+                        self._schedule[c_reform_vector].emit_insn(ac1, "vector_auto")
+                    else:
+                        self._schedule[c_reform_vector].reorder(coo, *axis_list)
+                        self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
             if lop["op"] in dma_move_list:
                 _op_in_dma_move_list()
             elif "reform" in lop["op"]:
-                if self._var_map:
-                    c_reform_vector = lop['dst_buffer']
-                    self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
-                else:
-                    c_reform_vector = lop['dst_buffer']
-                    ndim = len(self._schedule[c_reform_vector].op.axis)
-                    factor = CUBE_MKN["float16"]["mac"][1]
-                    coo, _ = self._schedule[c_reform_vector].split(
-                        self._schedule[c_reform_vector].op.axis[ndim - 1], factor)
-                    axis_list = self._schedule[c_reform_vector].op.axis[0:ndim - 1]
-                    hw_in_ub = tiling["CUB_matrix"][1]*tiling["CUB_matrix"][3]
-                    hw_floor_align = c_reform_vector.shape[2].value // 16*16
-                    _reform_emit_insn_optimize()
+                _handle_reform_emit_insn_optimize()
             elif lop["op"] == "cast_i8_ub":
                 round_mode_emit_insn = 'vector_conv_%s' % self._lhisi_dequant_quant_para['quant_round'].value.lower()
                 if get_soc_spec("SOC_VERSION") == "Ascend310" or \
@@ -5536,6 +5538,7 @@ class CceConvOp:
                         ConvParam.tensor_map["quant_input"].op.attrs["c_out"].value % 2 == 1:
                     self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_padding')
             _handle_lx_fusion_lhisi_data_flow()
+            _handle_dyn_quant_inline()
 
         def handle_lx_fusion():
             """
