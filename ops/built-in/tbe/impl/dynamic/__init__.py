@@ -168,6 +168,7 @@ from .sigmoid_cross_entropy_with_logits import sigmoid_cross_entropy_with_logits
 from .abs import abs
 from .approximate_equal import approximate_equal
 from .acos import acos
+from .apply_proximal_gradient_descent import apply_proximal_gradient_descent
 from .apply_centered_rms_prop_d import apply_centered_rms_prop_d
 from .apply_ftrl_d import apply_ftrl_d
 from .apply_ftrl_v2_d import apply_ftrl_v2_d
