@@ -1,40 +1,36 @@
 # # -*- coding:utf-8 -*-
-from sch_test_frame.ut import OpUT
-from sch_test_frame.utils.op_param_util import cartesian_set_format_dtype
-from sch_test_frame.common import precision_info
 import numpy as np
-
-from te import tvm
-import te.lang.cce as tbe
-import te.lang.base as tbe_base
-from te.utils import shape_util
-from te.lang.base.shape_classifier import classify
-from te.lang.base.shape_classifier import Mode
+import tbe
+from sch_test_frame.common import precision_info
+from sch_test_frame.ut import OpUT
+from tbe import tvm
 from tbe.common.register import register_operator
+from tbe.common.utils import shape_util
+from tbe.dsl import classify
 
 
 @register_operator("vadd")
 def dsl_dync_vadd(x, y, z, kernel_name="dsl_dync_vadd"):
     input_dtype = x.get("dtype")
 
-    ins = classify([x, y], Mode.ELEWISE)
+    ins = classify([x, y], "elewise")
     schedules, tensors = [], []
 
     for (x, y) in ins:
-        with tbe_base.compute():
+        with tbe.dsl.compute():
             shape_x, shape_y = shape_util.variable_shape([x, y])
             data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
             data2 = tvm.placeholder(shape_y, name='data2', dtype=input_dtype)
-            res = tbe.vadd(data1, data2)
+            res = tbe.dsl.vadd(data1, data2)
 
             tensors.append((data1, data2, res))
 
         with tvm.target.cce():
-            sch = tbe.auto_schedule(res)
+            sch = tbe.dsl.auto_schedule(res)
         schedules.append(sch)
 
     config = {"name": kernel_name, "tensor_list": tensors}
-    tbe.cce_build_code(schedules, config)
+    tbe.dsl.build(schedules, config)
 
 
 ut_case = OpUT("vadd", "vadd.test_dynamic_vadd_impl", "dsl_dync_vadd")
@@ -54,11 +50,11 @@ case1 = {
         "range": [(5, 5), (1, 10), (16, 16), (16, 16)]
     }],
     "case_name":
-    "test_dync_vadd_1",
+        "test_dync_vadd_1",
     "expect":
-    "success",
+        "success",
     "support_expect":
-    True
+        True
 }
 
 case2 = {
@@ -76,11 +72,11 @@ case2 = {
         "range": [(30000, 30000), [1, 100]]
     }],
     "case_name":
-    "test_dync_vadd_2",
+        "test_dync_vadd_2",
     "expect":
-    "success",
+        "success",
     "support_expect":
-    True
+        True
 }
 
 ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
@@ -91,7 +87,7 @@ def calc_expect_func(x, y, z):
     x_value = x.get("value")
     y_value = y.get("value")
     res = np.add(x_value, y_value)
-    return (res, )
+    return res,
 
 
 ut_case.add_precision_case(
@@ -120,9 +116,9 @@ ut_case.add_precision_case(
             },
         ],
         "calc_expect_func":
-        calc_expect_func,
+            calc_expect_func,
         "precision_standard":
-        precision_info.PrecisionStandard(0.001, 0.001),
+            precision_info.PrecisionStandard(0.001, 0.001),
         "case_name":
-        "test_dync_vadd_prec_01"
+            "test_dync_vadd_prec_01"
     })
