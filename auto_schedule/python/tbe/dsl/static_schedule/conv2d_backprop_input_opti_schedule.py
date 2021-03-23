@@ -1428,15 +1428,15 @@ class Conv2dDxOptiSchedule:
             if ("dedy_w" in var_map and mc_from_tiling >= var_range["dedy_w"][0]
                 or "dedy_w" not in var_map and mc_from_tiling >= DIM_MAP["img_shape"][3]):
                 sch.set_var_value(n_is_hfactor,
-                                tvm.min(tvm.select(
+                                tvm.max(tvm.min(tvm.select(
                                     tvm.all(mc_from_tiling // dedy_w * dedy_w == mc_from_tiling,
                                             check_ifmc_flag,
                                             dedy_h % (mc_from_tiling // dedy_w) == 0),
                                             mc_from_tiling // DIM_MAP["img_shape"][3],
                                             (mc_from_tiling - block_m) // DIM_MAP["img_shape"][3]),
-                                    max_n_is_hfactor))
+                                    max_n_is_hfactor), 1))
             else:
-                sch.set_var_value(n_is_hfactor, (mc_from_tiling - block_m) // DIM_MAP["img_shape"][3])
+                sch.set_var_value(n_is_hfactor, tvm.max((mc_from_tiling - block_m) // DIM_MAP["img_shape"][3], 1))
             sch.set_var_range(n_is_hfactor, 1, mc_from_tiling)
             l0c_tiling_factor[1] = DIM_MAP.get("out_hwdim")[1] * n_is_hfactor * DIM_MAP["dilate_dim"][0]
             undilate_l0c_m = n_is_hfactor * DIM_MAP["img_shape"][3]
