@@ -292,17 +292,9 @@ Status PackFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
       }
     }
   }
-  for (auto inAnchor : fusedNode->GetAllInDataAnchors()) {
-    if (inAnchor != nullptr) {
-      inAnchor->UnlinkAll();
-    }
-  }
-  for (auto outAnchor : fusedNode->GetAllOutDataAnchors()) {
-    if (outAnchor != nullptr) {
-      outAnchor->UnlinkAll();
-    }
-  }
-  FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(fusedNode),
+  ge::NodeUtils::UnlinkAll(*(fusedNode.get()));
+  Status ret = ge::GraphUtils::RemoveJustNode(graph, fusedNode);
+  FUSION_PASS_CHECK(ret != ge::GRAPH_SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove Node [%s] failed", fusedNode->GetName().c_str()),
                     return FAILED);
 
