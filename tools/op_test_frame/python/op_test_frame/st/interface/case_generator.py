@@ -318,22 +318,25 @@ class CaseGenerator:
 
     def _make_attr(self, key, value):
         name = key[len('attr_'):]
-        if 'type' not in value:
-            utils.print_error_log(
-                'The "%s" is missing "type". Please modify it.' % key)
-            raise utils.OpTestGenException(
-                utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
         if not self._is_aicpu_op():
+            if 'type' not in value:
+                utils.print_error_log(
+                    'The "%s" is missing "type". Please modify it.' % key)
+                raise utils.OpTestGenException(
+                    utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
             self._check_op_info_list_valid(
                 [value.get('type')], 
                 list(utils.ATTR_TYPE_MAP.keys()), key + '.type')
-
+        # defaultValue is None
+        data_type = None
+        if value.get('type') is not None:
+            data_type = utils.ATTR_TYPE_MAP.get(value.get('type'))
         default_value = None
-        if 'defaultValue' in value:
+        if 'defaultValue' in value and data_type is not None:
             default_value = self._get_default_attr_value(
                 value.get('type'), value.get('defaultValue'), name)
         return {'name': name,
-                'type': utils.ATTR_TYPE_MAP.get(value.get('type')),
+                'type': data_type,
                 'value': default_value}
 
     def _check_desc_valid(self, base_case, key):
@@ -402,6 +405,14 @@ class CaseGenerator:
                 if op_info_key not in self.op_info:
                     self.op_info[op_info_key] = {}
                 if op_info_key:
+                    input_tensor_type = input_tensor_type.replace(
+                        utils.NEW_LINE_MARK, utils.EMPTY)
+                    input_tensor_type = input_tensor_type.replace(
+                        utils.SPACE, utils.EMPTY)
+                    dtype_list = list(set(input_tensor_type.split(
+                        utils.COMMA)))
+                    self._check_op_info_list_valid(dtype_list, list(
+                        utils.DTYPE_TO_TYPE_MAP.keys()), INI_INPUT + '.dtype')
                     self.op_info[op_info_key]['name'] = name
                     self.op_info[op_info_key][
                         'dtype'] = input_tensor_type.replace(' ', '')
@@ -434,8 +445,13 @@ class CaseGenerator:
                             "Can't parse operator information of %s, "
                             "please check." % attr_name)
                         return
+                    format_default_value = utils.format_dict_to_list(
+                        defaultvalue)
+                    default_value = format_default_value.replace(
+                        utils.NEW_LINE_MARK, utils.EMPTY)
                     self.op_info[attr_name]['defaultValue'] = \
-                        defaultvalue.replace("\"", "")
+                        default_value.replace(
+                            utils.QUOTATION_MARK, utils.EMPTY)
                 else:
                     # example: .REQUIRED_ATTR(attr2, Int)
                     attr_tensor_type = type_attrs.split(')')[0]
@@ -513,10 +529,6 @@ class CaseGenerator:
             op_dtype = []
         else:
             dtype_list = list(set(value['dtype'].split(',')))
-            self._check_op_info_list_valid(
-                dtype_list,
-                list(utils.DTYPE_TO_TYPE_MAP.keys()),
-                INI_INPUT + '.dtype')
             trans_dtype_list = []
             for dtype_key in dtype_list:
                 if dtype_key in utils.DTYPE_TO_TYPE_MAP.keys():

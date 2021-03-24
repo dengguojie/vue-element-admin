@@ -100,6 +100,9 @@ PERFORMACE_MODE = 'performance_mode'
 
 SPACE = ' '
 EMPTY = ''
+NEW_LINE_MARK = "\\"
+QUOTATION_MARK = "\""
+COMMA = ','
 WRITE_FLAGS = os.O_WRONLY | os.O_CREAT
 WRITE_MODES = stat.S_IWUSR | stat.S_IRUSR
 IN_OUT_OP_KEY_MAP = {
@@ -319,6 +322,16 @@ def format_list_str(list_input):
     :return: list string of cpp type
     """
     return str(list_input)[1:-1].replace("[", "{").replace("]", "}")
+
+
+def format_dict_to_list(dict_input):
+    """
+    format list type of head file to python type
+    convert {1, 64} to [1, 64]
+    :param dict_input:
+    :return: list string of python type
+    """
+    return str(dict_input).replace("{", "[").replace("}", "]")
 
 
 def map_to_acl_datatype_enum(dtype_list):

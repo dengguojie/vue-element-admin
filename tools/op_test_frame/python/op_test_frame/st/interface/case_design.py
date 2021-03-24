@@ -521,8 +521,8 @@ class CaseDesign:
         for item in desc_list:
             if count != len(item[key]):
                 utils.print_error_log(
-                    'The number of "%s" is different for "input_desc"'
-                    ' and "output_desc". Please modify it in file %s.'
+                    'The amount of "%s" in "input_desc" and "output_desc" '
+                    'must be the same. Please modify it in file %s.'
                     % (key, self.current_json_path))
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_INVALID_DATA_ERROR)
