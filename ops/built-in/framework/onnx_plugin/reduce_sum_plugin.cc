@@ -43,31 +43,24 @@ Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
 
   auto opDesc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
 
-  // 1.add dynamic input and out
   opDesc->AddDynamicInputDesc("x", 2);
   opDesc->AddDynamicOutputDesc("output", 1);
 
-  // 2.set original_type
   ge::AttrUtils::SetStr(opDesc, "original_type", "ai.onnx::11::ReduceSum");
 
   std::vector<int> v_axes;
-  bool keep_dims = true;
+  bool keep_dims_attr = true;
 
   for (const auto& attr : node->attribute()) {
       if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      // std::copy(attr.ints().begin(), attr.ints().end(), v_axes.begin());
           for (int i = 0; i<attr.ints_size(); i++){
               v_axes.push_back(attr.ints(i));
           }
-      }
-      else if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
-          if (attr.i() != 1) {
-              keep_dims = true;
-          }
+      } else if (attr.name() == "keepdims" && attr.type() == ge::onnx::AttributeProto::INT) {
+          keep_dims_attr = (attr.i() == 1);
       }
   }
 
-  // 3.set attr if needed
   int num = v_axes.size();
   ge::TensorDesc tensorDesc;
   std::vector<int64_t> dims = {num};
@@ -77,7 +70,7 @@ Status parse_params_reduce_sum(const Message* op_src, ge::Operator& op_dest)
 
   ge::Tensor tensor(tensorDesc, reinterpret_cast<uint8_t*>(v_axes.data()), v_axes.size() * sizeof(int));
   op_dest.SetAttr("axes", tensor);
-  op_dest.SetAttr("keep_dims", keep_dims);
+  op_dest.SetAttr("keep_dims", keep_dims_attr);
 
   return SUCCESS;
 }
