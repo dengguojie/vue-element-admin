@@ -3668,6 +3668,8 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
 
     std::vector<std::pair<int64_t, int64_t>> out_range(fm_range);
     out_range[idx_c] = std::make_pair((int64_t)kn, (int64_t)kn);
+    out_range[idx_h] = std::make_pair((int64_t)y_shape[idx_h], (int64_t)y_shape[idx_h]);
+    out_range[idx_w] = std::make_pair((int64_t)y_shape[idx_w], (int64_t)y_shape[idx_w]);
     if (x_shape[idx_h] == -1) {
       vector<int32_t> attr_params_h = {strh, dilh, padt + padb, kh};
       SetConv2dOutShapeRange(pad_str, idx_h, attr_params_h, fm_range, out_range);
