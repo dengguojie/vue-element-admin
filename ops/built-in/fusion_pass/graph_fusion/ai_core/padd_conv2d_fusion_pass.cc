@@ -93,6 +93,15 @@ Status PaddConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   vector<vector<int64_t>> paddings;
   FUSION_PASS_CHECK(!ge::AttrUtils::GetListListInt(padd_node->GetOpDesc(), PADDINGS, paddings),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "Get paddings attr failed."), return NOT_CHANGED);
+  vector<int64_t> conv_pads;
+  (void)ge::AttrUtils::GetListInt(conv2d_node->GetOpDesc(), PADS, conv_pads);
+  if ((conv_pads[0] < 0) ||
+      (conv_pads[1] < 0) ||
+      (conv_pads[2] < 0) ||
+      (conv_pads[3] < 0)) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The number of convPads less than 0, can not fusion.");
+    return NOT_CHANGED;
+  }
 
   if (paddings.size() < DIM_NUM4 || paddings[0].size() < DIRECTION_COUNT || paddings[1].size() < DIRECTION_COUNT ||
       paddings[2].size() < DIRECTION_COUNT || paddings[3].size() < DIRECTION_COUNT) {
@@ -118,32 +127,45 @@ Status PaddConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Padd intput Format is not NCHW or NHWC, can not fusion.");
     return NOT_CHANGED;
   }
+  int64_t conv_pads_t;
+  int64_t conv_pads_b;
+  int64_t conv_pads_l;
+  int64_t conv_pads_r;
+  conv_pads_t = paddings_t + conv_pads[0];
+  conv_pads_b = paddings_b + conv_pads[1];
+  conv_pads_l = paddings_l + conv_pads[2];
+  conv_pads_r = paddings_r + conv_pads[3];
 
-  if (paddings_t < 0 || paddings_t > 255 || paddings_b < 0 || paddings_b > 255 || paddings_l < 0 || paddings_l > 255 ||
-      paddings_r < 0 || paddings_r > 255) {
+  if (paddings_t < 0 || conv_pads_t > 255 || paddings_b < 0 || conv_pads_b > 255 ||
+      paddings_l < 0 || conv_pads_l > 255 || paddings_r < 0 || conv_pads_r > 255) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Paddings value not in [0,255], can not fusion.");
     return NOT_CHANGED;
   }
   ge::NodePtr kernel_node = conv2d_node->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode();
   if (kernel_node->GetOpDesc()->GetOutputDesc(0).GetOriginFormat() == ge::FORMAT_NCHW &&
-      (kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) <= paddings_t ||
-       kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) <= paddings_b)) {
+      (kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) <= conv_pads_t ||
+       kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(2) <= conv_pads_b)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Filter_H more than pad_H, can not fusion.");
     return NOT_CHANGED;
   }
 
   if (kernel_node->GetOpDesc()->GetOutputDesc(0).GetOriginFormat() == ge::FORMAT_HWCN &&
-      (kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(0) <= paddings_t ||
-       kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(0) <= paddings_b)) {
+      (kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(0) <= conv_pads_t ||
+       kernel_node->GetOpDesc()->GetOutputDesc(0).GetShape().GetDim(0) <= conv_pads_b)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "Filter_H more than pad_H, can not fusion.");
     return NOT_CHANGED;
   }
 
   vector<int64_t> pads;
+  vector<int64_t> conv_pads_all;
   pads.push_back(paddings_t);
   pads.push_back(paddings_b);
   pads.push_back(paddings_l);
   pads.push_back(paddings_r);
+  conv_pads_all.push_back(conv_pads_t);
+  conv_pads_all.push_back(conv_pads_b);
+  conv_pads_all.push_back(conv_pads_l);
+  conv_pads_all.push_back(conv_pads_r);
   if (!padd_node->GetOutControlAnchor()->GetPeerInControlAnchors().empty()) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "padd_node has control edge, can not fusion.");
     return NOT_CHANGED;
@@ -256,9 +278,14 @@ Status PaddConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()),
                       return FAILED);
     description.str("");
-    description << "Set paddings to " << node_name << " failed.";
-    FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(node_ptr->GetOpDesc(), PADS, pads),
-                      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
+    description << "Set paddings to " << node_name.c_str() << " failed.";
+    if (node_name == CONV2D) {
+      FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(node_ptr->GetOpDesc(), PADS, conv_pads_all),
+                        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
+    } else {
+      FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(node_ptr->GetOpDesc(), PADS, pads),
+                        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
+    }
     FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(node_ptr->GetOpDesc(), PADDING, "SAME"),
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Set padding attr failed."), return FAILED);
   }
