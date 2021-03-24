@@ -200,17 +200,21 @@ class Conv2dBpInputTiling(CubeTilingOp):
             if core_num < max_core_num:
                 tiling["block_dim"][2] = max_core_num // (core_num // tiling["block_dim"][2])
 
-            cur_m = ori_m // tiling["block_dim"][2]
+            m_per_core = ori_m // tiling["block_dim"][2]
 
             # use max buffer size
-            while (self.check_tiling_ub(tiling_mess) and cur_m > tiling["CUB_matrix"][1] * 16
+            modified_flag = False
+            while (self.check_tiling_ub(tiling_mess) and m_per_core > tiling["CUB_matrix"][1] * 16
                 and reduce(lambda x, y: x * y, tiling["AL0_matrix"]) < l0a_size
-                and reduce(lambda x, y: x * y, tiling["CL0_matrix"]) < l0c_size):
+                and reduce(lambda x, y: x * y, tiling["CL0_matrix"]) < l0c_size
+                and self.check_tiling_match(tiling, tiling_mess.get("C_shape")[3], tiling_mess.get("C_shape")[2])):
                 tiling["CUB_matrix"][1] += 1
                 tiling["AL0_matrix"][0] = tiling["CL0_matrix"][1] = tiling["CUB_matrix"][1]
                 tiling_mess["tiling"] = tiling
-            tiling["CUB_matrix"][1] -= 1
-            tiling["AL0_matrix"][0] = tiling["CL0_matrix"][1] = tiling["CUB_matrix"][1]
+                modified_flag = True
+            if modified_flag:
+                tiling["CUB_matrix"][1] -= 1
+                tiling["AL0_matrix"][0] = tiling["CL0_matrix"][1] = tiling["CUB_matrix"][1]
 
         tiling_mess["tiling"] = tiling
         return tiling_mess

@@ -1202,7 +1202,7 @@ class DepthwiseConv2dBackpropParaProcess(Conv2dBackpropParaProcess):
         groups = filter_shape_nchw[C_DIM]
 
         if filter_shape_nchw[N_DIM] != 1:
-            err_man.raise_err_specific_user("not supported K != 1 in dynamic now!")
+            err_man.raise_err_specific_user(self.op_type, "not supported K != 1 in dynamic now!")
         filter_shape_nchw[N_DIM] =  filter_shape_nchw[N_DIM] * dx_shape_nchw[C_DIM]
         filter_shape_nchw[C_DIM] = 1
         if dy_shape == [-2]:
