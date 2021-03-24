@@ -95,6 +95,7 @@ set(_optiling_files
   unpack.cc
   unsorted_segment_sum.cc
   unsorted_segment.cc
+  in_top_k.cc
   gemm.cc
   bias_add_grad.cc
   reduce_mean.cc

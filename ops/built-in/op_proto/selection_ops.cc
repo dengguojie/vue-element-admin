@@ -2670,23 +2670,45 @@ VERIFY_FUNC_REG(InTopKD, InTopKDVerify);
 
 // ----------------InTopK Op Start-------------------
 bool InTopKCheckInputX1AndX2(const Operator& op) {
-  Shape shape_prediction = op.GetInputDesc("x1").GetShape();
-  Shape shape_target = op.GetInputDesc("x2").GetShape();
-  int prediction_dim = shape_prediction.GetDimNum();
-  if (prediction_dim != DIM_SIZE2) {
-    OP_LOGE(op.GetName().c_str(), "Predictions must be 2-dimensional, but get %d", prediction_dim);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_prediction = op_info->MutableInputDesc("x1");
+  if (input_prediction == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [x1].");
     return false;
   }
-  size_t target_dim = shape_target.GetDimNum();
-  if (target_dim != DIM_SIZE1) {
-    OP_LOGE(op.GetName().c_str(), "Target must be 1-dimensional but get %u", target_dim);
+  auto input_target = op_info->MutableInputDesc("x2");
+  if (input_target == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [x2].");
     return false;
   }
-  if (shape_prediction.GetDim(0) != shape_target.GetDim(0)) {
-    OP_LOGE(op.GetName().c_str(),
-            "First dimension of prediction must match length of targets, but first dimension of prediction get %d",
-            shape_prediction.GetDim(0));
+  auto output_desc = op_info->MutableOutputDesc("y");
+  if (output_desc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [y].");
     return false;
+  }
+  std::vector<int64_t> dims_in_prediction = input_prediction->MutableShape().GetDims();
+  std::vector<int64_t> dims_in_target = input_target->MutableShape().GetDims();
+
+  bool unknown_rank = IsUnknownRankShape(dims_in_prediction);
+  size_t target_dim = input_target->GetShape().GetDimNum();
+  if (target_dim != 1) {
+    OP_LOGE(op.GetName().c_str(), "Target must be 1-dimensional, but get %u", target_dim);
+    return false;
+  }
+  if (!unknown_rank) {
+    size_t prediction_dim = input_prediction->GetShape().GetDimNum();
+    if (prediction_dim != 2) {
+      OP_LOGE(op.GetName().c_str(), "Predictions must be 2-dimensional, but get %u", prediction_dim);
+      return false;
+    }
+    if (input_prediction->GetShape().GetDim(0) != -1 && input_target->GetShape().GetDim(0) != -1) {
+      if (input_prediction->GetShape().GetDim(0) != input_target->GetShape().GetDim(0)) {
+        OP_LOGE(op.GetName().c_str(),
+                "First dimension of prediction must match length of targets, but first dimension of prediction get %d",
+                input_prediction->GetShape().GetDim(0));
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -2699,15 +2721,45 @@ IMPLEMT_VERIFIER(InTopK, InTopKVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(InTopKInferShape) {
-  DataType output_dtype = DT_BOOL;
-  Shape shape_target = op.GetInputDesc("x2").GetShape();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(shape_target);
-  tensordesc_output.SetDataType(output_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_prediction = op_info->MutableInputDesc("x1");
+  if (input_prediction == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [x1].");
     return GRAPH_FAILED;
   }
+  auto input_target = op_info->MutableInputDesc("x2");
+  if (input_target == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [x2].");
+    return GRAPH_FAILED;
+  }
+  auto output_desc = op_info->MutableOutputDesc("y");
+  if (output_desc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get constValue failed of [y].");
+    return GRAPH_FAILED;
+  }
+  std::vector<std::pair<int64_t, int64_t>> input1_range;
+  input_target->GetShapeRange(input1_range);
+  std::vector<int64_t> dims_in_prediction = input_prediction->MutableShape().GetDims();
+  std::vector<int64_t> dims_in_target = input_target->MutableShape().GetDims();
+  bool unknown_rank = IsUnknownRankShape(dims_in_prediction);
+  if (!InTopKCheckInputX1AndX2(op)) {
+    return GRAPH_FAILED;
+  }
+  if (unknown_rank) {
+    output_desc->SetShape(GeShape(UNKNOWN_RANK));
+    output_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+  } else {
+    output_desc->SetShape(GeShape(dims_in_target));
+    output_desc->SetOriginShape(GeShape(dims_in_target));
+    if (input_target->GetShape().GetDim(0) == -1 || input_prediction->GetShape().GetDim(0) == -1 ||
+        input_prediction->GetShape().GetDim(1) == -1) {
+      if (output_desc->SetShapeRange(input1_range) != GRAPH_SUCCESS) {
+        OP_LOGE(op.GetName().c_str(), "SetShapeRange return failed.");
+	return GRAPH_FAILED;
+      }
+    }
+  }
+  output_desc->SetDataType(DT_BOOL);
   return GRAPH_SUCCESS;
 }
 
