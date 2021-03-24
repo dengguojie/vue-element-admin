@@ -338,7 +338,7 @@ class TilingSelection:
             seed_range = _get_tiling_range(gear_repo_shapes, case)
             seed_cnt = next(self.seed_cnt)
             cost_tiling_seeds.append(
-                self.op.assembly_case(cost_seed['tiling'], seed_range, seed_cnt))
+                self.op.assembly_case(case, cost_seed['tiling'], seed_range, seed_cnt))
             cost_tiling_range[seed_cnt] = seed_range
 
         return cost_tiling_seeds,cost_tiling_range
@@ -388,7 +388,7 @@ class TilingSelection:
         cost_tiling_seeds, cost_range = self._calc_gear_costmodel_matmul(cost_cases, gear_repo_shapes)
 
         tiling_cases = [
-            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
+            self.op.assembly_case(v[2], v[1], v[0], k) for k, v in candidates.items()]
         tiling_cases += cost_tiling_seeds
 
         if not tiling_cases:
