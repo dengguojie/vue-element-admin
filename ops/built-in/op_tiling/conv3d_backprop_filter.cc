@@ -51,8 +51,18 @@ bool Conv3DBpFilterTiling(const std::string& op_type, const TeOpParas& op_paras,
     return false;
   }
 
+  if (compile_info.contains("fmap_c1") && op_paras.inputs[0].tensor[0].shape[2] != compile_info["fmap_c1"]) {
+    OP_LOGE(op_type.c_str(), "not support, input x channel should be equal to filter * groups");
+    return false;
+  }
+
+  if (compile_info.contains("dedy_c1") && op_paras.inputs[2].tensor[0].shape[2] != compile_info["dedy_c1"]) {
+    OP_LOGE(op_type.c_str(), "not support, input dedy channel should be equal to filter");
+    return false;
+  }
+
   return Conv3DCommonTiling("Conv3DBackpropFilter", op_paras.inputs[0].tensor[0].shape,
-                            op_paras.inputs[2].tensor[0].shape, 
+                            op_paras.inputs[2].tensor[0].shape,
                             compile_info, run_info);
 }
 

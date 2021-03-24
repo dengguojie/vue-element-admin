@@ -503,7 +503,7 @@ def _check_const_dim(dim_value, dim_name):
                  "the value of the {} dimension of shape must be -1 or >0".format(dim_name))
 
 
-def _check_dynamic_mode(in_shape, w_shape):
+def _check_dynamic_mode(in_shape, w_shape, groups):
     """
     check dynamic mode
     """
@@ -518,7 +518,7 @@ def _check_dynamic_mode(in_shape, w_shape):
         error_manager_cube.raise_err_specific_user(
             "conv3d", "dynamic weight is not supported yet.")
     if in_shape[c_dim] == DYNAMIC_FLAG:
-        error_manager_cube.raise_err_specific_user("conv3d", "dynamic c dimension is not supported yet.")
+        in_shape[c_dim] = w_shape[c_dim] * groups
     for index, dim in enumerate(in_shape):
         if dim != DYNAMIC_FLAG:
             _check_const_dim(dim, fmap_dim_name_lis[index])
@@ -620,7 +620,7 @@ def _check_and_config_para(fmap,
     cin0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][1]
     cout0 = tbe_platform.CUBE_MKN[w_dtype]['mac'][2]
     _check_conv3d_dtype(in_dtype, w_dtype, res_dtype)
-    _check_dynamic_mode(shape_fm, shape_filter)
+    _check_dynamic_mode(shape_fm, shape_filter, groups)
     # calculate fmap_range
     fmap_range = _get_fmap_range(in_range, shape_fm, in_format)
 

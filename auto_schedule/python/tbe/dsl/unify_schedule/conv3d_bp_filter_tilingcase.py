@@ -24,12 +24,14 @@ from tbe.dsl.compute.conv3d_backprop_filter_compute import \
     DynamicConv3dBpFilterParams as DynamicParams
 
 from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.base.operation import add_compile_info
 from te.lang.base.operation_impl import register_tiling_case
 from te.lang.base.operation_impl import get_te_var
 
 from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
 from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
 from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils as utils
+from tbe.dsl.unify_schedule.cube_tilingcase import C0_SIZE
 from tbe.dsl.unify_schedule import Pattern
 
 D_RANGE = 4096
@@ -67,7 +69,8 @@ def calc_conv3dbp_filter(outs, option=None):
     tiling_op = Conv3dBpFilterTiling(info, mode, DynamicParams.var_map)
 
     tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
-
+    add_compile_info("dedy_c1", info.get("a_shape")[2])
+    add_compile_info("fmap_c1", info.get("b_shape")[2])
     return tiling_cases
 
 
@@ -133,7 +136,7 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         self._get_attach_flag(tiling)
         return tiling
 
-    
+
     def get_depth_range(self, tiling, fmap_shape):
         _, d_i, _, h_i, w_i, _ = fmap_shape
         self._set_padding_list(d_i, h_i, w_i)
@@ -141,15 +144,15 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         di_max = d_i
         cur_d_size = d_i
 
-        while self._check_tiling_match(tiling, w_i, h_i, cur_d_size) and \
-            cur_d_size >= max(self.k_d - self.cur_pads[0] - self.cur_pads[1], 1):
+        while cur_d_size >= max(self.k_d - self.cur_pads[0] - self.cur_pads[1], 1) and \
+            self._check_tiling_match(tiling, w_i, h_i, cur_d_size):
             di_min = cur_d_size
             cur_d_size = cur_d_size - DHW_DELTA
 
         # searching up-ward for w_max
         cur_d_size = d_i
-        while self._check_tiling_match(tiling, w_i, h_i, cur_d_size) \
-            and cur_d_size <= D_RANGE:
+        while cur_d_size <= D_RANGE and \
+            self._check_tiling_match(tiling, w_i, h_i, cur_d_size):
             di_max = cur_d_size
             cur_d_size = cur_d_size + DHW_DELTA
 
@@ -200,15 +203,15 @@ class Conv3dBpFilterTiling(CubeTilingOp):
             return [0, 0, 0, 0, 0, 0, 0, 0]
 
         # searching down-ward for w_min
-        while self._check_tiling_match(tiling, cur_w_size, h_i, d_i) and \
-            cur_w_size >= max(self.k_w - self.cur_pads[4] - self.cur_pads[5], 1):
+        while cur_w_size >= max(self.k_w - self.cur_pads[4] - self.cur_pads[5], 1) and \
+            self._check_tiling_match(tiling, cur_w_size, h_i, d_i):
             wi_min = cur_w_size
             cur_w_size = cur_w_size - DHW_DELTA
 
         # searching up-ward for w_max
         cur_w_size = w_i
-        while self._check_tiling_match(tiling, cur_w_size, h_i, d_i) \
-            and cur_w_size <= W_RANGE:
+        while cur_w_size <= W_RANGE and \
+            self._check_tiling_match(tiling, cur_w_size, h_i, d_i):
             wi_max = cur_w_size
             cur_w_size = cur_w_size + DHW_DELTA
 
@@ -218,17 +221,16 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         # searching down-ward for h_min based on w_min
         perf_hi_min = max(hi_min, h_i - H_LEN)
         cur_h_size = h_i
-        while self._check_tiling_match(tiling, perf_wi_min, cur_h_size, d_i) \
-            and cur_h_size >= \
-            max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1):
+        while cur_h_size >= max(self.k_h - self.cur_pads[2] - self.cur_pads[3], 1) and \
+            self._check_tiling_match(tiling, perf_wi_min, cur_h_size, d_i):
             hi_min = cur_h_size
             cur_h_size = cur_h_size - DHW_DELTA
         perf_hi_min = max(hi_min, h_i - H_LEN)
 
         # searching up-ward for h_max based on w_max
         cur_h_size = h_i
-        while self._check_tiling_match(tiling, perf_wi_max, cur_h_size, d_i) \
-                and cur_h_size <= H_RANGE:
+        while cur_h_size <= H_RANGE and \
+            self._check_tiling_match(tiling, perf_wi_max, cur_h_size, d_i):
             hi_max = cur_h_size
             cur_h_size = cur_h_size + DHW_DELTA
         perf_hi_max = min(hi_max, h_i + H_LEN)
@@ -286,10 +288,10 @@ class Conv3dBpFilterTiling(CubeTilingOp):
     def assembly_case(self, tiling, coverage, cnt):
         var_range = OrderedDict()
         if self.dynamic_mode == "dynamic_dhw":
-            x_n_low, x_n_high = int(coverage[0]), int(coverage[1])
-            x_d_low, x_d_high = int(coverage[2]), int(coverage[3])
-            x_h_low, x_h_high = int(coverage[4]), int(coverage[5])
-            x_w_low, x_w_high = int(coverage[6]), int(coverage[7])
+            x_n_low, x_n_high = utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1])
+            x_d_low, x_d_high = utils.trans_to_int(coverage[2]), utils.trans_to_int(coverage[3])
+            x_h_low, x_h_high = utils.trans_to_int(coverage[4]), utils.trans_to_int(coverage[5])
+            x_w_low, x_w_high = utils.trans_to_int(coverage[6]), utils.trans_to_int(coverage[7])
             self._set_padding_list(x_d_low, x_h_low, x_w_low)
             dedy_d_low = self._get_output_d(x_d_low)
             dedy_h_low = self._get_output_h(x_h_low)
@@ -307,7 +309,7 @@ class Conv3dBpFilterTiling(CubeTilingOp):
             var_range['dedy_h'] = (dedy_h_low, dedy_h_high)
             var_range['dedy_w'] = (dedy_w_low, dedy_w_high)
         elif self.dynamic_mode == "dynamic_batch":
-            var_range['batch_n'] = (int(coverage[0]), int(coverage[1]))
+            var_range['batch_n'] = (utils.trans_to_int(coverage[0]), utils.trans_to_int(coverage[1]))
 
         block_dim_multi = tiling["AUB_shape"][0] \
             if tiling["AUB_shape"] else 1
@@ -316,6 +318,35 @@ class Conv3dBpFilterTiling(CubeTilingOp):
 
         return {"key": cnt, "tiling_strategy": tiling,
                 "var_range": var_range, "block_dim": block_dims}
+
+    def get_default_range(self, tgt_area):
+        if not tgt_area[5]:
+            tgt_area[5] = H_RANGE
+
+        if not tgt_area[7]:
+            fmap_w = 1
+            while fmap_w <= W_RANGE:
+                # calc pad_left and pad_right to get dedy_w
+                self._set_padding_list(D_RANGE, H_RANGE, fmap_w)
+                dedy_w = self._get_output_w(fmap_w)
+                if not self._check_l1_limitation(fmap_w, dedy_w):
+                    break
+                fmap_w += 1
+            tgt_area[7] = fmap_w - 1
+
+        return super(Conv3dBpFilterTiling, self).get_default_range(tgt_area)
+
+    def _check_l1_limitation(self, fmap_w, dedy_w):
+        al1_min_byte = C0_SIZE * C0_SIZE * utils.FP16_SIZE
+        if dedy_w % C0_SIZE == 0:
+            bl1_min_byte  = self.k_h_dilation * fmap_w * C0_SIZE * utils.FP16_SIZE
+        else:
+            bl1_min_byte = (self.k_h_dilation + self.stride_h) * fmap_w * C0_SIZE * utils.FP16_SIZE
+        return (al1_min_byte + bl1_min_byte) <= utils.L1BUFFER
+
+    def get_default_tiling(self):
+        tiling = self._get_default_tiling_extend()
+        return tiling["tiling"]
 
     def _get_default_tiling_extend(self):
         tiling = {
@@ -334,7 +365,15 @@ class Conv3dBpFilterTiling(CubeTilingOp):
                 'AL1_pbuffer': 1, 'BL1_pbuffer': 1,
                 'AL0_pbuffer': 1, 'BL0_pbuffer': 1,
                 'CL0_pbuffer': 1, 'CUB_pbuffer': 1,
-                'UBG_pbuffer': 1}
+                'UBG_pbuffer': 1},
+            "dynamic_l0a_attach": "dw_cc",
+            "dynamic_l0b_attach": "dw_cc",
+            "dynamic_al1_attach": "dw_cc",
+            "dynamic_bl1_attach": "dw_cc",
+            "bl1_hw_allin_flag": True,
+            "batch_num_sc": 0,
+            "flag_fmap_load2d": False,
+            "k_atomic_add_len": 0
         }
         tiling_extend = {"tiling": tiling, "A_shape": self.a_info,
                          "B_shape": self.b_info}
@@ -369,7 +408,7 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         get padding list in cur dx shape
         """
 
-        if self.pad_mode == "SAME":
+        if self.pad_mode == "SAME" and cur_d and cur_h and cur_w:
             pad_d = max(utils.align(cur_d, self.stride_d) -
                         self.stride_d + self.k_d_dilation - cur_d, 0)
             pad_front = pad_d // 2
@@ -523,7 +562,7 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         tiling["BL1_shape"][1] = utils.align(
             tiling["BL1_shape"][1] * tiling["BL0_matrix"][1],
             self.k_h * self.k_w) // tiling["BL0_matrix"][1]
-        
+
         # get k axis length in al1
         bl1_bound = self._get_bound_fmap(tiling,
                                          w_o, w_i, local_tiling_flag, h_o)
@@ -550,14 +589,20 @@ class Conv3dBpFilterTiling(CubeTilingOp):
         return int(fmap_l1_size + grad_l1_size) <= utils.L1BUFFER
 
     def _get_output_d(self, d_i):
+        if not d_i:
+            return None
         return (d_i + self.cur_pads[0] + self.cur_pads[1] - self.dilate_d *
                 (self.k_d - 1) - 1) // self.stride_d + 1
 
     def _get_output_h(self, h_i):
+        if not h_i:
+            return None
         return (h_i + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
                 (self.k_h - 1 ) - 1) // self.stride_h + 1
 
     def _get_output_w(self, w_i):
+        if not w_i:
+            return None
         return (w_i + self.cur_pads[4] + self.cur_pads[5] - self.dilate_w *
                 (self.k_w -1) - 1) // self.stride_w + 1
 
@@ -589,7 +634,7 @@ class Conv3dBpFilterTiling(CubeTilingOp):
             tiling["BL1_shape"][1] = utils.align(
                 tiling.get("BL1_shape")[1] * tiling.get("BL0_matrix")[1],
                 self.k_h * self.k_w) // tiling.get("BL0_matrix")[1]
-        
+
         # whether axis K is fully loaded in L0A and L0B
         # excluding axis batch
         full_k_l0a = 1 \
@@ -610,9 +655,9 @@ class Conv3dBpFilterTiling(CubeTilingOp):
             # nparts K1 in L1, nparts M1 in L1
             grads_l1_tiling_nparts = [
                 utils.icd(hw_mad_1,
-                          (block_dim_hw * 
+                          (block_dim_hw *
                            (tiling["AL1_shape"][0] // utils.CUBE_SIZE))),
-                dw_tiling_nparts[1] // tiling["AL1_shape"][1]] 
+                dw_tiling_nparts[1] // tiling["AL1_shape"][1]]
         else:
             grads_l1_tiling_nparts = [1, 1]
 

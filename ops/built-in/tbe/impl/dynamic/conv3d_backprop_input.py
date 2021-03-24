@@ -160,9 +160,6 @@ def _get_ndhwc_shape(ori_format_filters, ori_shape_filters,
         }
         raise RuntimeError(dict_args,
                            error_manager_util.get_error_message(dict_args))
-    if shape_out_backprop[-1] <= -1:
-        error_manager_cube.raise_err_specific(
-            'conv3d_backprop_input', 'The C dim of outbackprop should not be dynamic')
     shape_out_backprop[-1] = shape_filters[-1]
 
     return shape_filters, shape_out_backprop, shape_strides, shape_dilations, range_input, shape_res

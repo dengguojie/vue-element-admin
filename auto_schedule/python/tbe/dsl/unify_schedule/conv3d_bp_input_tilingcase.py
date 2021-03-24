@@ -23,6 +23,7 @@ from functools import reduce
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.compute.conv3d_backprop_input_compute import DynamicConv3dBpInputParams
@@ -65,7 +66,7 @@ def calc_conv3dbp_input(outs, option=None):
     var_names = ("batch_n", "dedx_d", "dedx_h", "dedx_w")
 
     tgt_area = {}
-    
+
     conv_info = DynamicConv3dBpInputParams.tiling_info_dict
 
     shape_dict = {"batch_n": conv_info.get("c_shape")[0],
@@ -81,6 +82,7 @@ def calc_conv3dbp_input(outs, option=None):
 
     tiling_op = Conv3dBpInputTiling(conv_info, DynamicConv3dBpInputParams.var_map)
     tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
+    add_compile_info("dedy_c1", conv_info.get("a_shape")[2])
     return tiling_cases
 
 
@@ -273,13 +275,13 @@ class Conv3dBpInputTiling(CubeTilingOp):
             support_w_min = wi_min
             cur_w_size = fmap_w
             # searching down-ward fo w_min
-            while self._check_tiling_match(tiling, cur_w_size, fmap_h, fmap_d) and cur_w_size > support_w_min:
+            while cur_w_size >= support_w_min and self._check_tiling_match(tiling, cur_w_size, fmap_h, fmap_d):
                 wi_min = cur_w_size
                 cur_w_size -= W_DELTA
             # searching up-ward for w_max
             cur_w_size = fmap_w
             wi_max = fmap_w
-            while self._check_tiling_match(tiling, cur_w_size, fmap_h, fmap_d) and cur_w_size <= TilingUtils.NHW_MAX:
+            while cur_w_size <= TilingUtils.NHW_MAX and self._check_tiling_match(tiling, cur_w_size, fmap_h, fmap_d):
                 wi_max = cur_w_size
                 cur_w_size += W_DELTA
             wi_min = max(wi_min, fmap_w - W_LEN)
@@ -303,7 +305,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             cur_d_size = fmap_d
             di_max = -1
             # searching down-ward fo d_min
-            while self._check_tiling_match(tiling, fmap_w_min, fmap_h, cur_d_size) and cur_d_size > support_d_min:
+            while cur_d_size >= support_d_min and self._check_tiling_match(tiling, fmap_w_min, fmap_h, cur_d_size):
                 di_min = cur_d_size
                 cur_d_size -= D_DELTA
             di_min = max(di_min, fmap_d - D_LEN)
@@ -351,7 +353,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             cub = mc * nc * m0 * n0 * db_flag * bit_num
             """
             if tiling_in.get("AUB_shape"):
-                cub_buffer = (reduce(lambda x, y: x * y, tiling_in["CUB_matrix"][:4]) * 
+                cub_buffer = (reduce(lambda x, y: x * y, tiling_in["CUB_matrix"][:4]) *
                               tiling_in.get("manual_pingpong_buffer").get("CUB_pbuffer") *
                               BIT_RATIO_DICT.get(self.c_type))
                 tiling_k_aub = tiling_in.get("AUB_shape")[0] // (self.b_info[3] * self.b_info[4])
@@ -436,7 +438,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
     def get_default_range(self, tgt_area):
         if not tgt_area[5]:
             tgt_area[5] = H_RANGE
-        
+
         if not tgt_area[7]:
             fmap_w = 1
             while fmap_w <= W_RANGE:
@@ -654,7 +656,7 @@ class Conv3dBpInputTiling(CubeTilingOp):
             kd_tiling_l1_factor = tiling["BL1_shape"][3]
             kd_factor = tiling['BL0_matrix'][5] if tiling.get("BL0_matrix") else self.k_d
             bl1_d = kd_factor * kd_tiling_l1_factor
-            filter_l1_size = (bl1_d * tiling["BL1_shape"][1] * tiling["CL0_matrix"][0] * 
+            filter_l1_size = (bl1_d * tiling["BL1_shape"][1] * tiling["CL0_matrix"][0] *
                               TilingUtils.FP16_N * tiling["BL1_shape"][0] * TilingUtils.FP16_K * self.k_h * self.k_w *
                               tiling["manual_pingpong_buffer"]["BL1_pbuffer"] * TilingUtils.FP16_SIZE)
         return fmap_l1_size + filter_l1_size <= TilingUtils.L1BUFFER

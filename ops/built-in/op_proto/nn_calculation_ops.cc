@@ -5667,6 +5667,26 @@ static void SetConv3dOutShapeDimRange(const std::string& padding,
   }
 }
 
+static bool IsDHWUnknown(const string& op_name, const string& tensor_name, const vector<int64_t>& shape, Format format) {
+  size_t idx_n = DIM_INDEX0;
+  size_t idx_c = DIM_INDEX4;
+  if (format == FORMAT_NCDHW) {
+    idx_c = DIM_INDEX1;
+  }
+
+  vector<int64_t> shape_copy = shape;
+  if (shape.size() > idx_n) {
+    shape_copy[idx_n] = 1;
+  }
+
+  if ((shape.size() > idx_c) && (shape[idx_c] == -1)) {
+    OP_LOGW(op_name.c_str(), "input %s channel is unknown", tensor_name.c_str());
+    shape_copy[idx_c] = 1;
+  }
+
+  return IsUnKnownShape(shape_copy);
+}
+
 static bool SetConv3dOutShapeRange(op::Conv3D& op,
                                    map<std::string, int32_t>& attr_params,
                                    vector<int64_t>& y_shape,
@@ -5692,9 +5712,7 @@ static bool SetConv3dOutShapeRange(op::Conv3D& op,
   // update pads if padding is SAME
   std::string padding;
   // when rank is unknown, or D/H/W is unknown, set SAME padding as -1
-  std::vector<int64_t> x_shape_copy = x_shape;
-  x_shape_copy[0] = 1;
-  if (IsUnknownRankShape(x_shape) || IsUnKnownShape(x_shape_copy)) {
+  if (IsUnknownRankShape(x_shape) || IsDHWUnknown(op.GetName(), "x", x_shape, x_tensor.GetFormat())) {
     std::string pad_str;
     if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
       std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);
@@ -5943,6 +5961,11 @@ IMPLEMT_INFERFUNC(Conv3D, Conv3DInfer) {
   int64_t group = 1;
   if (GRAPH_SUCCESS != op.GetAttr("groups", group)) {
     OP_LOGI(op.GetName().c_str(), "no group setting, use group as 1");
+  }
+
+  if (ic == -1) {
+    // print warn in IsDHWUnknown later
+    ic = kc * group;
   }
 
   if ((!unknown_rank) && (ic != kc * group)) {
@@ -6802,8 +6825,9 @@ static bool InferConv3dBpInputOutShapeRange(ge::Operator& op, GeTensorDescPtr& i
   dy_desc->GetShapeRange(dy_range);
   std::vector<int64_t> pre_op_range;
   ge::AttrUtils::GetListInt(*input_sizes_desc, kPreOpInputShapeRange, pre_op_range);
-  std::vector<std::pair<int64_t, int64_t>> dx_range(kConv3dDimSizeLimit);
+  std::vector<std::pair<int64_t, int64_t>> dx_range;
   if ((pre_op_range.size() == kConv3dDimSizeLimit * 2) && (dy_range.size() == kConv3dDimSizeLimit)) {
+    dx_range.resize(kConv3dDimSizeLimit);
     for (size_t i = 0; i < pre_op_range.size(); i += 2) {
       dx_range[i / 2].first = pre_op_range[i];
       dx_range[i / 2].second = pre_op_range[i + 1];
@@ -6866,11 +6890,10 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   std::vector<int64_t> filter_sizes = op.GetInputDesc("filter").GetShape().GetDims();
   Format filter_format = op.GetInputDesc("filter").GetFormat();
   Format input_format = y_desc->GetFormat();
-  std::vector<int64_t> dy_sizes_copy = dy_sizes;
-  dy_sizes_copy[0] = 1; // make sure batch not -1
   // if only batch is -1, no need to set SAME padding as -1
   // dy_sizes maybe contains -1 in runtime compile, but can't set pads as -1
-  if ((!is_input_size_const) && (IsUnknownRankShape(dy_sizes) || IsUnKnownShape(dy_sizes_copy))) {
+  if ((!is_input_size_const) && (IsUnknownRankShape(dy_sizes) ||
+      IsDHWUnknown(op.GetName(), "out_backprop", dy_sizes, dy_desc->GetFormat()))) {
     std::string pad_str;
     if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
       std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);
@@ -7134,6 +7157,9 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
       std::find(x_sizes.begin(), x_sizes.end(), -2) != x_sizes.end()) {
       is_dynamic = true;
   }
+
+  // to check whether channel is -1 here
+  (void)IsDHWUnknown(op.GetName(), "x", x_sizes, x_format);
 
   if (!is_dynamic) {
     // update pads list by padding[SAME,VALID]
@@ -7624,7 +7650,7 @@ static graphStatus VerifyConv3dTransposeInput(const ge::Operator& op) {
   }
 
   auto x_shape = x_desc.GetShape().GetDims();
-  if (x_shape.size() != kConv3dDimSizeLimit) {
+  if ((!IsUnknownRankShape(x_shape)) &&  x_shape.size() != kConv3dDimSizeLimit) {
     OP_LOGE(op.GetName().c_str(), "x's shape should be 5d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "xShape_size";
@@ -7731,11 +7757,10 @@ IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
   }
 
   // update pads list by padding[SAME,VALID]
-  std::vector<int64_t> x_sizes_copy = x_sizes;
-  x_sizes_copy[0] = 1; // make sure batch not -1
   // if only batch is -1, no need to set SAME padding as -1
   // x_size maybe contains -1 in runtime compile, but can't set pads as -1
-  if ((!is_input_size_const) && (unknown_rank || IsUnKnownShape(x_sizes_copy))) {
+  if ((!is_input_size_const) && (unknown_rank ||
+      IsDHWUnknown(op.GetName(), "x", x_sizes, x_desc->GetFormat()))) {
     std::string pad_str;
     if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
       std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);

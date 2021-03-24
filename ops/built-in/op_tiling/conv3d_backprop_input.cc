@@ -50,8 +50,14 @@ bool Conv3DBackpropInputTiling(const std::string& op_type, const TeOpParas& op_p
     return false;
   }
 
+  if (compile_info.contains("dedy_c1") &&
+      op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape[2] != compile_info["dedy_c1"]) {
+    OP_LOGE(op_type.c_str(), "not support, input dedy channel should be equal to filter");
+    return false;
+  }
+
   return Conv3DCommonTiling("Conv3DBackpropInput", op_paras.outputs[0].tensor[0].shape,
-                            op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape, 
+                            op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape,
                             compile_info, run_info);
 }
 

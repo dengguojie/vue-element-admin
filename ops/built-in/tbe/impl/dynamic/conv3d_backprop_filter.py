@@ -128,7 +128,7 @@ def _check_data_format(data_format, name, format_set=("NDHWC", "NCDHW")):
                            error_manager_util.get_error_message(dict_args))
 
 
-def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_format):
+def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_format, groups):
     def _check_shape_rules():
         _check_dimensions(dedy_shape, "out_backprop", _CONV_BACKPROP_SHAPE_DIM)
         _check_dimensions(x_shape, "x", _CONV_BACKPROP_SHAPE_DIM)
@@ -166,9 +166,13 @@ def _get_ndhwc_shape(fmap, out_backprop, filters, dilations, strides, data_forma
     else:
         raise RuntimeError("range format should be same as input format or ori_format")
     for r in x_range:
-        if r[0] > r[1]:
+        if r[1] and r[0] > r[1]:
             raise RuntimeError("range lower bound should be less equal than upper bound")
 
+    if x_shape_ndhwc[-1] == -1:
+        x_shape_ndhwc[-1] = dedw_shape_ndhwc[-1] * groups
+    if dedy_shape_ndhwc[-1] == -1:
+        dedy_shape_ndhwc[-1] = dedw_shape_ndhwc[0]
     return x_shape_ndhwc, dedy_shape_ndhwc, dedw_shape_ndhwc, x_range, dilations_ndhwc, strides_ndhwc
 
 
@@ -205,10 +209,11 @@ def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
 
     pad_front, pad_back, pad_up, pad_down, pad_left, pad_right = pads
     if -1 in [pad_front, pad_back]:
-        pad_d = util_common.align(fmap_d, stride_d) - stride_d + filter_d_dilation - fmap_d
-        pad_d = tvm.max(pad_d, 0)
-        pad_front = pad_d // 2
-        pad_back = pad_d - pad_front
+        if fmap_d is not None:
+            pad_d = util_common.align(fmap_d, stride_d) - stride_d + filter_d_dilation - fmap_d
+            pad_d = tvm.max(pad_d, 0)
+            pad_front = pad_d // 2
+            pad_back = pad_d - pad_front
     else:
         if pad_front >= filter_d_dilation or pad_back >= filter_d_dilation:
             dict_args = dict()
@@ -220,10 +225,11 @@ def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
     if -1 in [pad_up, pad_down]:
-        pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
-        pad_h = tvm.max(pad_h, 0)
-        pad_up = pad_h // 2
-        pad_down = pad_h - pad_up
+        if fmap_h is not None:
+            pad_h = util_common.align(fmap_h, stride_h) - stride_h + filter_h_dilation - fmap_h
+            pad_h = tvm.max(pad_h, 0)
+            pad_up = pad_h // 2
+            pad_down = pad_h - pad_up
     else:
         if pad_up >= filter_h_dilation or pad_down >= filter_h_dilation:
             dict_args = dict()
@@ -235,10 +241,11 @@ def _get_pads_attr(strides, pads, dilations, data_format, fmap_shape, w_ndhwc):
             raise RuntimeError(dict_args,
                                error_manager_util.get_error_message(dict_args))
     if -1 in [pad_left, pad_right]:
-        pad_w = util_common.align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
-        pad_w = tvm.max(pad_w, 0)
-        pad_left = pad_w // 2
-        pad_right = pad_w - pad_left
+        if fmap_w is not None:
+            pad_w = util_common.align(fmap_w, stride_w) - stride_w + filter_w_dilation - fmap_w
+            pad_w = tvm.max(pad_w, 0)
+            pad_left = pad_w // 2
+            pad_right = pad_w - pad_left
     else:
         if pad_left >= filter_w_dilation or pad_right >= filter_w_dilation:
             dict_args = dict()
@@ -261,14 +268,19 @@ def _gen_input_shape(fmap_ndhwc, dedy_ndhwc, fmap_range):
     dedy_n, dedy_d, dedy_h, dedy_w, dedy_c = dedy_ndhwc
 
     if fmap_n != dedy_n:
-        dict_args = {}
-        dict_args['errCode'] = "E64002"
-        dict_args['param1'] = "Fmap's N"
-        dict_args['param2'] = "Dedy's N"
-        dict_args['actual_value'] = "{}, {}".\
-            format(fmap_n, dedy_n)
-        raise RuntimeError(dict_args,
-                           error_manager_util.get_error_message(dict_args))
+        if fmap_n != -1 and dedy_n == -1:
+            dedy_n = fmap_n
+        elif fmap_n == -1 and dedy_n != -1:
+            fmap_n = dedy_n
+        else:
+            dict_args = {}
+            dict_args['errCode'] = "E64002"
+            dict_args['param1'] = "Fmap's N"
+            dict_args['param2'] = "Dedy's N"
+            dict_args['actual_value'] = "{}, {}".\
+                format(fmap_n, dedy_n)
+            raise RuntimeError(dict_args,
+                               error_manager_util.get_error_message(dict_args))
 
     if fmap_n == -1:
         fmap_n = operation.var("batch_n", bound=fmap_range[0])
@@ -298,6 +310,8 @@ def _gen_input_shape(fmap_ndhwc, dedy_ndhwc, fmap_range):
 
 
 def _get_output(x_in, k_size, pads, stride, dilation):
+    if not x_in:
+        return None
     return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 
@@ -306,7 +320,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     _, weight_d, weight_h, weight_w, _ = kernel
     if -1 in [pad_front, pad_back]:
         out_d_lower = util_common.ceil(fmap_range[1][0], stride[1])
-        out_d_upper = util_common.ceil(fmap_range[1][1], stride[1])
+        out_d_upper = None
+        if fmap_range[1][1]:
+            out_d_upper = util_common.ceil(fmap_range[1][1], stride[1])
     else:
         out_d_lower = _get_output(fmap_range[1][0], weight_d,
                                   (pad_front, pad_back), stride[1], dilation[1])
@@ -321,7 +337,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
 
     if -1 in [pad_up, pad_down]:
         out_h_lower = util_common.ceil(fmap_range[2][0], stride[2])
-        out_h_upper = util_common.ceil(fmap_range[2][1], stride[2])
+        out_h_upper = None
+        if fmap_range[2][1]:
+            out_h_upper = util_common.ceil(fmap_range[2][1], stride[2])
     else:
         out_h_lower = _get_output(fmap_range[2][0], weight_h,
                                   (pad_up, pad_down), stride[2], dilation[2])
@@ -335,7 +353,9 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
                                   (pad_up, pad_down), stride[2], dilation[2])
     if -1 in [pad_left, pad_right]:
         out_w_lower = util_common.ceil(fmap_range[3][0], stride[3])
-        out_w_upper = util_common.ceil(fmap_range[3][1], stride[3])
+        out_w_upper = None
+        if fmap_range[3][1]:
+            out_w_upper = util_common.ceil(fmap_range[3][1], stride[3])
     else:
         out_w_lower = _get_output(fmap_range[3][0], weight_w,
                                   (pad_left, pad_right), stride[3], dilation[3])
@@ -359,6 +379,8 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                                   dedy_dtype, dedw_dtype, kernel_name,
                                   fmap_range, dedy_range):
     def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
+        if not value:
+            return
         if (not isinstance(value, int)) or value > attr_max \
                 or value < attr_min:
             dict_args = {}
@@ -389,8 +411,9 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
     lower_bound_dedy, upper_bound_dedy = zip(*dedy_range)
     para_check.check_shape_rule(lower_bound, _CONV_BACKPROP_SHAPE_DIM,
                                 _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
-    para_check.check_shape_rule(upper_bound, _CONV_BACKPROP_SHAPE_DIM,
-                                _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
+    if None not in upper_bound:
+        para_check.check_shape_rule(upper_bound, _CONV_BACKPROP_SHAPE_DIM,
+                                    _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
     para_check.check_shape_rule(dedw_ndhwc, _CONV_BACKPROP_SHAPE_DIM,
                                 _CONV_BACKPROP_SHAPE_DIM, _DEFAULT_MAX_SHAPE_NUM)
     # stride check
@@ -453,7 +476,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
     _, upper_dedy_d, upper_dedy_h, upper_dedy_w, _ = upper_bound_dedy
 
     # special cases
-    if (lower_dedy_w <= 1 and upper_dedy_w >= 1 and
+    if (lower_dedy_w <= 1 and upper_dedy_w and upper_dedy_w >= 1 and
         upper_dedy_h > 1):
         # Chip Design demand dedy_w must >=2 when dedy_h != 1
         dict_args = {
@@ -471,17 +494,13 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                                upper_bound, dedw_ndhwc)
     upper_pad_front, upper_pad_back, \
     upper_pad_up, upper_pad_down, upper_pad_left, upper_pad_right = upper_pad
-    upper_fmap_d_padding = upper_fmap_d + upper_pad_front + upper_pad_back
-    upper_fmap_w_padding = upper_fmap_w + upper_pad_left + upper_pad_right
-    upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
-
-    lower_pad = _get_pads_attr(strides, pads, dilations, "NDHWC",
-                               lower_bound, dedw_ndhwc)
-    lower_pad_front, lower_pad_back, \
-    lower_pad_up, lower_pad_down, lower_pad_left, lower_pad_right = lower_pad
-    lower_fmap_w_padding = lower_fmap_d + lower_pad_front + lower_pad_back
-    lower_fmap_w_padding = lower_fmap_w + lower_pad_left + lower_pad_right
-    lower_fmap_h_padding = lower_fmap_h + lower_pad_up + lower_pad_down
+    upper_fmap_d_padding, upper_fmap_h_padding, upper_fmap_w_padding = None, None, None
+    if upper_fmap_d:
+        upper_fmap_d_padding = upper_fmap_d + upper_pad_front + upper_pad_back
+    if upper_fmap_w:
+        upper_fmap_w_padding = upper_fmap_w + upper_pad_left + upper_pad_right
+    if upper_fmap_h:
+        upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
 
     # special cases
     fmap_hw_max = _FMAP_HW_MAX
@@ -529,7 +548,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
         _check_equal(dedy_c, filter_n, "Dedy's C", "Filter's N")
         _check_equal(fmap_c, filter_c*groups, "Fmap's C", "Filter's C")
         if -1 not in pads[:2]:
-            if filter_d_dilation > upper_fmap_d_padding:
+            if upper_fmap_d_padding and filter_d_dilation > upper_fmap_d_padding:
                 dict_args = dict()
                 dict_args["errCode"] = "E60013"
                 dict_args["d_of_x"] = str(upper_fmap_d_padding)
@@ -544,7 +563,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                                    error_manager_util.get_error_message(dict_args))
 
         if -1 not in pads[2:4]:
-            if filter_h_dilation > upper_fmap_h_padding:
+            if upper_fmap_h_padding and filter_h_dilation > upper_fmap_h_padding:
                 dict_args = dict()
                 dict_args["errCode"] = "E60014"
                 dict_args["h_of_x"] = str(upper_fmap_h_padding)
@@ -558,7 +577,7 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
                 raise RuntimeError(dict_args,
                                    error_manager_util.get_error_message(dict_args))
         if -1 not in pads[4:]:
-            if filter_w_dilation > upper_fmap_w_padding:
+            if upper_fmap_w_padding and filter_w_dilation > upper_fmap_w_padding:
                 dict_args = dict()
                 dict_args["errCode"] = "E60015"
                 dict_args["w_of_x"] = str(upper_fmap_w_padding)
@@ -577,6 +596,8 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
     _check_axis_dhw()
 
     def _min_l1_byte():
+        if not upper_dedy_w or not upper_fmap_w:
+            return
         # Forth : L1 limitation, Mainly required by chip
         al1_min_byte = _C0_SIZE * _C0_SIZE * 2
         if upper_dedy_w % _C0_SIZE == 0:
@@ -596,19 +617,20 @@ def _check_conv3dbp_filter_params(fmap_shape, dedy_shape, dedw_ndhwc, strides,
 
     _min_l1_byte()
 
-    upper_fmap_size = (upper_fmap_n * util_common.align(upper_fmap_c, _C0_SIZE) *
-                       upper_fmap_d * upper_fmap_h * upper_fmap_w)
+    if upper_fmap_n and upper_fmap_d and upper_fmap_h and upper_fmap_w:
+        upper_fmap_size = (upper_fmap_n * util_common.align(upper_fmap_c, _C0_SIZE) *
+                           upper_fmap_d * upper_fmap_h * upper_fmap_w)
+        _check_64bits_limitation("fmap_size", upper_fmap_size, dtype=fmap_dtype)
+        if -1 not in pads:
+            upper_dedy_size = (upper_fmap_n * util_common.align(filter_n, _C0_SIZE) * \
+                               upper_dedy_d * upper_dedy_h * upper_dedy_w)
+            _check_64bits_limitation("dedy_size", upper_dedy_size,
+                                     dtype=dedy_dtype)
+
     filter_size = (util_common.align(filter_n, _C0_SIZE) *
                    util_common.align(filter_c, _C0_SIZE) *
                    filter_d * filter_h * filter_w)
-    _check_64bits_limitation("fmap_size", upper_fmap_size, dtype=fmap_dtype)
     _check_64bits_limitation("filter_size", filter_size, dtype=dedw_dtype)
-
-    if -1 not in pads:
-        upper_dedy_size = (upper_fmap_n * util_common.align(filter_n, _C0_SIZE) * \
-                           upper_dedy_d * upper_dedy_h * upper_dedy_w)
-        _check_64bits_limitation("dedy_size", upper_dedy_size,
-                                 dtype=dedy_dtype)
 
     fmap_shape = (fmap_n, fmap_d, util_common.ceil(fmap_c, _C0_SIZE), fmap_h, fmap_w, _C0_SIZE)
     dedy_shape = (fmap_n, dedy_d, util_common.ceil(dedy_c, _C0_SIZE), dedy_h, dedy_w, _C0_SIZE)
@@ -623,7 +645,7 @@ def _conv3d_backprop_filter_compute(x, filter_size, out_backprop, y,
     dedy_dtype = out_backprop.get("dtype")
     dedw_dtype = y.get("dtype")
 
-    ndhwc_normalized_result = _get_ndhwc_shape(x, out_backprop, y, dilations, strides, data_format)
+    ndhwc_normalized_result = _get_ndhwc_shape(x, out_backprop, y, dilations, strides, data_format, groups)
     x_ndhwc, dedy_ndhwc, dedw_ndhwc, fmap_range, dilations, strides = ndhwc_normalized_result
     # Do range Correction
     dedy_range, fmap_range = _range_correction(fmap_range, dedw_ndhwc, pads, strides,

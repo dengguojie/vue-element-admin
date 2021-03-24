@@ -23,6 +23,7 @@ from functools import reduce
 
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.compute import util as te_util
@@ -74,6 +75,7 @@ def calc_conv3d(outs, option=None):
             tgt_area[var_name] = (int(shape_dict.get(var_name)), int(shape_dict.get(var_name)))
     tiling_op = Conv3dTiling(conv_info, Conv3DParam.var_map)
     tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)
+    add_compile_info("fmap_c1", conv_info.get("a_shape")[2])
     return tiling_cases
 
 
@@ -518,7 +520,7 @@ class Conv3dTiling(CubeTilingOp):
 
         perf_di_min = 1
         perf_di_max = -1
-        
+
         # If the pad in the d direction is not 0, the k value of al0_matrix can only be a factor of C1HkWk
         if tiling.get('AL0_matrix') and tiling.get('AL0_matrix')[-1] != 1:
             cur_d_size = fmap_d
@@ -526,7 +528,7 @@ class Conv3dTiling(CubeTilingOp):
             while self._check_tiling_match_d(tiling, [cur_d_size, fmap_h, fmap_w]):
                 perf_di_min = cur_d_size
                 cur_d_size = cur_d_size - D_DELTA
-            
+
             # searching up-ward for d_max
             cur_d_size = fmap_d
             while self._check_tiling_match_d(tiling, [cur_d_size, fmap_h, fmap_w]):
