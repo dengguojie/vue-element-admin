@@ -26,6 +26,35 @@
 #include "common/util/error_manager/error_manager.h"
 
 namespace ge {
+const std::map<std::string, DataType> dtype_maps {
+  { "DT_FLOAT" , DT_FLOAT },
+  { "DT_FLOAT16" , DT_FLOAT16 },
+  { "DT_INT8" , DT_INT8 },
+  { "DT_INT16" , DT_INT16 },
+  { "DT_UINT16" , DT_UINT16 },
+  { "DT_UINT8" , DT_UINT8 },
+  { "DT_INT32" , DT_INT32 },
+  { "DT_INT64" , DT_INT64 },
+  { "DT_UINT32" , DT_UINT32 },
+  { "DT_UINT64" , DT_UINT64 },
+  { "DT_BOOL" , DT_BOOL },
+  { "DT_DOUBLE" , DT_DOUBLE },
+  { "DT_STRING" , DT_STRING },
+  { "DT_DUAL_SUB_INT8" , DT_DUAL_SUB_INT8 },
+  { "DT_DUAL_SUB_UINT8" , DT_DUAL_SUB_UINT8 },
+  { "DT_COMPLEX64" , DT_COMPLEX64 },
+  { "DT_COMPLEX128" , DT_COMPLEX128 },
+  { "DT_QINT8" , DT_QINT8 },
+  { "DT_QINT16" , DT_QINT16 },
+  { "DT_QINT32" , DT_QINT32 },
+  { "DT_QUINT8" , DT_QUINT8 },
+  { "DT_QUINT16" , DT_QUINT16 },
+  { "DT_RESOURCE" , DT_RESOURCE },
+  { "DT_STRING_REF" , DT_STRING_REF },
+  { "DT_DUAL" , DT_DUAL },
+  { "DT_UNDEFINED" , DT_UNDEFINED }
+};
+
 graphStatus WithRankAtLeast(const TensorDesc& tensor, int64_t rank, Shape& out, const char* op_name) {
   if (rank > INT32_MAX) {
     OP_LOGE(op_name, "Rank cannot exceed kint32max");
@@ -1068,11 +1097,48 @@ void FillOpDesc(GeTensorDescPtr& op_desc, const GeShape& shape, const DataType& 
   op_desc->SetDataType(data_type);
 }
 
+void FillOpDesc(TensorDesc& op_desc, const Shape& shape,
+                const DataType& data_type) {
+  if (RankKnown(shape)) {
+    auto dims = shape.GetDims();
+    bool shape_fully_defined = true;
+    for (const int64_t& dim : dims) {
+      if (dim == UNKNOWN_DIM) {
+        shape_fully_defined = false;
+        break;
+      }
+    }
+    if (!shape_fully_defined) {
+      std::vector<std::pair<int64_t, int64_t>> shape_range;
+      for (const int64_t& dim : dims) {
+        shape_range.push_back(dim == UNKNOWN_DIM
+                                  ? std::pair<int64_t, int64_t>{1, -1}
+                                  : std::pair<int64_t, int64_t>{dim, dim});
+      }
+      op_desc.SetShapeRange(shape_range);
+    }
+  }
+  op_desc.SetShape(shape);
+  op_desc.SetDataType(data_type);
+}
+
 void InferShapeErrorReport(const std::string& op_name, const std::string& op_type, const std::string& value,
                             const std::string& reason) {
   std::string report_error_code = "E14001";
   ErrorManager::GetInstance().ATCReportErrMessage(report_error_code, {"opname", "optype", "value", "reason"},
                                                   {op_name, op_type, value, reason});
+}
+
+std::string DTypeStr(DataType dtype) {
+  auto iter = std::find_if(dtype_maps.begin(), dtype_maps.end(),
+      [dtype](const std::map<std::string, DataType>::value_type &kv) {
+        return (kv.second == dtype);
+      } );
+  if (iter != dtype_maps.end()) {
+    return iter->first;
+  } else {
+    return std::string("DT_UNDEFINED");
+  }
 }
 
 }  // namespace ge

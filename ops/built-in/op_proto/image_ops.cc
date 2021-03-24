@@ -1162,6 +1162,147 @@ IMPLEMT_INFERFUNC(DecodePng, DecodePngInfer) {
 
 INFER_FUNC_REG(DecodePng, DecodePngInfer);
 
+IMPLEMT_INFERFUNC(DecodeBmp, DecodeBmpInfer) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("get op desc failed, op desc is nullptr."));
+    return GRAPH_FAILED;
+  }
+  TensorDesc contents = op.GetInputDesc(0);
+  TensorDesc image = op.GetOutputDesc(0);
+  DataType input_data = contents.GetDataType();
+  std::string err_msg;
+  if (input_data != DT_STRING) {
+    std::string input_dt = DTypeStr(input_data);
+    err_msg = ConcatString(
+        "input[contents] data type must be string, data type[", input_dt, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  int64_t channels;
+  if (op.GetAttr("channels", channels) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[channels] failed."));
+    return GRAPH_FAILED;
+  }
+  if (channels != 0 && channels != 1 && channels != 3 && channels != 4) {
+    err_msg =
+        ConcatString("attr[channels] must be 0, 1, 3, 4, got [", channels, "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  if (channels == 0) {
+    channels = UNKNOWN_DIM;
+    OP_LOGI(op.GetName().c_str(), "attr[channels] is 0, use unknowdim");
+  }
+  image.SetDataType(DT_UINT8);
+  std::vector<int64_t> image_shape({UNKNOWN_DIM, UNKNOWN_DIM, channels});
+  image.SetShape(Shape(image_shape));
+  if (op.UpdateOutputDesc("image", image) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("fail to update output[image]."));
+    return GRAPH_FAILED;
+  }
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(DecodeBmp, DecodeBmpInfer);
+
+IMPLEMT_INFERFUNC(DecodeAndCropJpeg, DecodeAndCropJpegInfer) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("get op desc failed, op desc is nullptr."));
+    return GRAPH_FAILED;
+  }
+
+  // unknown shape support
+  op_desc->SetOpInferDepends({"crop_window"});
+
+  GeShape contents_shape;
+  auto contents_desc = op_desc->MutableInputDesc(0);
+  if (contents_desc == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("get input[contents] desc failed, input[contents] "
+                             "desc is nullptr."));
+    return GRAPH_FAILED;
+  }
+  std::string err_msg;
+  if (WithRank(contents_desc, 0, contents_shape) != GRAPH_SUCCESS) {
+    err_msg = ConcatString(
+        "failed to call WithRank function, input[contents] rank must be 0, got "
+        "rank[",
+        contents_desc->GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+
+  int64_t channels_dim = UNKNOWN_DIM;
+  int64_t height = UNKNOWN_DIM;
+  int64_t width = UNKNOWN_DIM;
+
+  int32_t channels;
+  if (op.GetAttr("channels", channels) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("failed to get attr[channels]."));
+    return GRAPH_PARAM_INVALID;
+  }
+  if (channels != 0) {
+    if (channels < 0) {
+      err_msg = ConcatString("attr[channels] must be non-negative, got[",
+                             channels, "]");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_PARAM_INVALID;
+    }
+    channels_dim = channels;
+  }
+
+  GeShape crop_window_shape;
+  auto crop_window_desc = op_desc->MutableInputDesc(1);
+  if (crop_window_desc == nullptr) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("get input[crop_window] desc failed, "
+                             "input[crop_window] desc is nullptr."));
+    return GRAPH_FAILED;
+  }
+  if (WithRank(crop_window_desc, 1, crop_window_shape) != GRAPH_SUCCESS) {
+    err_msg = ConcatString(
+        "failed to call WithRank function, input[crop_window] rank must be 1, "
+        "got rank[",
+        crop_window_desc->GetShape().GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+  int64_t unused_dim;
+  if (WithValue(crop_window_shape.GetDim(0), 4, unused_dim,
+                op_desc->GetName().c_str()) != GRAPH_SUCCESS) {
+    err_msg = ConcatString(
+        "failed to call WithValue function, dim[0] of input[crop_window] must "
+        "be 4, got[",
+        crop_window_shape.GetDim(0), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_PARAM_INVALID;
+  }
+
+  Tensor crop_window_tensor;
+  if (op.GetInputConstData("crop_window", crop_window_tensor) ==
+      GRAPH_SUCCESS) {
+    const int32_t* crop_window_data =
+        reinterpret_cast<int32_t*>(crop_window_tensor.GetData());
+    height = *(crop_window_data + 2);
+    width = *(crop_window_data + 3);
+  }
+
+  auto image_desc = op_desc->MutableOutputDesc("image");
+  (void)FillOpDesc(image_desc, GeShape({height, width, channels_dim}),
+                   DT_UINT8);
+
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(DecodeAndCropJpeg, DecodeAndCropJpegInfer);
+
 static void GetResizeConstValue(const Operator& op, const GeTensorPtr& const_tensor,
                                 const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = const_tensor->GetData().GetSize();

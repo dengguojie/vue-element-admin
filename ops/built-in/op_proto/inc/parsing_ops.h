@@ -57,7 +57,6 @@ REG_OP(StringToNumber)
 *contents: A Tensor of type string.
 *little_endian bool ture
 *@par Output: A Tensor
-
 **/
 REG_OP(DecodeRaw)
     .INPUT(bytes, TensorType({DT_STRING}))
@@ -67,6 +66,69 @@ REG_OP(DecodeRaw)
     .ATTR(out_type, Type, DT_FLOAT)
     .ATTR(little_endian, Bool, true)
     .OP_END_FACTORY_REG(DecodeRaw)
+
+/**
+*@brief Convert serialized tensorflow.TensorProto prototype to Tensor. \n
+
+*@par Inputs:
+*serialized: A Tensor of string type. Scalar string containing serialized
+*TensorProto prototype. \n
+
+*@par Attributes:
+*out_type: The numeric type to interpret each string in string_tensor as . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as serialized. \n
+
+*@attention Constraints:
+*The implementation for StringToNumber on Ascend uses AICPU,
+*with badperformance. \n
+
+*@par Third-party framework compatibility
+*@li compatible with tensorflow ParseTensor operator.
+*/
+REG_OP(ParseTensor)
+    .INPUT(serialized, TensorType({DT_STRING}))
+    .OUTPUT(output, TensorType(DT_FLOAT, DT_FLOAT16, DT_INT8, DT_INT16,
+                          DT_UINT16, DT_UINT8, DT_INT32, DT_INT64, DT_UINT32,
+                          DT_UINT64, DT_BOOL, DT_DOUBLE, DT_STRING,
+                          DT_COMPLEX64, DT_COMPLEX128}))
+    .ATTR(out_type, Type, DT_FLOAT)
+    .OP_END_FACTORY_REG(ParseTensor)
+
+/**
+*@brief Converts each string in the input Tensor to the specified numeric
+*type . \n
+
+*@par Inputs:
+*Inputs include:
+*x: A Tensor. Must be one of the following types: string . \n
+
+*@par Attributes:
+*out_type: The numeric type to interpret each string in string_tensor as . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as x . \n
+
+*@attention Constraints:
+*The implementation for StringToNumber on Ascend uses AICPU, with bad
+*performance. \n
+
+*@par Third-party framework compatibility
+*@li compatible with tensorflow StringToNumber operator.
+*/
+REG_OP(DecodeCSV)
+    .INPUT(records, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(record_defaults, TensorType({DT_FLOAT, DT_DOUBLE, DT_INT32,
+                                        DT_INT64, DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_OUTPUT(output, TensorType({DT_FLOAT, DT_DOUBLE, DT_INT32,
+                                        DT_INT64, DT_STRING, DT_RESOURCE}))
+    .ATTR(OUT_TYPE, ListType, {})
+    .ATTR(field_delim, String, ",")
+    .ATTR(use_quote_delim, Bool, true)
+    .ATTR(na_value, String, ",")
+    .ATTR(select_cols, ListInt, {})
+    .OP_END_FACTORY_REG(DecodeCSV)
 
 }  // namespace ge
 

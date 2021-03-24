@@ -285,6 +285,7 @@ set(_tf_plugins
   pad_plugin.cc
   pad_v2_plugin.cc
   parallel_concat_plugin.cc
+  decode_csv_plugin.cc
   partitioned_call_plugin.cc
   population_count_plugin.cc
   pow_plugin.cc

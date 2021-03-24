@@ -274,6 +274,27 @@ REGISTER_CUSTOM_OP("DecodePng")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register DecodeBmp op to GE
+REGISTER_CUSTOM_OP("DecodeBmp")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DecodeBmp")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register DecodeAndCropJpeg op to GE
+REGISTER_CUSTOM_OP("DecodeAndCropJpeg")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("DecodeAndCropJpeg")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register ParseTensor op to GE
+REGISTER_CUSTOM_OP("ParseTensor")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ParseTensor")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register FixedUnigramCandidateSampler op to GE
 REGISTER_CUSTOM_OP("FixedUnigramCandidateSampler")
     .FrameworkType(TENSORFLOW)

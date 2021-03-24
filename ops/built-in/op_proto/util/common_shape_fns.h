@@ -412,6 +412,15 @@ graphStatus ValidateVariableResourceHandle(Operator& op, std::vector<ShapeAndTyp
 void FillOpDesc(GeTensorDescPtr& op_desc, const GeShape& shape, const DataType& data_type = DT_FLOAT);
 
 /**
+ * Fill op_desc with input shape
+ * @param op Operator desc ptr
+ * @param shape input tensor shape
+ * @param data_type input tensor datatype
+ */
+void FillOpDesc(TensorDesc& op_desc, const Shape& shape,
+                const DataType& data_type = DT_FLOAT);
+
+/**
  * InferShapeErrorReport info
  * @param op_name Operator name
  * @param op_type Operator type
@@ -420,6 +429,13 @@ void FillOpDesc(GeTensorDescPtr& op_desc, const GeShape& shape, const DataType& 
  */
 void InferShapeErrorReport(const std::string& op_name, const std::string& op_type,
                            const std::string& value, const std::string& reason);
+
+/**
+ * @brief get string from data type
+ * @param dtype data type
+ * @return string of data type
+ */
+std::string DTypeStr(DataType dtype);
 
 }  // namespace ge
 

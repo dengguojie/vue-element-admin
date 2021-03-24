@@ -1110,6 +1110,63 @@ REG_OP(DecodePng)
     .ATTR(dtype, Type, DT_UINT8)
     .ATTR(channels, Int, 0)
     .OP_END_FACTORY_REG(DecodePng)
+
+/**
+*@brief Bmp-decode an image. \n
+
+*@par Inputs:
+*@li contents: A Tensor of type string. 0-D. The BMP-encoded image. \n
+
+*@par Attributes:
+*@li channels: Decode the desired number of color channels of the image. \n
+
+*@par Outputs:
+*image: A Tensor dtype of uint8.
+
+* @par Third-party framework compatibility
+* Compatible with tensorflow DecodeBmp operator.
+*/
+
+REG_OP(DecodeBmp)
+    .INPUT(contents, TensorType({DT_STRING}))
+    .OUTPUT(image, TensorType({DT_UINT8}))
+    .ATTR(channels, Int, 0)
+    .OP_END_FACTORY_REG(DecodeBmp)
+
+/*
+*@brief Function parse image from string to int. \n
+
+*@par Inputs:
+*@li contents: A Tensor of type string. 0-D. The JPEG-encoded image. \n
+
+*@par Attributes:
+*@li channels: An optional int. Defaults to 0. Number of color channels for the
+*decoded image.
+*@li ratio: An optional int. Defaults to 1. Downscaling ratio.
+*@li fancy_upscaling: An optional bool. Defaults to True. If true use a slower
+*but nicer upscaling of the chroma planes
+*@li try_recover_truncated: An optional bool. Defaults to False. If true try to
+*recover an image from truncated input.
+*@li acceptable_fraction: An optional float. Defaults to 1. The minimum required
+fraction of lines before a truncated input is accepted.
+*@li dct_method: An optional string. Defaults to "". string specifying a hint
+*about the algorithm used for decompression. \n
+
+*@par Outputs:
+*image: A Tensor dtype of uint8.
+*/
+REG_OP(DecodeAndCropJpeg)
+    .INPUT(contents, TensorType({DT_STRING}))
+    .INPUT(crop_window, TensorType({DT_INT32}))
+    .OUTPUT(image, TensorType({DT_UINT8}))
+    .ATTR(channels, Int, 0)
+    .ATTR(ratio, Int, 1)
+    .ATTR(fancy_upscaling, Bool, true)
+    .ATTR(try_recover_truncated, Bool, false)
+    .ATTR(acceptable_fraction, Float, 1.0)
+    .ATTR(dct_method, String, "")
+    .OP_END_FACTORY_REG(DecodeAndCropJpeg)
+
 /**
 *@brief Resizes "images" to "size" using bilinear interpolation . \n
 
