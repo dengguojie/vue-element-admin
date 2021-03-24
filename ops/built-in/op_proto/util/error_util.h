@@ -32,11 +32,15 @@
 #define AICPU_INFER_SHAPE_CALL_ERR_REPORT(op_name, err_msg) \
   do { \
     OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
+    REPORT_CALL_ERROR(GetViewErrorCodeStr(ViewErrorCode::AICPU_INFER_SHAPE_ERROR), \
+      "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
   } while(0);
 
 #define AICPU_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg) \
-    do { \
+  do { \
     OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
+    REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::AICPU_INFER_SHAPE_ERROR), \
+      "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
   } while(0);
 
 namespace ge {

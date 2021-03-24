@@ -23,6 +23,8 @@
 #include "../util/error_util.h"
 #include "../util/error_code.h"
 
+using namespace ge;
+
 class TestUtil : public testing::Test {
  protected:
   static void SetUpTestCase() {
