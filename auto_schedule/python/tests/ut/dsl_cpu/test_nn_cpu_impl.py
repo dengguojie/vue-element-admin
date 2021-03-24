@@ -7,6 +7,7 @@ import te.lang.cce as tbe
 
 ut_case = OpUT("nn_cpu", "dsl_cpu.test_nn_cpu_impl")
 
+
 def test_vrelu_cpu_api(soc):
     """
     The part less than 0 is taken as 0, and the part greater than 0 is tanken as the original value
@@ -24,13 +25,14 @@ def test_vrelu_cpu_api(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vrelu(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0, a.asnumpy()))
     except AssertionError as e:
         print(e)
         return False
     return True
+
 
 def test_vmaddrelu_cpu_api(soc):
     """
@@ -53,7 +55,7 @@ def test_vmaddrelu_cpu_api(soc):
     d = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vmaddrelu(a, b, c, d)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(d.asnumpy(), np.maximum(0, a.asnumpy() * c.asnumpy() + b.asnumpy()),
                                     atol=0.001, rtol=0.001)
@@ -61,6 +63,7 @@ def test_vmaddrelu_cpu_api(soc):
         print(e)
         return False
     return True
+
 
 def test_vaddrelu_cpu_api_not_support_vaddrelu(soc):
     """
@@ -82,7 +85,7 @@ def test_vaddrelu_cpu_api_not_support_vaddrelu(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vaddrelu(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.maximum(0, a.asnumpy() + b.asnumpy()),
                                     atol=0.001, rtol=0.001)
@@ -90,6 +93,7 @@ def test_vaddrelu_cpu_api_not_support_vaddrelu(soc):
         print(e)
         return False
     return True
+
 
 def test_vaddrelu_cpu_api(soc):
     """
@@ -112,7 +116,7 @@ def test_vaddrelu_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vaddrelu(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -122,6 +126,7 @@ def test_vaddrelu_cpu_api(soc):
         print(e)
         return False
     return True
+
 
 def test_vsubrelu_cpu_api_not_support_vsubrelu(soc):
     """
@@ -143,7 +148,7 @@ def test_vsubrelu_cpu_api_not_support_vsubrelu(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsubrelu(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.maximum(0, a.asnumpy() - b.asnumpy()),
                                     atol=0.001, rtol=0.001)
@@ -151,6 +156,7 @@ def test_vsubrelu_cpu_api_not_support_vsubrelu(soc):
         print(e)
         return False
     return True
+
 
 def test_vsubrelu_cpu_api(soc):
     """
@@ -173,7 +179,7 @@ def test_vsubrelu_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsubrelu(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -183,6 +189,7 @@ def test_vsubrelu_cpu_api(soc):
         print(e)
         return False
     return True
+
 
 def test_vlrelu_cpu_api_not_support_vlrelu_and_int32(soc):
     """
@@ -201,13 +208,14 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_int32(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlrelu(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0.01 * a.asnumpy(), a.asnumpy()))
     except AssertionError as e:
         print(e)
         return False
     return True
+
 
 def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0(soc):
     """
@@ -227,13 +235,14 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlrelu(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0.01 * a.asnumpy(), a.asnumpy()))
     except AssertionError as e:
         print(e)
         return False
     return True
+
 
 def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1(soc):
     """
@@ -253,13 +262,14 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlrelu(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0.01 * a.asnumpy(), a.asnumpy()))
     except AssertionError as e:
         print(e)
         return False
     return True
+
 
 def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1(soc):
     """
@@ -279,13 +289,14 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlrelu(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0.01 * a.asnumpy(), a.asnumpy()))
     except AssertionError as e:
         print(e)
         return False
     return True
+
 
 def test_vlrelu_cpu_api(soc):
     """
@@ -306,7 +317,7 @@ def test_vlrelu_cpu_api(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlrelu(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -317,18 +328,50 @@ def test_vlrelu_cpu_api(soc):
     return True
 
 
+def test_round_to_cpu_api(soc):
+    """
+    use tvm.lrelu
+    @param soc: useless parameter for framework
+    @return: Ture && false
+    """
+    n = 1024
+    max_value, min_value = 0.8, 0.5
+    input1 = tvm.placeholder((n,), dtype="float16", name="input1")
+    output = tbe.round_to(input1, max_value, min_value)
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.random.uniform(size=n).astype(input1.dtype), ctx)
+    b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a, b)
+    # 3.verify the correctness of output
+    min_value_array = np.full((n, ), min_value, dtype=input1.dtype)
+    max_value_array = np.full((n, ), max_value, dtype=input1.dtype)
+    benchmark_data = np.maximum(a.asnumpy(), min_value_array)
+    benchmark_data = np.minimum(benchmark_data, max_value_array)
+    try:
+        tvm.testing.assert_allclose(b.asnumpy(), benchmark_data)
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
 test_func_list = [
-test_vrelu_cpu_api,
-test_vmaddrelu_cpu_api,
-test_vaddrelu_cpu_api_not_support_vaddrelu,
-test_vaddrelu_cpu_api,
-test_vsubrelu_cpu_api_not_support_vsubrelu,
-test_vsubrelu_cpu_api,
-test_vlrelu_cpu_api_not_support_vlrelu_and_int32,
-test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0,
-test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1,
-test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1,
-# test_vlrelu_cpu_api,  lrelu is not support
+    test_vrelu_cpu_api,
+    test_vmaddrelu_cpu_api,
+    test_vaddrelu_cpu_api_not_support_vaddrelu,
+    test_vaddrelu_cpu_api,
+    test_vsubrelu_cpu_api_not_support_vsubrelu,
+    test_vsubrelu_cpu_api,
+    test_vlrelu_cpu_api_not_support_vlrelu_and_int32,
+    test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0,
+    test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1,
+    test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1,
+    # test_vlrelu_cpu_api,  lrelu is not support,
+    test_round_to_cpu_api,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)

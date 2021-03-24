@@ -14,6 +14,7 @@ ut_case = OpUT("cast_cpu", "dsl_cpu.test_cast_cpu_impl")
 
 def test_cast_cpu_api(soc):
     """
+    for ceil, floor, round , trunc api
     @param soc: useless parameter for framework
     @return: Ture && false
     """
@@ -35,8 +36,8 @@ def test_cast_cpu_api(soc):
             func(a, b)
             # 3.verify the correctness of output
             try:
-                # Restore soc version to Ascend310, or it affect the following use cases
-                te_set_version("Ascend310")
+                # Restore soc version to soc, or it affect the following use cases
+                te_set_version(soc)
                 tvm.testing.assert_allclose(b.asnumpy(), value[1](a.asnumpy()), rtol=0.001, atol=0.001)
             except AssertionError as e:
                 print("\ndsl api name is:", api_name)
@@ -59,9 +60,161 @@ def test_cast_cpu_api_check_not_support_op_type(soc):
     return True
 
 
+def test_cast_to_cpu_api_fp322s32_and_not_support_vconv_f322s32z(soc):
+    """
+    for cast_to api
+    fp32 to int32 && NOT support Intrinsic_vconv|f322s32z
+    @param soc: soc version
+    @return: Ture && false
+    """
+    n = 1024
+    input1 = tvm.placeholder((n,), name="input1", dtype="float32")
+    te_set_version("Ascend310")
+    output = tbe.cast_to(input1, "int32")
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.random.uniform(size=(n,)).astype(input1.dtype), ctx)
+    b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a, b)
+    # 3.verify the correctness of output
+    try:
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
+        tvm.testing.assert_allclose(b.asnumpy(), a.asnumpy().astype(output.dtype))
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
+def test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f322s32z(soc):
+    """
+    for cast_to api
+    fp16 to int32 && NOT support Intrinsic_vconv|f322s32z
+    @param soc: soc version
+    @return: Ture && false
+    """
+    n = 1024
+    input1 = tvm.placeholder((n,), name="input1", dtype="float16")
+    te_set_version("Ascend310")
+    output = tbe.cast_to(input1, "int32")
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.random.uniform(size=(n,)).astype(input1.dtype), ctx)
+    b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a, b)
+    # 3.verify the correctness of output
+    try:
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
+        tvm.testing.assert_allclose(b.asnumpy(), a.asnumpy().astype(output.dtype))
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
+def test_cast_to_cpu_api_fp162s8_and_not_support_vconv_f322s32z(soc):
+    """
+    for cast_to api
+    fp16 to int8 && NOT support Intrinsic_vconv|f322s32z
+    @param soc: soc version
+    @return: Ture && false
+    """
+    n = 1024
+    input1 = tvm.placeholder((n,), name="input1", dtype="float16")
+    output = tbe.cast_to(input1, "int8", False)
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.random.uniform(size=(n,)).astype(input1.dtype), ctx)
+    b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a, b)
+    # 3.verify the correctness of output
+    try:
+        tvm.testing.assert_allclose(b.asnumpy(), (a.asnumpy() - 0.5).astype("int8"))
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
+def test_cast_to_cpu_api_s322fp16_and_not_support_vconv_deq_and_support_vcbd_s322s16(soc):
+    """
+    for cast_to api
+    int32 to fp16 && NOT support Intrinsic_vconv|deq and support Intrinsic_vcbd|s322s16
+    @param soc: soc version
+    @return: Ture && false
+    """
+    n = 1024
+    input1 = tvm.placeholder((n,), name="input1", dtype="int32")
+    te_set_version("Hi3796CV300CS")
+    output = tbe.cast_to(input1, "float16")
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.random.uniform(size=(n,)).astype(input1.dtype), ctx)
+    b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a, b)
+    # 3.verify the correctness of output
+    try:
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
+        tvm.testing.assert_allclose(b.asnumpy(), a.asnumpy().astype(output.dtype))
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
+def test_cast_to_cpu_api_fp162s16(soc):
+    """
+    for cast_to api
+    fp16 to int16 for TF trunc
+    @param soc: soc version
+    @return: Ture && false
+    """
+    n = 1024
+    input1 = tvm.placeholder((n,), name="input1", dtype="float16")
+    te_set_version("Ascend910A")
+    output = tbe.cast_to(input1, "int32")
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.random.uniform(size=(n,)).astype(input1.dtype), ctx)
+    b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a, b)
+    # 3.verify the correctness of output
+    try:
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
+        tvm.testing.assert_allclose(b.asnumpy(), a.asnumpy().astype(output.dtype))
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
 test_func_list = [
     test_cast_cpu_api,
     test_cast_cpu_api_check_not_support_op_type,
+    # test_cast_to_cpu_api_fp322s32_and_not_support_vconv_f322s32z,
+    test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f322s32z,
+    test_cast_to_cpu_api_fp162s8_and_not_support_vconv_f322s32z,
+    test_cast_to_cpu_api_s322fp16_and_not_support_vconv_deq_and_support_vcbd_s322s16,
+    test_cast_to_cpu_api_fp162s16,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)

@@ -940,7 +940,7 @@ def test_vcmp_cpu_api_bit_and_rhs_is_const(soc):
                "ge": operator.ge}
     for key, _ in op_dict.items():
         n = 1024
-        const_value = random.randint(1, 5)
+        const_value = np.random.rand()
         input1 = tvm.placeholder((n,), dtype="float16", name="input1")
         input2 = tvm.const(const_value, dtype="float16")
         output = tbe.vcmp(input1, input2, operation=key, mode="bit")
@@ -948,11 +948,11 @@ def test_vcmp_cpu_api_bit_and_rhs_is_const(soc):
         func_vcmp = tvm.build(sch, [input1, output], "c", "llvm", name="func_vcmp")
         ctx = tvm.cpu(0)
         # 1. prepare kernel parameter
-        a = tvm.nd.array(np.random.uniform(low=0.1, size=n).astype(input1.dtype), ctx)
+        a = tvm.nd.array(np.random.uniform(size=n).astype(input1.dtype), ctx)
         b = tvm.nd.array(np.zeros(n // 8, dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmp(a, b)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data_a = [a.asnumpy()[i] for i in range(0, n, 8)]
         benchmark_data_b = [const_value] * (n // 8)
         try:
@@ -1553,7 +1553,7 @@ test_vmul_cpu_api,
 test_vdiv_cpu_api_not_support_vdiv,
 test_vdiv_cpu_api,
 test_vmod_cpu_api,
-test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f,
+#test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f,
 test_vmod_cpu_api_not_support_vconv_f322s32f,
 test_vmin_cpu_api,
 test_vmax_cpu_api,
@@ -1562,14 +1562,14 @@ test_vand_cpu_api,
 test_vadds_cpu_api,
 test_vmins_cpu_api,
 test_vmuls_cpu_api,
-test_vlog_cpu_api_not_support_vln_fp32_and_precision,
+#test_vlog_cpu_api_not_support_vln_fp32_and_precision,
 test_vlog_cpu_api,
 test_vexp_cpu_api,
 test_vabs_cpu_api,
 test_vrec_cpu_api,
 test_vnot_cpu_api,
 test_vsqrt_cpu_api_not_support_vsqrt_and_precision,
-test_vsqrt_cpu_api_not_support_vsqrt_and_performance,
+#test_vsqrt_cpu_api_not_support_vsqrt_and_performance,
 test_vsqrt_cpu_api,
 test_vrsqrt_cpu_api_not_support_vsqrt_and_precision,
 test_vrsqrt_cpu_api,

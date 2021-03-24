@@ -37,6 +37,9 @@
     ],
     "auto_schedule/python/tbe/dsl/compute/cast.py":[
         "dsl_cpu/test_cast_cpu_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/compute/array.py":[
+        "dsl_cpu/test_array_cpu_impl.py"
     ]
 
 }
