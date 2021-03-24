@@ -1401,7 +1401,7 @@ class CceConvOp:
                 get c_shape according to whether it is v220 version.
                 """
                 if is_support_v220():
-                    _, batch_out, c1_out, _, c0_out = list(tensor_map["c_col"].shape)
+                    _, batch_out, c1_out, _, c0_out = list(map(int, tensor_map["c_col"].shape))
                     c_shape = [batch_out, c1_out, h_out, w_out, c0_out]
                 else:
                     c_ub_shape = list(tensor_map["c_ub"].shape)
@@ -1991,15 +1991,16 @@ class CceConvOp:
             _l1_double_buffer()
             _l0_double_buffer()
 
-            if double_buffer_flag["CUB_pbuffer"] == 2:
-                sch[c_ub].double_buffer()
+            if not is_support_v220():
+                if double_buffer_flag["CUB_pbuffer"] == 2:
+                    sch[c_ub].double_buffer()
 
-            _resub_double_buffer()
+                _resub_double_buffer()
 
-            # conv_bn1
-            if double_buffer_flag["CUB_pbuffer"] == 2 and self._convbn1_flag:
-                sch[d_pad].double_buffer()
-                sch[tensor_map['cast_1']].double_buffer()
+                # conv_bn1
+                if double_buffer_flag["CUB_pbuffer"] == 2 and self._convbn1_flag:
+                    sch[d_pad].double_buffer()
+                    sch[tensor_map['cast_1']].double_buffer()
 
         def intrin_mapping(weight, tiling):
             """
