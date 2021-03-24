@@ -268,8 +268,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 l0_g_index, l0_n_index, l0_m1_index, l0_co1_index, l0_m0_index, l0_co0_index = indices
                 l1_hw_index = l0_m1_index * self._m0 + l0_m0_index
                 l1_c1_index = l0_g_index * self._dy_c1_extend + l0_co1_index
-                return tvm.select(tvm.any(l1_c1_index > co1_dim - 1),
-                                  tvm.const(0.0, dedy_tensor_l1.dtype),
+                return tvm.select(l1_c1_index < co1_dim,
                                   dedy_tensor_l1(
                                       l0_n_index,
                                       l1_c1_index,

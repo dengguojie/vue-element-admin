@@ -75,6 +75,20 @@ deconvolution_ut_case = [
         (1, 1),
         False,
     ),
+    # stride > 1, group>1, padding  bias
+    (
+        ["Ascend310", "Ascend710", "Ascend910"],
+        "float16",
+        (1, 51, 45, 45),
+        (51, 2, 3, 3),
+        (1, 34, 45, 45),
+        (1, 1, 1, 1),
+        (1, 1),
+        (1, 1),
+        True,
+        "success",
+        17
+    ),
     # int8 -> int32 opti
     # stride = 1 with bias
     (

@@ -221,8 +221,7 @@ def im2col_fractal(a_im2col_shape, tensor_a_row_major):
 
         # dtype is compute_dtype
         return tvm.select(
-            tvm.any(hw_index < 0, hw_index > a_row_major_hw.value - 1, c1_index > group_c1 - 1),
-            tvm.const(0.0, tensor_a_row_major.dtype),
+            tvm.any(hw_index >= 0, hw_index < a_row_major_hw.value, c1_index < group_c1),
             tensor_a_row_major(n_index, hw_index, c1_index, kh_index, kw_index, c0_index))
 
     return tvm.compute(a_im2col_shape,

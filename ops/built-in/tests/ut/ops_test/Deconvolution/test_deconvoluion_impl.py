@@ -92,6 +92,8 @@ def gen_deconv_case(case):
     expect_result = "success"
     if len(case) == 10:
         expect_result = case[9]
+    if len(case) == 11:
+        groups = case[10]
 
     if case_dtype == "int8":
         dedx_dtype = "int32"
@@ -139,7 +141,7 @@ def gen_deconv_case(case):
             stride,
             padding,
             [1, 1] + list(dilation),
-            1,
+            groups,
             "NCHW",
             0,
         ],
