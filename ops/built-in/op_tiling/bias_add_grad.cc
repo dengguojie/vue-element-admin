@@ -71,9 +71,7 @@ bool BiasAddGradTiling(const std::string& op_type, const TeOpParas& op_paras, co
         }
     }
 
-    Reduce reduce(op_type, op_paras_tmp, op_info, run_info);
-    bool ret = reduce.DoTiling();
-    ret = ret && reduce.WriteTilingData();
+    bool ret = ReduceTiling(op_type, op_paras_tmp, op_info, run_info);
     return ret;
 }
 

@@ -1332,9 +1332,13 @@ IMPLEMT_VERIFIER(ApplyRMSPropD, ApplyRMSPropDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyRMSPropDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyRMSPropD proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "ms", "ms");
-  ApplyInferShapeAndDtype(op, "mom", "mom");
+  if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    if (OneInOneOutDynamicInfer(op, "ms", {"ms"})) {
+      if (OneInOneOutDynamicInfer(op, "mom", {"mom"})) {
+        return GRAPH_SUCCESS;
+      }
+    }
+  }
   return GRAPH_SUCCESS;
 }
 

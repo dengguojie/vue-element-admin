@@ -117,6 +117,7 @@ from .fused_mul_add_n import fused_mul_add_n
 from .fused_mul_apply_momentum import fused_mul_apply_momentum
 from .apply_keras_momentum_d import apply_keras_momentum_d
 from .apply_power_sign_d import apply_power_sign_d
+from .apply_rms_prop_d import apply_rms_prop_d
 from .tile_d import tile_d
 from .tile import tile
 from .apply_adam_d import apply_adam_d

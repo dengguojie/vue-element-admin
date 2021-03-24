@@ -141,8 +141,7 @@ def apply_keras_momentum_d(var,
             res = apply_keras_momentum_d_compute(data_var, data_accum,
                                                  data_lr, data_grad,
                                                  data_momentum, out_var,
-                                                 out_accum, use_locking,
-                                                 use_nesterov)
+                                                 out_accum, use_nesterov)
             tensor_list = [data_var, data_accum, data_lr, data_grad, data_momentum] + list(res)
             tensors.append(tensor_list)
         with tvm.target.cce():
