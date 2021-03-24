@@ -1587,7 +1587,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
                 # axis_k offset
                 wi_min = -pad_left
-                wi_extent = width_fmap + pad_left + pad_right
+                wi_extent = (width_grads - 1) * stride_width + kw_dilation
 
                 bl1_k = tiling.get("BL1_shape")[0]
                 al1_k = grads_matrix_howo
