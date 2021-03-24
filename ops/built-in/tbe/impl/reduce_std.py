@@ -70,10 +70,6 @@ def reduce_std_compute(x, dim, unbiased, keepdim, kernel_name="reduce_std"):
 
     # Analysis parameter dim
     shape_x = shape_util.shape_to_list(x.shape)
-    ori_dtype = x.dtype
-    dtype = "float32"
-    if ori_dtype == "float16":
-        x = tbe.cast_to(x, dtype)
 
     axis_dim = []
     axis_dim = reduce_std_check_dim(axis_dim, shape_x, dim)
@@ -115,11 +111,6 @@ def reduce_std_compute(x, dim, unbiased, keepdim, kernel_name="reduce_std"):
     # calculate mu_res and return
     mu_res = tbe.sum(mu_muls, axis=axis_dim, keepdims=keepdim)
 
-    # judge the ori_dtype
-    if ori_dtype == "float16":
-        y = tbe.cast_to(y, "float16")
-        mu_res = tbe.cast_to(mu_res, "float16")
-
     # form a list and return
     return [y, mu_res]
 
@@ -147,5 +138,6 @@ def reduce_std(x, y1, y2, dim=None, unbiased=True, keepdim=False,
         schedule = tbe.auto_schedule(res)
 
     config = {"name": kernel_name,
+              "enable_group_inplace": True,
               "tensor_list": [data_x] + list(res)}
     tbe.cce_build_code(schedule, config)
