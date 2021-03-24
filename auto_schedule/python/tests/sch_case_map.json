@@ -3,12 +3,22 @@
         "broadcast",
         "vadd",
         "vsub",
-        "vmul"
+        "vmul",
+        "vabs",
+        "vdiv",
+        "vexp",
+        "vmax",
+        "vmin"
     ],
     "auto_schedule/python/tbe/dsl/compute/math.py":[
         "vadd",
         "vsub",
         "vmul",
+        "vabs",
+        "vdiv",
+        "vexp",
+        "vmax",
+        "vmin",
         "dsl_cpu/test_math_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/nn.py":[
