@@ -148,6 +148,29 @@ bool InferShapeRangeTwoInOneOutBroadcase(Operator& op, const string& input_name1
 bool CheckInputDataType(const Operator& op, std::string* data_type, const std::string& input_name,
                         const std::vector<ge::DataType>& supportList);
 
+std::vector<int64_t> TwoBroadcastShape(const std::vector<int64_t>& dimsX, const std::vector<int64_t>& dimsY);
+
+std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
+                        const std::vector<int64_t>& dims_out,
+                        const std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
+                        std::vector<std::pair<int64_t, int64_t>>& shape_range_y);
+
+/*
+ * infer shape of two input and on output with broadcast,Change the original value dimVec and Vec_range.
+ * param[in] op  op desc supply by ge
+ * param[in] dimVec  Before a shape broadcast value
+ * param[in] Vec_range   Before a range broadcast value
+ * param[in] dims   The value of broadcast is currently required
+ * param[in] range      The value of broadcast is currently required
+ * param[in] inputName1  first input name
+ * param[in] inputName2  second input name
+ */
+bool TwoShapeAndRangeBroadcastIntegration(Operator& op, std::vector<int64_t>& dimVec,
+                                          std::vector<std::pair<int64_t, int64_t>>& Vec_range,
+                                          std::vector<int64_t> dims,
+                                          std::vector<std::pair<int64_t, int64_t>> range,
+                                          const string& input_name1, const string& input_name2);
+
 bool CheckTwoInputDtypeSame(const Operator& op, const string& input_name1, const string& input_name2);
 
 bool CheckInputDtypeSame(const Operator& op, std::vector<std::string>& input_tensors);

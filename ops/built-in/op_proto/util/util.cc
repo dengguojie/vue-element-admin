@@ -151,10 +151,143 @@ bool CheckInputsShapeDtypeSame(const Operator& op, const std::vector<std::string
   return true;
 }
 
+bool TwoShapeAndRangeBroadcastIntegration(Operator& op, std::vector<int64_t>& dimVec,
+                                          std::vector<std::pair<int64_t, int64_t>>& Vec_range,
+                                          std::vector<int64_t> dims, std::vector<std::pair<int64_t, int64_t>> range,
+                                          const string& input_name1, const string& input_name2){
+  if (dimVec.size() < dims.size()) {
+    std::vector<int64_t> dimsTmp = dimVec;
+    dimVec = dims;
+    dims = dimsTmp;
+    std::vector<std::pair<int64_t, int64_t>> range_temp = Vec_range;
+    Vec_range = range;
+    range = range_temp;
+  }
+  if (dimVec.size() != dims.size()) {
+    int dec = dimVec.size() - dims.size();
+    for (int i = 0; i < dec; i++) {
+      dims.insert(dims.begin(), (int64_t)1);
+    }
+  }
+  for (size_t i = 0; i < dimVec.size(); i++) {
+    CHECK((dimVec[i] != dims[i]) && (dimVec[i] != 1) && (dims[i] != 1) && (dimVec[i] != -1) && (dims[i] != -1),
+    OpsInputShapeBroadcastErrReport(op.GetName(), input_name1, input_name2, ConcatString(dimVec[i]),
+  								ConcatString(dims[i]));
+    OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
+  		op.GetName().c_str(), dimVec[i], dims[i]),
+    return false);
+  }
+  dimVec = TwoBroadcastShape(dimVec, dims);
+  if (IsUnknown(dimVec)) {
+    MakeUpShapeRange(dims, range);
+    Vec_range = TwoShapeAndRangeBroadcast(dimVec, Vec_range, range);
+  }
+  return true;
+}
+
+std::vector<int64_t> TwoBroadcastShape(const std::vector<int64_t>& dimsX, const std::vector<int64_t>& dimsY){
+  std::vector<int64_t> dimVec;
+  // when not dynamic case, do infer shape only
+  if (!IsUnknown(dimsY) && !IsUnknown(dimsX)) {
+    for (size_t i = 0; i < dimsX.size(); i++) {
+      int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+      dims = (dimsY[i] == 0 || dimsX[i] == 0) ? 0 : dims;
+      dimVec.push_back(dims);
+    }
+    return dimVec;
+  }
+  // dynamic case
+  for (size_t i = 0; i < dimsX.size(); i++) {
+    if ((dimsX[i] == -1) && (dimsY[i] != -1)) {
+      if (dimsY[i] > 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+      } else if (dimsY[i] == 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+        dimVec[i] = -1;
+      } else if ((dimsY[i] == 0) || (dimsX[i] == 0)) {
+        dimVec.push_back(0);
+      }
+    } else if ((dimsX[i] != -1) && (dimsY[i] == -1)) {
+      if (dimsX[i] > 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+      } else if (dimsX[i] == 0) {
+        dimVec.push_back(0);
+      } else if (dimsX[i] == 1) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+        dimVec[i] = -1;
+      }
+    } else {
+      if ((dimsX[i] == -1) && (dimsY[i] == -1)) {
+        int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+        dimVec.push_back(dims);
+        dimVec[i] = -1;
+      } else {
+        if (dimsY[i] == 0 || dimsX[i] == 0) {
+          dimVec.push_back(0);
+        } else {
+          int64_t dims = dimsX[i] > dimsY[i] ? dimsX[i] : dimsY[i];
+          dimVec.push_back(dims);
+        }
+      }
+    }
+  }
+  return dimVec;
+}
+
+std::vector<std::pair<int64_t, int64_t>> TwoShapeAndRangeBroadcast(
+              const std::vector<int64_t>& dims_out,
+              const std::vector<std::pair<int64_t, int64_t>>& shape_range_x,
+              std::vector<std::pair<int64_t, int64_t>>& shape_range_y){
+  size_t size_shape_out = dims_out.size();
+  std::vector<std::pair<int64_t, int64_t>> out_range;
+  if (!IsUnknownRankShape(dims_out)) {
+    while (shape_range_x.size() > shape_range_y.size()) {
+      shape_range_y.insert(shape_range_y.begin(), std::pair<int64_t, int64_t>(1, 1));
+    }
+    for (size_t i = 0; i < size_shape_out; i++) {
+      if (dims_out[i] != -1) {
+        out_range.push_back(std::pair<int64_t, int64_t>(dims_out[i], dims_out[i]));
+        continue;
+      }
+      if (i < shape_range_x.size() && i < shape_range_y.size()) {
+        if (shape_range_x[i].second == -1 && shape_range_y[i].second == 1) {
+          out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+        } else if (shape_range_x[i].second == 1 && shape_range_y[i].second == -1) {
+          out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+        } else if (shape_range_x[i].first == 1 || shape_range_y[i].first == 1) {
+          // one shape size maybe 1, so will support boardcast
+          // first_range == max first
+          int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
+          int64_t second_range = shape_range_x[i].first == 1 ? shape_range_y[i].second : shape_range_x[i].second;
+          if (shape_range_x[i].first == 1 && shape_range_y[i].first == 1) {
+            second_range = std::max(shape_range_x[i].second, shape_range_y[i].second);
+            second_range = (shape_range_x[i].second == -1 || shape_range_y[i].second == -1) ? -1 : second_range;
+          }
+          out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
+        } else {
+          // no 1 in range.first, mean no boardcast for range
+          // get intersect range
+          int64_t first_range = std::max(shape_range_x[i].first, shape_range_y[i].first);
+          int64_t second_range = std::min(shape_range_x[i].second, shape_range_y[i].second);
+          second_range = (shape_range_x[i].second == -1 || shape_range_y[i].second == -1)
+                         ? std::max(shape_range_x[i].second, shape_range_y[i].second)
+                         : second_range;
+          out_range.push_back(std::pair<int64_t, int64_t>(first_range, second_range));
+        }
+      }
+    }
+  }
+  return out_range;
+}
+
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name, bool& is_dynamic) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  CHECK(op_desc == nullptr || op_desc->MutableOutputDesc(output_name) == nullptr||
+  CHECK(op_desc == nullptr || op_desc->MutableOutputDesc(output_name) == nullptr ||
       op_desc->MutableInputDesc(input_name1) == nullptr || op_desc->MutableInputDesc(input_name2) == nullptr,
     OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return false);
 

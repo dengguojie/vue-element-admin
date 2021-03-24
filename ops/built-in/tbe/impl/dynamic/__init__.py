@@ -267,4 +267,5 @@ from .bitwise_xor import bitwise_xor
 from .prelu import prelu
 from .max_pool_with_argmaxv1 import max_pool_with_argmax_v1
 from .lars_v2_update import lars_v2_update
+from .clip_by_value import clip_by_value
 from .eltwise import eltwise
