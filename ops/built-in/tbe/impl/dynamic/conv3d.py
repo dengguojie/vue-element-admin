@@ -602,8 +602,12 @@ def _check_and_config_para(fmap,
         in_format, w_format, in_shape, w_shape, strides, dilations)
 
     if bias:
-        error_manager_cube.raise_err_specific_user(
-            'conv3d', "bias is not supported yet in dynamic conv3d")
+        bias_dtype = bias.get("dtype")
+        para_check.check_dtype_rule(bias_dtype, ('float16'), "bias")
+        bias_shape = bias.get("ori_shape")
+        if len(bias_shape) != BIAS_LENGTH:
+            cube_err.raise_err_specific_user(
+                'conv3d', "the length of bias is illegal")
 
     if offset_w:
         error_manager_cube.raise_err_specific_user(
@@ -766,7 +770,6 @@ def _conv3d_compute(fmap,
     fmap_range = config_dict.get('fmap_range')
     out_range = config_dict.get('out_range')
     correct_range_flag = config_dict.get('correct_range_flag')
-    bias = None
     offset_w = None
     pads = list(pads)
     stride_dhw = list(stride_dhw)
@@ -821,6 +824,10 @@ def _conv3d_compute(fmap,
     pads = _calc_pads(shape_fmp_ndc1hwc0, shape_filter, stride_dhw, dilation_dhw, pads)
 
     bias_tensor = None
+    if bias is not None:
+        bias_tensor = tvm.placeholder((cout_ori,),
+                                      name='bias_tensor',
+                                      dtype=res_dtype)
     para_dict = {
         "dsl_flag": False,
         "bias_tensor": bias_tensor,
@@ -835,6 +842,8 @@ def _conv3d_compute(fmap,
     }
     conv_res = tbe.conv3d(data, weight, shape_filter, para_dict)
 
+    if bias:
+        return {"op_placeholder": [data, weight, bias_tensor], "op_res": [conv_res]}
     return {"op_placeholder": [data, weight], "op_res": [conv_res]}
 
 

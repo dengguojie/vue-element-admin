@@ -170,6 +170,11 @@ case25 = _run_api_end_with_d(pads=pads)
 pads = (2, 2, 256, 256, 256, 256)
 case26 = _run_api_end_with_d(pads=pads)
 
+# test_conv3d_with_bias
+bias = {'ori_shape': (64,), 'shape': (64,),
+        'ori_format': 'ND', 'format': 'ND', 'dtype': 'float16', 'range':[(64, 64),]}
+case27 = _run_api_end_with_d(bias=bias)
+
 # Add test Cases
 # Params is the input params of the operator.
 ut_case.add_case(["Ascend910A", "Ascend310"],
@@ -249,6 +254,9 @@ ut_case.add_case(["Ascend910A", "Ascend310"],
 
 ut_case.add_case(["Ascend910A", "Ascend310"],
                  _gen_data_case(case26, RuntimeError, "dynamic_case26", True))
+
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 _gen_data_case(case27, "success", "dynamic_case27", True))
 
 if __name__ == '__main__':
     import tbe
