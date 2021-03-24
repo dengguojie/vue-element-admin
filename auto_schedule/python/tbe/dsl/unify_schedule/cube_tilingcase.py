@@ -447,7 +447,7 @@ class TilingSelection:
 
         cost_cases = self._select_tiling_mkn(range_area, candidates)
         tiling_cases = [
-            self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
+            self.op.assembly_case(v[2], v[1], v[0], k) for k, v in candidates.items()]
         add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
         repo_range = {k: v[0] for k, v in candidates.items()}
 
@@ -842,6 +842,7 @@ class TilingSelection:
                 cost_seed = self.op.get_costmodel_tiling((cut_range[0], cut_range[2], cut_range[4]))
                 seed_k_value, seed_m_value = cost_seed[self.op.key[0]][1:3]
                 seed_n_value = cost_seed[self.op.key[1]][1]
+                seed_batch_value = cost_seed[self.op.key[0]][0]
                 m_k_n_shape = (seed_m_value, seed_k_value, seed_n_value)
                 seed_range = self.op.get_tiling_range(cost_seed["tiling"],
                                                       m_k_n_shape)
@@ -854,8 +855,9 @@ class TilingSelection:
                 if self.op.dynamic_mode == "dynamic_mknb":
                     covered_area += target_area[-1]
                 cur_seed_cnt = next(self.seed_cnt)
+                m_k_n_shape_for_assembly = [seed_m_value, seed_k_value, seed_n_value, seed_batch_value]
                 cost_tilings.append(
-                    self.op.assembly_case(cost_seed["tiling"], covered_area,
+                    self.op.assembly_case(m_k_n_shape_for_assembly, cost_seed["tiling"], covered_area,
                                           cur_seed_cnt))
                 tiling_range[cur_seed_cnt] = covered_area
 

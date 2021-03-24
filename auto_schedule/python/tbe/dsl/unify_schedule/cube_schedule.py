@@ -76,6 +76,7 @@ class ConvSchedule:
         self._schedule = tvm.create_schedule([res.op for res in self._outs])
         self._schedule.tiling_key = self._tiling_case['key']
         self._tiling_strategy = self._tiling_case['tiling_strategy']
+        self._m_k_n_shape = self._tiling_case.get('m_k_n_shape')
 
     def do_conv2d_schedule(self):
         self._schedule_op = CceConvOp()
@@ -123,6 +124,7 @@ class ConvSchedule:
 
     def do_mat_mul_schedule(self):
         gemm_schedule(self._outs[0], [self._schedule],
-                      {"tiling_strategy": self._tiling_strategy})
+                      {"tiling_strategy": self._tiling_strategy,
+                       "m_k_n_shape": self._m_k_n_shape})
 
         return self._schedule

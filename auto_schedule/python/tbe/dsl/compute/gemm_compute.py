@@ -26,13 +26,14 @@ from tbe.dsl.compute.mmad_compute import matmul
 from tbe.dsl.compute.util import check_input_tensor_shape
 from tbe.tvm import api as tvm
 from tbe.tvm.tensor import Tensor
-
+from tbe.dsl.compute.gemm_integrated_compute import gemm as gemm_integrated
 
 BATCH_MATMUL_LENGTH = 5
 BATCH_LENGTH_1 = 1
 BATCH_LENGTH_2 = 2
 BATCH_LENGTH_3 = 3
 
+USE_GEMM_INTERGRATED = False
 
 def _shape_check(  # pylint: disable=C0301, R0912, R0913, R0914, R0915
     tensor_a,
@@ -543,8 +544,11 @@ def gemm(tensor_a, tensor_b, para_dict):
 
     Returns result
     """
-    gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
-    result = gemm_compute.calculate()
+    if USE_GEMM_INTERGRATED:
+        result = gemm_integrated(tensor_a, tensor_b, para_dict)
+    else:
+        gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)
+        result = gemm_compute.calculate()
 
     return result
 

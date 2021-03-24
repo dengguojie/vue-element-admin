@@ -134,8 +134,10 @@ def set_default_tiling_case(target_area, tiling_op):
         if value[1] is None:
             value[1] = INT_32_MAX
         target_area_list += value
-
-    tiling_case = [tiling_op.assembly_case(default_tiling, target_area_list, 0)]
+    default_seed_shape = [target_area[0][1], target_area[1][1], target_area[2][1]]
+    if len(target_area) == 4:
+        default_seed_shape.append(target_area[3][1])
+    tiling_case = [tiling_op.assembly_case(default_seed_shape, default_tiling, target_area_list, 0)]
 
     set_default_compile_info(tiling_op, tiling_case, target_area_list)
 
@@ -355,7 +357,7 @@ class MatmulTiling(CubeTilingOp):
         perf_range = m_range + k_range + n_range
         return perf_range
 
-    def assembly_case(self, tiling, coverage, cnt):
+    def assembly_case(self, m_k_n_shape, tiling, coverage, cnt):
         """
         get the covered info of a tiling
 
@@ -380,7 +382,7 @@ class MatmulTiling(CubeTilingOp):
         if self.dynamic_mode == "dynamic_mknb":
             var_range["batch"] = (coverage[6], coverage[7])
 
-        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range}
+        return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range, "m_k_n_shape": m_k_n_shape}
 
     def _set_default_tiling(self):
         """
