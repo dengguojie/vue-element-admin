@@ -36,7 +36,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_common
 
-
 MAX_SIZE = 2 ** 31 - 1
 VNCHW_BLOCK_SIZE = 512
 VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
@@ -752,7 +751,7 @@ class ConcatV2:
         ub_can_storage_lines_vnchwconv = ub_len // self.ele_each_block
         ub_can_copy_lines = inst.Scalar(
             dtype="int64", name="ub_can_copy_lines",
-            init_value=self.ub_buffer_length // ((output_inner_dim * 4) // self.ele_each_block * self.ele_each_block))
+            init_value=self.ub_buffer_length // (output_inner_dim * 4) // self.ele_each_block * self.ele_each_block)
         if self.type_size % 2 == 0:
             min_inner_dim = self.tiling_param.min_inner_dim
             max_inner_dim = self.tiling_param.max_inner_dim
