@@ -1576,6 +1576,9 @@ class Argmin(ArgminBase):
             with self.tik_instance.if_scope(max_cmp_value < max_value):
                 max_value.set_as(ub_max_64[i])
                 min_index.set_as(max_cmp_index + i)
+            with self.tik_instance.if_scope(tik.all(max_cmp_value == max_value, max_cmp_index + i < min_index)):
+                max_value.set_as(ub_max_64[i])
+                min_index.set_as(max_cmp_index + i)
         with self.tik_instance.if_scope(max_value < self.result_out_scalar):
             self.result_out_scalar.set_as(max_value)
             self.result_int32.set_as(min_index + loop * self.segment)

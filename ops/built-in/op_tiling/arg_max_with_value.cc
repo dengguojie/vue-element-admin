@@ -120,7 +120,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
 
   int32_t first_dim_size = 1;
   int64_t input_dims = input_shape.size();
-  if (axis == input_dims - 1) {  // arg at last dim
+  if (axis == input_dims - 1) {
     // calc first dim size and axis size
     int32_t i = 0;
     while (i < input_dims - 1) {
@@ -154,7 +154,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
 
     // select branch
     if (dtype == "float16" && param.axis_size < MAX_SEGMENT_LEN) {
-      param.tiling_mode = 0;  // compute_argxxx_last_axis_copy_one_time->do_argxxx_last_axis_fp16_copy_one_time
+      param.tiling_mode = 0;  // compute_argxxx_last_axis_fp16_copy_one_time
       if (param.axis_size <= data_each_vector * 2) {
         param.align_num = GetAlignNum(param.axis_size, data_each_block);
         // calc axis size one time: the size one move can copy to ub at core_segment
@@ -167,8 +167,10 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
         } else {
           vector_size = GetCeilInt(param.axis_size, data_each_block) * data_each_block;
           axis_size_one_time = (int32_t)(segment / vector_size);
-          axis_size_one_time = (axis_size_one_time > 248) ? 248 : axis_size_one_time;  // 248: (int)(255 / 8) * 8
-          axis_size_one_time = axis_size_one_time * param.align_num;
+          axis_size_one_time = ((axis_size_one_time > 240) || (param.align_num == 1))
+                                   ? 240
+                                   : axis_size_one_time;  // 240: (int)(255 / 16) * 16
+          axis_size_one_time = (int32_t)(axis_size_one_time * param.align_num / 240) * 240;
         }
         // change tiling at first dim
         param.axis_size_one_time = axis_size_one_time;
@@ -176,24 +178,23 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
         param.one_core_segment_tail = param.one_core_ele % axis_size_one_time;
         param.last_core_segment_loop = param.last_core_ele / axis_size_one_time;
         param.last_core_segment_tail = param.last_core_ele % axis_size_one_time;
-        // compute_argxxx_last_axis_fp16_more_dims
         if (param.axis_size >= data_each_vector) {
-          param.tiling_mode = 1;  // do_argxxx_last_axis_fp16_more_vector
+          param.tiling_mode = 1;  // compute_argxxx_last_axis_fp16_more_vector
         } else {
-          param.tiling_mode = 2;  // do_argxxx_last_axis_fp16_less_vector
+          param.tiling_mode = 2;  // compute_argxxx_last_axis_fp16_less_vector
         }
       }
-    } else {  // compute_argxxx_last_axis
+    } else {
       // tiling at last dim
       param.loop_times = param.axis_size / segment;
       param.tail_size = param.axis_size % segment;
-      if (dtype == "float16") {
-        param.tiling_mode = 3;  // do_argxxx_last_axis_fp16_default
+      if (dtype == "float32") {
+        param.tiling_mode = 4;  // compute_argxxx_last_axis_fp32
       } else {
-        param.tiling_mode = 4;  // do_argxxx_last_axis_fp32
+        param.tiling_mode = 3;  // compute_argxxx_last_axis_fp16
       }
     }
-  } else {  // arg at not last dim
+  } else {
     // calc first dim size and axis size and last dim size
     int32_t i = 0;
     int32_t last_dim_size = 1;
@@ -210,9 +211,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.axis_size = input_shape[axis];
     param.last_dim_size = last_dim_size;
 
-    if ((param.first_dim_size >= core_num) ||
-        (param.first_dim_size >=
-         (param.last_dim_size / data_each_vector))) {  // compute_argxxx_not_last_axis_cut_by_first_dim
+    if ((param.first_dim_size >= core_num) || (param.first_dim_size >= (param.last_dim_size / data_each_vector))) {
       // calc core number at first_dim
       param.one_core_ele = GetCeilInt(param.first_dim_size, core_num);
       param.act_core_num = param.first_dim_size / param.one_core_ele;
@@ -242,13 +241,15 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       if (dtype == "float32") {
         param.tiling_mode = 5;  // do_not_last
       } else {
-        param.tiling_mode = 6;  // do_not_last_fp16_default
-        int32_t block_align_num = param.last_dim_size / data_each_block;
-        // do_not_last_fp16_align
-        if (param.last_dim_size % data_each_block == 0 && block_align_num <= 4 * 8)
-          param.tiling_mode = 7;
+        param.tiling_mode = 10;  // do_not_last
+        if (param.axis_size <= 2048) {
+          param.tiling_mode = 6;  // do_not_last_fp16_default
+          if (param.last_dim_size % data_each_block == 0 && param.last_dim_size / data_each_block <= 4 * 8) {
+            param.tiling_mode = 7;  // do_not_last_fp16_aglin
+          }
+        }
       }
-    } else {  // compute_argxxx_not_last_axis_cut_by_last_dim
+    } else {
       // calc core number at last_dim
       int32_t core_number = core_num;
       if (param.last_dim_size < data_each_vector)
@@ -281,7 +282,10 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       if (dtype == "float32") {
         param.tiling_mode = 8;  // do_not_last
       } else {
-        param.tiling_mode = 9;  // do_not_last_fp16_default
+        param.tiling_mode = 11;  // do_not_last
+        if (param.axis_size <= 2048) {
+          param.tiling_mode = 9;  // do_not_last_fp16_default
+        }
       }
     }
   }

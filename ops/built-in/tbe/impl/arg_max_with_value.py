@@ -935,8 +935,11 @@ class Argmax(ArgmaxBase):
             max_cmp_value = self.tik_instance.Scalar(self.dtype_x)
             max_cmp_index = self.tik_instance.Scalar("int32")
             max_cmp_value.set_as(ub_max_64[i])
+            max_cmp_index.set_as(ub_index_int32[i])
             with self.tik_instance.if_scope(max_cmp_value > max_value):
-                max_cmp_index.set_as(ub_index_int32[i])
+                max_value.set_as(ub_max_64[i])
+                max_index.set_as(max_cmp_index + i)
+            with self.tik_instance.if_scope(tik.all(max_cmp_value == max_value, max_cmp_index + i < max_index)):
                 max_value.set_as(ub_max_64[i])
                 max_index.set_as(max_cmp_index + i)
         with self.tik_instance.if_scope(max_value > self.result_out_scalar):

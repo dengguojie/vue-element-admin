@@ -129,8 +129,8 @@ class Argmin():
         self.result_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="result_gm", scope=tik.scope_gm)
         self.result_gm_2 = self.tik_instance.Tensor(self.dtype_x, (MAX_INT32,), name="result_gm_2", scope=tik.scope_gm)
 
-    def do_not_last_fp32(self, segment, gm_in_offset, gm_out_offset):
-        """process for a segment when arg not last dim for fp32
+    def do_not_last(self, segment, gm_in_offset, gm_out_offset):
+        """process for a segment when arg not last dim
         """
         ub_a = self.tik_instance.Tensor(self.dtype_x, (MAX_SEGMENT_LEN,), name="ub_a", scope=tik.scope_ubuf)
         ub_c = self.tik_instance.Tensor("int32", (MAX_SEGMENT_LEN,), name="ub_c", scope=tik.scope_ubuf)
@@ -165,7 +165,8 @@ class Argmin():
         # move out
         nbust_len_out = _get_ceil_int(segment, 8)
         self.tik_instance.data_move(self.result_gm[gm_out_offset], ub_c, 0, 1, nbust_len_out, 0, 0)
-        self.tik_instance.data_move(self.result_gm_2[gm_out_offset], ub_a, 0, 1, nbust_len_out, 0, 0)
+        nbust_len_out_2 = _get_ceil_int(segment, self.data_each_block)
+        self.tik_instance.data_move(self.result_gm_2[gm_out_offset], ub_a, 0, 1, nbust_len_out_2, 0, 0)
 
     def do_not_last_fp16_default(self, segment, gm_in_offset, gm_out_offset):
         """process for a segment when arg not last dim for fp 16
@@ -299,9 +300,10 @@ class Argmin():
             not_last_axis_fuc(MAX_SEGMENT_LEN, gm_in_offset, gm_out_offset)
         # run tail
         with self.tik_instance.if_scope(segment_tail != 0):
-            with self.tik_instance.if_scope(tik.all(segment_tail_data % 8 != 0, segment_tail_data > 8)):
+            with self.tik_instance.if_scope(
+                    tik.all(segment_tail_data % self.data_each_block != 0, segment_tail_data > self.data_each_block)):
                 pro_len = _get_ceil_int(segment_tail_data, 2)
-                pro_len = _get_ceil_int(pro_len, 8) * 8
+                pro_len = _get_ceil_int(pro_len, self.data_each_block) * self.data_each_block
                 offset = segment_tail_data - pro_len
                 gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN
@@ -310,7 +312,7 @@ class Argmin():
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN + offset
                 not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
             with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(segment_tail_data % 8 == 0):
+                with self.tik_instance.if_scope(segment_tail_data % self.data_each_block == 0):
                     gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
                                    MAX_SEGMENT_LEN + offset_data
                     gm_out_offset = first_idx * self.last_dim_size + segment_loop * MAX_SEGMENT_LEN + offset_data
@@ -673,7 +675,7 @@ class Argmin():
                 self.dtype_x, (_get_ceil_int(self.segment, self.data_each_vector) * self.data_each_vector,),
                 name="ub_result",
                 scope=tik.scope_ubuf)
-            ub_result_int32 = self.tik_instance.Tensor("int32", (16,), name="ub_result_int32", scope=tik.scope_ubuf)
+            ub_index_int32 = self.tik_instance.Tensor("int32", (16,), name="ub_index_int32", scope=tik.scope_ubuf)
             ub_data = self.tik_instance.Tensor(
                 self.dtype_x, (_get_ceil_int(self.segment, self.data_each_vector) * self.data_each_vector,),
                 name="ub_data",
@@ -783,12 +785,12 @@ class Argmin():
                                                      scope=tik.scope_ubuf)
             ub_result_cmp[0].set_as(self.result_out_scalar)
             ub_result_cmp[1].set_as(ub_data[min_index_int32])
-            ub_result_int32[0].set_as(self.result_int32)
-            ub_result_int32[1].set_as(min_index_int32 + loop * self.segment)
+            ub_index_int32[0].set_as(self.result_int32)
+            ub_index_int32[1].set_as(min_index_int32 + loop * self.segment)
             self.tik_instance.vcmin(2, ub_result_cmp, ub_result_cmp, 1, 1, 1, 8)
             min_index1 = self.tik_instance.Scalar("uint16")
             min_index1.set_as(ub_result_cmp[1])
-            self.result_int32.set_as(ub_result_int32[min_index1])
+            self.result_int32.set_as(ub_index_int32[min_index1])
             self.result_out_scalar.set_as(ub_result_cmp[0])
 
         def _run(segment_len, segment_index):
@@ -837,9 +839,13 @@ class Argmin():
             """
             segment_size = self.tik_instance.Scalar("int32")
             segment_size.set_as(segment)
-            _ub_size = [self.data_each_block * _get_ceil_int(self.segment, self.data_each_block)]
-            ub_index_int32 = self.tik_instance.Tensor("int32", _ub_size, name="ub_index_int32", scope=tik.scope_ubuf)
-            ub_data = self.tik_instance.Tensor(self.dtype_x, _ub_size, name="ub_data", scope=tik.scope_ubuf)
+            ub_index_int32 = self.tik_instance.Tensor("int32", [self.data_each_vector],
+                                                      name="ub_index_int32",
+                                                      scope=tik.scope_ubuf)
+            ub_data = self.tik_instance.Tensor(
+                self.dtype_x, [self.data_each_block * _get_ceil_int(self.segment, self.data_each_block)],
+                name="ub_data",
+                scope=tik.scope_ubuf)
             ub_min_64 = self.tik_instance.Tensor(self.dtype_x, [self.data_each_vector],
                                                  name="ub_min_64",
                                                  scope=tik.scope_ubuf)
@@ -863,7 +869,6 @@ class Argmin():
                 with self.tik_instance.for_range(0, tail):
                     mask.set_as(2 * mask)
                 mask.set_as(mask - 1)
-                #self.tik_instance.printf("ERROR:%d\n",mask)
                 mask_h = self.tik_instance.Scalar("uint64")
                 mask_h.set_as(0)
                 mask_l = self.tik_instance.Scalar("uint64")
@@ -902,6 +907,9 @@ class Argmin():
                 min_cmp_value.set_as(ub_min_64[i])
                 min_cmp_index.set_as(ub_index_int32[i])
                 with self.tik_instance.if_scope(min_cmp_value < min_value):
+                    min_value.set_as(ub_min_64[i])
+                    min_index.set_as(min_cmp_index + i)
+                with self.tik_instance.if_scope(tik.all(min_cmp_value == min_value, min_cmp_index + i < min_index)):
                     min_value.set_as(ub_min_64[i])
                     min_index.set_as(min_cmp_index + i)
             with self.tik_instance.if_scope(min_value < self.result_out_scalar):
@@ -977,8 +985,7 @@ class Argmin():
                                 self.compute_argmin_not_last_axis_cut_by_first_dim(first_idx, self.segment_loop,
                                                                                    self.segment_tail,
                                                                                    self.segment_tail_data,
-                                                                                   self.offset_data,
-                                                                                   self.do_not_last_fp32)
+                                                                                   self.offset_data, self.do_not_last)
                     # calc core at last dim and tiling at last dim and fp32 and arg not last dim
                     with self.tik_instance.if_scope(self.tiling_mode == 8):
                         with self.tik_instance.new_stmt_scope():
@@ -988,8 +995,7 @@ class Argmin():
                                 self.compute_argmin_not_last_axis_cut_by_last_dim(offset_in, offset_out,
                                                                                   self.segment_loop, self.segment_tail,
                                                                                   self.segment_tail_data,
-                                                                                  self.offset_data,
-                                                                                  self.do_not_last_fp32)
+                                                                                  self.offset_data, self.do_not_last)
 
                 if self.dtype_x == "float16":
                     # calc core at first dim and no tiling and fp16 and arg last dim
@@ -1040,6 +1046,25 @@ class Argmin():
                                                                                   self.segment_tail_data,
                                                                                   self.offset_data,
                                                                                   self.do_not_last_fp16_default)
+                    # calc core at first dim and tiling at last dim and fp16 and arg not last dim
+                    with self.tik_instance.if_scope(self.tiling_mode == 10):
+                        with self.tik_instance.new_stmt_scope():
+                            with self.tik_instance.for_range(0, self.core_ele) as ele_idx:
+                                first_idx = core_idx * self.one_core_ele + ele_idx
+                                self.compute_argmin_not_last_axis_cut_by_first_dim(first_idx, self.segment_loop,
+                                                                                   self.segment_tail,
+                                                                                   self.segment_tail_data,
+                                                                                   self.offset_data, self.do_not_last)
+                    # calc core at last dim and tiling at last dim and fp16 and arg not last dim
+                    with self.tik_instance.if_scope(self.tiling_mode == 11):
+                        with self.tik_instance.new_stmt_scope():
+                            with self.tik_instance.for_range(0, self.first_dim_size) as ele_idx:
+                                offset_in = ele_idx * self.axis_size * self.last_dim_size + core_idx * self.one_core_ele
+                                offset_out = ele_idx * self.last_dim_size + core_idx * self.one_core_ele
+                                self.compute_argmin_not_last_axis_cut_by_last_dim(offset_in, offset_out,
+                                                                                  self.segment_loop, self.segment_tail,
+                                                                                  self.segment_tail_data,
+                                                                                  self.offset_data, self.do_not_last)
 
     def argmin_compute(self):
         """argmin_compute

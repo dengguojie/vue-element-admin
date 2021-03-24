@@ -128,8 +128,8 @@ class Argmax():
         self.axis_gm = self.tik_instance.Tensor("int32", (1,), name="axis_gm", scope=tik.scope_gm)
         self.result_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="result_gm", scope=tik.scope_gm)
 
-    def do_not_last_fp32(self, segment, gm_in_offset, gm_out_offset):
-        """process for a segment when arg not last dim for fp32
+    def do_not_last(self, segment, gm_in_offset, gm_out_offset):
+        """process for a segment when arg not last dim
         """
         ub_a = self.tik_instance.Tensor(self.dtype_x, (MAX_SEGMENT_LEN,), name="ub_a", scope=tik.scope_ubuf)
         ub_c = self.tik_instance.Tensor("int32", (MAX_SEGMENT_LEN,), name="ub_c", scope=tik.scope_ubuf)
@@ -637,7 +637,7 @@ class Argmax():
                 self.dtype_x, (_get_ceil_int(self.segment, self.data_each_vector) * self.data_each_vector,),
                 name="ub_result",
                 scope=tik.scope_ubuf)
-            ub_result_int32 = self.tik_instance.Tensor("int32", (16,), name="ub_result_int32", scope=tik.scope_ubuf)
+            ub_index_int32 = self.tik_instance.Tensor("int32", (16,), name="ub_index_int32", scope=tik.scope_ubuf)
             ub_data = self.tik_instance.Tensor(
                 self.dtype_x, (_get_ceil_int(self.segment, self.data_each_vector) * self.data_each_vector,),
                 name="ub_data",
@@ -747,12 +747,12 @@ class Argmax():
                                                      scope=tik.scope_ubuf)
             ub_result_cmp[0].set_as(self.result_out_scalar)
             ub_result_cmp[1].set_as(ub_data[max_index_int32])
-            ub_result_int32[0].set_as(self.result_int32)
-            ub_result_int32[1].set_as(max_index_int32 + loop * self.segment)
+            ub_index_int32[0].set_as(self.result_int32)
+            ub_index_int32[1].set_as(max_index_int32 + loop * self.segment)
             self.tik_instance.vcmax(2, ub_result_cmp, ub_result_cmp, 1, 1, 1, 8)
             max_index1 = self.tik_instance.Scalar("uint16")
             max_index1.set_as(ub_result_cmp[1])
-            self.result_int32.set_as(ub_result_int32[max_index1])
+            self.result_int32.set_as(ub_index_int32[max_index1])
             self.result_out_scalar.set_as(ub_result_cmp[0])
 
         def _run(segment_len, segment_index):
@@ -795,9 +795,13 @@ class Argmax():
             """
             segment_size = self.tik_instance.Scalar("int32")
             segment_size.set_as(segment)
-            _ub_size = [self.data_each_block * _get_ceil_int(self.segment, self.data_each_block)]
-            ub_index_int32 = self.tik_instance.Tensor("int32", _ub_size, name="ub_index_int32", scope=tik.scope_ubuf)
-            ub_data = self.tik_instance.Tensor(self.dtype_x, _ub_size, name="ub_data", scope=tik.scope_ubuf)
+            ub_index_int32 = self.tik_instance.Tensor("int32", [self.data_each_vector],
+                                                      name="ub_index_int32",
+                                                      scope=tik.scope_ubuf)
+            ub_data = self.tik_instance.Tensor(
+                self.dtype_x, [self.data_each_block * _get_ceil_int(self.segment, self.data_each_block)],
+                name="ub_data",
+                scope=tik.scope_ubuf)
             ub_max_64 = self.tik_instance.Tensor(self.dtype_x, [self.data_each_vector],
                                                  name="ub_max_64",
                                                  scope=tik.scope_ubuf)
@@ -821,7 +825,6 @@ class Argmax():
                 with self.tik_instance.for_range(0, tail):
                     mask.set_as(2 * mask)
                 mask.set_as(mask - 1)
-                #self.tik_instance.printf("ERROR:%d\n",mask)
                 mask_h = self.tik_instance.Scalar("uint64")
                 mask_h.set_as(0)
                 mask_l = self.tik_instance.Scalar("uint64")
@@ -860,6 +863,9 @@ class Argmax():
                 max_cmp_value.set_as(ub_max_64[i])
                 max_cmp_index.set_as(ub_index_int32[i])
                 with self.tik_instance.if_scope(max_cmp_value > max_value):
+                    max_value.set_as(ub_max_64[i])
+                    max_index.set_as(max_cmp_index + i)
+                with self.tik_instance.if_scope(tik.all(max_cmp_value == max_value, max_cmp_index + i < max_index)):
                     max_value.set_as(ub_max_64[i])
                     max_index.set_as(max_cmp_index + i)
             with self.tik_instance.if_scope(max_value > self.result_out_scalar):
@@ -933,8 +939,7 @@ class Argmax():
                                 self.compute_argmax_not_last_axis_cut_by_first_dim(first_idx, self.segment_loop,
                                                                                    self.segment_tail,
                                                                                    self.segment_tail_data,
-                                                                                   self.offset_data,
-                                                                                   self.do_not_last_fp32)
+                                                                                   self.offset_data, self.do_not_last)
                     # calc core at last dim and tiling at last dim and fp32 and arg not last dim
                     with self.tik_instance.if_scope(self.tiling_mode == 8):
                         with self.tik_instance.new_stmt_scope():
@@ -944,8 +949,7 @@ class Argmax():
                                 self.compute_argmax_not_last_axis_cut_by_last_dim(offset_in, offset_out,
                                                                                   self.segment_loop, self.segment_tail,
                                                                                   self.segment_tail_data,
-                                                                                  self.offset_data,
-                                                                                  self.do_not_last_fp32)
+                                                                                  self.offset_data, self.do_not_last)
 
                 if self.dtype_x == "float16":
                     # calc core at first dim and no tiling and fp16 and arg last dim
@@ -996,6 +1000,25 @@ class Argmax():
                                                                                   self.segment_tail_data,
                                                                                   self.offset_data,
                                                                                   self.do_not_last_fp16_default)
+                    # calc core at first dim and tiling at last dim and fp16 and arg not last dim
+                    with self.tik_instance.if_scope(self.tiling_mode == 10):
+                        with self.tik_instance.new_stmt_scope():
+                            with self.tik_instance.for_range(0, self.core_ele) as ele_idx:
+                                first_idx = core_idx * self.one_core_ele + ele_idx
+                                self.compute_argmax_not_last_axis_cut_by_first_dim(first_idx, self.segment_loop,
+                                                                                   self.segment_tail,
+                                                                                   self.segment_tail_data,
+                                                                                   self.offset_data, self.do_not_last)
+                    # calc core at last dim and tiling at last dim and fp16 and arg not last dim
+                    with self.tik_instance.if_scope(self.tiling_mode == 11):
+                        with self.tik_instance.new_stmt_scope():
+                            with self.tik_instance.for_range(0, self.first_dim_size) as ele_idx:
+                                offset_in = ele_idx * self.axis_size * self.last_dim_size + core_idx * self.one_core_ele
+                                offset_out = ele_idx * self.last_dim_size + core_idx * self.one_core_ele
+                                self.compute_argmax_not_last_axis_cut_by_last_dim(offset_in, offset_out,
+                                                                                  self.segment_loop, self.segment_tail,
+                                                                                  self.segment_tail_data,
+                                                                                  self.offset_data, self.do_not_last)
 
     def argmax_compute(self):
         """argmax_compute

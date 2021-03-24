@@ -70,16 +70,19 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
     obj = Transpose(tik_inst, input_dtype, tensor_list, kernel_name)
     obj.compute_tiling()
 
-    obj.tik_inst.BuildCCE(kernel_name=obj.kernel_name,
-                          inputs=[obj.data_in],
-                          outputs=[obj.data_out],
-                          flowtable=[obj.data_tiling])
-
     tbe_context.get_context().add_compile_info("vars", {
         "ub_size": UB_SIZE // BLOCK_SIZE,
         "core_num": CORE_NUM,
         "dtype": input_dtype,
         "block_size": block_size,
     })
+    # this "global_variable_link" flag suggest ccec.py do link without "-r" option
+    # which will result in global variable in cce file with wrong address
+    tbe_context.get_context().add_compile_info("global_variable_link", True)
+
+    obj.tik_inst.BuildCCE(kernel_name=obj.kernel_name,
+                          inputs=[obj.data_in],
+                          outputs=[obj.data_out],
+                          flowtable=[obj.data_tiling])
 
     return obj.tik_inst
