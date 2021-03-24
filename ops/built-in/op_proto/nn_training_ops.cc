@@ -150,13 +150,12 @@ IMPLEMT_VERIFIER(ApplyAdaMaxD, ApplyAdaMaxDVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ApplyAdaMaxDInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ApplyAdaMaxD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "m", "m");
-  ApplyInferShapeAndDtype(op, "v", "v");
-  return GRAPH_SUCCESS;
+  if ((OneInOneOutDynamicInfer(op, "var", {"var"})) && (OneInOneOutDynamicInfer(op, 
+      "m", {"m"})) && (OneInOneOutDynamicInfer(op, "v", {"v"}))) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(ApplyAdaMaxD, ApplyAdaMaxDInferShape);
 VERIFY_FUNC_REG(ApplyAdaMaxD, ApplyAdaMaxDVerify);
 // ----------------ApplyAdaMax END-------------------
@@ -369,15 +368,14 @@ IMPLEMT_VERIFIER(ApplyAdagradV2D, ApplyAdagradV2DVerify) {
   }
   return GRAPH_SUCCESS;
 }
-
-// Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdagradV2DInferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter ApplyAdagradV2D op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "accum", "accum");
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "var", {"var"})) {
+  if (OneInOneOutDynamicInfer(op, "var", {"accum"})){
+    return GRAPH_SUCCESS;
+  }
+  }
+  return GRAPH_FAILED;
 }
-
 COMMON_INFER_FUNC_REG(ApplyAdagradV2D, ApplyAdagradV2DInferShape);
 VERIFY_FUNC_REG(ApplyAdagradV2D, ApplyAdagradV2DVerify);
 // ----------------ApplyAdagradV2D END-------------------
