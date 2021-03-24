@@ -64,6 +64,7 @@ set(_onnx_plugins
   logsoftmax_plugin.cc
   lrn_plugin.cc
   matmul_plugin.cc
+  mean_plugin.cc
   max_plugin.cc
   min_plugin.cc
   multinomial_plugin.cc
