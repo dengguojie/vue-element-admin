@@ -101,5 +101,5 @@ def sigmoid(x, y, kernel_name="sigmoid"):
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name, "tensor_list": [data_input, res]}
+    config = {"name": kernel_name, "tensor_list": [data_input, res], "disable_float_overflow": True}
     tbe.cce_build_code(sch, config)
