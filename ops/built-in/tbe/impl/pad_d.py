@@ -28,7 +28,7 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-USED_BUFFER_LEN = 3072
+USED_BUFFER_LEN = 5120
 UINT64_ALL_ONE = 18446744073709551615
 
 
@@ -444,7 +444,7 @@ def _do_padding(padding_len, out_ubuf, gm_out_buf, params,
 
     if out_ubuf.buf == 0:
         dump_buf = _apply_for_new_alloc(params.ib_, params.dtype,
-                                        params.unified_buffer_len + params.vec_align_len,
+                                        params.unified_buffer_len,
                                         params.cp_align_len,
                                         tbe_platform.scope_ubuf)
         dump_buf_len = min(params.unified_buffer_len,
