@@ -238,6 +238,42 @@ case12 = {"params": [{"shape": (351, 8, 16, 16), "dtype": "float16",
           "calc_expect_func": calc_expect_func,
           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
+case15 = {"params": [{"shape": (21600, 8, 16, 16), "dtype": "float32",
+                     "ori_shape": (21600, 8, 16, 16), "format": "FRACTAL_Z_3D",
+                     "ori_format": "FRACTAL_Z_3D",
+                     "param_type": "input", "value_range": [-10.0, 10.0]},
+                    {"shape": (128, 128, 3, 3, 300), "dtype": "float32",
+                     "ori_shape": (128, 128, 3, 3, 300), "format": "NCDHW", "ori_format": "NCDHW",
+                     "param_type": "output"},
+                    "FRACTAL_Z_3D", "NCDHW"],
+         "expect": "success",
+         "format_expect": ["NCDHW"],
+         "support_expect": False}
+
+case16 = {"params": [{"shape": (21600, 8, 16, 16), "dtype": "float32",
+                     "ori_shape": (21600, 8, 16, 16), "format": "FRACTAL_Z_3D",
+                     "ori_format": "FRACTAL_Z_3D",
+                     "param_type": "input", "value_range": [-10.0, 10.0]},
+                    {"shape": (128, 128, 300, 3, 3), "dtype": "float32",
+                     "ori_shape": (128, 128, 300, 3, 3), "format": "NCDHW", "ori_format": "NCDHW",
+                     "param_type": "output"},
+                    "FRACTAL_Z_3D", "NCDHW"],
+         "expect": "success",
+         "format_expect": ["NCDHW"],
+         "support_expect": False}
+
+case17 = {"params": [{"shape": (34300, 4, 16, 16), "dtype": "float32",
+                     "ori_shape": (34300, 4, 16, 16), "format": "FRACTAL_Z_3D",
+                     "ori_format": "FRACTAL_Z_3D",
+                     "param_type": "input", "value_range": [-10.0, 10.0]},
+                    {"shape": (64, 3, 7, 700, 7), "dtype": "float32",
+                     "ori_shape": (64, 3, 7, 700, 7), "format": "NCDHW", "ori_format": "NCDHW",
+                     "param_type": "output"},
+                    "FRACTAL_Z_3D", "NCDHW"],
+         "expect": "success",
+         "format_expect": ["NCDHW"],
+         "support_expect": False}
+
 ut_case.add_case(["Ascend910"], err1)
 ut_case.add_case(["Ascend910"], err2)
 ut_case.add_case(["Ascend910"], err6)
@@ -254,9 +290,12 @@ ut_case.add_precision_case(["Ascend910"], case2)
 ut_case.add_precision_case(["Ascend910"], case3)
 ut_case.add_precision_case(["Ascend910"], case4)
 ut_case.add_case(["Ascend310","Ascend910A"], case7)
-# ut_case.add_precision_case(["Ascend910"], case8)
-# ut_case.add_precision_case(["Ascend910"], case9)
-# ut_case.add_precision_case(["Ascend910"], case12)
+ut_case.add_case(["Ascend310","Ascend910A"], case15)
+ut_case.add_case(["Ascend310","Ascend910A"], case16)
+ut_case.add_case(["Ascend310","Ascend910A"], case17)
+#ut_case.add_precision_case(["Ascend910"], case8)
+#ut_case.add_precision_case(["Ascend910"], case9)
+#ut_case.add_precision_case(["Ascend910"], case12)
 
 if __name__ == '__main__':
     # ut_case.run("Ascend910")

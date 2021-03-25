@@ -78,6 +78,15 @@ ut_case.add_case(["Ascend910"],
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3,1,2,16,16), (3, 2, 16,16),
                                      "int8", "int8_2", "success", "NHWC"))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((3,1,2,16,32), (3, 2, 2, 16),
+                                     "int8", "int8_3", "success", "NCHW"))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((3,3,2001,16,32), (3, 95, 2001, 16),
+                                     "int8", "int8_4", "success", "NCHW"))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((31,3,201,16,32), (31, 92, 201, 16),
+                                     "int8", "int8_5", "success", "NCHW"))
 if __name__ == '__main__':
     ut_case.run("Ascend910")
     exit(0)

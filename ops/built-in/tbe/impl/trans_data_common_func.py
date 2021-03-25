@@ -47,6 +47,9 @@ MASK_128 = 128
 MAX_INT64_VALUE = 2 ** 62 - 1
 # used for vnchwconv
 ADDR_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+# used for scalar
+REG_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31)
 # vnchwconv line count
 VNC_LINES = 16
 
@@ -157,7 +160,7 @@ def get_c0_len(dtype):
     the c0 length of dtype as an Integral
     """
 
-    c0_len = C0_32 if dtype.lower() in ("int8", "uint8", "bool") else C0_16
+    c0_len = C0_32 if dtype.lower() in ("int8", "uint8") else C0_16
 
     return c0_len
 
@@ -185,7 +188,7 @@ def clean_ubuf(tik_inst, src, src_offset, dup_len):
     dtype = src.dtype.lower()
     if dtype == "float16":
         dtype_factor = 2
-    elif dtype in ("float32", "int32"):
+    elif dtype in ("float32", "int32", "uint32"):
         dtype_factor = 1
     batch_size = MASK_64
 
@@ -304,6 +307,6 @@ def get_dtype_factor(dtype):
     the data type factor as an Integral
     """
 
-    size_factor = 2 if dtype.lower() in ("float32", "int32") else 1
+    size_factor = 2 if dtype.lower() in ("float32", "int32", "uint32") else 1
 
     return size_factor

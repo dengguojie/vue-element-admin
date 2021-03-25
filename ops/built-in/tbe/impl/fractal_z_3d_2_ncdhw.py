@@ -22,6 +22,7 @@ from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik
 from te.utils.op_utils import *
+from impl import trans_data_negative_target_ntc
 
 # available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
@@ -1033,4 +1034,4 @@ def fractal_z_3d_2_ncdhw(src, dst, src_format, dst_format,
     if template_fp16.check_branch() != "not_support":
         return template_fp16.get_tik_instance()
     else:
-        raise RuntimeError("not support this kind of transfer")
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)

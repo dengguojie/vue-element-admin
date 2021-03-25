@@ -250,7 +250,7 @@ def _tiling_params_positive(args):
     tp_100_r1st_src_r2nd_dst_same = 1  # such as HWCN -> C1HWNoNiC0
     axis_src_cr_size = tdc.get_shape_size(in_shape[src_format.index("C") + 1:])
     tmp_src_cr_lp_unit = tp_100_vnc_line_size // c0_len // block_elem_cnt * block_elem_cnt
-    if tmp_src_cr_lp_unit >= axis_src_cr_size or in_dtype in ("float32", "int32"):
+    if tmp_src_cr_lp_unit >= axis_src_cr_size or in_dtype in ("float32", "int32", "uint32"):
         tp_100_tiling_mode = 1000
         tp_100_src_cr_lp_unit = tmp_src_cr_lp_unit if axis_src_cr_size > tmp_src_cr_lp_unit else axis_src_cr_size
     else:
@@ -395,7 +395,7 @@ def _twice_vnchwconv_invert(args):
      r1st_src_r2nd_dst_same, plp_cl_size, cr_lp_cnt, plp_cr_size, c_mod_c0, c0_size, ele_per_block) = args
     tensor_dtype = src_ub.dtype.lower()
     size_factor = tdc.get_dtype_factor(tensor_dtype)
-    if tensor_dtype in ("float32", "int32"):
+    if tensor_dtype in ("float32", "int32", "uint32"):
         src_ub_casted = src_ub.reinterpret_cast_to("float16")
     else:
         src_ub_casted = src_ub
@@ -413,7 +413,7 @@ def _twice_vnchwconv_invert(args):
             plp_cr_block_align_size.set_as(tdc.ceil_fill(plp_cr_size, ele_per_block))
 
         repeat_cnt = tdc.ceil_div(plp_c_size * plp_cr_block_align_size * size_factor, c0_size)
-        if tensor_dtype != "int8":
+        if tensor_dtype not in ("int8", "uint8"):
             with tik_inst.if_scope(repeat_cnt == 1):
                 src_stride.set_as(0)
                 dst_stride.set_as(0)
@@ -439,7 +439,7 @@ def _twice_vnchwconv_invert(args):
         # padding zero
         clean_len = plp_cr_size * tdc.ceil_fill(plp_c_size, c0_size) * c0_size
         with tik_inst.if_scope(plp_c_size < c0_size):
-            if tensor_dtype == "int8":
+            if tensor_dtype in ("int8", "uint8"):
                 src_ub_int32 = src_ub.reinterpret_cast_to("int32")
                 tdc.clean_ubuf(tik_inst, src_ub_int32, 0, tdc.ceil_div(clean_len, 4))
             else:
@@ -450,7 +450,7 @@ def _twice_vnchwconv_invert(args):
                                0, plp_cr_size, 1 * size_factor, 0, (c0_size - 1) * size_factor)
 
         # do dhcn -> ndhc or dhcn -> dhnc
-        if tensor_dtype != "int8":
+        if tensor_dtype not in ("int8", "uint8"):
             with tik_inst.if_scope(r1st_src_r2nd_dst_same == 0):  # for NCHW -> C1HWNoNiC0
                 with tik_inst.for_range(0, size_factor) as factor_idx:
                     src_addr_list = [src_ub_casted[tdc.C0_16 * (i + c0_size * factor_idx)] for i in tdc.ADDR_IDX_LIST]
@@ -485,7 +485,7 @@ def _twice_vnchwconv_invert(args):
                     dst_stride.set_as(0)
                 with tik_inst.else_scope():
                     src_stride.set_as(32)
-                    dst_stride.set_as(16)
+                    dst_stride.set_as(plp_cl_size)
                 src_addr_list = [src_ub[c0_size * i] for i in tdc.ADDR_IDX_LIST]
                 tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
                 src_addr_list = [src_ub[c0_size * (i + tdc.C0_16)] for i in tdc.ADDR_IDX_LIST]
@@ -515,7 +515,7 @@ def _once_vnchwconv_invert(args):
      r1st_src_r2nd_dst_same, plp_cl_size, cr_lp_cnt, plp_cr_size, c_mod_c0, c0_size, ele_per_block) = args
     tensor_dtype = src_ub.dtype.lower()
     repeat_cnt = tdc.ceil_div(plp_cr_size, c0_size)
-    if tensor_dtype in ("float32", "int32"):  # to avoid compile error
+    if tensor_dtype in ("float32", "int32", "uint32"):  # to avoid compile error
         src_ub = src_ub.reinterpret_cast_to("float16")
 
     # do cdh -> dhc
@@ -523,7 +523,7 @@ def _once_vnchwconv_invert(args):
         src_stride = tik_inst.Scalar()
         dst_stride = tik_inst.Scalar()
         dst_gap = tik_inst.Scalar()
-        if tensor_dtype != "int8":
+        if tensor_dtype not in ("int8", "uint8"):
             with tik_inst.if_scope(plp_c_size % c0_size > 0):  # padding zero
                 tdc.clean_ubuf(tik_inst, src_ub, c_mod_c0 * vnc_col_size, (c0_size - c_mod_c0) * vnc_col_size)
 
