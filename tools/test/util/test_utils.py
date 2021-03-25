@@ -17,6 +17,8 @@ def compare_with_golden(result_path, golden_path):
     golden_path = os.path.join(os.path.relpath(golden_path))
     names = os.listdir(golden_path)
     for name in names:
+        if 'scripts' in name:
+            continue
         src_name = os.path.join(result_path, name)
         dst_name = os.path.join(golden_path, name)
         if os.path.isdir(src_name):

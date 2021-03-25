@@ -5,6 +5,17 @@ target_custom=0
 
 sourcedir=$PWD/packages
 
+QUIET="n"
+
+for i in "$@"
+do
+    echo $i
+    if test $i = "--quiet"; then
+        QUIET="y"
+        break
+    fi
+done
+
 log() {
     cur_date=`date +"%Y-%m-%d %H:%M:%S"`
     echo "[runtime] [$cur_date] "$1
@@ -48,21 +59,24 @@ upgrade()
                 has_same_file=0
             fi
         done
-        if [ 0 -eq $has_same_file ]; then
-            echo "has old version in ${targetdir}/$1"\
-            "Do you want to replace? [y/n] "
 
-            while true
-            do
-                read yn
-                if [ "$yn" = n ]; then
-                    return 0
-                elif [ "$yn" = y ]; then
-                    break;
-                else
-                    echo "[ERROR] input error, please input again!"
-                fi
-            done
+        if [ 0 -eq $has_same_file ]; then
+            if test $QUIET = "n"; then
+                echo "has old version in ${targetdir}/$1"\
+                "Do you want to replace? [y/n] "
+
+                while true
+                do
+                    read yn
+                    if [ "$yn" = n ]; then
+                        return 0
+                    elif [ "$yn" = y ]; then
+                        break;
+                    else
+                        echo "[ERROR] input error, please input again!"
+                    fi
+                done
+            fi
         fi
         log "[INFO] replace old ops $1 files ......"
     fi
@@ -92,20 +106,22 @@ upgrade_proto()
     else
         if [ -f ${targetdir}/framework/custom/caffe/custom.proto ]; then
             # 有老版本,判断是否要覆盖式安装
-            echo "[INFO] ${targetdir}/framework/custom/caffe has old version"\
-            "custom.proto file. Do you want to replace? [y/n] "
+            if test $QUIET = "n"; then
+                echo "[INFO] ${targetdir}/framework/custom/caffe has old version"\
+                "custom.proto file. Do you want to replace? [y/n] "
 
-            while true
-            do
-                read yn
-                if [ "$yn" = n ]; then
-                    return 0
-                elif [ "$yn" = y ]; then
-                    break;
-                else
-                    echo "[ERROR] input error, please input again!"
-                fi
-            done
+                while true
+                do
+                    read yn
+                    if [ "$yn" = n ]; then
+                        return 0
+                    elif [ "$yn" = y ]; then
+                        break;
+                    else
+                        echo "[ERROR] input error, please input again!"
+                    fi
+                done
+            fi
         fi
         log "[INFO] replace old caffe.proto files ......"
     fi

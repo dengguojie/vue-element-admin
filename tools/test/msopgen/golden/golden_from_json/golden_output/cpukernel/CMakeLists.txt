@@ -18,7 +18,6 @@ else()
     set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
     set(CMAKE_C_COMPILER   ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
 endif()
-
 # =========================config json compile============================
 macro(GEN_OPS_INFO_FILE op_type output_dir output_file_name_prefix)
 
@@ -120,18 +119,28 @@ set(LIBRARY_OUTPUT_PATH ${AICPU_OP_IMPL_OUT_DIR})
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 add_library(${AICPU_KERNEL_TARGET} SHARED ${KERNELS_SRCS})
 
+set(SOC_VERSION $ENV{SOC_VERSION})
+if("x${SOC_VERSION}" STREQUAL "x")
+        set(SOC_VERSION "Ascend910")
+endif()
+message(STATUS "SOC_VERSION=${SOC_VERSION}")
+
 if(EXISTS "${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/lib/device/libcpu_kernels_context.so")
     target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
         -Wl,--whole-archive
         ${ASCEND_OPP_PATH}/op_impl/built-in/aicpu/aicpu_kernel/lib/device/libcpu_kernels_context.so
         -Wl,--no-whole-archive
     )
-else()
-    if(EXISTS "${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a")
-        target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
+elseif(EXISTS "${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a")
+    target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
+        -Wl,--whole-archive
+        ${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a
+        -Wl,--no-whole-archive
+    )
+elseif(EXISTS "${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/${SOC_VERSION}/libcpu_kernels_context.a")
+    target_link_libraries(${AICPU_KERNEL_TARGET} PRIVATE
             -Wl,--whole-archive
-            ${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/libcpu_kernels_context.a
-            -Wl,--no-whole-archive
-        )
-    endif()
+        ${ASCEND_AICPU_PATH}/opp/op_impl/built-in/aicpu/aicpu_kernel/lib/${SOC_VERSION}/libcpu_kernels_context.a
+        -Wl,--no-whole-archive
+    ) 
 endif()
