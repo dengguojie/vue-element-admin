@@ -153,7 +153,7 @@ bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     remain = row % core_max;
     // need +1 in op for mode2
     rows_per_core = (row + core_max - 1) / core_max;
-    if (col <= 4096) {
+    if (col <= batch_cols_padding / 1024 * 1024) {
       batch = batch_cols_padding / cols_padding;
     } else {
       batch = 1;
