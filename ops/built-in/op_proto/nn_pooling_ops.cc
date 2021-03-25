@@ -7021,10 +7021,10 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
       max_h_range_dim = std::pair<int64_t, int64_t>{max_h, max_h};
       mask_h_range_dim = std::pair<int64_t, int64_t>{mask_h, mask_h};
   } else {
-      int max_h_range0 = dim_h_range.first == 1 ? 1 : CalMax(maxpool_h, dim_h_range.first);
-      int max_h_range1 = dim_h_range.second == -1 ? -1 : CalMax(maxpool_h, dim_h_range.second);
+      max_h_range0 = dim_h_range.first == 1 ? 1 : CalMax(maxpool_h, dim_h_range.first);
+      max_h_range1 = dim_h_range.second == -1 ? -1 : CalMax(maxpool_h, dim_h_range.second);
       int mask_h_rang0 = dim_h_range.first == 1 ? 1 : CalMaskH(max_h_range0, kernel_h, kernel_w);
-      int mask_h_rang1 = dim_h_range.first == -1 ? -1 : CalMaskH(max_h_range1, kernel_h, kernel_w);
+      int mask_h_rang1 = dim_h_range.second == -1 ? -1 : CalMaskH(max_h_range1, kernel_h, kernel_w);
       max_h_range_dim = std::pair<int64_t, int64_t>{max_h_range0, max_h_range1};
       mask_h_range_dim = std::pair<int64_t, int64_t>{mask_h_rang0, mask_h_rang1};
   }
@@ -7039,11 +7039,11 @@ IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV1InferShape) {
       int max_w_range1 = dim_w_range.second == -1 ? -1 : CalMax(maxpool_w, dim_w_range.second);
       int mask_w_rang0 = dim_w_range.first == 1 ? 1 : CalMaskW(max_h_range0, max_w_range0, kernel_h,
                                                                kernel_w, input_c0);
-      int mask_w_rang1 = dim_w_range.first == -1 ? -1 : CalMaskW(max_h_range1, max_w_range1, kernel_h,
+      int mask_w_rang1 = dim_w_range.second == -1 ? -1 : CalMaskW(max_h_range1, max_w_range1, kernel_h,
                                                                  kernel_w, input_c0);
       max_w_range_dim = std::pair<int64_t, int64_t>{max_w_range0, max_w_range1};
       mask_w_range_dim = std::pair<int64_t, int64_t>{mask_w_rang0, mask_w_rang1};
-    }
+  }
 
   vec_max.push_back(batch_size);
   vec_max.push_back(c1_size);
