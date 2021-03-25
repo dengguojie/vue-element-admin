@@ -600,7 +600,10 @@ class BnGradReduceSchedule(ElewiseSchedule):
         total_size = total_size // dtype_size
         if not self._resnet50_shape_pattern:
             if dtype == "float16":
-                total_width = 13
+                if shape in [1000, 2456, 1, 1, 16]:
+                    total_width = 14
+                else:
+                    total_width = 13
             else:
                 total_width = 9
         else:
