@@ -884,6 +884,53 @@ IMPLEMT_COMMON_INFERFUNC(LeakyReluInferShape) {
 COMMON_INFER_FUNC_REG(LeakyRelu, LeakyReluInferShape);
 // ----------------LeakyRelu END-----------------
 
+// ----------------LogSigmoidGrad begin--------------------
+IMPLEMT_VERIFIER(LogSigmoidGrad, LogSigmoidGradVerify) {
+  if (op.GetInputDesc("grads").GetDataType() != op.GetInputDesc("features").GetDataType()) {
+    OP_LOGI(op.GetName().c_str(), "Input and output's dtype mast be same.");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(LogSigmoidGradInferShape) {
+  TensorDesc output_desc = op.GetOutputDesc("backprops");
+  std::vector<int64_t> dims_grads = op.GetInputDesc("grads").GetShape().GetDims();
+  std::vector<int64_t> dims_features = op.GetInputDesc("features").GetShape().GetDims();
+
+  if (dims_grads.size() < dims_features.size()) {
+    std::vector<int64_t> dims_tmp = dims_grads;
+    dims_grads = dims_features;
+    dims_features = dims_tmp;
+  }
+  if (dims_grads.size() != dims_features.size()) {
+    int dec = dims_grads.size() - dims_features.size();
+    for (int i = 0; i < dec; i++) {
+      dims_features.insert(dims_features.begin(), (int64_t)1);
+    }
+  }
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_grads.size(); i++) {
+    if ((dims_grads[i] != dims_features[i]) && (dims_grads[i] != 1) && (dims_features[i] != 1)) {
+      OP_LOGI(op.GetName().c_str(), "Input and output's dimvalue mast be different,mast not be 1.");
+      return GRAPH_FAILED;
+    }
+    int64_t dims = dims_grads[i] > dims_features[i] ? dims_grads[i] : dims_features[i];
+    dim_vec.push_back(dims);
+  }
+  output_desc.SetShape(ge::Shape(dim_vec));
+  DataType input_dtype = op.GetInputDesc("grads").GetDataType();
+  output_desc.SetDataType(input_dtype);
+  Format input_format = op.GetInputDesc("grads").GetFormat();
+  output_desc.SetFormat(input_format);
+  (void)op.UpdateOutputDesc("backprops", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(LogSigmoidGrad, LogSigmoidGradInferShape);
+VERIFY_FUNC_REG(LogSigmoidGrad, LogSigmoidGradVerify);
+// ----------------LogSigmoidGrad end----------------------
+
 // ----------------LogSigmoid--------------------
 IMPLEMT_COMMON_INFERFUNC(LogSigmoidInferShape) {
   Shape input_shape = op.GetInputDesc("x").GetShape();

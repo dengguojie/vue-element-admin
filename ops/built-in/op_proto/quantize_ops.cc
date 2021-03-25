@@ -55,6 +55,35 @@ IMPLEMT_COMMON_INFERFUNC(DequantizeInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Dequantize, DequantizeInferShape);
+
+// ----------------Quantize Beg----------------------------------------------
+IMPLEMT_COMMON_INFERFUNC(QuantizeInferShape) {
+  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  DataType predict_dtype = DT_INT8;
+  Format predict_format = op.GetInputDesc("x").GetFormat();
+  ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+  string dtype = "torch.qint8";
+  op.GetAttr("dtype", dtype);
+  if (dtype == "torch.qint8") {
+      predict_dtype = DT_INT8;
+  } else if(dtype == "torch.quint8") {
+      predict_dtype = DT_UINT8;
+  } else if(dtype == "torch.qint32") {
+      predict_dtype = DT_INT32;
+  } else {
+      OP_LOGI(op.GetName().c_str(), "The dtype is not supported.");
+      return GRAPH_FAILED;
+  }
+  output_desc_y.SetDataType(predict_dtype);
+  output_desc_y.SetFormat(predict_format);
+  output_desc_y.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("y", output_desc_y);
+  return GRAPH_SUCCESS;
+  }
+
+COMMON_INFER_FUNC_REG(Quantize, QuantizeInferShape);
+// ----------------Quantize End----------------------------------------------
+
 // ----------------Dequantize End----------------------------------------------
 
 IMPLEMT_COMMON_INFERFUNC(AscendQuantInferShape) {
