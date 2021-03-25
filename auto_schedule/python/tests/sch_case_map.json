@@ -27,7 +27,8 @@
     ],
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
         "reduce_max",
-        "reduce_sum"
+        "reduce_sum",
+        "dsl_cpu/test_reduce_cpu_impl.py"
     ],
     "auto_schedule/python/lang/cce/te_compute/dim_conv.py":[
         "dsl_cpu/test_dim_conv_cpu_impl.py"
@@ -40,6 +41,12 @@
     ],
     "auto_schedule/python/tbe/dsl/compute/array.py":[
         "dsl_cpu/test_array_cpu_impl.py"
+    ],
+    "auto_schedule/python/lang/cce/te_compute/segment_compute.py":[
+        "dsl_cpu/test_segment_compute_cpu_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/compute/pooling2d.py":[
+        "dsl_cpu/test_pooling2d_cpu_impl.py"
     ]
 
 }

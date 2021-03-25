@@ -67,7 +67,7 @@ def test_four_dim_to_five_dim(soc):
         b = tvm.nd.array(np.zeros(shape5d, dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func(a, b)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         try:
             tvm.testing.assert_allclose(b.asnumpy(), _four2five(a.asnumpy(), shape4d))
         except AssertionError as e:
@@ -119,4 +119,4 @@ if __name__ == '__main__':
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

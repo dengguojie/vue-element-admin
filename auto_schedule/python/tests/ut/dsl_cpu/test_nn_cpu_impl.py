@@ -359,6 +359,59 @@ def test_round_to_cpu_api(soc):
     return True
 
 
+def test_broadcast_cpu_api_var_is_tensor(soc):
+    """
+    for broadcast api
+    @param soc: soc version
+    @return: Ture && false
+    """
+    out_shape = (1024, 1024)
+    shape = (1, 1024)
+    input1 = tvm.placeholder(shape, dtype="float16", name="input1")
+    output = tbe.broadcast(input1, out_shape)
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.random.uniform(size=shape).astype(input1.dtype), ctx)
+    b = tvm.nd.array(np.zeros(out_shape, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a, b)
+    # 3.verify the correctness of output
+    try:
+        tvm.testing.assert_allclose(b.asnumpy(), np.broadcast_to(a.asnumpy(), out_shape))
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
+def test_broadcast_cpu_api_var_is_not_tensor(soc):
+    """
+    for broadcast api
+    @param soc: soc version
+    @return: Ture && false
+    """
+    out_shape = (1024, 1024)
+    shape = 1
+    input1 = tvm.const(shape, dtype="float16")
+    output = tbe.broadcast(input1, out_shape)
+    sch = tvm.create_schedule(output.op)
+    func = tvm.build(sch, [output], "c", "llvm", name="func")
+    ctx = tvm.cpu(0)
+    # 1. prepare kernel parameter
+    a = tvm.nd.array(np.zeros(out_shape, dtype=output.dtype), ctx)
+    # 2. run tbe kernel
+    func(a)
+    # 3.verify the correctness of output
+    try:
+        tvm.testing.assert_allclose(a.asnumpy(), np.broadcast_to(shape, out_shape))
+    except AssertionError as e:
+        print(e)
+        return False
+    return True
+
+
 test_func_list = [
     test_vrelu_cpu_api,
     test_vmaddrelu_cpu_api,
@@ -372,6 +425,8 @@ test_func_list = [
     test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1,
     # test_vlrelu_cpu_api,  lrelu is not support,
     test_round_to_cpu_api,
+    test_broadcast_cpu_api_var_is_tensor,
+    test_broadcast_cpu_api_var_is_not_tensor,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
@@ -382,5 +437,6 @@ if __name__ == '__main__':
     from  pathlib import Path
 
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
-    simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV, "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
+                                             "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
+    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

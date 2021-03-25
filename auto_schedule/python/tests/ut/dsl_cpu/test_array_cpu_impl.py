@@ -11,7 +11,7 @@ ut_case = OpUT("array_cpu", "dsl_cpu.test_array_cpu_impl")
 def test_concat_cpu_api_axis_zero(soc):
     """
     for concat api
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n, m = 1024, 5
@@ -39,7 +39,7 @@ def test_concat_cpu_api_axis_zero(soc):
 def test_concat_cpu_api_axis_one(soc):
     """
     for concat api
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n, m = 1024, 5
@@ -79,4 +79,4 @@ if __name__ == '__main__':
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

@@ -9,9 +9,10 @@ import te.lang.cce as tbe
 
 ut_case = OpUT("math_cpu", "dsl_cpu.test_math_cpu_impl")
 
+
 def test_vadd_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -27,7 +28,7 @@ def test_vadd_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fadd(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), a.asnumpy() + b.asnumpy())
     except AssertionError as e:
@@ -35,9 +36,10 @@ def test_vadd_cpu_api(soc):
         return False
     return True
 
+
 def test_vsub_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 2048
@@ -53,7 +55,7 @@ def test_vsub_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fsub(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), a.asnumpy() - b.asnumpy())
     except AssertionError as e:
@@ -61,9 +63,10 @@ def test_vsub_cpu_api(soc):
         return False
     return True
 
+
 def test_vmul_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -79,7 +82,7 @@ def test_vmul_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fmul(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), a.asnumpy() * b.asnumpy())
     except AssertionError as e:
@@ -87,9 +90,10 @@ def test_vmul_cpu_api(soc):
         return False
     return True
 
+
 def test_vdiv_cpu_api_not_support_vdiv(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -105,7 +109,7 @@ def test_vdiv_cpu_api_not_support_vdiv(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fdiv(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), a.asnumpy() / b.asnumpy(), atol=0.0001)
     except AssertionError as e:
@@ -113,9 +117,10 @@ def test_vdiv_cpu_api_not_support_vdiv(soc):
         return False
     return True
 
+
 def test_vdiv_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -133,7 +138,7 @@ def test_vdiv_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fdiv(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -143,10 +148,11 @@ def test_vdiv_cpu_api(soc):
         return False
     return True
 
+
 def test_vmod_cpu_api(soc):
     """
     The vmod interface is only support float16.
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -164,7 +170,7 @@ def test_vmod_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fmod(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -174,10 +180,11 @@ def test_vmod_cpu_api(soc):
         return False
     return True
 
+
 def test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f(soc):
     """
     not support Intrinsic_vdiv and Intrinsic_vconv f322s32f
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -194,7 +201,7 @@ def test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fmod(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.mod(a.asnumpy(), b.asnumpy()), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -202,10 +209,11 @@ def test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f(soc):
         return False
     return True
 
+
 def test_vmod_cpu_api_not_support_vconv_f322s32f(soc):
     """
     not support Intrinsic_vconv f322s32f
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -224,7 +232,7 @@ def test_vmod_cpu_api_not_support_vconv_f322s32f(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fmod(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -235,9 +243,10 @@ def test_vmod_cpu_api_not_support_vconv_f322s32f(soc):
         return True
     return True
 
+
 def test_vmin_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -253,7 +262,7 @@ def test_vmin_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fmin(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.minimum(a.asnumpy(), b.asnumpy()))
     except AssertionError as e:
@@ -261,9 +270,10 @@ def test_vmin_cpu_api(soc):
         return False
     return True
 
+
 def test_vmax_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -279,7 +289,7 @@ def test_vmax_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     fmax(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.maximum(a.asnumpy(), b.asnumpy()))
     except AssertionError as e:
@@ -287,9 +297,10 @@ def test_vmax_cpu_api(soc):
         return False
     return True
 
+
 def test_vor_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -306,7 +317,7 @@ def test_vor_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_or(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.bitwise_or(a.asnumpy(), b.asnumpy()), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -314,9 +325,10 @@ def test_vor_cpu_api(soc):
         return False
     return True
 
+
 def test_vand_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -333,7 +345,7 @@ def test_vand_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_and(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.bitwise_and(a.asnumpy(), b.asnumpy()))
     except AssertionError as e:
@@ -341,9 +353,10 @@ def test_vand_cpu_api(soc):
         return False
     return True
 
+
 def test_vadds_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -359,7 +372,7 @@ def test_vadds_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_adds(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), a.asnumpy() + b.asnumpy())
     except AssertionError as e:
@@ -367,9 +380,10 @@ def test_vadds_cpu_api(soc):
         return False
     return True
 
+
 def test_vmins_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -385,7 +399,7 @@ def test_vmins_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vmins(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.minimum(a.asnumpy(), b.asnumpy()))
     except AssertionError as e:
@@ -393,9 +407,10 @@ def test_vmins_cpu_api(soc):
         return False
     return True
 
+
 def test_vmuls_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -411,7 +426,7 @@ def test_vmuls_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vmuls(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), a.asnumpy() * b.asnumpy())
     except AssertionError as e:
@@ -419,10 +434,11 @@ def test_vmuls_cpu_api(soc):
         return False
     return True
 
+
 def test_vlog_cpu_api_not_support_vln_fp32_and_precision(soc):
     """
     In this situation(not support Intrinsic_vln|fp32 and priority equal one), It will use talor.
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -436,7 +452,7 @@ def test_vlog_cpu_api_not_support_vln_fp32_and_precision(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlog(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.log(a.asnumpy()), atol=0.005, rtol=0.005)
     except AssertionError as e:
@@ -444,9 +460,10 @@ def test_vlog_cpu_api_not_support_vln_fp32_and_precision(soc):
         return False
     return True
 
+
 def test_vlog_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -460,7 +477,7 @@ def test_vlog_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlog(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.log(a.asnumpy()), atol=0.005, rtol=0.005)
     except AssertionError as e:
@@ -468,9 +485,10 @@ def test_vlog_cpu_api(soc):
         return False
     return True
 
+
 def test_vexp_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -484,7 +502,7 @@ def test_vexp_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vexp(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.exp(a.asnumpy()), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -492,9 +510,10 @@ def test_vexp_cpu_api(soc):
         return False
     return True
 
+
 def test_vabs_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -508,7 +527,7 @@ def test_vabs_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vabs(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.abs(a.asnumpy()))
     except AssertionError as e:
@@ -516,9 +535,10 @@ def test_vabs_cpu_api(soc):
         return False
     return True
 
+
 def test_vrec_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1000
@@ -532,7 +552,7 @@ def test_vrec_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vrec(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.reciprocal(a.asnumpy()), atol=0.005, rtol=0.005)
     except AssertionError as e:
@@ -540,10 +560,11 @@ def test_vrec_cpu_api(soc):
         return False
     return True
 
+
 def test_vnot_cpu_api(soc):
     """
     Intrinsic_vnot| int16, uint16
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -557,7 +578,7 @@ def test_vnot_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vnot(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.bitwise_not(a.asnumpy()))
     except AssertionError as e:
@@ -565,10 +586,11 @@ def test_vnot_cpu_api(soc):
         return False
     return True
 
+
 def test_vsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
     """
     not support Intrinsic_vsqrt, and precision
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -582,7 +604,7 @@ def test_vsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsqrt(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.sqrt(a.asnumpy()), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -590,10 +612,11 @@ def test_vsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
         return False
     return True
 
+
 def test_vsqrt_cpu_api_not_support_vsqrt_and_performance(soc):
     """
     not support Intrinsic_vsqrt, and performance
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -607,7 +630,7 @@ def test_vsqrt_cpu_api_not_support_vsqrt_and_performance(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsqrt(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.sqrt(a.asnumpy()), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -615,10 +638,11 @@ def test_vsqrt_cpu_api_not_support_vsqrt_and_performance(soc):
         return False
     return True
 
+
 def test_vsqrt_cpu_api(soc):
     """
     support Intrinsic_vsqrt
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -634,7 +658,7 @@ def test_vsqrt_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsqrt(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -644,10 +668,11 @@ def test_vsqrt_cpu_api(soc):
         return False
     return True
 
+
 def test_vrsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
     """
     not support Intrinsic_vsqrt and precision. Maybe there is something wrong
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -661,7 +686,7 @@ def test_vrsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsqrt(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(c.asnumpy(), np.reciprocal(np.sqrt(a.asnumpy())),
                                     atol=0.005, rtol=0.005)
@@ -670,10 +695,11 @@ def test_vrsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
         return False
     return True
 
+
 def test_vrsqrt_cpu_api(soc):
     """
     not support Intrinsic_vsqrt and precision. Maybe there is something wrong
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -689,7 +715,7 @@ def test_vrsqrt_cpu_api(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsqrt(a, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         # Restore soc version to Ascend310, or it affect the following use cases
         te_set_version("Ascend310")
@@ -700,9 +726,10 @@ def test_vrsqrt_cpu_api(soc):
         return False
     return True
 
+
 def test_vaxpy_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -720,7 +747,7 @@ def test_vaxpy_cpu_api(soc):
     d = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vaxpy(a, b, d)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(d.asnumpy(), a.asnumpy() * c.asnumpy() + b.asnumpy(), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -728,9 +755,10 @@ def test_vaxpy_cpu_api(soc):
         return False
     return True
 
+
 def test_vmla_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -748,7 +776,7 @@ def test_vmla_cpu_api(soc):
     d = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vmla(a, b, c, d)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(d.asnumpy(), a.asnumpy() * b.asnumpy() + c.asnumpy(), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -756,9 +784,10 @@ def test_vmla_cpu_api(soc):
         return False
     return True
 
+
 def test_vmadd_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -776,7 +805,7 @@ def test_vmadd_cpu_api(soc):
     d = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vmadd(a, b, c, d)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(d.asnumpy(), a.asnumpy() * c.asnumpy() + b.asnumpy(), atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -784,9 +813,10 @@ def test_vmadd_cpu_api(soc):
         return False
     return True
 
+
 def test_vlogic_cpu_api(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"logic_and": np.logical_and, "logic_or": np.logical_or}
@@ -804,7 +834,7 @@ def test_vlogic_cpu_api(soc):
         c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vlogic(a, b, c)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         try:
             tvm.testing.assert_allclose(c.asnumpy(), op(a.asnumpy(), b.asnumpy()))
         except AssertionError as e:
@@ -813,9 +843,10 @@ def test_vlogic_cpu_api(soc):
             return False
     return True
 
+
 def test_vlogic_cpu_api_not_op(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -829,7 +860,7 @@ def test_vlogic_cpu_api_not_op(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vlogic(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     try:
         tvm.testing.assert_allclose(b.asnumpy(), np.logical_not(a.asnumpy()))
     except AssertionError as e:
@@ -837,9 +868,10 @@ def test_vlogic_cpu_api_not_op(soc):
         return False
     return True
 
+
 def test_vcmp_cpu_api_bool(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -858,7 +890,7 @@ def test_vcmp_cpu_api_bool(soc):
         c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmp(a, b, c)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         try:
             tvm.testing.assert_allclose(c.asnumpy(), op(a.asnumpy(), b.asnumpy()))
         except AssertionError as e:
@@ -867,16 +899,17 @@ def test_vcmp_cpu_api_bool(soc):
             return False
     return True
 
+
 def test_vcmp_cpu_api_bool_and_rhs_is_const(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
                "ge": operator.ge}
     for key, op in op_dict.items():
         n = 10000
-        const_value = random.randint(1,5)
+        const_value = random.randint(1, 5)
         input1 = tvm.placeholder((n,), dtype="float16", name="input1")
         input2 = tvm.const(const_value, dtype="float16")
         output = tbe.vcmp(input1, input2, operation=key)
@@ -888,7 +921,7 @@ def test_vcmp_cpu_api_bool_and_rhs_is_const(soc):
         b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmp(a, b)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         try:
             tvm.testing.assert_allclose(b.asnumpy(), op(a.asnumpy(), const_value))
         except AssertionError as e:
@@ -897,9 +930,10 @@ def test_vcmp_cpu_api_bool_and_rhs_is_const(soc):
             return False
     return True
 
+
 def test_vcmp_cpu_api_bit(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -918,9 +952,9 @@ def test_vcmp_cpu_api_bit(soc):
         c = tvm.nd.array(np.zeros(n // 8, dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmp(a, b, c)
-        # 3.verify the correctness of ouput
-        benchmark_data_a = [a.asnumpy()[i] for i in range(0, n ,8)]
-        benchmark_data_b = [b.asnumpy()[i] for i in range(0, n ,8)]
+        # 3.verify the correctness of output
+        benchmark_data_a = [a.asnumpy()[i] for i in range(0, n, 8)]
+        benchmark_data_b = [b.asnumpy()[i] for i in range(0, n, 8)]
         try:
             tvm.testing.assert_allclose(c.asnumpy(),
                                         np.bitwise_and(np.array(benchmark_data_a, dtype=np.uint8),
@@ -931,9 +965,10 @@ def test_vcmp_cpu_api_bit(soc):
             return False
     return True
 
+
 def test_vcmp_cpu_api_bit_and_rhs_is_const(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -965,9 +1000,10 @@ def test_vcmp_cpu_api_bit_and_rhs_is_const(soc):
             return False
     return True
 
+
 def test_vsel_cpu_api_bool_tensor_to_tensor(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -985,7 +1021,7 @@ def test_vsel_cpu_api_bool_tensor_to_tensor(soc):
     d = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b, c, d)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         if cond:
@@ -999,9 +1035,10 @@ def test_vsel_cpu_api_bool_tensor_to_tensor(soc):
         return False
     return True
 
+
 def test_vsel_cpu_api_bool_tensor_to_scalar(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -1017,7 +1054,7 @@ def test_vsel_cpu_api_bool_tensor_to_scalar(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         if cond:
@@ -1031,9 +1068,10 @@ def test_vsel_cpu_api_bool_tensor_to_scalar(soc):
         return False
     return True
 
+
 def test_vsel_cpu_api_bool_scalar_to_tensor(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -1049,7 +1087,7 @@ def test_vsel_cpu_api_bool_scalar_to_tensor(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         if cond:
@@ -1063,9 +1101,10 @@ def test_vsel_cpu_api_bool_scalar_to_tensor(soc):
         return False
     return True
 
+
 def test_vsel_cpu_api_bool_scalar_to_scalar(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -1079,7 +1118,7 @@ def test_vsel_cpu_api_bool_scalar_to_scalar(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         if cond:
@@ -1093,9 +1132,10 @@ def test_vsel_cpu_api_bool_scalar_to_scalar(soc):
         return False
     return True
 
+
 def test_vsel_cpu_api_uint8_tensor_to_tensor(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1113,7 +1153,7 @@ def test_vsel_cpu_api_uint8_tensor_to_tensor(soc):
     d = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b, c, d)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         repeat_num = 0
@@ -1130,9 +1170,10 @@ def test_vsel_cpu_api_uint8_tensor_to_tensor(soc):
         return False
     return True
 
+
 def test_vsel_cpu_api_uint8_tensor_to_scalar(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1148,7 +1189,7 @@ def test_vsel_cpu_api_uint8_tensor_to_scalar(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         repeat_num = 0
@@ -1165,9 +1206,10 @@ def test_vsel_cpu_api_uint8_tensor_to_scalar(soc):
         return False
     return True
 
+
 def test_vsel_cpu_api_uint8_scalar_to_tensor(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1183,7 +1225,7 @@ def test_vsel_cpu_api_uint8_scalar_to_tensor(soc):
     c = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b, c)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         repeat_num = 0
@@ -1200,9 +1242,10 @@ def test_vsel_cpu_api_uint8_scalar_to_tensor(soc):
         return False
     return True
 
+
 def test_vsel_cpu_api_uint8_scalar_to_scalar(soc):
     """
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1216,7 +1259,7 @@ def test_vsel_cpu_api_uint8_scalar_to_scalar(soc):
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func_vsel(a, b)
-    # 3.verify the correctness of ouput
+    # 3.verify the correctness of output
     benchmark_data = []
     for i, cond in enumerate(a.asnumpy()):
         repeat_num = 0
@@ -1233,11 +1276,12 @@ def test_vsel_cpu_api_uint8_scalar_to_scalar(soc):
         return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar(soc):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, tensor, scalar
     In this sutiation, rhs is 2.0, srhs is 0.0
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1254,7 +1298,7 @@ def test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar(soc):
         b = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1270,10 +1314,11 @@ def test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar(soc):
             return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor(soc):
     """
     lhs, rhs, slhs, srhs are all tensor
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1296,7 +1341,7 @@ def test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor(soc):
         e = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b, c, d, e)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1312,11 +1357,12 @@ def test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor(soc):
             return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar(soc):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, scalar, scalar
     In this sutiation, rhs is 2.0, srhs is 0.0
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1333,7 +1379,7 @@ def test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar(soc):
         b = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1349,10 +1395,11 @@ def test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar(soc):
             return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar(soc):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, tensor, scalar
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1371,7 +1418,7 @@ def test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar(soc):
         c = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b, c)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1387,11 +1434,12 @@ def test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar(soc):
             return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor(soc):
     """
     lhs, rhs, slhs, srhs are respectively tensor, None, scalar, tensor
     In this sutiation, rhs is 2.0, srhs is 0.0
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1410,7 +1458,7 @@ def test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor(soc):
         c = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b, c)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1426,10 +1474,11 @@ def test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor(soc):
             return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar(soc):
     """
     lhs, rhs, slhs, srhs are respectively tensor, tensor, tensor, scalar
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1450,7 +1499,7 @@ def test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar(soc):
         d = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b, c, d)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1466,10 +1515,11 @@ def test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar(soc):
             return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor(soc):
     """
     lhs, rhs, slhs, srhs are respectively tensor, tensor, scalar, tensor
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1490,7 +1540,7 @@ def test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor(soc):
         d = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b, c, d)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1506,10 +1556,11 @@ def test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor(soc):
             return False
     return True
 
+
 def test_vcmpsel_cpu_api_tensor_scalar_tensor_tensor(soc):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, tensor, tensor
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1530,7 +1581,7 @@ def test_vcmpsel_cpu_api_tensor_scalar_tensor_tensor(soc):
         d = tvm.nd.array(np.zeros((n, n), dtype=output.dtype), ctx)
         # 2. run tbe kernel
         func_vcmpsel(a, b, c, d)
-        # 3.verify the correctness of ouput
+        # 3.verify the correctness of output
         benchmark_data = np.zeros((n, n), dtype=output.dtype)
         for i in range(0, n):
             for j in range(0, n):
@@ -1546,58 +1597,59 @@ def test_vcmpsel_cpu_api_tensor_scalar_tensor_tensor(soc):
             return False
     return True
 
+
 test_func_list = [
-test_vadd_cpu_api,
-test_vsub_cpu_api,
-test_vmul_cpu_api,
-test_vdiv_cpu_api_not_support_vdiv,
-test_vdiv_cpu_api,
-test_vmod_cpu_api,
-#test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f,
-test_vmod_cpu_api_not_support_vconv_f322s32f,
-test_vmin_cpu_api,
-test_vmax_cpu_api,
-test_vor_cpu_api,
-test_vand_cpu_api,
-test_vadds_cpu_api,
-test_vmins_cpu_api,
-test_vmuls_cpu_api,
-#test_vlog_cpu_api_not_support_vln_fp32_and_precision,
-test_vlog_cpu_api,
-test_vexp_cpu_api,
-test_vabs_cpu_api,
-test_vrec_cpu_api,
-test_vnot_cpu_api,
-test_vsqrt_cpu_api_not_support_vsqrt_and_precision,
-#test_vsqrt_cpu_api_not_support_vsqrt_and_performance,
-test_vsqrt_cpu_api,
-test_vrsqrt_cpu_api_not_support_vsqrt_and_precision,
-test_vrsqrt_cpu_api,
-test_vaxpy_cpu_api,
-test_vmla_cpu_api,
-test_vmadd_cpu_api,
-test_vlogic_cpu_api,
-test_vlogic_cpu_api_not_op,
-test_vcmp_cpu_api_bool,
-test_vcmp_cpu_api_bool_and_rhs_is_const,
-test_vcmp_cpu_api_bit,
-test_vcmp_cpu_api_bit_and_rhs_is_const,
-test_vsel_cpu_api_bool_tensor_to_tensor,
-test_vsel_cpu_api_bool_tensor_to_scalar,
-test_vsel_cpu_api_bool_scalar_to_tensor,
-test_vsel_cpu_api_bool_scalar_to_scalar,
-test_vsel_cpu_api_uint8_tensor_to_tensor,
-test_vsel_cpu_api_uint8_tensor_to_scalar,
-test_vsel_cpu_api_uint8_scalar_to_tensor,
-test_vsel_cpu_api_uint8_scalar_to_scalar,
-test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor,
-test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar,
-test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor,
-test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar,
-test_vcmpsel_cpu_api_tensor_scalar_tensor_tensor,
-test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar,
-test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor,
-test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar,
+    test_vadd_cpu_api,
+    test_vsub_cpu_api,
+    test_vmul_cpu_api,
+    test_vdiv_cpu_api_not_support_vdiv,
+    test_vdiv_cpu_api,
+    test_vmod_cpu_api,
+    # test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f,
+    test_vmod_cpu_api_not_support_vconv_f322s32f,
+    test_vmin_cpu_api,
+    test_vmax_cpu_api,
+    test_vor_cpu_api,
+    test_vand_cpu_api,
+    test_vadds_cpu_api,
+    test_vmins_cpu_api,
+    test_vmuls_cpu_api,
+    # test_vlog_cpu_api_not_support_vln_fp32_and_precision,
+    test_vlog_cpu_api,
+    test_vexp_cpu_api,
+    test_vabs_cpu_api,
+    test_vrec_cpu_api,
+    test_vnot_cpu_api,
+    test_vsqrt_cpu_api_not_support_vsqrt_and_precision,
+    # test_vsqrt_cpu_api_not_support_vsqrt_and_performance,
+    test_vsqrt_cpu_api,
+    test_vrsqrt_cpu_api_not_support_vsqrt_and_precision,
+    test_vrsqrt_cpu_api,
+    test_vaxpy_cpu_api,
+    test_vmla_cpu_api,
+    test_vmadd_cpu_api,
+    test_vlogic_cpu_api,
+    test_vlogic_cpu_api_not_op,
+    test_vcmp_cpu_api_bool,
+    test_vcmp_cpu_api_bool_and_rhs_is_const,
+    test_vcmp_cpu_api_bit,
+    test_vcmp_cpu_api_bit_and_rhs_is_const,
+    test_vsel_cpu_api_bool_tensor_to_tensor,
+    test_vsel_cpu_api_bool_tensor_to_scalar,
+    test_vsel_cpu_api_bool_scalar_to_tensor,
+    test_vsel_cpu_api_bool_scalar_to_scalar,
+    test_vsel_cpu_api_uint8_tensor_to_tensor,
+    test_vsel_cpu_api_uint8_tensor_to_scalar,
+    test_vsel_cpu_api_uint8_scalar_to_tensor,
+    test_vsel_cpu_api_uint8_scalar_to_scalar,
+    test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor,
+    test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar,
+    test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor,
+    test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar,
+    test_vcmpsel_cpu_api_tensor_scalar_tensor_tensor,
+    test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar,
+    test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor,
+    test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
@@ -1608,5 +1660,6 @@ if __name__ == '__main__':
     from  pathlib import Path
 
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
-    simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV, "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
+                                             "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
+    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)

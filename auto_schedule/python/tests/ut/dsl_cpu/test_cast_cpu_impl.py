@@ -1,8 +1,6 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
 import numpy as np
-import math
-import operator
 
 from te import tvm
 import te.lang.cce as tbe
@@ -54,7 +52,7 @@ def test_cast_cpu_api_check_not_support_op_type(soc):
     try:
         n = 128
         input1 = tvm.placeholder((n,), name="input1", dtype="float32")
-        output = tbe.trunc(input1)
+        tbe.trunc(input1)
     except RuntimeError as e:
         print("In soc %s," % soc + e.args[0]["detailed_cause"])
     return True
@@ -75,7 +73,7 @@ def test_cast_to_cpu_api_fp322s32_and_not_support_vconv_f322s32z(soc):
     func = tvm.build(sch, [input1, output], "c", "llvm", name="func")
     ctx = tvm.cpu(0)
     # 1. prepare kernel parameter
-    a = tvm.nd.array(np.random.uniform(size=(n,)).astype(input1.dtype), ctx)
+    a = tvm.nd.array(np.random.uniform(high=0.5, size=(n,)).astype(input1.dtype), ctx)
     b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
     # 2. run tbe kernel
     func(a, b)
@@ -227,4 +225,4 @@ if __name__ == '__main__':
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
-    ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
