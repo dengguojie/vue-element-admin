@@ -104,7 +104,7 @@ namespace optiling{
 
     int32_t UpDiv(int32_t first_value, int32_t second_value)
     {
-        int32_t result = 0;
+        int32_t result = 1;
         result = (first_value + second_value - 1) / second_value;
         return result;
     }
@@ -180,7 +180,7 @@ namespace optiling{
         int32_t x_numel = CalTensorNumel(x_shape);
         auto last_dim = x_shape[x_shape.size() - 1];
 
-        if (axis == x_shape.size() || axis == -1 || (axis == x_shape.size() - 1 && last_dim == 1))
+        if (axis == -1 || axis == x_shape.size())
         {
             auto core_num = get_core_num(x_numel, x_shape, depth, axis);
             auto per_core_numel = UpDiv(x_numel, core_num);
@@ -227,7 +227,7 @@ namespace optiling{
             }
             return tiling_mode;
         }
-        else if (axis > 0 && axis < x_shape.size())
+        else if (axis < x_shape.size() && axis > 0 )
         {
             std::vector<int64_t> merged_x_shape;
             MergeAxis(axis, depth, x_shape, merged_x_shape);
@@ -240,12 +240,12 @@ namespace optiling{
                 tiling_mode = 10;
             }
             else if (per_core_numel * last_dim_x <= 19792 && per_core_numel * 
-                last_dim_x * depth > 39584 && last_dim_x >= 2 && last_dim_x <= 39584)
+                last_dim_x * depth > 39584 && last_dim_x >= 1 && last_dim_x <= 39584)
             {
                 tiling_mode = 11;
             }
             else if (per_core_numel * last_dim_x > 19792 && per_core_numel * last_dim_x * depth > 39584 && 
-                     last_dim_x >= 2 && last_dim_x <= 39584)
+                     last_dim_x >= 1 && last_dim_x <= 39584)
             {
                 tiling_mode = 12;
             }
@@ -280,7 +280,7 @@ namespace optiling{
             per_core_index = UpDiv(depth, core_num);
             last_core_index = depth - (core_num - 1) * per_core_index;
         }
-        else if (axis == x_shape.size() || axis == -1)
+        else if (axis == -1 || axis == x_shape.size())
         {
             core_num = get_core_num(numel_x, x_shape, depth, axis);
             per_core_numel = UpDiv(numel_x, core_num);
@@ -294,11 +294,11 @@ namespace optiling{
             last_core_numel = first_dim_x - (core_num - 1) * per_core_numel;
         }
 
-        tiling_params.core_num = core_num;
         tiling_params.not_last_core_numel = per_core_numel;
+        tiling_params.core_num = core_num;
         tiling_params.last_core_numel = last_core_numel;
-        tiling_params.not_last_core_index = per_core_index;
         tiling_params.last_core_index = last_core_index;
+        tiling_params.not_last_core_index = per_core_index;
     }
 
     void CalRunningInfo(OneHotTilingParams &tiling_params, int32_t core_num, int32_t depth,
@@ -308,10 +308,11 @@ namespace optiling{
         std::vector<int64_t> merged_x_shape;
         MergeAxis(axis, depth, x_shape, merged_x_shape);
 
-        int32_t numel_x = 1;
-        int32_t numel_merged_x = 1;
         int32_t first_dim_x = 1;
         int32_t last_dim_x = 1;
+        int32_t numel_x = 1;
+        int32_t numel_merged_x = 1;
+
         numel_x = CalTensorNumel(x_shape);
         numel_merged_x = CalTensorNumel(merged_x_shape);
 
