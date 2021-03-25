@@ -1657,7 +1657,7 @@ for item in test_func_list:
 
 if __name__ == '__main__':
     import os
-    from  pathlib import Path
+    from pathlib import Path
 
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,

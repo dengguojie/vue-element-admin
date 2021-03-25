@@ -4,6 +4,7 @@ import numpy as np
 
 from te import tvm
 import te.lang.cce as tbe
+from tbe.common.testing.testing import debug
 
 ut_case = OpUT("nn_cpu", "dsl_cpu.test_nn_cpu_impl")
 
@@ -304,28 +305,29 @@ def test_vlrelu_cpu_api(soc):
     @param soc: useless parameter for framework
     @return: Ture && false
     """
-    n = 10000
-    input1 = tvm.placeholder((n,), dtype="float16", name="input1")
-    from te.platform.cce_conf import te_set_version
-    te_set_version("Ascend710")
-    output = tbe.vlrelu(input1)
-    sch = tvm.create_schedule(output.op)
-    func_vlrelu = tvm.build(sch, [input1, output], "c", "llvm", name="func_vlrelu")
-    ctx = tvm.cpu(0)
-    # 1. prepare kernel parameter
-    a = tvm.nd.array(np.random.uniform(size=n).astype(input1.dtype), ctx)
-    b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
-    # 2. run tbe kernel
-    func_vlrelu(a, b)
-    # 3.verify the correctness of output
-    try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
-        tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0.01 * a.asnumpy(), a.asnumpy()))
-    except AssertionError as e:
-        print(e)
-        return False
-    return True
+    with debug():
+        n = 10000
+        input1 = tvm.placeholder((n,), dtype="float16", name="input1")
+        from te.platform.cce_conf import te_set_version
+        te_set_version("Ascend710")
+        output = tbe.vlrelu(input1)
+        sch = tvm.create_schedule(output.op)
+        func_vlrelu = tvm.build(sch, [input1, output], "c", "llvm", name="func_vlrelu")
+        ctx = tvm.cpu(0)
+        # 1. prepare kernel parameter
+        a = tvm.nd.array(np.random.uniform(size=n).astype(input1.dtype), ctx)
+        b = tvm.nd.array(np.zeros(n, dtype=output.dtype), ctx)
+        # 2. run tbe kernel
+        func_vlrelu(a, b)
+        # 3.verify the correctness of output
+        try:
+            # Restore soc version to Ascend310, or it affect the following use cases
+            te_set_version("Ascend310")
+            tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0.01 * a.asnumpy(), a.asnumpy()))
+        except AssertionError as e:
+            print(e)
+            return False
+        return True
 
 
 def test_round_to_cpu_api(soc):
@@ -423,7 +425,7 @@ test_func_list = [
     test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0,
     test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1,
     test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1,
-    # test_vlrelu_cpu_api,  lrelu is not support,
+    test_vlrelu_cpu_api,
     test_round_to_cpu_api,
     test_broadcast_cpu_api_var_is_tensor,
     test_broadcast_cpu_api_var_is_not_tensor,
@@ -434,7 +436,7 @@ for item in test_func_list:
 
 if __name__ == '__main__':
     import os
-    from  pathlib import Path
+    from pathlib import Path
 
     _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
