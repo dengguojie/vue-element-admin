@@ -825,8 +825,6 @@ bool Reduce::Init() {
       }
     }
 
-    // Discard "1" and default sorted
-    EliminateOne();
     compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 &&
                            op_info.at("_reduce_shape_known").get<bool>();
   } catch (const std::exception &e) {
@@ -952,6 +950,8 @@ bool Reduce::DoTiling() {
     }
   } else {
     // input(unknown)
+    // Discard "1" and default sorted
+    EliminateOne();
     ret = ret && FusedReduceAxis();
     pattern = CalcPattern(input_shape, reduce_axis);
   }
