@@ -836,7 +836,7 @@ REG_OP(HardShrink)
 *backprops: A Tensor with the same type and shape of features's. \n
 *
 *@par Attributes:
-*@li lambda: An optional float.Defaults to 0.5. \n
+*@li lambd: An optional float.Defaults to 0.5. \n
 *
 *@par Third-party framework compatibility
 *Compatible with the Pytorch operator Hardshrink_backward. \n
@@ -845,7 +845,7 @@ REG_OP(HardShrink)
   .INPUT(gradients, TensorType({DT_FLOAT16, DT_FLOAT}))
   .INPUT(features, TensorType({DT_FLOAT16, DT_FLOAT}))
   .OUTPUT(backprops, TensorType({DT_FLOAT16, DT_FLOAT}))
-  .ATTR(lambda, Float, 0.5)
+  .ATTR(lambd, Float, 0.5)
   .OP_END_FACTORY_REG(HardShrinkGrad)
 
 /**
