@@ -43,6 +43,12 @@
       "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
   } while(0);
 
+#define VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg)\
+  do { \
+    REPORT_INNER_ERROR("E" + std::to_string(ViewErrorCode.VECTOR_INNER_ERROR), err_msg); \
+    OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
+  } while (0);
+
 namespace ge {
 
 /*
