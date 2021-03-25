@@ -28,6 +28,7 @@ from impl.util.util_cube_dynamic import CubeParaProcess
 
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 DYNAMIC_FLAG = -1
+UNKNOWN_RANK_SHAPE = [-2]
 # shape's dim of input and output must be 4 or 5
 FEATURE_MAP_DIM = [4, 5]
 
@@ -163,6 +164,12 @@ def _get_dynamic_shape(fmap, dedy, fmap_range, dedy_range):
 
     fmap_n, fmap_c, fmap_h, fmap_w = fmap
     dedy_n, dedy_c, dedy_h, dedy_w = dedy
+    if fmap_n != DYNAMIC_FLAG and fmap_h != DYNAMIC_FLAG and fmap_w != DYNAMIC_FLAG:
+        error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
+                                         "no dynamic shape found in fmap.")
+    if fmap_n * dedy_n < 0 or fmap_h * dedy_h < 0 or fmap_w * dedy_w < 0:
+        error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
+                                         "dynamic dim in fmap and dedy should be consistant.")
     if fmap_n == DYNAMIC_FLAG:
         fmap_n = operation.var("batch", bound=fmap_range[0])
         dedy_n = fmap_n
@@ -234,26 +241,40 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
 
     # index of origin dimension
     dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3 # NCHW
-    if input_ori_format == 'NHWC':
+    unknown_rank_flag = False
+    if list(shape_in) == UNKNOWN_RANK_SHAPE or list(shape_dedy) == UNKNOWN_RANK_SHAPE:
+        unknown_rank_flag = True
+        in_channel = shape_dedw[dim_c]
+        channel_mul = shape_dedw[dim_n]
+        out_channel = in_channel * channel_mul
+        shape_in = (DYNAMIC_FLAG, in_channel, DYNAMIC_FLAG, DYNAMIC_FLAG)
+        shape_dedy = (DYNAMIC_FLAG, out_channel, DYNAMIC_FLAG, DYNAMIC_FLAG)
+        in_range = [(1, None), (in_channel, in_channel), (1, None), (1, None)]
+        dedy_range = [(1, None), (out_channel, out_channel), (1, None), (2, None)]
+    elif input_ori_format == 'NHWC':
         dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
         shape_in = [shape_in[dim_n], shape_in[dim_c], shape_in[dim_h], shape_in[dim_w]]
-    if dedy_ori_format == 'NHWC':
-        shape_dedy = [shape_dedy[0], shape_dedy[3], shape_dedy[1], shape_dedy[2]]
+        shape_dedy = [shape_dedy[dim_n], shape_dedy[dim_c], shape_dedy[dim_h], shape_dedy[dim_w]]
     shape_in, shape_dedy = _get_dynamic_shape(shape_in, shape_dedy, in_range, dedy_range)
 
     para_check.check_dtype(in_dtype.lower(), ('float16',), param_name='input_fm')
     para_check.check_dtype(dedy_dtype.lower(), ('float16',), param_name='out_backprop')
     para_check.check_dtype(dedw_dtype.lower(), ('float32',), param_name='filter_grad')
 
-    para_check.check_shape(strides, min_rank=STRIDES_DIM, max_rank=STRIDES_DIM, param_name="strides")
-    para_check.check_shape(pads, min_rank=PADS_DIM, max_rank=PADS_DIM, param_name="pads")
-    para_check.check_shape(dilations, min_rank=DILATION_DIM, max_rank=DILATION_DIM, param_name="dilations")
+    if len(strides) != STRIDES_DIM:
+        error_manager_cube.raise_err_three_paras("E62304", "depthwise_conv2d_backprop_filter",
+                                                 "strides", str(STRIDES_DIM), str(len(strides)))
+    if len(pads) != PADS_DIM:
+        error_manager_cube.raise_err_three_paras("E62304", "depthwise_conv2d_backprop_filter",
+                                                 "pads", str(PADS_DIM), str(len(pads)))
+    if len(dilations) != DILATION_DIM:
+        error_manager_cube.raise_err_three_paras("E62304", "depthwise_conv2d_backprop_filter",
+                                                 "dilations", str(DILATION_DIM), str(len(dilations)))
     _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w)
     _check_stride(strides, dim_n, dim_c)
     _check_shape(shape_in, shape_dedy, shape_dedw)
     strides = strides[dim_n], strides[dim_c], strides[dim_h], strides[dim_w]
     in_range, dedy_range = _check_range(in_range, dedy_range, shape_in, shape_dedy)
-    dedy_range = _range_correction(in_range, shape_dedw, pads, strides, dilations, shape_dedy)
 
     def _convert_shape_to_list(shape):
         for i, var in enumerate(shape):
@@ -262,7 +283,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
 
     filter_h_dilations = (shape_dedw[2] - 1) * dilations[2] + 1
     filter_w_dilations = (shape_dedw[3] - 1) * dilations[3] + 1
-    fmap_h_min, fmap_w_min =FMAP_HW_MIN, FMAP_HW_MIN
+    fmap_h_min, fmap_w_min = FMAP_HW_MIN, FMAP_HW_MIN
     if DYNAMIC_FLAG in pads:
         pad_w = _align(shape_in[3], strides[3]) - strides[3] + \
             filter_w_dilations - shape_in[3]
@@ -274,7 +295,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
         pad_h = tvm.max(pad_h, 0)
         pad_up = pad_h // 2
         pad_down = pad_h - pad_up
-        pads = [pad_up, pad_down, pad_left, pad_right]
+        padding = [pad_up, pad_down, pad_left, pad_right]
     else:
         _check_attr_range_dw("pad's top", pads[0], PAD_MIN, PAD_MAX)
         _check_attr_range_dw("pad's bottom", pads[1], PAD_MIN, PAD_MAX)
@@ -282,7 +303,12 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
         _check_attr_range_dw("pad's right", pads[3], PAD_MIN, PAD_MAX)
         fmap_h_min = max(fmap_h_min, shape_dedw[2] - pads[0], pads[1])
         fmap_w_min = max(fmap_w_min, shape_dedw[3] - pads[2], pads[3])
-    
+        padding = pads
+   
+    if unknown_rank_flag:
+        in_range[2] = (fmap_h_min, None)
+        in_range[3] = (fmap_w_min, None)
+
     # filter value limit
     _check_attr_range_dw("filter's H", shape_dedw[2], FILTER_HW_MIN, FILTER_HW_MAX)
     _check_attr_range_dw("filter's W", shape_dedw[2], FILTER_HW_MIN, FILTER_HW_MAX)
@@ -292,16 +318,6 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     _check_attr_range_dw("Fmap's minW", in_range[3][0], fmap_w_min, FMAP_HW_MAX)
     _check_attr_range_dw("Fmap's maxH", in_range[2][1], fmap_h_min, FMAP_HW_MAX)
     _check_attr_range_dw("Fmap's maxW", in_range[3][1], fmap_w_min, FMAP_HW_MAX)
-
-    #Dedy value limit
-    _check_attr_range_dw("Dedy's minH inferenced from Fmap's minH",
-                         dedy_range[2][0], DEDY_H_MIN, DEDY_HW_MAX)
-    _check_attr_range_dw("Dedy's maxH inferenced from Fmap's maxH",
-                         dedy_range[2][1], DEDY_H_MIN, DEDY_HW_MAX)
-    _check_attr_range_dw("Dedy's minW inferenced from Fmap's minW",
-                         dedy_range[3][0], DEDY_H_MIN, DEDY_HW_MAX)
-    _check_attr_range_dw("Dedy's maxW inferenced from Fmap's maxW",
-                         dedy_range[3][1], DEDY_H_MIN, DEDY_HW_MAX)
 
     # stride value limit
     _check_attr_range_dw("stride's H", strides[2], STRIDE_HW_MIN, STRIDE_HW_MAX) 
@@ -317,8 +333,8 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     dedy = tvm.placeholder(dedy_shape_nc1hwc0, name="dedy", dtype=dedy_dtype)
 
     para_dict = {
-        "strides": [strides[2], strides[3]],
-        "padding": pads,
+        "strides": [strides[dim_h], strides[dim_w]],
+        "padding": padding,
         "dilations": dilations,
         "groups": fmap_c,
         "res_dtype": dedw_dtype,
@@ -328,6 +344,16 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     depthwise_conv2dbp_filter_para = CubeParaProcess(para_dict)
     depthwise_conv2dbp_filter_para.check_range_valid(shape_in, in_range, "", "NCHW")
     depthwise_conv2dbp_filter_para.check_range_valid(shape_dedy, dedy_range, "", "NHCW")
+    dedy_range = _range_correction(in_range, shape_dedw, pads, strides, dilations, shape_dedy)
+    #Dedy value limit
+    _check_attr_range_dw("Dedy's minH inferenced from Fmap's minH",
+                         dedy_range[2][0], DEDY_H_MIN, DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's maxH inferenced from Fmap's maxH",
+                         dedy_range[2][1], DEDY_H_MIN, DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's minW inferenced from Fmap's minW",
+                         dedy_range[3][0], DEDY_H_MIN, DEDY_HW_MAX)
+    _check_attr_range_dw("Dedy's maxW inferenced from Fmap's maxW",
+                         dedy_range[3][1], DEDY_H_MIN, DEDY_HW_MAX)
 
     dedw = tbe.conv2d_backprop_filter(
         input_x=fmap,

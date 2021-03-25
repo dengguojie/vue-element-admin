@@ -19,6 +19,8 @@ dynamic_conv2d_bp_filter_op_testcase = [
     ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [2,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
     # strides dim != 4
     ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    # pads dim != 4
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0), "NCHW", [0, 2, 3], RuntimeError),
     # stride_h/w > 63
     ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,64,64,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
     # dilations != [1,1,1,1]
@@ -29,6 +31,8 @@ dynamic_conv2d_bp_filter_op_testcase = [
     ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError),
     # dedy_h less than 2
     ((3, 40, 9, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError),
+    # -2
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 1, 2, 3], "success"),
 ]
 
 
@@ -87,13 +91,18 @@ def _gen_case(param):
     data_format = data_format.upper()
     dtype = "float16"
 
+    unknown_rank_flag = False
+    if len(dynamic_dim) == 4:
+        unknown_rank_flag = True
+        dynamic_dim = [0, 2, 3]
+
     input_shape = _shape_to_NC1HWC0(input_ori_shape, data_format, dtype)
     out_backprop_shape = _shape_to_NC1HWC0(out_backprop_ori_shape, data_format, dtype)
     filter_grad_shape = _shape_to_C1HWNCoC0(filter_size, "HWCN", dtype)
     x = {
         "shape": _trans_dynamic_shape(input_shape, "NC1HWC0", dynamic_dim),
         "format": "NC1HWC0",
-        "ori_shape": _trans_dynamic_shape(input_ori_shape, data_format, dynamic_dim),
+        "ori_shape": [-2] if unknown_rank_flag else _trans_dynamic_shape(input_ori_shape, data_format, dynamic_dim),
         "ori_format": data_format,
         "dtype": dtype,
         "range": _get_range_from_shape(input_shape, dynamic_dim)
