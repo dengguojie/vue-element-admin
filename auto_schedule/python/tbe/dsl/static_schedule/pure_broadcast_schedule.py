@@ -592,9 +592,8 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         sch_broadcast = self.schedule[broadcast]
         axis = self.ub_tiling_axis
         factor = self.ub_tiling_factor
-        ub_nparts = self.broadcast_target_shape[self.ub_tiling_axis] // factor
         self.ub_outer, self.ub_inner = sch_broadcast.split(sch_broadcast.op.axis[axis],
-                                                           nparts=ub_nparts)
+                                                           factor=factor)
         if self.block_tiling_axis is not None and self.block_tiling_axis >= 0:
             self.do_block_tiling()
         if self.block_inner is None:
