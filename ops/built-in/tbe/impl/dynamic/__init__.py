@@ -42,6 +42,7 @@ from .gather import gather
 from .gather_v2 import gather_v2
 from .kl_div import kl_div
 from .bias import bias
+from .dequantize import dequantize
 from .bninference_d import bninference_d
 from .bn_training_reduce import bn_training_reduce
 from .scatter_nd import scatter_nd

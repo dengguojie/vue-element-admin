@@ -42,15 +42,25 @@ IMPLEMT_COMMON_INFERFUNC(DequantizeInferShape) {
       return GRAPH_FAILED;
     }
   }
-  Shape shape_x = op.GetInputDesc("x").GetShape();
-  DataType min_range_dtype = op.GetInputDesc("min_range").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(shape_x);
-  tensordesc_output.SetDataType(min_range_dtype);
-  if (op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
+  auto op_info = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto min_range = op_info->MutableInputDesc("min_range");
+  vector<int64_t> shape_x = input_desc->MutableShape().GetDims();
+
+  auto tensordesc_output = op_info->MutableOutputDesc("y");
+
+  if (IsUnknown(shape_x)) {
+    std::vector<std::pair<int64_t, int64_t>> shape_range;
+    input_desc->GetShapeRange(shape_range);
+    DataType min_range_dtype = min_range->GetDataType();
+
+    tensordesc_output->SetShape(GeShape(shape_x));
+    tensordesc_output->SetDataType(min_range_dtype);
+    tensordesc_output->SetShapeRange(shape_range);
+  } else {
+    tensordesc_output->SetShape(GeShape(shape_x));
   }
+
   return GRAPH_SUCCESS;
 }
 
