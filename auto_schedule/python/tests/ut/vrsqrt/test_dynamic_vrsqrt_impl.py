@@ -10,21 +10,20 @@ from tbe.common.utils import shape_util
 from tbe.common.register import register_operator
 
 
-@register_operator("vdiv")
-def dsl_dynamic_vdiv(x, y, z, kernel_name="dsl_dynamic_vdiv"):
+@register_operator("vrsqrt")
+def dsl_dynamic_vrsqrt(x, y, kernel_name="dsl_dynamic_vrsqrt"):
     input_dtype = x.get("dtype")
 
-    ins = tbe.dsl.classify([x, y], "elewise")
+    ins = tbe.dsl.classify([x], "elewise")
     schedules, tensors = [], []
 
-    for (x, y) in ins:
+    for (x,) in ins:
         with tbe.dsl.compute():
-            shape_x, shape_y = shape_util.variable_shape([x, y])
+            shape_x = shape_util.variable_shape([x])[0]
             data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
-            data2 = tvm.placeholder(shape_y, name='data2', dtype=input_dtype)
-            res = tbe.dsl.vdiv(data1, data2)
+            res = tbe.dsl.vrsqrt(data1, "high_precision")
 
-            tensors.append((data1, data2, res))
+            tensors.append((data1, res))
 
         with tvm.target.cce():
             sch = tbe.dsl.auto_schedule(res)
@@ -34,7 +33,7 @@ def dsl_dynamic_vdiv(x, y, z, kernel_name="dsl_dynamic_vdiv"):
     tbe.dsl.build(schedules, config)
 
 
-ut_case = OpUT("vdiv", "vdiv.test_dynamic_vdiv_impl", "dsl_dynamic_vdiv")
+ut_case = OpUT("vrsqrt", "vrsqrt.test_dynamic_vrsqrt_impl", "dsl_dynamic_vrsqrt")
 
 case1 = {
     "params": [{
@@ -45,13 +44,9 @@ case1 = {
         "shape": (-1, -1),
         "dtype": "float32",
         "range": [(1, None), (1, None)]
-    }, {
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_vdiv_1",
+        "test_dync_vrsqrt_1",
     "expect":
         "success",
     "support_expect":
@@ -67,27 +62,24 @@ case2 = {
         "shape": (2, -1),
         "dtype": "float16",
         "range": [(2, 2), (1, None)]
-    }, {
-        "shape": (2, -1),
-        "dtype": "float16",
-        "range": [(2, 2), (1, None)]
     }],
     "case_name":
-        "test_dync_vdiv_2",
+        "test_dync_vrsqrt_2",
     "expect":
         "success",
     "support_expect":
         True
 }
 
+
 ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
 ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
 
 
-def calc_expect_func(x, y, z):
+def calc_expect_func(x, y):
     x_value = x.get("value")
-    y_value = y.get("value")
-    res = np.divide(x_value, y_value)
+    sqrt_res = np.sqrt(x_value)
+    res = np.reciprocal(sqrt_res)
     return (res, )
 
 
@@ -106,19 +98,12 @@ ut_case.add_precision_case(
                 "dtype": "float32",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (1, 10),
-                "param_type": "input"
-            },
-            {
-                "shape": (-1, -1),
-                "dtype": "float32",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (1, 10),
                 "param_type": "output"
             },
         ],
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001),
-        "case_name": "test_dync_vdiv_prec_01"
+        "case_name": "test_dync_vrsqrt_prec_01"
     })
 
 ut_case.add_precision_case(
@@ -136,17 +121,10 @@ ut_case.add_precision_case(
                 "dtype": "float16",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (2, 10),
-                "param_type": "input"
-            },
-            {
-                "shape": (2, -1),
-                "dtype": "float16",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (2, 10),
                 "param_type": "output"
             },
         ],
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
-        "case_name": "test_dync_vdiv_prec_02"
+        "case_name": "test_dync_vrsqrt_prec_02"
     })

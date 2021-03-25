@@ -8,7 +8,25 @@
         "vdiv",
         "vexp",
         "vmax",
-        "vmin"
+        "vmin",
+        "vrec",
+        "vmod",
+        "vlog",
+        "vsqrt",
+        "vrsqrt",
+        "vadds",
+        "vmaxs",
+        "vmins",
+        "vmuls",
+        "ceil",
+        "floor",
+        "round",
+        "trunc",
+        "round_half_up",
+        "cast_to",
+        "vaxpy",
+        "vmla",
+        "vmadd"
     ],
     "auto_schedule/python/tbe/dsl/compute/math.py":[
         "vadd",
@@ -19,6 +37,18 @@
         "vexp",
         "vmax",
         "vmin",
+        "vrec",
+        "vmod",
+        "vlog",
+        "vsqrt",
+        "vrsqrt",
+        "vadds",
+        "vmaxs",
+        "vmins",
+        "vmuls",
+        "vaxpy",
+        "vmla",
+        "vmadd",
         "dsl_cpu/test_math_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/nn.py":[
@@ -37,7 +67,13 @@
         "dsl_cpu/test_inplace_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/cast.py":[
-        "dsl_cpu/test_cast_cpu_impl.py"
+        "dsl_cpu/test_cast_cpu_impl.py",
+        "ceil",
+        "floor",
+        "round",
+        "trunc",
+        "round_half_up",
+        "cast_to"
     ],
     "auto_schedule/python/tbe/dsl/compute/array.py":[
         "dsl_cpu/test_array_cpu_impl.py"

@@ -10,21 +10,20 @@ from tbe.common.utils import shape_util
 from tbe.common.register import register_operator
 
 
-@register_operator("vdiv")
-def dsl_dynamic_vdiv(x, y, z, kernel_name="dsl_dynamic_vdiv"):
+@register_operator("round")
+def dsl_dynamic_round(x, y, kernel_name="dsl_dynamic_round"):
     input_dtype = x.get("dtype")
 
-    ins = tbe.dsl.classify([x, y], "elewise")
+    ins = tbe.dsl.classify([x], "elewise")
     schedules, tensors = [], []
 
-    for (x, y) in ins:
+    for (x,) in ins:
         with tbe.dsl.compute():
-            shape_x, shape_y = shape_util.variable_shape([x, y])
+            shape_x = shape_util.variable_shape([x])[0]
             data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
-            data2 = tvm.placeholder(shape_y, name='data2', dtype=input_dtype)
-            res = tbe.dsl.vdiv(data1, data2)
+            res = tbe.dsl.round(data1)
 
-            tensors.append((data1, data2, res))
+            tensors.append((data1, res))
 
         with tvm.target.cce():
             sch = tbe.dsl.auto_schedule(res)
@@ -34,7 +33,7 @@ def dsl_dynamic_vdiv(x, y, z, kernel_name="dsl_dynamic_vdiv"):
     tbe.dsl.build(schedules, config)
 
 
-ut_case = OpUT("vdiv", "vdiv.test_dynamic_vdiv_impl", "dsl_dynamic_vdiv")
+ut_case = OpUT("round", "round.test_dynamic_round_impl", "dsl_dynamic_round")
 
 case1 = {
     "params": [{
@@ -43,15 +42,11 @@ case1 = {
         "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
-    }, {
-        "shape": (-1, -1),
-        "dtype": "float32",
+        "dtype": "int32",
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_vdiv_1",
+        "test_dync_round_1",
     "expect":
         "success",
     "support_expect":
@@ -65,34 +60,30 @@ case2 = {
         "range": [(2, 2), (1, None)]
     }, {
         "shape": (2, -1),
-        "dtype": "float16",
-        "range": [(2, 2), (1, None)]
-    }, {
-        "shape": (2, -1),
-        "dtype": "float16",
+        "dtype": "int32",
         "range": [(2, 2), (1, None)]
     }],
     "case_name":
-        "test_dync_vdiv_2",
+        "test_dync_round_2",
     "expect":
         "success",
     "support_expect":
         True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
+
+ut_case.add_case(["Ascend910", "Ascend710"], case1)
 ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
 
 
-def calc_expect_func(x, y, z):
+def calc_expect_func(x, y):
     x_value = x.get("value")
-    y_value = y.get("value")
-    res = np.divide(x_value, y_value)
+    res = np.round(x_value).astype(np.int32)
     return (res, )
 
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend310", "Ascend710"], {
+    ["Ascend910", "Ascend710"], {
         "params": [
             {
                 "shape": (-1, -1),
@@ -103,14 +94,7 @@ ut_case.add_precision_case(
             },
             {
                 "shape": (-1, -1),
-                "dtype": "float32",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (1, 10),
-                "param_type": "input"
-            },
-            {
-                "shape": (-1, -1),
-                "dtype": "float32",
+                "dtype": "int32",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (1, 10),
                 "param_type": "output"
@@ -118,11 +102,11 @@ ut_case.add_precision_case(
         ],
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001),
-        "case_name": "test_dync_vdiv_prec_01"
+        "case_name": "test_dync_round_prec_01"
     })
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910", "Ascend310", "Ascend710"], {
         "params": [
             {
                 "shape": (2, -1),
@@ -133,14 +117,7 @@ ut_case.add_precision_case(
             },
             {
                 "shape": (2, -1),
-                "dtype": "float16",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (2, 10),
-                "param_type": "input"
-            },
-            {
-                "shape": (2, -1),
-                "dtype": "float16",
+                "dtype": "int32",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (2, 10),
                 "param_type": "output"
@@ -148,5 +125,5 @@ ut_case.add_precision_case(
         ],
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
-        "case_name": "test_dync_vdiv_prec_02"
+        "case_name": "test_dync_round_prec_02"
     })
