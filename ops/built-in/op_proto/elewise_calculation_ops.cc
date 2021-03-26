@@ -3124,11 +3124,14 @@ COMMON_INFER_FUNC_REG(ClipByNormNoDivSum, ClipByNormNoDivSumInferShape);
 
 // ------------SquareSumV1 Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
-  auto shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  std::vector<int64_t> shapeVector = shape.GetDims();
-  int64_t dimNum = shape.GetDimNum();
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_info->MutableInputDesc("x");
+  std::vector<int64_t> shapeVector = input_desc->MutableShape().GetDims();
+  int64_t dimNum = shapeVector.size();
+  DataType input_dtype = input_desc->GetDataType();
+  auto tensordesc_output = op_info->MutableOutputDesc("y");
+  
+
   std::vector<int64_t> axis;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     OpsGetAttrErrReport(op.GetName(), "axis");
@@ -3158,29 +3161,51 @@ IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
   }
 
   std::vector<int64_t> oShapeVector;
+  std::vector<std::pair<int64_t, int64_t>> oRangeVector;
   std::vector<int64_t>::iterator tmp;
-  for (int64_t item = 0; item < dimNum; ++item) {
-    tmp = std::find(axis.begin(), axis.end(), item);
-    if (tmp != axis.end()) {
-      // item in axis
-      // If keepDims is true, current dimesion set to 1
-      if (keep_dims == true) {
-        oShapeVector.push_back(1);
+  if (IsUnknown(shapeVector)) {
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    input_desc->GetShapeRange(input_range);
+    for (int64_t item = 0; item < dimNum; ++item) {
+      tmp = std::find(axis.begin(), axis.end(), item);
+      if (tmp != axis.end()) {
+        // item in axis
+        // If keepDims is true, current dimesion set to 1
+        if (keep_dims == true) {
+          oShapeVector.push_back(1);
+          oRangeVector.push_back({1, 1});
+        }
+      } else {
+        // item is not in ConstValueAxis
+        oShapeVector.push_back(shapeVector[item]);
+        oRangeVector.push_back(input_range[item]);
       }
-    } else {
-      // item is not in ConstValueAxis
-      oShapeVector.push_back(shapeVector[item]);
     }
+    ge::GeShape oShape = ge::GeShape(oShapeVector);
+    tensordesc_output->SetShape(oShape);
+    tensordesc_output->SetOriginShape(oShape);
+    tensordesc_output->SetShapeRange(oRangeVector);
+    tensordesc_output->SetDataType(input_dtype);
+  } else {
+    for (int64_t item = 0; item < dimNum; ++item) {
+      tmp = std::find(axis.begin(), axis.end(), item);
+      if (tmp != axis.end()) {
+        // item in axis
+        // If keepDims is true, current dimesion set to 1
+        if (keep_dims == true) {
+          oShapeVector.push_back(1);
+        }
+      } else {
+        // item is not in ConstValueAxis
+        oShapeVector.push_back(shapeVector[item]);
+      }
+    }
+    ge::GeShape oShape = ge::GeShape(oShapeVector);
+    tensordesc_output->SetShape(oShape);
+    tensordesc_output->SetOriginShape(oShape);
+    tensordesc_output->SetDataType(input_dtype);
   }
 
-  Shape oShape(oShapeVector);
-  tensordesc_output.SetShape(oShape);
-  tensordesc_output.SetDataType(input_dtype);
-
-  if(op.UpdateOutputDesc("y", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update output failed");
-    return GRAPH_FAILED;
-  }
   return GRAPH_SUCCESS;
 }
 

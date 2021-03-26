@@ -502,8 +502,12 @@ IMPLEMT_VERIFIER(ApplyAddSignD, ApplyAddSignDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAddSignDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAddSignD op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "m", "m");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "m", {"m"})) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
@@ -1927,10 +1931,18 @@ IMPLEMT_VERIFIER(ApplyAdamWithAmsgradD, ApplyAdamWithAmsgradDVerify) {
 // Obtains the processing function of the output tensor description.
 IMPLEMT_COMMON_INFERFUNC(ApplyAdamWithAmsgradDInferShape) {
   OP_LOGI(op.GetName().c_str(), "Enter ApplyAdamWithAmsgrad op_proto inferfunction!");
-  ApplyInferShapeAndDtype(op, "var", "var");
-  ApplyInferShapeAndDtype(op, "m", "m");
-  ApplyInferShapeAndDtype(op, "v", "v");
-  ApplyInferShapeAndDtype(op, "vhat", "vhat");
+  if (!OneInOneOutDynamicInfer(op, "var", {"var"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "m", {"m"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "v", {"v"})) {
+    return GRAPH_FAILED;
+  }
+  if (!OneInOneOutDynamicInfer(op, "vhat", {"vhat"})) {
+    return GRAPH_FAILED;
+  }
 
   return GRAPH_SUCCESS;
 }
