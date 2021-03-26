@@ -86,18 +86,18 @@ REG_OP(Cholesky)
 *@brief Computes the outer product of two 1D vectors . \n
 
 *@par Inputs:
-*The input x and vec2 has to be a 1D vector.Inputs include:
-*@li x:A Tensor. Must be one of the following types: float16, float32. 
+*The input x1 and x2 has to be a 1D vector.Inputs include:
+*@li x1:A Tensor. Must be one of the following types: float16, float32. 
 Shape is [N] . \n
-*@li vec2:A Tensor. Must have the same type as x. Shape is [M] . \n
+*@li x2:A Tensor. Must have the same type as x. Shape is [M] . \n
 
 *@par Outputs:
 *y:A Tensor. Has the same type as x . \n
 */
 
 REG_OP(Ger)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .INPUT(vec2, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
     .OP_END_FACTORY_REG(Ger)
 

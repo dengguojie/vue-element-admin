@@ -18,7 +18,6 @@ ger
 import te.lang.cce as tbe
 
 from te import tvm
-from te import platform as tbe_platform
 from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 
@@ -48,7 +47,7 @@ def ger_compute(data_x1, data_x2, y, kernel_name="ger"):
     """
     shape_x1 = tbe.util.shape_to_list(data_x1.shape)
     shape_x2 = tbe.util.shape_to_list(data_x2.shape)
-    shape_common = [shape_x1[0],shape_x2[1]]
+    shape_common = [shape_x1[0], shape_x2[1]]
 
     broa_x1 = tbe.broadcast(data_x1, shape_common)
     broa_x2 = tbe.broadcast(data_x2, shape_common)
