@@ -69,6 +69,11 @@ class OpUTTestRunner:  # pylint: disable=too-few-public-methods
                        "simulator_lib_path": self.simulator_lib_path,
                        "simulator_dump_path": self.simulator_dump_path,
                        "data_dump_path": self.data_dumnp_dir}
+        else:
+            run_cfg = {
+                       "simulator_dump_path": self.simulator_dump_path,
+                       "data_dump_path": self.data_dumnp_dir
+                       }
         ut_run_report = op_ut_case.run_case(run_soc_vsersion, case_name_list=case_name_list,
                                             case_usage_list=case_usage_list, run_cfg=run_cfg)
         return ut_run_report
@@ -156,8 +161,8 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
         case_usage_list = [CaseUsage.IMPL, CaseUsage.CUSTOM, CaseUsage.CFG_COVERAGE_CHECK,
                            CaseUsage.CHECK_SUPPORT, CaseUsage.SELECT_FORMAT, CaseUsage.PRECISION]
 
-        if not run_arg.simulator_mode:
-            case_usage_list.remove(CaseUsage.PRECISION)
+        # if not run_arg.simulator_mode:
+        #     case_usage_list.remove(CaseUsage.PRECISION)
 
         case_runner = OpUTTestRunner(print_summary=False,
                                      simulator_mode=run_arg.simulator_mode,

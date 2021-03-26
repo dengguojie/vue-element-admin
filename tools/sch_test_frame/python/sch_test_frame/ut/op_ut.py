@@ -619,7 +619,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     def _get_simulator_mode(run_cfg):
         if not run_cfg or not isinstance(run_cfg, dict):
             return "pv"
-        return run_cfg.get("simulator_mode", "pv")
+        return run_cfg.get("simulator_mode")
 
     @staticmethod
     def _get_simulator_lib_path(run_cfg):
@@ -632,7 +632,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if isinstance(run_cfg, dict):
             base_dir = run_cfg.get("simulator_dump_path", "./model")
 
-        model_data_path = os.path.join(os.path.realpath(base_dir), simulator_mode, self.op_type, case_name)
+        if simulator_mode:
+            model_data_path = os.path.join(os.path.realpath(base_dir), simulator_mode, self.op_type, case_name)
+        else:
+            model_data_path = os.path.join(os.path.realpath(base_dir), self.op_type, case_name)
         if not os.path.exists(model_data_path):
             file_util.makedirs(model_data_path, DATA_DIR_MODES)
         return model_data_path

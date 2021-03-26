@@ -18,6 +18,7 @@ CUR_PATH=$(dirname $0)
 
 source ${CUR_PATH}/config.ini
 source ${CUR_PATH}/util/modules/generate_related_ops.sh
+source ${CUR_PATH}/util/modules/generate_related_sch.sh
 
 OPS_TESTCASE_DIR="ops_testcase"
 TEST_BIN_PATH="${BUILD_PATH}/${OPS_TESTCASE_DIR}"
@@ -52,6 +53,23 @@ install_stest() {
   done
 }
 
+install_sch_stest() {
+  local task_type="$1"
+  local pr_file="$2"
+  get_related_sch "${task_type}" "${pr_file}"
+  all_cases=""
+  install_related_sch "${pr_file}"
+  for op_case in $(echo "${all_cases}" | tr ',' ' '); do
+    echo "[INFO] install testcase: ${op_case}"
+    if [[ ! -d "${op_case}" ]]; then
+      echo "[ERROR] cannot find testcase ${op_case}"
+      # exit $STATUS_FAILED
+    else
+      cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
+    fi
+  done
+}
+
 install_all_stest() {
   cp -rf "${OPS_ST_SOURCE_DIR}/" "${TEST_INSTALL_PATH}"
 }
@@ -59,6 +77,13 @@ install_all_stest() {
 install_script() {
   echo "[INFO] install run_ops_test.sh"
   cp -f "${CUR_PATH}/util/run_ops_st.sh" "${TEST_BIN_PATH}"
+}
+
+install_sch_script() {
+  echo "[INFO] install run_ops_test.sh"
+  cp -f "${CUR_PATH}/util/run_sch_st.sh" "${TEST_BIN_PATH}/run_ops_st.sh"
+  cp -f "${CANN_ROOT}/auto_schedule/python/tests/sch_run_st.py" "${TEST_BIN_PATH}"
+  cp -r "${CANN_ROOT}/tools/sch_test_frame/python/sch_test_frame" "${TEST_BIN_PATH}"
 }
 
 install_package() {
@@ -73,14 +98,21 @@ main() {
     if [[ "${task_type}" == "st" ]]; then
       echo "[Info] pr_file contains nothing,install all st case"
       install_all_stest
+      install_script
     else
       echo "[ERROR] A input file that contains files changed is required"
       exit $STATUS_SUCCESS
     fi
   else
-    install_stest "${task_type}" "${pr_file}"
+    ops_str=`cat ${pr_file} | awk -F\/ '{print $1}' | grep -v "auto_schedule"`
+    if [[ -n "${ops_str}" ]]; then
+      install_stest "${task_type}" "${pr_file}"
+      install_script
+    else
+      install_sch_stest "${task_type}" "${pr_file}"
+      install_sch_script
+    fi
   fi
-  install_script
   install_package
 }
 
