@@ -3041,15 +3041,85 @@ COMMON_INFER_FUNC_REG(SquareSumV2, SquareSumV2InferShape);
 
 // ------------ClipByNormNoDivSum----------------
 IMPLEMT_COMMON_INFERFUNC(ClipByNormNoDivSumInferShape) {
-  auto shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  tensordesc_output.SetShape(shape);
-  tensordesc_output.SetDataType(input_dtype);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  string input_name1 = "x";
+  string input_name2 = "greater_zeros";
+  string input_name3 = "select_ones";
+  string input_name4 = "maximum_ones";
+  string output_name = "y";
+  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
+  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
+  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
+  GeTensorDescPtr tensordesc_input3 = op_desc->MutableInputDesc(input_name3);
+  GeTensorDescPtr tensordesc_input4 = op_desc->MutableInputDesc(input_name4);
+  CHECK(op_desc == nullptr ||
+        tensordesc_output == nullptr ||
+        tensordesc_input1 == nullptr ||
+        tensordesc_input2 == nullptr ||
+        tensordesc_input3 == nullptr ||
+        tensordesc_input4 == nullptr,
+        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
+  DataType input_dtype = tensordesc_input1->GetDataType();
+  // output Des
+  tensordesc_output->SetDataType(input_dtype);
+  // shape
+  ge::GeShape shapeX = tensordesc_input1->GetShape();
+  ge::GeShape shapeY = tensordesc_input2->GetShape();
+  ge::GeShape shapeZ = tensordesc_input3->GetShape();
+  ge::GeShape shapeH = tensordesc_input4->GetShape();
+  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s, shape %s: %s.",
+                  input_name1.c_str(), to_string(shapeX).c_str(),
+                  input_name2.c_str(), to_string(shapeY).c_str(),
+                  input_name3.c_str(), to_string(shapeZ).c_str(),
+                  input_name4.c_str(), to_string(shapeH).c_str());
+  std::vector<int64_t> dimsX = shapeX.GetDims();
+  std::vector<int64_t> dimsY = shapeY.GetDims();
+  std::vector<int64_t> dimsZ = shapeZ.GetDims();
+  std::vector<int64_t> dimsH = shapeH.GetDims();
+  // unknown rank
+  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY) ||
+      IsUnknownRankShape(dimsZ) || IsUnknownRankShape(dimsH)) {
+    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.",
+            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
+            input_dtype);
+    return GRAPH_SUCCESS;
+  }
+  // range
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+  tensordesc_input1->GetShapeRange(shape_range_x);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_y;
+  tensordesc_input2->GetShapeRange(shape_range_y);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_z;
+  tensordesc_input3->GetShapeRange(shape_range_z);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_h;
+  tensordesc_input4->GetShapeRange(shape_range_h);
+  std::vector<int64_t> dimVec;
+  std::vector<std::pair<int64_t, int64_t>> Vec_range;
+  dimVec = dimsX;
+  Vec_range = shape_range_x;
+  MakeUpShapeRange(dimsX, shape_range_x);
+  // Broadcast x and y
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsY, shape_range_y, "x", "greater_zeros")) {
+    return GRAPH_FAILED;
+  }
+  // Broadcast dimVec and z
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsZ, shape_range_z,
+                                           "dimVec", "select_ones")) {
+    return GRAPH_FAILED;
+  }
+  // Broadcast dimVec and h
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsH, shape_range_h,
+                                           "dimVec", "maximum_ones")) {
+    return GRAPH_FAILED;
+  }
+  ge::GeShape outputShape = ge::GeShape(dimVec);
+  tensordesc_output->SetShape(outputShape);
+  tensordesc_output->SetShapeRange(Vec_range);
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(ClipByNormNoDivSum, ClipByNormNoDivSumInferShape);
+COMMON_INFER_FUNC_REG(ClipByNormNoDivSum, ClipByNormNoDivSumInferShape);
 // ------------ClipByNormNoDivSum----------------
 
 // ------------SquareSumV1 Op Begin----------------
