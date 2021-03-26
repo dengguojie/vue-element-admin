@@ -77,6 +77,11 @@ class OperatorContext:
         op_infos = operation.get_op_context().get_op_info()
         if len(op_infos) == 1:
             return op_infos[0].op_type
+        elif len(op_infos) >= 2:
+            _name = "fusion"
+            for value in op_infos:
+                _name += "_" + str(value.op_type)
+            return _name
 
         return None
 
