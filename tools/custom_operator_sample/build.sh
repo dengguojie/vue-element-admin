@@ -96,7 +96,6 @@ cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/omg ${DST_D
 cp -r ${CODE_ROOT_DIR}/metadef/third_party/graphengine/inc/framework/common ${DST_DIR}/DSL/Tensorflow/framework
 # copy cann/ops dependency
 cp -r ${CODE_ROOT_DIR}/cann/ops/built-in/op_proto/util ${DST_DIR}/DSL/Tensorflow/op_proto
-sed -i '29d' ${DST_DIR}/DSL/Tensorflow/op_proto/util/error_util.h
 # copy op_log.h log.h
 mkdir -p ${DST_DIR}/DSL/Tensorflow/log
 cp -r ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/op_log.h ${DST_DIR}/DSL/Tensorflow/log
@@ -104,8 +103,9 @@ sed -i 's/#include <utils\/Log.h>/#include <util\/Log.h>/g' ${DST_DIR}/DSL/Tenso
 cp -r ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/cpukernel/impl/utils/log.h ${DST_DIR}/DSL/Tensorflow/op_proto/util
 # copy CMakeLists.txt modified for dependency
 cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/op_proto/CMakeLists.txt ${DST_DIR}/DSL/Tensorflow/op_proto
-sed -i '28d' ${DST_DIR}/DSL/Tensorflow/op_proto/CMakeLists.txt
-sed -i '7,10d' ${DST_DIR}/DSL/Tensorflow/op_proto/CMakeLists.txt
+# prepare thirdparty path
+mkdir -p ${DST_DIR}/DSL/Tensorflow/third_party
+cp -rf ${CODE_ROOT_DIR}/cann/tools/custom_operator_sample/dependency_files/secure_c_proto.cmake ${DST_DIR}/DSL/Tensorflow/third_party
 #2.2 PyTorch
 cp -r ${SRC_DIR}/op_project_tmpl/* ${DST_DIR}/DSL/PyTorch/
 cp -r ${SRC_DIR}/tbe/* ${DST_DIR}/DSL/PyTorch/tbe/
