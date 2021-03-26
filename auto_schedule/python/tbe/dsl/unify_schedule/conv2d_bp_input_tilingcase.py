@@ -192,8 +192,9 @@ class Conv2dBpInputTiling(CubeTilingOp):
         if ((self.stride_h > 1 or self.stride_w > 1) and
             self.k_h == 1 and self.k_w == 1 and ori_m > LARGE_M and tiling["AL0_matrix"][0] == 1):
             max_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
-            l0a_size = tbe_platform_info.get_soc_spec("L0A_SIZE")
-            l0c_size = tbe_platform_info.get_soc_spec("L0C_SIZE")
+            l0a_size = tbe_platform_info.get_soc_spec("L0A_SIZE") // BIT_RATIO_DICT.get(self.a_type)
+            l0c_size = tbe_platform_info.get_soc_spec("L0C_SIZE") // BIT_RATIO_DICT.get(self.c_type)
+            tiling_db = tiling.get("manual_pingpong_buffer")
 
             # use max core nums
             core_num = reduce(lambda x, y: x * y, tiling["block_dim"])
@@ -205,8 +206,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
             # use max buffer size
             modified_flag = False
             while (self.check_tiling_ub(tiling_mess) and m_per_core > tiling["CUB_matrix"][1] * 16
-                and reduce(lambda x, y: x * y, tiling["AL0_matrix"]) < l0a_size
-                and reduce(lambda x, y: x * y, tiling["CL0_matrix"]) < l0c_size
+                and reduce(lambda x, y: x * y, tiling["AL0_matrix"]) * tiling_db.get("AL0_pbuffer") < l0a_size
+                and reduce(lambda x, y: x * y, tiling["CL0_matrix"]) * tiling_db.get("CL0_pbuffer") < l0c_size
                 and self.check_tiling_match(tiling, tiling_mess.get("C_shape")[3], tiling_mess.get("C_shape")[2])):
                 tiling["CUB_matrix"][1] += 1
                 tiling["AL0_matrix"][0] = tiling["CL0_matrix"][1] = tiling["CUB_matrix"][1]
@@ -489,7 +490,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
             _, mc_factor, m0, _ = tiling_in.get("tiling").get("CUB_matrix")[:4]
             if self.k_h == 1 and self.k_w == 1:
                 if (mc_factor * m0 - utils.FP16_M) > self.a_info[3]:
-                    tiling_in["tiling"]["CUB_matrix"][2] -= 1
+                    tiling_in["tiling"]["CUB_matrix"][1] -= 1
                 else:
                     return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                             "B_shape": self.b_info, "C_shape": self.c_info}

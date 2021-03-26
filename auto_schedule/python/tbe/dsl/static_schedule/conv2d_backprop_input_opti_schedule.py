@@ -1411,6 +1411,9 @@ class Conv2dDxOptiSchedule:
             nc_factor, mc_factor, m0, n0 = TILING.get("CUB_matrix")[:4]
             cub_db_flag = TILING.get("manual_pingpong_buffer").get("CUB_pbuffer")
             cub_dtype_bit = DTYPE_BYTE_MAP.get("float16")
+            ub_buffer_size = tbe_platform_info.get_soc_spec("UB_SIZE")
+            stride_h, stride_w = DIM_MAP["dilate_dim"]
+            dx_h, dx_w = DIM_MAP.get("out_hwdim")
 
             if "dedy_h" not in var_map:
                 dedy_h = tvm.var("dedy_h")
@@ -1418,12 +1421,14 @@ class Conv2dDxOptiSchedule:
             if "dedy_w" not in var_map:
                 dedy_w = tvm.var("dedy_w")
                 sch.set_var_value(dedy_w, DIM_MAP["img_shape"][3])
-            check_ifmc_flag = (mc_from_tiling // dedy_w * dedy_w * DIM_MAP["dilate_dim"][0] * DIM_MAP["dilate_dim"][1]
-                <= CUB_BUFFER_LIMIT)
-            max_n_is_hfactor = tvm.floordiv(
-                (tbe_platform_info.get_soc_spec("UB_SIZE") - nc_factor * mc_factor * m0 * n0 * cub_db_flag * cub_dtype_bit)
-                // (nc_factor * n0 * cub_db_flag * cub_dtype_bit * DIM_MAP["dilate_dim"][0]),
-                DIM_MAP.get("out_hwdim")[1])
+            check_ifmc_flag = (mc_from_tiling // dedy_w * dedy_w * stride_h * stride_w <= CUB_BUFFER_LIMIT)
+
+            max_n_is_hfactor_bound = tvm.floordiv(
+                (ub_buffer_size // cub_db_flag // cub_dtype_bit - nc_factor * mc_factor * m0 * n0)
+                // (nc_factor * n0 * stride_h), dx_w)
+            max_n_is_hfactor_offset = tvm.floordiv((ub_buffer_size // cub_dtype_bit // m0 -
+                (stride_w + dx_w * stride_w)), (dx_w * stride_w))
+            max_n_is_hfactor = tvm.min(max_n_is_hfactor_bound, max_n_is_hfactor_offset)
 
             if ("dedy_w" in var_map and mc_from_tiling >= var_range["dedy_w"][0]
                 or "dedy_w" not in var_map and mc_from_tiling >= DIM_MAP["img_shape"][3]):
@@ -1438,7 +1443,7 @@ class Conv2dDxOptiSchedule:
             else:
                 sch.set_var_value(n_is_hfactor, tvm.max((mc_from_tiling - block_m) // DIM_MAP["img_shape"][3], 1))
             sch.set_var_range(n_is_hfactor, 1, mc_from_tiling)
-            l0c_tiling_factor[1] = DIM_MAP.get("out_hwdim")[1] * n_is_hfactor * DIM_MAP["dilate_dim"][0]
+            l0c_tiling_factor[1] = dx_w * n_is_hfactor * stride_h
             undilate_l0c_m = n_is_hfactor * DIM_MAP["img_shape"][3]
             return undilate_l0c_m
 
