@@ -10,8 +10,9 @@ opgen_flag = False
 opst_flag = False
 
 # run msopgen ut
-msopgen_ut_path = os.path.abspath("./msopgen/ut/msopgen_ut.py")
-gen_cmd = ['python3', msopgen_ut_path]
+msopgen_ut_path = os.path.abspath("./msopgen/ut")
+msopgen_source_code = os.path.abspath("../msopgen/op_gen")
+gen_cmd = ['python3.7', '-m', 'pytest', msopgen_ut_path, '--cov=' + msopgen_source_code]
 result_opgen = subprocess.Popen(gen_cmd, shell=False,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT)
@@ -27,8 +28,9 @@ else:
     print("run msopgen ut failed")
 
 # run msopst ut
-msopst_ut_path = os.path.abspath("./msopst/ut/msopst_ut.py")
-st_cmd = ['python3', msopst_ut_path]
+msopst_ut_path = os.path.abspath("./msopst/ut")
+msopst_source_code = os.path.abspath("../op_test_frame/python/op_test_frame/st")
+st_cmd = ['python3.7', '-m', 'pytest', msopst_ut_path, '--cov=' + msopst_source_code]
 result_opst = subprocess.Popen(st_cmd, shell=False,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT)
