@@ -22,6 +22,7 @@
 #include <vector>
 #include <limits>
 #include "op_log.h"
+#include "error_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "common/util/error_manager/error_manager.h"
 
@@ -192,6 +193,42 @@ graphStatus WithValue(int64_t dim, int64_t value, int64_t& out, const char* op_n
     OP_LOGE(op_name, "Dim and value are not equal: %lld != %lld.", dim, value);
     return GRAPH_FAILED;
   }
+  return GRAPH_SUCCESS;
+}
+
+graphStatus MergePrefix(const Shape s, const Shape prefix, Shape &s_out, Shape &prefix_out, const char* op_name) {
+  // Same shape and unknown rank
+  if (!RankKnown(s) || !RankKnown(prefix)) {
+    s_out = s;
+    prefix_out = prefix;
+    return GRAPH_SUCCESS;
+  }
+  std::string str = op_name;
+  const size_t rank = prefix.GetDimNum();
+  std::vector<int64_t> dims1 = s.GetDims();
+  if ((dims1 != UNKNOWN_RANK) && (dims1.size() < rank)) {
+    std::string err_msg = ConcatString("s shape rank[", dims1.size(),"] must be at least rank[", rank, "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(str, err_msg);
+    return GRAPH_FAILED;
+  }
+  
+  const size_t rank_s = s.GetDimNum();
+  std::vector<int64_t> dims;
+  dims.reserve(std::max(rank,rank_s));
+  dims.resize(rank);
+  for (int i = 0; i< rank; ++i){
+    if (Merge(s.GetDim(i), prefix.GetDim(i), dims[i]) != GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString("s dim", i,"[", s.GetDim(i), "] not equal prefix dim",
+                                         i, "[", prefix.GetDim(i),"]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(str, err_msg);
+      return  GRAPH_FAILED;
+    }
+  }
+  prefix_out = Shape(dims);
+  for (int i= rank; i < rank_s; ++i) {
+    dims.push_back(s.GetDim(i));
+  }
+  s_out = Shape(dims);
   return GRAPH_SUCCESS;
 }
 

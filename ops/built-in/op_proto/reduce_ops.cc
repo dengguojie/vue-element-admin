@@ -1652,6 +1652,34 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
 COMMON_INFER_FUNC_REG(GNTrainingUpdate, GNTrainingUpdateInferShape);
 // ------------------GNTrainingUpdate END---------------------
 
+IMPLEMT_INFERFUNC(ReduceJoin, ReduceJoinInfer) {
+  OP_LOGI(op.GetName().c_str(), "Enter ReduceJoin proto inferfunction!");
+  ge::TensorDesc result_desc;
+  if (!InferReduceShape(op, "input", "reduction_indices", "keep_dims", result_desc)) {
+    std::string err_msg = ConcatString("failed to call InferReduceShape function,", 
+                                        "input[input], input[reduction_indices], attr[keep_dims]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  auto shape = result_desc.GetShape();
+  auto dtype = result_desc.GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> range;
+  result_desc.GetShapeRange(range);
+
+  // update output desc
+  TensorDesc output_desc = op.GetOutputDesc("output");
+  output_desc.SetShape(shape);
+  output_desc.SetDataType(dtype);
+  if (range.size() > 0) {
+    output_desc.SetShapeRange(range);
+  }
+  (void)op.UpdateOutputDesc("output", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(ReduceJoin, ReduceJoinInfer);
+
 // ----------------ReduceStd Begin-------------------
 using std::find;
 IMPLEMT_INFERFUNC(ReduceStd, ReduceStdInferShape) {

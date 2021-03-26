@@ -52,6 +52,36 @@ REG_OP(StringToNumber)
     .OP_END_FACTORY_REG(StringToNumber)
 
 /**
+*@brief Convert serialized tensorflow.TensorProto prototype to Tensor. \n
+*@brief Parse an Example prototype. \n
+*@par Input:
+*serialized: A Tensor of type string.
+*dense_defaults:  DYNAMIC INPUT Tensor type as string, float, int64.
+
+*@par Outputs:
+*sparse_indices: A Tensor of type string. 
+*sparse_values:  Has the same type as sparse_types.
+*sparse_shapes: A Tensor of type int64
+*dense_values:  Has the same type as dense_defaults.
+
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+**/
+REG_OP(ParseSingleExample)
+    .INPUT(serialized, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(dense_defaults, TensorType({DT_STRING,DT_FLOAT,DT_INT64}))
+    .DYNAMIC_OUTPUT(sparse_indices, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(sparse_values, TensorType({DT_STRING,DT_FLOAT,DT_INT64}))
+    .DYNAMIC_OUTPUT(sparse_shapes, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(dense_values, TensorType({DT_STRING,DT_FLOAT,DT_INT64}))
+    .ATTR(num_sparse, Int, 0)
+    .ATTR(sparse_keys, ListString, {})
+    .ATTR(dense_keys, ListString, {})
+    .ATTR(sparse_types, ListType, {})
+    .ATTR(dense_types, ListType, {})
+    .ATTR(dense_shapes, ListListInt, {})
+    .OP_END_FACTORY_REG(ParseSingleExample)
+
+/**
 *@brief Decodes raw file into  tensor . \n
 *@par Input:
 *contents: A Tensor of type string.

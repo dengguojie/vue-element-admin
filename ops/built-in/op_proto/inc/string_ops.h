@@ -62,6 +62,115 @@ REG_OP(StringSplit)
     .OP_END_FACTORY_REG(StringSplit)
 
 /**
+*@brief Replaces the match of pattern in input with rewrite. \n
+
+*@par Inputs:
+include:
+*@li input:A Tensor of type string. The text to be processed. \n
+
+*@par Attributes:
+*@li pattern:A string. The regular expression to match the input.
+*@li rewrite:A string. The rewrite to be applied to the matched expression.
+*@li replace_global:An optional bool. Defaults to True. If True, the replacement is global,
+otherwise the replacement is done only on the first match.
+
+*@par output:
+*@li output::A Tensor of type string.
+*/
+REG_OP(StaticRegexReplace)
+    .INPUT(input, TensorType({DT_STRING}))
+    .OUTPUT(output, TensorType({DT_STRING}))
+    .ATTR(pattern, String, "")
+    .ATTR(rewrite, String, "")
+    .ATTR(replace_global, Bool, true)
+    .OP_END_FACTORY_REG(StaticRegexReplace)
+
+/**
+*@brief The input is a string tensor of any shape. The pattern is the
+*regular expression to be matched with every element of the input tensor.
+*The boolean values (True or False) of the output tensor indicate
+*if the input matches the regex pattern provided.
+
+*@par Inputs:
+include:
+*@li input:A Tensor of type string. The text to be processed. \n
+
+*@par Attributes:
+*@li pattern:A string. The regular expression to match the input.
+
+*@par output:
+*@li output::A bool tensor with the same shape as `input`.
+*/
+REG_OP(StaticRegexFullMatch)
+    .INPUT(input, TensorType({DT_STRING}))
+    .OUTPUT(output, TensorType({DT_BOOL}))
+    .ATTR(pattern, String, "")
+    .OP_END_FACTORY_REG(StaticRegexFullMatch)
+
+/**
+*@brief A Tensor of type string. The input to be joined. \n
+
+*@par Inputs:
+include:
+*@li segment_ids:A Tensor. Must be one of the following types: int32, int64. 
+*A tensor whose shape is a prefix of data.shape. Negative segment ids are not supported.
+*@li num_segments:A Tensor. Must be one of the following types: int32, int64. A scalar. 
+
+*@par Attributes:
+*@li separator:An optional string. Defaults to "". The separator to use when joining.
+
+*@par output:
+*@li output::A Tensor of type string..
+*/
+REG_OP(UnsortedSegmentJoin)
+    .INPUT(input, TensorType({DT_STRING}))
+    .INPUT(segment_ids, TensorType({DT_INT32,DT_INT64}))
+    .INPUT(num_segments, TensorType({DT_INT32,DT_INT64}))
+    .OUTPUT(output, TensorType({DT_STRING}))
+    .ATTR(separator, String, "")
+    .OP_END_FACTORY_REG(UnsortedSegmentJoin)
+
+/**
+*@brief Inputs to TensorFlow operations are outputs of another TensorFlow operation.
+*This method is used to obtain a symbolic handle that represents the computation of the input.
+
+*@par Inputs:
+include:
+*@li input:A Tensor of type string. The text to be processed. 
+
+*@par Attributes:
+*@li encoding:An optional string. Defaults to "". 
+
+*@par output:
+*@li output::A Tensor of type string..
+*/
+REG_OP(StringLower)
+    .INPUT(input, TensorType({DT_STRING}))
+    .OUTPUT(output, TensorType({DT_STRING}))
+    .ATTR(encoding, String, "")
+    .OP_END_FACTORY_REG(StringLower)
+
+/**
+*@brief Inputs to TensorFlow operations are outputs of another TensorFlow operation.
+*This method is used to obtain a symbolic handle that represents the computation of the input.
+
+*@par Inputs:
+include:
+*@li input:A Tensor of type string. The text to be processed. 
+
+*@par Attributes:
+*@li encoding:An optional string. Defaults to "". 
+
+*@par output:
+*@li output::A Tensor of type string..
+*/
+REG_OP(StringUpper)
+    .INPUT(input, TensorType({DT_STRING}))
+    .OUTPUT(output, TensorType({DT_STRING}))
+    .ATTR(encoding, String, "")
+    .OP_END_FACTORY_REG(StringUpper)
+
+/**
 *@brief Split elements of source based on sep into a SparseTensor . \n
 
 *@par Inputs:

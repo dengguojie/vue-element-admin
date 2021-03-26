@@ -904,6 +904,48 @@ REGISTER_CUSTOM_OP("StringSplit")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register StaticRegexReplace op to GE
+REGISTER_CUSTOM_OP("StaticRegexReplace")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StaticRegexReplace")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StaticRegexFullMatch op to GE
+REGISTER_CUSTOM_OP("StaticRegexFullMatch")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StaticRegexFullMatch")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register ReduceJoin op to GE
+REGISTER_CUSTOM_OP("ReduceJoin")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ReduceJoin")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register UnsortedSegmentJoin op to GE
+REGISTER_CUSTOM_OP("UnsortedSegmentJoin")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StaticRegexReplace")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StringLower op to GE
+REGISTER_CUSTOM_OP("StringLower")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StringLower")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StringUpper op to GE
+REGISTER_CUSTOM_OP("StringUpper")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StringUpper")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register StringSplitV2 op to GE
 REGISTER_CUSTOM_OP("StringSplitV2")
     .FrameworkType(TENSORFLOW)

@@ -19,9 +19,12 @@
  * \brief
  */
 #include "inc/string_ops.h"
+#include "util/common_shape_fns.h"
+#include "util/error_util.h"
 #include "common_shape_fns.h"
 #include "common/inc/op_log.h"
 #include "graph/utils/op_desc_utils.h"
+#include "graph/operator.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(StringSplit, StringSplitInfer) {
@@ -86,6 +89,175 @@ IMPLEMT_INFERFUNC(StringSplit, StringSplitInfer) {
 }
 
 INFER_FUNC_REG(StringSplit, StringSplitInfer);
+
+IMPLEMT_INFERFUNC(StaticRegexReplace, StaticRegexReplaceInfer) {
+  auto x_desc = op.GetInputDesc("input");
+  DataType y_type = x_desc.GetDataType();
+  if(y_type != DT_STRING) {
+    std::string input_dt = DTypeStr(y_type);
+    std::string err_msg = ConcatString("input[input] data type[", input_dt,"] must be DT_STRING");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  TensorDesc desc = op.GetOutputDesc("output");
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
+    desc.SetShapeRange(range);
+  }
+  desc.SetShape(op.GetInputDesc("input").GetShape());
+  desc.SetDataType(y_type);
+  
+  (void)op.UpdateOutputDesc("output", desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StaticRegexReplace, StaticRegexReplaceInfer);
+
+IMPLEMT_INFERFUNC(StaticRegexFullMatch, StaticRegexFullMatchInfer) {
+  auto x_desc = op.GetInputDesc("input");
+  DataType x_type = x_desc.GetDataType();
+  if(x_type != DT_STRING) {
+    std::string input_dt = DTypeStr(x_type);
+    std::string err_msg = ConcatString("input[input] data type[", input_dt,"] must be DT_STRING");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  TensorDesc desc = op.GetOutputDesc("output");
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
+    desc.SetShapeRange(range);
+  }
+  desc.SetShape(op.GetInputDesc("input").GetShape());
+  desc.SetDataType(DT_BOOL);
+
+  (void)op.UpdateOutputDesc("output", desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StaticRegexFullMatch, StaticRegexFullMatchInfer);
+
+IMPLEMT_INFERFUNC(UnsortedSegmentJoin, UnsortedSegmentJoinInfer) {
+  OP_LOGI(op.GetName().c_str(), "Enter UnsortedSegmentJoin proto inferfunction!");
+  Shape x_shape = op.GetInputDesc("input").GetShape();
+  Shape segment_ids_shape = op.GetInputDesc("segments_ids").GetShape();
+  Shape num_segment_shape;
+  if (WithRank(op.GetInputDesc("num_segments"), 0, num_segment_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString(
+        "failed to call WithRank function, input[num_segments] rank must be 0, "
+        "got rank[",
+        num_segment_shape.GetDimNum(), "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  
+  Shape out_shape;
+  // update output desc
+  if (RankKnown(segment_ids_shape)) {
+    if (MergePrefix(x_shape, segment_ids_shape, x_shape, segment_ids_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString("Call MergePrefix function failed to merge input[input] shape[", 
+                                          DebugString(x_shape.GetDims()),"] of input[segment_ids] and shape[",
+                                          DebugString(segment_ids_shape.GetDims()),"]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+
+    Tensor num_segments_tensor;
+    auto result_x = op.GetInputConstData("num_segments", num_segments_tensor);
+    if (result_x != GRAPH_SUCCESS) {
+      Shape unknown_shape(ge::UNKNOWN_RANK);
+      TensorDesc y_desc = op.GetOutputDesc("output");
+      y_desc.SetShape(unknown_shape);
+      y_desc.SetDataType(DT_STRING);
+      (void)op.UpdateOutputDesc("output", y_desc);
+      return GRAPH_SUCCESS;
+    } 
+    int64_t num_segments_dim = 0;
+    const int64_t* num_segments_data = reinterpret_cast<const int64_t *>(num_segments_tensor.GetData());
+    if (num_segments_data == nullptr) {
+      num_segments_dim = -1;
+    } else {
+      num_segments_dim = *num_segments_data;
+      if (num_segments_dim < 0) {
+        std::string err_msg = ConcatString("the input[num_segments] data must be non-negative, data[",
+                           num_segments_dim, "]");
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+        return GRAPH_FAILED;
+      }
+    }
+    Shape s_data_suffix;
+    int64_t start = segment_ids_shape.GetDimNum();
+    int64_t end = std::numeric_limits<int64_t>::max();
+    int64_t stride = 1;
+    if (SubShape(x_shape, start, end, stride, s_data_suffix, op.GetName().c_str()) != GRAPH_SUCCESS){
+      std::string err_msg = ConcatString("failed to call SubShape function, input[input] shape[",
+                                          DebugString(x_shape.GetDims()), "], start[", start, 
+                                          "] or end[", end, "] or stride[", stride, "] is invaild");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+    Concatenate(Shape({num_segments_dim}), s_data_suffix, out_shape);
+  } else {
+    Shape unknown_shape(ge::UNKNOWN_RANK);
+    TensorDesc y_desc = op.GetOutputDesc("output");
+    y_desc.SetShape(unknown_shape);
+    y_desc.SetDataType(DT_STRING);
+    op.UpdateOutputDesc("output", y_desc);
+    return GRAPH_SUCCESS;
+  }
+  TensorDesc output_desc = op.GetOutputDesc("output");
+  output_desc.SetShape(out_shape);
+  output_desc.SetDataType(DT_STRING);
+  (void)op.UpdateOutputDesc("output", output_desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(UnsortedSegmentJoin, UnsortedSegmentJoinInfer);
+
+IMPLEMT_INFERFUNC(StringLower, StringLowerInfer) {
+  auto x_desc = op.GetInputDesc("input");
+  DataType y_type = x_desc.GetDataType();
+  if(y_type != DT_STRING) {
+    std::string input_dt = DTypeStr(y_type);
+    std::string err_msg = ConcatString("input[input] data type[", input_dt,"] must be DT_STRING");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  TensorDesc desc = op.GetOutputDesc("output");
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
+    desc.SetShapeRange(range);
+  }
+  desc.SetShape(op.GetInputDesc("input").GetShape());
+  desc.SetDataType(y_type);
+  
+  (void)op.UpdateOutputDesc("output", desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StringLower, StringLowerInfer);
+
+IMPLEMT_INFERFUNC(StringUpper, StringUpperInfer) {
+  auto x_desc = op.GetInputDesc("input");
+  DataType y_type = x_desc.GetDataType();
+  if(y_type != DT_STRING) {
+    std::string input_dt = DTypeStr(y_type);
+    std::string err_msg = ConcatString("input[input] data type[", input_dt,"] must be DT_STRING");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+  TensorDesc desc = op.GetOutputDesc("output");
+  desc.SetShape(op.GetInputDesc("input").GetShape());
+  desc.SetDataType(y_type);
+  std::vector<std::pair<int64_t, int64_t>> range;
+  if (x_desc.GetShapeRange(range) != GRAPH_SUCCESS) {
+    desc.SetShapeRange(range);
+  }
+  
+  (void)op.UpdateOutputDesc("output", desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(StringUpper, StringUpperInfer);
 
 IMPLEMT_INFERFUNC(StringSplitV2, StringSplitV2Infer) {
   Shape unused;

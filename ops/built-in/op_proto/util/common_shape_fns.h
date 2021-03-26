@@ -95,6 +95,17 @@ graphStatus WithRank(const GeTensorDescPtr& tensorDesc, int64_t rank, Shape& out
 graphStatus WithValue(int64_t dim, int64_t value, int64_t& out, const char* op_name);
 
 /**
+ * Merge two shapes
+ * @param s0 first shape val
+ * @param prefix second shape val
+ * @param s_out merged shape val
+ * @param prefix_out prefix out shape val
+ * @return status whether this operation success
+ */
+graphStatus MergePrefix(const Shape s, const Shape prefix, Shape &s_out, Shape &prefix_out, const char* op_name);
+
+
+/**
  * Merge two dims of Shape
  * @param dim0 first dim val
  * @param dim1 second dim val

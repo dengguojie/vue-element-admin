@@ -1134,6 +1134,28 @@ REG_OP(GNTrainingUpdate)
     .OP_END_FACTORY_REG(GNTrainingUpdate)
 
 /**
+*@brief Joins a string Tensor across the given dimensions. \n
+
+*@par Inputs:
+include:
+*@li input:A Tensor of type string. The text to be processed.
+*@li reduction_indices:A Tensor of type int. The text to be processed. 
+
+*@par Attributes:
+*@li keep_dims:A bool, An optional bool. Defaults to False. If True, retain reduced dimensions with length 1..
+
+*@par output:
+*@li output::A Tensor of type string..
+*/
+REG_OP(ReduceJoin)
+    .INPUT(input, TensorType({DT_STRING}))
+    .INPUT(reduction_indices, TensorType({DT_INT32}))
+    .OUTPUT(output, TensorType({DT_STRING}))
+    .ATTR(keep_dims, Bool, true)
+    .ATTR(separator, String, "")
+    .OP_END_FACTORY_REG(ReduceJoin)
+
+/**
 * @brief Calculates the standard deviation and average value of Tensors.
 
 * @par Inputs:

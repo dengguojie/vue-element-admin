@@ -35,6 +35,25 @@ REGISTER_CUSTOM_OP("QueueDequeueUpTo")
     .ParseParamsFn(QueueDequeueUpToMapping)
     .ImplyType(ImplyType::AI_CPU);
 
+// register ParseSingleExample op to GE
+Status ParseSingleExampleMapping(const google::protobuf::Message* op_src, ge::Operator& op) {
+  map<string, pair<string, string>> value;
+  value["out"] = pair<string, string>("sparse_indices", "num_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("sparse_shapes", "num_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("sparse_values", "num_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  return SUCCESS;
+}
+
+// register ParseSingleExample op to GE
+REGISTER_CUSTOM_OP("ParseSingleExample")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ParseSingleExample")
+    .ParseParamsFn(ParseSingleExampleMapping)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register Stage op to GE
 Status StageMapping(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
