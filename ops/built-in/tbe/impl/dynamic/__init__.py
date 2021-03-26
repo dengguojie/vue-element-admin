@@ -162,6 +162,7 @@ from .in_top_k import in_top_k
 from .apply_adagrad_d import apply_adagrad_d
 from .top_k_v2_d import top_k_v2_d
 from .pad_d import pad_d
+from .pad import pad
 from .split_d import split_d
 from .split import split
 from .split_v import split_v
