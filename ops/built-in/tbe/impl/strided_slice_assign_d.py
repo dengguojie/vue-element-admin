@@ -441,12 +441,12 @@ def strided_slice_assign_d(ref_dict,
     _update_begin_end_strides_by_ellipsis_mask(input_shape, begin, end, strides, ellipsis_mask)
     slice_shape = _update_slice_params(input_shape, begin, end, strides, new_axis_mask, shrink_axis_mask)
     if input_dtype in ("int32", "float32"):
-        if len(slice_shape) == 1 and slice_shape[-1] < 8:
+        if len(slice_shape) > 1 and slice_shape[-1] < 8:
             error_manager_vector.raise_err_specific_reson(
                 "strided_slice_assign_d",
                 "Under int32 and fp32, except dim num is 1, last dimension of input shape must bigger and equal than 8.")
-    if len(slice_shape) == 1 and input_dtype == "float16":
-        if slice_shape[-1] < 16:
+    if input_dtype == "float16":
+        if len(slice_shape) > 1 and slice_shape[-1] < 16:
             error_manager_vector.raise_err_specific_reson(
                 "strided_slice_assign_d", "Under fp16, except dim num is 1, last dimension of input shape must bigger and equal than 16.")
 
