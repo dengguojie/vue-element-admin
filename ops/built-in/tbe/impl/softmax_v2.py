@@ -405,10 +405,16 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if data_exp.dtype == "float16" and tbe_product in ("Ascend310",):
         data_exp = te.lang.cce.cast_to(data_exp, "float32")
         has_improve_precision = True
-
     data_expsum = te.lang.cce.sum(data_exp, axis, keepdims=True)
-    data_expsum = _broadcast_nz(data_expsum, shape)
-    output = te.lang.cce.vdiv(data_exp, data_expsum)
+
+    if tbe_product in ("Ascend910", "Ascend610", "Ascend615", "Ascend710",) and \
+       output_y.get("format") == "FRACTAL_NZ" and dtype == "float16":
+        data_expsum = te.lang.cce.vrec(data_expsum, priority_flag=0)
+        data_expsum = _broadcast_nz(data_expsum, shape)
+        output = te.lang.cce.vmul(data_exp, data_expsum)
+    else:
+        data_expsum = _broadcast_nz(data_expsum, shape)
+        output = te.lang.cce.vdiv(data_exp, data_expsum)
     if has_improve_precision and dtype == "float16":
         output = te.lang.cce.cast_to(output, "float16")
 
