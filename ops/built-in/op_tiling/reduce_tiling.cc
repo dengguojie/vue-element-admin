@@ -937,6 +937,8 @@ bool Reduce::DoTiling() {
       compileInfo.is_const_post = op_info.count("_const_shape_post") > 0 &&
               op_info.at("_const_shape_post").get<bool>();
       if (compileInfo.is_const_post) {
+        // Discard "1" when running
+        EliminateOne();
         pattern = CalcConstPattern(reduce_axis_ori);
         return ret;
       } else {
