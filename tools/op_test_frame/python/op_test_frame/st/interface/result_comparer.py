@@ -42,7 +42,7 @@ def _get_np_dtype(type_str):
         'fp64': np.float64, 'fp32': np.float32, 'float32': np.float32,
         'float': np.float32, 'fp16': np.float16, 'float16': np.float16,
         'int64': np.int64, 'int32': np.int32, 'int16': np.int16,
-        'int8': np.int8,
+        'int8': np.int8, 'double': np.double,
         'uint64': np.uint64, 'uint32': np.uint32, 'uint16': np.uint16,
         'uint8': np.uint8,
         'bool': np.bool, 'complex64': np.complex64,
