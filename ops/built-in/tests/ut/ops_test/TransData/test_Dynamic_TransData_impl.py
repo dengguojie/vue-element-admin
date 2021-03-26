@@ -177,6 +177,76 @@ ut_case.add_case(["all"],
                  gen_transdata_case((-1, -1, -1, -1, -1),
                                     (2, 3, 20, 20, 16),
                                     "float16", "NC1HWC0", "FRACTAL_Z", "case_29", "success"))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (42767, 11, 1, 11, 16, 16),
+                                    "int32", "NCDHW", "NDC1HWC0", "case_30", "success"))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (2, 42767, 1, 11, 16, 32),
+                                    "int8", "NCDHW", "NDC1HWC0", "case_31", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (8, 2, 2, 16, 16, 16),
+                                    "float16", "NCDHW", "NDC1HWC0", "case_32", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (1, 1, 7, 7, 16),
+                                    "float16", "NCHW", "NC1HWC0", "case_33", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (3468, 1, 16, 16),
+                                    "float16", "DHWCN", "FRACTAL_Z_3D", "case_34", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (12482, 2, 16, 16),
+                                    "float16", "HWCN", "FRACTAL_Z", "case_35", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (1495, 5, 16, 16),
+                                    "float16", "ND", "FRACTAL_Z", "case_36", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1,),
+                                    (1, 2673, 16, 16),
+                                    "float16", "ND", "FRACTAL_Z", "case_37", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1),
+                                    (80, 80, 16, 16),
+                                    "float16", "ND", "FRACTAL_Z", "case_38", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1),
+                                    (331452, 80, 16, 16),
+                                    "float16", "NCHW", "FRACTAL_Z", "case_39", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (52948, 80, 16, 16),
+                                    "float16", "NCDHW", "FRACTAL_Z_3D", "case_40", "success"))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (52948, 80, 16, 16),
+                                    "uint8", "NCDHW", "FRACTAL_Z_3D", "case_41", RuntimeError))
+
+ut_case.add_case(["all"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (2, 11, 1, 11, 16, 16),
+                                    "float16", "NCDHW", "NDC1HWC0", "case_42", "success"))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_transdata_case((-1, -1, -1, -1, -1),
+                                    (2, 11, 2673, 11, 16, 16),
+                                    "float32", "NCDHW", "NDC1HWC0", "case_43", "success"))
                                     
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):

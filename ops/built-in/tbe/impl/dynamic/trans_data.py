@@ -23,10 +23,10 @@ from impl.dynamic.trans_data_rnn import trans_data_rnn
 from impl.dynamic.transpose import Transpose
 from . import trans_data_negative_target_tc
 from . import trans_data_negative_target_ch
-from . import trans_data_positive_source_nct
 from . import trans_data_positive_source_tc
+from . import trans_data_positive_source_ntc
 
-TILING_MAX_SIZE_GM = 2048 # 16KB
+TILING_MAX_SIZE_GM = 2048  # 16KB
 MAX_INT64_VALUE = 2 ** 64 - 1
 
 
@@ -41,7 +41,23 @@ def is_do_with_transpose_formats(src_format, dst_format):
         return False
 
 
+def is_do_with_positive_source_ntc_100(src_format, dst_format):
+    """
+    judge src_format and dst_format in the dict: 
+    {"NCDHW":"NDC1HWC0", "NCHW":"NC1HWC0", "HWCN":"FRACTAL_Z", "HWCN":"FRACTAL_ZN", "DHWCN":"FRACTAL_Z_3D", 
+    "ND":"FRACTAL_Z", "ND":"FRACTAL_ZN", "NCHW":"FRACTAL_Z", "NCHW":"FRACTAL_ZN", "NCDHW":"FRACTAL_Z_3D"}       
+    """
+    support_src_dst_formats = {"NCDHW":["NDC1HWC0", "FRACTAL_Z_3D"], "HWCN":["FRACTAL_Z", "FRACTAL_ZN"], 
+                               "DHWCN":["FRACTAL_Z_3D"], "ND":["FRACTAL_Z", "FRACTAL_ZN"], 
+                               "NCHW":["FRACTAL_Z", "FRACTAL_ZN", "NC1HWC0"]}
+    if src_format in support_src_dst_formats and dst_format in support_src_dst_formats.get(src_format):
+        return True
+    else:
+        return False
+
 # pylint: disable=unused-argument
+
+
 @register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
@@ -57,10 +73,6 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
     elif (src_format == "NC1HWC0" and dst_format == "NCHW"):
         trans_data_negative_target_ch.trans_data_negative_target_ch(src, dst, src_format, dst_format, kernel_name)
-    elif (src_format == "NCHW" and dst_format == "NC1HWC0") or (src_format == "NCDHW" and dst_format == "NDC1HWC0") \
-          or ((src_format == "HWCN") and (dst_format == "FRACTAL_Z" or dst_format == "FRACTAL_ZN")) \
-          or (src_format == "DHWCN" and dst_format == "FRACTAL_Z_3D"):
-        trans_data_positive_source_nct.trans_data_positive_source_nct(src, dst, src_format, dst_format, kernel_name)
     elif is_do_with_transpose_formats(src_format, dst_format):
         x_dtype = src.get("dtype").lower()
         y_dtype = dst.get("dtype").lower()
@@ -73,5 +85,7 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
         input_list = [data_in]
         transpose_instance = Transpose(tik_inst, x_dtype, tensor_list, kernel_name)
         return transpose_instance.compute(input_list)
+    elif is_do_with_positive_source_ntc_100(src_format, dst_format):
+        trans_data_positive_source_ntc.trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name)
     else:
         trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)

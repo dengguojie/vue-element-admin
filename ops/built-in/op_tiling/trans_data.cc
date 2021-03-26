@@ -436,7 +436,7 @@ int32_t GetMultiCoreAxis(std::vector<int64_t> inShape, int32_t axisPosC, int64_t
   return max_element(coreLpCnt.begin(), coreLpCnt.end()) - coreLpCnt.begin();
 }
 
-bool is_do_with_transpose_formats(const std::string& srcFormat, const std::string& dstFormat){
+bool IsDoWithTransposeFormats(const std::string& srcFormat, const std::string& dstFormat){
   const std::vector<std::string> FormatList = {"NCHW", "NHWC", "HWCN", "CHWN"};
   if (std::find(FormatList.begin(), FormatList.end(), srcFormat) != FormatList.end() &&
       std::find(FormatList.begin(), FormatList.end(), dstFormat) != FormatList.end() && dstFormat != srcFormat) {
@@ -444,6 +444,22 @@ bool is_do_with_transpose_formats(const std::string& srcFormat, const std::strin
   } else {
     return false;
   }
+}
+
+bool IsDoWithPositiveSourceNtc100(const std::string& srcFormat, const std::string& dstFormat) {
+  const std::vector<std::pair<std::string, std::string>> supportSrcDstFormats = {
+    {"NCDHW", "NDC1HWC0"},
+    {"NCHW", "NC1HWC0"},
+    {"HWCN", "FRACTAL_Z"},
+    {"HWCN", "FRACTAL_ZN"},
+    {"DHWCN", "FRACTAL_Z_3D"},
+    {"NCDHW", "FRACTAL_Z_3D"},
+    {"ND", "FRACTAL_Z"},
+    {"ND", "FRACTAL_ZN"},
+    {"NCHW", "FRACTAL_Z"},
+    {"NCHW", "FRACTAL_ZN"}};    
+  return std::find(supportSrcDstFormats.begin(), supportSrcDstFormats.end(),
+                   std::pair<std::string, std::string>(srcFormat, dstFormat)) != supportSrcDstFormats.end();
 }
 
 /*
@@ -477,7 +493,7 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
   std::string dstFormat = opParas.outputs[0].tensor[0].format;
   OP_LOGD(opType, "Input format is [%s], Output format is [%s].",
           srcFormat.c_str(), dstFormat.c_str());
-  if (is_do_with_transpose_formats(srcFormat, dstFormat)) {
+  if (IsDoWithTransposeFormats(srcFormat, dstFormat)) {
     std::vector<int64_t> perm_shape;
     TeOpParas opParasTranspose;
     opParasTranspose = opParas;
@@ -531,17 +547,16 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     return false;
   }
 
-  if (realSrcFormat[realSrcFormat.length() - 1] != 'C' && realDstFormat[realDstFormat.length() - 1] == 'T') {
-    TransDataMode100Param runParamsPart1;
-    flag = TillingPositiveMode100(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
-                                  blockDim, blockElemCnt, c0Len, ubSize, runParamsPart1);
+  if (IsDoWithPositiveSourceNtc100(srcFormat, dstFormat)) {
+    TransDataNtc100Param runParams100;
+    flag = TilingPositiveSourceNtc100(inShape, outShape, srcFormat, dstFormat, blockDim,
+                                            blockElemCnt, ubSize, c0Len, dType, runParams100);
     if (!flag) {
-      OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode100Param tiling params error");
+      OP_LOGE(opType, "TransDataTiling: get TilingPositiveSourceNtc100 tiling params error");
       return false;
     }
-    SetRunningMode100Params(runParamsPart1, runInfo);
-    OP_LOGD(opType.c_str(), "start print runParams");
-    PrintTilingMode100Params(opType, runParamsPart1);
+    SetRunningNtc100Params(runParams100, runInfo);
+    OP_LOGD(opType.c_str(), "start print tiling parameters in ntc 100: %s", runParams100.to_string().c_str());
   } else if (realSrcFormat[realSrcFormat.length() - 1] == 'C' && realDstFormat[realDstFormat.length() - 1] == 'T') {
     if (realSrcFormat[realSrcFormat.length() - 2] == realDstFormat[realDstFormat.length() - 2]) {
       TransDataMode1010Param runParamsPart1;
