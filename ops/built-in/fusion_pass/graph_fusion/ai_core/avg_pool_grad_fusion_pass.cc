@@ -308,6 +308,11 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   GeTensorDesc avg_pool_input_shape_tensor = avg_pool_grad_fused_node_desc->GetInputDesc(1);
   GeShape avg_pool_shape = avg_pool_input_shape_tensor.GetShape();
   vector<int64_t> avg_pool_dim_info = avg_pool_shape.GetDims();
+  if (avg_pool_dim_info.size() == 1 && avg_pool_dim_info[0] == -2) {
+    avg_pool_dim_info.push_back(-1);
+    avg_pool_dim_info.push_back(-1);
+    avg_pool_dim_info.push_back(-1);
+  }
   FUSION_PASS_CHECK(avg_pool_dim_info.size() < 4, OP_LOGW(kFusedOpType.c_str(), "Dims must great than 3"),
                     return NOT_CHANGED);
   FUSION_PASS_CHECK(k_size.size() != 4, OP_LOGW(kFusedOpType.c_str(), "The k_size must list of 4 element."),

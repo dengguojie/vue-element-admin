@@ -69,7 +69,8 @@ class Test_OpConfig(unittest.TestCase):
         allow_op_key = set(["dynamicFormat.flag", "op.pattern", "compute.cost", "partial.flag", "async.flag",
                             "binfile.name", "kernel.name",
                             "opFile.value", "opInterface.value", "heavyOp.flag", "precision_reduce.flag",
-                            "needCheckSupport.flag", "dynamicShapeSupport.flag", "slicePattern.value", "dynamicCompileStatic.flag"])
+                            "needCheckSupport.flag", "dynamicShapeSupport.flag", "slicePattern.value", "dynamicCompileStatic.flag",
+                            "dynamicRankSupport.flag"])
         allow_attr_info_key = set(["type", "value", "paramType", "defaultValue"])
         allow_formats = set(['FRACTAL_NZ', 'FRACTAL_Z', 'ND', 'FRACTAL_ZN_LSTM',
                              'NC1HWC0', 'C1HWNCoC0', 'NCHW', 'NHWC',

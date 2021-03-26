@@ -1683,7 +1683,7 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
       OP_LOGE(op.GetName().c_str(), "update pads attrs failed.");
       return GRAPH_FAILED;
     }
-  } else if (IsUnKnownShape(input_sizes)) {
+  } else {
     // update pads list by padding[SAME,VALID]
     std::string pad_str;
     if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
@@ -1692,11 +1692,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DBackpropFilterInferShape) {
     } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
       op.SetAttr("pads", {0, 0, 0, 0});
       OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
-    }
-  } else if (unknown_rank) {
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      ge::AttrUtils::SetBool(*op_desc, kForceInfershapeWhenRunning, true);
     }
   }
   return GRAPH_SUCCESS;
