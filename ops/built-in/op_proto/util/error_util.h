@@ -45,9 +45,10 @@
 
 #define VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg)\
   do { \
-    REPORT_INNER_ERROR("E" + std::to_string(ViewErrorCode.VECTOR_INNER_ERROR), err_msg); \
     OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
-  } while (0);
+    REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::VECTOR_INNER_ERROR), \
+      "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
+  } while (0)
 
 namespace ge {
 
@@ -100,6 +101,30 @@ std::string GetAttrValueErrMsg(const std::string& attr_name, const std::string& 
 
 std::string GetAttrSizeErrMsg(const std::string& attr_name, const std::string& wrong_size,
                               const std::string& correct_size);
+
+std::string GetInputInvalidErrMsg(const std::string& param_name);
+std::string GetShapeSizeErrMsg(uint32_t index, const std::string& wrong_shape_size,
+                               const std::string& correct_shape_size);
+
+std::string GetInputFormatNotSupportErrMsg(const std::string& param_name, const std::string& expected_format_list,
+                                           const std::string& data_format);
+
+std::string GetInputDtypeNotSupportErrMsg(const std::string& param_name, const std::string& expected_dtype_list,
+                                          const std::string& data_dtype);
+
+std::string GetInputDTypeErrMsg(const std::string& param_name, const std::string& expected_dtype,
+                                const std::string& data_dtype);
+
+std::string GetInputFormatErrMsg(const std::string& param_name, const std::string& expected_format,
+                                 const std::string& data_format);
+
+std::string SetAttrErrMsg(const std::string& param_name);
+std::string UpdateParamErrMsg(const std::string& param_name);
+
+std::string GetParamOutRangeErrMsg(const std::string& param_name, const std::string& range,
+                                   const std::string& real_value);
+
+std::string OtherErrMsg(const std::string& error_detail);
 
 /*
  * report input shape error of infer shape
