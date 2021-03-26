@@ -78,6 +78,41 @@ REGISTER_CUSTOM_OP("DecodeGif")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
 
+// register UnicodeEncode op to GE
+REGISTER_CUSTOM_OP("UnicodeEncode")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("UnicodeEncode")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register UnicodeTranscode op to GE
+REGISTER_CUSTOM_OP("UnicodeTranscode")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("UnicodeTranscode")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register UnicodeDecode op to GE
+REGISTER_CUSTOM_OP("UnicodeDecode")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("UnicodeDecode")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register UnicodeDecodeWithOffsets op to GE
+REGISTER_CUSTOM_OP("UnicodeDecodeWithOffsets")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("UnicodeDecodeWithOffsets")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+// register StringNGrams op to GE
+REGISTER_CUSTOM_OP("StringNGrams")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("StringNGrams")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
 // register AsString op to GE
 REGISTER_CUSTOM_OP("AsString")
     .FrameworkType(TENSORFLOW)
