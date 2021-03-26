@@ -557,18 +557,31 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 if l0a_attach_mode:
                     # L0A data is more than that L0C needed, attach to dw_ddr
                     sch[grads_fractal].compute_at(sch[dw_ddr], c_grads_mad_at)
+                    l0a_attach_scope = dw_ddr
+                    l0a_attach_axis = c_grads_mad_at
                 else:
                     sch[grads_fractal].compute_at(sch[dw_cc], hw_mad_1_mad_at)
+                    l0a_attach_scope = dw_cc
+                    l0a_attach_axis = hw_mad_1_mad_at
             else:  # else: fully load, attach to thread_axis
                 sch[grads_fractal].compute_at(sch[dw_ddr], fused_multi_core)
+                l0a_attach_scope = dw_ddr
+                l0a_attach_axis = fused_multi_core
 
             if tiling["BL0_matrix"]:
                 if l0b_attach_mode:
                     sch[fmap_fractal].compute_at(sch[dw_ddr], c_fmap_mad_at)
+                    l0b_attach_scope = dw_ddr
+                    l0b_attach_axis = c_fmap_mad_at
                 else:
                     sch[fmap_fractal].compute_at(sch[dw_cc], hw_mad_1_mad_at)
+                    l0b_attach_scope = dw_cc
+                    l0b_attach_axis = hw_mad_1_mad_at
             else:  # else: fully load, attach to thread_axis
                 sch[fmap_fractal].compute_at(sch[dw_ddr], fused_multi_core)
+                l0b_attach_scope = dw_ddr
+                l0b_attach_axis = fused_multi_core
+            return [l0a_attach_scope, l0a_attach_axis, l0b_attach_scope, l0b_attach_axis]
 
         def _al1_attach():
             """
@@ -580,47 +593,97 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             else:
                 al1_attach_mode = \
                         (grads_l1_tiling_nparts[0] != 1 or batch_num_sc != 1)
+            if reorder_l1_mn:
+                run_once_n_dim = [c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at] + c_fmap_mad_at_list
+            else:
+                run_once_n_dim = c_fmap_mad_at_list
+            del_n0_outer_flag = l0a_attach_axis == c_grads_mad_at and reorder_flag
 
-            if tiling["AL1_shape"]:
-                # if axis K needs split, then attach to dw_cc
-                if al1_attach_mode:
-                    sch[grads_matrix].compute_at(sch[dw_cc], al1_at_axis)
-                else:  # if axis K fully load in L1, attach to dw_ddr
-                    sch[grads_matrix].compute_at(sch[dw_ddr], c_grads_l1_at)
-            else:  # else: fully load, attach to thread_axis
-                sch[grads_matrix].compute_at(sch[dw_ddr], fused_multi_core)
+            def _grad_matrix_attach(run_once_n_dim):
+                if tiling["AL1_shape"]:
+                    # if axis K needs split, then attach to dw_cc
+                    if al1_attach_mode:
+                        al1_attach_axis = al1_at_axis
+                        if tiling["A_overhead_opt_flag"]:
+                            sch[grads_matrix].allocate_at(sch[dw_cc], al1_at_axis)
+                            al1_attach_axis = l0a_attach_axis
+                        sch[grads_matrix].compute_at(sch[dw_cc], al1_attach_axis)
+                    else:  # if axis K fully load in L1, attach to dw_ddr
+                        al1_attach_axis = c_grads_l1_at
+                        al1_attach_scope = dw_ddr
+                        if tiling["A_overhead_opt_flag"]:
+                            if del_n0_outer_flag:
+                                # the list of axis is c_grads_mad_at, c_fmap_mad_at
+                                run_once_n_dim = list(set(run_once_n_dim) - set(c_fmap_mad_at_list))
+                            sch[grads_matrix].allocate_at(sch[dw_ddr], c_grads_l1_at, run_once_axes=run_once_n_dim)
+                            al1_attach_scope = l0a_attach_scope
+                            al1_attach_axis = l0a_attach_axis
+                        sch[grads_matrix].compute_at(sch[al1_attach_scope], al1_attach_axis)
+                else:  # else: fully load, attach to thread_axis
+                    al1_attach_axis = fused_multi_core
+                    al1_attach_scope = dw_ddr
+                    if tiling["A_overhead_opt_flag"] and tiling["AL0_matrix"]:
+                        if del_n0_outer_flag:
+                            # the list of axis is c_grads_mad_at, c_fmap_mad_at
+                            run_once_n_dim = list(set(run_once_n_dim) - set(c_fmap_mad_at_list))
+                        sch[grads_matrix].allocate_at(sch[dw_ddr], fused_multi_core, run_once_axes=run_once_n_dim)
+                        al1_attach_scope = l0a_attach_scope
+                        al1_attach_axis = l0a_attach_axis
+                    sch[grads_matrix].compute_at(sch[al1_attach_scope], al1_attach_axis)
+            _grad_matrix_attach(run_once_n_dim)
 
         def _bl1_attach():
             """
             achieve Bl1 compute at l0c or ddr
 
             """
+
             fmap_matrix_flag = not self.var_map or flag_all_one_case
             if self.var_map and not flag_all_one_case:
                 bl1_attach_mode = (dynamic_bl1_attach == "dw_cc")
             else:
                 bl1_attach_mode = \
                          (fmap_l1_tiling_nparts[0] != 1 or batch_num_sc != 1)
+            run_once_mdim = [c_grads_mad_at, ] if reorder_l1_mn else [c_grads_mad_at, c_grads_l1_at]
 
-            if tiling["BL1_shape"]:
-                # if axis K needs split, then attach to dw_cc
-                if  bl1_attach_mode:
-                    if fmap_matrix_flag:
-                        sch[fmap_matrix].compute_at(sch[dw_cc], bl1_at_axis)
+            def _fmap_l1_attach(run_once_mdim):
+                if tiling["BL1_shape"]:
+                    # if axis K needs split, then attach to dw_cc
+                    if bl1_attach_mode:
+                        bl1_attach_axis = bl1_at_axis
+                        bl1_attach_scope = dw_cc
+                        if not flag_all_one_case:
+                            sch[fmap_l1].compute_at(sch[dw_cc], bl1_attach_axis)
+                    else:  # if axis K fully load in L1, attach to dw_ddr
+                        bl1_attach_axis = c_fmap_l1_at
+                        bl1_attach_scope = dw_ddr
+                        if not flag_all_one_case:
+                            if tiling["B_overhead_opt_flag"]:
+                                if not reorder_flag:
+                                    # the list of axis is c_fmap_mad_at, c_grads_mad_at
+                                    run_once_mdim = list(set(run_once_mdim) - {c_grads_mad_at,})
+                                sch[fmap_l1].allocate_at(sch[dw_ddr], c_fmap_l1_at,
+                                                         run_once_axes=run_once_mdim + run_once_ndim)
+                                bl1_attach_scope = dw_ddr
+                                bl1_attach_axis = c_fmap_mad_at
+                            sch[fmap_l1].compute_at(sch[bl1_attach_scope], bl1_attach_axis)
+                else:  # else: fully load, attach to thread_axis
+                    bl1_attach_axis = fused_multi_core
+                    bl1_attach_scope = dw_ddr
                     if not flag_all_one_case:
-                        sch[fmap_l1].compute_at(sch[dw_cc], bl1_at_axis)
-                else:  # if axis K fully load in L1, attach to dw_ddr
-                    if fmap_matrix_flag:
-                        sch[fmap_matrix].compute_at(sch[dw_ddr], c_fmap_l1_at)
-                    if not flag_all_one_case:
-                        sch[fmap_l1].compute_at(sch[dw_ddr], c_fmap_l1_at)
-
-            else:  # else: fully load, attach to thread_axis
-                if fmap_matrix_flag:
-                    sch[fmap_matrix].compute_at(sch[dw_ddr], fused_multi_core)
-                if not flag_all_one_case:
-                    sch[fmap_l1].compute_at(sch[dw_ddr], fused_multi_core)
-
+                        if tiling["B_overhead_opt_flag"] and tiling["AL0_matrix"]:
+                            if not reorder_flag:
+                                # the list of axis is c_fmap_mad_at, c_grads_mad_at
+                                run_once_mdim = list(set(run_once_mdim) - {c_grads_mad_at, })
+                            sch[fmap_l1].allocate_at(sch[dw_ddr], fused_multi_core,
+                                                     run_once_axes=run_once_mdim + run_once_ndim)
+                            bl1_attach_scope = dw_ddr
+                            bl1_attach_axis = c_fmap_mad_at
+                        sch[fmap_l1].compute_at(sch[bl1_attach_scope], bl1_attach_axis)
+                return bl1_attach_scope, bl1_attach_axis
+            bl1_attach_scope, bl1_attach_axis = _fmap_l1_attach(run_once_mdim)
+            if fmap_matrix_flag:
+                sch[fmap_matrix].compute_at(sch[bl1_attach_scope], bl1_attach_axis)
         def _double_buffer():
             """
             achieve double_buffer
@@ -1218,17 +1281,35 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                             c_fmap_mad_at, c_grads_mad_at,
                             c_fmap_mad_insn, c_grads_mad_insn)
 
+        def _allocate_at_split(c_fmap_mad_at):
+            run_once_ndim = []
+            c_fmap_mad_at_list = [c_fmap_mad_at, ]
+            factor_c = _ceil_div(fkk // block_dim_cin, dw_tiling_nparts[0])
+            if tiling["B_overhead_opt_flag"]:
+                if kernel_height * kernel_width % factor_c == 0:
+                    nbuffer_size = kernel_height * kernel_width // factor_c
+                else:
+                    nbuffer_size = kernel_height * kernel_width
+                if nbuffer_size <= tiling["BL1_shape"][1] and tiling["BL1_shape"][1] % nbuffer_size == 0:
+                    c_fmap_run_once, c_fmap_mad_at = sch[dw_ddr].split(c_fmap_mad_at, nbuffer_size)
+                    run_once_ndim = [c_fmap_mad_at, ]
+                    c_fmap_mad_at_list = [c_fmap_run_once, c_fmap_mad_at]
+            return run_once_ndim, c_fmap_mad_at_list, c_fmap_mad_at
+        run_once_ndim, c_fmap_mad_at_list, c_fmap_mad_at = _allocate_at_split(c_fmap_mad_at)
+
         def _ub_and_cc_attach():
             # optimization by move small loops to outer
             reorder_flag = False
             # during L1 to L0, if M loop is smaller, then move to outer
             if l1_2_l0_tiling_nparts[0] > l1_2_l0_tiling_nparts[1]:
-                sch[dw_ddr].reorder(c_grads_mad_at, c_fmap_mad_at)
+                sch[dw_ddr].reorder(c_grads_mad_at, *c_fmap_mad_at_list)
                 reorder_flag = True
+            reorder_l1_mn = False
             # during sc to L1, if M loop is smaller, then move to outer
             if fmap_l1_tiling_nparts[1] > grads_l1_tiling_nparts[1]:
                 sch[dw_ddr].reorder(c_grads_l1_at,
                                     c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at)
+                reorder_l1_mn = True
 
             if not self.cube_vector_split:
                 # dw_ub attach
@@ -1245,8 +1326,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 sch[dw_cc].compute_at(sch[dw_ddr], c_fmap_mad_at)
             else:
                 sch[dw_cc].compute_at(sch[dw_ddr], c_grads_mad_at)
-            return c_fmap_2_ub_insn
-        c_fmap_2_ub_insn = _ub_and_cc_attach()
+            return c_fmap_2_ub_insn, reorder_flag, reorder_l1_mn
+        c_fmap_2_ub_insn, reorder_flag, reorder_l1_mn = _ub_and_cc_attach()
 
         def _dw_cc_split():
             # get the 3 reduce axis of dw_cc
@@ -1684,7 +1765,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 sch[dw_ub].mem_unique()
 
         _split_w_for_conv1d()
-        _l0_attach()
+        l0a_attach_scope, l0a_attach_axis, l0b_attach_scope, l0b_attach_axis = _l0_attach()
         _al1_attach()
         _bl1_attach()
         _double_buffer()
