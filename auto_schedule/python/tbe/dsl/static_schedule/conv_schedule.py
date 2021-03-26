@@ -701,6 +701,7 @@ class CceConvOp:
         self._v200_width_out_1_flag = False
         self._quant_fusion_muti_groups_in_cl0 = False
         self._filter_muti_groups_in = False
+        self._l0a_dma_flag = False
         self._flag_dict = {}
         self._lhisi_dequant_quant_para = {'deq_sqrt': False,
                                           'deq_relu': False,
@@ -1127,6 +1128,8 @@ class CceConvOp:
                     special_mode_dict["use_c04_mode"] = ConvC04Mode.V100_MODE.value
                 elif c04_v200_flag:
                     special_mode_dict["use_c04_mode"] = ConvC04Mode.V200_MODE.value
+                elif ConvParam.l0a_dma_flag:
+                    special_mode_dict["l0a_dma_flag"] = True
                 if res.op.tag == "conv_virtual_res" and w_dtype == "float16" and \
                         not ConvParam.conv_reluv2_flag:
                     special_mode_dict["convfp16_double_out"] = True
@@ -2094,6 +2097,8 @@ class CceConvOp:
                     else:
                         if not self._pre_relu_fused_flag:
                             sch[al1].emit_insn(al1.op.axis[0], 'dma_copy', {"mem_align": 1})
+                            if self._l0a_dma_flag:
+                                sch[al1].compute_inline()
                         # l1fusion + fmap ddr in
                         if self._input_memory_type[0] != 1 and self._l1_fusion_type in (0, 1):
                             sch[al1].pragma(al1.op.axis[0], 'jump_data', 1)
@@ -2586,10 +2591,15 @@ class CceConvOp:
                 else:
                     if strideh_opti_flag:
                         setfmatrix_dict["conv_stride_h"] = 1
-                    sch[fmap_col_before].emit_insn(
-                        fmap_col_before.op.axis[1],
-                        'set_fmatrix', setfmatrix_dict)
-                    sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'im2col')
+                    if self._l0a_dma_flag:
+                        sch[fmap_col_before_before].compute_inline()
+                        sch[fmap_col_before].emit_insn(fmap_col_before.op.axis[5], 'dma_copy')
+                        sch[fmap_col].emit_insn(new_fmap_col_axis[0], 'dma_copy')
+                    else:
+                        sch[fmap_col_before].emit_insn(
+                            fmap_col_before.op.axis[1],
+                            'set_fmatrix', setfmatrix_dict)
+                        sch[fmap_col].emit_insn(new_fmap_col_axis[3], 'im2col')
 
             def get_weight_repeat_number():
                 """
@@ -3033,9 +3043,14 @@ class CceConvOp:
                         (1, 1), (1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
                         (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
                 else:
-                    sch[fmap_col_before].buffer_align(
-                        (1, 1), (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
-                        (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
+                    if self._l0a_dma_flag:
+                        sch[fmap_col_before].buffer_align(
+                            (1, 1), (1, 1), (1, 1), (1, 1), (1, 1),
+                            (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
+                    else:
+                        sch[fmap_col_before].buffer_align(
+                            (1, 1), (1, 1), (w_out, w_out), (1, 1), (1, 1), (1, 1),
+                            (1, CUBE_MKN[fmap_col_before.dtype]["mac"][1]))
 
         def _non_convolution_body_set_scope():
             """
@@ -3092,7 +3107,7 @@ class CceConvOp:
                         output_ub_5d.shape[3].value*output_ub_5d.shape[4].value,
                         0)
 
-                if self._lhisi_data_flow_type:
+                if self._lhisi_data_flow_type or self._l0a_dma_flag:
                     return True
                 if "convolution" in lop["op"]:
                     return True
@@ -3193,7 +3208,7 @@ class CceConvOp:
                     True means enter into this branch to do comput at.
                     False means go to the next branch to do compute at.
                     """
-                    compute_at_flag = lop["dst_buffer"].op.name not in ("fmap_l1", "conv_virtual_res") and \
+                    compute_at_flag = lop["dst_buffer"].op.name not in ("fmap_ub_for_dma_l0a", "fmap_l1", "conv_virtual_res") and \
                         lop["dst_buffer"].op.tag not in ("strided_read", "strided_write", "aipp_res", "conv2d_data_rm")
                     return compute_at_flag
 
@@ -3299,8 +3314,9 @@ class CceConvOp:
             pooling_bias_add = None
             pooling_relu = None
             for lop in self._op_graph.body_ops:
-                if (("convolution" not in lop["op"]) or ("convolution_A" in lop["op"])) or \
-                        (self._fused_flag and (lop["op"] == "convolution_C")):
+                if (("convolution" not in lop["op"]) or \
+                    ("convolution_A" in lop["op"] and "fmap_ub_for_dma" not in lop["op"])) or \
+                    (self._fused_flag and (lop["op"] == "convolution_C")):
 
                     if _compute_at_handle_continue_flag(lop):
                         continue
@@ -3334,7 +3350,7 @@ class CceConvOp:
                 """
                 whether current lop should be attached in _input_ops_compute_at()
                 """
-                if self._lhisi_data_flow_type or self._v200_data_flow_type:
+                if self._lhisi_data_flow_type or self._v200_data_flow_type or self._l0a_dma_flag:
                     return True
                 if self._pre_relu_fused_flag and ("relu" in lop["next_op"][0]["dst_buffer"].op.name):
                     return True
@@ -3837,6 +3853,7 @@ class CceConvOp:
             self._compute_at_axis = []
             self._compile_para = None
             self._preload = 0
+            self._l0a_dma_flag = ConvParam.l0a_dma_flag
             if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
             ("virtual_res" in res.op.name or res.dtype == "int8"):
                 self._quant_fusion_muti_groups_in_cl0 = True
@@ -3965,7 +3982,10 @@ class CceConvOp:
                     if not self._var_map:
                         sch[fmap_col_before].compute_at(sch[c_col], al1_at_ccol_axis)
                 else:
-                    sch[al1].compute_at(sch[res_c], al1_at_c_axis)
+                    if self._l0a_dma_flag:
+                        sch[al1].compute_inline()
+                    else:
+                        sch[al1].compute_at(sch[res_c], al1_at_c_axis)
                     if not self._var_map:
                         sch[fmap_col_before].compute_at(
                             sch[res_c], al1_at_c_axis)
@@ -4010,8 +4030,9 @@ class CceConvOp:
             aub_factor: aub_factor[0] means Multiple of AL1 k and AUB k,
                         aub_factor[1] means Multiple of AL1 m and AUB m
             """
-            if self._pre_relu_fused_flag:
-                sch[fmap].set_scope(cce.scope_ubuf)
+            if self._pre_relu_fused_flag or self._l0a_dma_flag:
+                if self._pre_relu_fused_flag:
+                    sch[fmap].set_scope(cce.scope_ubuf)
                 if tiling["AUB_shape"]:
                     if tiling["AL1_shape"] == []:
                         k1_al1_value = dim_map["img_shape"][1]
@@ -4064,6 +4085,9 @@ class CceConvOp:
                     sch[tensor_map["fmap_ub"]].compute_at(sch[al1], al1_h_outer)
                 sch[al1].emit_insn(al1_k_inner, 'dma_copy')
                 self._schedule[fmap].reused_by(tensor_map["fmap_ub"])
+
+            if self._l0a_dma_flag and "fmap_ub_for_dma_im2col" in tensor_map:
+                sch[fmap_ub_for_dma_im2col].compute_at(sch[fmap_col_before], fmap_col_before.op.axis[2])
 
         def parser_tbe_compile_para(compile_para):
             """
@@ -4167,7 +4191,28 @@ class CceConvOp:
             if "int32_bias" not in tensor_map.keys():
                 sch[c_col].mem_unique()
 
+        def _l0a_dma_load3d_support_check():
+            """
+            check l0a dma load3d support
+            1. dma im2col not support pre fusion
+            2. dma im2col not support pooling
+            3. dma im2col not support performance optim features
+            4. dma im2col not support c0 optim
+            """
+            dma_im2col_tensor_map = ConvParam.tensor_map
+            if self._l0a_dma_flag:
+                if self._aipp_fuse_flag or ConvParam.pre_relu_flag:
+                    err_man.raise_err_specific("conv2d", "dma im2col not support pre fusion")
+                if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
+                    err_man.raise_err_specific("conv2d", "dma im2col not support pooling fusion")
+                if dma_im2col_tensor_map["l0a_load2d_flag"] or dma_im2col_tensor_map["bias_optimize_flag"] or \
+                    dma_im2col_tensor_map["strideh_opti_flag"]:
+                    err_man.raise_err_specific("conv2d", "dma im2col not support performance optim features")
+                if dma_im2col_tensor_map["c0_optim_flg"] or dma_im2col_tensor_map["c04_v200_flag"]:
+                    err_man.raise_err_specific("conv2d", "dma im2col not support c0 optim")
+
         self_init()
+        _l0a_dma_load3d_support_check()
         tensor_map = ConvParam.tensor_map
         sch = self._schedule
         _handle_var_range()
@@ -4346,9 +4391,15 @@ class CceConvOp:
             al1 = tensor_map["al1_load2d"]
             al0 = tensor_map["al0_load2d"]
         else:
-            if not self._var_map:
-                fmap_col_before = tensor_map["fmap_im2col_row_major_res"]
-            fmap_col = tensor_map["fmap_im2col_fractal_res"]
+            if self._l0a_dma_flag:
+                if not self._var_map:
+                    fmap_col_before_before = tensor_map["fmap_im2col_row_major_res"]
+                    fmap_col_before = tensor_map["fmap_im2col_fractal_res"]
+                fmap_col = sch.cache_read(fmap_col_before, cce.scope_ca, [c_col])
+            else:
+                if not self._var_map:
+                    fmap_col_before = tensor_map["fmap_im2col_row_major_res"]
+                fmap_col = tensor_map["fmap_im2col_fractal_res"]
             c04_row_major_reshape_compute(tensor_map)
 
         bias_preload_flag = False
@@ -4488,6 +4539,16 @@ class CceConvOp:
                         sch[fmap_cbuf_nc1hwc0].set_scope(cce.scope_cbuf_fusion)
                     else:
                         sch[fmap_cbuf_nc1hwc0].set_scope(cce.scope_cbuf)
+                elif self._l0a_dma_flag:
+                    if "fmap_ub_for_dma_im2col" not in tensor_map:
+                        fmap_cbuf_nc1hwc0 = sch.cache_read(
+                            fmap, cce.scope_cbuf, [fmap_col_before_before])
+                    else:
+                        fmap_ub_for_dma_im2col = tensor_map["fmap_ub_for_dma_im2col"]
+                        sch[fmap_ub_for_dma_im2col].set_scope(cce.scope_ubuf)
+                        sch[fmap_ub_for_dma_im2col].emit_insn(sch[fmap_ub_for_dma_im2col].op.axis[0], "dma_copy")
+                        fmap_cbuf_nc1hwc0 = sch.cache_read(
+                            fmap_ub_for_dma_im2col, cce.scope_cbuf, [fmap_col_before_before])
                 else:
                     if self._l1_fusion_type in (0, 1):
                         fmap_cbuf_nc1hwc0 = sch.cache_read(fmap, cce.scope_cbuf_fusion, [fmap_col_before])
