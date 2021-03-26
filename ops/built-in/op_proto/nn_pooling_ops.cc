@@ -7082,5 +7082,53 @@ COMMON_INFER_FUNC_REG(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV1InferShape);
 // Registered verify function
 VERIFY_FUNC_REG(MaxPoolWithArgmaxV1, MaxPoolWithArgmaxV1Verify);
 // ------------MaxPoolWithArgmaxV1 Op End----------------
+// ----------------SubSample begin-------------------
+IMPLEMT_COMMON_INFERFUNC(SubSampleInferShape) {
+  OP_LOGI("SubSample", " SubSample inferShape begin!");
+  std::vector<int64_t> labels_shape = op.GetInputDesc("labels").GetShape().GetDims();
+  std::vector<int64_t> output_shape;
+  output_shape.push_back(labels_shape[0]);
+  // update output info
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetShape(ge::Shape(output_shape));
+  output_desc.SetDataType(ge::DT_INT32);
+  output_desc.SetOriginFormat(ge::FORMAT_ND);
+  output_desc.SetFormat(ge::FORMAT_ND);
+  (void)op.UpdateOutputDesc("y", output_desc);
+  OP_LOGI("SubSample", " SubSample inferShape end!");
+  return GRAPH_SUCCESS;
+}
 
+IMPLEMT_VERIFIER(SubSample, SubSampleVerify) {
+  return GRAPH_SUCCESS;
+}
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(SubSample, SubSampleInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(SubSample, SubSampleVerify);
+// ----------------SubSample end-------------------
+// ----------------SubSampleLabels begin-------------------
+IMPLEMT_COMMON_INFERFUNC(SubSampleLabelsInferShape) {
+  OP_LOGI("SubSampleLabels", " SubSampleLabels inferShape begin!");
+  std::vector<int64_t> sub_labels_shape = op.GetInputDesc("labels").GetShape().GetDims();
+  std::vector<int64_t> sub_output_shape;
+  sub_output_shape.push_back(sub_labels_shape[0]);
+  // update output info
+  TensorDesc sub_output_desc = op.GetOutputDesc("y");
+  sub_output_desc.SetShape(ge::Shape(sub_output_shape));
+  sub_output_desc.SetDataType(ge::DT_INT32);
+  sub_output_desc.SetOriginFormat(ge::FORMAT_ND);
+  sub_output_desc.SetFormat(ge::FORMAT_ND);
+  (void)op.UpdateOutputDesc("y", sub_output_desc);
+  OP_LOGI("SubSampleLabels", " SubSampleLabels inferShape end!");
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_VERIFIER(SubSampleLabels, SubSampleLabelsVerify) {
+  return GRAPH_SUCCESS;
+}
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(SubSampleLabels, SubSampleLabelsInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(SubSampleLabels, SubSampleLabelsVerify);
+// ----------------SubSampleLabels end-------------------
 }  // namespace ge

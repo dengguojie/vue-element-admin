@@ -1680,5 +1680,22 @@ REG_OP(MaxPoolWithArgmaxV1)
     .ATTR(ceil_mode, Bool, false)
     .OP_END_FACTORY_REG(MaxPoolWithArgmaxV1)
 
+// SubSample
+REG_OP(SubSample)
+    .INPUT(labels, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_INT32}))
+    .REQUIRED_ATTR(batch_size_per_images, Int)
+    .REQUIRED_ATTR(positive_fraction, Float)
+    .OP_END_FACTORY_REG(SubSample)
+
+//  SubSampleLabels
+REG_OP(SubSampleLabels)
+    .INPUT(labels, TensorType({DT_INT32}))
+    .INPUT(shuffle_matrix, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_INT32}))
+    .REQUIRED_ATTR(batch_size_per_images, Int)
+    .REQUIRED_ATTR(positive_fraction, Float)
+    .OP_END_FACTORY_REG(SubSampleLabels)
+
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_POOLING_OPS_H
