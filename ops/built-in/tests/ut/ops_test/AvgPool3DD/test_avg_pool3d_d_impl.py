@@ -64,8 +64,23 @@ ut_case.add_case(["Ascend910A"], {"params":[
     "expect": "success",
     "case_name":"test_avg_pool3d_d_003"})
 
+ut_case.add_case(["Ascend910A"], {"params":[
+    {"shape": (25,8,37,9,40,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (25,8,9,40,580), "ori_format":"NDHWC"},
+    None,
+    None,
+    {"shape": (25,2,37,1,1,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (25,2,1,1,580), "ori_format":"NDHWC"},
+    (1,1,9,40,1),
+    (1,7,3,28,1),
+    (0,0,0,0,0,0),
+    False,
+    False,
+    0,
+    "NDHWC"],
+    "expect": "success",
+    "case_name":"test_avg_pool3d_d_004"})
 
-def calc_expect_func(x, filter, multiplier, y, ksize, strides, pads):
+
+def calc_expect_func(x, y, ksize, strides):
     data = x["value"].transpose((0, 1, 3, 4, 2, 5)).reshape(x["ori_shape"])
     data=tf.Variable(data,dtype="float32")
     padding="VALID"
@@ -117,6 +132,17 @@ ut_case.add_precision_case("Ascend910", {
                {"shape": (1,5,3,1,1,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (1,5,1,1,48), "ori_format":"NDHWC", "param_type": "output"},
                (1,2,7,7,1),
                (1,1,1,1,1),
+               (0,0,0,0,0,0)],
+    "calc_expect_func": calc_expect_func,
+    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+})
+
+ut_case.add_precision_case("Ascend910", {
+     "params": [{"shape": (25,8,37,9,40,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (25,8,9,40,580), "ori_format":"NDHWC", "param_type": "input"},
+               None, None,
+               {"shape": (25,2,37,1,1,16), "format": "NDC1HWC0", "dtype": "float16", "ori_shape": (25,2,1,1,580), "ori_format":"NDHWC", "param_type": "output"},
+               (1,1,9,40,1),
+               (1,7,3,28,1),
                (0,0,0,0,0,0)],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
