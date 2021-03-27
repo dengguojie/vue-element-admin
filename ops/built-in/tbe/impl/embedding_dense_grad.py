@@ -18,7 +18,6 @@ from te import tik
 import math
 from te import platform as cce
 from te.utils import op_utils
-from functools import reduce
 
 RESERVE_SIZE = 16 * 1024
 
@@ -90,9 +89,19 @@ class EmbeddingDenseGrad():
 
         '''Fix the space of self.num_weights*self.dtype_bytes_size_counts Bytes to counts on ub, so you only need
         to calculate how many elements are placed on ub for indicators and grad, and perform 32B alignment'''
-        self.ub_indices_size = (self.ub_size_bytes - self.num_weights * self.dtype_bytes_size_counts - RESERVE_SIZE) \
-            // (self.embedding_dim * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
-            self.indices_each_block * self.indices_each_block
+        if self.num_weights // self.aicore_num > 0:
+            self.ub_indices_size = (self.ub_size_bytes - (self.num_weights // self.aicore_num +
+                                                          self.num_weights % self.aicore_num) *
+                                    self.dtype_bytes_size_counts - RESERVE_SIZE) \
+                                   // (self.embedding_dim * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices)\
+                                   // self.indices_each_block * self.indices_each_block
+            self.counts_size = self.num_weights // self.aicore_num + self.num_weights % self.aicore_num
+        else:
+            self.ub_indices_size = (self.ub_size_bytes - self.num_weights * self.dtype_bytes_size_counts -
+                                    RESERVE_SIZE)// (self.embedding_dim * self.dtype_bytes_size_grad +
+                                                     self.dtype_bytes_size_indices) // \
+                                   self.indices_each_block * self.indices_each_block
+            self.counts_size = self.num_weights
         self.ub_grad_size = self.ub_indices_size * self.embedding_dim
         '''The vector instruction calculates a maximum of 8 blocks per repeat.
         This parameter is the maximum value of the mask when grad performs vector calculation'''
@@ -100,6 +109,24 @@ class EmbeddingDenseGrad():
         '''The vector instruction calculates a maximum of 8 blocks per repeat. This parameter
         is the maximum value of the mask when counts is used for vector calculation.'''
         self.vector_mask_max_counts = 8 * self.counts_each_block
+        self.end = None
+        self.scale_int = None
+        self.grad_ub = None
+        self.new_numel_indices = None
+        self.indices_ub = None
+        self.vec_max_grad_element = None
+        self.vector_max_repeat = None
+        self.grad = None
+        self.k = None
+        self.begin = None
+        self.indices = None
+        self.scale_float = None
+        self.grad_weight = None
+        self.counts_ub = None
+        self.numel_grad = None
+        self.numel_indices = None
+        self.index = None
+        self.add_tensor = None
 
     def embedding_dense_grad_compute(self):
         """
@@ -131,12 +158,12 @@ class EmbeddingDenseGrad():
         None
         """
         self.numel_indices = 1
+        self.numel_grad = 1
         for x in self.indices_shape:
             self.numel_indices *= x
         self.new_numel_indices = math.ceil(
             self.numel_indices / self.dtype_bytes_size_indices) * self.dtype_bytes_size_indices
 
-        self.numel_grad = 1
         for y in self.grad_shape:
             self.numel_grad *= y
         self.gm_for_data_and_fill_grad_weight()
@@ -153,11 +180,11 @@ class EmbeddingDenseGrad():
         None
         """
         # Allocate space for grad, indices and grad_weight on gm
+        self.grad_weight = self.tik_instance.Tensor(self.dtype_grad, (self.num_weights, self.embedding_dim),
+                                                    name="grad_weight", scope=tik.scope_gm)
         self.grad = self.tik_instance.Tensor(self.dtype_grad, self.grad_shape, name="grad", scope=tik.scope_gm)
         self.indices = self.tik_instance.Tensor(self.dtype_indices, (self.new_numel_indices, ), name="indices",
                                                 scope=tik.scope_gm)
-        self.grad_weight = self.tik_instance.Tensor(self.dtype_grad, (self.num_weights, self.embedding_dim),
-                                                    name="grad_weight", scope=tik.scope_gm)
         self.vector_max_repeat = 255
         self.vec_max_grad_element = self.vector_max_repeat * self.vector_mask_max_grad
         # Create a new space to initialize grad_weight
@@ -202,31 +229,31 @@ class EmbeddingDenseGrad():
         None
         """
         # Allocate space for grad, indices and counts on ub
-        self.grad_ub = self.tik_instance.Tensor(self.dtype_grad, (self.ub_indices_size, self.embedding_dim),
-                                                name="grad_ub", scope=tik.scope_ubuf)
         self.indices_ub = self.tik_instance.Tensor(self.dtype_indices, (self.ub_indices_size, ), name="indices_ub",
                                                    scope=tik.scope_ubuf)
-        self.counts_ub = self.tik_instance.Tensor(self.dtype_indices, (self.num_weights,), name="counts_ub",
+        self.counts_ub = self.tik_instance.Tensor(self.dtype_indices, (self.counts_size,), name="counts_ub",
                                                   scope=tik.scope_ubuf)
+        self.grad_ub = self.tik_instance.Tensor(self.dtype_grad, (self.ub_indices_size, self.embedding_dim),
+                                                name="grad_ub", scope=tik.scope_ubuf)
 
         scalar_int0 = self.tik_instance.Scalar(init_value=0, dtype=self.dtype_indices)
         vec_max_count_element = self.vector_max_repeat * self.vector_mask_max_counts
-        if self.num_weights // vec_max_count_element > 0:
-            with self.tik_instance.for_range(0, self.num_weights // vec_max_count_element) as i:
+        if self.counts_size // vec_max_count_element > 0:
+            with self.tik_instance.for_range(0, self.counts_size // vec_max_count_element) as i:
                 self.tik_instance.vec_dup(self.vector_mask_max_counts, self.counts_ub[i * vec_max_count_element],
                                           scalar_int0, self.vector_max_repeat, 8)
 
-        repeat_count_num = self.num_weights % vec_max_count_element
-        if repeat_count_num > 0 and repeat_count_num // self.vector_mask_max_counts > 0:
+        repeat_count_num = self.counts_size % vec_max_count_element
+        if repeat_count_num // self.vector_mask_max_counts > 0 and repeat_count_num > 0:
             self.tik_instance.vec_dup(self.vector_mask_max_counts,
-                                      self.counts_ub[self.num_weights // vec_max_count_element * vec_max_count_element],
+                                      self.counts_ub[self.counts_size // vec_max_count_element * vec_max_count_element],
                                       scalar_int0, repeat_count_num // self.vector_mask_max_counts, 8)
 
-        last_num_counts = self.num_weights - self.num_weights // vec_max_count_element * vec_max_count_element - \
-            self.num_weights % vec_max_count_element // self.vector_mask_max_counts * self.vector_mask_max_counts
+        last_num_counts = self.counts_size - self.counts_size // vec_max_count_element * vec_max_count_element - \
+            self.counts_size % vec_max_count_element // self.vector_mask_max_counts * self.vector_mask_max_counts
         if last_num_counts > 0:
-            offset_counts = self.num_weights // vec_max_count_element * vec_max_count_element + \
-                self.num_weights % vec_max_count_element // self.vector_mask_max_counts \
+            offset_counts = self.counts_size // vec_max_count_element * vec_max_count_element + \
+                self.counts_size % vec_max_count_element // self.vector_mask_max_counts \
                 * self.vector_mask_max_counts
             self.tik_instance.vec_dup(last_num_counts, self.counts_ub[offset_counts], scalar_int0, 1, 8)
         self.base_count_words_compute()
@@ -299,9 +326,7 @@ class EmbeddingDenseGrad():
                                         self.ub_indices_size // self.indices_each_block, 0, 0)
             self.tik_instance.data_move(self.grad_ub, self.grad[i1 * self.ub_indices_size * self.embedding_dim],
                                         0, 1, self.ub_indices_size * self.embedding_dim // self.grad_each_block, 0, 0)
-            '''Move grad from self.grad_ub to the corresponding position of
-            grad_weight according to the index value in indicators
-            '''
+
             self.add_same_word_grad(self.ub_indices_size)
         self.remaining_compute_grad_weight()
 
@@ -347,10 +372,11 @@ class EmbeddingDenseGrad():
         """
         with self.tik_instance.for_range(0, total) as index:
             self.k.set_as(self.indices_ub[index])
-            with self.tik_instance.if_scope(self.k != self.padding_idx):
-                tmp = self.tik_instance.Scalar(dtype=self.dtype_indices)
-                tmp.set_as(self.counts_ub[self.k])
-                self.counts_ub[self.k].set_as(tmp + 1)
+            with self.tik_instance.if_scope(tik.all(self.k < self.end, self.k >= self.begin)):
+                with self.tik_instance.if_scope(self.k != self.padding_idx):
+                    tmp = self.tik_instance.Scalar(dtype=self.dtype_indices)
+                    tmp.set_as(self.counts_ub[self.k - self.begin])
+                    self.counts_ub[self.k - self.begin].set_as(tmp + 1)
 
     def add_same_word_grad(self, total):
         """
@@ -388,7 +414,7 @@ class EmbeddingDenseGrad():
         None
         """
         if self.scale_grad_by_freq:
-            self.scale_int.set_as(self.counts_ub[self.k])
+            self.scale_int.set_as(self.counts_ub[self.k - self.begin])
             self.tik_instance.scalar_conv('', self.scale_float, self.scale_int)
             self.scale_float.set_as(1.0 / self.scale_float)
         if self.embedding_dim // self.vector_mask_max_grad > 0:
@@ -441,10 +467,10 @@ def embedding_dense_grad(
     -------
     tik_instance: tik_instance
     """
-    check_grad_param(grad)
-    check_indices_param(indices)
     check_attr_param(num_weights)
     check_same_dim(grad, indices)
+    check_grad_param(grad)
+    check_indices_param(indices)
     check_max_align(grad, indices, num_weights, padding_idx)
     embedding_dense_grad_instance = EmbeddingDenseGrad(
         grad, indices, y, num_weights, padding_idx, scale_grad_by_freq, kernel_name)
@@ -541,14 +567,9 @@ def check_max_align(grad_dic, indices_dic, n_w, p_i):
     """
     grad_shape = grad_dic.get("shape")
     indices_shape = indices_dic.get("shape")
-    numel_indices = reduce(lambda x, y: x * y, indices_shape)
-    if numel_indices > 40000:
-        raise RuntimeError('The element of indices must be less than 40000!')
-    if grad_shape[-1] > 1024:
-        raise RuntimeError(
-            'The embedding_dim(grad_shape[-1]) must be less than 1024!')
     if grad_shape[-1] % 32:
         raise RuntimeError(
             'The embedding_dim(grad_shape[-1]) must be an integer multiple of 32!')
     if n_w - 1 < p_i:
         raise RuntimeError('padding_index must be less than num_weights!')
+
