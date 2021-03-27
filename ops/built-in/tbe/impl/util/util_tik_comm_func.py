@@ -415,3 +415,20 @@ def gm2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, burst=
     if burst is None:
         burst = ceil_div(count, block_element)
     tik_instance.data_move(dst, src, 0, 1, burst, 0, 0)
+
+
+def ceil_align(count, base):
+    """
+    Get the ceil number `count` align of `base`
+
+    Parameters
+    ----------
+    count :
+    base :
+
+    Returns
+    -------
+        `count` align of `base`
+    """
+    return ceil_div(count, base) * base
+

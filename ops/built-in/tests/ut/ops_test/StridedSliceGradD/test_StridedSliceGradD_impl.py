@@ -16,8 +16,9 @@ StridedSliceGradD ut case
 from op_test_frame.ut import OpUT
 ut_case = OpUT("StridedSliceGradD", None, None)
 
-case1 = {"params": [{"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND", "ori_shape": (80, 56, 8, 1023),"ori_format": "ND"}, #x
-                    {"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND", "ori_shape": (80, 56, 8, 1023),"ori_format": "ND"},
+case1 = {"params": [{"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND", "ori_shape": (80, 56, 8, 1023), "ori_format": "ND"},  # x
+                    {"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND",
+                     "ori_shape": (80, 56, 8, 1023), "ori_format": "ND"},
                     (80, 23, 8, 443), (1, 33, 0, 342),
                     (56, 51, 3, 785), (1, 1, 1, 1), 5, 7, 0, 0, 0,
                     ],
@@ -25,8 +26,9 @@ case1 = {"params": [{"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "
          "expect": "success",
          "support_expect": True}
 
-case2 = {"params": [{"shape": (1, 512, 1024), "dtype": "float32", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"}, #x
-                    {"shape": (1, 512, 1024), "dtype": "float32", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},
+case2 = {"params": [{"shape": (1, 512, 1024), "dtype": "float32", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},  # x
+                    {"shape": (1, 512, 1024), "dtype": "float32", "format": "ND",
+                     "ori_shape": (1, 512, 1024), "ori_format": "ND"},
                     (1, 1, 1024), (0, 0, 0), (1, 1, 1024), (1, 1, 1),
                     0, 0, 0, 0, 0,
                     ],
@@ -34,8 +36,9 @@ case2 = {"params": [{"shape": (1, 512, 1024), "dtype": "float32", "format": "ND"
          "expect": "success",
          "support_expect": True}
 
-case3 = {"params": [{"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND", "ori_shape": (80, 56, 8, 1023),"ori_format": "ND"}, #x
-                    {"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND", "ori_shape": (80, 56, 8, 1023),"ori_format": "ND"},
+case3 = {"params": [{"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND", "ori_shape": (80, 56, 8, 1023), "ori_format": "ND"},  # x
+                    {"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "ND",
+                     "ori_shape": (80, 56, 8, 1023), "ori_format": "ND"},
                     (80, 23, 8, 783), (1, 33, 0, -1021),
                     (56, -7, 3, -238), (1, 1, 1, 1), 5, 7, 0, 0, 0,
                     ],
@@ -43,8 +46,9 @@ case3 = {"params": [{"shape": (80, 56, 8, 1023), "dtype": "float16", "format": "
          "expect": "success",
          "support_expect": True}
 
-case4 = {"params": [{"shape": (1, 512, 1024), "dtype": "float32", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"}, #x
-                    {"shape": (1, 512, 1024), "dtype": "float32", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},
+case4 = {"params": [{"shape": (1, 512, 1024), "dtype": "float32", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},  # x
+                    {"shape": (1, 512, 1024), "dtype": "float32", "format": "ND",
+                     "ori_shape": (1, 512, 1024), "ori_format": "ND"},
                     (1, 1, 1024), (0, 0, 0), (1, 1, 1024), (1, 1, 1),
                     0, 0, 1, 0, 0,
                     ],
@@ -52,34 +56,38 @@ case4 = {"params": [{"shape": (1, 512, 1024), "dtype": "float32", "format": "ND"
          "expect": RuntimeError,
          "support_expect": True}
 
-case5 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"}, #x
-                    {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},
-                    (), (0, 0, 0), (1, 1, 1024), (1, 1, 1),0, 0, 0, 0, 0,
+case5 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},  # x
+                    {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, 512, 1024), "ori_format": "ND"},
+                    (), (0, 0, 0), (1, 1, 1024), (1, 1, 1), 0, 0, 0, 0, 0,
                     ],
          "case_name": "StridedSliceGradD_5",
          "expect": RuntimeError,
-                               "support_expect": True}
+         "support_expect": True}
 
-case6 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"}, #x
-                    {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},
+case6 = {"params": [{"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},  # x
+                    {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, 512, 1024), "ori_format": "ND"},
                     (1, 1, 1024), (0, 0), (1, 1, 1024), (1, 1, 1),
                     0, 0, 0, 0, 0,
                     ],
          "case_name": "StridedSliceGradD_6",
          "expect": RuntimeError,
-                               "support_expect": True}
+         "support_expect": True}
 
-case7 = {"params": [{"shape": (1, 1, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"}, #x
-                    {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},
+case7 = {"params": [{"shape": (1, 1, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 512, 1024), "ori_format": "ND"},  # x
+                    {"shape": (1, 512, 1024), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1, 512, 1024), "ori_format": "ND"},
                     (1, 512, 1024), (0, -101, 0), (1, -100, 1024), (1, 1, 1),
                     0, 0, 0, 0, 0,
                     ],
          "case_name": "StridedSliceGradD_7",
          "expect": RuntimeError,
-                               "support_expect": True}
+         "support_expect": True}
 
-case8 = {"params": [{"shape": (1, 512, 2048), "dtype": "int8", "format": "ND", "ori_shape": (1, 512, 2048),"ori_format": "ND"}, #x
-                    {"shape": (1, 512, 2048), "dtype": "int8", "format": "ND", "ori_shape": (1, 512, 2048),"ori_format": "ND"},
+case8 = {"params": [{"shape": (1, 512, 2048), "dtype": "int8", "format": "ND", "ori_shape": (1, 512, 2048), "ori_format": "ND"},  # x
+                    {"shape": (1, 512, 2048), "dtype": "int8", "format": "ND",
+                     "ori_shape": (1, 512, 2048), "ori_format": "ND"},
                     (1, 1, 1024), (0, 0, 0), (1, 1, 1024), (1, 1, 2),
                     0, 0, 0, 0, 0,
                     ],
@@ -87,16 +95,38 @@ case8 = {"params": [{"shape": (1, 512, 2048), "dtype": "int8", "format": "ND", "
          "expect": RuntimeError,
          "support_expect": True}
 
-# TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case6)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
-ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
+case9 = {"params": [{"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND", "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},  # x
+                    {"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND",
+                     "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                    (12, 512, 512, 3), [], [], [],
+                    0, 0, 0, 0, 0,
+                    ],
+         "case_name": "StridedSliceGradD_9",
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (12, 512, 512, 1), "dtype": "float32", "format": "ND", "ori_shape": (12, 512, 512, 1), "ori_format": "ND"},  # x
+                     {"shape": (12, 512, 512, 3), "dtype": "float32", "format": "ND",
+                      "ori_shape": (12, 512, 512, 3), "ori_format": "ND"},
+                     (12, 512, 512, 3), [0, 0, 0, 0], [12, 512, 512, 1], [1, 1, 1, 1],
+                     0, 0, 0, 0, 0,
+                     ],
+          "case_name": "StridedSliceGradD_10",
+          "expect": RuntimeError,
+          "support_expect": True}
+
+
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case4)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case5)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case6)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case7)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case8)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case9)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case10)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910","Ascend310","Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
     exit(0)
