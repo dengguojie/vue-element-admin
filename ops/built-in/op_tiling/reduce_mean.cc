@@ -15,7 +15,7 @@
 
 namespace optiling {
 
-bool IsInVector(std::vector<int32_t>& input, int32_t value) {
+bool IsInVector(const std::vector<int32_t>& input, int32_t value) {
   for (uint32_t i = 0; i < input.size(); i++) {
     if (input[i] == value) {
       return true;
@@ -24,16 +24,110 @@ bool IsInVector(std::vector<int32_t>& input, int32_t value) {
   return false;
 }
 
+bool IsPureMove(const std::vector<int64_t>& input_shape, const std::vector<int32_t>& reduce_axis) {
+  for (uint32_t i = 0; i < input_shape.size(); i++) {
+    if (IsInVector(reduce_axis, i)) {
+      if (input_shape[i] != 1) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool GetInputShape(const std::string& op_type, const TeOpParas& op_paras,
+                   const nlohmann::json& op_info, std::vector<int64_t>& input_shape_ori) {
+  int idx = op_info.count("_idx_before_reduce") > 0 ?
+            op_info.at("_idx_before_reduce").get<int>() : 0;
+  // CHECK INPUT
+  V_OP_TILING_CHECK(!op_paras.inputs.empty(),
+                    OP_LOGE(op_type.c_str(), "inputs cannot be empty"),
+                    return false);
+  V_OP_TILING_CHECK(!(op_paras.inputs.size() <= uint(idx) || idx < 0),
+                    OP_LOGE(op_type.c_str(), "idx is invalid index for inputs"),
+                    return false);
+  V_OP_TILING_CHECK(!op_paras.inputs[uint(idx)].tensor.empty(),
+                    OP_LOGE(op_type.c_str(), "tensor cannot be empty"),
+                    return false);
+  input_shape_ori = op_paras.inputs[idx].tensor[0].shape;
+  return true;
+}
+
+bool GetReduceAxis(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+                   const std::vector<int64_t>& input_shape_ori, std::vector<int32_t>& reduce_axis_ori) {
+  // Get ori reduce aixs
+  if (op_paras.const_inputs.find("axes") != op_paras.const_inputs.end() || op_info.count("axes_idx") > 0) {
+    // axis_unknown
+    TeConstTensorData reduce_axis_info;
+    if (op_info.count("axes_idx") > 0) {
+      int axes_idx = op_info.at("axes_idx").get<int>();
+      std::string axes_name = op_paras.inputs[axes_idx].tensor[0].name;
+      for (auto &item: op_paras.const_inputs) {
+          const std::string key = item.first;
+      }
+      reduce_axis_info = op_paras.const_inputs.at(axes_name);
+    } else {
+      reduce_axis_info = op_paras.const_inputs.at("axes");
+    }
+    auto size = std::get<1>(reduce_axis_info);
+    ge::DataType axis_type = std::get<2>(reduce_axis_info).GetTensorDesc().GetDataType();
+    V_OP_TILING_CHECK(!(axis_type != ge::DT_INT32 && axis_type != ge::DT_INT64),
+                      OP_LOGE(op_type.c_str(), "axis_type is not belong to [int32, int64]"),
+                      return false);
+
+    if (axis_type == ge::DT_INT32) {
+      int count = size / sizeof(int32_t);
+      const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(reduce_axis_info));
+      reduce_axis_ori.resize(count);
+      for (int i = 0; i < count; i++) {
+        reduce_axis_ori[i] = *data_addr;
+        data_addr++;
+      }
+    } else {
+      int count = size / sizeof(int64_t);
+      const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(reduce_axis_info));
+      reduce_axis_ori.resize(count);
+      for (int i = 0; i < count; i++) {
+        reduce_axis_ori[i] = (int32_t)*data_addr;
+        data_addr++;
+      }
+    }
+    // clear reduce_axis_ori when shape of input axis is (0, )
+    if (size == 0) {
+      reduce_axis_ori.clear();
+    }
+  } else {
+    // axis_known
+    reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();
+  }
+
+  // Convert reduce axis (-1 -> length+1)
+  // CHECK AXIS VALUE
+  int32_t max_value = int32_t(input_shape_ori.size());
+  int32_t min_value = -1 * max_value;
+  for (size_t i = 0; i < reduce_axis_ori.size(); i++) {
+    bool is_illegal_case = reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value;
+    if (is_illegal_case) {
+      OP_LOGE(op_type.c_str(), "value of axis is illegal.");
+      return false;
+    }
+    if (reduce_axis_ori[i] < 0) {
+      reduce_axis_ori[i] = input_shape_ori.size() + reduce_axis_ori[i];
+    }
+  }
+  return true;
+}
+
 bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                       OpRunInfo& run_info) {
-  Reduce reduce(op_type, op_paras, op_info, run_info);
-  bool ret = reduce.DoTiling();
-  ret = ret && reduce.WriteTilingData();
+  bool ret = ReduceTiling(op_type, op_paras, op_info, run_info);
+  std::vector<int64_t> input_shape{std::vector<int64_t>(10, 0)};
+  std::vector<int32_t> reduce_axis{std::vector<int32_t>(10, 0)};
+  ret = ret && GetInputShape(op_type, op_paras, op_info, input_shape);
+  ret = ret && GetReduceAxis(op_type, op_paras, op_info, input_shape, reduce_axis);
 
-  std::vector<int64_t> input_shape = reduce.GetInputShape();
-  std::vector<int32_t> reduce_axis = reduce.GetReduceAxis();
   // reduce_mean_cof is not required when handling pure dma_copy case
-  if (input_shape[0] == 1 && reduce_axis[0] == 0) {
+  if (IsPureMove(input_shape, reduce_axis)) {
     return ret;
   }
 
