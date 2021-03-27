@@ -212,7 +212,7 @@ def main(argv):
         case_dir = FLAGS.case_dir
         if not case_dir:
             case_dir = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "ut", "ops_test")
+                os.path.dirname(os.path.realpath(__file__)), "ut")
     else:
         case_dir = get_change_relate_ut_dir_list(pr_changed_file)
         if case_dir is None:

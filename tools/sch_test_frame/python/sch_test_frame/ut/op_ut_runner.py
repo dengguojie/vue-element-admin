@@ -289,7 +289,11 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
 
     multiprocess_run_args, total_count = _build_multiprocess_run_args()
 
-    cpu_count = multiprocessing.cpu_count() - 1
+    if simulator_mode:
+        cpu_count = multiprocessing.cpu_count() - 1
+    else:
+        cpu_count =1
+
     logger.log_info("multiprocessing cpu count: %d" % cpu_count)
     logger.log_info("multiprocess_run_args count: %d" % total_count)
 
