@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
@@ -11,11 +11,12 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 #include "reduce_tiling.h"
+#include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {
 
-bool IsInVector(std::vector<int32_t>& input, int32_t value) {
+bool IsInAxis(std::vector<int32_t>& input, int32_t value) {
   for (uint32_t i = 0; i < input.size(); i++) {
     if (input[i] == value) {
       return true;
@@ -24,8 +25,15 @@ bool IsInVector(std::vector<int32_t>& input, int32_t value) {
   return false;
 }
 
-bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+bool BinaryCrossEntropyTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                       OpRunInfo& run_info) {
+  if (op_info.count("reduction") > 0){
+    const std::string reduction = op_info.at("reduction").get<std::string>();
+    if (reduction == "none"){
+      bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
+      return ret;
+    }
+  }
   Reduce reduce(op_type, op_paras, op_info, run_info);
   bool ret = reduce.DoTiling();
   ret = ret && reduce.WriteTilingData();
@@ -42,7 +50,7 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if (IsInVector(reduce_axis, i)) {
+        if (IsInAxis(reduce_axis, i)) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }
       }
@@ -50,7 +58,7 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if (IsInVector(reduce_axis, i)) {
+        if (IsInAxis(reduce_axis, i)) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }
       }
@@ -65,6 +73,5 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(ReduceMean, ReduceMeanTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(ReduceMeanD, ReduceMeanTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BinaryCrossEntropy, BinaryCrossEntropyTiling);
 }  // namespace optiling

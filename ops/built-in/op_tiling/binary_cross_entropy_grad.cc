@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
@@ -11,29 +11,16 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 #include "reduce_tiling.h"
+#include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {
-
-bool IsInVector(std::vector<int32_t>& input, int32_t value) {
-  for (uint32_t i = 0; i < input.size(); i++) {
-    if (input[i] == value) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+bool BinaryCrossEntropyGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                       OpRunInfo& run_info) {
-  Reduce reduce(op_type, op_paras, op_info, run_info);
-  bool ret = reduce.DoTiling();
-  ret = ret && reduce.WriteTilingData();
-
-  std::vector<int64_t> input_shape = reduce.GetInputShape();
-  std::vector<int32_t> reduce_axis = reduce.GetReduceAxis();
+  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
+  std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   // reduce_mean_cof is not required when handling pure dma_copy case
-  if (input_shape[0] == 1 && reduce_axis[0] == 0) {
+  if (input_shape[0] == 1) {
     return ret;
   }
 
@@ -42,17 +29,13 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if (IsInVector(reduce_axis, i)) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
-        }
       }
       ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if (IsInVector(reduce_axis, i)) {
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
-        }
       }
       fe::fp16_t reduce_mean_cof_fp16;
       reduce_mean_cof_fp16 = reduce_mean_cof;
@@ -65,6 +48,5 @@ bool ReduceMeanTiling(const std::string& op_type, const TeOpParas& op_paras, con
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(ReduceMean, ReduceMeanTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(ReduceMeanD, ReduceMeanTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BinaryCrossEntropyGrad, BinaryCrossEntropyGradTiling);
 }  // namespace optiling

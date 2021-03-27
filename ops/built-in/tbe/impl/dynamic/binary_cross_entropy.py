@@ -26,7 +26,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import OpImplMode
 
 # eps value
 SCALAR_EPS = 1e-12
@@ -192,13 +191,15 @@ def binary_cross_entropy(x, y, weight, output,
         shape_util.compare_tensor_dict_key(x, weight, "dtype")
         weight["rel_pos_to_reduce"] = "before"
 
+    tbe_context.get_context().add_compile_info("reduction", reduction)
+
     axis = []
     for i, _ in enumerate(predict_shape):
         axis.append(i)
-    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(axis),], "value": axis, "rel_pos_to_reduce": "axis"}
 
     schedules, tensors = [], []
-    if weight is not None:
+    if reduction != "none" and weight is not None:
         ins = classify([x, y, weight, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
         for (_predict_shape, _target_shape, _weight_shape, _axis) in ins:
             with tbe.compute():
@@ -219,7 +220,7 @@ def binary_cross_entropy(x, y, weight, output,
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
-    else:
+    elif reduction != "none" and weight is None:
         ins = classify([x, y, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
         for (_predict_shape, _target_shape, _axis) in ins:
             with tbe.compute():
@@ -238,5 +239,44 @@ def binary_cross_entropy(x, y, weight, output,
             with tvm.target.cce():
                 sch = tbe.auto_schedule(res)
             schedules.append(sch)
+    elif reduction == "none" and weight is not None:
+        ins = classify([x, y, weight], OpPatternMode.ELEWISE)
+        for (_predict_shape, _target_shape, _weight_shape) in ins:
+            with tbe.compute():
+                predict_shape, target_shape, weight_shape = shape_util.variable_shape([_predict_shape,
+                                                                                       _target_shape,
+                                                                                       _weight_shape])[0:3]
+                data_weight = tvm.placeholder(weight_shape, name="data_weight",
+                                              dtype=weight_dtype)
+                data_predict = tvm.placeholder(predict_shape, name="data_predict",
+                                               dtype=predict_dtype)
+                data_target = tvm.placeholder(target_shape, name="data_target",
+                                              dtype=target_dtype)
+                res = binary_cross_entropy_compute(data_predict, data_target,
+                                                   data_weight, output, [],
+                                                   reduction, kernel_name)
+                tensors.append([data_predict, data_target, data_weight, res])
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res)
+            schedules.append(sch)
+    elif reduction == "none" and weight is None:
+        ins = classify([x, y], OpPatternMode.ELEWISE)
+        for (_predict_shape, _target_shape) in ins:
+            with tbe.compute():
+                predict_shape, target_shape = shape_util.variable_shape([_predict_shape,
+                                                                         _target_shape])[0:2]
+                data_weight = None
+                data_predict = tvm.placeholder(predict_shape, name="data_predict",
+                                               dtype=predict_dtype)
+                data_target = tvm.placeholder(target_shape, name="data_target",
+                                              dtype=target_dtype)
+                res = binary_cross_entropy_compute(data_predict, data_target,
+                                                   data_weight, output, [],
+                                                   reduction, kernel_name)
+                tensors.append([data_predict, data_target, res])
+            with tvm.target.cce():
+                sch = tbe.auto_schedule(res)
+            schedules.append(sch)
+
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
