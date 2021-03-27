@@ -28,48 +28,38 @@ def dsl_vadd(x, y, z, kernel_name='dsl_vadd'):
 
 ut_case = OpUT("vadd", "vadd.test_vadd_impl", "dsl_vadd")
 
+def test_rhs_in_not_tensor(soc):
+    try:
+        input1 = tvm.placeholder((128,), name="input1", dtype="float16")
+        tbe.vadd(input1, 5)
+    except RuntimeError as e:
+        print(e.args[0]["detailed_cause"])
+    return True
+
+
+test_func_list = [
+    test_rhs_in_not_tensor
+]
+for item in test_func_list:
+    ut_case.add_cust_test_func(test_func=item)
+
 case1 = {
-    "params": [{
-        "shape": (5, 8, 16, 16),
-        "dtype": "float16",
-        "format": "ND"
-    }, {
-        "shape": (5, 8, 16, 16),
-        "dtype": "float16",
-        "format": "ND"
-    }, {
-        "shape": (5, 8, 16, 16),
-        "dtype": "float16",
-        "format": "ND"
-    }],
-    "case_name":
-    "test_vadd_1",
-    "expect":
-    "success",
-    "support_expect":
-    True
+    "params": [{"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND"},
+               {"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND"},
+               {"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND"}
+               ],
+    "case_name": "test_vadd_1",
+    "expect": "success",
+    "support_expect": True
 }
 
 case2 = {
-    "params": [{
-        "shape": (30000, 1),
-        "dtype": "float32",
-        "format": "ND"
-    }, {
-        "shape": (30000, 1),
-        "dtype": "float32",
-        "format": "ND"
-    }, {
-        "shape": (30000, 1),
-        "dtype": "float32",
-        "format": "ND"
-    }],
-    "case_name":
-    "test_vadd_2",
-    "expect":
-    "success",
-    "support_expect":
-    True
+    "params": [{"shape": (30000, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (30000, 1), "dtype": "float32", "format": "ND"},
+               {"shape": (30000, 1), "dtype": "float32", "format": "ND"}],
+    "case_name": "test_vadd_2",
+    "expect": "success",
+    "support_expect": True
 }
 
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
@@ -85,25 +75,32 @@ def calc_expect_func(x, y, z):
 
 ut_case.add_precision_case(
     "all", {
-        "params": [
-            {
-                "shape": (1, 16),
-                "dtype": "float16",
-                "param_type": "input"
-            },
-            {
-                "shape": (1, 16),
-                "dtype": "float16",
-                "param_type": "input"
-            },
-            {
-                "shape": (1, 16),
-                "dtype": "float16",
-                "param_type": "output"
-            },
-        ],
-        "calc_expect_func":
-        calc_expect_func,
-        "precision_standard":
-        precision_info.PrecisionStandard(0.001, 0.001)
+        "params": [{"shape": (1, 16), "dtype": "float16", "param_type": "input"},
+                   {"shape": (1, 16), "dtype": "float16", "param_type": "input"},
+                   {"shape": (1, 16), "dtype": "float16", "param_type": "output"},
+                   ],
+        "case_name": "test_vadd_precision_1",
+        "calc_expect_func": calc_expect_func,
+        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
     })
+
+ut_case.add_precision_case(
+    "all", {
+        "params": [{"shape": (1, 1, 1, 32), "dtype": "float16", "param_type": "input"},
+                   {"shape": (1, 1, 1, 32), "dtype": "float16", "param_type": "input"},
+                   {"shape": (1, 1, 1, 32), "dtype": "float16", "param_type": "output"},
+                   ],
+        "case_name": "test_vadd_precision_yolo_person_detect",
+        "calc_expect_func": calc_expect_func,
+        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+    })
+
+if __name__ == '__main__':
+    import os
+    from pathlib import Path
+
+    _ASCEND_TOOLCHAIN_PATH_ENV = "TOOLCHAIN_HOME"
+    simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
+                                             "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
+    ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
+
