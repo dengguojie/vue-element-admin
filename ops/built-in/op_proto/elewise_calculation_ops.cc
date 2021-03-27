@@ -4959,24 +4959,60 @@ VERIFY_FUNC_REG(Dot, DotVerify);
 // ---------------Dot END-------------------
 
 // ---------------IsClose Begin-----------------
-IMPLEMT_VERIFIER(IsClose, IsCloseVerify)
-{
-    if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
-        return GRAPH_FAILED;
+static bool InferShapeAndTypeIsClose(Operator &op,
+                                     const string &input_name1,
+                                     const string &input_name2,
+                                     const string &output_name){
+  TensorDesc v_output_desc = op.GetOutputDesc(output_name);
+
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+  if (dims_x.size() < dims_y.size()) {
+    std::vector<int64_t> dims_tmp = dims_x;
+    dims_x = dims_y;
+    dims_y = dims_tmp;
+  }
+
+  if (dims_x.size() != dims_y.size()) {
+    int dec = dims_x.size() - dims_y.size();
+    for (int i = 0; i < dec; i++) {
+      dims_y.insert(dims_y.begin(), (int64_t)1);
     }
-    return GRAPH_SUCCESS;
+  }
+
+  std::vector<int64_t> dim_vec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if ((dims_x[i] != dims_y[i]) && (dims_x[i] != 1) && (dims_y[i] != 1)) {
+      return false;
+    }
+
+    int64_t dims = dims_x[i] > dims_y[i] ? dims_x[i] : dims_y[i];
+    dim_vec.push_back(dims);
+  }
+  ge::Shape output_shape = ge::Shape(dim_vec);
+
+  v_output_desc.SetShape(output_shape);
+  v_output_desc.SetDataType(DT_BOOL);
+  v_output_desc.SetFormat(input_format);
+  op.UpdateOutputDesc(output_name, v_output_desc);
+
+  return true;
+}
+IMPLEMT_VERIFIER(IsClose, IsCloseVerify){
+  if (!CheckTwoInputDtypeSame(op, "x1", "x2")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(IsCloseInferShape)
-{
-    Format input_format = op.GetInputDesc("x1").GetFormat();
-    Shape x1_shape = op.GetInputDesc("x1").GetShape();
-    TensorDesc td = op.GetOutputDesc("y");
-    td.SetShape(ge::Shape(x1_shape));
-    td.SetDataType(DT_BOOL);
-    td.SetFormat(input_format);
-    (void)op.UpdateOutputDesc("y", td);
+IMPLEMT_COMMON_INFERFUNC(IsCloseInferShape){
+  if (InferShapeAndTypeIsClose(op, "x1", "x2", "y")) {
     return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 COMMON_INFER_FUNC_REG(IsClose, IsCloseInferShape);
 VERIFY_FUNC_REG(IsClose, IsCloseVerify);

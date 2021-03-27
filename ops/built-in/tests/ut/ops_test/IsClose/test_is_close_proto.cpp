@@ -37,3 +37,30 @@ TEST_F(IsCloseTest, is_close_test_case_1) {
     std::vector<int64_t> expected_output_shape = {2, 3, 4};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(IsCloseTest, is_close_test_case_2) {
+    // define your op here
+    ge::op::IsClose is_close_op;
+    ge::TensorDesc XtensorDesc;
+    ge::TensorDesc YtensorDesc;
+    ge::Shape Xshape({32});
+    ge::Shape Yshape({32,32});
+    XtensorDesc.SetDataType(ge::DT_FLOAT16);
+    XtensorDesc.SetShape(Xshape);
+    YtensorDesc.SetDataType(ge::DT_FLOAT16);
+    YtensorDesc.SetShape(Yshape);
+
+    // update op input here
+    is_close_op.UpdateInputDesc("x1", XtensorDesc);
+    is_close_op.UpdateInputDesc("x2", YtensorDesc);
+
+    // call InferShapeAndType function here
+    auto ret = is_close_op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    // compare dtype and shape of op output
+    auto output_desc = is_close_op.GetOutputDesc("y");
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_BOOL);
+    std::vector<int64_t> expected_output_shape = {32,32};
+    EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
