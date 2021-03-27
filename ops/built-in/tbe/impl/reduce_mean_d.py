@@ -38,7 +38,7 @@ def reduce_mean_d_compute(x,
                           axes,
                           keepdims,
                           kernel_name="reduce_mean_d",
-                          impl_mode="high_performance",
+                          impl_mode=None,
                           is_5hdc=False,
                           is_nz_nd=False):
     """reduce_mean_d compute
@@ -88,10 +88,16 @@ def reduce_mean_d_compute(x,
 
     has_improve_precision = False
     cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if impl_mode is None:
+        if cce_product in ("Ascend310",):
+            impl_mode = "high_performance"
+        else:
+            impl_mode = "high_precision"
+
 
     if cce_product not in ("Ascend310",) and dtype == "float16" and \
             tbe_platform.cce_conf.api_check_support(
-                "te.lang.cce.sum", "float32") and not (is_5hdc or is_nz_nd):
+                "te.lang.cce.sum", "float32") and not (is_5hdc or is_nz_nd) and impl_mode == "high_precision":
         data_input_tmp = tbe.cast_to(data_input_tmp, "float32")
         has_improve_precision = True
     elif cce_product in ("Ascend310",) and dtype == "float16" \
@@ -115,7 +121,7 @@ def reduce_mean_d_compute(x,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_mean_d(input_x, output_y, axes,
                   keepdims=None, kernel_name="reduce_mean_d",
-                  impl_mode="high_performance"):
+                  impl_mode=None):
     """
     Reduce a tensor on a certa in axes based on mean.
 
