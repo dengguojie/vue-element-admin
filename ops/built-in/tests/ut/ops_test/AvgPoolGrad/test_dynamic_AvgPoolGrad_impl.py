@@ -35,7 +35,7 @@ case3 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
                     {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
                     [1,1,30,30], [1,1,2,2], "SAME", "NCHW"],
-         "expect": TypeError,
+         "expect": RuntimeError,
          "support_expect": True}
 
 #stride_h/w < 1     
@@ -47,7 +47,7 @@ case4 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
                     {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
                     [1,1,3,3], [1,1,0,0], "SAME", "NCHW"],
-         "expect": TypeError,
+         "expect": RuntimeError,
          "support_expect": True}
 
 #stride_n/c != 1
@@ -59,7 +59,7 @@ case5 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
                     {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
                     [1,1,3,3], [2,2,2,2], "SAME", "NCHW"],
-         "expect": TypeError,
+         "expect": RuntimeError,
          "support_expect": True}
 
 #dx_n != dy_n, dx_c != dy_c
@@ -71,7 +71,7 @@ case6 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
                     {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
                     [1,1,3,3], [1,1,2,2], "SAME", "NCHW"],
-         "expect": TypeError,
+         "expect": RuntimeError,
          "support_expect": True}
 
 #dx_c != k_n         
@@ -83,7 +83,7 @@ case7 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
                     {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
                     [1,1,3,3], [1,1,2,2], "SAME", "NCHW"],
-         "expect": TypeError,
+         "expect": RuntimeError,
          "support_expect": True}
 
 #k_c != 1      
@@ -95,7 +95,7 @@ case8 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
                     {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
                     [1,1,3,3], [1,1,2,2], "SAME", "NCHW"],
-         "expect": TypeError,
+         "expect": RuntimeError,
          "support_expect": True}
 
 #k_h/w > 255       
@@ -107,7 +107,7 @@ case9 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
                     {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
                      "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
                     [1,1,3,3], [1,1,2,2], "SAME", "NCHW"],
-         "expect": TypeError,
+         "expect": RuntimeError,
          "support_expect": True} 
 
 ut_case.add_case(["Ascend910A"], case1)

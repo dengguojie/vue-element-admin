@@ -1,4 +1,4 @@
-# Copyright 2018 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,9 +46,43 @@ H_DIM = 2
 W_DIM = 3
 
 
+def _check_range(range_str, range_in):
+    if len(range_in) != 2:
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "the range length of " + range_str + " must be equal to 2")
+    if range_in[0] < 1:
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "the range of " + range_str + " should >= 1")
+    if range_in[1] is not None and range_in[1] < range_in[0]:
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "in the range of " + range_str + 
+                                                   ", the upper limit is not less than the lower limit")
+
+
+def _check_shape(check_shape, expect_shape, shape_str):
+    if len(check_shape) != expect_shape:
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "dim of " + shape_str + " should be " + str(expect_shape) +
+                                                   " but actual is " + str(check_shape))
+
+
 def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
                             padding, data_format, kernel_name):
+    if data_format not in("NCHW", "NHWC"):
+        error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad",
+        "data_format", "NCHW/NHWC", data_format)
+    input_grad_shape = input_grad.get('shape')
+    out_grad_shape = out_grad.get('shape')
+    data_dtype = input_grad.get('dtype').lower()
+    out_dtype = out_grad.get('dtype').lower()
     input_grad_ori_format = input_grad.get('ori_format')
+    _check_shape(input_grad_shape, INPUT_DIM, "input_grad_shape")
+    _check_shape(out_grad_shape, OUTPUT_DIM, "out_grad_shape")
+    _check_shape(strides, SHAPE_SIZE, "strides")
+    _check_shape(ksize, SHAPE_SIZE, "ksize")
+    para_check.check_dtype(data_dtype, ('float16',))
+    para_check.check_dtype(out_dtype, ('float16',))
+    para_check.check_kernel_name(kernel_name)
     if input_grad_ori_format == "NHWC":
         stride_n = strides[0]
         stride_h = strides[1]
@@ -65,58 +99,64 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
         ksize_w = ksize[3]
     else:
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", 
-        "input_grad", "NCHW/NHWC", input_grad_ori_format)
-    input_grad_shape = input_grad.get('shape')
-    out_grad_shape = out_grad.get('shape')
-    data_dtype = input_grad.get('dtype').lower()
-    out_dtype = out_grad.get('dtype').lower()
-    para_check.check_shape(input_grad_shape, min_rank=INPUT_DIM, max_rank=INPUT_DIM)
-    para_check.check_shape(out_grad_shape, min_rank=OUTPUT_DIM, max_rank=OUTPUT_DIM)
-    para_check.check_shape(strides, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
-    para_check.check_shape(ksize, min_rank=SHAPE_SIZE, max_rank=SHAPE_SIZE)
-    para_check.check_dtype(data_dtype, ('float16',))
-    para_check.check_dtype(out_dtype, ('float16',))
-    para_check.check_kernel_name(kernel_name)
+                                                               "input_grad", "NCHW/NHWC", input_grad_ori_format)
     
-    if data_format not in("NCHW", "NHWC"):
-        error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad",
-        "data_format", "NCHW/NHWC", data_format)
+    if input_grad_ori_format != data_format:
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
+                                                   "the ori_format of input_grad must be equal with data_format")
     
     if padding not in ("SAME", "VALID"):
         error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad",
         "padding", "SAME/VALID", padding)
     
     if stride_h < 1 or stride_w < 1:
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    the H and W dimensions of strides should >= 1")
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "the H and W dimensions of strides should >= 1")
     if stride_n != 1 or stride_c != 1:
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    the N and C dimensions of strides should == 1")
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "the N and C dimensions of strides should == 1")
                            
     shape_dx = list(out_grad.get('ori_shape'))
     shape_k = list(kernel_matrix.get('ori_shape'))
     shape_dy = list(input_grad.get('ori_shape'))
+    _check_shape(shape_dx, SHAPE_SIZE, "out_grad's ori_shape")
+    _check_shape(shape_dy, SHAPE_SIZE, "input_grad's ori_shape")
+    _check_shape(shape_k, SHAPE_SIZE, "kernel_matrix's ori_shape")
+    if out_grad.get('ori_format') not in("NCHW", "NHWC"):
+        error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", "out_grad's ori_format",
+                                                               "NCHW/NHWC", out_grad.get('ori_format'))
+    if kernel_matrix.get('ori_format') not in("NCHW", "NHWC"):
+        error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool_grad", "kernel_matrix's ori_format",
+                                                               "NCHW/NHWC", kernel_matrix.get('ori_format'))
     # dynamic_mode h, w = range_max h, w
+    x_n_idx = out_grad.get('ori_format').index('N')
+    x_c_idx = out_grad.get('ori_format').index('C')
     x_h_idx = out_grad.get('ori_format').index('H')
     x_w_idx = out_grad.get('ori_format').index('W')
+    y_n_idx = input_grad.get('ori_format').index('N')
+    y_c_idx = input_grad.get('ori_format').index('C')
     y_h_idx = input_grad.get('ori_format').index('H')
     y_w_idx = input_grad.get('ori_format').index('W')
     if shape_dx[x_h_idx] == -1:
+        _check_range("out_grad_h", out_grad.get('range')[x_h_idx])
         x_h_range = out_grad.get('range')[x_h_idx][1]
         shape_dx[x_h_idx] = x_h_range if x_h_range is not None else 1
     if shape_dy[y_h_idx] == -1:
+        _check_range("input_grad_h", input_grad.get('range')[y_h_idx])
         y_h_range = input_grad.get('range')[y_h_idx][1]
         shape_dy[y_h_idx] = y_h_range if y_h_range is not None else 1
     if shape_dx[x_w_idx] == -1:
+        _check_range("out_grad_w", out_grad.get('range')[x_w_idx])
         x_w_range = out_grad.get('range')[x_w_idx][1]
         shape_dx[x_w_idx] = x_w_range if x_w_range is not None else 1
     if shape_dy[y_w_idx] == -1:
+        _check_range("input_grad_w", input_grad.get('range')[y_w_idx])
         y_w_range = input_grad.get('range')[y_w_idx][1]
         shape_dy[y_w_idx] = y_w_range if y_w_range is not None else 1
-    x_dim_n = out_grad.get('ori_format').index("N")
-    x_dim_c = out_grad.get('ori_format').index("C")
-    y_dim_n = input_grad.get('ori_format').index("N")
-    y_dim_c = input_grad.get('ori_format').index("C")
+    if shape_dy[y_n_idx] == -1:
+        _check_range("input_grad_n", input_grad.get('range')[y_n_idx])
+    if shape_dx[x_n_idx] == -1:
+        _check_range("out_grad_n", out_grad.get('range')[x_n_idx])
     dim_k_n = kernel_matrix.get('ori_format').index("N")
     dim_k_c = kernel_matrix.get('ori_format').index("C")
     dim_k_h = kernel_matrix.get('ori_format').index("H")
@@ -124,33 +164,33 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     k_h = shape_k[dim_k_h]
     k_w = shape_k[dim_k_w]
     y_w = shape_dy[y_w_idx]
-    if shape_dx[x_dim_n] != shape_dy[y_dim_n] or shape_dx[x_dim_c] != shape_dy[y_dim_c]:
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    input must be equal with out on N-dim and C-dim")
-    if shape_dx[x_dim_c] != shape_k[dim_k_n]:
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    input must be equal with kernel on C-dim")
+    if shape_dx[x_n_idx] != shape_dy[y_n_idx] or shape_dx[x_c_idx] != shape_dy[y_c_idx]:
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
+                                                   "input must be equal with out on N-dim and C-dim")
+    if shape_dx[x_c_idx] != shape_k[dim_k_n]:
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "N-dim of input must be equal with kernel on C-dim")
     if shape_k[dim_k_c] != 1:
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    the c_shape of kernel should be 1")
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad", 
+                                                   "the c_shape of kernel should be 1")
     if k_h > 255 or k_w > 255:
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    chip ISA limit kernel_h or kernel_w must less than 255")
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "chip ISA limit kernel_h or kernel_w must less than 255")
     if k_h != ksize_h or k_w != ksize_w:
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    the h_shape and w_shape of kernel should be equal with ksize")
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "the h_shape and w_shape of kernel should be equal with ksize")
     # check ub limitation
     w_value = y_w * stride_w
-    aub_size_min = y_w * BLOCK_SIZE * k_h * k_w * 2
-    aub_filling_size_min = w_value * BLOCK_SIZE * k_h * k_w * 2
+    aub_size_min = y_w * BLOCK_SIZE * 2
+    aub_filling_size_min = w_value * BLOCK_SIZE * 2
     cub_size_min = BLOCK_SIZE * BLOCK_SIZE * 2
     ub_size = tbe_platform.get_soc_spec("UB_SIZE")
     if ((stride_h == 1 and stride_w == 1 and (aub_size_min * UB_FUSED_OP_NUM + cub_size_min) > ub_size) or 
         ((stride_h > 1 or stride_w > 1) and 
          (aub_size_min * UB_FUSED_OP_NUM + aub_filling_size_min + cub_size_min) > ub_size)):
-        error_manager_cube.raise_err_specific_user("In op dynamic_avg_pool_grad, \
-                                                    UB's memory space must be enough to support minimum block")
-    return stride_h, stride_w, shape_dy[y_dim_c]
+        error_manager_cube.raise_err_specific_user("dynamic_avg_pool_grad",
+                                                   "UB's memory space must be enough to support minimum block")
+    return stride_h, stride_w, shape_dy[y_c_idx]
 
 
 def _avgpoolgrad_compute(input_size, filters, out_backprop, y, strides, pads,
