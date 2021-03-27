@@ -11,7 +11,7 @@ def calc_expect_func(input_x, output_z, shifts, dims):
 
 
 # [TODO] coding cases here
-ut_case.add_precision_case("Ascend310", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "int8", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 50), "shape": (3, 4, 50),
                 "param_type": "input"},
                {"dtype": "int8", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 50), "shape": (3, 4, 50),
@@ -20,7 +20,7 @@ ut_case.add_precision_case("Ascend310", {
     "calc_expect_func": calc_expect_func
 })
 
-ut_case.add_precision_case("Ascend310", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "int8", "format": "ND", "ori_format": "ND", "ori_shape": (2, 3, 4), "shape": (2, 3, 4),
                 "param_type": "input"},
                {"dtype": "int8", "format": "ND", "ori_format": "ND", "ori_shape": (2, 3, 4), "shape": (2, 3, 4),
@@ -29,7 +29,7 @@ ut_case.add_precision_case("Ascend310", {
     "calc_expect_func": calc_expect_func
 })
 
-ut_case.add_precision_case("Ascend310", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "uint8", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
                 "param_type": "input"},
                {"dtype": "uint8", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
@@ -88,7 +88,7 @@ ut_case.add_case("Ascend910A", {
     "expect": RuntimeError
 })
 
-ut_case.add_precision_case("Ascend310", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
                 "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
@@ -97,7 +97,7 @@ ut_case.add_precision_case("Ascend310", {
     "calc_expect_func": calc_expect_func
 })
 
-ut_case.add_precision_case("Ascend310", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
                 "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
@@ -116,7 +116,7 @@ ut_case.add_case("Ascend910A", {
     "expect": RuntimeError
 })
 
-ut_case.add_precision_case("Ascend310", {
+ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),
                 "param_type": "input"},
                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 4, 5), "shape": (3, 4, 5),

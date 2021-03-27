@@ -152,15 +152,15 @@ COMMON_INFER_FUNC_REG(SmoothL1LossGrad, SmoothL1LossGradInferShape);
 
 // ----------------Roll Begin---------------------
 IMPLEMT_COMMON_INFERFUNC(RollInferShape) {
-    TensorDesc output_desc_y = op.GetOutputDesc("y");
-    DataType predict_dtype = op.GetInputDesc("x").GetDataType();
-    Format predict_format = op.GetInputDesc("x").GetFormat();
-    ge::Shape output_shape = op.GetInputDesc("x").GetShape();
-    output_desc_y.SetDataType(predict_dtype);
-    output_desc_y.SetFormat(predict_format);
-    output_desc_y.SetShape(output_shape);
-    (void)op.UpdateOutputDesc("y", output_desc_y);
-    return GRAPH_SUCCESS;
+  TensorDesc output_desc_y = op.GetOutputDesc("y");
+  DataType predict_dtype = op.GetInputDesc("x").GetDataType();
+  Format predict_format = op.GetInputDesc("x").GetFormat();
+  ge::Shape output_shape = op.GetInputDesc("x").GetShape();
+  output_desc_y.SetDataType(predict_dtype);
+  output_desc_y.SetFormat(predict_format);
+  output_desc_y.SetShape(output_shape);
+  (void)op.UpdateOutputDesc("y", output_desc_y);
+  return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(Roll, RollInferShape);
 // ----------------Roll END---------------------

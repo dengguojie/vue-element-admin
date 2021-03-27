@@ -30,7 +30,7 @@ class Roll(object):
         """
         init of roll
         """
-        self.tik_instance = tik.Tik(tik.Dprofile())
+        self.tik_instance = tik.Tik()
         self.input_x_shape = list(input_x.get("shape"))
         self.input_x_dtype = input_x.get("dtype")
         self.dims = dims
@@ -85,14 +85,6 @@ class Roll(object):
             self.num_each_core = self.in_num
         else:
             self.num_each_core = self.in_num // self.ai_core_num // 32 * 32
-        self.input_x_ub = self.tik_instance.Tensor(self.input_x_dtype,
-                                                   (self.ub_tensor_size,),
-                                                   name="input_x_ub",
-                                                   scope=tik.scope_ubuf)
-        self.tmp_ub = self.tik_instance.Tensor(self.input_x_dtype,
-                                               (self.ub_tensor_size,),
-                                               name="tmp_ub",
-                                               scope=tik.scope_ubuf)
         self.last_core_num = self.in_num - self.num_each_core * self.ai_core_num
 
     def roll(self):
@@ -185,16 +177,22 @@ class Roll(object):
                 self.ori_last_offset.set_as(self.ori_last_offset % self.in_num)
                 # the front section
                 self.num_front.set_as(self.in_num - self.ori_first_offset)
+                self.tik_instance.scalar_conv('', self.compute_burse_len_num, self.num_front)
+                self.compute_burse_len_num.set_as(self.compute_burse_len_num / self.data_each_block_x)
+                self.tik_instance.scalar_conv('ceil', self.burse_len, self.compute_burse_len_num)
                 self.tik_instance.data_move(self.tmp_ub[0],
                                             self.input_x_gm[self.ori_first_offset],
-                                            0, 1, self.num_front, 0, 0)
+                                            0, 1, self.burse_len, 0, 0)
                 with self.tik_instance.for_range(0, self.num_front) as n_id:
                     self.input_x_ub[move_offset + n_id].set_as(self.tmp_ub[n_id])
                 # the back section
                 self.num_back.set_as(self.ori_last_offset)
+                self.tik_instance.scalar_conv('', self.compute_burse_len_num, self.num_back)
+                self.compute_burse_len_num.set_as(self.compute_burse_len_num / self.data_each_block_x)
+                self.tik_instance.scalar_conv('ceil', self.burse_len, self.compute_burse_len_num)
                 self.tik_instance.data_move(self.tmp_ub[0],
                                             self.input_x_gm[0],
-                                            0, 1, self.num_back, 0, 0)
+                                            0, 1, self.burse_len, 0, 0)
                 with self.tik_instance.for_range(0, self.num_back) as n_id:
                     self.input_x_ub[move_offset + self.num_front + n_id].set_as(self.tmp_ub[n_id])
                 self.tik_instance.data_move(self.output_y_gm[move_offset],
@@ -224,6 +222,7 @@ class Roll(object):
         self.num_this_dim = self.tik_instance.Scalar(dtype="int32")
         self.begin = self.tik_instance.Scalar(dtype="int32")
         self.end = self.tik_instance.Scalar(dtype="int32")
+        self.compute_burse_len_num = self.tik_instance.Scalar(dtype="float32")
         self.burse_len = self.tik_instance.Scalar(dtype="int32")
         self.first_offset = self.tik_instance.Scalar(dtype="int32")
         self.last_offset = self.tik_instance.Scalar(dtype="int32")
@@ -239,6 +238,9 @@ class Roll(object):
         """
         roll compute on each dim
         """
+        self.tik_instance.scalar_conv('', self.compute_burse_len_num, self.num_this_dim)
+        self.compute_burse_len_num.set_as(self.compute_burse_len_num / self.data_each_block_x)
+        self.tik_instance.scalar_conv('ceil', self.burse_len, self.compute_burse_len_num)
         self.ori_first_offset.set_as((self.offset_this_dim - self.shift * self.after_num))
         with self.tik_instance.if_scope(self.ori_first_offset < 0):
             self.ori_first_offset.set_as(self.ori_first_offset + self.in_num)
@@ -247,7 +249,7 @@ class Roll(object):
         self.ori_last_offset.set_as(self.ori_first_offset + self.num_this_dim)
         self.tik_instance.data_move(self.tmp_ub[0],
                                     self.input_x_gm[self.ori_first_offset],
-                                    0, 1, self.num_this_dim, 0, 0)
+                                    0, 1, self.burse_len, 0, 0)
         with self.tik_instance.for_range(0, self.num_this_dim) as n_id:
             self.input_x_ub[self.offset_this_dim - self.loop_first_offset
                             + n_id].set_as(self.tmp_ub[n_id])
@@ -314,7 +316,7 @@ def roll(x, y, shifts, dims, kernel_name="roll"):
                 dims[i] = dims[i] + dims_len
 
     para_check.check_shape_rule(shape_x)
-    para_check.check_tensor_shape_size(shape_x)
+    para_check.check_shape_size(shape_x)
     para_check.check_kernel_name(kernel_name)
     roll_instance = Roll(x, shifts, dims, kernel_name)
     return roll_instance.roll()
