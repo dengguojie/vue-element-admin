@@ -283,7 +283,7 @@ int32_t AddListTensorAttrToNodeDef(ge::Operator &op, const std::string &name,
 int32_t AddListAttrToNodeDef(ge::Operator &op, const std::string &name,
                              const std::string &type,
                              aicpu::NodeDef *node_def) {
-  int32_t ret = -1;
+  int32_t ret = 0;
   if (type == kVtListString) {
     ret = AddListStringAttrToNodeDef(op, name, node_def);
   } else if (type == kVtListFloat) {
@@ -296,6 +296,9 @@ int32_t AddListAttrToNodeDef(ge::Operator &op, const std::string &name,
     ret = AddListDataTypeAttrToNodeDef(op, name, node_def);
   } else if (type == kVtListTensor) {
     ret = AddListTensorAttrToNodeDef(op, name, node_def);
+  } else {
+    CPU_LOG_WARN("Attr type is unsuported, name: [%s], type: [%s].",
+                 name.c_str(), type.c_str());
   }
   return ret;
 }
@@ -303,6 +306,9 @@ int32_t AddListAttrToNodeDef(ge::Operator &op, const std::string &name,
 int32_t AddAttrToNodeDef(ge::Operator &op, const std::string &name,
                          const std::string &type, aicpu::NodeDef *node_def) {
   int32_t ret = 0;
+  if (type.empty() || type[0] == '_') {
+    return ret;
+  }
   if (type == kVtString) {
     ret = AddStringAttrToNodeDef(op, name, node_def);
   } else if (type == kVtFloat) {
