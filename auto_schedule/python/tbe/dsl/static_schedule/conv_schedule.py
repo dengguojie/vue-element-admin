@@ -6244,6 +6244,7 @@ class AutoScheduleOp:
             "convolution_im2col_row_major": OpFusionype.CONV,
             "convolution_row_major_reshape": OpFusionype.CONV,
             "convolution_fmap_l1_c0_optim": OpFusionype.CONV,
+            "fmap_l1_convolution_A": OpFusionype.CONV,
             "fmap_l1": OpFusionype.CONV,
             "convolution_al1_load2d": OpFusionype.CONV,
             "conv_vector_bias_add": OpFusionype.BIAS,
