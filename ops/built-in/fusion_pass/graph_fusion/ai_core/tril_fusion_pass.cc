@@ -133,6 +133,7 @@ Status TrilFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<
     // get the diagonal attr
     int64_t diagonal;
     AttrUtils::GetInt(trilDesc, "diagonal", diagonal);
+    diagonal = diagonal + 1;
 
     // get the shape info
     ge::GeShape trilInputShape = trilInputTensor.GetShape();
