@@ -27,7 +27,7 @@ from tbe.common.platform import scope_ubuf
 from tbe.dsl.instrinsic.cce_intrin import get_bit_len
 from tbe.common.platform.platform_info import get_soc_spec
 from te.platform.fusion_manager import fusion_manager
-from te.domain.rl_bank import rl_bank
+from tbe.common.rl_bank import rl_bank
 
 
 # pylint: disable=locally-disabled,too-many-locals

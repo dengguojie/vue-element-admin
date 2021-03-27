@@ -37,7 +37,7 @@ from te.platform import conv_buffer_ex
 from te.platform.cce_conf import get_kernel_meta_dir
 from te.platform.fusion_manager import fusion_manager
 from tbe.dsl.compute.conv_compute import ConvParam  # pylint: disable=C0412
-from te.domain.rl_bank import rl_bank
+from tbe.common.rl_bank import rl_bank
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.common.utils import shape_to_list
