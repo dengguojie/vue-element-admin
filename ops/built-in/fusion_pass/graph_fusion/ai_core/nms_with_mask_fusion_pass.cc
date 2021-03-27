@@ -62,6 +62,10 @@ Status NMSWithMaskFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   pad_desc_ptr->SetType("PadD");
   pad_desc_ptr->SetName(pad_desc_ptr->GetName() + "_PadD");
 
+  std::map<string, uint32_t> input_name_idx;
+  input_name_idx["x"] = 0;
+  pad_desc_ptr->UpdateInputName(input_name_idx);
+
   // delete output desc of pad node
   int tmp_output_size = pad_desc_ptr->GetOutputsSize();
   FUSION_PASS_CHECK(tmp_output_size < 1,
@@ -96,9 +100,9 @@ Status NMSWithMaskFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
 
   // update output origin shape of pad
   pad_output_tensor_desc.SetOriginShape(GeShape(nms_input_dims));
-  FUSION_PASS_CHECK(pad_desc_ptr->AddOutputDesc("NMSWithMask", pad_output_tensor_desc) != GRAPH_SUCCESS,
+  FUSION_PASS_CHECK(pad_desc_ptr->AddOutputDesc("y", pad_output_tensor_desc) != GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "AddOutputDesc failed"), return FAILED);
-  FUSION_PASS_CHECK(pad_desc_ptr->UpdateOutputDesc(0, pad_output_tensor_desc) != GRAPH_SUCCESS,
+  FUSION_PASS_CHECK(pad_desc_ptr->UpdateOutputDesc("y", pad_output_tensor_desc) != GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "UpdateOutputDesc failed"), return FAILED);
   FUSION_PASS_CHECK(nms_desc_ptr->UpdateInputDesc(0, pad_output_tensor_desc) != GRAPH_SUCCESS,
                     OP_LOGE(kFusedOpType.c_str(), "UpdateInputDesc failed"), return FAILED);
