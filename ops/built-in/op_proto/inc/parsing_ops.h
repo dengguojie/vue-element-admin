@@ -174,6 +174,90 @@ REG_OP(DecodeCSV)
     .ATTR(select_cols, ListInt, {})
     .OP_END_FACTORY_REG(DecodeCSV)
 
+/**
+*@brief Converts each string in the input Tensor to the specified numeric type . \n
+
+*@par Inputs:
+*Inputs include:
+*x: A Tensor. Must be one of the following types: string . \n
+
+*@par Attributes:
+*out_type: The numeric type to interpret each string in string_tensor as . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as x . \n
+
+*@attention Constraints:
+*The implementation for StringToNumber on Ascend uses AICPU, with bad performance. \n
+
+*@par Third-party framework compatibility
+*@li compatible with tensorflow StringToNumber operator.
+*/
+REG_OP(ParseExample)
+    .INPUT(serialized, TensorType({DT_STRING, DT_RESOURCE}))
+    .INPUT(name, TensorType({DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_INPUT(sparse_keys, TensorType({DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_INPUT(dense_keys, TensorType({DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_INPUT(dense_defaults, TensorType({DT_FLOAT, DT_INT64, DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_OUTPUT(sparse_indices, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(sparse_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_OUTPUT(sparse_shapes, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(dense_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING, DT_RESOURCE}))
+    .ATTR(Nsparse, Int, 0)
+    .ATTR(Ndense, Int, 0)
+    .ATTR(sparse_types, ListType, {})
+    .ATTR(Tdense, ListType, {})
+    .ATTR(dense_shapes, ListListInt, {})
+    .OP_END_FACTORY_REG(ParseExample)
+
+/**
+*@brief Converts each string in the input Tensor to the specified numeric type . \n
+
+*@par Inputs:
+*Inputs include:
+*x: A Tensor. Must be one of the following types: string . \n
+
+*@par Attributes:
+*out_type: The numeric type to interpret each string in string_tensor as . \n
+
+*@par Outputs:
+*y: A Tensor. Has the same type as x . \n
+
+*@attention Constraints:
+*The implementation for StringToNumber on Ascend uses AICPU, with bad performance. \n
+
+*@par Third-party framework compatibility
+*@li compatible with tensorflow StringToNumber operator.
+*/
+REG_OP(ParseSingleSequenceExample)
+    .INPUT(serialized, TensorType({DT_STRING}))
+    .INPUT(feature_list_dense_missing_assumed_empty, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(context_sparse_keys, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(context_dense_keys, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(feature_list_sparse_keys, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(feature_list_dense_keys, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(context_dense_defaults, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
+    .INPUT(debug_name, TensorType({DT_STRING}))
+    .DYNAMIC_OUTPUT(context_sparse_indices, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(context_sparse_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
+    .DYNAMIC_OUTPUT(context_sparse_shapes, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(context_dense_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
+    .DYNAMIC_OUTPUT(feature_list_sparse_indices, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(feature_list_sparse_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
+    .DYNAMIC_OUTPUT(feature_list_sparse_shapes, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(feature_list_dense_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
+    .ATTR(Ncontext_sparse, Int, 0)
+    .ATTR(Ncontext_dense, Int, 0)
+    .ATTR(Nfeature_list_sparse, Int, 0)
+    .ATTR(Nfeature_list_dense, Int, 0)
+    .REQUIRED_ATTR(context_sparse_types, ListType)
+    .REQUIRED_ATTR(Tcontext_dense, ListType)
+    .REQUIRED_ATTR(feature_list_dense_types, ListType)
+    .REQUIRED_ATTR(context_dense_shapes, ListListInt)
+    .REQUIRED_ATTR(feature_list_sparse_types, ListType)
+    .REQUIRED_ATTR(feature_list_dense_shapes, ListListInt)
+    .OP_END_FACTORY_REG(ParseSingleSequenceExample)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_PARSING_OPS_H_

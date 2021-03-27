@@ -322,6 +322,82 @@ REGISTER_CUSTOM_OP("RaggedTensorToTensor")
     .ParseParamsFn(RaggedTensorToTensorMapping)
     .ImplyType(ImplyType::AI_CPU);
 
+Status MappingFnParseExample(const google::protobuf::Message* op_src,
+                             ge::Operator& op) {
+  map<string, pair<string, string>> value;
+  value["in"] = pair<string, string>("sparse_keys", "Nsparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["in"] = pair<string, string>("dense_keys", "Ndense");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["in"] = pair<string, string>("dense_defaults", "Ndense");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("sparse_indices", "Nsparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("sparse_values", "Nsparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("sparse_shapes", "Nsparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("dense_values", "Ndense");
+  AutoMappingFnDynamic(op_src, op, value);
+  return SUCCESS;
+}
+
+// register ParseExample op to GE
+REGISTER_CUSTOM_OP("ParseExample")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ParseExample")
+    .ParseParamsFn(MappingFnParseExample)
+    .ImplyType(ImplyType::AI_CPU);
+
+Status MappingFnParseSingleSequenceExample(
+    const google::protobuf::Message* op_src, ge::Operator& op) {
+  map<string, pair<string, string>> value;
+  value["in"] = pair<string, string>("context_sparse_keys", "Ncontext_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["in"] = pair<string, string>("context_dense_keys", "Ncontext_dense");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["in"] =
+      pair<string, string>("feature_list_sparse_keys", "Nfeature_list_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["in"] =
+      pair<string, string>("feature_list_dense_keys", "Nfeature_list_dense");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["in"] =
+      pair<string, string>("context_dense_defaults", "Ncontext_dense");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] =
+      pair<string, string>("context_sparse_indices", "Ncontext_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] =
+      pair<string, string>("context_sparse_values", "Ncontext_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] =
+      pair<string, string>("context_sparse_shapes", "Ncontext_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("context_dense_values", "Ncontext_dense");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("feature_list_sparse_indices",
+                                      "Nfeature_list_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("feature_list_sparse_values",
+                                      "Nfeature_list_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] = pair<string, string>("feature_list_sparse_shapes",
+                                      "Nfeature_list_sparse");
+  AutoMappingFnDynamic(op_src, op, value);
+  value["out"] =
+      pair<string, string>("feature_list_dense_values", "Nfeature_list_dense");
+  AutoMappingFnDynamic(op_src, op, value);
+  return SUCCESS;
+}
+
+// register ParseExample op to GE
+REGISTER_CUSTOM_OP("ParseSingleSequenceExample")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ParseSingleSequenceExample")
+    .ParseParamsFn(MappingFnParseSingleSequenceExample)
+    .ImplyType(ImplyType::AI_CPU);
+
 Status MappingFnCTCBeamSearchDecoder(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["out"] = pair<string, string>("decoded_indices", "top_paths");
