@@ -1,29 +1,31 @@
-# Copyright 2019 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.You may not use
+this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 lerp
 """
+
 import te.lang.cce as tbe
 from te import tvm
-from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
-from te.utils.shape_util import broadcast_shapes, shape_to_list
+from te.utils import para_check
+from te.utils import shape_util
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+SHAPE_SIZE_LIMIT = 2147483648
+
+
 @fusion_manager.register("lerp")
+#pylint: disable=unused-argument
 def lerp_compute(start, end, weight, y, kernel_name="lerp"):
     """
     Compute
@@ -38,7 +40,7 @@ def lerp_compute(start, end, weight, y, kernel_name="lerp"):
         datatype suports float32,float16
     weight: dict
         data of input
-        datatype suports float32,float16    
+        datatype suports float32,float16
     y: dict
         data of output
     kernel_name: str
@@ -47,13 +49,13 @@ def lerp_compute(start, end, weight, y, kernel_name="lerp"):
     -------
     None
     """
-    shape_x = shape_to_list(start.shape)
-    shape_y = shape_to_list(end.shape)
-    shape_z = shape_to_list(weight.shape)
+    shape_x = shape_util.shape_to_list(start.shape)
+    shape_y = shape_util.shape_to_list(end.shape)
+    shape_z = shape_util.shape_to_list(weight.shape)
 
-    _, _, shape_tmp = broadcast_shapes(shape_x, shape_y, param_name_input1="x", param_name_input2="y")
-    _, _, shape_max = broadcast_shapes(shape_tmp, shape_z, param_name_input1="xy", param_name_input2="z")
-    para_check.check_shape(shape_max, param_name="shape_max")
+    shape_x, shape_y, shape_tmp = shape_util.produce_shapes(shape_x, shape_y)
+    shape_tmp, shape_z, shape_max = shape_util.produce_shapes(shape_tmp, shape_z)
+    para_check.check_shape(shape_max)
 
     start = tbe.broadcast(start, shape_max)
     end = tbe.broadcast(end, shape_max)
@@ -82,7 +84,7 @@ def lerp(start, end, weight, y, kernel_name="lerp"):
         datatype suports float32,float16
     weight: dict
         data of input
-        datatype suports float32,float16    
+        datatype suports float32,float16
     y: dict
         data of output
     kernel_name: str
@@ -95,16 +97,27 @@ def lerp(start, end, weight, y, kernel_name="lerp"):
     shape_y = end.get("shape")
     shape_z = weight.get("shape")
 
-    input_dtype = start.get("dtype").lower()
+    dtype = start.get("dtype")
+
+    input_dtype = dtype.lower()
 
     para_check.check_shape_rule(shape_x)
     para_check.check_shape_rule(shape_y)
     para_check.check_shape_rule(shape_z)
 
+    para_check.check_shape(shape_x, 0, SHAPE_SIZE_LIMIT)
+    para_check.check_shape(shape_y, 0, SHAPE_SIZE_LIMIT)
+    para_check.check_shape(shape_x, 0, SHAPE_SIZE_LIMIT)
+
     para_check.check_kernel_name(kernel_name)
 
     check_tuple = ("float16", "float32")
-    para_check.check_dtype(input_dtype, check_tuple, param_name="x")
+    para_check.check_dtype_rule(input_dtype, check_tuple)
+
+    shape_x, shape_y, shape_tmp = shape_util.produce_shapes(shape_x, shape_y)
+    shape_tmp, shape_z, shape_max = shape_util.produce_shapes(shape_tmp, shape_z)
+
+    para_check.check_shape(shape_max, 0, SHAPE_SIZE_LIMIT)
 
     data_x = tvm.placeholder(shape_x, name="data_1", dtype=input_dtype)
     data_y = tvm.placeholder(shape_y, name="data_2", dtype=input_dtype)
@@ -118,4 +131,4 @@ def lerp(start, end, weight, y, kernel_name="lerp"):
     config = {"name": kernel_name,
               "tensor_list": [data_x, data_y, data_z, res]}
 
-    tbe.cce_build_code(schedule, config)
+    tbe.build(schedule, config)
