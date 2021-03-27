@@ -252,15 +252,18 @@ def _pre_build(schedules_list):
                 _schedules.append(sub_schs)
 
     def _name_to_int(_var_names):
-        for index, name in enumerate(_var_names):
-            names = name[1:].split("_")
-            if names[0] == "dim":
-                _var_names[index] = 10000 + int(names[1]) * 100 + int(names[2])
-            elif names[0] == "block":
-                _var_names[index] = 20000 + int(names[2])
-            elif names[0] == "ub":
-                _var_names[index] = 30000 + int(names[2])
-        return _var_names
+        new_var_names = []
+        for name in _var_names:
+            if name[0] != '_':
+                continue
+            names = name[1:].split('_')
+            if names[0] == 'dim':
+                new_var_names.append(10000 + int(names[1]) * 100 + int(names[2]))
+            elif names[0] == 'block':
+                new_var_names.append(20000 + int(names[2]))
+            elif names[0] == 'ub':
+                new_var_names.append(30000 + int(names[2]))
+        return new_var_names
 
     def _get_pattern_key(_mode, _pattern):
         _pattern_key = 0
@@ -315,8 +318,8 @@ def _pre_build(schedules_list):
     te_vars_list = []
     op_vars = operation.get_context().get_vars()
     base_info = {}
-    for i, cpt in enumerate(cpt_computes):
-        if cpt.get("_mode") == EMPTY:
+    for cpt in cpt_computes:
+        if cpt.get("_mode") == EMPTY or len(cpt.get_schedules()) == 0:
             continue
         cpt_vars = cpt.get_vars()
         cpt_ub_sizes, cpt_max_dtypes, cpt_coexisting_quantitys, cores = [], [], [], []

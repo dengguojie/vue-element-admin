@@ -515,8 +515,23 @@ bool Broadcast::DoUbTiling() {
   if (output_shape.size() != 1) {
     CheckUpdateUbTiling();
   }
-
+  OptimizeUbTiling();
   return true;
+}
+
+void Broadcast::OptimizeUbTiling() {
+  // tiling optimize for ub factor
+  // 1. convert BA pattern form split COMMON axis to BROADCAST axis
+  // 2. avoid split BROADCAST axis
+  int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
+  if (s_pattern == Pattern::BROADCAST_COMMON && block_axis < ub_axis && \
+      ub_axis == shape_len && ub_factor == output_shape[ub_axis]) {
+    ub_axis--;
+    ub_factor = 1;
+  } else if (ub_factor == 1 && broadcast_axis[ub_axis]) {
+    ub_axis++;
+    ub_factor = output_shape[ub_axis];
+  }
 }
 
 void Broadcast::AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit) {

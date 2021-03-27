@@ -94,6 +94,7 @@ private:
   bool DoUbTiling();
   void AdjustUbTiling(const int64_t under_ub_shape, const int64_t limit);
   void CheckUpdateUbTiling();
+  void OptimizeUbTiling();
   void CalcKey();
   bool IsNeedDoubleBuffer() const;
 

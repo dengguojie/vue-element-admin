@@ -61,6 +61,9 @@ TYPE_DOUNDS = {
     8: (1, 8191),
 }
 
+# BA templete and block split 0, ub split 0
+BA_KEY = 221000001
+
 
 @register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
 def schedule(outs, tiling_case):
@@ -101,6 +104,10 @@ class ElewiseSchedule:
         self._absorbable_broadcast_tensors = set()
         self._compute_inline_broadcast = set()
         self._broadcast_axis_num = {}
+
+        self._broadcast_store_predicate = set()
+        self._store_predicate_common_tensors = set()
+        self._all_pre_node_broadcast = []
 
         self._dtypes = set()
         self._outs_dtypes = set()
@@ -170,6 +177,8 @@ class ElewiseSchedule:
 
         self._set_scope()
 
+        self._calc_store_predicate()
+
         self._calc_storage_bound()
 
         self._calc_tiling()
@@ -185,6 +194,8 @@ class ElewiseSchedule:
 
         self._calc_compute_at()
         self._do_compute_at()
+
+        self._do_store_predicate()
 
         self._calc_double_buffer()
         self._do_double_buffer()
@@ -575,6 +586,22 @@ class ElewiseSchedule:
         for tensor_i, param in self._compute_at_map.items():
             sch[tensor_i].compute_at(sch[param[0]], param[1])
 
+    def _do_store_predicate(self):
+        sch = self._schedule
+        for tensor_i in self._broadcast_store_predicate:
+            sch[tensor_i].set_store_predicate(self._compute_at_axis < 1)
+            sch[tensor_i].mem_unique()
+        for tensor_i in self._all_pre_node_broadcast:
+            if tensor_i in self._placeholder_tensor_map:
+                sch[self._placeholder_tensor_map[tensor_i]].set_store_predicate(self._compute_at_axis < 1)
+            else:
+                sch[tensor_i].set_store_predicate(self._compute_at_axis < 1)
+        for tensor_i in self._store_predicate_common_tensors:
+            if tensor_i in self._placeholder_tensor_map:
+                sch[self._placeholder_tensor_map[tensor_i]].mem_unique()
+            else:
+                sch[tensor_i].mem_unique()
+
     def _calc_constraints(self):
         for tensor_i in self._broadcast_tensors:
             if tensor_i.op.tag == "unknown_broadcast":
@@ -730,6 +757,24 @@ class ElewiseSchedule:
                 sch[_a].reused_by(b_i)
                 sch[b_i].reused_by(reuse_data=True)
 
+    def _calc_store_predicate(self):
+        def _dfs_cur_tensor(tensor_i):
+            for _tensor in tensor_i.op.input_tensors:
+                all_pre_node.add(_tensor)
+                _dfs_cur_tensor(_tensor)
+
+        if self._schedule.tiling_key == BA_KEY:
+            for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
+                if util.get_dsl_insn(tensor_i) != "unified_broadcast":
+                    continue
+                self._broadcast_store_predicate.add(tensor_i)
+                all_pre_node = set()
+                _dfs_cur_tensor(tensor_i)
+                self._all_pre_node_broadcast.extend(list(all_pre_node))
+            from collections import Counter
+            collect = Counter(self._all_pre_node_broadcast)
+            self._store_predicate_common_tensors = {key for (key, value) in collect.items() if value > 1}
+
     def _calc_storage_bound(self):
 
         def _correct_ub_size_by_cmp_sel(_tensor):
@@ -742,16 +787,9 @@ class ElewiseSchedule:
             if util.is_vcmpsel_insn(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE * (VCMPSEL_INPUT_NUMBER - len(_tensor.op.input_tensors))
 
-        def _r_coexisting(_tensor):
-            if _tensor in dependent_map:
-                return len(dependent_map)
-            if util.is_vtranspose_broadcast(_tensor):
-                self._tmp_ub_size += VTRANSPOSE_TEMP_SPACE
-            _need_space = []
-            for _tensor_i in _tensor.op.input_tensors:
-                _need_space.append(_r_coexisting(_tensor_i))
+        def _calc_current_space(_tensor):
             # one of the input of the ternary instruction must be reused with the output
-            if util.get_dsl_insn(_tensor) in TERNARY_INSNS:
+            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in init_map:
                 _current_space = len(dependent_map)
             else:
                 _current_space = len(dependent_map) + 1
@@ -762,14 +800,29 @@ class ElewiseSchedule:
                 _current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
+            return _current_space
 
+        def _r_coexisting(_tensor):
+            if _tensor in dependent_map and _tensor not in init_map:
+                return len(dependent_map)
+            if util.is_vtranspose_broadcast(_tensor):
+                self._tmp_ub_size += VTRANSPOSE_TEMP_SPACE
+            _need_space = []
+            for _tensor_i in _tensor.op.input_tensors:
+                _need_space.append(_r_coexisting(_tensor_i))
+
+            _current_space = _calc_current_space(_tensor)
+            
             # correct ub size in vcmp or vsel or vcmpsel
             _correct_ub_size_by_cmp_sel(_tensor)
 
             _need_space.append(_current_space)
             _refresh_dependent(_tensor)
             if _tensor not in dependent_map:
-                dependent_map[_tensor] = self._in_out_map[_tensor].copy()
+                if _tensor in init_map:
+                    init_map.remove(_tensor)
+                else:
+                    dependent_map[_tensor] = self._in_out_map[_tensor].copy()
             return max(_need_space)
 
         def _refresh_dependent(_tensor):
@@ -798,6 +851,13 @@ class ElewiseSchedule:
 
         coexisting_quantities = []
         dependent_map = {}
+        init_map = set()
+        if self._schedule.tiling_key == BA_KEY:
+            all_producers = self._middle_tensors.copy()
+            all_producers.update(self._outs)
+            for tensor_i in self._broadcast_store_predicate | self._store_predicate_common_tensors:
+                dependent_map[tensor_i] = all_producers
+                init_map.add(tensor_i)
         for tensor_i in self._out.op.input_tensors:
             coexisting_quantities.append(_r_coexisting(tensor_i))
         if not self._out.op.tag == FAKE_NODE_TAG:
