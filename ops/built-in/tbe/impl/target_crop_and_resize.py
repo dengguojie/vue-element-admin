@@ -182,7 +182,7 @@ def move_data_from_l1_to_gm(ib, total_num, dtype, output_cb_buf, output_buf,
             output_ub_buf = tvm.decl_buffer((num,), dtype, "output_ub_buf",
                                             scope=tbe_platform.scope_ubuf, data=output_ub)
 
-            burst_len, n_burst = aipp_comm.get_lenBurst_and_nBurst((total_num*size + 31) // 32, 1)
+            burst_len, n_burst = aipp_comm.get_lenburst_and_nburst((total_num * size + 31) // 32, 1)
 
             ib.emit(tvm.call_extern(
                 dtype, 'copy_cbuf_to_ubuf',
@@ -190,8 +190,8 @@ def move_data_from_l1_to_gm(ib, total_num, dtype, output_cb_buf, output_buf,
                 output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
                 0, n_burst, burst_len, 0, 0))
 
-            if output_format == "NC1HWC0_C04" and total_num*size % 32 != 0 and total_num*size > 32:
-                burst_len, n_burst = aipp_comm.get_lenBurst_and_nBurst((total_num*size) // 32, 1)
+            if output_format == "NC1HWC0_C04" and total_num * size % 32 != 0 and total_num * size > 32:
+                burst_len, n_burst = aipp_comm.get_lenburst_and_nburst((total_num * size) // 32, 1)
 
                 tail_ub = ib.allocate(dtype, (32 // size,), "tail_ub", scope=tbe_platform.scope_ubuf)
                 tail_ub_buf = tvm.decl_buffer((32 // size,), dtype, "tail_ub_buf",
@@ -220,7 +220,7 @@ def move_data_from_l1_to_gm(ib, total_num, dtype, output_cb_buf, output_buf,
                 output_ub_buf = tvm.decl_buffer((ub_size // 2,), dtype, "output_ub_buf",
                                                 scope=tbe_platform.scope_ubuf, data=output_ub)
 
-                burst_len, n_burst = aipp_comm.get_lenBurst_and_nBurst((cycle_num*size) // 32, 1)
+                burst_len, n_burst = aipp_comm.get_lenburst_and_nburst((cycle_num * size) // 32, 1)
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_cbuf_to_ubuf',
@@ -239,7 +239,7 @@ def move_data_from_l1_to_gm(ib, total_num, dtype, output_cb_buf, output_buf,
                 output_ub_buf = tvm.decl_buffer((ub_size // 2,), dtype, "output_ub_buf",
                                                 scope=tbe_platform.scope_ubuf, data=output_ub)
 
-                burst_len, n_burst = aipp_comm.get_lenBurst_and_nBurst((move_tail*size + 31) // 32, 1)
+                burst_len, n_burst = aipp_comm.get_lenburst_and_nburst((move_tail * size + 31) // 32, 1)
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_cbuf_to_ubuf',
@@ -247,8 +247,8 @@ def move_data_from_l1_to_gm(ib, total_num, dtype, output_cb_buf, output_buf,
                     output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=move_num*cycle_num),
                     0, n_burst, burst_len, 0, 0))
 
-                if output_format == "NC1HWC0_C04" and (move_tail*size) % 32 != 0 and move_tail*size > 32:
-                    burst_len, n_burst = aipp_comm.get_lenBurst_and_nBurst((move_tail*size) // 32, 1)
+                if output_format == "NC1HWC0_C04" and (move_tail * size) % 32 != 0 and move_tail * size > 32:
+                    burst_len, n_burst = aipp_comm.get_lenburst_and_nburst((move_tail * size) // 32, 1)
 
                     tail_ub = ib.allocate(dtype, (32 // size,), "tail_ub", scope=tbe_platform.scope_ubuf)
                     tail_ub_buf = tvm.decl_buffer((32 // size,), dtype, "tail_ub_buf",
@@ -268,8 +268,8 @@ def target_crop_and_resize_compute(x, boxes, box_index, x_dic, y_dic, input_form
     """
     compute of target_crop_and_resize op
     """
-    x_shape = x_dic.get('shape')
     x_format = x_dic.get('format')
+    x_shape = x_dic.get('shape')
     output_dtype = y_dic.get('dtype')
     output_shape = y_dic.get('shape')
 
@@ -412,15 +412,15 @@ def target_crop_and_resize_compute(x, boxes, box_index, x_dic, y_dic, input_form
                                             output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
                                             aipp_xs, tbe_platform.get_const(aipp_xt)))
 
-                    output_offset = n1*channel_1*height*width*channel_0
+                    output_offset = n1 * channel_1 * height * width * channel_0
 
                     ib.emit(tvm.call_extern(
                         output_dtype, 'copy_cbuf_to_ubuf',
                         output_ub_buf.access_ptr("w", ptr_type=output_dtype, offset=0),
                         output_cb_buf.access_ptr("rw", ptr_type=output_dtype, offset=0),
-                        0, 1, channel_1*height*width*channel_0*size // 32, 0, 0))
+                        0, 1, channel_1 * height * width * channel_0 * size // 32, 0, 0))
 
-                    if (channel_1*height*width*channel_0*size) % 32 != 0:
+                    if (channel_1 * height * width * channel_0 * size) % 32 != 0:
                         with ib.new_scope():
                             tail_ub = ib.allocate(output_dtype, (32 // size,), "tail_ub",
                                                   scope=tbe_platform.scope_ubuf)
@@ -469,7 +469,7 @@ def target_crop_and_resize_compute(x, boxes, box_index, x_dic, y_dic, input_form
 
                 with ib.for_range(zero_const, h_loop, name="h1", dtype="uint64") as h1:
                     with ib.new_scope():
-                        num = (((channel_1*buffer_upper_limit*channel_0*size+31) // 32)*32) // size
+                        num = (((channel_1 * buffer_upper_limit * channel_0 * size + 31) // 32) * 32) // size
                         output_cb = ib.allocate(output_dtype, (num,), "output_cb",
                                                 scope=tbe_platform.scope_cbuf)
                         output_cb_buf = tvm.decl_buffer((num,), output_dtype, "output_cb_buf",
@@ -477,8 +477,8 @@ def target_crop_and_resize_compute(x, boxes, box_index, x_dic, y_dic, input_form
 
                         output_w = width
                         output_h = tiling_h
-                        output_offset = n1*channel_1*height*width*channel_0 + \
-                                        channel_1*(h1*tiling_h)*output_w*channel_0
+                        output_offset = n1 * channel_1 * height * width * channel_0 + \
+                                        channel_1 * (h1 * tiling_h) * output_w * channel_0
 
                         spr12 = (tvm.const(tiling_h - 1, dtype="uint64")) | \
                                 (tvm.const(width - 1, dtype="uint64")) << 16
@@ -488,13 +488,13 @@ def target_crop_and_resize_compute(x, boxes, box_index, x_dic, y_dic, input_form
                             resize_input_h_stat_pos[0] = tvm.const(0, dtype="uint64")
                             resize_input_h_end_pos[0] = tvm.const(0, dtype="uint64")
 
-                            resize_output_h_start_pos = h1*tiling_h
-                            resize_output_h_end_pos = (h1 + 1)*tiling_h - 1
+                            resize_output_h_start_pos = h1 * tiling_h
+                            resize_output_h_end_pos = (h1 + 1) * tiling_h - 1
 
                             resize_input_h_stat_pos[0] = \
-                                (scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) >> 18
+                                (scf_inc_vscl[0] * tbe_platform.get_const(resize_output_h_start_pos)) >> 18
                             resize_input_h_end_pos[0] = \
-                                ((scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_end_pos)) +
+                                ((scf_inc_vscl[0] * tbe_platform.get_const(resize_output_h_end_pos)) +
                                  tvm.const((1 << 18) - 1, dtype="uint64")) >> 18
 
                             if input_format == "YUV420SP_U8":
