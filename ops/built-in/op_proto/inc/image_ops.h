@@ -1095,6 +1095,7 @@ REG_OP(EncodePng)
 
 *@par Attributes:
 *channels: graph channels \n
+*dtype: type of image
 
 *@par Outputs:
 *image: is a 3-D uint8 or uint16 Tensor of shape [height, width, channels]

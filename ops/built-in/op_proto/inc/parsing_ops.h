@@ -52,11 +52,20 @@ REG_OP(StringToNumber)
     .OP_END_FACTORY_REG(StringToNumber)
 
 /**
-*@brief Convert serialized tensorflow.TensorProto prototype to Tensor. \n
-*@brief Parse an Example prototype. \n
+*@brief Convert serialized tensorflow.TensorProto prototype to Tensor.
+*@brief Parse an Example prototype. 
 *@par Input:
 *serialized: A Tensor of type string.
-*dense_defaults:  DYNAMIC INPUT Tensor type as string, float, int64.
+*dense_defaults:  DYNAMIC INPUT Tensor type as string, float, int64. \n
+
+*@par Attributes:
+*num_sparse: type int num of inputs sparse_indices , sparse_values, sparse_shapes
+*out_type: output type
+*sparse_keys: ListString
+*sparse_types: types of sparse_values
+*dense_keys: ListString
+*dense_shapes: output of dense_defaults shape
+*dense_types: output of dense_defaults type  \n
 
 *@par Outputs:
 *sparse_indices: A Tensor of type string. 
@@ -85,8 +94,13 @@ REG_OP(ParseSingleExample)
 *@brief Decodes raw file into  tensor . \n
 *@par Input:
 *contents: A Tensor of type string.
-*little_endian bool ture
-*@par Output: A Tensor
+
+*@par Attributes:
+*little_endian: bool ture
+*out_type: output type
+
+*@par Outputs:
+*Output: A Tensor
 **/
 REG_OP(DecodeRaw)
     .INPUT(bytes, TensorType({DT_STRING}))

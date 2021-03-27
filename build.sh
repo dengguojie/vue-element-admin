@@ -133,7 +133,7 @@ release_cann() {
   mk_dir "${RELEASE_PATH}"
   RELEASE_TARGET="cann.tar"
   if [ "$MINIRC_AICPU_ONLY" = "TRUE" ];then
-     RELEASE_TARGET="aicpu_minrc.tar"
+     RELEASE_TARGET="aicpu_minirc.tar"
   fi
   cd ${INSTALL_PATH} && tar cfz "${RELEASE_TARGET}" * && mv "${RELEASE_TARGET}" "${RELEASE_PATH}"
 }
