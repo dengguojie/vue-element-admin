@@ -310,6 +310,7 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
   std::vector<int64_t> dimsIn = {4 * hiddenSize};
   ge::GeShape biasShape(dimsIn);
   bias.SetShape(biasShape);
+  bias.SetOriginShape(biasShape);
   bias.SetFormat(ge::FORMAT_ND);
   bias.SetOriginFormat(ge::FORMAT_ND);
   bias.SetDataType(fusedDesc->GetInputDesc(0).GetDataType());
