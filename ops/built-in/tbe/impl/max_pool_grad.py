@@ -885,6 +885,11 @@ class MaxpoolGrad:
 
         need_cut_l1 = bool(input_l1_size >= SIZE_L1)
 
+        if self.ho != 1 and self.wo == 1:
+            need_cut_ho = True
+            need_cut_wo = False
+            return need_cut_l1, need_cut_ho, need_cut_wo, 1, 0
+
         if self.kh > self.stride_h:
             each_process_hi = self.kh
         else:
