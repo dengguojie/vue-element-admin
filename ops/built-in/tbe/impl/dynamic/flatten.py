@@ -1,0 +1,173 @@
+# Copyright 2021 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+flatten
+"""
+
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
+
+# max int32
+MAX_INT32 = 2**31 - 1
+# tiling param num
+TILING_ARG_NUM = 16
+# reserved ub size
+RESERVED_UB_SIZE = 8 * 1024
+
+
+# pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
+def _get_ceil_int(int1, int2):
+    """Get ceil
+    """
+    _result = int1 // int2
+    if int1 % int2 == 0:
+        return _result
+    return _result + 1
+
+
+class Flatten:
+    """Performs flatten on input tensor
+    """
+
+    def __init__(self, src, dst, kernel_name):
+        """Init flatten parameters
+        """
+        self.tik_instance = tik.Tik()
+        self.src_dtype = src.get("dtype").lower()
+        self.dst_dtype = dst.get("dtype").lower()
+        # check dtype
+        para_check.check_dtype(
+            self.src_dtype,
+            ("float16", "float32", "int8", "int32", "int64", "uint8", "int16", "uint16", "uint32", "uint64"),
+            param_name="src")
+        para_check.check_dtype(
+            self.dst_dtype,
+            ("float16", "float32", "int8", "int32", "int64", "uint8", "int16", "uint16", "uint32", "uint64"),
+            param_name="dst")
+        if self.src_dtype != self.dst_dtype:
+            error_manager_vector.raise_err_inputs_dtype_not_equal("Flatten", "src", "dst", self.src_dtype,
+                                                                  self.dst_dtype)
+        self.kernel_name = kernel_name
+        # get dtype size, float16 size = 2 byte / float32 size = 4 byte
+        self.dtype_size = tbe_platform.get_bit_len(self.src_dtype) // 8
+
+        self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.data_len_one_block = 32 // self.dtype_size
+        self.ub_availble = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
+        self.ub_max_data = self.ub_availble // self.dtype_size
+        self.copy_segment = self.ub_max_data // 2
+        self.copy_segment = (_get_ceil_int(self.copy_segment, self.data_len_one_block) - 1) * self.data_len_one_block
+
+        # input and output tensor in gm
+        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.src_gm = self.tik_instance.Tensor(self.src_dtype, (MAX_INT32,), name="src_gm", scope=tik.scope_gm)
+        self.dst_gm = self.tik_instance.Tensor(self.dst_dtype, (MAX_INT32,), name="dst_gm", scope=tik.scope_gm)
+        self.tiling_ub = None
+
+        # tiling args
+        self.core_data = self.tik_instance.Scalar("int64", name="core_data")
+        self.core_used = self.tik_instance.Scalar("int64", name="core_used")
+        self.copy_loop = self.tik_instance.Scalar("int64", name="copy_loop")
+        self.copy_tail = self.tik_instance.Scalar("int64", name="copy_tail")
+        self.last_copy_loop = self.tik_instance.Scalar("int64", name="last_copy_loop")
+        self.last_copy_tail = self.tik_instance.Scalar("int64", name="last_copy_tail")
+
+    def _tiling_args(self):
+        """Get runtime tiling parameters from tiling
+        """
+        # read tiling int64 scalar
+        self.core_data.set_as(self.tiling_ub[0])
+        self.core_used.set_as(self.tiling_ub[1])
+        self.copy_loop.set_as(self.tiling_ub[2])
+        self.copy_tail.set_as(self.tiling_ub[3])
+        self.last_copy_loop.set_as(self.tiling_ub[4])
+        self.last_copy_tail.set_as(self.tiling_ub[5])
+
+    def copy_only(self, core_index, loop_num, tail_num):
+        """Only execute move in and move out
+        """
+        with self.tik_instance.for_range(0, loop_num) as loop_idx:
+            self.copy_in_and_out(core_index, loop_idx, self.copy_segment)
+        with self.tik_instance.if_scope(tail_num > 0):
+            self.copy_in_and_out(core_index, loop_num, tail_num)
+
+    def copy_in_and_out(self, core_index, loop_idx, loop_len):
+        """Copy in and out
+        """
+        offset = core_index * self.core_data + loop_idx * self.copy_segment
+        bust_len = _get_ceil_int(loop_len, self.data_len_one_block)
+        data_ub = self.tik_instance.Tensor(self.dst_dtype, [self.copy_segment], name="data_ub", scope=tik.scope_ubuf)
+        self.tik_instance.data_move(data_ub, self.src_gm[offset], 0, 1, bust_len, 0, 0)
+        self.tik_instance.data_move(self.dst_gm[offset], data_ub, 0, 1, bust_len, 0, 0)
+
+    def flatten_compute(self):
+        """Flatten compute
+        """
+        self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
+        self._tiling_args()
+        # core process
+        loop_num = self.tik_instance.Scalar("int64", name="loop_num")
+        tail_num = self.tik_instance.Scalar("int64", name="tail_num")
+        with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as core_index:
+            with self.tik_instance.if_scope(core_index < (self.core_used - 1)):
+                loop_num.set_as(self.copy_loop)
+                tail_num.set_as(self.copy_tail)
+            with self.tik_instance.else_scope():
+                loop_num.set_as(self.last_copy_loop)
+                tail_num.set_as(self.last_copy_tail)
+            self.copy_only(core_index, loop_num, tail_num)
+
+        # add compile info
+        tbe_context.get_context().add_compile_info("vars", {
+            "ub_size": self.copy_segment,
+            "core_num": self.core_num,
+            "block_size": self.data_len_one_block
+        })
+
+        # build cce
+        opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                    inputs=[self.src_gm],
+                                    outputs=[self.dst_gm],
+                                    flowtable=[self.tiling_gm],
+                                    config=opt_config)
+        return self.tik_instance
+
+
+@register_operator("Flatten")
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+def flatten(x, y, kernel_name="flatten"):
+    """return a copy of the tensor collapsed into one dimension.
+
+    Parameters
+    ----------
+    x : dict
+        shape and dtype of input.
+    y : dict
+        shape and dtype of output.
+    kernel_name : str
+        kernel name, default value is "flatten"
+
+    Returns
+    -------
+    None
+    """
+    obj = Flatten(x, y, kernel_name)
+    obj.flatten_compute()

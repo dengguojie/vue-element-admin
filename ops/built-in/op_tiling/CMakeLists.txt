@@ -104,6 +104,7 @@ set(_optiling_files
   bias_add_grad.cc
   reduce_mean.cc
   softmax_tiling.cc
+  flatten.cc
   embedding_dense_grad.cc
   one_hot.cc
   maxpoolwithargmaxv1.cc
