@@ -466,7 +466,7 @@ def _check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=
                                       " GMP pooling mode. while pooling mode is [%s]" % pooling_mode
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    if len(pad) != 4 or pad[0] < 0 or pad[1] < 0 or pad[2] < 0 or pad[3] < 0:
+    if len(pad) != 4:
         dict_args = dict()
         dict_args["errCode"] = "E90001"
         dict_args["detailed_cause"] = "invalid pad params, pad size must be" \
@@ -537,13 +537,6 @@ def _check_attr_rule_with_padding_mode(padding_mode):
     :param padding_mode: "SAME", "VALID"
     :return:
     """
-    if not isinstance(padding_mode, str):
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "invalid padding_mode params, " \
-                                      "type of padding_mode must be str. " \
-                                      "while padding_mode type is [%s]" % type(padding_mode)
-        raise RuntimeError(dict_args, get_error_message(dict_args))
     if padding_mode not in ["SAME", "VALID"]:
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -932,57 +925,6 @@ def _get_schedule_padding_mode(data_mode, padding_mode):
         padding_mode = "SAME"
 
     return padding_mode
-
-
-# pylint: disable=too-many-locals, too-many-arguments
-def _pooling2d_max(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling_params,
-                   setfmatrix_dict, fusion_params):
-    """
-    :params:
-    :fmap_img2col_ub: feature map after img2col in ub
-    :res_output_shape: shape of max pooling of result
-    :window_h: h dim of window
-    :window_w: w dim of window
-    :pooling_params: requantize pooling params
-    :setfmatrix_dict: set_fmatrix params, it is a dictionary
-    :return: res
-    """
-    # define reduce axis
-    reduce_axis = tvm.reduce_axis((0, window_h*window_w), name="reduce_axis")
-
-    # use emit_insn instead in the later procession
-    pooling_out_ub = tvm.compute(
-        res_output_shape,
-        lambda i, j, k, m, n:
-        tvm.max(fmap_img2col_ub[i, j, k, reduce_axis, m, n],
-                axis=reduce_axis),
-        name="pooling_out_ub"
-    )
-
-    batch_size = pooling_params["batch_size"]
-    c1_size = pooling_params["c1_value"]
-    oh_size = pooling_params["out_size_h"]
-    ow_size = pooling_params["out_size_w"]
-    c0_size = pooling_params["c_block_size"]
-
-    pooling_ub_5hd_shape = (batch_size, c1_size, oh_size*ow_size, c0_size)
-    pooling_ub_5hd = tvm.compute(
-        pooling_ub_5hd_shape,
-        lambda i, j, k, l: pooling_out_ub[i, k // 16, j, k % 16, l] + 0,
-        name="pooling_ub_5hd"
-    )
-
-    res = tvm.compute(
-        pooling_ub_5hd_shape,
-        lambda *indices: pooling_ub_5hd[indices],
-        name="pooling2d_res",
-        tag=_OP_TAG + 'max',
-        attrs={'pooling_params': pooling_params,
-               'setfmatrix_dict': setfmatrix_dict,
-               'fusion_params': fusion_params}
-    )
-
-    return res
 
 
 # pylint: disable=too-many-locals, too-many-arguments

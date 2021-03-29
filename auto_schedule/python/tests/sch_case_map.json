@@ -82,6 +82,7 @@
         "dsl_cpu/test_segment_compute_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/pooling2d.py":[
+        "pooling2d",
         "dsl_cpu/test_pooling2d_cpu_impl.py"
     ]
 
