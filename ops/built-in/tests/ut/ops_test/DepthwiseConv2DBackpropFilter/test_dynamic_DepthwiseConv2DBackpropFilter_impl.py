@@ -33,6 +33,8 @@ dynamic_conv2d_bp_filter_op_testcase = [
     ((3, 40, 9, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError),
     # -2
     ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 1, 2, 3], "success"),
+    # -1
+    ((3, -1, 200, 75), (3, -1, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 2, 3], "success"),
 ]
 
 
@@ -132,7 +134,7 @@ def _gen_case(param):
         "range": _get_range_from_shape(filter_grad_shape)
     }
 
-    kernel_name = _get_kernel_name(input_ori_shape, out_backprop_ori_shape, filter_size, strides, dilations, pads, data_format)
+    kernel_name = _get_kernel_name(input_shape, out_backprop_shape, filter_size, strides, dilations, pads, data_format)
     return {
         "params": [x, filter, out_backprop, filter_grad, strides, dilations, pads, data_format],
         "case_name": kernel_name,

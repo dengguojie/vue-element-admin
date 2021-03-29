@@ -117,7 +117,7 @@ def _check_shape(shape_in, shape_dedy, shape_dedw):
     if filter_n != 1:
         error_manager_cube.raise_err_three_paras("E62304", "depthwise_conv2d_backprop_filter",
                                        "filter_n", "1", str(filter_n))
-    if fmap_c*filter_n != dedy_c:
+    if fmap_c * filter_n != dedy_c:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "fmap_c*filter_n must be equal with dedy_c.")
     if fmap_n != dedy_n:
@@ -160,16 +160,20 @@ def _check_stride(strides, dim_n, dim_c):
                                          "stride only support 1 on N axis and C axis.")
 
 
-def _get_dynamic_shape(fmap, dedy, fmap_range, dedy_range):
+def _get_dynamic_shape(fmap, dedy, dedw, fmap_range, dedy_range):
 
     fmap_n, fmap_c, fmap_h, fmap_w = fmap
     dedy_n, dedy_c, dedy_h, dedy_w = dedy
+    dedw_n, dedw_c, _, _ = dedw
     if fmap_n != DYNAMIC_FLAG and fmap_h != DYNAMIC_FLAG and fmap_w != DYNAMIC_FLAG:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "no dynamic shape found in fmap.")
-    if fmap_n * dedy_n < 0 or fmap_h * dedy_h < 0 or fmap_w * dedy_w < 0:
+    if fmap_n * dedy_n < 0 or fmap_c * dedy_c < 0 or fmap_h * dedy_h < 0 or fmap_w * dedy_w < 0:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "dynamic dim in fmap and dedy should be consistant.")
+    if fmap_c == DYNAMIC_FLAG:
+        fmap_c = dedw_c
+        dedy_c = fmap_c * dedw_n
     if fmap_n == DYNAMIC_FLAG:
         fmap_n = operation.var("batch", bound=fmap_range[0])
         dedy_n = fmap_n
@@ -255,7 +259,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
         dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
         shape_in = [shape_in[dim_n], shape_in[dim_c], shape_in[dim_h], shape_in[dim_w]]
         shape_dedy = [shape_dedy[dim_n], shape_dedy[dim_c], shape_dedy[dim_h], shape_dedy[dim_w]]
-    shape_in, shape_dedy = _get_dynamic_shape(shape_in, shape_dedy, in_range, dedy_range)
+    shape_in, shape_dedy = _get_dynamic_shape(shape_in, shape_dedy, shape_dedw, in_range, dedy_range)
 
     para_check.check_dtype(in_dtype.lower(), ('float16',), param_name='input_fm')
     para_check.check_dtype(dedy_dtype.lower(), ('float16',), param_name='out_backprop')
@@ -333,7 +337,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     dedy = tvm.placeholder(dedy_shape_nc1hwc0, name="dedy", dtype=dedy_dtype)
 
     para_dict = {
-        "strides": [strides[dim_h], strides[dim_w]],
+        "strides": [strides[2], strides[3]],
         "padding": padding,
         "dilations": dilations,
         "groups": fmap_c,
