@@ -321,6 +321,10 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     dout_l1_size = input_w * (k_height + stride[0]) * BLOCK_SIZE * 2
     tile_k_o = dout_l1_size // l1_size + 1 if dout_l1_size > l1_size else 0
     tile_input_h = min(tile_input_h, max_tile_input_h)
+    if tile_input_h < 1:
+        tile_input_h = 1
+        tile_hd = tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom
+        tile_dile_h_ub = tile_hd
     # if tile_input_h > input_h, input_h no tiling
     if tile_input_h >= input_h:
         tile_input_h = input_h

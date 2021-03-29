@@ -37,9 +37,20 @@ case2 = {"params": [{"shape": (1,1,540,960,16), "dtype": "float16", "format": "N
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case3 = {"params": [{"shape": (1,1,1,2048,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,2048,16),"ori_format": "NHWC"},
+                    {"shape": (1,1,1,2048,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,2048,16),"ori_format": "NHWC"},
+                    {"shape": (1,1,1,1,16,16), "dtype": "float16", "format": "C1HWNCoC0", "ori_shape": (1,1,1,1),"ori_format": "NHWC"},
+                    {"shape": (1,1,1,2048,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,1,2048,16),"ori_format": "NHWC"},
+                    [1,1,2048,16], [1,1,1,1], [1,1,1,1], "SAME"],
+         "case_name": "AvgPoolGradD_3",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
+ut_case.add_case("Ascend910A", case3)
 
 def _NCHW_to_NC1C0HW(tensor):
     c0 = 16
