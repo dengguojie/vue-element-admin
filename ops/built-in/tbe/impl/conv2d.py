@@ -24,7 +24,6 @@ from tbe.dsl import auto_schedule
 from tbe.dsl import build
 from tbe.dsl.compute.conv_compute import conv
 from tbe.common.register import register_op_compute
-from tbe.common.register import set_fusion_buildcfg
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
@@ -308,11 +307,6 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
     -------
     tvm compute res
     """
-    build_cfg = {
-        'dummy_placeholder': True
-    }
-    set_fusion_buildcfg("conv2d", build_cfg)
-
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
         inputs, weights, bias, offset_w, strides, \
         pads, dilations, offset_x, groups, kernel_name, data_format, options)
@@ -561,10 +555,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
         "print_ir": need_print,
         "need_build": need_build,
         "name": kernel_name,
-        "tensor_list": tensor_list,
-        # In some cases, the number of parameters will be reduced by optimization.
-        # The dummy_placeholder option will turn off the optimization.
-        "dummy_placeholder": True
+        "tensor_list": tensor_list
     }
 
     build(sch, config)
