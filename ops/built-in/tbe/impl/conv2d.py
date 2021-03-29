@@ -18,6 +18,7 @@ conv2d
 from __future__ import absolute_import
 import math
 import json
+import traceback
 from tbe import tvm
 from tbe.dsl import auto_schedule
 from tbe.dsl import build
@@ -31,11 +32,129 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 
+
+@para_check.check_input_type(dict, dict, (dict, para_check.NONE_TYPE), (dict, para_check.NONE_TYPE), dict,
+                             (tuple, list), (tuple, list), (tuple, list), int, str, int, str)
+def check_supported(inputs, weights, bias, offset_w, outputs, strides,
+                    pads, dilations, groups=1, data_format='NHWC',
+                    offset_x=0, kernel_name="conv2d"):
+    """
+    1.The following are the supported data types and data formats:
+
+    | Tensor    | x       | filter  | bias    | y       |
+    | :-------: | :-----: | :-----: | :-----: | :-----: |
+    | Data Type | float16 | float16 | float16 | float16 |
+    |           | float32 | float32 | float32 | float32 |
+    |           | int8    | int8    | int32   | int32   |
+    | Format    | NCHW    | NCHW    | ND      | NCHW    |
+    |           | NHWC    | HWCN    |         | NHWC    |
+
+    Note: for float32 type, the actual calculation on the chip is based on float16. For int8,
+    a dequant or requant operator must be followed.
+
+    2.The following value range restrictions must be met:
+
+    | Name             | Field    | Scope       |
+    | :--------------: | :------: | :---------: |
+    | Input Image Size | H        | [1, 100000] |
+    |                  | W        | [1, 4096]   |
+    | Filter Size      | H        | [1, 255]    |
+    |                  | W        | [1, 255]    |
+    | Stride           | H        | [1, 63]     |
+    |                  | W        | [1, 63]     |
+    | Padding          | Top      | [0, 255]    |
+    |                  | Bottom   | [0, 255]    |
+    |                  | Left     | [0, 255]    |
+    |                  | Right    | [0, 255]    |
+    | Dilation         | H        | [1, 255]    |
+    |                  | W        | [1, 255]    |
+    | Offset_x         | -        | [-128, 127] |
+
+    Note: the W dimension of the input image supports cases exceeding 4096, but it may cause
+    compilation errors.
+    """
+    try:
+        check_list = [inputs, weights, strides, pads, dilations, outputs, data_format]
+        return_list = util_conv2d.calc_para_from_dict(*check_list)
+        offset_w_dtype = "int32"
+        valid = isinstance(offset_w, dict) and isinstance(offset_w.get("dtype"), str)
+        if valid:
+            offset_w_dtype = offset_w.get("dtype")
+        check_list = [*return_list[:6], inputs["dype"], weights["dtype"], outputs["dtype"],
+                      offset_w_dtype, (bias is None), kernel_name, *return_list[6:9], groups]
+        return_list = util_conv2d.conv_layer_cce_para_check(*check_list)
+        return True
+    except Exception as e:
+        msg = traceback.format_exc()
+        print(msg)
+        return False
+
+
 def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                      pads, dilations, groups=1, data_format='NHWC',
                      offset_x=0, kernel_name="conv2d"):
     """
-    select format dynamically
+    1.When input x type is float or float16, op select supports the following specification:
+
+    | Tensor    | x        | filter     | bias    | y       |
+    | :-------: | :------: | :--------: | :-----: | :-----: |
+    | Data Type | float16  | float16    | float16 | float16 |
+    | Format    | NC1HWC0  | FRACTAL_Z  |  ND     | NC1HWC0 |
+
+    Note: C0 = 32 / sizeof(data type), C1 = ceil(in_channels / C0), for float16 type, C0 = 16
+
+    2.When input x type is int8, op select supports the following specification:
+
+    | Tensor    | x        | filter     | bias    | y       |
+    | :-------: | :------: | :--------: | :-----: | :-----: |
+    | Data Type | int8     | int8       | int32   | int32   |
+    | Format    | NC1HWC0  | FRACTAL_Z  |  ND     | NC1HWC0 |
+
+    Note: for int8 type, C0 = 16, for int32 type, C0 = 8
+
+    3.When in_channels <=4, filter_height > 1, filter_width > 1, op select supports the additional
+    FRACTAL_Z_C04 format of input filter:
+
+    | Tensor    | x            | filter         | bias    | y       |
+    | :-------: | :----------: | :------------: | :-----: | :-----: |
+    | Format    | NC1HWC0      | FRACTAL_Z_C04  |  ND     | NC1HWC0 |
+
+    Note: the data type rules ares the same as above
+
+    for V200 chip, if it's the first layer, and the minimum data size load to l1 buffer dose not
+    exceed l1 buffer size, op select supports the additional NC1HWC0_C04 format of input x:
+
+    | Tensor    | x            | filter         | bias    | y       |
+    | :-------: | :----------: | :------------: | :-----: | :-----: |
+    | Format    | NC1HWC0_C04  | FRACTAL_Z_C04  |  ND     | NC1HWC0 |
+
+    Note:
+    - convolution input data calculation with in_channels reduce for every out_height line:
+
+            =----------------------------=
+            |\^                           \
+            | \in_channels                 \
+            |  \ v      <- in_width ->      \
+            |   =----------------------------=
+            |   |  ...                       |
+            |   |                      ^     |
+            |   | |#| |#| ...          |    -|--
+            |   |  |                         |^
+            |   | stride           in_height || image data needed for one line out on height
+            |   |  |                         |v
+            =   | |#| |#| ...          |    -|--
+             \  |  ...                 v     |
+              \ |                            |
+               \|                            |
+                =----------------------------=
+            "|#|" is the kernel(after dilate) swipe on the input image
+
+    - minimum size calculation:
+
+        `m_limit_out_v200 = lcm(out_width, 16) // out_width ("lcm": least common multiple)`
+        `in_height_need = (m_limit_out_v200 - 1) * stride_h- pad_left - pad_right +
+         (dilation_w * (filter_width - 1) + 1)`
+        `minimum_load_size = in_height_need * in_width * 8 ("8": comes from 2btype*C0=4)`
     """
     def _select_format(params):
         inputs = params[0]

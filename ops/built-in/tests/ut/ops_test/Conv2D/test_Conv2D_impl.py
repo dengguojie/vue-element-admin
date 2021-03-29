@@ -67,6 +67,29 @@ for test_case  in tc.conv2D_ut_testcase:
 print("adding Connv2D op support info of slice testcase")
 ut_case.add_cust_test_func(test_func=_test_get_op_support_info)
 
+def test_op_check_supported_1(test_arg):
+    from impl.conv2d import check_supported
+    input_list = [
+        {
+            'shape': (64, 1, 100000, 4096, 16),
+            'ori_shape': (64, 3, 100000, 4096),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'ori_shape': (33, 3, 255, 255),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'ori_format': 'NCHW',
+            'dtype': 'float16'
+        }, (1, 1, 63, 63), (255, 255, 255, 255), (1, 1, 255, 255), 1, 'NCHW', 127, 'conv2d_check_support']
+    check_supported(*input_list)
+
+print("adding conv2d test_op_check_supported_1 testcase")
+ut_case.add_cust_test_func(test_func=test_op_check_supported_1)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])
     dsl_cpu_test_int8()
