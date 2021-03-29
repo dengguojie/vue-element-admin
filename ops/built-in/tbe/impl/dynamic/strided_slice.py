@@ -27,6 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 MAX_SIZE = 2 ** 31 - 1
+MAX_NBURST = 4095
 
 
 def ceil_32bytes_align_count(count, dtype):
@@ -58,6 +59,7 @@ class StridedSlice:
         """
         TilingParam
         """
+
         def __init__(self, input_x_shape, inst: tik.Tik):
             """
             tiling param
@@ -81,6 +83,7 @@ class StridedSlice:
             self.stride = tuple(map(lambda x: gen_shape("stride_", x[0]), enumerate(input_x_shape)))
             self.output_shape = tuple(map(lambda x: gen_shape("out_dim_", x[0]), enumerate(input_x_shape)))
             self.out_dim = inst.Scalar(dtype, name="out_dim")
+            self.out_dim_with_vnchwconv = inst.Scalar(dtype, name="out_dim_with_vnchwconv")
 
         # pylint: disable=invalid-name
         def init(self):
@@ -99,10 +102,13 @@ class StridedSlice:
                         index += 1
 
             self.out_dim.set_as(1)
+            self.out_dim_with_vnchwconv.set_as(1)
             for index, dim in enumerate(self.output_shape):
                 dim.set_as(self.end[index] - self.begin[index])
                 if index != len(self.output_shape) - 1:
                     self.out_dim.set_as(self.out_dim * dim)
+                if index not in [len(self.output_shape) - 1, len(self.output_shape) - 2]:
+                    self.out_dim_with_vnchwconv.set_as(self.out_dim_with_vnchwconv * dim)
 
     # pylint: disable=locally-disabled,too-many-arguments,
     # pylint: disable=unused-argument,too-many-locals
@@ -132,6 +138,9 @@ class StridedSlice:
         self.reserve_ub_size = 0
         self.ub_size = (self.tik_profiling.get_unified_buffer_size() // self.dtype_size // self.block_element *
                         self.block_element) - self.reserve_ub_size
+        self.ub_size_with_vnchwconv = \
+            (self.tik_profiling.get_unified_buffer_size() // self.dtype_size - self.block_element) \
+            // 2 // self.block_element * self.block_element
         self.max_gap = 65535 * self.block_element
         self.max_last_dim = (self.max_gap + self.ub_size) // self.block_element
 
@@ -220,17 +229,37 @@ class StridedSlice:
         inst = self.tik_instance
         core_num = self.aicore_num
         output_shape = self.tiling_param.output_shape
-        with inst.for_range(0, core_num, block_num=core_num, name="core_idx") as i:
-            self.tiling_param.init()
-            with inst.if_scope(output_shape[-1] >= self.block_element):
-                self._do_large_last_dim(i)
-            with inst.else_scope():
-                self._do_small_last_dim(i)
+        input_shape = self.tiling_param.input_shape
+
+        if len(output_shape) >= 2 and self.dtype == "float16":
+            with inst.for_range(0, core_num, block_num=core_num, name="core_idx") as i:
+                self.tiling_param.init()
+                with inst.if_scope(output_shape[-1] >= self.block_element):
+                    self._do_large_last_dim(i)
+                with inst.else_scope():
+                    with inst.if_scope(tik.all(
+                        self.tiling_param.out_dim_with_vnchwconv % core_num == 0,
+                        output_shape[-2] >= 16,
+                        input_shape[-1] * 256 <= self.ub_size_with_vnchwconv
+                    )):
+                        self._do_small_last_dim_with_vnchwconv(i)
+                    with inst.else_scope():
+                        self._do_small_last_dim(i)
+        else:
+            with inst.for_range(0, core_num, block_num=core_num, name="core_idx") as i:
+                self.tiling_param.init()
+                with inst.if_scope(output_shape[-1] >= self.block_element):
+                    self._do_large_last_dim(i)
+                with inst.else_scope():
+                    self._do_small_last_dim(i)
 
     def _do_large_last_dim(self, core_idx):
         self._do_large_last_dim_normal(core_idx)
 
     def _do_large_last_dim_normal(self, core_idx):
+        """
+        _do_large_last_dim_normal
+        """
         inst = self.tik_instance
         core_num = self.aicore_num
         output_shape = self.tiling_param.output_shape
@@ -295,6 +324,9 @@ class StridedSlice:
                 self._data_move(output_gm[output_gm_addr], ub, ub_data_count)
 
     def _do_large_last_dim_align(self, input_gm_addr, output_gm_addr, inner_loop_idx):
+        """
+        _do_large_last_dim_align
+        """
         inst = self.tik_instance
         total = self.tiling_param.output_shape[-1]
         input_gm = self.input_gm
@@ -311,6 +343,9 @@ class StridedSlice:
 
     # pylint: disable=too-many-locals,invalid-name
     def _do_large_last_dim_not_align(self, input_gm_addr, output_gm_addr, inner_loop_idx):
+        """
+        _do_large_last_dim_not_align
+        """
         inst = self.tik_instance
         total = self.tiling_param.output_shape[-1]
         input_gm = self.input_gm
@@ -346,6 +381,9 @@ class StridedSlice:
                     self._data_move(output_gm[new_out_start_index:], ub, align_count)
 
     def _add_tail(self, ub, tmp_ub, idx, ub_data_count):
+        """
+        _add_tail
+        """
         inst = self.tik_instance
         inner_dim = self.tiling_param.output_shape[-1]
         out_dim = self.tiling_param.out_dim
@@ -361,6 +399,170 @@ class StridedSlice:
                     with inst.if_scope(ub_data_count < align_count):
                         ub[ub_data_count] = tmp_ub[index]
                         ub_data_count.set_as(ub_data_count + 1)
+
+    def _do_small_last_dim_with_vnchwconv(self, core_idx):
+        """
+        _do_small_last_dim_with_vnchwconv
+        """
+        inst = self.tik_instance
+        core_num = self.aicore_num
+        input_shape = self.tiling_param.input_shape
+        output_shape = self.tiling_param.output_shape
+        out_loops = self._ceil_div(self.tiling_param.out_dim_with_vnchwconv, core_num)
+        compute_rows_each_inner_loops = self.ub_size_with_vnchwconv // (16 * input_shape[-1]) // 16 * 16
+
+        inner_loops = self._ceil_div(output_shape[-2], compute_rows_each_inner_loops) - 1
+        compute_rows_tail = output_shape[-2] - inner_loops * compute_rows_each_inner_loops
+
+        with inst.for_range(0, out_loops, name="out_loops") as out_loops_idx:
+            idx = core_idx * out_loops + out_loops_idx
+            with inst.if_scope(idx < self.tiling_param.out_dim_with_vnchwconv):
+
+                input_gm_base_addr = self._get_input_base_gm_addr_with_vnchwconv(idx)
+                output_gm_base_addr = self._get_output_base_gm_addr_with_vnchwconv(idx)
+                with inst.for_range(0, inner_loops, name="inner_loops") as inner_loops_idx:
+                    input_gm_addr = input_gm_base_addr + inner_loops_idx * \
+                        compute_rows_each_inner_loops * input_shape[-1]
+                    output_gm_addr = output_gm_base_addr + inner_loops_idx * \
+                        compute_rows_each_inner_loops * output_shape[-1]
+
+                    self._do_each_matrix_align(input_gm_addr, output_gm_addr, compute_rows_each_inner_loops)
+
+                input_gm_addr = input_gm_base_addr + inner_loops * compute_rows_each_inner_loops * input_shape[-1]
+                output_gm_addr = output_gm_base_addr + inner_loops * compute_rows_each_inner_loops * output_shape[-1]
+                self._do_each_matrix_tail(input_gm_addr, output_gm_addr, compute_rows_tail, out_loops_idx, out_loops)
+
+    def _get_input_base_gm_addr_with_vnchwconv(self, cur_index: tik.Scalar):
+        """
+        _get_input_base_gm_addr_vnchw
+        """
+        reverse_part_output_shape = self.tiling_param.output_shape[::-1][2:]
+        reverse_input_shape = self.tiling_param.input_shape[::-1]
+        reverse_begin = self.tiling_param.begin[::-1][2:]
+        inst = self.tik_instance
+
+        tmp_cur_index = inst.Scalar(self.tiling_param.dtype, name="tmp_cur_index")
+        tmp_cur_index.set_as(cur_index)
+        addr = inst.Scalar(self.tiling_param.dtype, name="input_addr")
+        addr.set_as(self.tiling_param.begin[-2] * self.tiling_param.input_shape[-1])
+        tmp = inst.Scalar(self.tiling_param.dtype, name="dim")
+        step = inst.Scalar(self.tiling_param.dtype, name="step")
+        step.set_as(self.tiling_param.input_shape[-1])
+
+        for idx, dim in enumerate(reverse_part_output_shape):
+            step.set_as(step * reverse_input_shape[idx + 1])
+            tmp.set_as(tmp_cur_index % dim)
+            addr.set_as(addr + step * (tmp + reverse_begin[idx]))
+
+            tmp_cur_index.set_as(tmp_cur_index / dim)
+        return addr
+
+    def _get_output_base_gm_addr_with_vnchwconv(self, cur_index: tik.Scalar):
+        """
+        _get_output_base_gm_addr_vnchw
+        """
+        reverse_part_output_shape = self.tiling_param.output_shape[::-1][2:]
+        reverse_output_shape = self.tiling_param.output_shape[::-1]
+        inst = self.tik_instance
+
+        tmp_cur_index = inst.Scalar(self.tiling_param.dtype, name="tmp_cur_index")
+        tmp_cur_index.set_as(cur_index)
+        addr = inst.Scalar(self.tiling_param.dtype, name="output_addr")
+        addr.set_as(0)
+        tmp = inst.Scalar(self.tiling_param.dtype, name="dim")
+        step = inst.Scalar(self.tiling_param.dtype, name="step")
+        step.set_as(self.tiling_param.output_shape[-1])
+
+        for idx, dim in enumerate(reverse_part_output_shape):
+            step.set_as(step * reverse_output_shape[idx + 1])
+            tmp.set_as(tmp_cur_index % dim)
+            addr.set_as(addr + step * tmp)
+
+            tmp_cur_index.set_as(tmp_cur_index / dim)
+        return addr
+
+    def _do_each_matrix_align(self, input_gm_addr, output_gm_addr, rows):
+        """
+        _do_each_matrix_align
+        """
+        inst = self.tik_instance
+        output_matrix_count = self.tiling_param.output_shape[-1] * rows
+        with inst.new_stmt_scope():
+            ub1 = inst.Tensor(self.dtype, (self.ub_size_with_vnchwconv,), scope=tik.scope_ubuf, name="ub1")
+            ub2 = inst.Tensor(self.dtype, (self.ub_size_with_vnchwconv,), scope=tik.scope_ubuf, name="ub2")
+            self._do_each_matrix_except_move_output_gm(input_gm_addr, output_gm_addr, rows, [ub1, ub2])
+            self._data_move(self.output_gm[output_gm_addr], ub2, output_matrix_count)
+
+    def _do_each_matrix_except_move_output_gm(self, input_gm_addr, output_gm_addr, rows, ub_list):
+        """
+        _do_each_matrix_except_move_output_gm
+        """
+        inst = self.tik_instance
+        input_shape = self.tiling_param.input_shape
+        output_shape = self.tiling_param.output_shape
+        begin = self.tiling_param.begin
+        ub1, ub2 = ub_list
+        input_matrix_count = input_shape[-1] * rows
+        self._data_move(ub1, self.input_gm[input_gm_addr], input_matrix_count)
+
+        # first vnchwconv_loop: ub1(32, 31) -> ub2(32 * 31, 16)
+        vnchwconv_loop = self._ceil_div(input_matrix_count, 16)
+        with inst.for_range(0, vnchwconv_loop) as i:
+            src_addr = [ub1[16 * i + 16 * j] for j in range(16)]
+            dst_addr = [ub2[16 * 16 * i + 16 * j] for j in range(16)]
+            inst.vnchwconv(False, False, dst_addr, src_addr, 1, 0, 0)
+
+        nburst_loop = rows // MAX_NBURST
+        with inst.for_range(0, nburst_loop) as i:
+            inst.data_move(
+                ub1[i * MAX_NBURST * output_shape[-1] * 16],
+                ub2[(i * MAX_NBURST * input_shape[-1] + begin[-1]) * 16],
+                0,
+                MAX_NBURST,
+                output_shape[-1],
+                input_shape[-1] - output_shape[-1],
+                0)
+
+        with inst.if_scope(rows % MAX_NBURST != 0):
+            inst.data_move(
+                ub1[nburst_loop * MAX_NBURST * output_shape[-1] * 16],
+                ub2[(nburst_loop * MAX_NBURST * input_shape[-1] + begin[-1]) * 16],
+                0,
+                rows % MAX_NBURST,
+                output_shape[-1],
+                input_shape[-1] - output_shape[-1],
+                0)
+
+        output_matrix_count = output_shape[-1] * rows
+        vnchwconv_loop = self._ceil_div(output_matrix_count, 16)
+        with inst.for_range(0, vnchwconv_loop) as i:
+            src_addr = [ub1[16 * 16 * i + 16 * j] for j in range(16)]
+            dst_addr = [ub2[16 * i + 16 * j] for j in range(16)]
+            inst.vnchwconv(False, False, dst_addr, src_addr, 1, 0, 0)
+
+    def _do_each_matrix_tail(self, input_gm_addr, output_gm_addr, rows, out_loops_idx, out_loops):
+        """
+        _do_each_matrix_tail
+        """
+        inst = self.tik_instance
+        output_matrix_count = self.tiling_param.output_shape[-1] * rows
+        with inst.new_stmt_scope():
+            ub1 = inst.Tensor(self.dtype, (self.ub_size_with_vnchwconv,), scope=tik.scope_ubuf, name="ub1")
+            ub2 = inst.Tensor(self.dtype, (self.ub_size_with_vnchwconv,), scope=tik.scope_ubuf, name="ub2")
+            ub_block = inst.Tensor(self.dtype, (self.block_element,), scope=tik.scope_ubuf, name="ub_block")
+
+            self._do_each_matrix_except_move_output_gm(input_gm_addr, output_gm_addr, rows, [ub1, ub2])
+
+            with inst.if_scope(tik.all(out_loops_idx == out_loops - 1, output_matrix_count % self.block_element != 0)):
+                floor_align_count = output_matrix_count // self.block_element * self.block_element
+                self._data_move(self.output_gm[output_gm_addr], ub2, floor_align_count)
+                with inst.for_range(0, self.block_element, name="block_element_loop") as element_id:
+                    ub_block[element_id] = ub2[output_matrix_count - self.block_element + element_id]
+                self._data_move(self.output_gm[output_gm_addr + output_matrix_count -
+                                               self.block_element], ub_block, self.block_element)
+
+            with inst.else_scope():
+                self._data_move(self.output_gm[output_gm_addr], ub2, output_matrix_count)
 
 
 # pylint: disable=locally-disabled,too-many-arguments,
@@ -434,9 +636,9 @@ def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0
                   enable_l2=False)
 
     tbe_context.get_context().add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num,
-                                    "begin_mask": strided_slice_instance.begin_mask,
-                                    "end_mask": strided_slice_instance.end_mask,
-                                    "ellipsis_mask": strided_slice_instance.ellipsis_mask,
-                                    "new_axis_mask": strided_slice_instance.new_axis_mask,
-                                    "shrink_axis_mask": strided_slice_instance.shrink_axis_mask})
+                                                        "begin_mask": strided_slice_instance.begin_mask,
+                                                        "end_mask": strided_slice_instance.end_mask,
+                                                        "ellipsis_mask": strided_slice_instance.ellipsis_mask,
+                                                        "new_axis_mask": strided_slice_instance.new_axis_mask,
+                                                        "shrink_axis_mask": strided_slice_instance.shrink_axis_mask})
     return inst
