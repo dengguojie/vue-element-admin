@@ -15,9 +15,6 @@
 """
 minimum_grad
 """
-import functools
-import math
-from functools import reduce as reduceIns
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe
@@ -242,7 +239,7 @@ def minimum_grad(grads, x1, x2, y1, y2, grad_x=True, grad_y=True,
     para_check.check_dtype(dtype_dz, check_list, param_name="grads")
     para_check.check_dtype(dtype_x, check_list, param_name="x1")
     para_check.check_dtype(dtype_y, check_list, param_name="x2")
-    ins = classify([grads, x1, x2], OpPatternMode.ELEWISE)
+    ins = classify([grads, x1, x2], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (grads, x1, x2) in ins:
         with tbe.compute():
