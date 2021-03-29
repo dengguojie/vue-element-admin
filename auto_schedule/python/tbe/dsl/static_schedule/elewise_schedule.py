@@ -4004,12 +4004,8 @@ class CceOp:
                     # tensorize_axis, "reduce_nlst_axis_" + lop["op"])
                     lop["tensorize_axis"], "vector_" + lop["op"])
         else:
-            if lop["op"] == "reduce_prod":
-                self._schedule[lop["cache_buffer"]].emit_insn(
-                    lop["tensorize_axis"], "vector_" + lop["op"])
-            else:
-                self._schedule[lop["cache_buffer"]].emit_insn(
-                    lop["tensorize_axis"], "reduce_nlst_axis_" + lop["op"])
+            self._schedule[lop["cache_buffer"]].emit_insn(
+                lop["tensorize_axis"], "vector_" + lop["op"])
 
     def _get_backend_reduce_last_insn(self):
         # v100 not support fp32 vcmax/vcmin,
@@ -4060,21 +4056,8 @@ class CceOp:
                 self._is_last_reduce = lop["self._is_last_reduce"]
                 if self._is_last_reduce:
                     if self._need_enable_muticore:
-                        def __is_need_vector_emit_insn():
-                            backend_reduce_insn = self._get_backend_reduce_last_insn()
-                            if lop["op"] in backend_reduce_insn or \
-                                    (cache_buffer.dtype in ["float16", "float32", "int32"] and
-                                     lop["op"] in ["reduce_min", "reduce_max", "reduce_prod"]):
-                                return True
-                            return False
-
-                        if __is_need_vector_emit_insn():
-                            self._schedule[cache_buffer].emit_insn(
-                                tensorize_axis, "vector_" + lop["op"])
-                        else:
-                            self._schedule[cache_buffer].emit_insn(
-                                tensorize_axis, "reduce_last_axis_" + lop["op"])
-
+                        self._schedule[cache_buffer].emit_insn(
+                            tensorize_axis, "vector_" + lop["op"])
                     else:
                         if lop["op"] == "reduce_max" and cache_buffer.dtype == "float32":
                             self._schedule[cache_buffer].emit_insn(
