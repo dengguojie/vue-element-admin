@@ -299,28 +299,24 @@ Status FusedBatchNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control edge to fusion node:%s's control edge.",
               fusedBatchNormGrad->GetName().c_str(), xUpdateOp->GetName().c_str());
     }
-    for (auto fusedToUpdatePeerInControlAnchor : fusedBatchNormGrad->GetOutControlAnchor()->GetPeerInControlAnchors()) {
-      fusedToUpdatePeerInControlAnchor->UnlinkAll();
-      FUSION_PASS_CHECK(
-          SUCCESS != ge::GraphUtils::AddEdge(xUpdateOp->GetOutControlAnchor(), fusedToUpdatePeerInControlAnchor),
-          OP_LOGE(FUSED_OP_TYPE.c_str(),
-                  "Add edge from fused node:%s's control edge to fusion node:%s's control edge failed.",
-                  fusedBatchNormGrad->GetName().c_str(), xUpdateOp->GetName().c_str()),
-          return FAILED);
+    for (auto fusedPeerInControlAnchor : fusedBatchNormGrad->GetOutControlAnchor()->GetPeerInControlAnchors()) {
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(xUpdateOp->GetOutControlAnchor(), fusedPeerInControlAnchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                          "Add edge from fused node:%s's control edge to fusion node:%s's control edge failed.",
+                          fusedBatchNormGrad->GetName().c_str(), xUpdateOp->GetName().c_str()),
+      return FAILED);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control edge to fusion node:%s's control edge.",
               fusedBatchNormGrad->GetName().c_str(), xUpdateOp->GetName().c_str());
-    }
-    for (auto fusedToReducePeerInControlAnchor : fusedBatchNormGrad->GetOutControlAnchor()->GetPeerInControlAnchors()) {
-      fusedToReducePeerInControlAnchor->UnlinkAll();
-      FUSION_PASS_CHECK(
-          SUCCESS != ge::GraphUtils::AddEdge(xReduceOp->GetOutControlAnchor(), fusedToReducePeerInControlAnchor),
-          OP_LOGE(FUSED_OP_TYPE.c_str(),
-                  "Add edge from fused node:%s's control edge to fusion node:%s's control edge failed.",
-                  fusedBatchNormGrad->GetName().c_str(), xReduceOp->GetName().c_str()),
-          return FAILED);
+
+      FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(xReduceOp->GetOutControlAnchor(), fusedPeerInControlAnchor),
+                        OP_LOGE(FUSED_OP_TYPE.c_str(),
+                          "Add edge from fused node:%s's control edge to fusion node:%s's control edge failed.",
+                          fusedBatchNormGrad->GetName().c_str(), xReduceOp->GetName().c_str()),
+      return FAILED);
       OP_LOGD(FUSED_OP_TYPE.c_str(), "Add edge from fused node:%s's control edge to fusion node:%s's control edge.",
               fusedBatchNormGrad->GetName().c_str(), xReduceOp->GetName().c_str());
     }
+
     if (fusedBatchNormGrad->GetInControlAnchor() != nullptr) {
       fusedBatchNormGrad->GetInControlAnchor()->UnlinkAll();
     }
