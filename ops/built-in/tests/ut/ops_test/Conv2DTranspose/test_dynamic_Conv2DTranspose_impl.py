@@ -43,7 +43,7 @@ ut_case.add_case(
                                         ((1, 1), (16, 16), (6, 26), (6, 26)),
                                         ((4, 4)),
                                         (1, 1, 1, 1), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case1",
+                                        "dynamic_conv2d_transpose_case1",
                                         "success"))
 
 # opti, dynamic_hw, range(n,None)
@@ -56,7 +56,7 @@ ut_case.add_case(
                                         ((1, 1), (16, 16), (6, None), (6, None)),
                                         ((4, 4)),
                                         (1, 1, 1, 1), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case1",
+                                        "dynamic_conv2d_transpose_case2",
                                         "success"))
 
 # general, dynamic_batch
@@ -69,7 +69,7 @@ ut_case.add_case(
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
                                         ((4, 4)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case4",
+                                        "dynamic_conv2d_transpose_case3",
                                         "success"))
 
 # general, dynamic_batch,y and data_format are not the same
@@ -82,7 +82,7 @@ ut_case.add_case(
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
                                         ((4, 4)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case4",
+                                        "dynamic_conv2d_transpose_case4",
                                         "failed"))
 
 # general, dynamic_batch,N dim's range is (1, None)
@@ -95,7 +95,7 @@ ut_case.add_case(
                                         ((1, None), (16, 16), (8, 8), (16, 16)),
                                         ((4, 4)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case4",
+                                        "dynamic_conv2d_transpose_case5",
                                         "failed"))
 
 
@@ -108,7 +108,7 @@ ut_case.add_case(
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
                                         ((-2, -2)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case4",
+                                        "dynamic_conv2d_transpose_case6",
                                         "failed"))
 
 # general, dynamic_hw,hw dim's range is (2000, 2047)
@@ -121,7 +121,7 @@ ut_case.add_case(
                                         ((4, 4), (16, 16), (4000, 4097), (4000, 4096)),
                                         ((4, 4)),
                                         (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case5",
+                                        "dynamic_conv2d_transpose_case7",
                                         "success"))
 
 if __name__ == '__main__':

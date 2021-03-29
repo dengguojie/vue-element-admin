@@ -48,7 +48,7 @@ ut_case.add_case(
                                         ((1, 1), (128, 128), (1, None), (1, None)),
                                         ((1, 1), (128, 128), (4, None), (4, None)),
                                         (1, 1), [1, 1, 1, 1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_deconvolution_case1",
+                                        "dynamic_deconvolution_case2",
                                         "success"))
 
 # general, dynamic_hw
@@ -60,7 +60,7 @@ ut_case.add_case(
                                         ((1, 1), (32, 32), (4, 24), (4, 24)),
                                         ((1, 1), (16, 16), (6, 26), (6, 26)),
                                         (1, 1), [0,0,0,0], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_deconvolution_case2",
+                                        "dynamic_deconvolution_case3",
                                         "success"))
 
 # general, dynamic_hw
@@ -72,7 +72,7 @@ ut_case.add_case(
                                         ((1, 1), (32, 32), (4, None), (4, None)),
                                         ((1, 1), (16, 16), (6, None), (6, None)),
                                         (1, 1), [0,0,0,0], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_deconvolution_case2",
+                                        "dynamic_deconvolution_case4",
                                         "success"))
 
 # opti, dynamic_batch
@@ -84,7 +84,7 @@ ut_case.add_case(
                                         ((1, 10), (32, 32), (8, 8), (16, 16)),
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
                                         (2, 2), [0,0,0,0], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_deconvolution_case3",
+                                        "dynamic_deconvolution_case5",
                                         "success"))
 # general, dynamic_batch
 ut_case.add_case(
@@ -95,7 +95,7 @@ ut_case.add_case(
                                         ((1, 10), (128, 128), (28, 28), (28, 28)),
                                         ((1, 10), (128, 128), (28, 28), (28, 28)),
                                         (1, 1), [1, 1, 1, 1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_deconvolution_case4",
+                                        "dynamic_deconvolution_case6",
                                         "success"))
 
 if __name__ == '__main__':
