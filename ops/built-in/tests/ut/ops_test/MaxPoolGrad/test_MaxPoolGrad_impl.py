@@ -177,6 +177,14 @@ def do_case_error(list_ori_shape, ksize, strides, paddings, data_format, case_na
 # VALID: split n and c1 as core
 # ============================================
 # not_tiling
+ori_shape0 = [158, 116, 188, 32]
+ori_shape1 = [158, 2, 4, 32]
+ksize = [1, 2, 108, 1]
+strides = [1, 62, 21, 1]
+paddings = "VALID"
+data_format = "NHWC"
+do_case(ori_shape0, ori_shape1, ksize, strides, paddings, data_format, "case_0")
+
 ori_shape0 = [32, 3, 3, 48]
 ori_shape1 = [32, 1, 1, 48]
 ksize = [1, 2, 2, 1]

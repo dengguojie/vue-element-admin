@@ -890,7 +890,8 @@ class MaxpoolGrad:
             need_cut_wo = False
             return need_cut_l1, need_cut_ho, need_cut_wo, 1, 0
 
-        if self.kh > self.stride_h:
+        wi_temp = self.wi + pad_left + pad_right
+        if self.kh > self.stride_h or self.stride_h * wi_temp * c0_local * (fp16_data_size + fp32_data_size) > SIZE_L1:
             each_process_hi = self.kh
         else:
             each_process_hi = self.stride_h
@@ -978,7 +979,10 @@ class MaxpoolGrad:
             # There are two col ub, one is fp32, other is fp16, shape is (each_hi, wi, c0_local)
             # self.kh > self.stride_h, each_hi = (each_process_ho - 1) * self.stride_h + self.kh
             # self.kh <= self.stride_h, each_hi = each_process_ho * self.stride_h
-            col_size_times = self.stride_h * wi * c0_local * (fp16_data_size + fp32_data_size)
+            if self.stride_h * wi_temp * c0_local * (fp16_data_size + fp32_data_size) > SIZE_L1:
+                col_size_times = self.kh * wi * c0_local * (fp16_data_size + fp32_data_size)
+            else:
+                col_size_times = self.stride_h * wi * c0_local * (fp16_data_size + fp32_data_size)
             col_size_const = max(0, self.kh - self.stride_h) * wi * c0_local * (fp16_data_size + fp32_data_size)
 
             # calculate mask ub size
@@ -1107,7 +1111,7 @@ class MaxpoolGrad:
         hi = shape_hi + self.pad_top + self.pad_bottom
 
         # define col res
-        col2img_ub_shape = (hi, wi, C0)
+        col2img_ub_shape = (self.kh, wi, C0) if self.stride_h * wi * C0 * 6 > SIZE_L1 else (hi, wi, C0)
         col2img_fp32_ub = self.tik_instance.Tensor("float32",
                                                    col2img_ub_shape,
                                                    name="col2img_fp32_ub",
@@ -1135,64 +1139,137 @@ class MaxpoolGrad:
         # init col2img_fp32_ub, if not the first one and have overlap, dump the overlap part to col2img_fp32_ub, here
         # we process whole ho, so no need to move overlap part
         self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
-
-        with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
-            with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
-                self.tik_instance.load3dv1(ori_input_col_ub[0], ori_input_l1[0],
-                                           (pad_left, pad_right, pad_top, pad_bottom), mov_len_hi, self.wi, 0, index_w,
-                                           index_h, -pad_left, -pad_top, self.stride_w, self.stride_h, self.kw, self.kh,
-                                           1, 1, 1, 1, repeate_time, 0, self.pad_value)
-
-                # calculate mask here
-                mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
-                mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or,
-                                          mask_not)
-                grad_sel_ub = self._vsel_grad_col(mask_ub, grad_ub)
-                grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
-                                                            grad_sel_ub.shape,
-                                                            name='grad_sel_ub_fp32',
-                                                            scope=tik.scope_ubuf)
-                self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
-                with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
-                    col_index = index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * ho_idx
-                    mask_index = self.wo * C0 * ho_idx
-                    self._vector_op("vadd",
-                                    col2img_fp32_ub[col_index:],
-                                    grad_sel_ub_fp32[mask_index:],
-                                    col2img_fp32_ub[col_index:],
-                                    "float32",
-                                    self.wo * C0 // 2,
-                                    stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2, self.stride_w * 16,
-                                                  self.stride_w * 16, 16))
-                    self._vector_op("vadd",
-                                    col2img_fp32_ub[col_index + 8:],
-                                    grad_sel_ub_fp32[mask_index + 8:],
-                                    col2img_fp32_ub[col_index + 8:],
-                                    "float32",
-                                    self.wo * C0 // 2,
-                                    stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2, self.stride_w * 16,
-                                                  self.stride_w * 16, 16))
-
-        col2img_fp16_ub = self.tik_instance.Tensor("float16",
-                                                   col2img_ub_shape,
-                                                   name="col2img_fp16_ub",
-                                                   scope=tik.scope_ubuf)
-        self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
-
-        if offset_gm_block is None:
+        if self.stride_h * wi * C0 * 6 > SIZE_L1:
+            col2img_fp16_ub = self.tik_instance.Tensor("float16",
+                                                       col2img_ub_shape,
+                                                       name="col2img_fp16_ub",
+                                                       scope=tik.scope_ubuf)
+            self._vector_dup(col2img_fp16_ub, 0, col2img_fp16_ub.shape, self.scalar_zero_fp16, "float16")
             pad_top_offset = pad_top * wi * C0
-            self.tik_instance.data_move(self.res_gm[self.offset_gm], col2img_fp16_ub[pad_top_offset + pad_left * C0], 0,
-                                        self.hi, self.wi * C0 // 16, pad_left + pad_right, 0)
-        else:
-            with self.tik_instance.if_scope(start_threshold > pad_top):
-                self.tik_instance.data_move(self.res_gm[offset_gm_block],
-                                            col2img_fp16_ub[start_threshold * wi * C0 + pad_left * C0], 0,
-                                            each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
+            with self.tik_instance.for_range(0, hi) as re_times:
+                self.tik_instance.data_move(self.res_gm[self.offset_gm + re_times * wi * C0],
+                                            col2img_fp16_ub[pad_top_offset + pad_left * C0], 0, 1, wi * C0 // 16,
+                                            pad_left + pad_right, 0)
+            with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
+                self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape, self.scalar_zero, "float32")
+                with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
+                    with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
+                        self.tik_instance.load3dv1(ori_input_col_ub[0], ori_input_l1[0],
+                                                   (pad_left, pad_right, pad_top, pad_bottom), mov_len_hi, self.wi, 0,
+                                                   index_w,
+                                                   index_h, -pad_left, -pad_top, self.stride_w, self.stride_h, self.kw,
+                                                   self.kh,
+                                                   1, 1, 1, 1, repeate_time, 0, self.pad_value)
 
-            with self.tik_instance.else_scope():
-                self.tik_instance.data_move(self.res_gm[offset_gm_block],
-                                            col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0], 0,
-                                            each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
+                        # calculate mask here
+                        mask_shape = (
+                        _ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE,)
+                        mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub,
+                                                  mask_or,
+                                                  mask_not)
+                        grad_sel_ub = self._vsel_grad_col(mask_ub, grad_ub)
+                        grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
+                                                                    grad_sel_ub.shape,
+                                                                    name='grad_sel_ub_fp32',
+                                                                    scope=tik.scope_ubuf)
+                        self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
+                        col_index = index_h * wi * C0 + index_w * C0
+                        col_index_ori = wi * C0 * self.stride_h * ho_idx
+                        mask_index = self.wo * C0 * ho_idx
+                        self._vector_op("vadd",
+                                        col2img_fp32_ub[col_index:],
+                                        grad_sel_ub_fp32[mask_index:],
+                                        col2img_fp32_ub[col_index:],
+                                        "float32",
+                                        self.wo * C0 // 2,
+                                        stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2, self.stride_w * 16,
+                                                      self.stride_w * 16, 16))
+                        self._vector_op("vadd",
+                                        col2img_fp32_ub[col_index + 8:],
+                                        grad_sel_ub_fp32[mask_index + 8:],
+                                        col2img_fp32_ub[col_index + 8:],
+                                        "float32",
+                                        self.wo * C0 // 2,
+                                        stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2, self.stride_w * 16,
+                                                      self.stride_w * 16, 16))
+                col2img_fp16_ub = self.tik_instance.Tensor("float16",
+                                                           col2img_ub_shape,
+                                                           name="col2img_fp16_ub",
+                                                           scope=tik.scope_ubuf)
+                self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
+                self.tik_instance.data_move(self.res_gm[self.offset_gm + col_index_ori], col2img_fp16_ub[pad_top_offset + pad_left * C0], 0,
+                                            self.kh, wi * C0 // 16, pad_left + pad_right, 0)
+            if offset_gm_block is not None:
+                with self.tik_instance.if_scope(start_threshold > pad_top):
+                    self.tik_instance.data_move(self.res_gm[offset_gm_block],
+                                                col2img_fp16_ub[start_threshold * wi * C0 + pad_left * C0], 0,
+                                                each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
+
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(self.res_gm[offset_gm_block],
+                                                col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0], 0,
+                                                each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
+
+
+
+        else:
+            with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
+                with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
+                    self.tik_instance.load3dv1(ori_input_col_ub[0], ori_input_l1[0],
+                                               (pad_left, pad_right, pad_top, pad_bottom), mov_len_hi, self.wi, 0, index_w,
+                                               index_h, -pad_left, -pad_top, self.stride_w, self.stride_h, self.kw, self.kh,
+                                               1, 1, 1, 1, repeate_time, 0, self.pad_value)
+
+                    # calculate mask here
+                    mask_shape = (_ceil_div(_cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) * MASK128_VALUE, )
+                    mask_ub = self._calc_mask(index_h, index_w, mask_shape, ori_output_ub, ori_input_col_ub, mask_or,
+                                              mask_not)
+                    grad_sel_ub = self._vsel_grad_col(mask_ub, grad_ub)
+                    grad_sel_ub_fp32 = self.tik_instance.Tensor("float32",
+                                                                grad_sel_ub.shape,
+                                                                name='grad_sel_ub_fp32',
+                                                                scope=tik.scope_ubuf)
+                    self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0, _cal_shape_ele(grad_sel_ub.shape), "float16")
+                    with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
+                        col_index = index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * ho_idx
+                        mask_index = self.wo * C0 * ho_idx
+                        self._vector_op("vadd",
+                                        col2img_fp32_ub[col_index:],
+                                        grad_sel_ub_fp32[mask_index:],
+                                        col2img_fp32_ub[col_index:],
+                                        "float32",
+                                        self.wo * C0 // 2,
+                                        stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2, self.stride_w * 16,
+                                                      self.stride_w * 16, 16))
+                        self._vector_op("vadd",
+                                        col2img_fp32_ub[col_index + 8:],
+                                        grad_sel_ub_fp32[mask_index + 8:],
+                                        col2img_fp32_ub[col_index + 8:],
+                                        "float32",
+                                        self.wo * C0 // 2,
+                                        stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2, self.stride_w * 16,
+                                                      self.stride_w * 16, 16))
+
+            col2img_fp16_ub = self.tik_instance.Tensor("float16",
+                                                       col2img_ub_shape,
+                                                       name="col2img_fp16_ub",
+                                                       scope=tik.scope_ubuf)
+            self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0, _cal_shape_ele(col2img_fp32_ub.shape), "float32")
+
+            if offset_gm_block is None:
+                pad_top_offset = pad_top * wi * C0
+                self.tik_instance.data_move(self.res_gm[self.offset_gm], col2img_fp16_ub[pad_top_offset + pad_left * C0], 0,
+                                            self.hi, self.wi * C0 // 16, pad_left + pad_right, 0)
+            else:
+                with self.tik_instance.if_scope(start_threshold > pad_top):
+                    self.tik_instance.data_move(self.res_gm[offset_gm_block],
+                                                col2img_fp16_ub[start_threshold * wi * C0 + pad_left * C0], 0,
+                                                each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
+
+                with self.tik_instance.else_scope():
+                    self.tik_instance.data_move(self.res_gm[offset_gm_block],
+                                                col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0], 0,
+                                                each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
 
     def _global_mode(self, n_index, c1_index, mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, shape):
         shape_ho, shape_wo, shape_hi, _ = shape
