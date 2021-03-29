@@ -659,24 +659,23 @@ class GatherV2():
         burst_len_res = ceil_value(row_num_last * self.params_row * self.params_dsize, BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row
 
-        with tik_instance.new_stmt_scope(disable_sync=True):
-            with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
-                # compute gm offset of x
-                indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
-                indices_value.set_as(indices_ub[inner_indices_offset + row_i])
-                gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
-                l1_offset = gm_offset // self.block_elem * self.block_elem
-                ub_offset = gm_offset % self.block_elem
+        with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
+            # compute gm offset of x
+            indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
+            indices_value.set_as(indices_ub[inner_indices_offset + row_i])
+            gm_offset = (pre_i * self.params_axis + indices_value) * self.params_row
+            l1_offset = gm_offset // self.block_elem * self.block_elem
+            ub_offset = gm_offset % self.block_elem
 
-                block_ub = tik_instance.Tensor(self.params_dtype, (self.block_elem * 2,), name="block_ub",
-                                               scope=tik.scope_ubuf)
-                # copy params row from gm to block_ub
-                tik_instance.data_move(block_ub, x_src[l1_offset], 0, 1, 2, 0, 0)
+            block_ub = tik_instance.Tensor(self.params_dtype, (self.block_elem * 2,), name="block_ub",
+                                           scope=tik.scope_ubuf)
+            # copy params row from gm to block_ub
+            tik_instance.data_move(block_ub, x_src[l1_offset], 0, 1, 2, 0, 0)
 
-                # set result to res_ub
-                res_ub_offset = row_i * self.params_row
-                with tik_instance.for_range(0, self.params_row) as i:
-                    res_ub[res_ub_offset + i].set_as(block_ub[ub_offset + i])
+            # set result to res_ub
+            res_ub_offset = row_i * self.params_row
+            with tik_instance.for_range(0, self.params_row) as i:
+                res_ub[res_ub_offset + i].set_as(block_ub[ub_offset + i])
 
         # move result data from ub to gm
         tail_elem = (row_num_last * self.params_row) % self.block_elem
