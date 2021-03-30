@@ -20,15 +20,16 @@
 #include "op_tiling.h"
 
 namespace optiling {
-// CASE1 CASE2 CASE3 cut nc1h axis for block parallel, CASE1 cut nc1h_in and CASE2 cut wo
-// CASE4 CASE5 cut wo for block parallel, CASE4 cut wo_block_in
-enum tiling_case {CASE1, CASE2, CASE3, CASE4, CASE5, CASE6};
+// CASE1 CASE2 CASE3 CASE7 CASE8 CASE9 cut nc1h axis for block parallel, CASE1 CASE3 CASE7 CASE8 CASE9 cut nc1h_in
+// and CASE2 cut wo.
+// CASE4 CASE5 cut wo for block parallel, CASE4 cut wo_block_in.
+enum tiling_case {CASE1, CASE2, CASE3, CASE4, CASE5, CASE6, CASE7, CASE8, CASE9};
 
 vector<int32_t> GetTilingData(int32_t nc1h, int32_t wo, int32_t max_w_in_ub, int32_t core_num, int32_t &block_dim) {
   vector<int32_t> tiling_data;
   if (nc1h >= core_num) {
     // do not need to cut wo for block parallel
-    int32_t nc1h_factor = nc1h / core_num;
+    int32_t nc1h_factor = (nc1h + core_num - 1) / core_num;
     int32_t nc1h_parts = (nc1h + nc1h_factor - 1) / nc1h_factor;
     block_dim = nc1h_parts;
     if (wo > max_w_in_ub) {
@@ -37,12 +38,18 @@ vector<int32_t> GetTilingData(int32_t nc1h, int32_t wo, int32_t max_w_in_ub, int
       tiling_data.push_back(CASE2);
       tiling_data.push_back(nc1h_factor);
       tiling_data.push_back(wo_factor);
-    } else if (nc1h_factor * wo > max_w_in_ub) {
-      // nc1h_factor,wo,c0 can not be calculated whole
-      int32_t nc1h_in_factor = max_w_in_ub / wo;
+    } else if (wo <= max_w_in_ub / 64) {
+      tiling_data.push_back(CASE9);
+      tiling_data.push_back(nc1h_factor);
+    } else if (wo <= max_w_in_ub / 32) {
+      tiling_data.push_back(CASE8);
+      tiling_data.push_back(nc1h_factor);
+    } else if (wo <= max_w_in_ub / 8) {
+      tiling_data.push_back(CASE7);
+      tiling_data.push_back(nc1h_factor);
+    } else if (wo <= max_w_in_ub / 2) {
       tiling_data.push_back(CASE1);
       tiling_data.push_back(nc1h_factor);
-      tiling_data.push_back(nc1h_in_factor);
     } else {
       tiling_data.push_back(CASE3);
       tiling_data.push_back(nc1h_factor);

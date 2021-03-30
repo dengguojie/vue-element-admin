@@ -18,7 +18,6 @@ import tbe
 
 ut_case = OpUT("AvgPool1DD", "impl.dynamic.avg_pool_1d", "avg_pool_1d")
 
-# TODO fix me run failed so comment
 ut_case.add_case(["Ascend910A"], {"params": [
     {'shape': (-1, -1, -1, -1, 16), 'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
      "ori_shape": (-1, -1, -1, -1, 16),"range":[(1,1),(1,1),(1,1),(1,1),(1,1)]},
@@ -32,9 +31,22 @@ ut_case.add_case(["Ascend910A"], {"params": [
     False,
     False],
     "expect": "success",
-    "support_expect": True,
-    "case_name": "test_avg_pool1d_dynamic_001"})
+    "support_expect": True})
 
+ut_case.add_case(["Ascend910A"], {"params": [
+    {'shape': (-1, -1, -1, -1, 16), 'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+     "ori_shape": (-1, -1, -1, -1, 16),"range":[(1,1),(1,1),(1,1),(1,1),(1,1)]},
+    {'shape': (-1, -1, -1, -1, 16), 'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+     "ori_shape": (-1, -1, -1, -1, 16),"range":[(1,1),(1,1),(1,1),(1,1),(1,1)]},
+    {'shape': (-1, -1, -1, -1, 16), 'dtype': "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0",
+     "ori_shape": (-1, -1, -1, -1, 16),"range":[(1,1),(1,1),(1,1),(1,1),(1,1)]},
+    1,
+    2,
+    [0, 0],
+    False,
+    False],
+    "expect": "success",
+    "support_expect": True})
 
 if __name__ == '__main__':
     with tbe.common.context.op_context.OpContext("dynamic"):

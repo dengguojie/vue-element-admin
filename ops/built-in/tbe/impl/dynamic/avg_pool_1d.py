@@ -95,7 +95,11 @@ def avg_pool_1d_compute(x,
             tensor_w = tensor_w_tmp
             reduce_tensor_list.append(tensor_w)
     elif kernel == 1:
-        tensor_w = tensor_mid_shape_in_ub
+        tensor_w = tvm.compute(
+            re_shape,
+            lambda fused_axis, w, c0: tensor_mid_shape_in_ub(fused_axis, w * stride, c0) + 0,
+            name="tensor_w")
+        reduce_tensor_list.append(tensor_w)
 
     tensor_list = [x, div, tensor_mid_shape_in_ub, tensor_zero, tensor_pad]
     res = tvm.compute(re_shape,
@@ -109,8 +113,8 @@ def avg_pool_1d_compute(x,
 
 
 # pylint: disable=too-many-statements,invalid-name
-def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_block, cut_wo_for_block, cut_wo_block_in,
-                          cut_nc1h_in, cut_wo, wo_ub_factor_max, ksize, strides):
+def _avg_pool_1d_schedule(res, fmap_wo_var, reduce_tensor_list, tensor_list, cut_nc1h_for_block, cut_wo_for_block,
+                          cut_wo_block_in, nc1h_in_factor, cut_wo, wo_ub_factor_max, ksize, strides):
     """
     avg_pool_1d schedule
 
@@ -122,7 +126,7 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_blo
     cut_nc1_for_block:
     cut_wo_for_block:
     cut_wo_block_in:
-    cut_nc1h_in:
+    nc1h_in_factor:
     cut_wo:
     wo_ub_factor_max:
     ksize:
@@ -157,10 +161,20 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_blo
         factor_vars.append(fuse_factor)
         nc1h_out, nc1h_in = sch[res].split(res.op.axis[0], fuse_factor)
         sch[res].bind(nc1h_out, block)
-        if cut_nc1h_in:
+        if cut_wo:
+            wo_factor = tvm.var("wo_factor")
+            sch.set_var_range(wo_factor, 1, wo_ub_factor_max)
+            factor_vars.append(wo_factor)
+            wo_out, wo_in = sch[res].split(res.op.axis[1], wo_factor)
+            compute_at_axis = wo_out
+            emit_insn_axis = wo_in
+        else:
             fuse_in_factor = tvm.var("fuse_in_factor")
             factor_vars.append(fuse_in_factor)
-            fuse_in_out, fuse_in_in = sch[res].split(nc1h_in, fuse_in_factor)
+            fmap_wo_var_min = 1 if nc1h_in_factor[0] is None else max(wo_ub_factor_max // nc1h_in_factor[0], 1)
+            fmap_wo_var_max = max(wo_ub_factor_max // nc1h_in_factor[1], max(fmap_wo_var_min, 2))
+            sch.set_var_range(fmap_wo_var, fmap_wo_var_min, fmap_wo_var_max)
+            fuse_in_out, fuse_in_in = sch[res].split(nc1h_in, wo_ub_factor_max // fmap_wo_var_max)
             compute_at_axis = fuse_in_out
             emit_insn_axis = fuse_in_in
 
@@ -169,21 +183,7 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list, cut_nc1h_for_blo
             for i in range(ksize - 1):
                 sch[reduce_tensor_list[i]].set_storage_bound(wo_ub_factor_max * C0)
             sch[tensor_zero].set_storage_bound(wo_ub_factor_max * C0 * (strides + ksize))
-        elif cut_wo:
-            wo_factor = tvm.var("wo_factor")
-            sch.set_var_range(wo_factor, 1, wo_ub_factor_max)
-            factor_vars.append(wo_factor)
-            wo_out, wo_in = sch[res].split(res.op.axis[1], wo_factor)
-            compute_at_axis = wo_out
-            emit_insn_axis = wo_in
-        else:
-            sch[tensor_div_in_ub].set_storage_bound(wo_ub_factor_max * C0)
-            sch[tensor_ub_mul].set_storage_bound(wo_ub_factor_max * C0)
-            for i in range(ksize - 1):
-                sch[reduce_tensor_list[i]].set_storage_bound(wo_ub_factor_max * C0)
-            sch[tensor_zero].set_storage_bound(wo_ub_factor_max * C0 * (strides + ksize))
-            compute_at_axis = nc1h_out
-            emit_insn_axis = nc1h_in
+
     else:
         if cut_wo_for_block:
             wo_block_factor = tvm.var("wo_block_factor")
@@ -305,19 +305,25 @@ def avg_pool_1d(x_dict,
     case6: all=False
     """
 
-    case1 = {"cut_nc1h_for_block": True, "cut_nc1h_in": True, "cut_wo": False, "cut_wo_for_block": False,
+    case1 = {"cut_nc1h_for_block": True, "nc1h_in_factor": [8, 2], "cut_wo": False, "cut_wo_for_block": False,
              "cut_wo_block_in": False, "nc1h_range": (core_num, None)}
-    case2 = {"cut_nc1h_for_block": True, "cut_nc1h_in": False, "cut_wo": True, "cut_wo_for_block": False,
+    case2 = {"cut_nc1h_for_block": True, "nc1h_in_factor": [], "cut_wo": True, "cut_wo_for_block": False,
              "cut_wo_block_in": False, "nc1h_range": (core_num, None)}
-    case3 = {"cut_nc1h_for_block": True, "cut_nc1h_in": False, "cut_wo": False, "cut_wo_for_block": False,
+    case3 = {"cut_nc1h_for_block": True, "nc1h_in_factor": [2, 1], "cut_wo": False, "cut_wo_for_block": False,
              "cut_wo_block_in": False, "nc1h_range": (core_num, None)}
-    case4 = {"cut_nc1h_for_block": False, "cut_nc1h_in": False, "cut_wo": False, "cut_wo_for_block": True,
+    case4 = {"cut_nc1h_for_block": False, "nc1h_in_factor": [], "cut_wo": False, "cut_wo_for_block": True,
              "cut_wo_block_in": True, "nc1h_range": (1, core_num)}
-    case5 = {"cut_nc1h_for_block": False, "cut_nc1h_in": False, "cut_wo": False, "cut_wo_for_block": True,
+    case5 = {"cut_nc1h_for_block": False, "nc1h_in_factor": [], "cut_wo": False, "cut_wo_for_block": True,
              "cut_wo_block_in": False, "nc1h_range": (1, core_num)}
-    case6 = {"cut_nc1h_for_block": False, "cut_nc1h_in": False, "cut_wo": False, "cut_wo_for_block": False,
+    case6 = {"cut_nc1h_for_block": False, "nc1h_in_factor": [], "cut_wo": False, "cut_wo_for_block": False,
              "cut_wo_block_in": False, "nc1h_range": (1, core_num)}
-    tiling_case = [case1, case2, case3, case4, case5, case6]
+    case7 = {"cut_nc1h_for_block": True, "nc1h_in_factor": [32, 8], "cut_wo": False, "cut_wo_for_block": False,
+             "cut_wo_block_in": False, "nc1h_range": (core_num, None)}
+    case8 = {"cut_nc1h_for_block": True, "nc1h_in_factor": [64, 32], "cut_wo": False, "cut_wo_for_block": False,
+             "cut_wo_block_in": False, "nc1h_range": (core_num, None)}
+    case9 = {"cut_nc1h_for_block": True, "nc1h_in_factor": [None, 64], "cut_wo": False, "cut_wo_for_block": False,
+             "cut_wo_block_in": False, "nc1h_range": (core_num, None)}
+    tiling_case = [case1, case2, case3, case4, case5, case6, case7, case8, case9]
     sch_list = []
     var_list = []
     rules = []
@@ -327,9 +333,9 @@ def avg_pool_1d(x_dict,
     wo_ub_factor_max = total_ele // C0 // (strides + 2 * ksize + 1)
     for idx, case in enumerate(tiling_case):
         key = idx
-        sch, factor_vars = _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list,
+        sch, factor_vars = _avg_pool_1d_schedule(res, fmap_wo_var, reduce_tensor_list, tensor_list,
                                                  cut_nc1h_for_block=case["cut_nc1h_for_block"],
-                                                 cut_nc1h_in=case["cut_nc1h_in"],
+                                                 nc1h_in_factor=case["nc1h_in_factor"],
                                                  cut_wo=case["cut_wo"],
                                                  cut_wo_for_block=case["cut_wo_for_block"],
                                                  cut_wo_block_in=case["cut_wo_block_in"],
