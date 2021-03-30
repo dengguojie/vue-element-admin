@@ -110,6 +110,42 @@ case9 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_sha
          "expect": RuntimeError,
          "support_expect": True} 
 
+#-2
+case10 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (-2,), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-2,),"ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (2, 2), (2, 2)]},
+                    {"shape": (16,1,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16,1,3,3),"ori_format": "NCHW",
+                     "range":[(16, 16), (1, 1), (3, 3), (3, 3)]},
+                    {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
+                    [1,1,3,3], [1,1,2,2], "SAME", "NCHW"],
+         "expect": "success",
+         "support_expect": True}
+         
+#-1
+case11 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (1,-1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,-1),"ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (2, 2), (2, 2)]},
+                    {"shape": (16,1,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (16,1,3,3),"ori_format": "NCHW",
+                     "range":[(16, 16), (1, 1), (3, 3), (3, 3)]},
+                    {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
+                    [1,1,3,3], [1,1,2,2], "SAME", "NCHW"],
+         "expect": "success",
+         "support_expect": True}
+
+#cout = -1
+case12 = {"params": [{"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (2, 2), (2, 2)]},
+                    {"shape": (-1,1,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (-1,1,3,3),"ori_format": "NCHW",
+                     "range":[(16, 16), (1, 1), (3, 3), (3, 3)]},
+                    {"shape": (1,1,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,16,-1,-1),"ori_format": "NCHW",
+                     "range":[(1, 1), (16, 16), (4, 4), (4, 4)]},
+                    [1,1,3,3], [1,1,2,2], "SAME", "NCHW"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
@@ -119,7 +155,9 @@ ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
-
+ut_case.add_case(["Ascend910A"], case10)
+ut_case.add_case(["Ascend910A"], case11)
+ut_case.add_case(["Ascend910A"], case12)
 
 if __name__ == '__main__':
     import tbe

@@ -273,7 +273,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
             split_range_flag = False
             fmap_w_tiling = w_range_max
 
-            if self.k_h == 1 and self.k_w == 1 and (self.pad_mode == "VAR" or sum(self.cur_pads) == 0):
+            if ("dx_w" in paras.get("var_map") and self.k_h == 1 and self.k_w == 1 
+                and (self.pad_mode == "VAR" or sum(self.cur_pads) == 0)):
                 dy_w_tiling = tiling_in.get("CL0_matrix")[1] * tiling_in.get("CL0_matrix")[2]
                 dy_w = self.get_output_w(fmap_w)
                 if self.pad_mode == "VAR":

@@ -2082,25 +2082,7 @@ def general_schedule(
                     al1_co1 = tiling.get("AL1_shape")[0] // (kernel_h * kernel_w * aub_co0)
                     aub_co1 = min(aub_co1, al1_co1)
                 aub_filling_w = dy_w * stride_w
-                aub_h = (aub_tiling_m + stride_h - 1) // stride_h
-                al1_m = _ceil(al1_h * al1_w, cl0_tiling_m0) * cl0_tiling_m0
-                if len(tiling["AL1_shape"]) != 0:
-                    multi_m_al1 = tiling["AL1_shape"][1]
-                    al1_m = multi_m_al1 * cl0_tiling_mc * cl0_tiling_m0
-                # for aub_tiling_m is 1, then aub_h must be 1
-                if aub_tiling_m != 1:
-                    dx_hw = _align(dx_h * dx_w, BRC_STANDARD_BLOCK_SIZE)
-                    dim_mod_var = tvm.var("dim_mod_var")
-                    sch.set_var_value(dim_mod_var, tvm.floormod(dx_hw, m_dim))
-                    hw_mod_var = tvm.var("hw_mod_var")
-                    sch.set_var_value(hw_mod_var, tvm.floormod(_ceil(dx_hw, m_dim), al1_m))
-                    aub_h = tvm.select(
-                            tvm.all((tvm.floormod(al1_h, stride_h) == 0).asnode(),
-                                    (tvm.floormod(al1_m, dx_w) == 0).asnode(),
-                                    (hw_mod_var == 0).asnode(),
-                                    (dim_mod_var == 0).asnode()),
-                            aub_h,
-                            aub_h + 1)
+                aub_h = aub_tiling_m // stride_h + 1
                 a_filling_bound = aub_co1 * aub_tiling_m * aub_filling_w * aub_co0
                 sch[a_filling].set_storage_bound(a_filling_bound)
                 sch[dy_vn].set_storage_bound(a_filling_bound)
