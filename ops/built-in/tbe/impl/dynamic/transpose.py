@@ -632,8 +632,12 @@ class Transpose(object):
                                     ub_input, 0, 1, tp.tail_num, 0, 0)
 
         with self.tik_inst.if_scope(tp.not_align_ele != 0):
-            self.tik_inst.data_move(ub_input, self.data_in[tp.base + tp.ele_num - self.ele_per_block], 0, 1, 1, 0, 0)
-            self.tik_inst.data_move(self.data_out[tp.base + tp.ele_num - self.ele_per_block], ub_input, 0, 1, 1, 0, 0)
+            with self.tik_inst.if_scope(tik.all(tp.major_loop == 0, tp.tail_num == 0)):
+                self.tik_inst.data_move(ub_input, self.data_in[tp.base], 0, 1, 1, 0, 0)
+                self.tik_inst.data_move(self.data_out[tp.base], ub_input, 0, 1, 1, 0, 0)
+            with self.tik_inst.else_scope():
+                self.tik_inst.data_move(ub_input, self.data_in[tp.base + tp.ele_num - self.ele_per_block], 0, 1, 1, 0, 0)
+                self.tik_inst.data_move(self.data_out[tp.base + tp.ele_num - self.ele_per_block], ub_input, 0, 1, 1, 0, 0)
 
     def _get_src_addr_s1(self, tp):
         with self.tik_inst.if_scope(tp.trans_axis_num == 7):
@@ -851,6 +855,35 @@ class Transpose(object):
     def _copy_tail_s2_aligned(self, tp, ub_input, steps, accu_blocks):
         self._copy_common_s2(tp, ub_input, steps, accu_blocks, tp.tail_major_loop, tp.tail_major_num, tp.tail_tail_num)
 
+    def _copy_tiny_data_lt_blk_s2(self, tp, ub_input, steps, accu_blocks):
+        with self.tik_inst.if_scope(tp.loop_num != 0):
+            ub_offset_exclude_pad = self.tik_inst.Scalar("int32")  # unit : block
+            scalar_value = self.tik_inst.Scalar(self.x_dtype)
+            steps.set_as(0)
+            accu_blocks.set_as(0)
+            self._get_dst_addr_s2(tp, steps)
+            self._update_tuple_with_steps(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor, tp.dst_jump_factor_mod,
+                                          tp.base, steps)
+            with self.tik_inst.for_range(0, tp.loop_num):
+                self._get_src_addr_s2(tp)
+                self.tik_inst.data_move(ub_input[accu_blocks * self.ele_per_block],
+                                        self.data_in[tp.src_addr], 0, 1, 1, 0, 0)
+                steps.set_as(steps + 1)
+                self._update_tuple_with_steps(tp.trans_axis_num, tp.rt_tuple, tp.dst_jump_factor,
+                                              tp.dst_jump_factor_mod, tp.base, steps)
+                accu_blocks.set_as(accu_blocks + 1)
+            self._reorder_s2(tp, ub_input, accu_blocks, ub_offset_exclude_pad)
+            with self.tik_inst.for_range(0, tp.loop_num) as i:
+                scalar_value.set_as(ub_input[i])
+                ub_input[i] = scalar_value
+            self.tik_inst.data_move(self.data_out[tp.dst_addr], ub_input, 0, 1, 1, 0, 0)
+            # for int32 skip_ele = 0 if last_axis is 1,2,4
+            with self.tik_inst.if_scope(tp.skip_ele != 0):
+                with self.tik_inst.for_range(0, self.ele_per_block) as i:
+                    scalar_value.set_as(ub_input[tp.skip_ele + i])
+                    ub_input[i] = scalar_value
+                self.tik_inst.data_move(self.data_out[tp.dst_addr + tp.skip_ele], ub_input, 0, 1, 1, 0, 0)
+
     def _copy_anti_overlap_lt_blk_s2(self, tp, ub_input, steps, accu_blocks):
         with self.tik_inst.if_scope(tp.loop_num != 0):
             ub_offset_exclude_pad = self.tik_inst.Scalar("int32")  # unit : block
@@ -919,11 +952,17 @@ class Transpose(object):
         self._copy_body_s2_aligned(tp, ub_input, steps, accu_blocks)
         self._copy_tail_s2_aligned(tp, ub_input, steps, accu_blocks)
 
-        with self.tik_inst.if_scope(tp.last_axis_len < self.ele_per_block):
-            self._copy_anti_overlap_lt_blk_s2(tp, ub_input, steps, accu_blocks)
-        with self.tik_inst.if_scope(tp.align_ele != 0):
-            with self.tik_inst.if_scope(tp.last_axis_len > self.ele_per_block):
-                self._copy_anti_overlap_gt_blk_s2(tp, ub_input, steps, accu_blocks)
+        with self.tik_inst.if_scope(tik.all(tp.head_major_loop == 0,
+                                            tp.body_loop == 0,
+                                            tp.tail_major_loop == 0,
+                                            tp.last_axis_len < self.ele_per_block)):
+            self._copy_tiny_data_lt_blk_s2(tp, ub_input, steps, accu_blocks)
+        with self.tik_inst.else_scope():
+            with self.tik_inst.if_scope(tp.last_axis_len < self.ele_per_block):
+                self._copy_anti_overlap_lt_blk_s2(tp, ub_input, steps, accu_blocks)
+            with self.tik_inst.if_scope(tp.align_ele != 0):
+                with self.tik_inst.if_scope(tp.last_axis_len > self.ele_per_block):
+                    self._copy_anti_overlap_gt_blk_s2(tp, ub_input, steps, accu_blocks)
 
     def _copy_in_major_s3(self, tp, ub_input, last_axis_offset):
         self.tik_inst.data_move(ub_input, self.data_in[tp.src_addr + last_axis_offset], 0, 1, tp.major_blocks, 0, 0)
@@ -1622,7 +1661,7 @@ class Transpose(object):
                                             ub_input_fp16[tp.fp16_offset_1 + i * col_ele_num * 8 * EPB16],
                                             0, col_ele_num, 1, col_ele_num, row_ele_num, 1)
                     with self.tik_inst.if_scope(tail_num != 0):
-                        self.tik_inst.vadds(tail_num * 8, ub_input_fp16[tp.fp16_offset_2 + loop_num * 8 * EPB16],
+                        self.tik_inst.vadds(tail_num * 16, ub_input_fp16[tp.fp16_offset_2 + loop_num * 8 * EPB16],
                                             ub_input_fp16[tp.fp16_offset_1 + loop_num * col_ele_num * 8 * EPB16],
                                             0, col_ele_num, 1, col_ele_num, row_ele_num, 1)
 

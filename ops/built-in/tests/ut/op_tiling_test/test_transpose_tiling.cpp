@@ -669,6 +669,242 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_f2t_fp16) {
     EXPECT_EQ(runtimeInfo.infoPerCore[1].infoCol.colPerMC, 944*2);
 }
 
+TEST_F(TransposeTilingTest, small_shape_check_split_with_unit_ele_per_block) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(8);
+    shapeInfo.inShape.push_back(6);
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.inShape.push_back(3);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.outShape.push_back(8);
+    shapeInfo.outShape.push_back(6);
+    shapeInfo.outShape.push_back(3);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(3);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[0].base, 0);
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[0].eleNum, 8);
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[1].base, 8);
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[1].eleNum, 8);
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[19].base, 0);
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[19].eleNum, 0);
+}
+
+TEST_F(TransposeTilingTest, small_shape_check_split_with_no_minus) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 1;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(6);
+    shapeInfo.inShape.push_back(4);
+    shapeInfo.inShape.push_back(9);
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.outShape.push_back(9);
+    shapeInfo.outShape.push_back(6);
+    shapeInfo.outShape.push_back(4);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(3);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+
+    EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[0].num, 216);
+}
+
+TEST_F(TransposeTilingTest, less_than_one_block) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.inShape.push_back(7);
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.outShape.push_back(7);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(3);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[0].eleNum, 7);
+    EXPECT_EQ(runtimeInfo.infoPerCoreIdentical[1].eleNum, 0);
+}
+
+TEST_F(TransposeTilingTest, nchw) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(6);
+    shapeInfo.inShape.push_back(7);
+    shapeInfo.inShape.push_back(4);
+    shapeInfo.inShape.push_back(7);
+    shapeInfo.outShape.push_back(4);
+    shapeInfo.outShape.push_back(6);
+    shapeInfo.outShape.push_back(7);
+    shapeInfo.outShape.push_back(7);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(3);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+
+    EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[1].base, 6);
+    EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[1].num, 6);
+}
+
+
+/*
+ *
+   scenario  in                  out                 perm        reducedIn           reducedOut          reducedPerm  dim  lastAxisLen  lastAxisBurstLen  alignElement
+   -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+   7         6,7,7,1             7,6,7,1             2,0,1,3     42,7                7,42                1,0          2    7            1                 1
+   
+   coreNum    usedCoreNum    ubSize    ubSizeCouldUse
+   --------------------------------------------------
+   32         0              8192      0
+   
+   n                   col                 row                 nFactor  colFactor  rowFactor  priority  modelName
+   --------------------------------------------------------------------------------------------------------------------------------
+                       1                   0                   32       1          1          8         Model008_t2f
+                       1                   0                   1        1          1          999       Model003
+                       1                   0                   1        1          1          999       Model007_f2t
+                       1                   0                   1        1          1          999       Model006
+                       1                   0                   1        1          1          999       Model004_f2t
+                       1                   0                   1        1          1          999       Model005_t2f
+                       1                   0                   1        1          1          999       Model001
+                       1                   0                   1        1          1          999       Model002
+   
+   
+   nJumpAxisNum  srcJumpAxisNum  dstJumpAxisNum  nJumpFactor         nJumpStride         srcJumpFactor       srcJumpStride       dstJumpFactor       dstJumpStride       rPartVol
+   ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+   0             1               1                                                       42                  7                   7                   42                  294
+   
+   loopN  nOffsetActual  initNTuple          colPerMC  loopMC  colTC  colOffset  bsl  initDstTuple        tailDstTuple        rowPerMR  loopMR  rowTR  rowOffset  bsu  initSrcTuple        tailSrcTuple
+   ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+   1      0                                  7         0       0      0          0    0,0,0,0,0,0,0,0     0,0,0,0,0,0,0,0     40        1       8      0          6    0                   34
+   0      0                                  7         0       0      0          0    0,0,0,0,0,0,0,0     0,0,0,0,0,0,0,0     40        1       8      0          6    0                   34
+   0      0                                  7         0       0      0          0    0,0,0,0,0,0,0,0     0,0,0,0,0,0,0,0     40        1       8      0          6    0                   34
+   0      0                                  7         0       0      0          0    0,0,0,0,0,0,0,0     0,0,0,0,0,0,0,0     40        1       8      0          6    0                   34
+   0      0                                  7         0       0      0          0    0,0,0,0,0,0,0,0     0,0,0,0,0,0,0,0     40        1       8      0          6    0                   34
+   0      0                                  7         0       0      0          0    0,0,0,0,0,0,0,0     0,0,0,0,0,0,0,0     40        1       8      0          6    0                   34
+   0      0                                  7         0       0      0          0    0,0,0,0,0,0,0,0     0,0,0,0,0,0,0,0     40        1       8      0          6    0                   34
+   ...
+*/
+TEST_F(TransposeTilingTest, split_n_with_small_shape_1) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(6);
+    shapeInfo.inShape.push_back(7);
+    shapeInfo.inShape.push_back(7);
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.outShape.push_back(7);
+    shapeInfo.outShape.push_back(6);
+    shapeInfo.outShape.push_back(7);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(3);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+    EXPECT_EQ(runtimeInfo.infoPerCore[0].infoN.loopOnN, 1);
+    EXPECT_EQ(runtimeInfo.infoPerCore[0].infoRow.rowPerMR, 40);
+    EXPECT_EQ(runtimeInfo.infoPerCore[1].infoN.loopOnN, 0);
+}
+
+
+/*
+  scenario  in                  out                 perm        reducedIn           reducedOut          reducedPerm  dim  lastAxisLen  lastAxisBurstLen  alignElement
+  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  6         1,2,2,1             2,1,2,1             2,0,1,3     2,2,1               2,2,1               1,0,2        3    1            1                 7
+  
+  coreNum    usedCoreNum    ubSize    ubSizeCouldUse
+  --------------------------------------------------
+  32         1              8192      0
+  
+  backNum  skipEle  srcStrideLogic  srcJumpStride                 dstJumpStride                 dstJumpFactor                 dstJumpFactorMod
+  -------------------------------------------------------------------------------------------------------------------------------------------------------
+  8        0        1               2,1                           1,2                           2,2                           1,2
+  
+  base        num        initTuple                     headMajorLoop  headMajorNum  headTailNum  bodyLoopNum  bodymajorLoop  bodyMajorNum  bodyTailNum  tailMajorLoop  tailMajorNum  tailTailNum
+  -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  0           4          0,0                           0              0             0            0            0              0             0            0              0             0
+  0           0          0,0                           0              0             0            0            0              0             0            0              0             0
+  0           0          0,0                           0              0             0            0            0              0             0            0              0             0
+  0           0          0,0                           0              0             0            0            0              0             0            0              0             0
+  0           0          0,0                           0              0             0            0            0              0             0            0              0             0
+  0           0          0,0                           0              0             0            0            0              0             0            0              0             0
+  0           0          0,0                           0              0             0            0            0              0             0            0              0             0
+ */
+ 
+TEST_F(TransposeTilingTest, split_n_with_small_shape_2) {
+    CompilerInfo compilerInfo;
+    ShapeInfo shapeInfo;
+    RuntimeInfo runtimeInfo;
+    compilerInfo.coreNum = 32;
+    compilerInfo.ubSize = 8192;
+    compilerInfo.dType ="float32";
+    compilerInfo.fp16Times = 2;
+
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.inShape.push_back(2);
+    shapeInfo.inShape.push_back(2);
+    shapeInfo.inShape.push_back(1);
+    shapeInfo.outShape.push_back(2);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.outShape.push_back(2);
+    shapeInfo.outShape.push_back(1);
+    shapeInfo.perm.push_back(2);
+    shapeInfo.perm.push_back(0);
+    shapeInfo.perm.push_back(1);
+    shapeInfo.perm.push_back(3);
+    ReduceAxis("Transpose", compilerInfo, shapeInfo);
+    TransposeCalcTilingData(opType, compilerInfo, shapeInfo, runtimeInfo);
+    EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[0].base, 0);
+    EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[0].num, 4);
+    EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[1].base, 0);
+    EXPECT_EQ(runtimeInfo.infoPerCoreLastAxisNT[1].num, 0);
+}
+
+
 TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
     CompilerInfo compilerInfo;
     ShapeInfo shapeInfo;

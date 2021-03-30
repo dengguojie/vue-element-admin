@@ -106,6 +106,36 @@ case8 = {"params": [{"shape": (1, 256, 108, 108), "dtype": "float32", "format": 
          "expect": RuntimeError,
          "support_expect": True}
 
+def test_op_check_supported_in_white_list_return_false(test_arg):
+    from impl.transpose_d import check_supported
+    input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (2), 'shape': (2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    if check_supported(input_x, perm, output_y) == True:
+        raise Exception("1024,1024,fp16 in white list ,should return false, then call transpose instead of transpose_d")
+
+def test_op_check_supported_not_in_white_list_return_true(test_arg):
+    from impl.transpose_d import check_supported
+    input_x = {'ori_shape': (1234, 4321), 'shape': (1234, 4321), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (2), 'shape': (2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (4321, 1234), 'shape': (4321, 1234), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    if check_supported(input_x, perm, output_y) == False:
+        raise Exception("1234,4321,fp16 not in white list ,should return true")
+
+def test_op_check_supported_dtype_not_in_white_list_return_true(test_arg):
+    from impl.transpose_d import check_supported
+    input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'int8'}
+    perm = {'ori_shape': (2), 'shape': (2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'int8'}
+    if check_supported(input_x, perm, output_y) == False:
+        raise Exception("1024,1024,int8 not in white list ,should return true")
+
+
+
+ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_return_false)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_return_true)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_dtype_not_in_white_list_return_true)
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)

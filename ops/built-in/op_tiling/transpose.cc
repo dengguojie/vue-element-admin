@@ -33,6 +33,11 @@ namespace optiling {
 
 #define INVALID_SPLIT 999
 
+#define TRANSPOSE_CHECK_RET(res) \
+    if (res == false) { \
+        return false; \
+    }
+
 static void PrintScreen(const string & logStr) {
     const char * pLevel = std::getenv("ASCEND_GLOBAL_LOG_LEVEL");
     const char * pStdout = std::getenv("ASCEND_SLOG_PRINT_TO_STDOUT");
@@ -95,11 +100,32 @@ static int64_t Align16(int64_t val, int64_t factor, int64_t upLimit = 0) {
     return res;
 }
 
-static void SplitEvenly(int64_t coreNum, int64_t vol, int64_t & x, int64_t & y, int64_t & m, int64_t & n) {
-    m = ceil(vol * 1.0 / coreNum);
-    n = m - 1;
-    x = vol - coreNum * (m - 1);
-    y = coreNum - x;
+static void SplitEvenly(int64_t coreNum, int64_t vol, int64_t & x, int64_t & y,
+                        int64_t & m, int64_t & n, int64_t unit = 1) {
+    if (vol <= unit) {
+        m = vol;
+        n = 0;
+        x = 1;
+        y = 0;
+    } else if (vol < coreNum * unit) {
+        m = unit;
+        if (vol % unit != 0) {
+            n = unit + vol % unit;
+        } else {
+            n = 0;
+        }
+        x = vol / unit;
+        if (n != 0) {
+            y = 1;
+        } else {
+            y = 0;
+        }
+    } else {
+        m = ceil(vol * 1.0 / coreNum);
+        n = m - 1;
+        x = vol - coreNum * (m - 1);
+        y = coreNum - x;
+    }
 }
 
 static string PadString(string &in, int width = 0) {
@@ -634,6 +660,7 @@ void MergeAxis(ShapeInfo & shapeInfo) {
 //Since small shape with too much core will result in data less than one block, so use less core
 void UpdateCoreNum(CompilerInfo &compilerInfo, ShapeInfo &shapeInfo) {
     if (shapeInfo.totalVolumeActual >= shapeInfo.elePerBlock * compilerInfo.coreNum) {
+        compilerInfo.usedCoreNum = compilerInfo.coreNum;
         return;
     }
     if (shapeInfo.totalVolumeActual < shapeInfo.elePerBlock) {
@@ -886,7 +913,7 @@ static string PrintTilingInfoScenario2(const CompilerInfo & compilerInfo,
         const InfoPerCoreLastAxisNT & infoPerCore = runtimeInfo.infoPerCoreLastAxisNT[i];
         const LastAxisNTLoopInfo & loopInfo = infoPerCore.loopInfo;
         logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].base, 12);
-        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].num,  11);
+        logStr += to_string(runtimeInfo.infoPerCoreLastAxisNT[i].num, 11);
         logStr += arr_to_string(runtimeInfo.infoPerCoreLastAxisNT[i].initTuple, shapeInfo.dim - 1, 30);
         logStr += to_string(loopInfo.headMajorLoop, 15);
         logStr += to_string(loopInfo.headMajorNum, 14);
@@ -1184,7 +1211,7 @@ bool TilingDataScenario0(const CompilerInfo & compilerInfo,
     int64_t base = 0;
     int64_t blocks = 0;
 
-    SplitEvenly(compilerInfo.coreNum, shapeInfo.totalVolumeActual, p1Num, p2Num, perCoreSize1, perCoreSize2);
+    SplitEvenly(compilerInfo.coreNum, shapeInfo.totalVolumeActual, p1Num, p2Num, perCoreSize1, perCoreSize2, shapeInfo.elePerBlock);
 
     vector<IdenticalInfo> & identicalInfo = runtimeInfo.infoPerCoreIdentical;
     identicalInfo.resize(compilerInfo.coreNum);
@@ -1358,6 +1385,9 @@ static void SplitN(int64_t val, int64_t factor, vector<pair<int64_t, int64_t>> &
             range.push_back({base, stride2});
             base += stride2;
         }
+        for (int64_t i = 0; i < factor - s1Num - s2Num; i++) {
+            range.push_back({0, 0});
+        }
     }
 }
 
@@ -1400,7 +1430,7 @@ static void SplitNByFactor(RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
     }
 }
 
-static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
+static bool SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
     priority_queue<shared_ptr<TilingModel>, vector<shared_ptr<TilingModel>>, TMCompare> pqtm = runtimeInfo.pqtm;
     shared_ptr<TilingModel> tm = pqtm.top();
     int64_t maxCol = tm->maxCol;
@@ -1419,6 +1449,9 @@ static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                 int64_t k = col % elePerBlock;
                 if (k != 0) {
                     col = col - k;
+                }
+                if (col == 0) {
+                    return false;
                 }
                 info[i].colPerMC = min(maxCol, col);
                 info[i].colBlockPerMC = info[i].colPerMC / elePerBlock;
@@ -1448,9 +1481,10 @@ static void SplitColByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
             }
         }
     }
+    return true;
 }
 
-static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
+static bool SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & runtimeInfo, int64_t elePerBlock) {
     priority_queue<shared_ptr<TilingModel>, vector<shared_ptr<TilingModel>>, TMCompare> pqtm = runtimeInfo.pqtm;
     shared_ptr<TilingModel> tm = pqtm.top();
     int64_t factor = tm->sp.rowFactor;
@@ -1471,6 +1505,9 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
                 int64_t k = row % elePerBlock;
                 if (k != 0) {
                     row = row - k;
+                }
+                if (row == 0) {
+                    return false;
                 }
                 info[i].rowPerMR = min(maxRow, row);
                 info[i].rowBlockPerMR = info[i].rowPerMR / elePerBlock;
@@ -1500,6 +1537,7 @@ static void SplitRowByFactor(const CompilerInfo & compilerInfo, RuntimeInfo & ru
             }
         }
     }
+    return true;
 }
 
 static int64_t GetPermIndex(const vector<int64_t> & perm, int p) {
@@ -2222,6 +2260,7 @@ static bool IsScenario7Accept(const RuntimeInfo & runtimeInfo) {
 static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
                                          const ShapeInfo & shapeInfo,
                                          RuntimeInfo & runtimeInfo) {
+    bool res = false;
 
     DispatchNCR(shapeInfo, runtimeInfo);
 
@@ -2234,9 +2273,11 @@ static bool TilingDataScenario7(const CompilerInfo & compilerInfo,
 
     SplitNByFactor(runtimeInfo, shapeInfo.elePerBlock);
 
-    SplitColByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
+    res = SplitColByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
+    TRANSPOSE_CHECK_RET(res);
 
-    SplitRowByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
+    res = SplitRowByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
+    TRANSPOSE_CHECK_RET(res);
 
     Composite(runtimeInfo, compilerInfo.coreNum);
 
