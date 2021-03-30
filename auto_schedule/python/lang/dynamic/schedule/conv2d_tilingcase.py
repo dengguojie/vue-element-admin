@@ -34,6 +34,7 @@ from te.lang.dynamic.schedule.cube_tilingcase import TilingUtils as utils
 from te.lang.dynamic.schedule.constants import Pattern
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
 from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
+from te.lang.base.operation_impl import add_compile_info
 from .conv2d_schedule import get_op_tensor_map
 
 CUBE_INFO = {'type_size':{'int8': 1, 'float16': 2, 'float32': 4, 'int32': 4},
@@ -72,6 +73,7 @@ def calc_conv2d(outs, option=None):
                 [res.op for res in outs if res not in op_info])
     tiling_dict = cce_conv_op.schedule(outs[0], outs, [schedule], tilingdict_flag=True)
     tiling_dict["dynamic_shape_flag"] = True
+    add_compile_info("fmap_c1", tiling_dict["a_shape"][1])
 
     tiling_op = Conv2dTiling(tiling_dict, ConvParam.dynamic_para)
     tiling_cases = TilingSelection(tiling_op).calc_tiling(tgt_area, var_names)

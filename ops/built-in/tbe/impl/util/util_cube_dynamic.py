@@ -533,6 +533,8 @@ class Conv2dParaProcess(CubeParaProcess):
         else:
             self.check_para_dim(in_shape, "in_shape")
             in_shape_nchw, in_range_nchw = self.get_input_nchw(in_shape, self.data_format, in_range)
+            if in_shape_nchw[1] == -1:
+                in_shape_nchw[1] = w_shape_nchw[1]*self.groups
             self.check_range_valid(in_shape_nchw, in_range_nchw, "fmap", self.data_format)
 
         self.check_support_valid(in_shape_nchw, w_shape_nchw)

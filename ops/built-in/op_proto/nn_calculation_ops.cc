@@ -3816,6 +3816,17 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
 
   int64_t groups = 1;
   op.GetAttr("groups", groups);
+  bool is_dynamic = false;
+  // when static op or dynamic op phase_running, is_dynamic == False
+  if (std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end()) {
+    is_dynamic = true;
+  }
+  if (is_dynamic && (ic == -1)) {
+    ic = kc*groups;
+    OP_LOGW(op.GetName().c_str(),
+            "input x channel is unknow, fixed channel = %d, "
+            "in_channels should be kc*grous[%d * %d]", (int)ic, (int)kc, (int)groups);
+  }
   if ((!unknown_rank) && (groups == 1)) {
     if ((ic > 0) && (ic % kc == 0)) {
       groups = ic / kc;
@@ -3931,11 +3942,6 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
   }
 
   // set Range
-  bool is_dynamic = false;
-  // when static op or dynamic op phase_running, is_dynamic == False
-  if (std::find(x_shape.begin(), x_shape.end(), -1) != x_shape.end()) {
-    is_dynamic = true;
-  }
   if (is_dynamic) {
     vector<int32_t> attr_params = {strh, strw,dilh, dilw,
                                    padt, padb, padl, padr,

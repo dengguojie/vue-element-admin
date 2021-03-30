@@ -48,6 +48,10 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
     return false;
   }
 
+  if (opCompileInfo.contains("fmap_c1") && opParas.inputs[0].tensor[0].shape[1] != opCompileInfo["fmap_c1"]) {
+    OP_LOGE(opType.c_str(), "Not support, input x channel should be equal to filter channel*groups");
+    return false;
+  }
   GELOGD("Current format is %s, Ori format is %s", opParas.inputs[0].tensor[0].format.c_str(),
          opParas.inputs[0].tensor[0].ori_format.c_str());
 
