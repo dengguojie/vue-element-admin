@@ -27,7 +27,7 @@ from impl.util.platform_adapter import tbe_context
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=unused-variable
-@register_operator("SoftmaxGrad")
+@register_operator("SoftmaxGrad", pattern="Softmax")
 def softmax_grad_compute(softmax, grad_softmax, grad_x,
                          kernel_name="softmax_grad"):
     """
@@ -71,7 +71,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x,
     return res
 
 
-@register_operator("SoftmaxGrad")
+@register_operator("SoftmaxGrad", pattern="Softmax")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def softmax_grad(softmax, grad_softmax, grad_x, kernel_name="softmax_grad"):

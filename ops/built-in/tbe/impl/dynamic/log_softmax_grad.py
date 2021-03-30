@@ -26,7 +26,7 @@ from impl.util.platform_adapter import tbe_context
 
 
 # pylint: disable = locally-disabled,too-many-arguments,unused-argument
-@register_operator("LogSoftmaxGrad")
+@register_operator("LogSoftmaxGrad", pattern="Softmax")
 def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
                              kernel_name="log_softmax_grad"):
     """
@@ -76,7 +76,7 @@ def log_softmax_grad_compute(input_dy, input_x, output_z, axis,
     return result
 
 
-@register_operator("LogSoftmaxGrad")
+@register_operator("LogSoftmaxGrad", pattern="Softmax")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),

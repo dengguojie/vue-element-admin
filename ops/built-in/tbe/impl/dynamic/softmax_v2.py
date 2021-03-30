@@ -25,7 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
-@register_operator("SoftmaxV2")
+@register_operator("SoftmaxV2", pattern="Softmax")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
     calculating data's softmax, produces an output tensor with shape
@@ -79,7 +79,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     return output
 
 
-@register_operator("SoftmaxV2")
+@register_operator("SoftmaxV2", pattern="Softmax")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT), para_check.KERNEL_NAME)
 def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):

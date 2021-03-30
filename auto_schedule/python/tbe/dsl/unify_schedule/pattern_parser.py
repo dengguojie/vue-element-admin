@@ -112,7 +112,6 @@ class ComputeType(Enum):
     CONV3D_BP_INPUT = auto()
     CONV3D = auto()
     MAT_MUL = auto()
-    SOFTMAX = auto()
     CONV3D_BP_FILTER = auto()
 
 
@@ -169,8 +168,6 @@ def _parse_pattern(outs):
         return Pattern.BROADCAST
     if _is_reduce(compute_type_size_map):
         return Pattern.REDUCE
-    if _is_softmax(compute_type_size_map):
-        return Pattern.SOFTMAX
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
         return Pattern.CONV3D_BACKPROP_FILTER
 
@@ -201,15 +198,6 @@ def _is_reduce(compute_type_size_map):
     reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
     total = compute_type_size_map.get(ComputeType.ANY, 0)
     return placeholder_size + elewise_size + reduce_size + cast_size == total
-
-def _is_softmax(compute_type_size_map: dict):
-    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
-    elewise_size = compute_type_size_map.get(ComputeType.ELEWISE, 0)
-    broadcast_size = compute_type_size_map.get(ComputeType.BROADCAST, 0)
-    cast_size = compute_type_size_map.get(ComputeType.CAST, 0)
-    reduce_size = compute_type_size_map.get(ComputeType.REDUCE, 0)
-    total = compute_type_size_map.get(ComputeType.ANY, 0)
-    return ph_size + elewise_size + broadcast_size + cast_size + reduce_size == total
 
 
 def _dfs_compute(outs) -> dict:
