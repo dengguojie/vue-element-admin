@@ -131,14 +131,34 @@ Status SoftmaxGradExtV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::GeTensorDesc input_tensor1 = mulNode->GetOpDesc()->GetInputDesc(0);
   FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor1) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
+  ge::GeTensorDesc input_tensor2;
   if (mulGradNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() != mul1Node) {
-    ge::GeTensorDesc input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(0);
+    input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(0);
     FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor2) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
   } else {
-    ge::GeTensorDesc input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(1);
+    input_tensor2 = mulGradNode->GetOpDesc()->GetInputDesc(1);
     FUSION_PASS_CHECK(newOpdesc->AddInputDesc(input_tensor2) != SUCCESS,
                       OP_LOGE(FUSED_OP_TYPE.c_str(), "add input failed."), return FAILED);
+  }
+
+  vector<ge::GeTensorDesc> input_tensor;
+  input_tensor.push_back(input_tensor0);
+  input_tensor.push_back(input_tensor1);
+  input_tensor.push_back(input_tensor2);
+  if (input_tensor.size() != 0) {
+    for (size_t i = 0; i < input_tensor.size(); i++) {
+      vector<int64_t> dimOut = input_tensor[i].GetOriginShape().GetDims();
+      if (dimOut.size() != 0) {
+        for (size_t j = 0; j < dimOut.size(); j++) {
+          auto dim = dimOut[j];
+          if (PatternFusionUtil::IsUnknownShape(dim)) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtV2FusionPass cannot be applied for unknown shape.");
+            return NOT_CHANGED;
+          }
+        }
+      }
+    }
   }
 
   // add output

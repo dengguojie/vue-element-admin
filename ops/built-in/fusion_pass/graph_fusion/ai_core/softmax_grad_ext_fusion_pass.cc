@@ -119,6 +119,25 @@ Status SoftmaxGradExtFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
       OP_LOGE(FUSED_OP_TYPE.c_str(), "Op[%s]: add the input desc for the input x2 failed.", newOpName.c_str()),
       return FAILED);
 
+  vector<ge::GeTensorDesc> input_tensor;
+  input_tensor.push_back(input_tensor0);
+  input_tensor.push_back(input_tensor1);
+  input_tensor.push_back(input_tensor2);
+  if (input_tensor.size() != 0) {
+    for (size_t i = 0; i < input_tensor.size(); i++) {
+      vector<int64_t> dimOut = input_tensor[i].GetOriginShape().GetDims();
+      if (dimOut.size() != 0) {
+        for (size_t j = 0; j < dimOut.size(); j++) {
+          auto dim = dimOut[j];
+          if (PatternFusionUtil::IsUnknownShape(dim)) {
+            OP_LOGE(FUSED_OP_TYPE.c_str(), "SoftmaxGradExtFusionPass cannot be applied for unknown shape.");
+            return NOT_CHANGED;
+          }
+        }
+      }
+    }
+  }
+
   // add output
   ge::GeTensorDesc output_tensor = mulGradNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(
