@@ -40,10 +40,6 @@ from .elewise_tilingcase import TilingStrategy
 BLOCK_SIZE_BYTE = 32
 MULTI_CORE_THRESHOLD = 1024
 ONE_DIM_ALIGN = 128
-N_LAST_BROADCAST_THRESHOLD = 512
-
-# temp space for last axis broadcast use vtranspose
-VTRANSPOSE_TEMP_SPACE = 8192
 
 CONST = "const"
 VECTOR = "vector"
@@ -61,11 +57,8 @@ TYPE_DOUNDS = {
     8: (1, 8191),
 }
 
-# BA templete and block split 0, ub split 0
-BA_KEY = 221000001
 
-
-@register_schedule(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
+@register_schedule(pattern=Pattern.ELEMWISE)
 def schedule(outs, tiling_case):
     """
     :param outs:
@@ -100,15 +93,6 @@ class ElewiseSchedule:
         self._middle_out_tensors = set()
         self._out_tensors = set()
 
-        self._broadcast_tensors = set()
-        self._absorbable_broadcast_tensors = set()
-        self._compute_inline_broadcast = set()
-        self._broadcast_axis_num = {}
-
-        self._broadcast_store_predicate = set()
-        self._store_predicate_common_tensors = set()
-        self._all_pre_node_broadcast = []
-
         self._dtypes = set()
         self._outs_dtypes = set()
         self._max_dtype_bytes = 4
@@ -131,8 +115,6 @@ class ElewiseSchedule:
         self._cache_write_tensor_map = {}
         self._middle_out_cache_write_buffer_map = {}
 
-        self._compute_inline_tensors = set()
-
         self._compute_at_map = {}
 
         # just for const tiling
@@ -152,8 +134,6 @@ class ElewiseSchedule:
 
         self._ir_axes = []
         self._inner_shape = []
-
-        self._constraints = set()
 
         self._mem_reuse_map = {}
         self._data_reuse_map = {}
@@ -177,8 +157,6 @@ class ElewiseSchedule:
 
         self._set_scope()
 
-        self._calc_store_predicate()
-
         self._calc_storage_bound()
 
         self._calc_tiling()
@@ -186,25 +164,17 @@ class ElewiseSchedule:
 
         self._do_storage_bound()
 
-        self._calc_compute_inline()
-        self._do_compute_inline()
-
         self._calc_multi_core()
         self._do_multi_core()
 
         self._calc_compute_at()
         self._do_compute_at()
 
-        self._do_store_predicate()
-
         self._calc_double_buffer()
         self._do_double_buffer()
 
         self._calc_mem_reuse()
         self._do_mem_reuse()
-
-        self._calc_constraints()
-        self._do_constraints()
 
         self._calc_emit_insn()
         self._do_emit_insn()
@@ -213,36 +183,11 @@ class ElewiseSchedule:
         return self._schedule if self._check_tiling_case() else None
 
     def _construct_compute_graph(self):
-        def match_scalar_scene(tensor_):
-            # condition:
-            # 1. tensor --> tensor
-            # 2. broadcast tensor is output
-            # 3. next compute support scalar
-            if len(tensor_.op.input_tensors) != 0 and \
-                    util.get_tensor_size(tensor_.op.input_tensors[0]) != 1:
-                return False
-            if tensor_ in self._out_tensors:
-                return False
-            if all(util.support_scalar(tensor_o) for tensor_o in
-                   self._in_out_map.get(tensor_)):
-                return True
-            return False
-
-        def _no_broadcast(_src_shapes, _dst_shapes):
-            _src_shapes = util.shape_to_list(_src_shapes)
-            _dst_shapes = util.shape_to_list(_dst_shapes)
-            broadcast_num = 0
-            for x, y in zip(_src_shapes, _dst_shapes):
-                if not expr_equal(x, y):
-                    broadcast_num += 1
-            return broadcast_num
 
         self._out_tensors = set(self._outs)
 
         visited_tensors = set()
         for out in self._out_tensors:
-            if util.is_broadcast(out):
-                self._broadcast_tensors.add(out)
             self.__dfs_sub_graph(out, visited_tensors)
             self._dtypes.add(out.dtype)
             self._outs_dtypes.add(out.dtype)
@@ -259,19 +204,6 @@ class ElewiseSchedule:
             self.__dfs_sub_graph(self._out, visited_tensors)
         else:
             self._out = pure_out_tensors[0]
-
-        for tensor_i in self._broadcast_tensors:
-            if match_scalar_scene(tensor_i):
-                self._absorbable_broadcast_tensors.add(tensor_i)
-
-        ub_idx = 0
-        if self._tiling_strategy == TilingStrategy.ONE_CUT:
-            ub_idx = self._tiling_case["ub_tiling_axis"]
-        for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
-            if tensor_i.op.tag != "broadcast":
-                src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
-                dst_shapes = tensor_i.shape[ub_idx:]
-                self._broadcast_axis_num[tensor_i] = _no_broadcast(src_shapes, dst_shapes)
 
     def _calc_cache_read(self):
         self._cache_read_tensors.update(self._input_tensors)
@@ -307,23 +239,11 @@ class ElewiseSchedule:
             sch[tensor_i].set_scope(self._scope)
 
     def _calc_tiling(self):
-        funcs = {TilingStrategy.ALL_CUT: self._calc_tiling_all_cut,
-                 TilingStrategy.NONE_CUT: self._calc_tiling_none_cut,
-                 TilingStrategy.ONE_CUT: self._calc_tiling_one_cut,
+        funcs = {TilingStrategy.ONE_CUT: self._calc_tiling_one_cut,
                  TilingStrategy.STATIC: self._calc_tiling_static,
                  TilingStrategy.CONST: self._calc_tiling_const,
                  }
         funcs[self._tiling_strategy]()
-
-    def _calc_tiling_all_cut(self):
-        res = self._out
-        for _i, _x in enumerate(res.shape):
-            bound = (1, util.get_bound(_x)[1])
-            self._block_tiling_vars[_i] = operation.var_inner("_block_factor_" + str(_i), bound)
-            self._ub_tiling_vars[_i] = operation.var_inner("_ub_factor_" + str(_i), bound)
-
-    def _calc_tiling_none_cut(self):
-        pass
 
     def _calc_tiling_one_cut(self):
         res = self._out
@@ -382,15 +302,11 @@ class ElewiseSchedule:
 
         input_shapes = list(map(list, zip(*input_shapes)))
         broadcast_axis = [False] * max_dim_length
-        for i in range(max_dim_length - 1, -1, -1):
-            if any([input_shapes[i][0] != s for s in input_shapes[i]]):
-                broadcast_axis[i] = True
 
         # pure eletwise delete double tmp size
         if len(output_shape) == 1:
             self._is_one_dim = True
-            if True not in broadcast_axis:
-                self._correct_factor = 2
+            self._correct_factor = 2
 
         base_info = {"000": [self._ub_size - self._correct_factor * self._tmp_ub_size,
                              self._max_dtype_bytes, self._coexisting_quantity, util.get_core_num()]}
@@ -426,42 +342,11 @@ class ElewiseSchedule:
         self._is_db = True if tiling_data.get("is_need_db", 0) == 1 else False
 
     def _do_tiling(self):
-        funcs = {TilingStrategy.ALL_CUT: self._do_tiling_all_cut,
-                 TilingStrategy.NONE_CUT: self._do_tiling_none_cut,
-                 TilingStrategy.ONE_CUT: self._do_tiling_one_cut,
+        funcs = {TilingStrategy.ONE_CUT: self._do_tiling_one_cut,
                  TilingStrategy.STATIC: self._do_tiling_static,
                  TilingStrategy.CONST: self._do_tiling_const,
                  }
         funcs[self._tiling_strategy]()
-
-    def _do_tiling_all_cut(self):
-        sch = self._schedule
-        res = self._out
-        block_axes = []
-        ub_axes = []
-        inner_axes = []
-        for _i, _x in enumerate(res.op.axis):
-            x_o, x_i = sch[res].split(_x, factor=self._block_tiling_vars[_i])
-            x_io, x_ii = sch[res].split(x_i, factor=self._ub_tiling_vars[_i])
-            block_axes.append([x_o, _i])
-            ub_axes.append([x_io, _i])
-            inner_axes.append([x_ii, _i])
-            self._inner_shape.append([self._ub_tiling_vars[_i], _i])
-        self._ir_axes = block_axes + ub_axes + inner_axes
-        ordered_axes = [x[0] for x in self._ir_axes]
-        sch[res].reorder(*ordered_axes)
-        self._block_bind_axis = sch[res].fuse(*[x[0] for x in block_axes])
-        self._compute_at_axis = ub_axes[-1][0]
-        self._compute_at_axis_idx = ub_axes[-1][1]
-        self._emit_insn_axis = inner_axes[0][0]
-
-    def _do_tiling_none_cut(self):
-        res = self._out
-        shape = util.shape_to_list(res.shape)
-        for _i, _x in enumerate(res.op.axis):
-            self._ir_axes.append([_x, _i])
-            self._inner_shape.append([shape[_i], _i])
-        self._emit_insn_axis = res.op.axis[0]
 
     def _do_tiling_one_cut(self):
         sch = self._schedule
@@ -525,38 +410,8 @@ class ElewiseSchedule:
         else:
             self._emit_insn_axis = res.op.axis[0]
 
-    def _calc_compute_inline(self):
-        def _no_broadcast(_src_shapes, _dst_shapes):
-            _src_shapes = util.shape_to_list(_src_shapes)
-            _dst_shapes = util.shape_to_list(_dst_shapes)
-            for x, y in zip(_src_shapes, _dst_shapes):
-                if not expr_equal(x, y):
-                    return False
-            return True
-
-        self._compute_inline_tensors = \
-            self._absorbable_broadcast_tensors.copy()
-        if self._tiling_strategy == TilingStrategy.CONST:
-            ub_idx = self._ub_split_axis
-            for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
-                if tensor_i.op.tag != "broadcast":
-                    src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
-                    dst_shapes = tensor_i.shape[ub_idx:]
-                    if _no_broadcast(src_shapes, dst_shapes):
-                        self._compute_inline_tensors.add(tensor_i)
-        else:
-            for tensor_i in self._broadcast_axis_num:
-                if self._broadcast_axis_num[tensor_i] == 0:
-                    self._compute_inline_broadcast.add(tensor_i)
-
-    def _do_compute_inline(self):
-        sch = self._schedule
-        for tensor_i in self._compute_inline_tensors:
-            sch[tensor_i].compute_inline()
-
     def _calc_multi_core(self):
-        if self._tiling_strategy == TilingStrategy.NONE_CUT:
-            self._block_bind_axis = None
+        pass
 
     def _do_multi_core(self):
         if self._block_bind_axis is not None:
@@ -564,15 +419,15 @@ class ElewiseSchedule:
             self._schedule[self._out].bind(self._block_bind_axis, block)
 
     def _calc_compute_at(self):
-        if self._tiling_strategy == TilingStrategy.NONE_CUT or \
-                (self._tiling_strategy == TilingStrategy.CONST and not self._need_do_block):
+        if self._tiling_strategy == TilingStrategy.CONST \
+                and not self._need_do_block:
             self._compute_at_map.clear()
             return
 
         for tensor_i in self._input_tensors:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
-        for tensor_i in self._middle_tensors - self._compute_inline_tensors:
+        for tensor_i in self._middle_tensors:
             self._compute_at_map[tensor_i] = [self._out, self._compute_at_axis]
 
         for tensor_i in self._cache_read_buffer_tensor_map:
@@ -586,38 +441,6 @@ class ElewiseSchedule:
         for tensor_i, param in self._compute_at_map.items():
             sch[tensor_i].compute_at(sch[param[0]], param[1])
 
-    def _do_store_predicate(self):
-        sch = self._schedule
-        for tensor_i in self._broadcast_store_predicate:
-            sch[tensor_i].set_store_predicate(self._compute_at_axis < 1)
-            sch[tensor_i].mem_unique()
-        for tensor_i in self._all_pre_node_broadcast:
-            if tensor_i in self._placeholder_tensor_map:
-                sch[self._placeholder_tensor_map[tensor_i]].set_store_predicate(self._compute_at_axis < 1)
-            else:
-                sch[tensor_i].set_store_predicate(self._compute_at_axis < 1)
-        for tensor_i in self._store_predicate_common_tensors:
-            if tensor_i in self._placeholder_tensor_map:
-                sch[self._placeholder_tensor_map[tensor_i]].mem_unique()
-            else:
-                sch[tensor_i].mem_unique()
-
-    def _calc_constraints(self):
-        for tensor_i in self._broadcast_tensors:
-            if tensor_i.op.tag == "unknown_broadcast":
-                src_shapes = tensor_i.op.input_tensors[0].shape
-                dst_shapes = tensor_i.shape
-                for src_shape, dst_shape in zip(src_shapes, dst_shapes):
-                    if src_shape != dst_shape:
-                        self._constraints.add(src_shape <= dst_shape)
-                # add build args: constant_realize_extent_in_infer_bound
-                operation.add_build_arg(
-                    "constant_realize_extent_in_infer_bound", False)
-
-    def _do_constraints(self):
-        sch = self._schedule
-        for cond in self._constraints:
-            sch.set_constraint(cond)
 
     def _calc_emit_insn(self):
         def get_insn(tensor_):
@@ -634,15 +457,11 @@ class ElewiseSchedule:
             else:
                 self._emit_insn_map[source] = [source.op.axis[0], "dma_copy"]
 
-        for tensor_i in (self._pure_middle_tensors - self._compute_inline_tensors):
+        for tensor_i in self._pure_middle_tensors:
             self._emit_insn_map[tensor_i] = [tensor_i.op.axis[0], get_insn(tensor_i)]
-            if tensor_i in self._compute_inline_broadcast:
-                self._emit_insn_map[tensor_i].append("phony_insn")
 
         for source, target in self._cache_write_buffer_tensor_map.items():
             self._emit_insn_map[source] = [source.op.axis[0], get_insn(target)]
-            if target in self._compute_inline_broadcast:
-                self._emit_insn_map[source].append("phony_insn")
 
         if len(self._out_tensors) > 1:
             for tensor_i in self._out_tensors:
@@ -660,27 +479,12 @@ class ElewiseSchedule:
         for tensor_i, param in self._emit_insn_map.items():
             if len(param) > 2:
                 sch[tensor_i].emit_insn(param[0], param[2])
-            compile_broadcast_no_inline = (param[1] == "unified_broadcast" and \
-                                          self._broadcast_axis_num.get(tensor_i, 0) > 1)
-            if param[1] == "unknown_broadcast"  or compile_broadcast_no_inline:
-                u_idx = 0
-                if self._tiling_strategy != TilingStrategy.NONE_CUT:
-                    u_idx = self._tiling_case["ub_tiling_axis"]
-                src_shapes = tensor_i.op.input_tensors[0].shape[u_idx:]
-                tensor_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
-                src_shape = tvm.expr.Call('handle', 'tvm_tuple', src_shapes,
-                                          tvm.expr.Call.PureIntrinsic, None, 0)
-                attrs = {}
-                if compile_broadcast_no_inline:
-                    attrs = dict(storage_bound=[tensor_bound])
-                if param[1] == "unknown_broadcast":
-                    attrs = dict(src_shape=src_shape, storage_bound=[tensor_bound])
-                sch[tensor_i].emit_insn(param[0], param[1], attrs)
+
+            if tensor_i in self._out_tensors and self._is_one_dim:
+                sch[tensor_i].emit_insn(param[0], param[1],
+                                        attrs=dict(no_overlap=0))
             else:
-                if tensor_i in self._out_tensors and self._is_one_dim:
-                    sch[tensor_i].emit_insn(param[0], param[1], attrs=dict(no_overlap=0))
-                else:
-                    sch[tensor_i].emit_insn(param[0], param[1])
+                sch[tensor_i].emit_insn(param[0], param[1])
 
     def _calc_double_buffer(self):
         pass
@@ -713,7 +517,7 @@ class ElewiseSchedule:
 
         # one of the input of the ternary instruction must be reused with the output, refer to "ternary_reuse_map"
         # consider "vmadd": A=A*A+B, output reuse the second A, input_tensors is 2, which need to be completed to 3
-        for tensor_i in self._out_tensors | (self._pure_middle_tensors - self._compute_inline_tensors):
+        for tensor_i in self._out_tensors | self._pure_middle_tensors:
             insn = util.get_dsl_insn(tensor_i)
             args = ""
             if tensor_i.op.tag.find("|") != -1:
@@ -742,10 +546,6 @@ class ElewiseSchedule:
             util.merge_value(self._mem_reuse_map,
                              self._middle_out_cache_read_buffer_map[tensor_i],
                              write_buffer)
-        for tensor_i in self._compute_inline_broadcast:
-            input_tensor = tensor_i.op.input_tensors[0]
-            input_tensor, broadcast_tensor = __get_ub_tensor(input_tensor, tensor_i)
-            util.merge_value(self._data_reuse_map, input_tensor, broadcast_tensor)
 
     def _do_mem_reuse(self):
         sch = self._schedule
@@ -756,24 +556,6 @@ class ElewiseSchedule:
             for b_i in _b:
                 sch[_a].reused_by(b_i)
                 sch[b_i].reused_by(reuse_data=True)
-
-    def _calc_store_predicate(self):
-        def _dfs_cur_tensor(tensor_i):
-            for _tensor in tensor_i.op.input_tensors:
-                all_pre_node.add(_tensor)
-                _dfs_cur_tensor(_tensor)
-
-        if self._schedule.tiling_key == BA_KEY:
-            for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
-                if util.get_dsl_insn(tensor_i) != "unified_broadcast":
-                    continue
-                self._broadcast_store_predicate.add(tensor_i)
-                all_pre_node = set()
-                _dfs_cur_tensor(tensor_i)
-                self._all_pre_node_broadcast.extend(list(all_pre_node))
-            from collections import Counter
-            collect = Counter(self._all_pre_node_broadcast)
-            self._store_predicate_common_tensors = {key for (key, value) in collect.items() if value > 1}
 
     def _calc_storage_bound(self):
 
@@ -793,11 +575,6 @@ class ElewiseSchedule:
                 _current_space = len(dependent_map)
             else:
                 _current_space = len(dependent_map) + 1
-            if util.need_extent_node(_tensor) and _tensor not in self._compute_inline_broadcast:
-                _current_space += 1
-            if util.get_dsl_insn(_tensor) == "unified_broadcast" and \
-               self._broadcast_axis_num.get(_tensor, 0) > 1:
-                _current_space += 1
             if util.need_temp_space(_tensor) or _need_external_space(_tensor):
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
             return _current_space
@@ -805,8 +582,6 @@ class ElewiseSchedule:
         def _r_coexisting(_tensor):
             if _tensor in dependent_map and _tensor not in init_map:
                 return len(dependent_map)
-            if util.is_vtranspose_broadcast(_tensor):
-                self._tmp_ub_size += VTRANSPOSE_TEMP_SPACE
             _need_space = []
             for _tensor_i in _tensor.op.input_tensors:
                 _need_space.append(_r_coexisting(_tensor_i))
@@ -834,13 +609,6 @@ class ElewiseSchedule:
                     dependent_map.pop(_tensor_i)
 
         def _need_external_space(_tensor):
-            # pass memory reuse exists error, avoid it in schedule
-
-            exist_absorbable_broadcast = any([x in self._absorbable_broadcast_tensors
-                                              for x in _tensor.op.input_tensors])
-            if not exist_absorbable_broadcast:
-                return False
-
             op_tag = util.get_dsl_insn(_tensor)
             support_vector_scalar_insns = ("elewise_binary_add", "elewise_binary_mul")
             if op_tag in set(SUPPORT_SCALAR_INSNS) - set(support_vector_scalar_insns):
@@ -852,12 +620,6 @@ class ElewiseSchedule:
         coexisting_quantities = []
         dependent_map = {}
         init_map = set()
-        if self._schedule.tiling_key == BA_KEY:
-            all_producers = self._middle_tensors.copy()
-            all_producers.update(self._outs)
-            for tensor_i in self._broadcast_store_predicate | self._store_predicate_common_tensors:
-                dependent_map[tensor_i] = all_producers
-                init_map.add(tensor_i)
         for tensor_i in self._out.op.input_tensors:
             coexisting_quantities.append(_r_coexisting(tensor_i))
         if not self._out.op.tag == FAKE_NODE_TAG:
@@ -865,8 +627,6 @@ class ElewiseSchedule:
                 current_space = len(dependent_map)
             else:
                 current_space = len(dependent_map) + 1
-            if util.is_vtranspose_broadcast(self._out):
-                self._tmp_ub_size += VTRANSPOSE_TEMP_SPACE
 
             # correct ub size in vcmp or vsel or vcmpsel
             _correct_ub_size_by_cmp_sel(self._out)
@@ -875,17 +635,12 @@ class ElewiseSchedule:
                 self._tmp_ub_size += BLOCK_SIZE_BYTE
             if util.need_extent_node(self._out):
                 current_space += 1
-            if util.get_dsl_insn(self._out) == "unified_broadcast" and \
-               self._broadcast_axis_num.get(self._out, 0) > 1:
-                current_space += 1
             coexisting_quantities.append(current_space)
 
         self._coexisting_quantity = max(coexisting_quantities)
         self._coexisting_quantity += self._redundant_coe
 
         if self._coexisting_quantity == 1:
-            self._tmp_ub_size += BLOCK_SIZE_BYTE
-        if len(self._broadcast_tensors - self._compute_inline_tensors - self._compute_inline_broadcast) > 0:
             self._tmp_ub_size += BLOCK_SIZE_BYTE
 
     def _do_storage_bound(self):
@@ -946,8 +701,6 @@ class ElewiseSchedule:
                 self._input_tensors.add(tensor_i)
             else:
                 self._middle_tensors.add(tensor_i)
-                if util.is_broadcast(tensor_i):
-                    self._broadcast_tensors.add(tensor_i)
 
             if tensor_i in visited_tensors:
                 continue

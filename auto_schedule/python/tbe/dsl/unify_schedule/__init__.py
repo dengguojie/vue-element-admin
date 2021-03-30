@@ -16,6 +16,8 @@
 unify schedule
 """
 from . import elewise_schedule, elewise_tilingcase
+from . import broadcast_schedule
+from . import broadcast_tilingcase
 from . import reduce_schedule
 from . import reduce_tilingcase
 from . import softmax_schedule, softmax_tilingcase
