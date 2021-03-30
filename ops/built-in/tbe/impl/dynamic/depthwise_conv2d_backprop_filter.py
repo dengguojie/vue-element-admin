@@ -29,6 +29,10 @@ from impl.util.util_cube_dynamic import CubeParaProcess
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 DYNAMIC_FLAG = -1
 UNKNOWN_RANK_SHAPE = [-2]
+DIM_N_NCHW = 0
+DIM_C_NCHW = 1
+DIM_H_NCHW = 2
+DIM_W_NCHW = 3
 # shape's dim of input and output must be 4 or 5
 FEATURE_MAP_DIM = [4, 5]
 
@@ -244,19 +248,21 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
         shape_dedw = (shape_dedw[3], shape_dedw[2], shape_dedw[0], shape_dedw[1])
 
     # index of origin dimension
-    dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3 # NCHW
+    if input_ori_format == "NCHW":
+        dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3 # NCHW
+    else:
+        dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
     unknown_rank_flag = False
     if list(shape_in) == UNKNOWN_RANK_SHAPE or list(shape_dedy) == UNKNOWN_RANK_SHAPE:
         unknown_rank_flag = True
-        in_channel = shape_dedw[dim_c]
-        channel_mul = shape_dedw[dim_n]
+        in_channel = shape_dedw[DIM_C_NCHW]
+        channel_mul = shape_dedw[DIM_N_NCHW]
         out_channel = in_channel * channel_mul
         shape_in = (DYNAMIC_FLAG, in_channel, DYNAMIC_FLAG, DYNAMIC_FLAG)
         shape_dedy = (DYNAMIC_FLAG, out_channel, DYNAMIC_FLAG, DYNAMIC_FLAG)
         in_range = [(1, None), (in_channel, in_channel), (1, None), (1, None)]
         dedy_range = [(1, None), (out_channel, out_channel), (1, None), (2, None)]
     elif input_ori_format == 'NHWC':
-        dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
         shape_in = [shape_in[dim_n], shape_in[dim_c], shape_in[dim_h], shape_in[dim_w]]
         shape_dedy = [shape_dedy[dim_n], shape_dedy[dim_c], shape_dedy[dim_h], shape_dedy[dim_w]]
     shape_in, shape_dedy = _get_dynamic_shape(shape_in, shape_dedy, shape_dedw, in_range, dedy_range)
@@ -309,7 +315,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
         fmap_w_min = max(fmap_w_min, shape_dedw[3] - pads[2], pads[3])
         padding = pads
    
-    if unknown_rank_flag:
+    if unknown_rank_flag or None in [*in_range[0], *in_range[2], *in_range[3]]:
         in_range[2] = (fmap_h_min, None)
         in_range[3] = (fmap_w_min, None)
 
@@ -337,7 +343,7 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     dedy = tvm.placeholder(dedy_shape_nc1hwc0, name="dedy", dtype=dedy_dtype)
 
     para_dict = {
-        "strides": [strides[2], strides[3]],
+        "strides": [strides[DIM_H_NCHW], strides[DIM_W_NCHW]],
         "padding": padding,
         "dilations": dilations,
         "groups": fmap_c,

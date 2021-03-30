@@ -87,7 +87,7 @@ ut_case.add_case(
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
                                         ((4, 4)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case4",
+                                        "dynamic_conv2d_backprop_input_case5",
                                         "failed"))
 
 # general, dynamic_batch,N dim's range is (1, None)
@@ -100,7 +100,7 @@ ut_case.add_case(
                                         ((1, None), (16, 16), (8, 8), (16, 16)),
                                         ((4, 4)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case4",
+                                        "dynamic_conv2d_backprop_input_case6",
                                         "failed"))
 
 
@@ -113,7 +113,7 @@ ut_case.add_case(
                                         ((1, 10), (16, 16), (8, 8), (16, 16)),
                                         ((-2, -2)),
                                         (1, 1, 2, 2), [-1, -1, -1, -1], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case4",
+                                        "dynamic_conv2d_backprop_input_case7",
                                         "failed"))
 
 # general, dynamic_hw,N dim's range is (1, None)
@@ -126,7 +126,7 @@ ut_case.add_case(
                                         ((4, 4), (16, 16), (1, None), (1, None)),
                                         ((4, 4)),
                                         (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1), 1, "NCHW",
-                                        "dynamic_conv2d_backprop_input_case5",
+                                        "dynamic_conv2d_backprop_input_case8",
                                         "success"))
 
 

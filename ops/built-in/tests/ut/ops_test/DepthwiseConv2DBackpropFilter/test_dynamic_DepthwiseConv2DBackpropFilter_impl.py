@@ -6,35 +6,35 @@ ut_case = OpUT("DepthwiseConv2DBackpropFilter", "impl.dynamic.depthwise_conv2d_b
                "depthwise_conv2d_backprop_filter")
 dynamic_conv2d_bp_filter_op_testcase = [
     # success
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], "success"),
-    ((3, 200, 75, 40), (3, 200, 75, 40), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NHWC", [0, 2, 3], "success"),
-    ((3, 40, 200, 75), (3, 40, 192, 68), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 2, 3], "success"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_0"),
+    ((3, 200, 75, 40), (3, 200, 75, 40), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NHWC", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_1"),
+    ((3, 40, 200, 75), (3, 40, 192, 68), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_2"),
     # dedy_c != fmap_c * filter_n
-    ((3, 40, 200, 75), (3, 41, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 41, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_3"),
     # filter_c != fmap_c
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 13, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 13, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_4"),
     # fmap_n != dedy_n
-    ((3, 40, 200, 75), (4, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [2, 3], RuntimeError),
+    ((3, 40, 200, 75), (4, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_5"),
     # stride_n != 1
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [2,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [2,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_6"),
     # strides dim != 4
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_7"),
     # pads dim != 4
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_8"),
     # stride_h/w > 63
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,64,64,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,64,64,1], [1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_9"),
     # dilations != [1,1,1,1]
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,2,2,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,2,2,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_10"),
     # dilations dim != 4
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1,1], (-1, -1, -1, -1), "NCHW", [0, 2, 3], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_11"),
     # dedy_h does not match fmap_h
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_12"),
     # dedy_h less than 2
-    ((3, 40, 9, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError),
+    ((3, 40, 9, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_13"),
     # -2
-    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 1, 2, 3], "success"),
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 1, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_14"),
     # -1
-    ((3, -1, 200, 75), (3, -1, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 2, 3], "success"),
+    ((3, -1, 200, 75), (3, -1, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_15"),
 ]
 
 
@@ -88,7 +88,7 @@ def _trans_dynamic_shape(shape, format, dynamic_dim):
 
 
 def _gen_case(param):
-    input_ori_shape, out_backprop_ori_shape, filter_size, strides, dilations, pads, data_format, dynamic_dim, expect_result = param
+    input_ori_shape, out_backprop_ori_shape, filter_size, strides, dilations, pads, data_format, dynamic_dim, expect_result, kernel_name = param
 
     data_format = data_format.upper()
     dtype = "float16"
@@ -134,7 +134,7 @@ def _gen_case(param):
         "range": _get_range_from_shape(filter_grad_shape)
     }
 
-    kernel_name = _get_kernel_name(input_shape, out_backprop_shape, filter_size, strides, dilations, pads, data_format)
+    kernel_name = kernel_name
     return {
         "params": [x, filter, out_backprop, filter_grad, strides, dilations, pads, data_format],
         "case_name": kernel_name,
