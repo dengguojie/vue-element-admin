@@ -115,13 +115,7 @@ NodePtr AvgPoolV2FusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoo
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
 
   // add output
-  ge::GeTensorDesc output_desc;
-  ge::GeShape mulOutputShape(mulDimInfo);
-  output_desc.SetShape(mulOutputShape);
-  output_desc.SetOriginShape(mulShape);
-  output_desc.SetFormat(ge::FORMAT_NC1HWC0);
-  output_desc.SetOriginFormat(inputOriginFormat);
-  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(output_desc) != SUCCESS,
+  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(input_desc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
 
   // add node

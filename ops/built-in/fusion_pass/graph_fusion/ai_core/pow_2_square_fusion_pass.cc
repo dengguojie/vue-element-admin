@@ -38,6 +38,9 @@ namespace fe {
 static const char* POW = "Pow";
 static const char* SQUARE = "Square";
 static const string PATTERN_POW = "Pow";
+static const string CONSTANT = "Const";
+static const string CONSTANTOP = "Constant";
+static const string DATAOP = "Data";
 
 vector<FusionPattern*> Pow2SquareFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -69,6 +72,11 @@ Status Pow2SquareFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   ge::OutDataAnchorPtr constAnchorPtr2 = PowAnchorPtr2->GetPeerOutAnchor();
   ge::NodePtr constNode2 = constAnchorPtr2->GetOwnerNode();
   ge::OpDescPtr constNode2_desc = constNode2->GetOpDesc();
+  std::string type = ge::NodeUtils::GetInConstNodeTypeCrossSubgraph(constNode2);
+  if (type != CONSTANT && type != CONSTANTOP && type != DATAOP) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The type of y input is not constant.");
+    return NOT_CHANGED;
+  }
   vector<ge::GeTensorPtr> pow_y = ge::OpDescUtils::MutableWeights(constNode2);
   FUSION_PASS_CHECK(pow_y.empty(), OP_LOGI(FUSED_OP_TYPE.c_str(), "Pow input y is tensor!"),
                     return NOT_CHANGED);
