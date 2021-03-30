@@ -381,7 +381,10 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             if len(shape_x) > 4 or len(shape_y) > 4:
                 formats = ["ND"]
             else:
-                formats = format_5hd
+                if set(shape_x) == {1} or set(shape_y) == {1}:
+                    formats = ["ND"]
+                else:
+                    formats = format_5hd
             for item in formats:
                 dtype_total = dtype_total + dtype_list
                 format_list_input0 = format_list_input0 + [item] * len(dtype_list)

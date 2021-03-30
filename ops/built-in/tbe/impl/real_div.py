@@ -20,10 +20,233 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from te.utils.error_manager import error_manager_vector
+from impl.util import util_common
+from impl.util import util_select_op_base
 
-
+SIZE_SIXTEEN = 16
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
+def _can_division_sixteen(shape):
+    """
+    check whether divided by 16.
+
+    Parameters
+    ----------
+    shape: list or tuple
+
+    Returns:
+    -------
+    None
+    """
+    if shape[-1] == 0 or shape[-2] == 0:
+        expected_value = "not equal to 0"
+        real_value = "equal to 0"
+        error_manager_vector.raise_err_input_value_invalid("add", "shape[-1] and shape[-2]",
+                                                           expected_value, real_value)
+
+    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
+        return True
+
+    return False
+
+
+def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
+    """
+    select format dynamically
+    op_select_format support desc:
+        1. when input x's ori_shape is 4, and bias's shape is not 1.
+           The Op Bias can support
+           ND/ND = ND,
+           NC1HWC0/NC1HWC0 = NC1HWC0,
+
+           for example:
+           inputs:
+             x        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+             bias     ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+           outputs:
+             y        ori shape = [16, 16, 16, 16, 16] ori_format = "NC1HWC0"
+
+        2. In other scenes, all input(x, bias) only support ND,
+           for example:
+           inputs:
+             x        ori shape = [2] ori_format = "ND"
+             bias     ori shape = [2] ori_format = "ND"
+           outputs:
+             y        ori shape = [2] ori_format = "ND"
+    """
+    shape_x = input_x.get("ori_shape")
+    shape_y = input_y.get("ori_shape")
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
+    format_4d_list = ["NCHW", "NHWC", "HWCN"]
+    format_5d_list = ["NDHWC", "DHWCN", "NCDHW"]
+    format_x = input_x.get("ori_format")
+    format_y = input_y.get("ori_format")
+    format_list_input0 = ["ND"]
+    format_list_input1 = ["ND"]
+    format_list_output = ["ND"]
+    def _all_append_format_list(format):
+        format_list_input0.append(format)
+        format_list_input1.append(format)
+        format_list_output.append(format)
+
+    #NZ/NZ
+    if len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:]:
+        if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
+            _all_append_format_list("FRACTAL_NZ")
+
+    if (len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list) or \
+            (len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list):
+        x_cdim = shape_x[format_x.index("C")]
+        x_wdim = shape_x[format_x.index("W")]
+        x_hdim = shape_x[format_x.index("H")]
+        x_ndim = shape_x[format_x.index("N")]
+        y_cdim = shape_y[format_y.index("C")]
+        y_wdim = shape_y[format_y.index("W")]
+        y_hdim = shape_y[format_y.index("H")]
+        y_ndim = shape_y[format_y.index("N")]
+
+    if (len(shape_y) == 1 and len(shape_x) == 4) and format_x in format_4d_list:
+        x_cdim = shape_x[format_x.index("C")]
+        x_ndim = shape_x[format_x.index("N")]
+
+    if (len(shape_x) == 1 and len(shape_y) == 4) and format_y in format_4d_list:
+        y_cdim = shape_y[format_y.index("C")]
+        y_ndim = shape_y[format_y.index("N")]
+
+    # NDC1HWC0 FRACTAL_Z_3D
+    if len(shape_x) == 5 and len(shape_y) == 5 and format_x == format_y and format_x in format_5d_list:
+        if x_cdim % 16 == 0 and y_cdim % 16 == 0:
+            _all_append_format_list("NDC1HWC0")
+            if x_ndim % 16 == 0 and y_ndim % 16 == 0:
+                _all_append_format_list("FRACTAL_Z_3D")
+
+    # ND/ND 5HD/5HD FZ/FZ
+    if len(shape_x) == 4 and len(shape_y) == 4 and format_x in format_4d_list and format_y in format_4d_list:
+        if x_cdim % 16 == 0 and y_cdim % 16 == 0:
+            if format_x == format_y == "NCHW" and (x_cdim == y_cdim or x_cdim // 16 == 1 or y_cdim // 16 == 1) \
+                    and (x_ndim == y_ndim or x_ndim == 1 or y_ndim == 1):
+                _all_append_format_list("NC1HWC0")
+            if format_x == format_y == "HWCN":
+                if x_hdim == y_hdim and (x_wdim == 1 or y_wdim == 1):
+                    _all_append_format_list("NC1HWC0")
+                if x_wdim == y_wdim and (x_hdim == 1 or y_hdim == 1):
+                    _all_append_format_list("NC1HWC0")
+                if x_wdim == y_wdim and x_hdim == y_hdim:
+                    _all_append_format_list("NC1HWC0")
+                if (x_wdim == x_hdim == 1) or (y_hdim == y_wdim == 1):
+                    _all_append_format_list("NC1HWC0")
+                if (x_hdim == y_wdim == 1) or (x_wdim == y_hdim == 1):
+                    _all_append_format_list("NC1HWC0")
+            if format_x == format_y == "NHWC":
+                if x_hdim == y_hdim and (x_ndim == 1 or y_ndim == 1):
+                    _all_append_format_list("NC1HWC0")
+                if x_ndim == y_ndim and (x_hdim == 1 or y_hdim == 1):
+                    _all_append_format_list("NC1HWC0")
+                if x_ndim == y_ndim and x_hdim == y_hdim:
+                    _all_append_format_list("NC1HWC0")
+                if (x_ndim == x_hdim == 1) or (y_ndim == y_hdim == 1):
+                    _all_append_format_list("NC1HWC0")
+                if (x_ndim == 1 and y_hdim == 1) or (x_hdim == 1 and y_ndim == 1):
+                    _all_append_format_list("NC1HWC0")
+        if x_cdim % 16 == 0 and y_cdim % 16 == 0 and y_ndim % 16 == 0 and x_ndim % 16 == 0:
+            if (format_x == format_y == "NHWC" and list(shape_x) == list(shape_y)) or \
+                    (format_x == format_y == "NCHW" and list(shape_x) == list(shape_y)):
+                _all_append_format_list("FRACTAL_Z")
+            if format_x == format_y == "HWCN" and x_wdim * x_hdim == y_wdim * y_hdim:
+                _all_append_format_list("FRACTAL_Z")
+
+    # NZ/ND,ND/NZ
+    if (len(shape_x) >= 2 and len(shape_y) >= 2):
+        if  _can_division_sixteen(shape_x) and \
+            (not _can_division_sixteen(shape_y)):
+            format_list_input0.append("FRACTAL_NZ")
+            format_list_input1.append("ND")
+            format_list_output.append("FRACTAL_NZ")
+        elif (not _can_division_sixteen(shape_x)) and \
+             _can_division_sixteen(shape_y):
+            format_list_input0.append("ND")
+            format_list_input1.append("FRACTAL_NZ")
+            format_list_output.append("FRACTAL_NZ")
+
+    #ND/NZ
+    if len(shape_x) == 1 and len(shape_y) >= 2 and shape_x[-1] == shape_y[-1]:
+        if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
+            format_list_input0.append("ND")
+            format_list_input1.append("FRACTAL_NZ")
+            format_list_output.append("FRACTAL_NZ")
+    #NZ/ND
+    if len(shape_y) == 1 and len(shape_x) >= 2 and shape_x[-1] == shape_y[-1]:
+        format_list_input0.append("FRACTAL_NZ")
+        format_list_input1.append("ND")
+        format_list_output.append("FRACTAL_NZ")
+    #5HD/5HD
+    if len(shape_y) == 1 and len(shape_x) == 4 and format_x in format_4d_list:
+        if shape_y[0] % 16 == 0 and x_cdim % 16 == 0:
+            _all_append_format_list("NC1HWC0")
+    if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
+        if shape_x[0] % 16 == 0 and y_cdim % 16 == 0:
+            _all_append_format_list("NC1HWC0")
+
+    # 5HD/scalar,FZ/scalar
+    if len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
+        if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
+            _all_append_format_list("NC1HWC0")
+            _all_append_format_list("FRACTAL_Z")
+
+    #scalar/5HD,scalar/FZ
+    if len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
+        if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
+            if y_cdim % 16 == 0:
+                _all_append_format_list("NC1HWC0")
+            if y_cdim % 16 == 0 and y_ndim % 16 == 0:
+                _all_append_format_list("FRACTAL_Z")
+
+    # ND/ND,5HD/5HD
+    if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
+        _all_append_format_list("NC1HWC0")
+
+    # gen format and dtype
+    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+        dtype_list = ["float16"]
+    else:
+        dtype_list = ["float16", "float32"]
+    dtype_total = []
+    for dtype in dtype_list:
+        dtype_total = dtype_total + [dtype] * len(format_list_output)
+    len_dtype_list = len(dtype_list)
+    format_list_input0 = format_list_input0 * len_dtype_list
+    format_list_input1 = format_list_input1 * len_dtype_list
+    format_list_output = format_list_output * len_dtype_list
+    unknownshape_format_list = ["ND"] * len(dtype_total)
+
+    if -1 in shape_x or -1 in shape_y:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input0),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input1),
+                                               unknownshape_format=",".join(unknownshape_format_list))
+        output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=",".join(dtype_total),
+                                                format=",".join(format_list_output),
+                                                unknownshape_format=",".join(unknownshape_format_list))
+    else:
+        input0 = util_select_op_base.gen_param(classify="input0", name="x1", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input0))
+        input1 = util_select_op_base.gen_param(classify="input1", name="x2", datatype=",".join(dtype_total),
+                                               format=",".join(format_list_input1))
+        output0 = util_select_op_base.gen_param(classify="output0", name="y", datatype=",".join(dtype_total),
+                                                format=",".join(format_list_output))
+
+    param_list = [input0, input1, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+
+    return param_dynamic_in_json
+
+
 @tbe_platform.fusion_manager.fusion_manager.register("real_div")
 def real_div_compute(x1, x2, y, kernel_name="real_div"):
     """
