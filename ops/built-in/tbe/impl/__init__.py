@@ -218,6 +218,7 @@ from .less import less
 from .log_softmax_grad import log_softmax_grad
 from .log_softmax_v2 import log_softmax_v2
 from .mat_mul import mat_mul
+from .compress_mat_mul import compress_mat_mul
 from .real_div import real_div
 from .one_hot_d import one_hot_d
 from .pad_d import pad_d

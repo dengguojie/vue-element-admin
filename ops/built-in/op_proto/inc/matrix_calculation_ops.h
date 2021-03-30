@@ -91,6 +91,36 @@ REG_OP(MatMulV2)
     .ATTR(offset_x, Int, 0)
     .OP_END_FACTORY_REG(MatMulV2)
 
+/**
+*@brief Multiplies matrix "a" by matrix "b", producing "a * b" . \n
+
+*@par Inputs:
+*Two inputs, including:
+* @li x1: A matrix Tensor. 2D. Must be one of the following types: int8.
+* @li x2: A matrix Tensor. 2D. Must be one of the following types: int8.
+* @li compress_index: A compress index matrix of type int8.
+* @li bias: A 1D Tensor. Must be one of the following types: int32, float16.
+
+*@par Attributes:
+*@li transpose_x1: A bool. If True, changes the shape of "x1" from [M, K] to [K, M].
+*@li transpose_x2: A bool. If True, changes the shape of "x2" from [M, K] to [K, M] . \n
+
+*@par Outputs:
+*y: The result matrix Tensor. 2D. Must be one of the following types: float16,
+* int32. \n
+
+*/
+REG_OP(MatMulV2Compress)
+    .INPUT(x1, TensorType({DT_INT8}))
+    .INPUT(x2, TensorType({DT_INT8}))
+    .INPUT(compress_index, TensorType({DT_INT8}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT32, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_INT32, DT_FLOAT16}))
+    .OPTIONAL_INPUT(offset_w, TensorType({DT_INT8}))
+    .ATTR(transpose_x1, Bool, false)
+    .ATTR(transpose_x2, Bool, false)
+    .ATTR(offset_x, Int, 0)
+    .OP_END_FACTORY_REG(MatMulV2Compress)
 
 /**
 *@brief Performs Matrix-to-matrix Multiply, producing c=alpha[0]*a*b+beta[0]*c . \n
