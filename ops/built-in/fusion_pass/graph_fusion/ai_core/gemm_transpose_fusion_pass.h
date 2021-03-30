@@ -36,6 +36,12 @@ class GemmTransFusionPass : public PatternFusionBasePass {
  private:
   Status Relink(ge::NodePtr aNode, ge::NodePtr transpose_a_node,
                 ge::NodePtr gemm_node, const int anchor);
+  Status GenerateTransposeNode(ge::ComputeGraph* graph,
+                               const ge::GeTensorDesc& prev_out_desc,
+                               ge::GeTensorDesc* next_in_desc,
+                               const vector<int64_t>& perm,
+                               ge::NodePtr* transpose_node,
+                               const std::string& basename);
   const string FUSED_OP_TYPE = "GEMM";
 };
 }  // namespace fe
