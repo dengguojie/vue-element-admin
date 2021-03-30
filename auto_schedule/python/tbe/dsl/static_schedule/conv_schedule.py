@@ -2981,7 +2981,7 @@ class CceConvOp:
             """
             inline row_major_reshape tensor for v200 and dynamic mode
             """
-            if not self._var_map and is_support_v200() and not c0_optim_flg:
+            if not self._var_map and is_support_v200() and not c0_optim_flg and not self._l0a_dma_flag:
                 row_major_reshape = tensor_map["row_major_reshape_res"]
                 sch[row_major_reshape].compute_inline()
 
@@ -4196,8 +4196,7 @@ class CceConvOp:
             check l0a dma load3d support
             1. dma im2col not support pre fusion
             2. dma im2col not support pooling
-            3. dma im2col not support performance optim features
-            4. dma im2col not support c0 optim
+            3. dma im2col not support c0 optim
             """
             dma_im2col_tensor_map = ConvParam.tensor_map
             if self._l0a_dma_flag:
@@ -4205,9 +4204,6 @@ class CceConvOp:
                     err_man.raise_err_specific("conv2d", "dma im2col not support pre fusion")
                 if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag:
                     err_man.raise_err_specific("conv2d", "dma im2col not support pooling fusion")
-                if dma_im2col_tensor_map["l0a_load2d_flag"] or dma_im2col_tensor_map["bias_optimize_flag"] or \
-                    dma_im2col_tensor_map["strideh_opti_flag"]:
-                    err_man.raise_err_specific("conv2d", "dma im2col not support performance optim features")
                 if dma_im2col_tensor_map["c0_optim_flg"] or dma_im2col_tensor_map["c04_v200_flag"]:
                     err_man.raise_err_specific("conv2d", "dma im2col not support c0 optim")
 

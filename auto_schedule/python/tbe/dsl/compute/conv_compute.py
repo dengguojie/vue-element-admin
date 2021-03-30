@@ -710,6 +710,9 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             if ConvParam.fusion_para["l1_fusion_type"] in (0, 1) or ConvParam.fusion_para["input_memory_type"][0] == 1:
                 l0a_load2d_flag = False
 
+            if ConvParam.l0a_dma_flag:
+                l0a_load2d_flag = False
+
             return l0a_load2d_flag
 
         def _cal_im2col_res(height_out, width_out):
@@ -755,7 +758,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                     fmap_im2col_fractal_shape, fmap_im2col_row_major_res,
                     config, fmap.dtype)
 
-                if is_support_v200() and not c04_v100_flag:
+                if is_support_v200() and not c04_v100_flag and not ConvParam.l0a_dma_flag:
                     in_channel_c0 = data.shape[4].value
                     input_k_block = (in_channel_c1*filter_h*filter_w*in_channel_c0 + block_size_k - 1) // \
                                     block_size_k*block_size_k
@@ -858,7 +861,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             # for L1 breadth fusion, fmap must load all at once
             strideh_opti_flag = False
 
-        if ConvParam.pre_relu_flag:
+        if ConvParam.pre_relu_flag or ConvParam.l0a_dma_flag:
             strideh_opti_flag = False
 
         padding = ConvParam.padding
@@ -2242,6 +2245,10 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     check_conv_shape(shape_in, shape_w, pad_top, pad_bottom, pad_left, pad_right, stride_h, stride_w, in_dtype, w_dtype,
                      optim_dict, dilateh=dilate_h, dilatew=dilate_w,
                      dynamic_para=ConvParam.dynamic_para, groups=para_dict['group'])
+
+    # conv1d and dma im2col case, conv1d use dma
+    if ConvParam.l0a_dma_flag:
+        ConvParam.conv1d_split_w_flag = False
 
     conv_shape = ConvParam.dim_map["output_conv_res_shape"]
     if "invalid_data_rm" not in optim_dict:
