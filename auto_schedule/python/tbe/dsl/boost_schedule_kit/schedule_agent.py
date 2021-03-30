@@ -151,6 +151,35 @@ class AttachMap:
                 for stage in array_stages:
                     stage.compute_at(parent, pre_scope)
 
+    def get_compute_path(self):
+        """
+        get the axis that the stage compute at
+        """
+        compute_path = dict()
+        for scope, array_stages in self._attached_path.items():
+            parent = self._parent_stages[scope]
+            pre_scope = None
+            for axis in parent.leaf_iter_vars:
+                if axis == scope:
+                    break
+                pre_scope = axis
+            if pre_scope is not None:
+                for stage in array_stages:
+                    compute_path[stage] = pre_scope
+        return compute_path
+
+    def get_attach_dict(self):
+        """
+        get the tensor that the stage compute at
+        """
+        attach_dict = dict()
+        for scope, array_stages in self._attached_path.items():
+            parent = self._parent_stages[scope]
+            for stage in array_stages:
+                attach_dict[stage] = parent
+        return attach_dict
+
+
     @property
     def attached_path(self):
         """
@@ -724,8 +753,58 @@ class ScheduleAgent:
                     attach_map.update_scope(scope, scope_intrinsic)
                     remain_scopes.remove(scope)
         self._attach_map.apply()
+
+    def get_compute_path(self):
+        """
+        get the compute_path
+        """
+        return self._attach_map.get_compute_path()
+
+    def get_attach_dict(self):
+        """
+        get the attach_dict
+        """
+        return self._attach_map.get_attach_dict()
+
+    def update_attach_scope(self, scope, new_scope):
+        """
+        replace the attach scope by new_scope
+        """
+        self._attach_map.update_scope(scope, new_scope)
+
+    def pre_apply(self):
+        """
+        process the scope_intrinsic before apply
+        """
+        attach_map = self._attach_map
+        parent_stages = list(set(attach_map.parent_stages.values()))
+        remain_scopes = set(attach_map.attached_path.keys())
+        for parent in parent_stages:
+            scope_intrinsic = self[parent.origin_op].scope_intrinsic
+            if scope_intrinsic is None:
+                continue
+            leaf_ivars = list(parent.leaf_iter_vars)
+            index = leaf_ivars.index(scope_intrinsic)
+            un_attachable_scopes = leaf_ivars[index + 1:]
+            for scope in list(remain_scopes):
+                if scope in un_attachable_scopes:
+                    attach_map.update_scope(scope, scope_intrinsic)
+                    remain_scopes.remove(scope)
     
+    def apply_compute(self, attach_dict, compute_path):
+        """
+        process the apply by attach_dict/compute_path
+        """
+        for stage in attach_dict.keys():
+            tensor = attach_dict[stage]
+            scope = compute_path[stage]
+            if scope is not None:
+                stage.compute_at(tensor, scope)
+
     def apply_var(self, stage):
+        """
+        get the axis that the stage(tensor) last attach at
+        """
         attach_path = self._attach_map.attached_path
         for scope, array_stages in attach_path.items():
             if stage in array_stages:

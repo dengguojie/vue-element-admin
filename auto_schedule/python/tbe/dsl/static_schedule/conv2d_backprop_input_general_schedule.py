@@ -132,6 +132,16 @@ def _align(x_1, x_2):
     return (x_1 + x_2 - 1) // x_2 * x_2
 
 
+def _lcm(param1, param2):
+    """
+    calculate least common multiple
+    """
+    temp = param1 * param2
+    while param1 % param2 != 0:
+        param1, param2 = param2, param1 % param2
+    return temp // param2
+
+
 def general_schedule(
     tensor, sch_list, tiling_case=None, var_range=None
 ):  # pylint:disable=R0914,R0915
@@ -973,6 +983,10 @@ def general_schedule(
         print("general dx fusion tag:", deconv_res.op.tag)
         print("general dx kernel_name:", _kernel_name)
 
+    # close A overhead flag, compile error due to inferbound
+    # need to be deleted later
+    tiling['A_overhead_opt_flag'] = 0
+
     def _tiling_check_none():
         if (
             (tiling.get("AL1_shape") is None)
@@ -1706,6 +1720,36 @@ def general_schedule(
         if stride_h > 1 or stride_w > 1 or "a_avg" in tensor_map:
             _aub_process()
 
+    def _do_nbuffer_split():
+        """
+        calculate the nbuffer size to ensure that AL1 compute size is enough
+        """
+        attach_dict = sch_agent.get_attach_dict()
+        if tiling.get('A_overhead_opt_flag') \
+            and attach_dict.get(sch[a_l1]) == sch[c_col] \
+            and attach_dict.get(sch[a_col]) == sch[c_col]:
+            # calculate nbuffer size
+            if (kernel_h * kernel_w) % al0_tiling_ka == 0:
+                nbuffer_size = (kernel_h * kernel_w) // al0_tiling_ka
+            else:
+                nbuffer_size = _lcm(kernel_h * kernel_w, al0_tiling_ka) // al0_tiling_ka
+            # get the k1 dim
+            end_scope = sch_agent.apply_var(sch[a_col])
+            k1_axis_list = sch_agent[c_col].get_relate_scope(
+                c_col.op.reduce_axis[0], end_scope
+            )
+            k1_axis = k1_axis_list[-1]
+            k1_axis_length = sch_agent[c_col]._axis_unit.get(k1_axis)[1]
+            # split k1 dim
+            if nbuffer_size == 1:
+                return None
+            if k1_axis_length % nbuffer_size == 0 and nbuffer_size != 1:
+                outter, inner = sch_agent[c_col].split(k1_axis, nbuffer_size)
+                sch_agent.update_attach_scope(k1_axis, outter)
+                return [outter, inner]
+        return None
+
+
     def _double_buffer():
         def _fusion_double_buffer():
             if deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool":
@@ -2141,6 +2185,92 @@ def general_schedule(
                 l1_tensor_map = None
         L1CommonParam.l1_fusion_tensors_map = l1_tensor_map
 
+
+    def _allocate_apply():
+        """
+        process allocate_at
+        """
+        sch_agent.pre_apply()
+        attach_dict = sch_agent.get_attach_dict()
+        compute_path = sch_agent.get_compute_path()
+        # l0c axes: g, batch, co1, m, co0
+        _, _, l0c_n, l0c_m, _ = sch[c_col].op.axis
+        # ddr axes: n, c1, hw, c0
+        _, ddr_n, ddr_m, _ = sch[c_ddr].op.axis
+
+        if tiling.get('A_overhead_opt_flag') and attach_dict.get(sch[a_col]):
+            # process AL1 full load
+            if not attach_dict.get(sch[a_l1]):
+                attach_dict[sch[a_l1]] = sch[c_ddr]
+                compute_path[sch[a_l1]] = ax_core
+            # get related tensor and axis
+            if nbuffer_split_list:
+                al1_compute_at_axis = nbuffer_split_list[0]
+            else:
+                al1_compute_at_axis = compute_path.get(sch[a_col])
+            al0_compute_at_tensor = attach_dict.get(sch[a_col])
+            # get run_once axes
+            run_once_list = []
+            if al0_compute_at_tensor ==  attach_dict.get(sch[a_l1]):
+                # AL1 and AL0 compute at same tensor
+                n_axis = ddr_n if al0_compute_at_tensor == sch[c_ddr] else l0c_n
+                tmp_tensor = c_ddr if al0_compute_at_tensor == sch[c_ddr] else c_col
+                l1_set = set(sch_agent[tmp_tensor].get_relate_scope(n_axis, compute_path.get(sch[a_l1])))
+                allocate_set = set(sch_agent[tmp_tensor].get_relate_scope(n_axis, al1_compute_at_axis))
+                run_once_list = list(allocate_set.difference(l1_set))
+                # process allocate
+                sch[a_l1].allocate_at(attach_dict.get(sch[a_l1]),
+                                      compute_path.get(sch[a_l1]),
+                                      run_once_axes=run_once_list)
+                sch[a_l1].compute_at(al0_compute_at_tensor, al1_compute_at_axis)
+                sch[a_col_before].compute_at(al0_compute_at_tensor, al1_compute_at_axis)
+            else:
+                # AL1 and AL0 compute at different tensor
+                l1_set = set(sch_agent[c_ddr].get_relate_scope(ddr_n, compute_path.get(sch[a_l1])))
+                l0c_set = set(sch_agent[c_ddr].get_relate_scope(ddr_n, compute_path.get(sch[c_col])))
+                run_once_list = list(l0c_set.difference(l1_set))
+                # process allocate
+                sch[a_l1].allocate_at(attach_dict.get(sch[a_l1]),
+                                      compute_path.get(sch[a_l1]),
+                                      run_once_axes=run_once_list)
+                sch[a_l1].compute_at(sch[c_ddr], compute_path.get(sch[c_col]))
+                sch[a_col_before].compute_at(sch[c_ddr], compute_path.get(sch[c_col]))
+            del attach_dict[sch[a_l1]]
+            if attach_dict.get(sch[a_col_before]):
+                del attach_dict[sch[a_col_before]]
+
+        if tiling.get('B_overhead_opt_flag') and attach_dict.get(sch[b_col]):
+            # process BL1 full load
+            if not attach_dict.get(sch[b_l1]):
+                attach_dict[sch[b_l1]] = sch[c_ddr]
+                compute_path[sch[b_l1]] = ax_core
+            # get run_once axes
+            run_once_list = []
+            bl0_compute_at_tensor = attach_dict.get(sch[b_col])
+            bl0_compute_at_axis = compute_path.get(sch[b_col])
+            if bl0_compute_at_tensor == attach_dict.get(sch[b_l1]):
+                # BL1 and BL0 compute at same tensor
+                m_axis = ddr_m if bl0_compute_at_tensor == sch[c_ddr] else l0c_m
+                tmp_tensor = c_ddr if bl0_compute_at_tensor == sch[c_ddr] else c_col
+                l1_set = set(sch_agent[tmp_tensor].get_relate_scope(m_axis, compute_path.get(sch[b_l1])))
+                allocate_set = set(sch_agent[tmp_tensor].get_relate_scope(m_axis, bl0_compute_at_axis))
+                run_once_list = list(allocate_set.difference(l1_set))
+            else:
+                # BL1 and BL0 compute at differenet tensor
+                l1_set = set(sch_agent[c_ddr].get_relate_scope(ddr_m, compute_path.get(sch[b_l1])))
+                l0c_set = set(sch_agent[c_ddr].get_relate_scope(ddr_m, compute_path.get(sch[c_col])))
+                allocate_set = set(sch_agent[c_col].get_relate_scope(l0c_m, bl0_compute_at_axis))
+                run_once_list = list(l0c_set.difference(l1_set) | allocate_set)
+            # process allocate
+            sch[b_l1].allocate_at(attach_dict.get(sch[b_l1]),
+                                  compute_path.get(sch[b_l1]),
+                                  run_once_axes=run_once_list)
+            sch[b_l1].compute_at(bl0_compute_at_tensor, bl0_compute_at_axis)
+            del attach_dict[sch[b_l1]]
+
+        sch_agent.apply_compute(attach_dict, compute_path)
+
+
     sch_agent = ScheduleAgent(sch)
     # split g_dim for ddr; outer is g, inner is c1
     if l0c_multi_group_flag:
@@ -2155,6 +2285,8 @@ def general_schedule(
     neg_src_stride = _l0b_process()
     _do_l1andub_process()
     _attach_bias()
+    nbuffer_split_list = _do_nbuffer_split()
+
 
     def _bind_core():
         axs = sch_agent[c_ddr].get_active_scopes()
@@ -2252,7 +2384,11 @@ def general_schedule(
                 sch[b_col].compute_at(sch[c_ddr], bl1_at_inner)
     _full_load_bl1_bl0()
 
-    sch_agent.apply()
+    if tiling.get('A_overhead_opt_flag') or tiling.get('B_overhead_opt_flag'):
+        _allocate_apply()
+    else:
+        sch_agent.apply()
+
     if var_map:
         _handle_dynamic_workspace(stride_w)
     else:
