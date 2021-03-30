@@ -157,7 +157,7 @@ def _process_num_param(input_shape, num, axis, is_known_shape, kernel_name):
     if len(input_shape) > axis and input_shape[axis] == -1:
         is_axis_dim_known = False
 
-    if num != input_shape[axis] and (is_known_shape or is_axis_dim_known):
+    if (is_known_shape or is_axis_dim_known) and num != input_shape[axis]:
         error_manager_vector.raise_err_input_value_invalid(kernel_name, 'num', input_shape[axis], num)
     return num
 
