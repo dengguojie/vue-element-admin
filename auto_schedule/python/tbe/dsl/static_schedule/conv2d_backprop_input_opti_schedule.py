@@ -1828,7 +1828,7 @@ class Conv2dDxOptiSchedule:
         return al1_at_l0c_axis, bl1_at_l0c_axis, reduce_axis_serial, overload_flag_l0c
 
 
-    def _dilate_schedule(self, sch, dilate_ub, out_w, dilate_w, dilate_h):
+    def _dilate_schedule(self, sch, dilate_ub, out_w, dilate_w, dilate_h, var_map=None):
         """
         :param sch:
         :param dilate_ub:
@@ -1841,11 +1841,13 @@ class Conv2dDxOptiSchedule:
         h_axis, w_axis = sch[dilate_ub].split(dilate_ub.op.axis[2], out_w)
         wo_axis, wi_axis = sch[dilate_ub].split(w_axis, dilate_w)
         ho_axis, hi_axis = sch[dilate_ub].split(h_axis, dilate_h)
-        sch[dilate_ub].unroll(hi_axis)
+
         sch[dilate_ub].reorder(
             wi_axis, dilate_ub.op.axis[0], dilate_ub.op.axis[1], ho_axis, wo_axis
         )
-        sch[dilate_ub].unroll(wi_axis)
+        if not var_map:
+            sch[dilate_ub].unroll(hi_axis)
+            sch[dilate_ub].unroll(wi_axis)
         return wo_axis
 
 
@@ -2421,7 +2423,8 @@ class Conv2dDxOptiSchedule:
                         dilate_ub,
                         DIM_MAP.get("out_hwdim")[1],
                         DIM_MAP.get("dilate_dim")[1],
-                        DIM_MAP.get("dilate_dim")[0]
+                        DIM_MAP.get("dilate_dim")[0],
+                        var_map
                     )
                     sch[dilate_ub].emit_insn(vmul_at_axis, "vector_mul")
                 else:
