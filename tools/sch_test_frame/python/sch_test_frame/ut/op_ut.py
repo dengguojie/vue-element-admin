@@ -706,6 +706,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                             isinstance(op_param[0], dict) and \
                             op_param[0].get("param_type") == "output":
                         param_desc_list.append("DYNAMIC_OUTPUT")
+                elif op_param is None:
+                    param_desc_list.append("OPTION_INPUT")
+                elif isinstance(op_param, (int, float, str)):
+                    param_desc_list.append("REQUIRED_INPUT")
                 else:
                     if idx == 0:
                         param_desc_list.append("OPTION_INPUT")

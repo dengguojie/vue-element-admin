@@ -10,20 +10,21 @@ from tbe.common.utils import shape_util
 from tbe.common.register import register_operator
 
 
-@register_operator("ceil")
-def dsl_dynamic_ceil(x, y, kernel_name="dsl_dynamic_ceil"):
+@register_operator("vor")
+def dsl_dynamic_vor(x, y, z, kernel_name="dsl_dynamic_vor"):
     input_dtype = x.get("dtype")
 
-    ins = tbe.dsl.classify([x], "elewise")
+    ins = tbe.dsl.classify([x, y], "elewise")
     schedules, tensors = [], []
 
-    for (x,) in ins:
+    for (x, y) in ins:
         with tbe.dsl.compute():
-            shape_x = shape_util.variable_shape([x])[0]
+            shape_x, shape_y = shape_util.variable_shape([x, y])
             data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
-            res = tbe.dsl.ceil(data1)
+            data2 = tvm.placeholder(shape_y, name='data2', dtype=input_dtype)
+            res = tbe.dsl.vor(data1, data2)
 
-            tensors.append((data1, res))
+            tensors.append((data1, data2, res))
 
         with tvm.target.cce():
             sch = tbe.dsl.auto_schedule(res)
@@ -33,20 +34,24 @@ def dsl_dynamic_ceil(x, y, kernel_name="dsl_dynamic_ceil"):
     tbe.dsl.build(schedules, config)
 
 
-ut_case = OpUT("ceil", "ceil.test_dynamic_ceil_impl", "dsl_dynamic_ceil")
+ut_case = OpUT("vor", "vor.test_dynamic_vor_impl", "dsl_dynamic_vor")
 
 case1 = {
     "params": [{
         "shape": (-1, -1),
-        "dtype": "float32",
+        "dtype": "uint16",
         "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),
-        "dtype": "int32",
+        "dtype": "uint16",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "uint16",
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_ceil_1",
+        "test_dync_vor_1",
     "expect":
         "success",
     "support_expect":
@@ -55,69 +60,57 @@ case1 = {
 
 case2 = {
     "params": [{
-        "shape": (2, -1),
-        "dtype": "float16",
-        "range": [(2, 2), (1, None)]
+        "shape": (-1, -1),
+        "dtype": "int16",
+        "range": [(1, None), (1, None)]
     }, {
-        "shape": (2, -1),
-        "dtype": "int32",
-        "range": [(2, 2), (1, None)]
+        "shape": (-1, -1),
+        "dtype": "int16",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int16",
+        "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_ceil_2",
+        "test_dync_vor_2",
     "expect":
         "success",
     "support_expect":
         True
 }
 
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
 
-ut_case.add_case(["Ascend910", "Ascend710"], case1)
-ut_case.add_case("all", case2)
 
-
-def calc_expect_func(x, y):
+def calc_expect_func(x, y, z):
     x_value = x.get("value")
-    res = np.ceil(x_value).astype(np.int32)
+    y_value = y.get("value")
+    res = np.bitwise_or(x_value, y_value)
     return (res, )
 
-
-ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
-        "params": [
-            {
-                "shape": (-1, -1),
-                "dtype": "float32",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (1, 10),
-                "param_type": "input"
-            },
-            {
-                "shape": (-1, -1),
-                "dtype": "int32",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (1, 10),
-                "param_type": "output"
-            },
-        ],
-        "calc_expect_func": calc_expect_func,
-        "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001),
-        "case_name": "test_dync_ceil_prec_01"
-    })
 
 ut_case.add_precision_case(
     "all", {
         "params": [
             {
-                "shape": (2, -1),
-                "dtype": "float16",
+                "shape": (-1, -1),
+                "dtype": "int16",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (2, 10),
                 "param_type": "input"
             },
             {
-                "shape": (2, -1),
-                "dtype": "int32",
+                "shape": (-1, -1),
+                "dtype": "int16",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, -1),
+                "dtype": "int16",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (2, 10),
                 "param_type": "output"
@@ -125,5 +118,35 @@ ut_case.add_precision_case(
         ],
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
-        "case_name": "test_dync_ceil_prec_02"
+        "case_name": "test_dync_vor_prec_01"
+    })
+
+ut_case.add_precision_case(
+    "all", {
+        "params": [
+            {
+                "shape": (-1, -1),
+                "dtype": "uint16",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, -1),
+                "dtype": "uint16",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
+            {
+                "shape": (-1, -1),
+                "dtype": "uint16",
+                "range": [(1, 200), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "output"
+            },
+        ],
+        "calc_expect_func": calc_expect_func,
+        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
+        "case_name": "test_dync_vor_prec_02"
     })

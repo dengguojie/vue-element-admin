@@ -26,7 +26,18 @@
         "cast_to",
         "vaxpy",
         "vmla",
-        "vmadd"
+        "vmadd",
+        "vmaddrelu",
+        "vaddrelu",
+        "vsubrelu",
+        "vrelu",
+        "vlrelu",
+        "clip",
+        "vand",
+        "vor",
+        "vnot",
+        "vlogic",
+        "vcmpsel"
     ],
     "auto_schedule/python/tbe/dsl/compute/math.py":[
         "vadd",
@@ -49,15 +60,27 @@
         "vaxpy",
         "vmla",
         "vmadd",
+        "vand",
+        "vor",
+        "vnot",
+        "vlogic",
+        "vcmpsel",
         "dsl_cpu/test_math_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/nn.py":[
         "broadcast",
+        "vmaddrelu",
+        "vaddrelu",
+        "vsubrelu",
+        "vrelu",
+        "vlrelu",
+        "clip",
         "dsl_cpu/test_nn_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
         "reduce_max",
         "reduce_sum",
+        "reduce_prod",
         "dsl_cpu/test_reduce_cpu_impl.py"
     ],
     "auto_schedule/python/lang/cce/te_compute/dim_conv.py":[

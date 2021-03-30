@@ -10,8 +10,8 @@ from tbe.common.utils import shape_util
 from tbe.common.register import register_operator
 
 
-@register_operator("ceil")
-def dsl_dynamic_ceil(x, y, kernel_name="dsl_dynamic_ceil"):
+@register_operator("vrelu")
+def dsl_dynamic_vrelu(x, y, kernel_name="dsl_dynamic_vrelu"):
     input_dtype = x.get("dtype")
 
     ins = tbe.dsl.classify([x], "elewise")
@@ -21,7 +21,7 @@ def dsl_dynamic_ceil(x, y, kernel_name="dsl_dynamic_ceil"):
         with tbe.dsl.compute():
             shape_x = shape_util.variable_shape([x])[0]
             data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
-            res = tbe.dsl.ceil(data1)
+            res = tbe.dsl.vrelu(data1)
 
             tensors.append((data1, res))
 
@@ -33,7 +33,7 @@ def dsl_dynamic_ceil(x, y, kernel_name="dsl_dynamic_ceil"):
     tbe.dsl.build(schedules, config)
 
 
-ut_case = OpUT("ceil", "ceil.test_dynamic_ceil_impl", "dsl_dynamic_ceil")
+ut_case = OpUT("vrelu", "vrelu.test_dynamic_vrelu_impl", "dsl_dynamic_vrelu")
 
 case1 = {
     "params": [{
@@ -42,11 +42,11 @@ case1 = {
         "range": [(1, None), (1, None)]
     }, {
         "shape": (-1, -1),
-        "dtype": "int32",
+        "dtype": "float32",
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_ceil_1",
+        "test_dync_vrelu_1",
     "expect":
         "success",
     "support_expect":
@@ -60,11 +60,11 @@ case2 = {
         "range": [(2, 2), (1, None)]
     }, {
         "shape": (2, -1),
-        "dtype": "int32",
+        "dtype": "float16",
         "range": [(2, 2), (1, None)]
     }],
     "case_name":
-        "test_dync_ceil_2",
+        "test_dync_vrelu_2",
     "expect":
         "success",
     "support_expect":
@@ -72,38 +72,15 @@ case2 = {
 }
 
 
-ut_case.add_case(["Ascend910", "Ascend710"], case1)
-ut_case.add_case("all", case2)
+ut_case.add_case(["Ascend710"], case1)
+ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
 
 
 def calc_expect_func(x, y):
     x_value = x.get("value")
-    res = np.ceil(x_value).astype(np.int32)
+    res = np.maximum(x_value, 0)
     return (res, )
 
-
-ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
-        "params": [
-            {
-                "shape": (-1, -1),
-                "dtype": "float32",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (1, 10),
-                "param_type": "input"
-            },
-            {
-                "shape": (-1, -1),
-                "dtype": "int32",
-                "range": [(1, 200), (1, 100)],
-                "run_shape": (1, 10),
-                "param_type": "output"
-            },
-        ],
-        "calc_expect_func": calc_expect_func,
-        "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001),
-        "case_name": "test_dync_ceil_prec_01"
-    })
 
 ut_case.add_precision_case(
     "all", {
@@ -117,7 +94,7 @@ ut_case.add_precision_case(
             },
             {
                 "shape": (2, -1),
-                "dtype": "int32",
+                "dtype": "float16",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (2, 10),
                 "param_type": "output"
@@ -125,5 +102,5 @@ ut_case.add_precision_case(
         ],
         "calc_expect_func": calc_expect_func,
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
-        "case_name": "test_dync_ceil_prec_02"
+        "case_name": "test_dync_vrelu_prec_01"
     })
