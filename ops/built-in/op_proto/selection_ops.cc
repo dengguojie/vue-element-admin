@@ -3180,19 +3180,29 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentProdDInferShape) {
 COMMON_INFER_FUNC_REG(UnsortedSegmentProdD, UnsortedSegmentProdDInferShape);
 
 // ----------------ScatterNDNonAliasingAdd-------------------
-IMPLEMT_COMMON_INFERFUNC(ScatterNonAliasingAddInferShape) {
-  auto input_tensor = op.GetInputDesc("x");
-  auto output_desc = op.GetInputDesc("y");
-  output_desc.SetShape(op.GetInputDesc("x").GetShape());
-  output_desc.SetDataType(op.GetInputDesc("x").GetDataType());
-  if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+IMPLEMT_VERIFIER(ScatterNonAliasingAdd, ScatterNonAliasingAddVerify) {
+  if (!CheckTwoInputDtypeSame(op, "x", "updates")) {
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_COMMON_INFERFUNC(ScatterNonAliasingAddInferShape) {
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape x_shape = op_desc->MutableInputDesc("x")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  op_desc->MutableInputDesc("x")->GetShapeRange(x_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("x")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("y");
+  td->SetShape(x_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(x_shape_range);
+  return GRAPH_SUCCESS;
+}
+
 COMMON_INFER_FUNC_REG(ScatterNonAliasingAdd, ScatterNonAliasingAddInferShape);
+VERIFY_FUNC_REG(ScatterNonAliasingAdd, ScatterNonAliasingAddVerify);
 // ------------------ScatterNDNonAliasingAdd END---------------------
 
 // ----------------proposal-------------------

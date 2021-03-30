@@ -1747,17 +1747,29 @@ VERIFY_FUNC_REG(MatrixSetDiagD, MatrixSetDiagDVerify);
 // ----------------MatrixSetDiag ENDD----------------
 
 // -----------------ScatterNdUpdate-----------------
-IMPLEMT_INFERFUNC(ScatterNdUpdate, ScatterNdUpdateInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+IMPLEMT_VERIFIER(ScatterNdUpdate, ScatterNdUpdateVerify) {
+  if (!CheckTwoInputDtypeSame(op, "var", "updates")) {
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(ScatterNdUpdate, ScatterNdUpdateInferShape);
+IMPLEMT_COMMON_INFERFUNC(ScatterNdUpdateInferShape) {
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ScatterNdUpdate, ScatterNdUpdateInferShape);
+VERIFY_FUNC_REG(ScatterNdUpdate, ScatterNdUpdateVerify);
 // -------------------ScatterNdUpdate END----------------
 
 // -----------------TensorScatterUpdate-----------------
@@ -1843,12 +1855,16 @@ IMPLEMT_VERIFIER(ScatterNdAdd, ScatterNdAddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ScatterNdAddInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
   return GRAPH_SUCCESS;
 }
 
@@ -1887,12 +1903,16 @@ IMPLEMT_VERIFIER(ScatterNdSub, ScatterNdSubVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(ScatterNdSubInferShape) {
-  Shape var_shape = op.GetInputDesc("var").GetShape();
-  DataType input_dtype = op.GetInputDesc("var").GetDataType();
-  TensorDesc td = op.GetOutputDesc("var");
-  td.SetShape(ge::Shape(var_shape));
-  td.SetDataType(input_dtype);
-  (void)op.UpdateOutputDesc("var", td);
+  // main part of shape infer
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeShape var_shape = op_desc->MutableInputDesc("var")->GetShape();
+  std::vector<std::pair<int64_t, int64_t>> var_shape_range;
+  op_desc->MutableInputDesc("var")->GetShapeRange(var_shape_range);
+  DataType input_dtype = op_desc->MutableInputDesc("var")->GetDataType();
+  GeTensorDescPtr td = op_desc->MutableOutputDesc("var");
+  td->SetShape(var_shape);
+  td->SetDataType(input_dtype);
+  td->SetShapeRange(var_shape_range);
   return GRAPH_SUCCESS;
 }
 

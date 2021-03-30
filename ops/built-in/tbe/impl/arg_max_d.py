@@ -509,7 +509,7 @@ class Argmax(ArgmaxBase):
         # charge function
         not_last_axis_fuc = self.do_not_last
         self.c_align_ubsize = self.last_dim_size
-        if self.dtype_x == "float16":
+        if self.dtype_x == "float16" and self.axis_size <= 2048:
             not_last_axis_fuc = self.do_not_last_fp16_default
             block_align_num = self.last_dim_size // self.data_each_block
             if self.last_dim_size % self.data_each_block == 0 and \
