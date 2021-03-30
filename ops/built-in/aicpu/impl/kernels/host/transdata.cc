@@ -17,12 +17,13 @@
 
 #include <algorithm>
 
-#include "securec.h"
 #include "Eigen/Core"
-#include "unsupported/Eigen/CXX11/Tensor"
 #include "cpu_types.h"
+#include "format_transfer/format_transfer_utils.h"
 #include "log.h"
+#include "securec.h"
 #include "status.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 #include "utils/kernel_util.h"
 
 using namespace std;
@@ -134,8 +135,109 @@ static int64_t Ceil(int64_t a, int64_t b) {
 }  // namespace
 
 namespace aicpu {
-int32_t TransDataCpuKernel::GetPrimaryFormat(int32_t format){
-    return static_cast<int32_t>(static_cast<uint32_t>(format) & 0xff);
+bool TransDataCpuKernel::IsOriginSupportFormatTransfer(Format src_format,
+                                                       Format dst_format) {
+  static const map<Format, map<Format, int32_t>> kOriginSupportFormatTransfer =
+      {{FORMAT_NHWC, {{FORMAT_FRACTAL_Z, 1}}},
+       {FORMAT_NCHW, {{FORMAT_FRACTAL_Z, 1}}},
+       {FORMAT_HWCN, {{FORMAT_FRACTAL_Z_C04, 1}, {FORMAT_FRACTAL_Z, 1}}},
+       {FORMAT_NCDHW, {{FORMAT_FRACTAL_Z_3D, 1}}},
+       {FORMAT_DHWCN, {{FORMAT_FRACTAL_Z_3D, 1}}},
+       {FORMAT_NDHWC, {{FORMAT_FRACTAL_Z_3D, 1}}}};
+  auto dst = kOriginSupportFormatTransfer.find(src_format);
+  if (dst == kOriginSupportFormatTransfer.end()) {
+    return false;
+  }
+  return dst->second.count(dst_format) > 0;
+}
+
+uint32_t TransDataCpuKernel::NewCompute(CpuKernelContext &ctx) {
+  Tensor *input_tensor = ctx.Input(0);
+  KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
+                       "%s get input_tensor failed, input_tensor is nullptr.",
+                       kTransData);
+  uint8_t *input_data = reinterpret_cast<uint8_t *>(input_tensor->GetData());
+  auto input_data_type = input_tensor->GetDataType();
+  auto input_shape = input_tensor->GetTensorShape();
+  KERNEL_CHECK_NULLPTR(input_shape, KERNEL_STATUS_PARAM_INVALID,
+                       "%s get input_shape failed, input_shape is nullptr.",
+                       kTransData);
+  auto input_dims = input_shape->GetDimSizes();
+  auto input_format = input_shape->GetFormat();
+
+  Tensor *output_tensor = ctx.Output(0);
+  KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
+                       "%s get output_tensor failed, output_tensor is nullptr.",
+                       kTransData);
+  auto output_data_type = output_tensor->GetDataType();
+  auto output_shape = output_tensor->GetTensorShape();
+  KERNEL_CHECK_NULLPTR(output_shape, KERNEL_STATUS_PARAM_INVALID,
+                       "%s get output_shape failed, output_shape is nullptr.",
+                       kTransData);
+  auto output_dims = output_shape->GetDimSizes();
+  auto output_format = output_shape->GetFormat();
+  KERNEL_LOG_INFO(
+      "Begin trans formats from [%s] to [%s], shape [%s] to [%s], data type "
+      "[%s] to [%s]",
+      FormatToSerialString(input_format).c_str(),
+      FormatToSerialString(output_format).c_str(),
+      VectorToString(input_dims).c_str(), VectorToString(output_dims).c_str(),
+      DTypeStr(input_data_type).c_str(), DTypeStr(output_data_type).c_str());
+  const formats::TransArgs trans_args{
+      input_data,
+      static_cast<Format>(GetPrimaryFormat(input_format)),
+      static_cast<Format>(GetPrimaryFormat(output_format)),
+      input_dims,
+      output_dims,
+      input_data_type};
+  if (input_data_type != output_data_type || input_dims.empty() ||
+      !formats::FormatTransferExists(trans_args)) {
+    KERNEL_LOG_WARN(
+        "Transfer from format[%s] to [%s], shape [%s] to [%s], data type [%s] "
+        "to [%s] is not supported",
+        FormatToSerialString(input_format).c_str(),
+        FormatToSerialString(output_format).c_str(),
+        VectorToString(input_dims).c_str(), VectorToString(output_dims).c_str(),
+        DTypeStr(input_data_type).c_str(), DTypeStr(output_data_type).c_str());
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  formats::TransResult trans_result;
+  auto ret = formats::TransFormat(trans_args, trans_result);
+  if (ret != KERNEL_STATUS_OK) {
+    KERNEL_LOG_WARN(
+        "Failed to trans formats from[%s] to [%s], shape [%s] to [%s], data "
+        "type [%s]",
+        FormatToSerialString(input_format).c_str(),
+        FormatToSerialString(output_format).c_str(),
+        VectorToString(input_dims).c_str(), VectorToString(output_dims).c_str(),
+        DTypeStr(input_data_type).c_str());
+    return ret;
+  }
+
+  auto output_data = output_tensor->GetData();
+  auto output_length = output_tensor->GetDataSize();
+  auto ret_mem = memcpy_s(output_data, output_length, trans_result.data.get(),
+                          trans_result.length);
+  if (ret_mem != EOK) {
+    KERNEL_LOG_ERROR(
+        "Memcpy from input[%llx]:size[%zu] to out[%llx]:size[%llu] failed, "
+        "ret[%d].",
+        trans_result.data.get(), trans_result.length, output_data,
+        output_length, ret_mem);
+    return KERNEL_STATUS_INNER_ERROR;
+  }
+  KERNEL_LOG_INFO(
+      "End trans formats from [%s] to [%s], shape [%s] to [%s], data type "
+      "[%s] to [%s]",
+      FormatToSerialString(input_format).c_str(),
+      FormatToSerialString(output_format).c_str(),
+      VectorToString(input_dims).c_str(), VectorToString(output_dims).c_str(),
+      DTypeStr(input_data_type).c_str(), DTypeStr(output_data_type).c_str());
+  return KERNEL_STATUS_OK;
+}
+
+int32_t TransDataCpuKernel::GetPrimaryFormat(int32_t format) {
+  return static_cast<int32_t>(static_cast<uint32_t>(format) & 0xff);
 }
 template <typename T>
 uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
@@ -200,7 +302,8 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
     KERNEL_LOG_WARN(
         "Format is not FORMAT_DHWCN or FORMAT_NDHWC or FORMAT_NCDHW or "
         "FORMAT_NHWC or FORMAT_NCHW or FORMAT_HWCN, current input "
-        "format is [%d]", input_format);
+        "format is [%d]",
+        input_format);
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -225,7 +328,7 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
   int64_t size_output_data =
       g_dim * d_dim * dim_cin * h_dim * w_dim * cout_opt * cube_k;
   (void)memset_s(output_data, sizeof(T) * size_output_data, 0,
-           sizeof(T) * size_output_data);
+                 sizeof(T) * size_output_data);
   for (int64_t g = 0; g < group; g++) {
     for (int64_t d = 0; d < d_dim; d++) {
       for (int64_t c = 0; c < c_dim; c++) {
@@ -276,8 +379,8 @@ uint32_t TransDataCpuKernel::DealData(T *input_data, T *output_data,
 // converte to FORMAT_FRACTAL_Z (GC1HWN1N0C0), HWCN to FZC04. The final effect
 // achieved is for the data to be distributed diagonally. For example: When the
 // input filter format is NCDHW, calculated the Correspondence of index between
-// NCDHW and FORMAT_FRACTAL_Z_3D , then Convert the old filter to the new filter,
-// and finally added 0 to the position where there is no data.
+// NCDHW and FORMAT_FRACTAL_Z_3D , then Convert the old filter to the new
+// filter, and finally added 0 to the position where there is no data.
 uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
   Tensor *input_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_PARAM_INVALID,
@@ -287,6 +390,11 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(output_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "%s get output_tensor failed", kTransData);
   auto output_format = output_tensor->GetTensorShape()->GetFormat();
+  if (!IsOriginSupportFormatTransfer(
+          static_cast<Format>(GetPrimaryFormat(input_format)),
+          static_cast<Format>(GetPrimaryFormat(output_format)))) {
+    return NewCompute(ctx);
+  }
   if ((input_format == FORMAT_HWCN) &&
       (output_format == FORMAT_FRACTAL_Z_C04)) {
     DataType data_type = static_cast<DataType>(input_tensor->GetDataType());
@@ -309,7 +417,7 @@ uint32_t TransDataCpuKernel::Compute(CpuKernelContext &ctx) {
     }
     return KERNEL_STATUS_OK;
   }
-int32_t primary_out_put_format = GetPrimaryFormat(output_format);
+  int32_t primary_out_put_format = GetPrimaryFormat(output_format);
   if ((primary_out_put_format != FORMAT_FRACTAL_Z) &&
       (primary_out_put_format != FORMAT_FRACTAL_Z_3D)) {
     KERNEL_LOG_EVENT("%s unsupport output_format [%d]", kTransData,
@@ -369,8 +477,8 @@ uint32_t TransDataCpuKernel::FormatTransferHwcnToFZC04(TransArgs &args,
                                                        uint8_t *output_addr,
                                                        uint64_t length) {
   KERNEL_LOG_DEBUG(
-      "Begin to trans format from HWCN to FZC04, src shape [%s], data type [%s], "
-      "dst shape [%s]",
+      "Begin to trans format from HWCN to FZC04, src shape [%s], data type "
+      "[%s], dst shape [%s]",
       VectorToString(args.src_shape).c_str(),
       DTypeStr(args.src_data_type).c_str(),
       VectorToString(args.dst_shape).c_str());
@@ -522,7 +630,8 @@ uint32_t TransDataCpuKernel::GetPaddingOneShape(
   auto c = args.src_shape.at(2);
   auto n = args.src_shape.at(3);
   if (c > kMaxDimsNumC) {
-    KERNEL_LOG_ERROR("Invalid dim c num[%lu].It should be in (0, %ld]", c, kMaxDimsNumC);
+    KERNEL_LOG_ERROR("Invalid dim c num[%lu].It should be in (0, %ld]", c,
+                     kMaxDimsNumC);
     return KERNEL_STATUS_PARAM_INVALID;
   }
   dst_shape.resize(4);

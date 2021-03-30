@@ -54,6 +54,38 @@ inline std::string VectorToString(const std::vector<T> &values) {
   return ss.str();
 }
 
+template <typename T>
+std::string FmtToStr(const T &t) {
+  std::string fmt;
+  std::stringstream st;
+  st << "[" << t << "]";
+  fmt = st.str();
+  return fmt;
+}
+
+std::string FormatToSerialString(Format format);
+
+/**
+ * Get primary-format from format,
+ * in bits field:
+ * ------------------------------------------
+ * |  1 byte  |   2 bytes  |     1 byt      |
+ * |----------|------------|----------------|
+ * | reserved | sub-format | primary-format |
+ * ------------------------------------------
+ * @param format
+ * @return
+ */
+inline int32_t GetPrimaryFormat(int32_t format) {
+  return static_cast<int32_t>(static_cast<uint32_t>(format) & 0xff);
+}
+
+inline int32_t GetSubFormat(int32_t format) {
+  return static_cast<int32_t>((static_cast<uint32_t>(format) & 0xffff00) >> 8);
+}
+
+inline bool HasSubFormat(int32_t format) { return GetSubFormat(format) > 0; }
+
 /**
  * @brief multiply two nonnegative int64's
  * @param x mul value x
@@ -100,7 +132,7 @@ inline bool AddWithoutOverflow(const int64_t x, const int64_t y, int64_t &sum) {
   const uint64_t usum = ux + uy;
   sum = static_cast<int64_t>(usum);
 
-  return !(x >= 0 == y >=0 && sum >= 0 != x >= 0);
+  return !(x >= 0 == y >= 0 && sum >= 0 != x >= 0);
 }
 
 /**
@@ -117,8 +149,7 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx);
  * @param outputs_num num of outputs
  * @return status code
  */
-uint32_t NormalCheck(CpuKernelContext &ctx,
-                     const uint32_t inputs_num,
+uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
                      const uint32_t outputs_num);
 
 /**
@@ -126,7 +157,8 @@ uint32_t NormalCheck(CpuKernelContext &ctx,
  * @param addr address for check
  * @return true: aligned, false: not aligned
  */
-bool AddrAlignedCheck(const void *addr, uint64_t alignment = kEigenAlignmentBytes);
+bool AddrAlignedCheck(const void *addr,
+                      uint64_t alignment = kEigenAlignmentBytes);
 
 /**
  * @brief get data type from string
@@ -141,5 +173,6 @@ DataType DType(std::string dtype_str);
  * @return string of data type
  */
 std::string DTypeStr(DataType dtype);
+
 }  // namespace aicpu
 #endif

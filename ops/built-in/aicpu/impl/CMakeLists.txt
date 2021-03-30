@@ -33,6 +33,9 @@ set(local_kernels_src_files
 
 set(local_host_kernels_src_files
     kernels/host/transdata.cc
+    kernels/host/format_transfer/register_format_transfer.cc
+    kernels/host/format_transfer/format_transfer_utils.cc
+    kernels/host/format_transfer/format_transfer_fractal_nz.cc
 )
 set(local_device_kernels_src_files
     kernels/device/where.cc

@@ -66,6 +66,9 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/utils/sparse_tensor.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/concatv2.cc
   ${CPU_KERNELS_DIR}/kernels/host/transdata.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/register_format_transfer.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_utils.cc
+  ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/get_dynamic_dims.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/identity.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/reshape.cc
