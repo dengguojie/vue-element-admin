@@ -25,6 +25,7 @@
 #include "util/common_shape_fns.h"
 #include "util/random_ops_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(Multinomial, MultinomialInfer) {
@@ -63,30 +64,37 @@ INFER_FUNC_REG(Multinomial, MultinomialInfer);
 
 IMPLEMT_INFERFUNC(ParameterizedTruncatedNormal, ParameterizedTruncatedNormalInfer) {
   Shape unused;
+  std::string err_msg;
   if (WithRankAtMost(op.GetInputDesc(1), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(
+        1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "at most 1D");
+    err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRankAtMost(op.GetInputDesc(2), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(
+        2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "at most 1D");
+    err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRankAtMost(op.GetInputDesc(3), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(
+        3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "at most 1D");
+    err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRankAtMost(op.GetInputDesc(4), 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(
+        4, DebugString(op.GetInputDesc(4).GetShape().GetDims()), "at most 1D");
+    err_msg = std::string("failed to call WithRankAtMost, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
-  Tensor tensor;
-  if (op.GetInputConstData("shape", tensor) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  Shape shape;
-  if (MakeShapeFromShapeTensor(tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
-  TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(shape);
-  return op.UpdateOutputDesc("y", output_desc);
+  return RandomShape(op, "shape", "y");
 }
 
 INFER_FUNC_REG(ParameterizedTruncatedNormal, ParameterizedTruncatedNormalInfer);
