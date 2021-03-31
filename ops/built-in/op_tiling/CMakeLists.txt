@@ -110,6 +110,7 @@ set(_optiling_files
   embedding_dense_grad.cc
   one_hot.cc
   maxpoolwithargmaxv1.cc
+  bounding_box_decode.cc
 )
 
 set(_op_tiling_include

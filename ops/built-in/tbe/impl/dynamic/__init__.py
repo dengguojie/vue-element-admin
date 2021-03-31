@@ -47,6 +47,7 @@ from .bias import bias
 from .dequantize import dequantize
 from .bninference_d import bninference_d
 from .bn_training_reduce import bn_training_reduce
+from .bounding_box_decode import bounding_box_decode
 from .scatter_nd import scatter_nd
 from .scatter_add import scatter_add
 from .scatter_update import scatter_update

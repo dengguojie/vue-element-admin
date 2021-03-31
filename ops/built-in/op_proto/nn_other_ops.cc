@@ -130,13 +130,46 @@ COMMON_INFER_FUNC_REG(Iou, IouInferShape);
 
 // ----------------BoundingBoxDecode-------------------
 IMPLEMT_COMMON_INFERFUNC(BoundingBoxDecodeInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "rois", "deltas", "bboxes")) {
-    return GRAPH_SUCCESS;
-  }
-  OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode InferShape Failed.");
-  return GRAPH_FAILED;
+    bool is_dynamic = true;
+    if (InferShapeAndTypeTwoInOneOutBroadcast(op, "rois", "deltas", "bboxes", is_dynamic)) {
+        return GRAPH_SUCCESS;
+    }
+
+    OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode InferShape Failed.");
+    return GRAPH_FAILED;
 }
 
+IMPLEMT_VERIFIER(BoundingBoxDecode, BoundingBoxDecodeVerify) {
+    if (!CheckTwoInputDtypeSame(op, "rois", "deltas")) {
+        OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode verify Failed.case differ inputs dtype");
+        return GRAPH_FAILED;
+    }
+
+    auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+    std::vector<int64_t> rois_shape = op_desc->MutableInputDesc("rois")->MutableShape().GetDims();
+    std::vector<int64_t> deltas_shape = op_desc->MutableInputDesc("deltas")->MutableShape().GetDims();
+    size_t rois_size = rois_shape.size();
+    size_t deltas_size = deltas_shape.size();
+
+    // inputs size must be equal
+    if ((rois_size < 1) || (rois_size != deltas_size)) {
+        OP_LOGE(op.GetName().c_str(),
+        "the  BoundingBoxDecode verify Failed.inputs size(rois:%d, deltas:%d) not equal", rois_size, deltas_size);
+        return GRAPH_FAILED;
+    }
+
+    // inputs last dim value must be 4(x1,y1,x2,y2)
+    if (((rois_shape[rois_size - 1] > 0) && (rois_shape[rois_size - 1] != 4)) || 
+        ((deltas_shape[deltas_size - 1] > 0) && (deltas_shape[deltas_size - 1] != 4))) {
+        OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode verify Failed.last dim(rois:%d, deltas:%d) != 4", 
+        rois_shape[rois_size - 1], deltas_shape[deltas_size - 1]);
+        return GRAPH_FAILED;
+    }
+
+    return GRAPH_SUCCESS;
+}
+
+VERIFY_FUNC_REG(BoundingBoxDecode, BoundingBoxDecodeVerify);
 COMMON_INFER_FUNC_REG(BoundingBoxDecode, BoundingBoxDecodeInferShape);
 // ----------------BoundingBoxDecode END-------------------
 
