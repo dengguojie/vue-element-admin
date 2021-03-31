@@ -1442,6 +1442,26 @@ REG_OP(PoissonNllLoss)
     .ATTR(eps, Float, 1e-8)
     .ATTR(reduction, String, "mean")
     .OP_END_FACTORY_REG(PoissonNllLoss)
+/**
+ *@brief rnn_gen_mask
+ * @par Inputs:
+ * @li seq_length: A ND Tensor of type int32. Recoed the current length of each batch.\n
+ *
+ * @par Attributes:
+ * @li num_step: A required int.\n
+ * @li hidden_size: A required int. \n
+ *
+ * 
+ * @par Output:
+ * y: A mutable Tensor of type int32, with the shape of [num_step, batch_size, hidden_size]. \n
+ *
+ */
+REG_OP(RnnGenMask)
+    .INPUT(seq_length, TensorType({DT_INT32}))
+    .OUTPUT(seq_mask, TensorType({DT_INT32}))
+    .REQUIRED_ATTR(num_step, Int)
+    .REQUIRED_ATTR(hidden_size, Int)
+    .OP_END_FACTORY_REG(RnnGenMask)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_NORM_OPS_H_

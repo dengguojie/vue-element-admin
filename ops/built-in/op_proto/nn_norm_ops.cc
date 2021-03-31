@@ -1635,4 +1635,53 @@ COMMON_INFER_FUNC_REG(PoissonNllLoss, PoissonNllLossInferShape);
 VERIFY_FUNC_REG(PoissonNllLoss, PoissonNllLossVerify);
 //PoissonNllLoss
 // ----------------PoissonNllLoss END------------------------------
+// --------------------------RnnGenMask-------------------------
+IMPLEMT_COMMON_INFERFUNC(RnnGenMaskInferShape) {
+  TensorDesc tensordesc_input = op.GetInputDesc("seq_length");
+  TensorDesc tensordesc_output = op.GetOutputDesc("seq_mask");
+
+  Shape length_shape = tensordesc_input.GetShape();
+  std::vector<int64_t> dim_length = length_shape.GetDims();
+
+  if(dim_length.size() != 1){
+    OP_LOGE(op.GetName().c_str(), "Unexcepeted Input Shape.");
+    return GRAPH_FAILED;
+  }
+  int64_t batch_size = dim_length[0];
+
+  int64_t num_step = 0;
+  if(GRAPH_SUCCESS != op.GetAttr("num_step", num_step)){
+    OP_LOGE(op.GetName().c_str(), "Failed to get the value of num_step.");
+    return GRAPH_FAILED;
+  }
+
+  int64_t hidden_size = 0;
+  if(GRAPH_SUCCESS != op.GetAttr("hidden_size", hidden_size)){
+    OP_LOGE(op.GetName().c_str(), "Failed to get the value of hidden_size.");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> dim_mask = {num_step, batch_size, hidden_size};
+
+  tensordesc_output.SetShape(Shape(dim_mask));
+  tensordesc_output.SetDataType(tensordesc_input.GetDataType());
+  tensordesc_output.SetFormat(tensordesc_input.GetFormat());
+  (void)op.UpdateOutputDesc("seq_mask", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+ IMPLEMT_VERIFIER(RnnGenMask, RnnGenMaskVerify) {
+    DataType input_type_input = op.GetInputDesc("seq_length").GetDataType();
+    DataType input_type_target = op.GetInputDesc("seq_mask").GetDataType();
+    if (input_type_input != input_type_target) {
+        OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
+        return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+//Registered inferfunction
+COMMON_INFER_FUNC_REG(RnnGenMask, RnnGenMaskInferShape);
+
+//Registered verify function
+VERIFY_FUNC_REG(RnnGenMask, RnnGenMaskVerify);
+// --------------------------RnnGenMask END---------------------
 }  // namespace ge
