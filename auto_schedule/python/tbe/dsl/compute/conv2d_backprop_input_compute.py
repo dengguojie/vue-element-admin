@@ -339,9 +339,6 @@ def _check_input_params(  # pylint: disable=R0913,R0914,R0915
     dy_filling_hw_min, dx_hw_min = DY_FILLING_HW_MIN, DX_HW_MIN
     dy_filling_hw_max, dx_hw_max = DY_FILLING_HW_MAX, DX_HW_MAX
 
-    if fusion_para and fusion_para.get("valid_shape"):
-        dy_filling_hw_min = 1
-        dx_hw_min = 1
     # limitation by chip:
     # if kernel h,w in [1,11] and fmap h/w after padding equals to filter h/w
     # load3d support h,w is 1

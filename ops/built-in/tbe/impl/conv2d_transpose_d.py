@@ -43,6 +43,11 @@ CONV1D_W_MAX = 2147483647
 # 2 means L1 enable
 L1FUSION_INPUT_CTR = 2
 
+# position index
+N_DIM = 0
+H_DIM = 2
+W_DIM = 3
+
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
     """
@@ -425,7 +430,12 @@ def conv2d_transpose_d(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
         ori_format_filters, ori_shape_filters
     )
 
+    shape_x_5hd = x.get("shape")
     shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
+    shape_x = list(shape_x)
+    shape_x[N_DIM] = shape_x_5hd[N_DIM]
+    shape_x[H_DIM] = shape_x_5hd[H_DIM]
+    shape_x[W_DIM] = shape_x_5hd[W_DIM]
 
     shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
 
@@ -522,6 +532,7 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
     """
     ori_shape_filter = [i.value for i in filter.op.attrs["ori_shape"]]
     ori_shape_x = [i.value for i in x.op.attrs["ori_shape"]]
+    shape_x_5hd = [i.value for i in x.shape]
     ori_shape_res = [i for i in y["ori_shape"]]
 
     filter_dtype = filter.dtype
@@ -553,6 +564,10 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
         ori_format_filter, ori_shape_filter
     )
     shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
+    shape_x = list(shape_x)
+    shape_x[N_DIM] = shape_x_5hd[N_DIM]
+    shape_x[H_DIM] = shape_x_5hd[H_DIM]
+    shape_x[W_DIM] = shape_x_5hd[W_DIM]
     shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
     dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
 

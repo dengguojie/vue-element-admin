@@ -640,21 +640,14 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
                 raise RuntimeError(args_dict,
                                    err_man.get_error_message(args_dict))
 
-    def _modify_fusion_para(fusion_para, input_h,
-                           input_hw_mini, output_hw_mini):
+    def _modify_fusion_para(fusion_para):
         if fusion_para is None:
             fusion_para = {"input_memory_type": 0,
                            "output_memory_type": 0,
-                           "valid_shape": (),
                            "l1_fusion_type": -1,
                            "fmap_l1_addr_flag": False,
                            "fmap_l1_valid_size": 0}
-        if fusion_para.get("valid_shape"):
-            input_h = fusion_para.get("valid_shape")[2]
-            input_hw_mini = 1
-            output_hw_mini = 1
-        return fusion_para, input_h, \
-               input_hw_mini, output_hw_mini
+        return fusion_para
 
     def _check_shape_rule():
         if DYNAMIC_FLAG not in shape_out_backprop:
@@ -741,8 +734,7 @@ def check_conv2dbp_input_params(shape_filter, shape_out_backprop, input_sizes,
     dedy_hw_min, fmap_hw_min = DEDY_HW_MIN, FMAP_HW_MIN
     dedy_hw_max, fmap_hw_max = DEDY_HW_MAX, FMAP_HW_MAX
 
-    fusion_para, dedy_h, dedy_hw_min, fmap_hw_min \
-        = _modify_fusion_para(fusion_para, dedy_h, dedy_hw_min, fmap_hw_min)
+    fusion_para = _modify_fusion_para(fusion_para)
     shape_out_backprop = (dedy_batch, dedy_channel, dedy_h, dedy_w)
 
     # exchange h and w will not change date in memmory

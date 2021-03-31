@@ -54,6 +54,11 @@ DILATION_HW_MIN = 1
 DILATION_HW_MAX = 255
 CONV1D_W_MAX = 2147483647
 
+# position index
+N_DIM = 0
+H_DIM = 2
+W_DIM = 3
+
 
 def _check_attr_range(attr_name, attr_value, attr_min, attr_max):
     """
@@ -406,7 +411,12 @@ def deconvolution(  # pylint: disable=invalid-name,R0913,R0914,W0613
         ori_format_filters, ori_shape_filters
     )
 
+    shape_x_5hd = x.get("shape")
     shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
+    shape_x = list(shape_x)
+    shape_x[N_DIM] = shape_x_5hd[N_DIM]
+    shape_x[H_DIM] = shape_x_5hd[H_DIM]
+    shape_x[W_DIM] = shape_x_5hd[W_DIM]
 
     shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
 
@@ -441,7 +451,6 @@ def _get_deconvolution_fusion_para(input_x, input_y=None):
     get fusion para for L1 fusion
     """
     input_memory_type = _get_value(input_x, "addr_type", 0)
-    valid_shape = _get_value(input_x, "valid_shape", ())
     l1_fusion_type = _get_value(input_x, "L1_fusion_type", -1)
     fmap_l1_addr_flag = _get_value(input_x, "L1_addr_flag", False)
     fmap_l1_valid_size = _get_value(input_x, "L1_valid_size", 0)
@@ -465,19 +474,16 @@ def _get_deconvolution_fusion_para(input_x, input_y=None):
         }
         raise RuntimeError(args_dict, error_manager.get_error_message(args_dict))
 
-    valid_shape = shape_to_list(valid_shape)
     if not l1_fusion_enable_flag:
         input_memory_type = 0
         if input_y is not None:
             output_memory_type = 0
-        valid_shape = []
         l1_fusion_type = -1
         fmap_l1_addr_flag = False
         fmap_l1_valid_size = 0
     fusion_para = {
         "input_memory_type": input_memory_type,
         "output_memory_type": output_memory_type,
-        "valid_shape": valid_shape,
         "l1_fusion_type": l1_fusion_type,
         "fmap_l1_addr_flag": fmap_l1_addr_flag,
         "fmap_l1_valid_size": fmap_l1_valid_size,
@@ -545,6 +551,7 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
 
     ori_shape_weight = [i.value for i in weight.op.attrs["ori_shape"]]
     ori_shape_x = [i.value for i in x.op.attrs["ori_shape"]]
+    shape_x_5hd = [i.value for i in x.shape]
     ori_shape_res = y["ori_shape"]
 
     weight_dtype = weight.dtype
@@ -579,6 +586,10 @@ def deconvolution_compute(  # pylint: disable=invalid-name,R0913,R0914,W0613
         )
 
     shape_x = util_deconv_comm.get_shape_out_backprop(ori_format_x, ori_shape_x)
+    shape_x = list(shape_x)
+    shape_x[N_DIM] = shape_x_5hd[N_DIM]
+    shape_x[H_DIM] = shape_x_5hd[H_DIM]
+    shape_x[W_DIM] = shape_x_5hd[W_DIM]
     shape_res = util_deconv_comm.get_shape_res(ori_format_res, ori_shape_res)
     dilations = util_deconv_comm.get_shape_dilation(ori_format_x, dilations)
 

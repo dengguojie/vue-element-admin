@@ -52,6 +52,11 @@ INOUT_HW_MIN = 1
 INOUT_HW_MAX = 4096
 CONV1D_W_MAX = 2147483647
 
+# position index
+N_DIM = 0
+H_DIM = 2
+W_DIM = 3
+
 
 def _cal_min_l1space(out_backprop,  # pylint: disable=invalid-name
                      weight, y, strides, dilations, pads):
@@ -573,6 +578,11 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
         topi_flag=True,
     )
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
+    shape_out_backprop_5hd = out_backprop.get("shape")
+    shape_out_backprop = list(shape_out_backprop)
+    shape_out_backprop[N_DIM] = shape_out_backprop_5hd[N_DIM]
+    shape_out_backprop[H_DIM] = shape_out_backprop_5hd[H_DIM]
+    shape_out_backprop[W_DIM] = shape_out_backprop_5hd[W_DIM]
 
     group_dict = util_deconv_comm.calculate_group(
         shape_out_backprop,
@@ -666,6 +676,11 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         topi_flag=False,
     )
     shape_filters, shape_out_backprop, shape_res, strides, dilations = res
+    shape_out_backprop_5hd = [i.value for i in out_backprop.shape]
+    shape_out_backprop = list(shape_out_backprop)
+    shape_out_backprop[N_DIM] = shape_out_backprop_5hd[N_DIM]
+    shape_out_backprop[H_DIM] = shape_out_backprop_5hd[H_DIM]
+    shape_out_backprop[W_DIM] = shape_out_backprop_5hd[W_DIM]
 
     group_dict = util_deconv_comm.calculate_group(
         shape_out_backprop,
