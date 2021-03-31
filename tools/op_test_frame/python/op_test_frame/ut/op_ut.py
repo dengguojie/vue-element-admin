@@ -752,8 +752,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         return input_list, output_list
 
     def _run_kernel(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase, run_cfg: Dict[str, Any] = None):
-        bin_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + "_" + run_soc_version.lower() + ".o")
-        json_path = os.path.join(OpUT.KERNEL_DIR, case_info.case_name + "_" + run_soc_version.lower() + ".json")
+        bin_path = os.path.join(OpUT.KERNEL_DIR, self._get_kernel_name(run_soc_version, case_info) + ".o")
+        json_path = os.path.join(OpUT.KERNEL_DIR, self._get_kernel_name(run_soc_version, case_info) + ".json")
         input_info_list, output_info_list = self._get_input_outputs(case_info.op_params)
         input_data_list = []
         for input_info in input_info_list:
