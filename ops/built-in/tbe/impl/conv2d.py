@@ -79,7 +79,7 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
         valid = isinstance(offset_w, dict) and isinstance(offset_w.get("dtype"), str)
         if valid:
             offset_w_dtype = offset_w.get("dtype")
-        check_list = [*return_list[:6], inputs["dype"], weights["dtype"], outputs["dtype"],
+        check_list = [*return_list[:6], inputs["dtype"], weights["dtype"], outputs["dtype"],
                       offset_w_dtype, (bias is None), kernel_name, *return_list[6:9], groups]
         return_list = util_conv2d.conv_layer_cce_para_check(*check_list)
         return True
@@ -92,7 +92,7 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
 def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                      pads, dilations, groups=1, data_format='NHWC',
                      offset_x=0, kernel_name="conv2d"):
-    """
+    r"""
     1.When input x type is float or float16, op select supports the following specification:
 
     | Tensor    | x        | filter     | bias    | y       |
