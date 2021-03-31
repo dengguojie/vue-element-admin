@@ -443,7 +443,12 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     output_desc->SetDataType(input_type);
     return true;
   }
-
+  if (!axis_shape.empty() && axis_shape[0] == 0) {
+    OP_LOGD(op.GetName().c_str(), "axis_shape[0] is 0");
+    output_desc->SetShape(GeShape(input_shape));
+    output_desc->SetDataType(input_type);
+    return true;
+  }
   // Get const data
   GeTensorPtr axis_tensor;
   auto node = NodeUtils::GetNodeFromOperator(op);
@@ -492,6 +497,16 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     return true;
   }
 
+  // Special Branch for if axis has redundant axis value
+  if (!axis_shape.empty() && axis_shape[0] > input_length && (!keep_dims)) {
+    OP_LOGD(op.GetName().c_str(), "[Special Branch]: axis_shape[0] is more than input_length,"
+            "if axis has redundant axis value");
+    std::vector<int64_t> output_shape;
+    output_shape.push_back(-2);
+    output_desc->SetShape(GeShape(output_shape));
+    output_desc->SetDataType(input_type);
+    return true;
+  }
   // DoKnown Branch && UnKnown Branch
   if ((!IsUnknown(input_shape)) && (!IsUnknown(axis_shape)) && (GRAPH_SUCCESS == state)) {
     OP_LOGD(op.GetName().c_str(), "[DoKnown Branch]: shape and axis are known.");

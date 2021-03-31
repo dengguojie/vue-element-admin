@@ -254,4 +254,12 @@ def test_op_select_format(test_arg):
                      {"shape": (1, 1, 32, 1), "dtype": "int8", "format": "HWCN", "ori_shape": (1, 1, 32, 1),
                       "ori_format": "HWCN"},
                      "test_add_op_select_format_12")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "int8", "format": "NHWC", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "NHWC"},
+                     {"shape": (1,), "dtype": "int8", "format": "NHWC", "ori_shape": (1,),
+                      "ori_format": "NHWC"},
+                     {"shape": (1, 1, 16, 1), "dtype": "int8", "format": "NHWC", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "NHWC"},
+                     "test_add_op_select_format_13")
 ut_case.add_cust_test_func(test_func=test_op_select_format)
+

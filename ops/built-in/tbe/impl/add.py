@@ -121,7 +121,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     if cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         dtype_list = ["float16", "int32", "int8", "uint8"]
     else:
-        dtype_list = ["float16", "float32", "int32", "int8", "uint8"]
+        dtype_list = ["float32", "float16", "int32", "int8", "uint8"]
 
     format_x = input_x.get("ori_format")
     format_y = input_y.get("ori_format")
@@ -131,7 +131,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     format_list = ["ND"]
     format_nz = ["FRACTAL_NZ"]
     format_5hd = ["NC1HWC0"]
-    # 2dims add (3|4)dims,fe regards 2dims as HW,actually is WC
+    # 2dims add (3|4)dims,fe regards 2dims as HW, actually is WC
     if (len(shape_x) == 2 and (len(shape_y) == 3 or len(shape_y) == 4)) \
             or (len(shape_y) == 2 and (len(shape_x) == 3 or len(shape_x) == 4)):
         format_5hd = []
@@ -375,13 +375,15 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         unknownshape_format_list = ["ND"] * len(dtype_total)
 
     if _can_broadcast(shape_x, shape_y) and len(shape_x) != len(shape_y):
-        x_format = input_x.get("ori_format")
+        product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
         y_format = input_y.get("ori_format")
+        x_format = input_x.get("ori_format")
         if x_format == "NHWC" or y_format == "NHWC":
             if len(shape_x) > 4 or len(shape_y) > 4:
                 formats = ["ND"]
             else:
-                if set(shape_x) == {1} or set(shape_y) == {1}:
+                if (set(shape_x) == {1} or set(shape_y) == {1}) and shape_x[-1] % 16 != 0 and \
+                    shape_y[-1] % 16 != 0 and product_version in ["Ascend910"]:
                     formats = ["ND"]
                 else:
                     formats = format_5hd
