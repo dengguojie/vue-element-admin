@@ -306,6 +306,64 @@ struct TransDataMode200Param {
   int64_t crInIdx1SrcAsize;
 };
 
+struct TransDataNtc200Param {
+  int64_t tilingMode;
+  int64_t ubOffset;
+  int64_t mcPos;
+  int64_t usedCoreCnt;
+  int64_t c0Len;
+  int64_t coreStepIn;
+  int64_t coreStepOut;
+  int64_t nlcCrLpCnt;
+  int64_t nlcCLpCnt;
+  int64_t nlcClLpCnt;
+  int64_t nlcCrLeft;
+  int64_t nlcCLeft;
+  int64_t nlcClLeft;
+  int64_t lcCrLpCnt;
+  int64_t lcCLpCnt;
+  int64_t lcClLpCnt;
+  int64_t lcCrLeft;
+  int64_t lcCLeft;
+  int64_t lcClLeft;
+  int64_t dstCrLpUnit;
+  int64_t srcCLpUnit;
+  int64_t dstClLpUnit;
+  int64_t dstCrStepIn;
+  int64_t dstCrStepOut;
+  int64_t dstCrLpStepIn;
+  int64_t dstCrLpStepOut;
+  int64_t dstCSize;
+  int64_t srcCStepIn;
+  int64_t srcCStepOut;
+  int64_t srcCLpStepIn;
+  int64_t srcCLpStepOut;
+  int64_t dstClStepIn;
+  int64_t dstClStepOut;
+  int64_t dstClLpStepIn;
+  int64_t dstClLpStepOut;
+  int64_t cModC0;
+  int64_t dstCrDims;
+  int64_t dstClDims;
+  int64_t isMcCr;
+  int64_t isMcCl;
+  int64_t srcR2ndDstR1stSame;
+  int64_t leftClCCrSize;
+
+  int64_t clInIdx0Size;
+  int64_t clInIdx0DstRsize;
+  int64_t clInIdx0SrcAsize;
+  int64_t clInIdx1Size;
+  int64_t clInIdx1DstRsize;
+  int64_t clInIdx1SrcAsize;
+  int64_t crInIdx0Size;
+  int64_t crInIdx0DstRsize;
+  int64_t crInIdx0SrcAsize;
+  int64_t crInIdx1Size;
+  int64_t crInIdx1DstRsize;
+  int64_t crInIdx1SrcAsize;
+};
+
 struct TransDataMode201Param {
   int64_t tilingMode;
   int64_t ubOffset;
@@ -543,6 +601,10 @@ bool TillingPositiveMode200(vector<int64_t>& inShape, vector<int64_t>& outShape,
                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, int64_t& c0Len,
                             int64_t& ubSize, TransDataMode200Param& params);
 
+bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
+                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
+                            int64_t& ubSize, TransDataNtc200Param& params);
+
 bool TillingNegativeMode201(std::vector<int64_t>& inShape, std::vector<int64_t>& outShape, std::string& srcFormat,
                             std::string& dstFormat, const int64_t coreNum, const int64_t blockElemCnt,
                             const int64_t ubSize, TransDataMode201Param& params);
@@ -557,6 +619,7 @@ void SetRunningMode101Params(const TransDataMode101Param& runParams, OpRunInfo& 
 void SetRunningMode1010Params(const TransDataMode1010Param& runParams, OpRunInfo& runInfo);
 void SetRunningMode1011Params(const TransDataMode1011Param& runParams, OpRunInfo& runInfo);
 void SetRunningMode200Params(const TransDataMode200Param& runParams, OpRunInfo& runInfo);
+void SetRunningNtc200Params(const TransDataNtc200Param& runParams, OpRunInfo& runInfo);
 void SetRunningMode201Params(const TransDataMode201Param& runParams, OpRunInfo& runInfo);
 void SetRunningNtc100Params(const TransDataNtc100Param& runParams, OpRunInfo& runInfo);
 
@@ -565,6 +628,7 @@ void PrintTilingMode101Params(const std::string& opType, const TransDataMode101P
 void PrintTilingMode1010Params(const std::string& opType, const TransDataMode1010Param& params);
 void PrintTilingMode1011Params(const std::string& opType, const TransDataMode1011Param& params);
 void PrintTilingMode200Params(const std::string& opType, const TransDataMode200Param& params);
+void PrintTilingModeNtc200Params(const std::string& opType, const TransDataNtc200Param& params);
 void PrintTilingMode201Params(const std::string& opType, const TransDataMode201Param& params);
 void PrintTilingNtc100Params(const std::string& opType, const TransDataNtc100Param& params);
 

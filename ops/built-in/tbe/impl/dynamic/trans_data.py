@@ -24,6 +24,7 @@ from impl.dynamic.transpose import Transpose
 from . import trans_data_negative_target_tc
 from . import trans_data_negative_target_ch
 from . import trans_data_positive_source_tc
+from . import trans_data_negative_target_ntc
 from . import trans_data_positive_source_ntc
 
 TILING_MAX_SIZE_GM = 2048  # 16KB
@@ -71,8 +72,10 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
     if (src_format == "NC1HWC0" and dst_format == "NHWC") or (src_format == "FRACTAL_NZ" and dst_format == "ND") \
         or (src_format == "FRACTAL_Z_3D" and dst_format == "NDHWC"):
         trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
-    elif (src_format == "NC1HWC0" and dst_format == "NCHW"):
-        trans_data_negative_target_ch.trans_data_negative_target_ch(src, dst, src_format, dst_format, kernel_name)
+    elif ((src_format == "NC1HWC0" and dst_format == "NCHW") \
+          or (src_format == "FRACTAL_Z_3D" and dst_format == "NCDHW") \
+          or (src_format == "NDC1HWC0" and dst_format == "NCDHW")):
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
     elif is_do_with_transpose_formats(src_format, dst_format):
         x_dtype = src.get("dtype").lower()
         y_dtype = dst.get("dtype").lower()

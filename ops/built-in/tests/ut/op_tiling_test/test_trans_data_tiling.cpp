@@ -308,7 +308,7 @@ TEST_F(TransDataTiling, TransData_tiling7) {
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "200 63232 0 2 11 0 0 1 2 1 0 0 2 1 2 1 1 0 2 240 1 16 1 38416 2401 72030 38416 38416 14 1 0 0 3952 2 1 76832 1 0 0 2401 1 16 1 0 0 ");
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "2001 63232 0 2 16 76832 72030 1 2 1 0 0 0 1 2 1 0 0 0 2401 1 1 16 1 38416 2401 30 38416 2401 38416 38416 76832 72030 76832 72030 14 1 1 0 1 1 0 2 1 76832 1 1 0 2401 1 16 1 1 0 ");
 }
 
 TEST_F(TransDataTiling, TransData_tiling8) {
@@ -1292,4 +1292,78 @@ TEST_F(TransDataTiling, TransData_tiling_NCDHW2FRACTALZ3D) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string_int64(runInfo.tiling_data), "1001 63488 2 31 1736 0 3968 2 16 1 2 0 105896 16 16 1694336 256 52948 16 847168 2539520 1 0 248 248 0 80 0 1 2 7 0 80 0 1 2 4 124 1280 1 16 0 0 0 124 1 20480 427 124 2539520 ");
+}
+
+TEST_F(TransDataTiling, TransData_NDC1HWC02NCDHW) {
+  using namespace optiling;
+  optiling::OpRunInfo op_run_info;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  TeOpTensorArg tensorInputsArg, tensorOutputsArg;
+  TeOpParas opParas;
+  std::vector<int64_t> input_shape = {3, 4, 5, 17, 17, 16};
+  std::vector<int64_t> output_shape = {3, 80, 4, 17, 17};
+  std::string dtype = "float16";
+
+  TeOpTensor tensorInput;
+  tensorInput.shape = input_shape;
+  tensorInput.format = "NDC1HWC0";								 
+  tensorInput.dtype = dtype;
+  tensorInputsArg.tensor.push_back(tensorInput);
+  tensorInputsArg.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputsArg);
+
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = output_shape;
+  tensorOutput.format = "NCDHW";							   
+  tensorOutput.dtype = dtype;
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+  opParas.op_type = "TransData";
+  std::string compileInfo3 = "{\"vars\": {\"srcFormat\": \"NDC1HWC0\", \"dstFormat\": \"NCDHW\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo3;
+  op_compile_info.key = this->test_info_->name();
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "2001 63232 0 3 16 92480 92480 1 2 1 0 2 0 1 2 1 0 2 0 1156 3 1 0 1 0 1156 80 4624 1156 13872 55488 92480 92480 92480 92480 0 2 1 0 1 1 0 3 1 92480 1 1 0 289 1 16 4 289 23120 ");
+}
+
+TEST_F(TransDataTiling, TransData_FRAZ3D2NCDHW) {
+  using namespace optiling;
+  optiling::OpRunInfo op_run_info;
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  TeOpTensorArg tensorInputsArg, tensorOutputsArg;
+  TeOpParas opParas;
+  std::vector<int64_t> input_shape = {5780, 1, 16, 16};
+  std::vector<int64_t> output_shape = {3, 80, 4, 17, 17};
+  std::string dtype = "float16";
+
+  TeOpTensor tensorInput;
+  tensorInput.shape = input_shape;
+  tensorInput.format = "FRACTAL_Z_3D";								 
+  tensorInput.dtype = dtype;
+  tensorInputsArg.tensor.push_back(tensorInput);
+  tensorInputsArg.arg_type = TA_SINGLE;
+  opParas.inputs.push_back(tensorInputsArg);
+
+  TeOpTensor tensorOutput;
+  tensorOutput.shape = output_shape;
+  tensorOutput.format = "NCDHW";							   
+  tensorOutput.dtype = dtype;
+  tensorOutputsArg.tensor.push_back(tensorOutput);
+  tensorOutputsArg.arg_type = TA_SINGLE;
+  opParas.outputs.push_back(tensorOutputsArg);
+  opParas.op_type = "TransData";
+  std::string compileInfo3 = "{\"vars\": {\"srcFormat\": \"FRACTAL_Z_3D\", \"dstFormat\": \"NCDHW\", \"dType\": \"float16\", \"ubSize\": 126464, \"blockDim\": 32, \"inputSize\": -1, \"hiddenSize\": -1, \"group\": 1}}";
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo3;
+  op_compile_info.key = this->test_info_->name();
+
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "2001 63232 0 3 16 16 92480 1 2 1 0 2 0 1 2 1 0 2 0 1156 3 1 0 1 0 1156 80 73984 1156 221952 55488 16 92480 16 92480 0 2 1 0 1 0 0 3 1 16 1 1 0 289 1 256 4 289 369920 ");
 }

@@ -388,6 +388,43 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew.push_back(axisC0);
   }
 
+  if (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW") {
+    if (inShape.size() != 6 || outShape.size() != 5) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      return false;
+    }
+    realSrcFormat = "NDCHT";
+    realDstFormat = "NCDH";
+    int64_t axisN = outShape[0];
+    int64_t axisC = outShape[1];
+    int64_t axisD = outShape[2];
+    int64_t axisH = outShape[3];
+    int64_t axisW = outShape[4];
+    int64_t axisC0 = inShape[inShape.size() - 1];
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    inShapeNew = {axisN, axisD, axisC1, axisH * axisW, axisC0};
+    outShapeNew = {axisN, axisC, axisD, axisH * axisW};
+  }
+
+  if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NCDHW") {
+    if (inShape.size() < 2 || outShape.size() != 5) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      return false;
+    }
+    realSrcFormat = "DCHNT";
+    realDstFormat = "NCDH";
+    int64_t axisN = outShape[0];
+    int64_t axisC = outShape[1];
+    int64_t axisD = outShape[2];
+    int64_t axisH = outShape[3];
+    int64_t axisW = outShape[4];
+    int64_t axisC0 = inShape[inShape.size() - 1];
+    int64_t axisNi = inShape[inShape.size() - 2];
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+    inShapeNew = {axisD, axisC1, axisH * axisW, axisNo * axisNi, axisC0};
+    outShapeNew = {axisN, axisC, axisD, axisH * axisW};
+  }
 
   return true;
 }
@@ -593,17 +630,19 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     OP_LOGD(opType.c_str(), "***start to put mode 201 tiling parameters");
     SetRunningMode201Params(runParams201, runInfo);
     PrintTilingMode201Params(opType, runParams201);
-  } else if (srcFormat == "NC1HWC0" && dstFormat == "NCHW" && outShapeNew[outShapeNew.size() - 1] > blockElemCnt) {
-    TransDataMode200Param runParams200;
-    flag = TillingPositiveMode200(inShapeNew, outShapeNew, realSrcFormat, realDstFormat,
-                                  blockDim, blockElemCnt, c0Len, ubSize, runParams200);
+  } else if ((srcFormat == "NC1HWC0" && dstFormat == "NCHW") ||
+             (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NCDHW") ||
+             (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW")) {
+    TransDataNtc200Param runParams200;
+    flag = TilingNegativeNtc200(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
+                                ubSize, runParams200);
     if (!flag) {
-      OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode200Param tiling params error");
+      OP_LOGE(opType.c_str(), "TransDataTiling: get TilingNegativeNtc200 tiling params error");
       return false;
     }
-    SetRunningMode200Params(runParams200, runInfo);
+    SetRunningNtc200Params(runParams200, runInfo);
     OP_LOGD(opType.c_str(), "start print tiling parameters in mode 200");
-    PrintTilingMode200Params(opType, runParams200);
+    PrintTilingModeNtc200Params(opType, runParams200);
   }
 
   // block_dim, core num used in tik op
