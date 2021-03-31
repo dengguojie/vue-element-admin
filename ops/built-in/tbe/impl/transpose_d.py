@@ -23906,10 +23906,12 @@ def check_014253_sp2(shape, perm, dtype):
     return True
 
 
-def by_dynamic_static_union_version(shape, x_dtype):
+def by_dynamic_static_union_version(shape, x_dtype, core_num):
     """
     temporary function, for dynamic & static union version not fully verified
     """
+    if core_num == 1:
+        return False
 
     if  x_dtype not in ("float", "float32", "int32", "uint32", "int16", "uint16", "float16"):
         return False
@@ -23938,7 +23940,7 @@ def check_supported(input_x, output_y, perm, kernel_name="transpose_d"):
     x_shape = input_x.get("ori_shape")
     x_dtype = input_x.get("dtype")
 
-    if by_dynamic_static_union_version(x_shape, x_dtype):
+    if by_dynamic_static_union_version(x_shape, x_dtype, AICORE_NUM):
         return False
 
     if -2 in x_shape:
