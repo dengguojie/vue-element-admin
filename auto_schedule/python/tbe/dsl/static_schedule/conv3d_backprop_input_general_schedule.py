@@ -459,7 +459,7 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
 
     def _dfactor_dynamic(var_map):
         ext = (al0_tiling_dfactor - 1 + stride_d - 1) // stride_d
-        b_factor = min(kd_tiling_l1_factor * kd_tiling_l1_factor, b_ddr_kd)
+        b_factor = min(bl0_tiling_kd * kd_tiling_l1_factor, b_ddr_kd)
         estimate_d = (b_factor - 1 + stride_d - 1) // stride_d + ext + 1
         if "dedy_d" in var_map:
             d_factor = tvm.min(estimate_d, dy_depth)
@@ -1153,8 +1153,8 @@ def general_schedule(tensor, sch_list, tiling_case=None, var_range=None):  # pyl
                 (None, None), (None, None),
                 (None, None), (None, None)
             )
-
-    _n_buffer_tile()
+    if not var_map:
+        _n_buffer_tile()
     _double_buffer()
 
     # emit insn

@@ -200,6 +200,15 @@ def _range_to_fix(shape, range_ori):
             range_ori[range_idx] = (shape[shape_idx], shape[shape_idx])
     return range_ori
 
+def _modify_dedy(shape, range_ori):
+    for i in range(4):
+        dim = _DIM_STR[i]
+        range_idx = _DIM_MAP[dim][1]
+        shape_idx = _DIM_MAP[dim][0]
+        if shape[i] == -1:
+            shape[shape_idx] = range_ori[range_idx][0]
+    return shape
+
 def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     fmap_range_n, fmap_range_d, fmap_range_c1, fmap_range_h, fmap_range_w, fmap_range_c0 = fmap_range
     _check_range(fmap_range_n)
@@ -253,56 +262,61 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
     return range_dedy, range_input
 
 def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,
-                        out_backprop_dtype, range_dedy, range_input):
+                        out_backprop_dtype, range_dedy, range_input, groups):
 
     _, dy_k0, _ = tbe_platform.CUBE_MKN[out_backprop_dtype]['mac']
     _, w_k0, w_n0 = tbe_platform.CUBE_MKN[filters_dtype]['mac']
 
     dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel = shape_out_backprop
+    dedx_batch, dedx_depth, dedx_h, dedx_w, dedx_channel = input_sizes
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filters
+    group_dict = util_common.calculate_group(dedx_channel, filter_batch, groups, _C0_SIZE, _C0_SIZE)
+    real_g = group_dict["real_g"]
+    cin1_g = group_dict["cin1_g"]
+    cout_g = group_dict["cout_g"]
+    shape_filter_frac = (real_g * filter_depth *cin1_g * filter_h * filter_w,
+                         cout_g // _C0_SIZE, _C0_SIZE, _C0_SIZE)
 
-    shape_filter_frac = (util_common.ceil(filter_channel, w_n0) * filter_depth * filter_h * filter_w,
-                         util_common.ceil(filter_batch, w_k0), w_k0, w_n0)
-
-    if input_sizes[0] == -1 or dedy_batch == -1:
+    if dedx_batch == -1:
         dedy_batch = operation.var("batch_n", range_input[0])
         operation.add_exclude_bound_var(dedy_batch)
         input_sizes[0] = dedy_batch
-    if input_sizes[1] == -1 or dedy_depth == -1:
+    if dedx_depth == -1:
         dx_depth = operation.var("dedx_d", range_input[1])
         dedy_depth = operation.var("dedy_d", range_dedy[1])
         operation.add_exclude_bound_var(dx_depth)
         operation.add_exclude_bound_var(dedy_depth)
         input_sizes[1] = dx_depth
-    if input_sizes[2] == -1 or dedy_h == -1:
+    if dedx_h == -1:
         dx_h = operation.var("dedx_h", range_input[3])
         dedy_h = operation.var("dedy_h", range_dedy[3])
         operation.add_exclude_bound_var(dx_h)
         operation.add_exclude_bound_var(dedy_h)
         input_sizes[2] = dx_h
-    if input_sizes[3] == -1 or dedy_w == -1:
+    if dedx_w == -1:
         dx_w = operation.var("dedx_w", range_input[4])
         dedy_w = operation.var("dedy_w", range_dedy[4])
         operation.add_exclude_bound_var(dx_w)
         operation.add_exclude_bound_var(dedy_w)
         input_sizes[3] = dx_w
 
-    shape_out_backprop = (dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel)
+    shape_out_backprop = [dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel]
+    [dedy_batch, dedy_depth, dedy_h, dedy_w, dedy_channel] = _modify_dedy(shape_out_backprop, range_dedy)
     shape_dedy = (dedy_batch, dedy_depth, util_common.ceil(dedy_channel, dy_k0), dedy_h, dedy_w, dy_k0)
 
     dx_shape = tvm.placeholder([5], name="input_size", dtype="int32")
     dedy = tvm.placeholder(shape_dedy, name="dedy", dtype=out_backprop_dtype)
     filter_frac = tvm.placeholder(shape_filter_frac, name="filter", dtype=filters_dtype)
 
-    return dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop
+    return dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop, group_dict
 
 @para_check.check_input_type((list, tuple), (list, tuple), (list, tuple),
-                             (list, tuple), (str, list, tuple), int,
+                             (list, tuple), (str, list, tuple),
                              (list, tuple), str, str, str, str,
                              (list, tuple), (list, tuple))
 def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
                                 shape_out_backprop,
-                                input_sizes, strides, pads, groups, dilations,
+                                input_sizes, strides, pads, dilations,
                                 filter_dtype, out_backprop_dtype,
                                 res_dtype, kernel_name, range_input, range_dedy):
     """
@@ -322,8 +336,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     strides : A list/tuple of ints. The stride of the sliding window
 
     pads : A list/tuple of ints or str
-
-    groups : Int of blocked connections from input channels to output channels
 
     dilations : An optional list/tuple of ints
 
@@ -483,8 +495,6 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     filter_depth, filter_h, filter_w, filter_channel, filter_batch = shape_filter
     _, stride_d, stride_h, stride_w, _ = strides
 
-    group_dict = util_common.calculate_group(fmap_channel, filter_batch, groups, _C0_SIZE, _C0_SIZE)
-
     filter_h_dilation = (filter_h - 1) * dilation_h + 1
     filter_w_dilation = (filter_w - 1) * dilation_w + 1
     filter_d_dilation = (filter_depth - 1) * dilation_d + 1
@@ -593,7 +603,7 @@ def check_conv3dbp_input_params(shape_filter,# pylint:disable=R0913,R0914,R0915
     _check_shape_size()
 
     result = (shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
-              filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict)
+              filter_dtype, out_backprop_dtype, res_dtype, kernel_name)
 
     return result
 
@@ -610,6 +620,13 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
     ori_format_filters = filter.get("ori_format")
     ori_format_out_backprop = out_backprop.get("ori_format")
     ori_format_res = y.get("ori_format")
+    ori_shape_input_size = input_size.get("ori_shape")
+    # check -2 scenario
+    if len(ori_shape_input_size) == 1:
+        input_size_shape, = ori_shape_input_size
+        if input_size_shape < 0:
+            error_manager_cube.raise_err_specific(
+                'conv3d_backprop_input', "prebuild failed, not support input size's shape [-1] and [-2]")
 
     if not(ori_format_res == ori_format_out_backprop == data_format):
         error_manager_cube.raise_err_specific(
@@ -642,21 +659,21 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
                                                 shape_dilations, shape_out_backprop)
 
     # get placeholder
-    dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop = \
+    dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop, group_dict = \
         _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,
-                            out_backprop_dtype, range_dedy, range_input)
+                            out_backprop_dtype, range_dedy, range_input, groups)
 
     if groups != 1:
         error_manager_cube.raise_err_specific('conv3d_backprop_input', "group must be 1 now.")
 
     res = check_conv3dbp_input_params(shape_filters, shape_out_backprop,
-                                      input_sizes, shape_strides, pads, groups,
+                                      input_sizes, shape_strides, pads,
                                       dilations, filters_dtype,
                                       out_backprop_dtype,
                                       res_dtype, kernel_name, range_input, range_dedy)
 
     (shape_filter, shape_out_backprop, input_sizes, strides, pads, dilations,
-     filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict) = res
+     filter_dtype, out_backprop_dtype, res_dtype, kernel_name) = res
 
     return dx_shape, dedy, filter_frac, shape_filter, shape_out_backprop, input_sizes, strides, \
            pads, dilations, filter_dtype, out_backprop_dtype, res_dtype, kernel_name, group_dict
