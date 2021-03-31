@@ -200,6 +200,30 @@ case10 = {"params": [{"shape": (2, 3, 2, 15, 3, 16), "dtype": "float16",
           "calc_expect_func": calc_expect_func,
           "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
+case11 = {"params": [{"shape": (1, 1, 128, 1, 1, 16), "dtype": "float16",
+                      "ori_shape": (1, 1, 128, 1, 1, 16), "format": "NDC1HWC0",
+                      "ori_format": "NDC1HWC0",
+                      "param_type": "input", "value_range": [-10.0, 10.0]},
+                     {"shape": (1, 2048, 1, 1, 1), "dtype": "float16",
+                      "ori_shape": (1, 2048, 1, 1, 1), "format": "NCDHW", "ori_format": "NCDHW",
+                      "param_type": "output"},
+                     "NDC1HWC0", "NCDHW"],
+          "expect": "success",
+          "calc_expect_func": calc_expect_func,
+          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+
+case12 = {"params": [{"shape": (1, 1, 32, 1, 1, 16), "dtype": "float16",
+                      "ori_shape": (1, 1, 32, 1, 1, 16), "format": "NDC1HWC0",
+                      "ori_format": "NDC1HWC0",
+                      "param_type": "input", "value_range": [-10.0, 10.0]},
+                     {"shape": (1, 512, 1, 1, 1), "dtype": "float16",
+                      "ori_shape": (1, 512, 1, 1, 1), "format": "NCDHW", "ori_format": "NCDHW",
+                      "param_type": "output"},
+                     "NDC1HWC0", "NCDHW"],
+          "expect": "success",
+          "calc_expect_func": calc_expect_func,
+          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+
 ut_case.add_case(["Ascend910"], err1)
 ut_case.add_case(["Ascend910"], err2)
 ut_case.add_case(["Ascend910"], err3)
@@ -225,6 +249,8 @@ ut_case.add_case(["Ascend910"], case7)
 ut_case.add_case(["Ascend910"], case8)
 ut_case.add_case(["Ascend910"], case9)
 ut_case.add_case(["Ascend910"], case10)
+ut_case.add_case(["Ascend310","Ascend910A"], case11)
+ut_case.add_case(["Ascend310","Ascend910A"], case12)
 
 if __name__ == '__main__':
     # ut_case.run("Ascend910")

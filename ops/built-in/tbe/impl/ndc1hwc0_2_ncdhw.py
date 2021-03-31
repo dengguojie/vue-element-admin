@@ -1249,4 +1249,4 @@ def ndc1hwc0_2_ncdhw(src, dst, src_format, dst_format,
                                           dtype, kernel_name)
     if template_fp16.check_branch() != "not support":
         return template_fp16.get_tik_instance()
-    raise RuntimeError("not support this kind of transfer")
+    trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
