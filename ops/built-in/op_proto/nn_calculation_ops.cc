@@ -6896,7 +6896,7 @@ IMPLEMT_INFERFUNC(Conv3DBackpropInput, Conv3DBackpropInputInfer) {
   // if only batch is -1, no need to set SAME padding as -1
   // dy_sizes maybe contains -1 in runtime compile, but can't set pads as -1
   if ((!is_input_size_const) && (IsUnknownRankShape(dy_sizes) ||
-      IsDHWUnknown(op.GetName(), "out_backprop", dy_sizes, dy_desc->GetFormat()))) {
+      IsDHWUnknown(op.GetName(), "y", y_desc->MutableShape().GetDims(), y_desc->GetFormat()))) {
     std::string pad_str;
     if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
       std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);
@@ -7763,7 +7763,7 @@ IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
   // if only batch is -1, no need to set SAME padding as -1
   // x_size maybe contains -1 in runtime compile, but can't set pads as -1
   if ((!is_input_size_const) && (unknown_rank ||
-      IsDHWUnknown(op.GetName(), "x", x_sizes, x_desc->GetFormat()))) {
+      IsDHWUnknown(op.GetName(), "y", y_desc->MutableShape().GetDims(), y_desc->GetFormat()))) {
     std::string pad_str;
     if (op.GetAttr("padding", pad_str) == GRAPH_SUCCESS) {
       std::vector<int32_t> pads(kConv3dPadsSizeLimit, 0);

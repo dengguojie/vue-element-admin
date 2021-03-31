@@ -177,15 +177,13 @@ def _check_range(range, range_min=1, range_max=None):
         error_manager_cube.raise_err_specific(
             'conv3d_backprop_input', "the upper bound of range should be larger than lower bound")
 
-def _check_dynamic_flag(input_size_ndhwc):
+def _check_dynamic_flag(input_size_ndhwc, shape_filters, groups):
     for i in range(4):
         if input_size_ndhwc[i] < -1:
             error_manager_cube.raise_err_specific(
                 'conv3d_backprop_input',"Dynamic flag is -1, but dim {} is {}".format(
                     _DIM_STR[i], input_size_ndhwc[i]))
-    if input_size_ndhwc[-1] < 0:
-        error_manager_cube.raise_err_specific(
-            'conv3d_backprop_input',"Dim C does not support dynamic shape")
+    input_size_ndhwc[-1] = shape_filters[3] * groups if input_size_ndhwc[-1] < 0 else input_size_ndhwc[-1]
 
 def _get_output(x_in, k_size, pads, stride, dilation):
     if not x_in:
@@ -632,7 +630,7 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
                          range_input,
                          ori_format_res,
                          input_sizes)
-    _check_dynamic_flag(input_sizes)
+    _check_dynamic_flag(input_sizes, shape_filters, groups)
     if len(range_input) == FORMAT_5D_DIMS:
         c1_value = util_common.ceil(input_sizes[-1], _C0_SIZE)
         range_input = [range_input[0], range_input[1], (c1_value, c1_value),
