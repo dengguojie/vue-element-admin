@@ -514,9 +514,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             return True
         return False
 
-    @staticmethod
-    def _get_kernel_name(run_soc_version: str, case_info: op_ut_case_info.OpUTCase) -> str:
-        return case_info.case_name + "_" + run_soc_version.lower()
+    def _get_kernel_name(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase) -> str:
+        return "_".join([self.op_type, str(self.imply_type.value), case_info.case_name, run_soc_version.lower()])
 
     @staticmethod
     def _get_compile_info_file_name(kernel_name):
@@ -542,7 +541,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         return json.loads(compile_info_str)
 
     def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase, check_exist=False):
-        kernel_name = case_info.case_name + "_" + run_soc_version.lower()
+        kernel_name = self._get_kernel_name(run_soc_version, case_info)
         if not case_info.addition_params:
             addition_params = {"kernel_name": kernel_name}
         else:
