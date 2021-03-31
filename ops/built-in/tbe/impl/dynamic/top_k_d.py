@@ -19,13 +19,12 @@ top_k_d
 from enum import Enum
 from enum import unique
 
-from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-import te.platform as tbe_platform
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import error_manager_vector
 
 FP16_MINIMUM = -65504
 MAX_INT32 = 2 ** 31 - 1
