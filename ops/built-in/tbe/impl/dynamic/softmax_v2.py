@@ -70,9 +70,8 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     data_subtrac = tbe.vsub(input_x, data_max)
     data_exp = tbe.vexp(data_subtrac)
     data_expsum = tbe.reduce_sum(data_exp, axis, keepdims=True)
-    data_expsum = tbe.vrec(data_expsum)
     data_expsum = tbe.broadcast(data_expsum, shape)
-    output = tbe.vmul(data_exp, data_expsum)
+    output = tbe.vdiv(data_exp, data_expsum)
     if has_improve_precision and dtype == "float16":
         output = tbe.cast_to(output, "float16")
 
