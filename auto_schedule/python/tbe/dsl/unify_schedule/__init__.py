@@ -36,3 +36,4 @@ from tbe.dsl.unify_schedule import gemm_tilingcase
 
 from .import conv3d_bp_filter_tilingcase
 from .import cube_schedule
+from . import bn_update_schedule, bn_update_tilingcase
