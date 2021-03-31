@@ -2491,8 +2491,8 @@ def one_hot(x,
             depth,
             on_value,
             off_value,
-            axis,
             y,
+            axis,
             kernel_name='one_hot'):
     """
     algorithm:one_hot
