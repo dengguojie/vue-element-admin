@@ -355,7 +355,7 @@ class Conv2dBpFilterTiling(CubeTilingOp):
             pad_right = pad_w - pad_left
             self.cur_pads = [pad_left, pad_right, pad_up, pad_down]
 
-    def _get_dw_k(self, tiling):
+    def _get_dw_k(self, tiling, hw_pad_1, block_dim_hw):
         if tiling["AL0_matrix"]:
             # dw_k equals to ka if L0A needs tiling
             dw_k = tiling["AL0_matrix"][1]
@@ -397,21 +397,23 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         if flag_fmap_load2d:
             return bl1_k
 
-        dw_k = self._get_dw_k(tiling)
+        dw_k = self._get_dw_k(tiling, hw_pad_1, block_dim_hw)
 
-        hw_single_core_factor = utils.icd(hw_pad_1, block_dim_hw) * \
-                                utils.CUBE_SIZE
-        hw_single_core_factor = utils.align(hw_single_core_factor,
-                                            dw_k * width_grads * utils.CUBE_SIZE)
+        hw_single_core_factor = utils.icd(utils.icd(hw_pad_1, dw_k), block_dim_hw)
+        hw_single_core_factor = hw_single_core_factor * dw_k * utils.CUBE_SIZE
 
-        if bl1_k < width_grads:
+        if bl1_k <= width_grads:
             # tiling load lens less then width_grads, need to load a full line
             if flag_conv1d_case:
                 return tiling["BL1_shape"][0]
             else:
+                hw_single_core_factor = utils.icd(hw_pad_1, block_dim_hw) * \
+                                        utils.CUBE_SIZE
+                hw_single_core_factor = utils.align(hw_single_core_factor,
+                                                    dw_k * width_grads * utils.CUBE_SIZE)
                 # if res_data exists then need to load 2 lines
                 ho_len = 1 if ((width_grads % bl1_k == 0 and \
-                               hw_single_core_factor % width_grads == 0)
+                               (hw_single_core_factor < width_grads or hw_single_core_factor % width_grads == 0))
                                or height_grads == 1) else 2
         else:
             # load3d instructions refer to load extra lines with pad/stride/filter
@@ -474,12 +476,23 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         fmap_shape = n_i, self.b_info[1], h_i, w_i, utils.CUBE_SIZE
 
         # flag check
-        local_tiling_flag = self._get_attach_flag_detail(tiling,
+        constraint_flag = self._get_attach_flag_detail(tiling,
                                                          dy_shape, fmap_shape)
+        local_tiling_flag = (constraint_flag['l0a_attach'],
+                             constraint_flag['l0b_attach'],
+                             constraint_flag['al1_attach'],
+                             constraint_flag['bl1_attach'],
+                             constraint_flag['flag_bl1k_less_than_wo'],
+                             constraint_flag['bl1_hw_allin_flag'],
+                             constraint_flag['batch_num_sc'],
+                             constraint_flag['flag_conv1d_case'],
+                             constraint_flag['flag_fmap_load2d'],
+                             constraint_flag['k_atomic_add_len'],)
         seed_tiling_flag = (tiling["dynamic_l0a_attach"],
                             tiling["dynamic_l0b_attach"],
                             tiling["dynamic_al1_attach"],
                             tiling["dynamic_bl1_attach"],
+                            tiling["flag_bl1k_less_than_wo"],
                             tiling["bl1_hw_allin_flag"],
                             tiling["batch_num_sc"],
                             tiling["flag_conv1d_case"],
@@ -552,12 +565,22 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         cur_fmap_shape = current_n, self.b_info[1], h_i, w_i, utils.CUBE_SIZE
 
         # flag check
-        local_tiling_flag = \
-            self._get_attach_flag_detail(tiling, cur_dy_shape, cur_fmap_shape)
+        constraint_flag = self._get_attach_flag_detail(tiling, cur_dy_shape, cur_fmap_shape)
+        local_tiling_flag = (constraint_flag['l0a_attach'],
+                             constraint_flag['l0b_attach'],
+                             constraint_flag['al1_attach'],
+                             constraint_flag['bl1_attach'],
+                             constraint_flag['flag_bl1k_less_than_wo'],
+                             constraint_flag['bl1_hw_allin_flag'],
+                             constraint_flag['batch_num_sc'],
+                             constraint_flag['flag_conv1d_case'],
+                             constraint_flag['flag_fmap_load2d'],
+                             constraint_flag['k_atomic_add_len'],)
         seed_tiling_flag = (tiling["dynamic_l0a_attach"],
                             tiling["dynamic_l0b_attach"],
                             tiling["dynamic_al1_attach"],
                             tiling["dynamic_bl1_attach"],
+                            tiling["flag_bl1k_less_than_wo"],
                             tiling["bl1_hw_allin_flag"],
                             tiling["batch_num_sc"],
                             tiling["flag_conv1d_case"],
@@ -609,8 +632,10 @@ class Conv2dBpFilterTiling(CubeTilingOp):
 
         # whether axis K is fully loaded in L0A and L0B
         # excluding axis batch
-        dw_k = self._get_dw_k(tiling)
-        hw_single_core_factor = utils.align(utils.icd(hw_mad_1, block_dim_hw), dw_k * grads_width)
+        dw_k = self._get_dw_k(tiling, hw_mad_1, block_dim_hw)
+        hw_single_core_factor = utils.icd(utils.icd(hw_mad_1, dw_k), block_dim_hw) * dw_k
+        if tiling.get("BL1_shape")[0] <= grads_width:
+            hw_single_core_factor = utils.align(utils.icd(hw_mad_1, block_dim_hw), dw_k * grads_width)
         full_k_l0a = 1 \
             if not tiling["AL0_matrix"] \
             else tiling["AL0_matrix"][1] // hw_single_core_factor
@@ -658,22 +683,19 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         dy_shape = tiling_extend["A_shape"]
         fmap_shape = tiling_extend["B_shape"]
 
-        l0a_attach, l0b_attach, al1_attach, bl1_attach, \
-            bl1_hw_allin_flag, batch_num_sc, \
-            flag_conv1d_case, flag_fmap_load2d, \
-            k_atomic_add_len = \
-            self._get_attach_flag_detail(tiling, dy_shape, fmap_shape)
+        constraint_flag = self._get_attach_flag_detail(tiling, dy_shape, fmap_shape)
 
         tiling.update({
-            "dynamic_l0a_attach": l0a_attach,
-            "dynamic_l0b_attach": l0b_attach,
-            "dynamic_al1_attach": al1_attach,
-            "dynamic_bl1_attach": bl1_attach,
-            "bl1_hw_allin_flag": bl1_hw_allin_flag,
-            "batch_num_sc": batch_num_sc,
-            "flag_conv1d_case": flag_conv1d_case,
-            "flag_fmap_load2d": flag_fmap_load2d,
-            "k_atomic_add_len": k_atomic_add_len})
+            "dynamic_l0a_attach": constraint_flag.get('l0a_attach'),
+            "dynamic_l0b_attach": constraint_flag.get('l0b_attach'),
+            "dynamic_al1_attach": constraint_flag.get('al1_attach'),
+            "dynamic_bl1_attach": constraint_flag.get('bl1_attach'),
+            "flag_bl1k_less_than_wo":constraint_flag.get('flag_bl1k_less_than_wo'),
+            "bl1_hw_allin_flag": constraint_flag.get('bl1_hw_allin_flag'),
+            "batch_num_sc": constraint_flag.get('batch_num_sc'),
+            "flag_conv1d_case": constraint_flag.get('flag_conv1d_case'),
+            "flag_fmap_load2d": constraint_flag.get('flag_fmap_load2d'),
+            "k_atomic_add_len": constraint_flag.get('k_atomic_add_len')})
 
     def _get_attach_flag_detail(self, tiling, dy_shape, fmap_shape):
         l0a_attach = None
@@ -686,6 +708,7 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         k_atomic_add_len = -1
 
         batch = dy_shape[0]
+        flag_bl1k_less_than_wo = True if tiling.get('BL1_shape')[0] <= dy_shape[3] else False
         block_dim_batch = tiling.get("block_dim")[0]
         block_dim_hw = tiling.get("AUB_shape")[0] \
             if tiling.get("AUB_shape") else 1
@@ -718,10 +741,19 @@ class Conv2dBpFilterTiling(CubeTilingOp):
         k_atomic_add_len = utils.align(
             utils.icd(fmap_hw_align, block_dim_hw), 16)
 
-        return l0a_attach, l0b_attach, al1_attach, bl1_attach, \
-                bl1_hw_allin_flag, batch_num_sc == 1,\
-                flag_conv1d_case, flag_fmap_load2d, \
-                k_atomic_add_len
+        constraint_flag = {
+            "l0a_attach": l0a_attach,
+            "l0b_attach": l0b_attach,
+            "al1_attach": al1_attach,
+            "bl1_attach": bl1_attach,
+            "flag_bl1k_less_than_wo": flag_bl1k_less_than_wo,
+            "bl1_hw_allin_flag": bl1_hw_allin_flag,
+            "batch_num_sc": batch_num_sc == 1,
+            "flag_conv1d_case": flag_conv1d_case,
+            "flag_fmap_load2d": flag_fmap_load2d,
+            "k_atomic_add_len": k_atomic_add_len,
+        }
+        return constraint_flag
 
     def _get_bl1_hw_allin_flag(self, tiling, fmap_l1_tiling_nparts):
         if tiling["BL1_shape"]:

@@ -339,10 +339,14 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             if self.var_map and \
                 not DynamicConv2dBpFilterParams.flag_all_one_case:
                 # for dynamic hw, the reduce axis of res_cc dose not cut k0
+                flag_bl1k_less_than_wo = tiling.get('flag_bl1k_less_than_wo')
                 hw_single_core_factor = _ceil_div(hw_pad_1 * CUBE_DIM, \
                                                     block_dim_hw)
                 hw_single_core_factor = _align(hw_single_core_factor, \
                                                     dw_k * width_grads * CUBE_DIM)
+                if not flag_bl1k_less_than_wo:
+                    hw_single_core_factor = _ceil_div(_ceil_div(hw_pad_1, dw_k), block_dim_hw)
+                    hw_single_core_factor = hw_single_core_factor * dw_k * CUBE_DIM
                 k_1_multicore, real_k = sch[res_cc].split(real_k, \
                                                     hw_single_core_factor)
 
@@ -1552,7 +1556,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                     # 2. kbl1 >= wo: ho = ceilDiv(kbl1, wo) if kbl1%wo == 0 else ho = ceilDiv(kbl1,wo) + 1
                     # dynamic_hw need to consider multi_core tail blocks: hw_single_core%wo == 0
                     return tvm.select(
-                               bl1_k < width_grads,
+                               bl1_k <= width_grads,
                                tvm.select(
                                    tvm.all(
                                        tvm.floormod(width_grads, bl1_k) == 0,
@@ -1772,10 +1776,14 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         _emit_insn()
         _handle_tbe_compile_para()
         if self.var_map:
+            flag_bl1k_less_than_wo = tiling.get('flag_bl1k_less_than_wo')
             hw_single_core_factor = _ceil_div(hw_pad_1, block_dim_hw) * \
                                     CUBE_DIM
             hw_single_core_factor = _align(hw_single_core_factor,
                                            dw_k * width_grads * CUBE_DIM)
+            if not flag_bl1k_less_than_wo:
+                hw_single_core_factor = _ceil_div(_ceil_div(hw_pad_1, dw_k), block_dim_hw)
+                hw_single_core_factor = hw_single_core_factor * dw_k * CUBE_DIM
             al1_bound = _get_al1_bound()
             bl1_bound, additional_rows, ho_len = _get_bl1_bound()
             _dynamic_bl1_buffer_tile(ho_len)
