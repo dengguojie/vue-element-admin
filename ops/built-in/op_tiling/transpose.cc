@@ -551,6 +551,15 @@ static void  CalcOutShape(ShapeInfo & shapeInfo) {
     }
 }
 
+static bool IsAllOne(const ShapeInfo& shapeInfo) {
+    for (auto it : shapeInfo.inShape) {
+        if (it != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /*
  * If axis value is 1, then remove it.
  *
@@ -564,6 +573,14 @@ void RemoveAxis(ShapeInfo & shapeInfo) {
         shapeInfo.reducedInShape = shapeInfo.inShape;
         shapeInfo.reducedPerm = shapeInfo.perm;
         shapeInfo.reducedOutShape = shapeInfo.outShape;
+        return;
+    }
+
+    if (IsAllOne(shapeInfo)) {
+        shapeInfo.reducedInShape.push_back(1);
+        shapeInfo.reducedPerm.push_back(0);
+        shapeInfo.reducedOutShape.push_back(1);
+        shapeInfo.dim = 1;
         return;
     }
 
@@ -2533,7 +2550,11 @@ static void SerializeScenario2(OpRunInfo &runInfo,
     WRITE_DATA_F(shapeInfo.lastAxisBurstLen);
     WRITE_DATA_F(shapeInfo.alignElement);
     WRITE_DATA_F(shapeInfo.dim - 1);
-    WRITE_DATA_F(runtimeInfo.srcStrideLogic * shapeInfo.lastAxisBurstLen);
+    if (runtimeInfo.srcStrideLogic * shapeInfo.lastAxisBurstLen <= STRIDE_BOUNDARY) {
+        WRITE_DATA_F(runtimeInfo.srcStrideLogic * shapeInfo.lastAxisBurstLen);
+    } else {
+        WRITE_DATA_F((int64_t)0);
+    }
     WRITE_DATA_F(runtimeInfo.backNum);
     WRITE_DATA_F(runtimeInfo.skipEle);
 
