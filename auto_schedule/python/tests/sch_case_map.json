@@ -37,6 +37,8 @@
         "vor",
         "vnot",
         "vlogic",
+        "vcmp",
+        "vsel",
         "vcmpsel"
     ],
     "auto_schedule/python/tbe/dsl/compute/math.py":[
@@ -64,6 +66,8 @@
         "vor",
         "vnot",
         "vlogic",
+        "vcmp",
+        "vsel",
         "vcmpsel",
         "dsl_cpu/test_math_cpu_impl.py"
     ],
