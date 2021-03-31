@@ -22,6 +22,8 @@ if [ ! -d $targetdir ];then
     exit 1
 fi
 
+chmod -R +w $targetdir>/dev/null 2>&1
+
 upgrade()
 {
     if [ ! -d ${sourcedir}/$1 ]; then
@@ -69,7 +71,21 @@ if [ $? -ne 0 ];then
     exit 1
 fi
 
+changemode()
+{
+    if [ -d ${targetdir} ];then
+        chmod -R 550 ${targetdir}>/dev/null 2>&1
+    fi
 
+    return 0
+}
+echo "[ops_custom]changemode..."
+changemode
+if [ $? -ne 0 ];then
+    exit 1
+fi
+
+chmod -R -w ${targetdir}>/dev/null 2>&1
 
 echo "SUCCESS"
 exit 0

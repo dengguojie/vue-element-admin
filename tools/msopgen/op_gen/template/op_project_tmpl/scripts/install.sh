@@ -33,6 +33,8 @@ if [ ! -d $targetdir ];then
     exit 1
 fi
 
+chmod -R +w $targetdir>/dev/null 2>&1
+
 upgrade()
 {
     if [ ! -d ${sourcedir}/$1 ]; then
@@ -158,11 +160,22 @@ if [ $? -ne 0 ];then
     exit 1
 fi
 
+changemode()
+{
+    if [ -d ${targetdir} ];then
+        chmod -R 550 ${targetdir}>/dev/null 2>&1
+    fi
 
-
-if [ -d ${targetdir}/op_impl/custom/cpu/aicpu_kernel/custom_impl/ ]; then
-    chmod -R 440 ${targetdir}/op_impl/custom/cpu/aicpu_kernel/custom_impl/
+    return 0
+}
+echo "[ops_custom]changemode..."
+changemode
+if [ $? -ne 0 ];then
+    exit 1
 fi
+
+chmod -R -w ${targetdir}>/dev/null 2>&1
+
 if [ -f ${targetdir}/ascend_install.info ]; then
     chmod -R 440 ${targetdir}/ascend_install.info
 fi
