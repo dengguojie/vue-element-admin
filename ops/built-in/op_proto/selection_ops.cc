@@ -3448,12 +3448,14 @@ COMMON_INFER_FUNC_REG(Crop, CropInferShape);
 VERIFY_FUNC_REG(Crop, CropVerify);
 // ----------------Crop-------------------
 
-/**********************************TileWithAxis**************************************/
-IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInfer) {
+// ----------------------TileWithAxis-----------------
+IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInferShape) {
+  OP_LOGI("Enter TileWithAxisInferShape");
   TensorDesc outputDesc = op.GetOutputDesc("y");
   TensorDesc inputDesc = op.GetInputDesc("x");
 
-  auto input_dType = inputDesc.GetDataType();
+  auto inputDtype = inputDesc.GetDataType();
+  outputDesc.SetDataType(inputDtype);
 
   ge::Shape shapeX = inputDesc.GetShape();
   std::vector<int64_t> dimsX = shapeX.GetDims();
@@ -3504,6 +3506,7 @@ IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInfer) {
     if (axis < 0) {
       axis = axis + 5;
     }
+    
     if (axis == 1 || axis == 4) {
       OP_LOGE(op.GetName().c_str(), "5D tensor's axis is invalid");
       return GRAPH_FAILED;
@@ -3512,11 +3515,25 @@ IMPLEMT_INFERFUNC(TileWithAxis, TileWithAxisInfer) {
     axis = axis + dimsX.size();
   }
 
-  dimsX[axis] *= tiles;
+  if (dimsX[axis] != -1) {
+    dimsX[axis] = dimsX[axis] * tiles;
+  }
   ge::Shape outputShape = ge::Shape(dimsX);
-
   outputDesc.SetShape(outputShape);
-  outputDesc.SetDataType(input_dType);
+
+  std::vector<std::pair<int64_t, int64_t>> inputRange;
+  inputDesc.GetShapeRange(inputRange);
+  std::vector<std::pair<int64_t, int64_t>> outputRange;
+  for (size_t i = 0; i < inputRange.size(); i++) {
+    if (i == axis) {
+      auto range = std::make_pair(inputRange[axis].first * tiles, inputRange[axis].second * tiles);
+      outputRange.push_back(range);
+    } else {
+      outputRange.push_back(inputRange[i]);
+    }
+  }
+  outputDesc.SetShapeRange(outputRange);
+
   op.UpdateOutputDesc("y", outputDesc);
 
   return GRAPH_SUCCESS;
@@ -3552,12 +3569,13 @@ IMPLEMT_VERIFIER(TileWithAxis, TileWithAxisVerify) {
 }
 
 // Registered inferfunction
-INFER_FUNC_REG(TileWithAxis, TileWithAxisInfer);
+INFER_FUNC_REG(TileWithAxis, TileWithAxisInferShape);
 
 // Registered verify function
 VERIFY_FUNC_REG(TileWithAxis, TileWithAxisVerify);
 
-/**********************************TileWithAxis**************************************/
+// ----------------------TileWithAxis-----------------
+
 // ----------------read_select-------------------
 IMPLEMT_COMMON_INFERFUNC(ReadSelectInferShape) {
   return GRAPH_SUCCESS;

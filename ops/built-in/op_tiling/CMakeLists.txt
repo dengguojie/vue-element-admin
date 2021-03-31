@@ -29,6 +29,7 @@ set(_optiling_files
   bias_add.cc
   bn_reduce.cc
   bninference_d.cc
+  tile_with_axis.cc
   bn_reduce_grad.cc
   concat.cc
   concat_offset.cc

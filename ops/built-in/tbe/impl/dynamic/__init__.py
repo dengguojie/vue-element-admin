@@ -42,6 +42,7 @@ from .apply_adagrad_da_d import apply_adagrad_da_d
 from .gather import gather
 from .gather_v2 import gather_v2
 from .kl_div import kl_div
+from .tile_with_axis import tile_with_axis
 from .bias import bias
 from .dequantize import dequantize
 from .bninference_d import bninference_d
