@@ -267,7 +267,7 @@ COMMON_INFER_FUNC_REG(Add, AddInferShape);
 VERIFY_FUNC_REG(Add, AddVerify);
 // ---------------------Add END------------------------
 
-// ----------------------FusedMulAdd--------------------------
+// ---------------------FusedMulAdd--------------------
 IMPLEMT_VERIFIER(FusedMulAdd, FusedMulAddVerify) {
   DataType input_type_x1 = op.GetInputDesc("x1").GetDataType();
   DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
@@ -290,36 +290,77 @@ IMPLEMT_VERIFIER(FusedMulAdd, FusedMulAddVerify) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(FusedMulAddInferShape) {
-  if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x1", "x2", "y")) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  
+  string input_name1 = "x1";
+  string input_name2 = "x2";
+  string input_name3 = "x3";
+  string output_name = "y";
+  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(output_name);
+  GeTensorDescPtr tensordesc_input1 = op_desc->MutableInputDesc(input_name1);
+  GeTensorDescPtr tensordesc_input2 = op_desc->MutableInputDesc(input_name2);
+  GeTensorDescPtr tensordesc_input3 = op_desc->MutableInputDesc(input_name3);
+  CHECK(op_desc == nullptr ||
+        tensordesc_output == nullptr ||
+        tensordesc_input1 == nullptr ||
+        tensordesc_input2 == nullptr ||
+        tensordesc_input3 == nullptr,
+        OP_LOGE(op.GetName().c_str(), "invalid OpDesc."), return GRAPH_FAILED);
+  DataType input_dtype = tensordesc_input1->GetDataType();
+
+  // output Desc
+  tensordesc_output->SetDataType(input_dtype);
+
+  // shape
+  ge::GeShape shapeX = tensordesc_input1->GetShape();
+  ge::GeShape shapeY = tensordesc_input2->GetShape();
+  ge::GeShape shapeZ = tensordesc_input3->GetShape();
+  OP_LOGI(op.GetName().c_str(), "shape %s: %s, shape %s: %s, shape %s: %s.",
+                  input_name1.c_str(), to_string(shapeX).c_str(),
+                  input_name2.c_str(), to_string(shapeY).c_str(),
+                  input_name3.c_str(), to_string(shapeZ).c_str());
+  std::vector<int64_t> dimsX = shapeX.GetDims();
+  std::vector<int64_t> dimsY = shapeY.GetDims();
+  std::vector<int64_t> dimsZ = shapeZ.GetDims();
+
+  // unknown rank
+  if (IsUnknownRankShape(dimsX) || IsUnknownRankShape(dimsY) || IsUnknownRankShape(dimsZ)) {
+    tensordesc_output->SetShape(ge::GeShape(UNKNOWN_RANK));
+    OP_LOGI(op.GetName().c_str(), "output shape is: %s, output dtype is:%d.",
+            to_string(ge::Shape(UNKNOWN_RANK)).c_str(),
+            input_dtype);
     return GRAPH_SUCCESS;
   }
 
-  ge::Shape shape1 = op.GetInputDesc("x1").GetShape();
-  ge::Shape shape2 = op.GetInputDesc("x2").GetShape();
-  std::vector<int64_t> vec_mul_out;
-  if (!BroadCastTwoShape(op, shape1, shape2, vec_mul_out)) {
+  // range
+  std::vector<std::pair<int64_t, int64_t>> shape_range_x;
+  tensordesc_input1->GetShapeRange(shape_range_x);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_y;
+  tensordesc_input2->GetShapeRange(shape_range_y);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_z;
+  tensordesc_input3->GetShapeRange(shape_range_z);
+
+  std::vector<int64_t> dimVec;
+  std::vector<std::pair<int64_t, int64_t>> Vec_range;
+  dimVec = dimsX;
+  Vec_range = shape_range_x;
+  MakeUpShapeRange(dimsX, shape_range_x);
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsY, shape_range_y, "x1", "x2")){
     return GRAPH_FAILED;
   }
-
-  ge::Shape shape_mul_out = ge::Shape(vec_mul_out);
-  ge::Shape shape3 = op.GetInputDesc("x3").GetShape();
-  std::vector<int64_t> vec_add_out;
-  if (!BroadCastTwoShape(op, shape_mul_out, shape3, vec_add_out)) {
+  if (!TwoShapeAndRangeBroadcastIntegration(op, dimVec, Vec_range, dimsZ, shape_range_z,
+                                           "x1_broadcast", "x3")){
     return GRAPH_FAILED;
   }
-
-  ge::Shape shape_add_out = ge::Shape(vec_add_out);
-  TensorDesc y_desc = op.GetOutputDesc("y");
-  y_desc.SetShape(shape_add_out);
-  DataType dtype_input = op.GetInputDesc("x1").GetDataType();
-  y_desc.SetDataType(dtype_input);
-  (void)op.UpdateOutputDesc("y", y_desc);
+  ge::GeShape outputShape = ge::GeShape(dimVec);
+  tensordesc_output->SetShape(outputShape);
+  tensordesc_output->SetShapeRange(Vec_range);
   return GRAPH_SUCCESS;
 }
 
 COMMON_INFER_FUNC_REG(FusedMulAdd, FusedMulAddInferShape);
 VERIFY_FUNC_REG(FusedMulAdd, FusedMulAddVerify);
-// ---------------------FusedMulAdd END------------------------
+// ---------------------FusedMulAdd END-----------------
 
 // ---------------------AddV2--------------------------
 IMPLEMT_VERIFIER(AddV2, AddV2Verify) {
