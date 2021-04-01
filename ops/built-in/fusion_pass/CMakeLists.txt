@@ -238,6 +238,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/tensor_scatter_update_fusion_pass.cc
   graph_fusion/ai_core/tile_fusion_pass.cc
   graph_fusion/ai_core/top_k_fusion_pass.cc
+  graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
   graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
   graph_fusion/ai_core/transdata_fusion_pass.cc
   graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
