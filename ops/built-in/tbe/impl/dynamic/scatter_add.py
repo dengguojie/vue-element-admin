@@ -900,7 +900,9 @@ class ScatterAdd():
             self.tik_instance.vec_add(self.update_data_num, self.zero_ub, self.zero_ub,
                                       self.updates_tile_ub, 1, 8, 8, 8)
             self.tik_instance.set_atomic_add(1)
-            self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.zero_ub,
+            with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
+                with self.tik_instance.if_scope((self.core_loop_index + 1) * self.indice_step > self.var_read_index):
+                    self.tik_instance.data_move(self.var_gm[self.var_read_index * self.update_data_num], self.zero_ub,
                                         0, 1, 1, 0, 0)
             self.tik_instance.set_atomic_add(0)
 
