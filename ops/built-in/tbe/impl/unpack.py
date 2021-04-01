@@ -21,6 +21,7 @@ import te.platform as tbe_platform
 from impl import copy_only
 from impl import split_d
 from impl.util import util_select_op_base
+from impl.util import util_common
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
@@ -39,7 +40,8 @@ def get_op_support_info(x, y, num, axis, kernel_name="unpack"):
     shape_x = x.get("shape")
     # infer the value of num
     real_axis = axis + len(shape_x) if axis < 0 else axis
-    support_format = ["NC1HWC0", "ND", "NCHW", "NHWC"]
+    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + util_common.get_fused_format_str(["N", "H", "W", "C"])
+    support_format = ["NC1HWC0", "ND"] + support_ori_format
     if num is None:
         num = shape_x[real_axis]
     if format_x in support_format:
@@ -77,7 +79,7 @@ def op_select_format(x, y, num, axis, kernel_name="unpack"):
     > support conversion to 5HD fromat:
     > x's Tensor(shape=(2, 1, 3, 4, 16), "5HD")
     """
-    support_ori_format = ["NCHW", "NHWC"]
+    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + util_common.get_fused_format_str(["N", "H", "W", "C"])
 
     # all output attributes are consistent
     ori_format = x.get("ori_format").upper()
@@ -200,7 +202,9 @@ def _check_params(shape, num, axis, dformat, dtype, kernel_name):
     para_check.check_shape(shape, param_name="x")
 
     # check format
-    format_list = ("ND", "NHWC", "NCHW", "HWCN", "NC1HWC0")
+    support_ori_format = util_common.get_fused_format_str(["N", "D", "H", "W", "C"]) + util_common.get_fused_format_str(["N", "H", "W", "C"])
+
+    format_list = ["NC1HWC0", "ND"] + support_ori_format
     if dformat == "NC1HWC0":
         if len(shape) != 5:
             error_manager_vector.raise_err_input_param_range_invalid(kernel_name, 'x', 5, 5, len(shape))
