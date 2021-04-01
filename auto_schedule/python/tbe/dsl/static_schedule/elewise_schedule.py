@@ -4069,10 +4069,8 @@ class CceOp:
                             self._schedule[cache_buffer].emit_insn(
                                 tensorize_axis, "vector_" + lop["op"])
                         else:
-                            reduce_func = vec_intrin("reduce_last_axis")(
-                                tensorize_shape, lop["op"], cache_buffer.dtype)
-                            self._schedule[cache_buffer].tensorize(tensorize_axis,
-                                                                   reduce_func)
+                            self._schedule[cache_buffer].emit_insn(
+                                tensorize_axis, "vector_" + lop["op"])
                 else:
                     self.tensorize_for_op_reduce_nlast(lop, vec_intrin)
 
