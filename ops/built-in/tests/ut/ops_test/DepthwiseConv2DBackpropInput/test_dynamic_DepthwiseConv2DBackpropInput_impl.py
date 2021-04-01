@@ -158,5 +158,5 @@ for case in dynamic_depthwise_conv2d_bp_input_op_testcase:
     ut_case.add_case(["Ascend910A"], _gen_trans_data_case(case))
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run()
     exit(0)
