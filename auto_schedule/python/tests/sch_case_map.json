@@ -84,6 +84,7 @@
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
         "reduce_max",
         "reduce_sum",
+        "reduce_min",
         "reduce_prod",
         "dsl_cpu/test_reduce_cpu_impl.py"
     ],

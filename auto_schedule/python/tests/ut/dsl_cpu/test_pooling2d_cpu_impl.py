@@ -111,10 +111,9 @@ def _gen_golden_data(shape_in, shape_window, stride, pooling_mode, input1_dtype,
     return tensor_in_nc1hwc0, res_out_nchw, outshape_h, outshape_w
 
 
-def test_pooling2d_cpu_api_avg(soc):
+def test_pooling2d_cpu_api_avg(_):
     """
     for pooling2d api
-    @param soc: soc version
     @return: Ture && false
     """
     shape = (1, 1, 112, 112, 16)
@@ -142,10 +141,9 @@ def test_pooling2d_cpu_api_avg(soc):
     return True
 
 
-def test_pooling2d_cpu_api_gap(soc):
+def test_pooling2d_cpu_api_gap(_):
     """
     for pooling2d api
-    @param soc: soc version
     @return: Ture && false
     """
     shape = (1, 1, 3, 3, 16)
@@ -173,10 +171,9 @@ def test_pooling2d_cpu_api_gap(soc):
     return True
 
 
-def test_pooling2d_cpu_api_gmp(soc):
+def test_pooling2d_cpu_api_gmp(_):
     """
     for pooling2d api
-    @param soc: soc version
     @return: Ture && false
     """
     shape = (1, 1, 10, 10, 16)
@@ -204,10 +201,9 @@ def test_pooling2d_cpu_api_gmp(soc):
     return True
 
 
-def test_pooling2d_cpu_api_max(soc):
+def test_pooling2d_cpu_api_max(_):
     """
     for pooling2d api
-    @param soc: soc version
     @return: Ture && false
     """
     with debug():
@@ -236,10 +232,9 @@ def test_pooling2d_cpu_api_max(soc):
         return True
 
 
-def test_pooling2d_cpu_api_gmp_windows_lt_nine(soc):
+def test_pooling2d_cpu_api_gmp_windows_lt_nine(_):
     """
     for pooling2d api
-    @param soc: soc version
     @return: Ture && false
     """
     with debug():

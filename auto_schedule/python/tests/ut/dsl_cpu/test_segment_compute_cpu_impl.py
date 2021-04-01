@@ -12,10 +12,9 @@ def _mean_(value1, value2):
     return (value2 + value1) / 2
 
 
-def test_segment_cpu_api(soc):
+def test_segment_cpu_api(_):
     """
     for segment api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     segment_op = {"segment_max":  [tbe.unsorted_segment_max, np.maximum],
@@ -56,11 +55,10 @@ def test_segment_cpu_api(soc):
     return True
 
 
-def test_segment_cpu_api_segment_id_is_tensor(soc):
+def test_segment_cpu_api_segment_id_is_tensor(_):
     """
     for segment api
     only max, min, prod support segment_id is a tensor
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     segment_op = {
@@ -102,11 +100,10 @@ def test_segment_cpu_api_segment_id_is_tensor(soc):
     return True
 
 
-def test_segment_cpu_api_segment_id_is_minus(soc):
+def test_segment_cpu_api_segment_id_is_minus(_):
     """
     for segment api
     max(segment_id) < 0
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     segment_op = {"segment_max":  [tbe.unsorted_segment_max, np.maximum, 1],

@@ -48,10 +48,9 @@ def _five2four(input_data, shape_info):
     return output.reshape(n, c, h, w)
 
 
-def test_four_dim_to_five_dim(soc):
+def test_four_dim_to_five_dim(_):
     """
     convert NCHW to NC1HWC0
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     with debug():
@@ -76,10 +75,9 @@ def test_four_dim_to_five_dim(soc):
         return True
 
 
-def test_five_dim_to_four_dim(soc):
+def test_five_dim_to_four_dim(_):
     """
     convert NC1HWC0 to NCHW
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     with debug():

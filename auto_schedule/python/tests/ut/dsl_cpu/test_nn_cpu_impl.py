@@ -9,10 +9,9 @@ from tbe.common.testing.testing import debug
 ut_case = OpUT("nn_cpu", "dsl_cpu.test_nn_cpu_impl")
 
 
-def test_vrelu_cpu_api(soc):
+def test_vrelu_cpu_api(_):
     """
     The part less than 0 is taken as 0, and the part greater than 0 is tanken as the original value
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -35,10 +34,9 @@ def test_vrelu_cpu_api(soc):
     return True
 
 
-def test_vmaddrelu_cpu_api(soc):
+def test_vmaddrelu_cpu_api(_):
     """
     relu(tensor0 * tensor2 + tensor1)
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -66,11 +64,10 @@ def test_vmaddrelu_cpu_api(soc):
     return True
 
 
-def test_vaddrelu_cpu_api_not_support_vaddrelu(soc):
+def test_vaddrelu_cpu_api_not_support_vaddrelu(_):
     """
     relu(tensor0 + tensor1)
     not supoort Intrinsic_vaddrelu
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -99,7 +96,7 @@ def test_vaddrelu_cpu_api_not_support_vaddrelu(soc):
 def test_vaddrelu_cpu_api(soc):
     """
     relu(tensor0 + tensor1)
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -119,8 +116,8 @@ def test_vaddrelu_cpu_api(soc):
     func_vaddrelu(a, b, c)
     # 3.verify the correctness of output
     try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
         tvm.testing.assert_allclose(c.asnumpy(), np.maximum(0, a.asnumpy() + b.asnumpy()),
                                     atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -129,11 +126,10 @@ def test_vaddrelu_cpu_api(soc):
     return True
 
 
-def test_vsubrelu_cpu_api_not_support_vsubrelu(soc):
+def test_vsubrelu_cpu_api_not_support_vsubrelu(_):
     """
     relu(tensor0 - tensor1)
     not support Intrinsic_vsubrelus
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -162,7 +158,7 @@ def test_vsubrelu_cpu_api_not_support_vsubrelu(soc):
 def test_vsubrelu_cpu_api(soc):
     """
     relu(tensor0 - tensor1)
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -182,8 +178,8 @@ def test_vsubrelu_cpu_api(soc):
     func_vsubrelu(a, b, c)
     # 3.verify the correctness of output
     try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
         tvm.testing.assert_allclose(c.asnumpy(), np.maximum(0, a.asnumpy() - b.asnumpy()),
                                     atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -192,10 +188,9 @@ def test_vsubrelu_cpu_api(soc):
     return True
 
 
-def test_vlrelu_cpu_api_not_support_vlrelu_and_int32(soc):
+def test_vlrelu_cpu_api_not_support_vlrelu_and_int32(_):
     """
     not support Intrinsic_vlrelu and dtype is int32
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -218,10 +213,9 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_int32(soc):
     return True
 
 
-def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0(soc):
+def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0(_):
     """
     not support Intrinsic_vlrelu and alpha is zero
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -245,10 +239,9 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_0(soc):
     return True
 
 
-def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1(soc):
+def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1(_):
     """
     not support Intrinsic_vlrelu and alpha is one
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -272,10 +265,9 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_is_const_1(soc):
     return True
 
 
-def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1(soc):
+def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1(_):
     """
     not support Intrinsic_vlrelu and alpha large than 1
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 10000
@@ -302,7 +294,7 @@ def test_vlrelu_cpu_api_not_support_vlrelu_and_alpha_large_than_1(soc):
 def test_vlrelu_cpu_api(soc):
     """
     use tvm.lrelu
-    @param soc: useless parameter for framework
+    @param soc: soc version
     @return: Ture && false
     """
     with debug():
@@ -321,8 +313,8 @@ def test_vlrelu_cpu_api(soc):
         func_vlrelu(a, b)
         # 3.verify the correctness of output
         try:
-            # Restore soc version to Ascend310, or it affect the following use cases
-            te_set_version("Ascend310")
+            # Restore soc version to soc, or it affect the following use cases
+            te_set_version(soc)
             tvm.testing.assert_allclose(b.asnumpy(), np.maximum(0.01 * a.asnumpy(), a.asnumpy()))
         except AssertionError as e:
             print(e)
@@ -330,10 +322,9 @@ def test_vlrelu_cpu_api(soc):
         return True
 
 
-def test_round_to_cpu_api(soc):
+def test_round_to_cpu_api(_):
     """
     use tvm.lrelu
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -361,10 +352,9 @@ def test_round_to_cpu_api(soc):
     return True
 
 
-def test_broadcast_cpu_api_var_is_tensor(soc):
+def test_broadcast_cpu_api_var_is_tensor(_):
     """
     for broadcast api
-    @param soc: soc version
     @return: Ture && false
     """
     out_shape = (1024, 1024)
@@ -388,10 +378,9 @@ def test_broadcast_cpu_api_var_is_tensor(soc):
     return True
 
 
-def test_broadcast_cpu_api_var_is_not_tensor(soc):
+def test_broadcast_cpu_api_var_is_not_tensor(_):
     """
     for broadcast api
-    @param soc: soc version
     @return: Ture && false
     """
     out_shape = (1024, 1024)

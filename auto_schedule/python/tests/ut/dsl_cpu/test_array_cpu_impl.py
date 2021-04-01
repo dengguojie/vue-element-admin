@@ -8,10 +8,9 @@ import te.lang.cce as tbe
 ut_case = OpUT("array_cpu", "dsl_cpu.test_array_cpu_impl")
 
 
-def test_concat_cpu_api_axis_zero(soc):
+def test_concat_cpu_api_axis_zero(_):
     """
     for concat api
-    @param soc: soc version
     @return: Ture && false
     """
     n, m = 1024, 5
@@ -36,10 +35,9 @@ def test_concat_cpu_api_axis_zero(soc):
     return True
 
 
-def test_concat_cpu_api_axis_one(soc):
+def test_concat_cpu_api_axis_one(_):
     """
     for concat api
-    @param soc: soc version
     @return: Ture && false
     """
     n, m = 1024, 5

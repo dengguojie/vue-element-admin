@@ -1,6 +1,5 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
-from sch_test_frame.utils.op_param_util import cartesian_set_format_dtype
 from sch_test_frame.common import precision_info
 import numpy as np
 
@@ -8,7 +7,7 @@ from te import tvm
 import te.lang.cce as tbe
 
 
-def dsl_pooling2d(x, y, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode, ceil_mode,
+def dsl_pooling2d(x, _, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode, ceil_mode,
                   fusion_params, impl_mode, kernel_name='dsl_pooling2d'):
     input_shape = x.get("shape")
     input_dtype = x.get("dtype")
@@ -29,9 +28,9 @@ def dsl_pooling2d(x, y, window, stride, pooling_mode, padding_mode, pad, dilatio
 
 ut_case = OpUT("pooling2d", "pooling2d.test_pooling2d_impl", "dsl_pooling2d")
 
-def test_pooling2d_para_check_tensor_in(soc):
+
+def test_pooling2d_para_check_tensor_in(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     window = (8, 8)
@@ -46,7 +45,7 @@ def test_pooling2d_para_check_tensor_in(soc):
     except RuntimeError as e:
         print(e.args[0].get("detailed_cause"))
 
-    #check length of shape
+    # check length of shape
     try:
         input1 = tvm.placeholder((1, 1, 8, 8, 16, 16), name="input1", dtype="float16")
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode)
@@ -74,7 +73,7 @@ def test_pooling2d_para_check_tensor_in(soc):
     except RuntimeError as e:
         print(e.args[0].get("detailed_cause"))
 
-    # check c1
+    # check c0
     try:
         input1 = tvm.placeholder((1, 1, 8, 8, 15), name="input1", dtype="float16")
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode)
@@ -84,9 +83,8 @@ def test_pooling2d_para_check_tensor_in(soc):
     return True
 
 
-def test_pooling2d_para_check_window(soc):
+def test_pooling2d_para_check_window(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -94,7 +92,7 @@ def test_pooling2d_para_check_window(soc):
     pooling_mode = "AVG"
     padding_mode = "SAME"
 
-    #check instance
+    # check instance
     try:
         window = {}
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode)
@@ -124,9 +122,8 @@ def test_pooling2d_para_check_window(soc):
     return True
 
 
-def test_pooling2d_para_check_stride(soc):
+def test_pooling2d_para_check_stride(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -134,7 +131,7 @@ def test_pooling2d_para_check_stride(soc):
     pooling_mode = "MAX"
     padding_mode = "SAME"
 
-    #check instance
+    # check instance
     try:
         stride = {}
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode)
@@ -164,9 +161,8 @@ def test_pooling2d_para_check_stride(soc):
     return True
 
 
-def test_pooling2d_para_check_pooling_mode(soc):
+def test_pooling2d_para_check_pooling_mode(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -174,7 +170,7 @@ def test_pooling2d_para_check_pooling_mode(soc):
     stride = (1, 1)
     padding_mode = "SAME"
 
-    #check mode
+    # check mode
     try:
         pooling_mode = "ABC"
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode)
@@ -183,9 +179,8 @@ def test_pooling2d_para_check_pooling_mode(soc):
     return True
 
 
-def test_pooling2d_para_check_tf_padding_mode(soc):
+def test_pooling2d_para_check_tf_padding_mode(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -194,7 +189,7 @@ def test_pooling2d_para_check_tf_padding_mode(soc):
     pooling_mode = "MAX"
     data_mode = 1
 
-    #check instance
+    # check instance
     try:
         padding_mode = 5
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode, data_mode=data_mode)
@@ -210,9 +205,8 @@ def test_pooling2d_para_check_tf_padding_mode(soc):
     return True
 
 
-def test_pooling2d_para_check_pad(soc):
+def test_pooling2d_para_check_pad(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -222,7 +216,7 @@ def test_pooling2d_para_check_pad(soc):
     pooling_mode = "MAX"
     data_mode = 1
 
-    #check instance
+    # check instance
     try:
         pad = {}
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode, pad=pad, data_mode=data_mode)
@@ -245,9 +239,8 @@ def test_pooling2d_para_check_pad(soc):
     return True
 
 
-def test_pooling2d_para_check_dilation(soc):
+def test_pooling2d_para_check_dilation(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -257,7 +250,7 @@ def test_pooling2d_para_check_dilation(soc):
     pooling_mode = "MAX"
     data_mode = 1
 
-    #check instance
+    # check instance
     try:
         dilation = {}
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode, dilation=dilation,
@@ -291,9 +284,8 @@ def test_pooling2d_para_check_dilation(soc):
     return True
 
 
-def test_pooling2d_para_check_data_mode(soc):
+def test_pooling2d_para_check_data_mode(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -302,7 +294,7 @@ def test_pooling2d_para_check_data_mode(soc):
     padding_mode = "SAME"
     pooling_mode = "MAX"
 
-    #check instance
+    # check instance
     try:
         data_mode = 3
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode, data_mode=data_mode)
@@ -312,9 +304,8 @@ def test_pooling2d_para_check_data_mode(soc):
     return True
 
 
-def test_pooling2d_para_check_caffe_ceil_mode(soc):
+def test_pooling2d_para_check_caffe_ceil_mode(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -324,7 +315,7 @@ def test_pooling2d_para_check_caffe_ceil_mode(soc):
     pooling_mode = "MAX"
     data_mode = 0
 
-    #check value of ceil_mode
+    # check value of ceil_mode
     try:
         ceil_mode = 3
         tbe.pooling2d(input1, window, stride, pooling_mode, padding_mode, data_mode=data_mode, ceil_mode=ceil_mode)
@@ -334,9 +325,8 @@ def test_pooling2d_para_check_caffe_ceil_mode(soc):
     return True
 
 
-def test_pooling2d_check_pooling_mode_with_padding_mode(soc):
+def test_pooling2d_check_pooling_mode_with_padding_mode(_):
     """
-    @param soc: soc version
     @return: Ture
     """
     input1 = tvm.placeholder((1, 1, 8, 8, 16), name="input1", dtype="float16")
@@ -350,6 +340,7 @@ def test_pooling2d_check_pooling_mode_with_padding_mode(soc):
         print(e.args[0].get("detailed_cause"))
 
     return True
+
 
 test_func_list = [
     test_pooling2d_para_check_tensor_in,

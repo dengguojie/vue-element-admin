@@ -1,6 +1,5 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
-from sch_test_frame.utils.op_param_util import cartesian_set_format_dtype
 from sch_test_frame.common import precision_info
 import numpy as np
 
@@ -8,11 +7,13 @@ from te import tvm
 import te.lang.cce as tbe
 
 
-def dsl_vadd(x, y, z, kernel_name='dsl_vadd'):
-    input_shape = x.get("shape")
-    input_dtype = x.get("dtype")
-    data1 = tvm.placeholder(input_shape, name='data1', dtype=input_dtype)
-    data2 = tvm.placeholder(input_shape, name='data2', dtype=input_dtype)
+def dsl_vadd(x, y, _, kernel_name='dsl_vadd'):
+    input_shape1 = x.get("shape")
+    input_dtype1 = x.get("dtype")
+    input_shape2 = y.get("shape")
+    input_dtype2 = y.get("dtype")
+    data1 = tvm.placeholder(input_shape1, name='data1', dtype=input_dtype1)
+    data2 = tvm.placeholder(input_shape2, name='data2', dtype=input_dtype2)
     res = tbe.vadd(data1, data2)
 
     tensor_list = [data1, data2, res]
@@ -28,12 +29,13 @@ def dsl_vadd(x, y, z, kernel_name='dsl_vadd'):
 
 ut_case = OpUT("vadd", "vadd.test_vadd_impl", "dsl_vadd")
 
-def test_rhs_in_not_tensor(soc):
+
+def test_rhs_in_not_tensor(_):
     try:
         input1 = tvm.placeholder((128,), name="input1", dtype="float16")
         tbe.vadd(input1, 5)
     except RuntimeError as e:
-        print(e.args[0]["detailed_cause"])
+        print(e.args[0].get("detailed_cause"))
     return True
 
 
@@ -66,7 +68,7 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A", "Ascend710"], case2)
 
 
-def calc_expect_func(x, y, z):
+def calc_expect_func(x, y, _):
     x_value = x.get("value")
     y_value = y.get("value")
     res = np.add(x_value, y_value)
@@ -103,4 +105,3 @@ if __name__ == '__main__':
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
     ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-

@@ -10,9 +10,8 @@ import te.lang.cce as tbe
 ut_case = OpUT("math_cpu", "dsl_cpu.test_math_cpu_impl")
 
 
-def test_vadd_cpu_api(soc):
+def test_vadd_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -37,9 +36,8 @@ def test_vadd_cpu_api(soc):
     return True
 
 
-def test_vsub_cpu_api(soc):
+def test_vsub_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 2048
@@ -64,9 +62,8 @@ def test_vsub_cpu_api(soc):
     return True
 
 
-def test_vmul_cpu_api(soc):
+def test_vmul_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -91,9 +88,8 @@ def test_vmul_cpu_api(soc):
     return True
 
 
-def test_vdiv_cpu_api_not_support_vdiv(soc):
+def test_vdiv_cpu_api_not_support_vdiv(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -120,7 +116,6 @@ def test_vdiv_cpu_api_not_support_vdiv(soc):
 
 def test_vdiv_cpu_api(soc):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -140,8 +135,8 @@ def test_vdiv_cpu_api(soc):
     fdiv(a, b, c)
     # 3.verify the correctness of output
     try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
         tvm.testing.assert_allclose(c.asnumpy(), a.asnumpy() / b.asnumpy(), atol=0.0001)
     except AssertionError as e:
         print(e)
@@ -172,8 +167,8 @@ def test_vmod_cpu_api(soc):
     fmod(a, b, c)
     # 3.verify the correctness of output
     try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
         tvm.testing.assert_allclose(c.asnumpy(), np.mod(a.asnumpy(), b.asnumpy()), atol=0.001, rtol=0.001)
     except AssertionError as e:
         print(e)
@@ -181,10 +176,9 @@ def test_vmod_cpu_api(soc):
     return True
 
 
-def test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f(soc):
+def test_vmod_cpu_api_not_support_vdiv_and_vconv_f322s32f(_):
     """
     not support Intrinsic_vdiv and Intrinsic_vconv f322s32f
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -234,8 +228,8 @@ def test_vmod_cpu_api_not_support_vconv_f322s32f(soc):
     fmod(a, b, c)
     # 3.verify the correctness of output
     try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
         tvm.testing.assert_allclose(c.asnumpy(), np.mod(a.asnumpy(), b.asnumpy()), atol=0.5, rtol=0.5)
     except AssertionError as e:
         print(e)
@@ -244,9 +238,8 @@ def test_vmod_cpu_api_not_support_vconv_f322s32f(soc):
     return True
 
 
-def test_vmin_cpu_api(soc):
+def test_vmin_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -271,9 +264,8 @@ def test_vmin_cpu_api(soc):
     return True
 
 
-def test_vmax_cpu_api(soc):
+def test_vmax_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -298,9 +290,8 @@ def test_vmax_cpu_api(soc):
     return True
 
 
-def test_vor_cpu_api(soc):
+def test_vor_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -326,9 +317,8 @@ def test_vor_cpu_api(soc):
     return True
 
 
-def test_vand_cpu_api(soc):
+def test_vand_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -354,9 +344,8 @@ def test_vand_cpu_api(soc):
     return True
 
 
-def test_vadds_cpu_api(soc):
+def test_vadds_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -381,9 +370,8 @@ def test_vadds_cpu_api(soc):
     return True
 
 
-def test_vmins_cpu_api(soc):
+def test_vmins_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -408,9 +396,8 @@ def test_vmins_cpu_api(soc):
     return True
 
 
-def test_vmuls_cpu_api(soc):
+def test_vmuls_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -435,10 +422,9 @@ def test_vmuls_cpu_api(soc):
     return True
 
 
-def test_vlog_cpu_api_not_support_vln_fp32_and_precision(soc):
+def test_vlog_cpu_api_not_support_vln_fp32_and_precision(_):
     """
     In this situation(not support Intrinsic_vln|fp32 and priority equal one), It will use talor.
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -461,9 +447,8 @@ def test_vlog_cpu_api_not_support_vln_fp32_and_precision(soc):
     return True
 
 
-def test_vlog_cpu_api(soc):
+def test_vlog_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -486,9 +471,8 @@ def test_vlog_cpu_api(soc):
     return True
 
 
-def test_vexp_cpu_api(soc):
+def test_vexp_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -511,9 +495,8 @@ def test_vexp_cpu_api(soc):
     return True
 
 
-def test_vabs_cpu_api(soc):
+def test_vabs_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -536,9 +519,8 @@ def test_vabs_cpu_api(soc):
     return True
 
 
-def test_vrec_cpu_api(soc):
+def test_vrec_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1000
@@ -561,10 +543,9 @@ def test_vrec_cpu_api(soc):
     return True
 
 
-def test_vnot_cpu_api(soc):
+def test_vnot_cpu_api(_):
     """
     Intrinsic_vnot| int16, uint16
-    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -587,10 +568,9 @@ def test_vnot_cpu_api(soc):
     return True
 
 
-def test_vsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
+def test_vsqrt_cpu_api_not_support_vsqrt_and_precision(_):
     """
     not support Intrinsic_vsqrt, and precision
-    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -613,10 +593,9 @@ def test_vsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
     return True
 
 
-def test_vsqrt_cpu_api_not_support_vsqrt_and_performance(soc):
+def test_vsqrt_cpu_api_not_support_vsqrt_and_performance(_):
     """
     not support Intrinsic_vsqrt, and performance
-    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -660,8 +639,8 @@ def test_vsqrt_cpu_api(soc):
     func_vsqrt(a, c)
     # 3.verify the correctness of output
     try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
         tvm.testing.assert_allclose(c.asnumpy(), np.sqrt(a.asnumpy()), atol=0.001, rtol=0.001)
     except AssertionError as e:
         print(e)
@@ -669,10 +648,9 @@ def test_vsqrt_cpu_api(soc):
     return True
 
 
-def test_vrsqrt_cpu_api_not_support_vsqrt_and_precision(soc):
+def test_vrsqrt_cpu_api_not_support_vsqrt_and_precision(_):
     """
     not support Intrinsic_vsqrt and precision. Maybe there is something wrong
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -717,8 +695,8 @@ def test_vrsqrt_cpu_api(soc):
     func_vsqrt(a, c)
     # 3.verify the correctness of output
     try:
-        # Restore soc version to Ascend310, or it affect the following use cases
-        te_set_version("Ascend310")
+        # Restore soc version to soc, or it affect the following use cases
+        te_set_version(soc)
         tvm.testing.assert_allclose(c.asnumpy(), np.reciprocal(np.sqrt(a.asnumpy())),
                                     atol=0.001, rtol=0.001)
     except AssertionError as e:
@@ -727,9 +705,8 @@ def test_vrsqrt_cpu_api(soc):
     return True
 
 
-def test_vaxpy_cpu_api(soc):
+def test_vaxpy_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024
@@ -756,9 +733,8 @@ def test_vaxpy_cpu_api(soc):
     return True
 
 
-def test_vmla_cpu_api(soc):
+def test_vmla_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -785,9 +761,8 @@ def test_vmla_cpu_api(soc):
     return True
 
 
-def test_vmadd_cpu_api(soc):
+def test_vmadd_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -814,9 +789,8 @@ def test_vmadd_cpu_api(soc):
     return True
 
 
-def test_vlogic_cpu_api(soc):
+def test_vlogic_cpu_api(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"logic_and": np.logical_and, "logic_or": np.logical_or}
@@ -844,9 +818,8 @@ def test_vlogic_cpu_api(soc):
     return True
 
 
-def test_vlogic_cpu_api_not_op(soc):
+def test_vlogic_cpu_api_not_op(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 10000
@@ -869,9 +842,8 @@ def test_vlogic_cpu_api_not_op(soc):
     return True
 
 
-def test_vcmp_cpu_api_bool(soc):
+def test_vcmp_cpu_api_bool(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -900,9 +872,8 @@ def test_vcmp_cpu_api_bool(soc):
     return True
 
 
-def test_vcmp_cpu_api_bool_and_rhs_is_const(soc):
+def test_vcmp_cpu_api_bool_and_rhs_is_const(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -931,9 +902,8 @@ def test_vcmp_cpu_api_bool_and_rhs_is_const(soc):
     return True
 
 
-def test_vcmp_cpu_api_bit(soc):
+def test_vcmp_cpu_api_bit(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -966,9 +936,8 @@ def test_vcmp_cpu_api_bit(soc):
     return True
 
 
-def test_vcmp_cpu_api_bit_and_rhs_is_const(soc):
+def test_vcmp_cpu_api_bit_and_rhs_is_const(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1001,9 +970,8 @@ def test_vcmp_cpu_api_bit_and_rhs_is_const(soc):
     return True
 
 
-def test_vsel_cpu_api_bool_tensor_to_tensor(soc):
+def test_vsel_cpu_api_bool_tensor_to_tensor(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -1036,9 +1004,8 @@ def test_vsel_cpu_api_bool_tensor_to_tensor(soc):
     return True
 
 
-def test_vsel_cpu_api_bool_tensor_to_scalar(soc):
+def test_vsel_cpu_api_bool_tensor_to_scalar(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -1069,9 +1036,8 @@ def test_vsel_cpu_api_bool_tensor_to_scalar(soc):
     return True
 
 
-def test_vsel_cpu_api_bool_scalar_to_tensor(soc):
+def test_vsel_cpu_api_bool_scalar_to_tensor(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -1102,9 +1068,8 @@ def test_vsel_cpu_api_bool_scalar_to_tensor(soc):
     return True
 
 
-def test_vsel_cpu_api_bool_scalar_to_scalar(soc):
+def test_vsel_cpu_api_bool_scalar_to_scalar(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1228
@@ -1133,9 +1098,8 @@ def test_vsel_cpu_api_bool_scalar_to_scalar(soc):
     return True
 
 
-def test_vsel_cpu_api_uint8_tensor_to_tensor(soc):
+def test_vsel_cpu_api_uint8_tensor_to_tensor(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1171,9 +1135,8 @@ def test_vsel_cpu_api_uint8_tensor_to_tensor(soc):
     return True
 
 
-def test_vsel_cpu_api_uint8_tensor_to_scalar(soc):
+def test_vsel_cpu_api_uint8_tensor_to_scalar(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1207,9 +1170,8 @@ def test_vsel_cpu_api_uint8_tensor_to_scalar(soc):
     return True
 
 
-def test_vsel_cpu_api_uint8_scalar_to_tensor(soc):
+def test_vsel_cpu_api_uint8_scalar_to_tensor(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1243,9 +1205,8 @@ def test_vsel_cpu_api_uint8_scalar_to_tensor(soc):
     return True
 
 
-def test_vsel_cpu_api_uint8_scalar_to_scalar(soc):
+def test_vsel_cpu_api_uint8_scalar_to_scalar(_):
     """
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1232
@@ -1277,11 +1238,10 @@ def test_vsel_cpu_api_uint8_scalar_to_scalar(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar(soc):
+def test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar(_):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, tensor, scalar
     In this sutiation, rhs is 2.0, srhs is 0.0
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1315,10 +1275,9 @@ def test_vcmpsel_cpu_api_tensor_scalar_tensor_scalar(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor(soc):
+def test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor(_):
     """
     lhs, rhs, slhs, srhs are all tensor
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1358,11 +1317,10 @@ def test_vcmpsel_cpu_api_tensor_tensor_tensor_tensor(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar(soc):
+def test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar(_):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, scalar, scalar
     In this sutiation, rhs is 2.0, srhs is 0.0
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1396,10 +1354,9 @@ def test_vcmpsel_cpu_api_tensor_scalar_scalar_scalar(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar(soc):
+def test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar(_):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, tensor, scalar
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1435,11 +1392,10 @@ def test_vcmpsel_cpu_api_tensor_tensor_scalar_scalar(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor(soc):
+def test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor(_):
     """
     lhs, rhs, slhs, srhs are respectively tensor, None, scalar, tensor
     In this sutiation, rhs is 2.0, srhs is 0.0
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1475,10 +1431,9 @@ def test_vcmpsel_cpu_api_tensor_scalar_scalar_tensor(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar(soc):
+def test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar(_):
     """
     lhs, rhs, slhs, srhs are respectively tensor, tensor, tensor, scalar
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1516,10 +1471,9 @@ def test_vcmpsel_cpu_api_tensor_tensor_tensor_scalar(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor(soc):
+def test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor(_):
     """
     lhs, rhs, slhs, srhs are respectively tensor, tensor, scalar, tensor
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,
@@ -1557,10 +1511,9 @@ def test_vcmpsel_cpu_api_tensor_tensor_scalar_tensor(soc):
     return True
 
 
-def test_vcmpsel_cpu_api_tensor_scalar_tensor_tensor(soc):
+def test_vcmpsel_cpu_api_tensor_scalar_tensor_tensor(_):
     """
     lhs, rhs, slhs, srhs are respectively tensor, scalar, tensor, tensor
-    @param soc: soc version
     @return: Ture && false
     """
     op_dict = {"eq": operator.eq, "ne": operator.ne, "lt": operator.lt, "gt": operator.gt, "le": operator.le,

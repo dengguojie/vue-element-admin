@@ -8,7 +8,7 @@ from te import tvm
 import te.lang.cce as tbe
 
 
-def dsl_vabs(x, y, kernel_name='dsl_vabs'):
+def dsl_vabs(x, _, kernel_name='dsl_vabs'):
     input_shape = x.get("shape")
     input_dtype = x.get("dtype")
     data1 = tvm.placeholder(input_shape, name='data1', dtype=input_dtype)
@@ -27,8 +27,8 @@ def dsl_vabs(x, y, kernel_name='dsl_vabs'):
 
 ut_case = OpUT("vabs", "vabs.test_vabs_impl", "dsl_vabs")
 
-case1 = {"params": [{"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND" },
-                    {"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND" }
+case1 = {"params": [{"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND"},
+                    {"shape": (5, 8, 16, 16), "dtype": "float16", "format": "ND"}
                     ],
          "case_name": "test_vabs_1",
          "expect": "success",
@@ -47,7 +47,7 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
 ut_case.add_case(["Ascend910A", "Ascend710"], case2)
 
 
-def calc_expect_func(x, output):
+def calc_expect_func(x, _):
     x_value = x.get("value")
     output = np.abs(x_value)
     return output
@@ -55,8 +55,8 @@ def calc_expect_func(x, output):
 
 ut_case.add_precision_case(
     "all", {
-        "params": [{"shape": (1, 4, 4), "dtype": "float16", "param_type": "input" },
-                   {"shape": (1, 4, 4), "dtype": "float16", "param_type": "output" },
+        "params": [{"shape": (1, 4, 4), "dtype": "float16", "param_type": "input"},
+                   {"shape": (1, 4, 4), "dtype": "float16", "param_type": "output"},
                   ],
         "case_name": "test_vabs_precision_faster_rcnn_resnet_v1_50",
         "calc_expect_func": calc_expect_func,
@@ -65,8 +65,8 @@ ut_case.add_precision_case(
 
 ut_case.add_precision_case(
     "all", {
-        "params": [{"shape": (1, 4, 4, 256), "dtype": "float16", "param_type": "input" },
-                   {"shape": (1, 4, 4, 256), "dtype": "float16", "param_type": "output" },
+        "params": [{"shape": (1, 4, 4, 256), "dtype": "float16", "param_type": "input"},
+                   {"shape": (1, 4, 4, 256), "dtype": "float16", "param_type": "output"},
                   ],
         "case_name": "test_vabs_precision_opticalflow",
         "calc_expect_func": calc_expect_func,
@@ -75,8 +75,8 @@ ut_case.add_precision_case(
 
 ut_case.add_precision_case(
     "all", {
-        "params": [{"shape": (4, 4, 4, 32), "dtype": "float16", "param_type": "input" },
-                   {"shape": (4, 4, 4, 32), "dtype": "float16", "param_type": "output" },
+        "params": [{"shape": (4, 4, 4, 32), "dtype": "float16", "param_type": "input"},
+                   {"shape": (4, 4, 4, 32), "dtype": "float16", "param_type": "output"},
                   ],
         "case_name": "test_vabs_precision_yolo_person_detect",
         "calc_expect_func": calc_expect_func,

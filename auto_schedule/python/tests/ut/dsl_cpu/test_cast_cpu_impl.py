@@ -54,7 +54,7 @@ def test_cast_cpu_api_check_not_support_op_type(soc):
         input1 = tvm.placeholder((n,), name="input1", dtype="float32")
         tbe.trunc(input1)
     except RuntimeError as e:
-        print("In soc %s," % soc + e.args[0]["detailed_cause"])
+        print("In soc %s," % soc + e.args[0].get("detailed_cause"))
     return True
 
 
@@ -118,11 +118,10 @@ def test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f322s32z(soc):
     return True
 
 
-def test_cast_to_cpu_api_fp162s8_and_not_support_vconv_f322s32z(soc):
+def test_cast_to_cpu_api_fp162s8_and_not_support_vconv_f322s32z(_):
     """
     for cast_to api
     fp16 to int8 && NOT support Intrinsic_vconv|f322s32z
-    @param soc: soc version
     @return: Ture && false
     """
     n = 1024

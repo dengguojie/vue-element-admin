@@ -35,9 +35,8 @@ def _get_benchmark_data(op_func_name, op_func, a, b):
                 )
 
 
-def test_inplace_cpu_api(soc):
+def test_inplace_cpu_api(_):
     """
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     inplace_dic = {"inplace_add": [tbe.inplace_add, operator.add], "inplace_sub": [tbe.inplace_sub, operator.sub],

@@ -8,10 +8,9 @@ import te.lang.cce as tbe
 ut_case = OpUT("reduce_cpu", "dsl_cpu.test_reduce_cpu_impl")
 
 
-def test_reduce_sum_cpu_api_float32(soc):
+def test_reduce_sum_cpu_api_float32(_):
     """
     for reduce_sum api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -35,12 +34,11 @@ def test_reduce_sum_cpu_api_float32(soc):
     return True
 
 
-def test_reduce_sum_cpu_api_float16(soc):
+def test_reduce_sum_cpu_api_float16(_):
     """
     for reduce_sum api
     if the dtype is fp16, over than 74, then the results are inconsistent with numpy.
     That is because of numpy use float32 to compute, the result cast to fp16
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 74
@@ -64,10 +62,9 @@ def test_reduce_sum_cpu_api_float16(soc):
     return True
 
 
-def test_reduce_sum_cpu_api_keep_dim(soc):
+def test_reduce_sum_cpu_api_keep_dim(_):
     """
     for reduce_sum api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -91,10 +88,9 @@ def test_reduce_sum_cpu_api_keep_dim(soc):
     return True
 
 
-def test_reduce_min_cpu_api(soc):
+def test_reduce_min_cpu_api(_):
     """
     for reduce_min api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -118,10 +114,9 @@ def test_reduce_min_cpu_api(soc):
     return True
 
 
-def test_reduce_min_cpu_api_keep_dim(soc):
+def test_reduce_min_cpu_api_keep_dim(_):
     """
     for reduce_min api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -145,10 +140,9 @@ def test_reduce_min_cpu_api_keep_dim(soc):
     return True
 
 
-def test_reduce_max_cpu_api(soc):
+def test_reduce_max_cpu_api(_):
     """
     for reduce_max api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -172,10 +166,9 @@ def test_reduce_max_cpu_api(soc):
     return True
 
 
-def test_reduce_max_cpu_api_keep_dim(soc):
+def test_reduce_max_cpu_api_keep_dim(_):
     """
     for reduce_max api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -199,10 +192,9 @@ def test_reduce_max_cpu_api_keep_dim(soc):
     return True
 
 
-def test_reduce_prod_cpu_api(soc):
+def test_reduce_prod_cpu_api(_):
     """
     for reduce_prod api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
@@ -226,10 +218,9 @@ def test_reduce_prod_cpu_api(soc):
     return True
 
 
-def test_reduce_prod_cpu_api_keep_dim(soc):
+def test_reduce_prod_cpu_api_keep_dim(_):
     """
     for reduce_prod api
-    @param soc: useless parameter for framework
     @return: Ture && false
     """
     n = 1024
