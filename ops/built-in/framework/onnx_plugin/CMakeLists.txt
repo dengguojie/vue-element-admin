@@ -102,6 +102,7 @@ set(_onnx_plugins
   embedding_bag_plugin.cc
   space_to_depth_plugin.cc
   max_roi_pool_plugin.cc
+  selu_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
