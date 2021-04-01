@@ -14,5 +14,16 @@
  * limitations under the License.
  */
 
+
 [Introduction]
-This sample verifies the functionality of custom operators directly by importing primitives.
+This sample contains code samples for Pytorch custom operator development and provides corresponding build scripts.
+Developers can add their own custom operator implementations based on this sample and then build the project to obtain a custom operator package (OPP).
+
+
+[Sample Overview]
+*****custom operator samples*****
+PtIou
+Function: Image Processing Intersection-over-Union(IoU) Calculation, Iou = Area of Overlap / Area of Union.
+
+SortV2
+Function: Sort the elements of the input tensor along a given dimension in ascending order by value.

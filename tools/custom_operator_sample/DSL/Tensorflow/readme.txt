@@ -14,5 +14,22 @@
  * limitations under the License.
  */
 
+
 [Introduction]
-This sample verifies the functionality of custom operators directly by importing primitives.
+This sample contains code samples for TensorFlow custom operator development and provides corresponding build scripts.
+Developers can add their own custom operator implementations based on this sample and then build the project to obtain a custom operator package (OPP).
+
+
+[Sample Overview]
+*****custom operator samples*****
+BatchNorm
+Function: Perform data normalization on FeatureMap.
+
+MaxPool
+Function: Perform max pooling on the input.
+
+Mul
+Function: Return x1 * x2 element-wise.
+
+ReduceAll
+Function: Calculate the "logical sum" of elements of a tensor in a dimension.

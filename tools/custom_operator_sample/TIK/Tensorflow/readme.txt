@@ -14,5 +14,16 @@
  * limitations under the License.
  */
 
+
 [Introduction]
-This sample verifies the functionality of custom operators directly by importing primitives.
+This sample contains code samples for TensorFlow custom operator development and provides corresponding build scripts.
+Developers can add their own custom operator implementations based on this sample and then build the project to obtain a custom operator package (OPP).
+
+
+[Sample Overview]
+*****custom operator samples*****
+DecodeBboxV2
+Function: Decode the bounding box according to different encoding or decoding methods.
+
+ScatterNdAdd
+Function: The ScatterNdAdd operator applies the sparse algorithm to a single value or slice in the input data to obtain the output data.
