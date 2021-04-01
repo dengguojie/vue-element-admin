@@ -1,0 +1,30 @@
+# source file:python/tbe/common/context/op_info.py
+
+class OpInfo:
+    def op_name(self):
+
+    def op_type(self):
+
+    def pattern(self):
+
+    def pattern(self, pattern):
+
+    def inputs(self):
+
+    def inputs(self, inputs):
+
+    def outputs(self):
+
+    def outputs(self, outputs):
+
+    def attrs(self):
+
+    def attrs(self, attrs):
+
+    def kernel_name(self):
+
+    def kernel_name(self, kernel_name):
+
+    def extra_params(self):
+
+    def extra_params(self, extra_params):

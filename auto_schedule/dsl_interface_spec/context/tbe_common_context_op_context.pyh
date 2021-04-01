@@ -1,0 +1,44 @@
+# source file:python/tbe/common/context/op_context.py
+
+class OpContext:
+    def set_op_mode(self, op_mode):
+
+    def get_op_mode(self):
+
+    def add_op_info(self, op_info):
+
+    def get_op_info(self, name=None):
+
+    def add_compile_info(self, k, v):
+
+    def get_compile_info(self, k=None):
+
+    def add_build_res(self, k, v):
+
+    def get_build_res(self, k=None):
+
+    def get_buffer_manager(self):
+
+    def set_buffer_manager(self, buffer_manager):
+
+    def get_custom_context(self, k):
+
+    def get_build_type(self):
+
+    def set_build_type(self, build_type):
+
+    def get_missing_support_info(self):
+
+    def set_missing_support_info(self, missing_support_info):
+
+    def add_build_json_result(self, k, v):
+
+    def get_build_json_result(self, k=None):
+
+    def add_addition(self, key, value):
+
+    def get_addition(self, key):
+
+def get_context():
+
+def register_custom_context(name):
