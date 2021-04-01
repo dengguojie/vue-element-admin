@@ -146,6 +146,8 @@ REG_OP(Cast)
 
 /**
 *@brief Returns the truth value of (x1 >= x2) element-wise. \n
+*when input is int32 and (x2 - x1) > 2**31 or < -2**31
+*aicore accuracy is not guaranteed \n
 
 *@par Inputs:
 *Two inputs, including:
@@ -167,6 +169,8 @@ REG_OP(GreaterEqual)
 
 /**
 *@brief Returns the truth value of (x1 < x2) element-wise. \n
+*when input is int32 and (x2 - x1) > 2**31 or < -2**31
+*aicore accuracy is not guaranteed \n
 
 *@par Inputs:
 *Two inputs, including:
@@ -567,6 +571,8 @@ REG_OP(InvGrad)
 
 /**
 *@brief: Returns the truth value of (x <= y) element-wise. \n
+*when input is int32 and (x2 - x1) > 2**31 or < -2**31
+*aicore accuracy is not guaranteed \n
 
 *@par Inputs:
 * Two inputs, including:
@@ -1464,6 +1470,8 @@ REG_OP(ReciprocalGrad)
 
 /**
 *@brief Returns the truth value of (x1 > x2) element-wise. \n
+*when input is int32 and (x2 - x1) > 2**31 or < -2**31
+*aicore accuracy is not guaranteed \n
 
 *@par Inputs:
 *@li x1: A Tensor of type float16, float32, double, int64, int32, int16, int8,
