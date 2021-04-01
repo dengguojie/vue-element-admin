@@ -411,6 +411,17 @@ class Conv2dParaProcess(CubeParaProcess):
                     for value in one_range:
                         range_list.append(value.value)
                     dict["range"].append(range_list)
+                if operation.get_te_var("batch_n"):
+                    dict["range"][N_DIM] = list(operation.get_te_var("batch_n").get_bound())
+                if operation.get_te_var("fmap_h"):
+                    dict["range"][H_DIM] = list(operation.get_te_var("fmap_h").get_bound())
+                if operation.get_te_var("fmap_w"):
+                    dict["range"][W_DIM] = list(operation.get_te_var("fmap_w").get_bound())
+                test = []
+                test1 = []
+                test2 = []
+                test3 = []
+                test5 = []
 
             return dict
 
