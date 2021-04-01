@@ -77,7 +77,6 @@ set(_optiling_files
   split_d.cc
   split_v.cc
   strided_slice.cc
-  strided_slice_grad.cc
   select.cc
   tile_d.cc
   tile.cc

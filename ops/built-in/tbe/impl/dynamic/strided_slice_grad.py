@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
+Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Apache License Version 2.0.You may not use
@@ -15,26 +15,10 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 strided_slice_grad
 """
-import te
+from impl.dynamic.pad import PadInit
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tik
-from impl.dynamic import pad_align
-from impl.dynamic import pad_not_align
-from impl.dynamic import pad_common
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
 
-# number of cores
-INT32_BLOCK = 8
-INT64_BLOCK = 4
-
-
-# pylint: disable=invalid-name, too-many-instance-attributes
-# pylint: disable=too-many-arguments, useless-object-inheritance
-# pylint: disable=too-many-locals, too-many-statements
-# pylint: disable=attribute-defined-outside-init, unused-argument
-# pylint: disable=attribute-defined-outside-init, chained-comparison
-# pylint: disable=consider-using-in,unused-variable
 
 def _check_mask(input_mask, is_shrink=False):
     """ Check whether the value of the input mask is 0.
@@ -49,60 +33,14 @@ def _check_mask(input_mask, is_shrink=False):
     None.
     """
     if is_shrink:
-        if input_mask != 0 and input_mask != 2:
+        if input_mask not in (0, 2):
             raise RuntimeError("shrink_axis_mask only support 0/2 currently")
     elif input_mask != 0:
         raise RuntimeError("new_axis_mask"
                            " only support 0 currently")
 
 
-def grad_compute(obj, mask_list):
-    """
-    obtain tik instance
-    """
-    obj.set_tik_instance()
-
-    with obj.tik_instance.for_range(0, obj.max_core, block_num=obj.max_core) as blk_idx:
-        # =====================
-        # init tiling_params
-        # =====================
-        obj.tik_instance.data_move(obj.tiling_buf, obj.tiling_gm, 0, 1,
-                                   obj.tiling_buf_size // INT64_BLOCK, 0, 0)
-        pad_common.init_params(obj)
-
-        # ======================
-        # computation of main
-        # ======================
-        with obj.tik_instance.if_scope(obj.branch[0] == 1):
-            pad_align.align_compute(obj, blk_idx)
-        with obj.tik_instance.if_scope(obj.branch[0] == 0):
-            pad_not_align.not_align_compute(obj, blk_idx)
-
-    opt_config = {"out_of_bound_sync_check": True}
-    shape_size = 128
-    shape_gm = obj.tik_instance.Tensor("int32", (shape_size,),
-                                       name="shape_gm", scope=tik.scope_gm)
-    begin_gm = obj.tik_instance.Tensor("int32", (shape_size,),
-                                       name="begin_gm", scope=tik.scope_gm)
-    end_gm = obj.tik_instance.Tensor("int32", (shape_size,),
-                                     name="end_gm", scope=tik.scope_gm)
-    strides_gm = obj.tik_instance.Tensor("int32", (shape_size,),
-                                         name="strides_gm", scope=tik.scope_gm)
-
-    obj.tik_instance.BuildCCE(kernel_name=obj.kernel_name,
-                              inputs=[shape_gm, begin_gm, end_gm, strides_gm, obj.input_gm],
-                              outputs=[obj.output_gm],
-                              flowtable=[obj.tiling_gm],
-                              config=opt_config)
-    tbe_context.get_context().add_compile_info("vars", {"ubSize": obj.buf_size, "maxCore": obj.max_core,
-                                    "begin_mask": mask_list[0], "end_mask": mask_list[1],
-                                    "ellipsis_mask": mask_list[2], "new_axis_mask": mask_list[3],
-                                    "shrink_axis_mask": mask_list[4]})
-
-    return {"compile_info": tbe_context.get_context().get_compile_info()}
-
-
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# pylint: disable=locally-disabled,too-many-arguments,invalid-name
 @register_operator("StridedSliceGrad")
 def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
                        end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
@@ -113,10 +51,6 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
 
     Parameters
     ----------
-    dy : dict
-        shape and dtype of input
-    output_x : dict
-        shape and dtype of out
     shape : list or tuple.
         shape of input
     begin: list or tuple.
@@ -125,6 +59,10 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
         represents the index of the last value to select.
     strides: list or tuple.
         step length to select.
+    dy : dict
+        shape and dtype of input
+    output : dict
+        shape and dtype of out
     begin_mask: int
         a bitmask where a bit i being 1 means to ignore the begin value and instead use the
         largest interval possible.
@@ -150,10 +88,13 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
     _check_mask(new_axis_mask)
     _check_mask(shrink_axis_mask, True)
 
-    mask_list = (begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask)
-    tik_obj = tik.Tik()
-    pads = []
-    for i, _ in enumerate(range(shape.get("shape")[0])):
-        pads.append([0, 0])
-    grad = pad_common.PadInit(pads, dtype, kernel_name, tik_obj, False)
-    return grad_compute(grad, mask_list)
+    obj = PadInit(kernel_name)
+    obj.init_src_dst_gm((shape, begin, end, strides, dy), (output,), pad_input_idx=4, pad_outnput_idx=0)
+
+    outer_compile = dict()
+    outer_compile["begin_mask"] = begin_mask
+    outer_compile["end_mask"] = end_mask
+    outer_compile["ellipsis_mask"] = ellipsis_mask
+    outer_compile["new_axis_mask"] = new_axis_mask
+    outer_compile["shrink_axis_mask"] = shrink_axis_mask
+    return obj.pad_compute(outer_compile)
