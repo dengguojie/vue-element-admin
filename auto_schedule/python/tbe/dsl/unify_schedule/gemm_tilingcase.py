@@ -23,12 +23,13 @@ from functools import reduce
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.dsl.compute.gemm_compute import GEMMComputeParam
-from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
-from tbe.dsl.unify_schedule.constants import Pattern
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
+
+from .cube_tilingcase import CubeTilingOp
+from .cube_tilingcase import TilingSelection
+from .constants import Pattern
 
 
 K_LEN = 2

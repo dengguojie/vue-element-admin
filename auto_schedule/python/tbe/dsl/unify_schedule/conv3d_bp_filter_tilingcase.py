@@ -19,20 +19,19 @@ conv2d backprop filter tiling case
 from collections import OrderedDict
 from functools import reduce
 
-from te import tvm
+from tbe import tvm
+from tbe.common.tiling.get_tiling import get_tiling
+from tbe.dsl.base.operation import add_compile_info
+from tbe.dsl.base.operation  import get_te_var
+from tbe.dsl.base.operation  import register_tiling_case
 from tbe.dsl.compute.conv3d_backprop_filter_compute import \
     DynamicConv3dBpFilterParams as DynamicParams
 
-from tbe.common.tiling.get_tiling import get_tiling
-from tbe.dsl.base.operation import add_compile_info
-from te.lang.base.operation_impl import register_tiling_case
-from te.lang.base.operation_impl import get_te_var
-
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
-from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils as utils
-from tbe.dsl.unify_schedule.cube_tilingcase import C0_SIZE
-from tbe.dsl.unify_schedule import Pattern
+from .cube_tilingcase import TilingSelection
+from .cube_tilingcase import CubeTilingOp
+from .cube_tilingcase import TilingUtils as utils
+from .cube_tilingcase import C0_SIZE
+from .constants import Pattern
 
 D_RANGE = 4096
 H_RANGE = 4096

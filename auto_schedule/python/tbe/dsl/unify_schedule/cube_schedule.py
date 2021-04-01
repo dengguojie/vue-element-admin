@@ -27,7 +27,7 @@ from tbe.dsl.static_schedule.conv3d_backprop_filter_schedule import \
     CceConv3dBackpropFilterOp
 from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule
 
-from . import Pattern
+from .constants import Pattern
 
 
 @register_schedule(pattern=Pattern.CONV3D_BACKPROP_FILTER)

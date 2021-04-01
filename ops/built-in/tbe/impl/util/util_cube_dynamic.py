@@ -21,13 +21,14 @@ import warnings
 import math
 import copy
 
-import te
-from te.tvm import api as tvm
-import te.platform as tbe_platform
-from te.utils import para_check
-from te.utils.error_manager import error_manager_cube as err_man
-import te.lang.base as tbe_base
+from impl.util.platform_adapter import error_manager_cube as err_man
+from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
 import impl.util.util_deconv_comm as comm
+
 
 N_DIM = 0
 C_DIM = 1
@@ -348,7 +349,7 @@ class CubeParaProcess:
                 pad_left = pad_w // 2
                 pad_right = pad_w - pad_left
                 pads = pad_up, pad_down, pad_left, pad_right
-                pads = list(map(lambda x: int(x) if (isinstance(x, te.tvm.expr.IntImm)) else x, pads))
+                pads = list(map(lambda x: int(x) if (isinstance(x, tvm.expr.IntImm)) else x, pads))
         self.pads = pads
 
     def round_channel(self, in_shape, w_shape, dtype, out_shape=()):
@@ -467,25 +468,25 @@ class Conv2dParaProcess(CubeParaProcess):
                             in_shape[H_DIM], in_shape[W_DIM], block_size_k]
         if self.is_tensor == False:
             if in_shape_nc1hwc0[N_DIM] == DYNAMIC_FLAG:
-                in_shape_nc1hwc0[N_DIM] = tbe_base.var("batch_n", in_range[N_DIM])
-                tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[N_DIM])
+                in_shape_nc1hwc0[N_DIM] = operation.var("batch_n", in_range[N_DIM])
+                operation.add_exclude_bound_var(in_shape_nc1hwc0[N_DIM])
             if in_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
-                in_shape_nc1hwc0[H_DIM] = tbe_base.var("fmap_h", in_range[H_DIM])
-                tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[H_DIM])
-                tbe_base.add_exclude_bound_var(tbe_base.var("ho", y_range[H_DIM]))
+                in_shape_nc1hwc0[H_DIM] = operation.var("fmap_h", in_range[H_DIM])
+                operation.add_exclude_bound_var(in_shape_nc1hwc0[H_DIM])
+                operation.add_exclude_bound_var(operation.var("ho", y_range[H_DIM]))
             if in_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
-                in_shape_nc1hwc0[W_DIM] = tbe_base.var("fmap_w", in_range[W_DIM])
-                tbe_base.add_exclude_bound_var(in_shape_nc1hwc0[W_DIM])
-                tbe_base.add_exclude_bound_var(tbe_base.var("wo", y_range[W_DIM]))
+                in_shape_nc1hwc0[W_DIM] = operation.var("fmap_w", in_range[W_DIM])
+                operation.add_exclude_bound_var(in_shape_nc1hwc0[W_DIM])
+                operation.add_exclude_bound_var(operation.var("wo", y_range[W_DIM]))
         else:
             if in_shape_nc1hwc0[N_DIM] == DYNAMIC_FLAG:
                 in_shape_nc1hwc0[N_DIM] = self.input_tensor.shape[N_DIM]
             if in_shape_nc1hwc0[H_DIM] == DYNAMIC_FLAG:
                 in_shape_nc1hwc0[H_DIM] = self.input_tensor.shape[H_DIM]
-                tbe_base.add_exclude_bound_var(tbe_base.var("ho", y_range[H_DIM]))
+                operation.add_exclude_bound_var(operation.var("ho", y_range[H_DIM]))
             if in_shape_nc1hwc0[W_DIM] == DYNAMIC_FLAG:
                 in_shape_nc1hwc0[W_DIM] = self.input_tensor.shape[W_DIM]
-                tbe_base.add_exclude_bound_var(tbe_base.var("wo", y_range[W_DIM]))
+                operation.add_exclude_bound_var(operation.var("wo", y_range[W_DIM]))
 
         if self.paras.get("optim_dict").get("c0_optim_flg"):
             w_shape_frac_z = (ceil_div(4 * w_shape[H_DIM] * w_shape[W_DIM], block_size_k),
@@ -615,19 +616,19 @@ class Conv2dBackpropParaProcess(CubeParaProcess):
                             dy_shape[H_DIM], dy_shape[W_DIM], block_size_k]
 
         if input_size[N_DIM] == DYNAMIC_FLAG:
-            dy_shape_nc1hwc0[N_DIM] = tbe_base.var("batch_n", dy_range[N_DIM])
+            dy_shape_nc1hwc0[N_DIM] = operation.var("batch_n", dy_range[N_DIM])
             input_size[N_DIM] = dy_shape_nc1hwc0[N_DIM]
-            tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[N_DIM])
+            operation.add_exclude_bound_var(dy_shape_nc1hwc0[N_DIM])
         if input_size[H_DIM] == DYNAMIC_FLAG:
-            dy_shape_nc1hwc0[H_DIM] = tbe_base.var("dedy_h", dy_range[H_DIM])
-            input_size[H_DIM] = tbe_base.var("dx_h", input_range[H_DIM])
-            tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[H_DIM])
-            tbe_base.add_exclude_bound_var(input_size[H_DIM])
+            dy_shape_nc1hwc0[H_DIM] = operation.var("dedy_h", dy_range[H_DIM])
+            input_size[H_DIM] = operation.var("dx_h", input_range[H_DIM])
+            operation.add_exclude_bound_var(dy_shape_nc1hwc0[H_DIM])
+            operation.add_exclude_bound_var(input_size[H_DIM])
         if input_size[W_DIM] == DYNAMIC_FLAG:
-            dy_shape_nc1hwc0[W_DIM] = tbe_base.var("dedy_w", dy_range[W_DIM])
-            input_size[W_DIM] = tbe_base.var("dx_w", input_range[W_DIM])
-            tbe_base.add_exclude_bound_var(dy_shape_nc1hwc0[W_DIM])
-            tbe_base.add_exclude_bound_var(input_size[W_DIM])
+            dy_shape_nc1hwc0[W_DIM] = operation.var("dedy_w", dy_range[W_DIM])
+            input_size[W_DIM] = operation.var("dx_w", input_range[W_DIM])
+            operation.add_exclude_bound_var(dy_shape_nc1hwc0[W_DIM])
+            operation.add_exclude_bound_var(input_size[W_DIM])
 
         if self.dtype == "int8":
             filter_shape_frac_z = (

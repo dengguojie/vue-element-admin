@@ -27,13 +27,13 @@ from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.compute.conv3d_backprop_input_compute import DynamicConv3dBpInputParams
-from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils
-from tbe.dsl.unify_schedule.constants import Pattern
 from tbe.tvm.expr import Expr
 from tbe.tvm.intrin import abs as tvm_abs
 
+from .cube_tilingcase import CubeTilingOp
+from .cube_tilingcase import TilingSelection
+from .cube_tilingcase import TilingUtils
+from .constants import Pattern
 
 H_RANGE = 4096
 W_RANGE = 4096

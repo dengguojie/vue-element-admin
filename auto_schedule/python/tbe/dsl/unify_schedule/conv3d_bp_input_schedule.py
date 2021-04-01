@@ -18,8 +18,8 @@ conv3d_backprop_input schedule
 from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.static_schedule.conv3d_backprop_input_schedule import CceConv3dBackpropInputOp
 from tbe.dsl.static_schedule.cce_schedule import get_op_info
-from tbe.dsl.unify_schedule.constants import Pattern
 from tbe.tvm import schedule as tvm
+from .constants import Pattern
 
 
 @register_schedule(pattern=Pattern.CONV3D_BACKPROP_INPUT)

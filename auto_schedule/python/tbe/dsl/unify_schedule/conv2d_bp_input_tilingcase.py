@@ -24,11 +24,12 @@ from tbe.common.tiling.get_tiling import get_tiling
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
 from tbe.dsl.compute.conv2d_backprop_input_compute import DynamicConv2dBpInputParams
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingSelection
-from tbe.dsl.unify_schedule.cube_tilingcase import CubeTilingOp
-from tbe.dsl.unify_schedule.cube_tilingcase import TilingUtils as utils
-from tbe.dsl.unify_schedule.constants import Pattern
 from tbe.tvm.expr import Expr
+
+from .cube_tilingcase import TilingSelection
+from .cube_tilingcase import CubeTilingOp
+from .cube_tilingcase import TilingUtils as utils
+from .constants import Pattern
 
 
 W_DELTA = 1
