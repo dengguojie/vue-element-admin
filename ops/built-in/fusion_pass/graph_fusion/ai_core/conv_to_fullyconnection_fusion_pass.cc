@@ -214,6 +214,20 @@ Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   OP_LOGD(FUSED_OP_TYPE.c_str(), "outAixsC of conv is %ld.", outAixsC);
   (void)ge::AttrUtils::SetInt(convOp, ATTR_NUM_OUTPUT, outAixsC);
 
+  // >>> start: change bias output format when shape is 1
+  auto bias_tensor = convNode->GetOpDesc()->MutableInputDesc("bias");
+  if (bias_tensor != nullptr) {
+    auto bias_shape = bias_tensor->MutableShape().GetDims();
+    auto format = bias_tensor->GetFormat();
+    bool valid = format == ge::FORMAT_ND && bias_shape.size() > 0 && bias_shape[0] == 1;
+    if (valid) {
+      bias_tensor->SetFormat(ge::FORMAT_NCHW);
+      bias_tensor->SetOriginFormat(ge::FORMAT_NCHW);
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "change bias format from ND to NCHW.");
+    }
+  }
+  // <<< end: change bias output format when shape is 1
+
   // update tensor name
   std::map<string, uint32_t> inputNameMap = convOp->GetAllInputName();
   std::map<string, uint32_t> inputNameMapNew;
