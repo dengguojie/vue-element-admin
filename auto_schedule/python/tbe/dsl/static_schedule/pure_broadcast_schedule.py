@@ -214,7 +214,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         # Support for different dimension broadcast
         if len(self.broadcast_target_shape) > len(self.broadcast_original_shape):
             difference = len(self.broadcast_target_shape) - len(self.broadcast_original_shape)
-            self.broadcast_original_shape += [1] * difference + self.broadcast_original_shape
+            self.broadcast_original_shape = [1] * difference + self.broadcast_original_shape
         if len(self.broadcast_target_shape) < len(self.broadcast_original_shape):
             raise RuntimeError("Invalid broadcast from " +
                                str(self.broadcast_original_shape) + " to " +

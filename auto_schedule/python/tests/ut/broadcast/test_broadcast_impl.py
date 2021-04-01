@@ -60,8 +60,25 @@ case2 = {
     "support_expect": True
 }
 
+case3 = {
+    "params": [{
+        "shape": (15,),
+        "dtype": "float16",
+        "format": "ND"
+    }, {
+        "shape": (11, 13, 15),
+        "dtype": "float16",
+        "format": "ND"
+    }, 
+    [11, 13, 15]
+    ],
+    "case_name": "test_broadcast_3",
+    "expect": "success",
+    "support_expect": True
+}
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910A", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case3)
 
 
 def calc_expect_func(x, y, dst_shape):
