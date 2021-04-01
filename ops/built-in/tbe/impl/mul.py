@@ -608,7 +608,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             format_list.append("FRACTAL_Z")
-        format_list.append("FRACTAL_NZ")
+        if shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0:
+            format_list.append("FRACTAL_NZ")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
@@ -651,7 +652,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
             format_list.append("C1HWNCoC0")
             format_list.append("NC1HWC0")
             format_list.append("FRACTAL_Z")
-        format_list.append("FRACTAL_NZ")
+        if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
+            format_list.append("FRACTAL_NZ")
         for dtype in dtype_list:
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list

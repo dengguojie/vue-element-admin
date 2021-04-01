@@ -78,6 +78,28 @@ case5 = {"params": [{"shape": (10241,), "dtype": "uint8", "format": "NHWC",
          "format_expect": [],
          "support_expect": True}
 
+case6 = {"params": [{"shape": (1,), "dtype": "float32", "format": "ND",
+                     "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (3, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ",
+                     "ori_shape": (3, 16, 16), "ori_format": "FRACTAL_NZ"},
+                    {"shape": (3, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ",
+                     "ori_shape": (3, 16, 16), "ori_format": "FRACTAL_NZ"}],
+         "case_name": "mul_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (3, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (3, 16, 16), "ori_format": "FRACTAL_NZ"},
+                    {"shape": (1,), "dtype": "float16", "format": "ND",
+                     "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (3, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ",
+                     "ori_shape": (3, 16, 16), "ori_format": "FRACTAL_NZ"}],
+         "case_name": "mul_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
 
 # pylint: disable=unused-argument
 def test_op_select_format(test_arg):
@@ -199,12 +221,26 @@ def test_op_select_format(test_arg):
                       "ori_shape": (1,), "ori_format": "ND"},
                      {"shape": (16, 32, 16), "dtype": "int8", "format": "ND",
                       "ori_shape": (16, 32, 16), "ori_format": "ND"})
+    op_select_format({"shape": (1,), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1,), "ori_format": "ND"},
+                     {"shape": (3, 32, 32), "dtype": "float16", "format": "ND",
+                      "ori_shape": (3, 32, 32), "ori_format": "ND"},
+                     {"shape": (3, 32, 32), "dtype": "float16", "format": "ND",
+                      "ori_shape": (3, 32, 32), "ori_format": "ND"})
+    op_select_format({"shape": (16, 16, 512, 512), "dtype": "float32", "format": "NCHW",
+                      "ori_shape": (16, 16, 512, 512), "ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "float32", "format": "NCHW",
+                      "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape": (16, 16, 512, 512), "dtype": "float32", "format": "NCHW",
+                      "ori_shape": (16, 16, 512, 512), "ori_format": "NCHW"})
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 """
