@@ -576,13 +576,13 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                          fmap_c0]
         fmap_ub_for_dma_im2col = tvm.compute(fmap_ub_shape,
                                              lambda n, c1, h, w, c0:
-                                                 tvm.select(
-                                                     tvm.any(h < padding[0],
-                                                             h > fmap_h + padding[0] - 1,
-                                                             w < padding[2],
-                                                             w > fmap_w + padding[2] - 1),
-                                                     tvm.const(offset_x, fmap.dtype),
-                                                     fmap(n, c1, h - padding[0], w - padding[2], c0)),
+                                             tvm.select(
+                                                 tvm.any(h < padding[0],
+                                                         h > fmap_h + padding[0] - 1,
+                                                         w < padding[2],
+                                                         w > fmap_w + padding[2] - 1),
+                                                 tvm.const(offset_x, fmap.dtype),
+                                                 fmap(n, c1, h - padding[0], w - padding[2], c0)),
                                              name="fmap_ub_for_dma_im2col")
         TENSOR_MAP["fmap_ub_for_dma_im2col"] = fmap_ub_for_dma_im2col
         return fmap_ub_for_dma_im2col
@@ -1300,17 +1300,17 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
                             cin_1 + group * ConvParam.para_dict["c1_opt"],
                             h_index - padding_top,
                             w_index - padding_left, cin_0)
-            else:
-                return tvm.select(
-                    tvm.any(h_index < padding_top,
-                            h_index > input_h.value + padding_top - 1,
-                            w_index < padding_left,
-                            w_index > input_w.value + padding_left - 1),
-                    tvm.const(offset_x, compute_dtype),
-                    fmap(batch,
-                        cin_1 + group * ConvParam.para_dict["c1_opt"],
-                        h_index - padding_top,
-                        w_index - padding_left, cin_0))
+
+            return tvm.select(
+                tvm.any(h_index < padding_top,
+                        h_index > input_h.value + padding_top - 1,
+                        w_index < padding_left,
+                        w_index > input_w.value + padding_left - 1),
+                tvm.const(offset_x, compute_dtype),
+                fmap(batch,
+                     cin_1 + group * ConvParam.para_dict["c1_opt"],
+                     h_index - padding_top,
+                     w_index - padding_left, cin_0))
 
         return tvm.compute(fmap_im2col_vm_shape,
                            lambda group, batch, howo, cin_1, k_h, k_w, cin_0:
@@ -1371,12 +1371,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             dtype = compute_dtype
             if ConvParam.l0a_dma_flag:
                 return fmap(group, batch, hw_index, c1_index, kh_index, kw_index, c0_index)
-            else:
-                return tvm.select(
-                    tvm.any(hw_index < 0, hw_index > howo.value - 1),
-                    tvm.const(0.0, dtype),
-                    fmap(group, batch, hw_index,
-                         c1_index, kh_index, kw_index, c0_index))
+
+            return tvm.select(
+                tvm.any(hw_index < 0, hw_index > howo.value - 1),
+                tvm.const(0.0, dtype),
+                fmap(group, batch, hw_index,
+                     c1_index, kh_index, kw_index, c0_index))
 
         return tvm.compute(fmap_im2col_shape,
                            lambda group, batch, m_1, k_1, m_0, k_0:
@@ -1819,7 +1819,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             ConvParam.padding = [ConvParam.pad_h[0], ConvParam.pad_h[1],
                                  ConvParam.pad_w[0], ConvParam.pad_w[1]]
 
-            if ConvParam.padding != [0,0,0,0]:
+            if ConvParam.padding != [0, 0, 0, 0]:
                 ConvParam.has_padding = True
 
             filter_h_dilation = (ConvParam.filter_h - 1)*ConvParam.dilate_h + 1

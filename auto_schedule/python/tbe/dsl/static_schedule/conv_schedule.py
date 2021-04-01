@@ -764,7 +764,8 @@ class CceConvOp:
         self._preload = 0
         self._tiling_info_dict = {}
 
-    def schedule(self, res, spec_node_list, sch_list, convbn1_flag=False, tiling_case=None, var_range=None, tilingdict_flag=False):
+    def schedule(self, res, spec_node_list, sch_list, convbn1_flag=False,
+                 tiling_case=None, var_range=None, tilingdict_flag=False):
         """
         auto_schedule for cce AI-CORE. For now, only one convolution operation
         is supported.
@@ -3208,7 +3209,8 @@ class CceConvOp:
                     True means enter into this branch to do comput at.
                     False means go to the next branch to do compute at.
                     """
-                    compute_at_flag = lop["dst_buffer"].op.name not in ("fmap_ub_for_dma_l0a", "fmap_l1", "conv_virtual_res") and \
+                    compute_at_flag = \
+                        lop["dst_buffer"].op.name not in ("fmap_ub_for_dma_l0a", "fmap_l1", "conv_virtual_res") and \
                         lop["dst_buffer"].op.tag not in ("strided_read", "strided_write", "aipp_res", "conv2d_data_rm")
                     return compute_at_flag
 
