@@ -98,6 +98,11 @@ ASCEND_SLOG_PRINT_TO_STDOUT = 'ascend_slog_print_to_stdout'
 ATC_SINGLEOP_ADVANCE_OPTION = 'atc_singleop_advance_option'
 PERFORMACE_MODE = 'performance_mode'
 
+# dynamic input.
+DYNAMIC_INPUT = 'dynamic'
+DYNAMIC_INPUT_ARGS = '*dynamic_input'
+DYNAMIC_INPUT_NAME = 'dynamic_input'
+
 SPACE = ' '
 EMPTY = ''
 NEW_LINE_MARK = "\\"

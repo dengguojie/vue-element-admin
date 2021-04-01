@@ -13,6 +13,7 @@ try:
     import sys
     import numpy as np
     import json
+    import importlib
     from shutil import copytree
     from shutil import copy2
     from shutil import Error
@@ -157,10 +158,65 @@ class MsOpGenerator:
         src_dir = os.path.join(self.output_path, 'src')
         utils.make_dirs(src_dir)
 
+    @staticmethod
+    def _get_mindspore_input_param_type(op_name_lower):
+        op_name_impl = "{}_impl".format(op_name_lower)
+        op_name_op_info = "{}_op_info".format(op_name_lower)
+        ms_input_param_type_list = []
+        try:
+            params = importlib.import_module(op_name_impl)
+            mindspore_ops_info = getattr(params, op_name_op_info)
+        except (NameError, ValueError) as error:
+            utils.print_error_log(
+                '%s in %s, please modify it.' % (error, op_name_impl))
+            raise utils.OpTestGenException(
+                utils.OP_TEST_GEN_INVALID_DATA_ERROR)
+
+        ms_ops_input_list = mindspore_ops_info.get('inputs')
+        # get input param type
+        for input_list in ms_ops_input_list:
+            ms_input_param_type_list.append(input_list.get('param_type'))
+        return ms_input_param_type_list
+
+    @staticmethod
+    def _get_no_attr_input_args(ms_param_type_list,
+                                count_input, input_name_list):
+        param_type_list_length = len(ms_param_type_list)
+        # input param type is required.
+        if utils.DYNAMIC_INPUT not in ms_param_type_list:
+            input_args = ','.join(input_name_list)
+            input_name = input_args
+            return input_args, input_name
+
+        # input param type has only dynamic input.
+        if param_type_list_length == 1:
+            return utils.DYNAMIC_INPUT_ARGS, utils.DYNAMIC_INPUT_NAME
+        # input param type have dynamic input
+        # and other input(optional or required).
+        else:
+            dynamic_input_count = count_input - param_type_list_length
+            input_index = 0
+            input_name_tensor_list = []
+            for input_param_type in ms_param_type_list:
+                if input_param_type == utils.DYNAMIC_INPUT:
+                    dynamic_input_name_str = ','.join(
+                        input_name_list[input_index:
+                                        input_index + dynamic_input_count])
+                    input_name_tuple = "({})".format(dynamic_input_name_str)
+                    input_name_tensor_list.append(input_name_tuple)
+                    input_index = input_index + dynamic_input_count + 1
+                else:
+                    input_name_tensor_list.append(input_name_list[input_index])
+                    input_index += 1
+            input_args = ','.join(input_name_list)
+            input_name = ','.join(input_name_tensor_list)
+            return input_args, input_name
+
     def _rewrite_files_for_output_dir(self):
         testcase_test_net_content = ''
         op_name = self.testcase_list[0]['op']
         op_name_lower = utils.fix_name_lower_with_under(op_name)
+        ms_param_type_list = self._get_mindspore_input_param_type(op_name_lower)
         testcase_test_net_content += code_snippet.TESTCASE_IMPORT_CONTENT \
             .format(
             import_op=op_name_lower,
@@ -229,12 +285,16 @@ class MsOpGenerator:
                 inputs=inputs,
                 outputs=outputs)
 
-        if not self.testcase_list[0].get('attr'):
+        if not self.testcase_list[0].get('attr') or \
+                utils.DYNAMIC_INPUT in ms_param_type_list:
+            input_args, input_name = self._get_no_attr_input_args(
+                ms_param_type_list, count_input, input_name_list)
             testcase_test_net_func_content += code_snippet \
                 .TESTCASE_CLASS_CONTENT_NO_ATTR.format(
                 op_lower=op_name_lower,
                 op_name=op_name,
-                inputs=input_name_join)
+                input_args=input_args,
+                inputs=input_name)
         else:
             attr_value_list = []
             for attr_info in self.testcase_list[0]['attr']:

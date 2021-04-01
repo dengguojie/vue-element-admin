@@ -97,8 +97,8 @@ class Net(nn.Cell):
     def __init__(self):
         super(Net, self).__init__()
         self.{op_lower} = {op_name}()
-    
-    def construct(self,{inputs}):
+
+    def construct(self,{input_args}):
         return self.{op_lower}({inputs})
 """
 
