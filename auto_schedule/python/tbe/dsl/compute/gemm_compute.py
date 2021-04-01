@@ -544,7 +544,10 @@ def gemm(tensor_a, tensor_b, para_dict):
 
     Returns result
     """
-    if USE_GEMM_INTERGRATED:
+    alpha = para_dict.get("alpha")
+    beta = para_dict.get("beta")
+    is_gemm = (alpha is not None) and (beta is not None)
+    if USE_GEMM_INTERGRATED or is_gemm:
         result = gemm_integrated(tensor_a, tensor_b, para_dict)
     else:
         gemm_compute = GEMMCompute(tensor_a, tensor_b, para_dict)

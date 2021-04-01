@@ -1644,7 +1644,7 @@ class GemmSchedule(object):
 
     def _check_tail_block(self):
 
-        n_shape = int(self.TENSOR_MAP["b_l0b"].shape[-3])
+        n_shape = int(self.TENSOR_MAP["b_l0b"].shape[-3]) * self.block_out
         if self.ops_data_flow_mode in ("int82int32", "int82fp32"):
             divide_factor = 32
             data_num = 8

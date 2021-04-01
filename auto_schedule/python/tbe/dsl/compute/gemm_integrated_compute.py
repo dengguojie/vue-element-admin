@@ -394,6 +394,8 @@ class GEMMCompute(FormatCompute):
         a_shape = [self._get_value(i) for i in self.tensor_a.shape]
         b_shape = [self._get_value(i) for i in self.tensor_b.shape]
         mmad_mode = "gemm"
+        # not open gevm and gemv mode now
+        return
         if self._get_not_gevm_gemv_flag():
             self.mmad_mode = "gemm"
             return
@@ -575,7 +577,8 @@ class GEMMCompute(FormatCompute):
     def _get_attrs_dict(self, res):
         attrs_dict = {
             "shape": res.shape,
-            "format": self.format_out
+            "format": self.format_out,
+            "is_gemm_new": True
         }
         if self.batch_shape is not None:
             attrs_dict["batch_shape"] = self.batch_shape
@@ -1718,6 +1721,8 @@ class GEMMCompute(FormatCompute):
         support_type = tbe_platform.getValue("Intrinsic_mmad")
         if "f162f32" not in support_type:
             self.l0c_support_fp32 = False
+        if self.matrix_type == "float32" and (not self.l0c_support_fp32):
+            self.matrix_type = "float16"
 
     def _set_ori_k(self):
         a_shape = [self._get_value(i) for i in self.tensor_a.shape]

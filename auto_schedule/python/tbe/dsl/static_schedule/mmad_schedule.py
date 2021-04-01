@@ -26,7 +26,6 @@ from tbe.dsl.compute import cube_util
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.static_schedule import util
 import tvm
-from tbe.dsl.compute.gemm_compute import USE_GEMM_INTERGRATED
 from tbe.dsl.static_schedule.gemm_integrated_schedule import gemm_schedule as gemm_schedule_integrated
 
 DTYPE_WIDTH_MAP = {"uint64": 4,
@@ -849,7 +848,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     """
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-    if USE_GEMM_INTERGRATED:
+    res_real = res[0]
+    if "is_gemm_new" in res_real.op.attrs:
         return gemm_schedule_integrated(res, sch_list, dynamic_para)
     emit_fusion_insn_map = {"dequant_NZ": "phony_insn",
                             "cast_f16_ub": "vector_conv",
