@@ -69,27 +69,12 @@ int64_t BNReduce::GetReorderInputShapeMul(const int32_t axis_index, const int32_
     if (i != static_cast<uint32_t>(block_tiling_axis_in_reorder)) {
       result = result * reorderInfo.reorder_input_shape[i];
       continue;
-    }     
+    }
 
     if (i == reorderInfo.reorder_input_shape.size() - 1) {
       result = result * ((tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size);
     } else {
       result = result * tilingInfo.block_tiling_factor;
-    }
-  }
-  return result;
-}
-
-int64_t BNReduce::GetAlignShapeMul(const int32_t axis_index) {
-  int64_t result = 1;
-  for (uint32_t i = axis_index + 1; i < output_shape.size(); i++) {
-    if (output_shape[i] == 0) {
-      continue;
-    }
-    if (i == output_shape.size() - 1 && !is_last_axis_reduce) {
-      result = result * ((output_shape[i] + block_size - 1) / block_size * block_size);
-    } else {
-      result = result * output_shape[i];
     }
   }
   return result;
@@ -169,7 +154,7 @@ bool BNReduce::ConstInputProcPost() {
   // runtime
   pattern = CalcConstPattern(reduce_axis_ori);
   std::string pattern_str = std::to_string(pattern);
-  
+
   if (op_info.find("_block_dims") == op_info.end() || op_info.find("_atomic_flags") == op_info.end()) {
     OP_LOGE(op_type, "_block_dims or _atomic_flags not exist in compile info.");
     return false;
@@ -180,12 +165,12 @@ bool BNReduce::ConstInputProcPost() {
     OP_LOGE(op_type, "pattern_str:%s not exist in compile info.", pattern_str.c_str());
     return false;
   }
-        
+
   run_info.block_dim = op_info.at("_block_dims").at(pattern_str).get<std::int32_t>();
   run_info.clear_atomic = op_info.at("_atomic_flags").at(pattern_str).get<bool>();
 
   ByteBufferPut(run_info.tiling_data, pattern);
-  run_info.tiling_key = pattern;  
+  run_info.tiling_key = pattern;
   OP_LOGD(op_type, "tiling_key:%d", run_info.tiling_key);
   return true;
 }
@@ -236,7 +221,7 @@ bool BNReduce::FusedReduceAxis() {
       // look for unequal idx
       second += 1;
       continue;
-    } 
+    }
 
     // fused serial axises
     value_input = std::accumulate(normalize_shape.begin() + first, normalize_shape.begin() + second, 1,
@@ -270,7 +255,7 @@ bool BNReduce::GetCompileInfo() {
     OP_LOGE(op_type, "_common_info not exist in compile info.");
     return false;
   }
-  
+
   std::vector<int32_t> info = op_info["_common_info"];
   const uint32_t info_item_count = 6;
   if (info.size() < info_item_count) {
@@ -300,11 +285,7 @@ bool BNReduce::ChooseAtomic() {
 
   for (uint32_t i = 0; i < input_shape.size(); i++) {
     if (IsInVector(reduce_axis, i)) {
-      if (compileInfo.is_keep_dims) {
-        output_shape[i] = 1;
-      } else {
-        output_shape[i] = 0;
-      }
+      output_shape[i] = 1;
       total_reduce_count *= input_shape[i];
     } else {
       output_shape[i] = input_shape[i];
@@ -383,6 +364,11 @@ bool BNReduce::GetUbTilingInfo() {
       }
       if (tilingInfo.ub_tiling_factor > max_ub_tiling_factor) {
         tilingInfo.ub_tiling_factor = max_ub_tiling_factor;
+      }
+      if (tilingInfo.ub_tiling_axis == tilingInfo.block_tiling_axis &&
+            tilingInfo.block_tiling_factor / tilingInfo.ub_tiling_factor == 1) {
+        tilingInfo.ub_tiling_factor = tilingInfo.block_tiling_factor % 2 == 0 ?
+            tilingInfo.block_tiling_factor / 2 : tilingInfo.ub_tiling_factor;
       }
       OP_LOGD(op_type, "ub axis = %d, factor = %lld",
               tilingInfo.ub_tiling_axis, tilingInfo.ub_tiling_factor);
@@ -529,45 +515,15 @@ bool BNReduce::ProcessAtomicTiling() {
 bool BNReduce::Init() {
   if (op_paras.inputs.size() <= 0 || op_paras.inputs[0].tensor.size() <= 0) {
     OP_LOGE(op_type, "input shape error.");
-    return false;    
+    return false;
   }
-    
+
   input_shape_ori = op_paras.inputs[0].tensor[0].shape;
   OP_LOGD(op_type, "Init input_shape_ori = %s", (ge::DebugString(input_shape_ori)).c_str());
 
   // Get ori reduce aixs
-  if (op_paras.const_inputs.find("axes") != op_paras.const_inputs.end()) {
-    // axis_unknown
-    const std::string &axis_type = op_paras.inputs[1].tensor[0].dtype;
-    TeConstTensorData reduce_axis_info = op_paras.const_inputs.at("axes");
-    auto size = std::get<1>(reduce_axis_info);
-
-    if (axis_type == "int32") {
-      int count = size / sizeof(int32_t);
-      const int32_t* data_addr = reinterpret_cast<const int32_t*>(std::get<0>(reduce_axis_info));
-      reduce_axis_ori.resize(count);
-      for (int i = 0; i < count; i++) {
-        reduce_axis_ori[i] = *data_addr;
-        data_addr++;
-      }
-    } else if (axis_type == "int64") {
-      int count = size / sizeof(int64_t);
-      const int64_t* data_addr = reinterpret_cast<const int64_t*>(std::get<0>(reduce_axis_info));
-      reduce_axis_ori.resize(count);
-      for (int i = 0; i < count; i++) {
-        reduce_axis_ori[i] = static_cast<int32_t>(*data_addr);
-        data_addr++;
-      }
-    } else {
-      OP_LOGE(op_type, "input data type = %s is invalid.", axis_type.c_str());
-      return false;
-    }
-
-  } else {
-    // axis_known
-    reduce_axis_ori = op_info.at("ori_axis").get<std::vector<int32_t>>();
-    OP_LOGD(op_type, "Init get ori reduce axis = %s", (ge::DebugString(reduce_axis_ori)).c_str());
-  }
+  reduce_axis_ori = op_info.at("ori_axis").get<std::vector<int32_t>>();
+  OP_LOGD(op_type, "Init get ori reduce axis = %s", (ge::DebugString(reduce_axis_ori)).c_str());
 
   // Convert reduce axis (-1 -> length+1)
   // CHECK AXIS VALUE
@@ -594,8 +550,7 @@ bool BNReduce::Init() {
 bool BNReduce::WriteTilingData() {
   if (compileInfo.is_const_post) {
     // runtime
-    ConstInputProcPost();
-    return true;
+    return ConstInputProcPost();
   }
 
   if (compileInfo.is_const) {
@@ -985,5 +940,5 @@ bool BNReduceTiling(const std::string& op_type, const TeOpParas& op_paras, const
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(BnTrainingReduce, BNReduceTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingReduce, BNReduceTiling);
 }  // namespace optiling

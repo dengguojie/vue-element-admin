@@ -175,7 +175,7 @@ def bn_training_reduce_compute(x, sum, square_sum, axis, kernel_name="bn_trainin
 
 
 # pylint: disable=too-many-locals, too-many-statements
-@register_operator("BnTrainingReduce", pattern=BN_REDUCE)
+@register_operator("BNTrainingReduce", pattern=BN_REDUCE)
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
@@ -301,6 +301,8 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
         tbe_context.get_context().add_compile_info("ori_const_shape", dup_x['shape'])
     else:
         dup_x['mode'] = ORIGINAL
+        dup_x['shape'][0] = -1
+        dup_x['range'][0] = (1, None)
 
     shape_len = len(x['shape'])
 

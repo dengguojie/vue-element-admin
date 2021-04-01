@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("BnTrainingReduce", "impl.dynamic.bn_training_reduce", "bn_training_reduce")
+ut_case = OpUT("BNTrainingReduce", "impl.dynamic.bn_training_reduce", "bn_training_reduce")
 
 
 # pylint: disable=too-many-arguments

@@ -81,13 +81,16 @@ def op_select_format(x, sum, square_sum,
     else:
         input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                datatype="float16, float, float16, float",
-                                               format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+                                               format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0",
+                                               unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
         output0 = util_select_op_base.gen_param(classify="output0", name="sum",
                                                 datatype="float, float, float, float",
-                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0",
+                                                unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
         output1 = util_select_op_base.gen_param(classify="output1", name="square_sum",
                                                 datatype="float, float, float, float",
-                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
+                                                format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0",
+                                                unknownshape_format="NC1HWC0, NC1HWC0, NDC1HWC0, NDC1HWC0")
 
     param_list = [input0, output0, output1]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
