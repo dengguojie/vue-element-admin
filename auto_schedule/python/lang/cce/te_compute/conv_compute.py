@@ -27,8 +27,8 @@ def is_support_v200():
     True:  Ascend610/Ascend615/Ascend710/Hi3796CV300CS version
     False: Other version
     """
-    warnings.warn("te.lang.cce.te_compute.conv_compute is expired, " \
-        "please replace it with tbe.dsl.compute.conv_compute",
+    warnings.warn("te.lang.cce.te_compute.conv_compute.is_support_v200 is deprecated, " \
+        "please replace it with tbe.dsl.compute.conv_compute.is_support_v200",
                   DeprecationWarning)
     from tbe.dsl.compute.conv_compute import is_support_v200 as new_is_support_v200
     return new_is_support_v200()
@@ -67,8 +67,8 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
     None
 
     """
-    warnings.warn("te.lang.cce.te_compute.conv_compute is expired, " \
-        "please replace it with tbe.dsl.compute.conv_compute",
+    warnings.warn("te.lang.cce.te_compute.conv_compute.check_conv_shape is deprecated, " \
+        "please replace it with tbe.dsl.compute.conv_compute.check_conv_shape",
                   DeprecationWarning)
     from tbe.dsl.compute.conv_compute import check_conv_shape as new_check_conv_shape
     return new_check_conv_shape(shape_in, shape_w, pad_top, pad_bottom, pad_left,
@@ -81,8 +81,8 @@ def conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
     """
     This is conv compress compute.
     """
-    warnings.warn("te.lang.cce.te_compute.conv_compute is expired, " \
-        "please replace it func tbe.dsl.compute.conv_compute",
+    warnings.warn("te.lang.cce.te_compute.conv_compute.conv_compress is deprecated, " \
+        "please replace it func tbe.dsl.compute.conv_compute.conv_compress",
                   DeprecationWarning)
     from tbe.dsl.compute.conv_compute import conv_compress as new_conv_compress
     return new_conv_compress(inputs, weight_compress, compress_index, compress_index_shape,
@@ -106,8 +106,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     -------
     tensor: res
     """
-    warnings.warn("te.lang.cce.te_compute.conv_compute is expired, " \
-        "please replace it with func tbe.dsl.compute.conv_compute",
+    warnings.warn("te.lang.cce.te_compute.conv_compute.conv is deprecated, " \
+        "please replace it with func tbe.dsl.compute.conv_compute.conv",
                   DeprecationWarning)
     from tbe.dsl.compute.conv_compute import conv as new_conv
     return new_conv(data, weight, para_dict, optim_dict, dsl_flag)

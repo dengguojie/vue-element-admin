@@ -50,8 +50,8 @@ def max_pool_compute(input_data,  # pylint: disable=too-many-arguments
     res:
         The result of max pooling
     """
-    warnings.warn("te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute is expired, " \
-        "please replace it with tbe.dsl.compute.max_pool2d_3_2_fusion_compute",
+    warnings.warn("te.lang.cce.te_compute.max_pool2d_3_2_fusion_compute.max_pool_compute is deprecated, " \
+        "please replace it with tbe.dsl.compute.max_pool2d_3_2_fusion_compute.max_pool_compute",
                   DeprecationWarning)
     from tbe.dsl.compute.max_pool2d_3_2_fusion_compute import max_pool_compute as new_max_pool_compute
     return new_max_pool_compute(input_data, ksize, strides, pad_mode, padding, ceil_mode, data_mode)
