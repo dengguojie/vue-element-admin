@@ -22,7 +22,7 @@
 namespace aicpu {
 class CastCpuKernel : public CpuKernel {
  public:
-  CastCpuKernel() = default;
+  CastCpuKernel();
   ~CastCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
@@ -36,8 +36,8 @@ class CastCpuKernel : public CpuKernel {
   Tensor *y_tensor_;
   DataType x_data_type_;
   DataType y_data_type_;
-  int64_t x_data_size_ = 1;
-  int64_t y_data_size_ = 1;
+  uint64_t x_data_size_;
+  uint64_t y_data_size_;
 };
 }  // namespace aicpu
 #endif // _AICPU_KERNELS_NORMALIZED_CAST_H_

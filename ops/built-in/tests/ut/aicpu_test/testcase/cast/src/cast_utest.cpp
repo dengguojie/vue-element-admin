@@ -44,36 +44,44 @@ void CalcExpectFunc(const NodeDef &node_def, Tin input_type, Tout expect_out[]) 
       .Attr("SrcT", data_types[0])                                 \
       .Attr("DstT", data_types[1]);
 
-#define CAST_CASE_WITH_TYPE(base_type_in, aicpu_type_in, base_type_out,        \
-                            aicpu_type_out)                                    \
-  TEST_F(TEST_CAST_UT, TestCast_##aicpu_type_in##_To_##aicpu_type_out) {       \
-    vector<DataType> data_types = {aicpu_type_in, aicpu_type_out};             \
-    base_type_in input[6] = {(base_type_in)22, (base_type_in)32.3,             \
-                             (base_type_in)-78.0, (base_type_in)-28.5,         \
-                             (base_type_in)77, (base_type_in)0};               \
-    base_type_out output[6] = {(base_type_out)0};                              \
-    vector<void *> datas = {(void *)input, (void *)output};                    \
-    vector<vector<int64_t>> shapes = {{2, 3}, {2, 3}};                         \
-    CREATE_NODEDEF(shapes, data_types, datas);                                 \
-    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
-    base_type_out expect_out[6] = {(base_type_out)0};                          \
-    base_type_in input_type = (base_type_in)0;                                 \
-    CalcExpectFunc(*node_def.get(), input_type, expect_out);                   \
-    CompareResult<base_type_out>(output, expect_out, 6);                       \
-  }          
+#define CAST_CASE_WITH_TYPE(base_type_in, aicpu_type_in, base_type_out,         \
+                            aicpu_type_out, is_empty)                           \
+  TEST_F(TEST_CAST_UT, TestCast_##aicpu_type_in##_To_##aicpu_type_out) {        \
+    if (!is_empty) {                                                            \
+      vector<DataType> data_types = {aicpu_type_in, aicpu_type_out};            \
+      base_type_in input[6] = {(base_type_in)22, (base_type_in)32.3,            \
+                              (base_type_in)-78.0, (base_type_in)-28.5,         \
+                              (base_type_in)77, (base_type_in)0};               \
+      base_type_out output[6] = {(base_type_out)0};                             \
+      vector<void *> datas = {(void *)input, (void *)output};                   \
+      vector<vector<int64_t>> shapes = {{2, 3}, {2, 3}};                        \
+      CREATE_NODEDEF(shapes, data_types, datas);                                \
+      RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                             \
+      base_type_out expect_out[6] = {(base_type_out)0};                         \
+      base_type_in input_type = (base_type_in)0;                                \
+      CalcExpectFunc(*node_def.get(), input_type, expect_out);                  \
+      CompareResult<base_type_out>(output, expect_out, 6);                      \
+    } else {                                                                    \
+      vector<void *> datas = {nullptr, nullptr};                                \
+      vector<vector<int64_t>> shapes = {{}, {}};                                \
+      vector<DataType> data_types = {aicpu_type_in, aicpu_type_out};            \
+      CREATE_NODEDEF(shapes, data_types, datas);                                \
+      RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                             \
+    }                                                                           \
+  }
 
-CAST_CASE_WITH_TYPE(float, DT_FLOAT, int8_t, DT_INT8)
+CAST_CASE_WITH_TYPE(float, DT_FLOAT, int8_t, DT_INT8, false)
 
-CAST_CASE_WITH_TYPE(float, DT_FLOAT, int16_t, DT_INT16)
+CAST_CASE_WITH_TYPE(float, DT_FLOAT, int16_t, DT_INT16, false)
 
-CAST_CASE_WITH_TYPE(float, DT_FLOAT, int32_t, DT_INT32)
+CAST_CASE_WITH_TYPE(float, DT_FLOAT, int32_t, DT_INT32, false)
 
-CAST_CASE_WITH_TYPE(float, DT_FLOAT, int64_t, DT_INT64)
+CAST_CASE_WITH_TYPE(float, DT_FLOAT, int64_t, DT_INT64, false)
 
-CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int8_t, DT_INT8)
+CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int8_t, DT_INT8, false)
 
-CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int16_t, DT_INT16)
+CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int16_t, DT_INT16, false)
 
-CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int32_t, DT_INT32)
+CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int32_t, DT_INT32, true)
 
-CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int64_t, DT_INT64)
+CAST_CASE_WITH_TYPE(double, DT_DOUBLE, int64_t, DT_INT64, false)

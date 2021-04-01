@@ -40,6 +40,9 @@ void NodeDefBuilder::BuildNodeFromInputOutputNode(const InputOutputNode& node, b
 	if (node.dims.empty()) {
 		dataSize = GetSizeByDataType(node.dType);
 	}
+	if (node.data == nullptr) {
+		dataSize = 0;
+	}
 	tensor->SetDataSize(dataSize);
 	tensor->SetData(node.data);
 }
