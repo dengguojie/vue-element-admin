@@ -249,47 +249,6 @@ def _check_broadcast_shape(input0, input1, input2, input3, input4,
     shapey = add2_y.get("shape")
     para_check.check_shape(shapey, param_name="add2_y")
 
-    # broadcast mul_3 shape
-    shape0, shapecm3, shape_max_03 = \
-        shape_util.broadcast_shapes(shape0, shapecm3, param_name_input1="input0", param_name_input2="const_mul3_x")
-    # broadcast mul_2 shape
-    shape1, shapecm2, shape_max_02 = \
-        shape_util.broadcast_shapes(shape1, shapecm2, param_name_input1="input1", param_name_input2="const_mul2_x")
-    # broadcast add_1 shape
-    shape_max_02, shape_max_03, shape_max_add1 = shape_util.broadcast_shapes(
-        shape_max_02, shape_max_03, param_name_input1="shape_max_02", param_name_input2="shape_max_03")
-    # broadcast add_2 shape
-    shapey, shape_max_add1, shape_max_add2 = shape_util.broadcast_shapes(
-        shapey, shape_max_add1, param_name_input1="add2_y", param_name_input2="shape_max_add1")
-
-    # broadcast mul_0 shape
-    shape2, shapecm0, shape_max_20 = \
-        shape_util.broadcast_shapes(shape2, shapecm0, param_name_input1="input2", param_name_input2="const_mul_x")
-    # broadcast mul_1 shape
-    shape0, shapecm1, shape_max_01 = \
-        shape_util.broadcast_shapes(shape0, shapecm1, param_name_input1="input0", param_name_input2="const_mul1_x")
-    # broadcast add_0 shape
-    shape_max_20, shape_max_01, shape_max_add0 = shape_util.broadcast_shapes(
-        shape_max_20, shape_max_01, param_name_input1="shape_max_20", param_name_input2="shape_max_01")
-
-    # broadcast truediv_0 shape
-    shape_max_add0, shape_max_add2, shape_max_truediv = shape_util.broadcast_shapes(
-        shape_max_add0, shape_max_add2, param_name_input1="shape_max_add0", param_name_input2="shape_max_add2")
-
-    # broadcast mul_4 shape
-    shape3, shapecm4, shape_max_34 = \
-        shape_util.broadcast_shapes(shape3, shapecm4, param_name_input1="input3", param_name_input2="const_mul4_x")
-    # broadcast add_3 shape
-    shape_max_34, shape_max_truediv, shape_max_add3 = shape_util.broadcast_shapes(
-        shape_max_34, shape_max_truediv, param_name_input1="shape_max_34", param_name_input2="shape_max_truediv")
-
-    # broadcast mul_5 shape
-    shape4, shape_max_add3, shape_max_4add3 = shape_util.broadcast_shapes(
-        shape4, shape_max_add3, param_name_input1="input4", param_name_input2="shape_max_add3")
-    # broadcast sub_0 shape
-    shape3, shape_max_4add3, shape_max_sub = shape_util.broadcast_shapes(
-        shape3, shape_max_4add3, param_name_input1="input3", param_name_input2="shape_max_4add3")
-
     return shape0, shape1, shape2, shape3, shape4, shapecm0, shapecm1, shapecm2, shapecm3, shapecm4, shapey
 
 
