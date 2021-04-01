@@ -34,9 +34,8 @@ export AICPU_KERNEL_TARGET=cust_aicpu_kernels
 # Uncomment and modify it when you need to specify os and architecture.
 # export SYSTEM_INFO=centos_x86_64
 
-
 # The version of soc.
-# export SOC_VERSION=Ascend910
+# export AICPU_SOC_VERSION=Ascend910
 
 ###### The following logic can be used without modification ######
 
