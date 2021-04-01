@@ -25,24 +25,6 @@ using namespace ge;
 using ge::Operator;
 
 namespace domi {
-  static const int DEFAULT_CONCAT_DIM = 0;
-enum OnnxDataType {
-  UNDEFINED = 0,
-  FLOAT = 1,
-  UINT_8 = 2,
-  INT_8 = 3,
-  UINT_16 = 4,
-  INT_16 = 5,
-  INT_32 = 6,
-  INT_64 = 7,
-  STRING = 8,
-  BOOL = 9,
-  FLOAT_16 = 10,
-  DOUBLE = 11,
-  UINT_32 = 12,
-  UINT_64 = 13
-};
-
 Status ParseParamsTopK(const Message* op_src, ge::Operator& op_dest) {
   const ge::onnx::NodeProto* node = reinterpret_cast<const ge::onnx::NodeProto*>(op_src);
   if (node == nullptr) {
