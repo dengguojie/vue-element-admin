@@ -273,7 +273,7 @@ class Conv2dBpInputTiling(CubeTilingOp):
             split_range_flag = False
             fmap_w_tiling = w_range_max
 
-            if ("dx_w" in paras.get("var_map") and self.k_h == 1 and self.k_w == 1 
+            if ("dx_w" in paras.get("var_map") and self.k_h == 1 and self.k_w == 1
                 and (self.pad_mode == "VAR" or sum(self.cur_pads) == 0)):
                 dy_w_tiling = tiling_in.get("CL0_matrix")[1] * tiling_in.get("CL0_matrix")[2]
                 dy_w = self.get_output_w(fmap_w)
@@ -449,15 +449,17 @@ class Conv2dBpInputTiling(CubeTilingOp):
                     m_al0 = m_cl0 = utils.icd(w_value, utils.FP16_M) + 1
             else:
                 k_aub = k_w * k_h * 16
+        n_min = 1
+        group_cl0 = 1
 
         tiling["AUB_shape"] = [k_aub, 1, 1, 1] if k_aub != 1 else None
         tiling["BUB_shape"] = None
         tiling["AL1_shape"] = [k_al1, 1, 1, 1]
         tiling["BL1_shape"] = [k_bl1, 1, 1, 1]
         tiling["AL0_matrix"] = [m_al0, 1, 16, k_al0, 1, 1]
-        tiling["BL0_matrix"] = [1, 1, 16, k_bl0, 1, 1]
-        tiling["CL0_matrix"] = [1, m_cl0, 16, 16, 1, 1]
-        tiling["CUB_matrix"] = [1, m_cl0, 16, 16, 1, 1]
+        tiling["BL0_matrix"] = [1, n_min, 16, k_bl0, 1, 1]
+        tiling["CL0_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
+        tiling["CUB_matrix"] = [n_min, m_cl0, 16, 16, 1, group_cl0]
         tiling["block_dim"] = [1, 1, 1, 1]
         tiling["n_bef_batch_flag"] = 0
         tiling["n_bef_group_flag"] = 0
@@ -492,6 +494,8 @@ class Conv2dBpInputTiling(CubeTilingOp):
             if self.k_h == 1 and self.k_w == 1:
                 if (mc_factor * m0 - utils.FP16_M) > self.a_info[3]:
                     tiling_in["tiling"]["CUB_matrix"][1] -= 1
+                    tiling_in["tiling"]["CL0_matrix"][1] -= 1
+                    tiling_in["tiling"]["AL0_matrix"][0] -= 1
                 else:
                     return {"tiling": self.get_default_tiling(), "A_shape": self.a_info,
                             "B_shape": self.b_info, "C_shape": self.c_info}
