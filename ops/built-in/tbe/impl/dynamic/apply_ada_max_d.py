@@ -132,7 +132,7 @@ def apply_ada_max_d_compute(var,
 
     m = tbe.vadd(m, rhs)
 
-    lhs = tbe.vmuls(v, beta1[0])
+    lhs = tbe.vmuls(v, beta2[0])
 
     rhs = tbe.vabs(grad)
     v = tbe.vmax(lhs, rhs)

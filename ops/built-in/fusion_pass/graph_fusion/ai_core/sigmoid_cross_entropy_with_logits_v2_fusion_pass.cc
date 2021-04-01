@@ -51,6 +51,12 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
 
   // create sigmoid_none desc
   ge::OpDescPtr sigmoidNoneDesc = AttrUtils::CloneOpDesc(sigmoidDesc);
+  std::map<string, uint32_t> input_name_idx;
+  input_name_idx["predict"] = 0;
+  input_name_idx["target"] = 1;
+  input_name_idx["weight"] = 2;
+  input_name_idx["pos_weight"] = 3;
+  sigmoidNoneDesc->UpdateInputName(input_name_idx);
 
   // input
   ge::GeTensorDesc inputTensorDesc = sigmoidNoneDesc->GetInputDesc(0);
@@ -59,7 +65,7 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   ge::GeTensorDesc outputTensorDesc = sigmoidNoneDesc->GetOutputDesc(0);
   outputTensorDesc.SetOriginShape(inputTensorDesc.GetShape());
   outputTensorDesc.SetShape(inputTensorDesc.GetShape());
-  sigmoidNoneDesc->UpdateOutputDesc(0, outputTensorDesc);
+  sigmoidNoneDesc->UpdateOutputDesc("loss", outputTensorDesc);
 
   // create sigmoid_none node
   ge::NodePtr sigmoidNoneNode = graph.AddNode(sigmoidNoneDesc);
@@ -103,7 +109,7 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
   if (inputTensorDesc.GetDataType() == ge::DT_FLOAT16) {
     inputTensorDesc.SetDataType(ge::DT_FLOAT);
   }
-  reduceDesc->AddInputDesc("input_reduce", inputTensorDesc);
+  reduceDesc->AddInputDesc("x", inputTensorDesc);
 
   // output
   ge::GeTensorDesc outputTensorDesc = sigmoidNode->GetOpDesc()->GetOutputDesc(0).Clone();
