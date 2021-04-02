@@ -1842,8 +1842,8 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
   // get attr block_size
   int64_t block_size;
   if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[block_size] failed"));
     return GRAPH_FAILED;
   }
 
@@ -1863,7 +1863,9 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
 
   // if crops are const node, verfify const sizes
   if (crops_done && crops.size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "The crops size must be equal to 4, but got %d.", crops.size());
+    std::string err_msg = ConcatString(
+        "input[crops] data size[", crops.size(),"] not equal 4");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

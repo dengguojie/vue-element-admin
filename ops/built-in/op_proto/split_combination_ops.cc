@@ -1038,8 +1038,8 @@ IMPLEMT_COMMON_INFERFUNC(ConcatInferShape) {
 
   int64_t N;
   if (op.GetAttr("N", N) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "get attr N failed");
-    OpsGetAttrErrReport(op.GetName(), "N");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[N] failed"));
     return GRAPH_FAILED;
   }
 

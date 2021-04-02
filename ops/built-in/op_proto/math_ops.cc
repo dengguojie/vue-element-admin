@@ -660,13 +660,11 @@ IMPLEMT_INFERFUNC(ComplexAbs, ComplexAbsInfer)
     TensorDesc out_desc = op.GetOutputDesc("y");
     DataType Tout;
     if (op.GetAttr("Tout", Tout) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Get attr Tout error.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                         string("get attr[Tout] failed"));
     }
     out_desc.SetDataType(Tout);
-    if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "update y failed");
-        return GRAPH_FAILED;
-    }
+    (void)op.UpdateOutputDesc("y", out_desc);
     return UnchangedShape(op, "x", "y");
 }
 
@@ -676,7 +674,8 @@ IMPLEMT_INFERFUNC(IsNan, IsNanInfer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetDataType(DT_BOOL);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("update output[y] failed."));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");

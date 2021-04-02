@@ -656,7 +656,8 @@ IMPLEMT_INFERFUNC(BroadcastTo, BroadcastToInferShape) {
         DataType input_dtype = op.GetInputDesc("x").GetDataType();
 
         if (dim_num > 1) {
-            OP_LOGE(op.GetName().c_str(), "The dim numbles of constnode are less than one.");
+            std::string err_msg = ConcatString("the rank[", dim_num,"] of input[shape] should not be more than 1");
+            AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
             return GRAPH_FAILED;
         }
 

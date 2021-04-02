@@ -24,6 +24,7 @@
 #include "common/inc/op_log.h"
 #include "candidate_sampling_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 
@@ -141,21 +142,26 @@ INFER_FUNC_REG(AllCandidateSampler, AllCandidateSamplerInfer);
 
 IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   int64_t num_true = 0;
-  op.GetAttr("num_true", num_true);
-
+  if (op.GetAttr("num_true", num_true) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[num_true] failed"));
+  }
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto true_classes_desc = op_desc->MutableInputDesc(0);
   op_desc->SetOpInferDepends({"true_classes", "sampled_candidates"});
 
   GeShape true_classes;
   if (WithRank(true_classes_desc, 2, true_classes) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input true_classes must be 2-D.");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(true_classes_desc->GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t unused_dim = 0;
   if (WithValue(true_classes.GetDim(1), num_true, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(),
-            "Input true_classes dim[1] must equal to attr num_true.");
+    std::string err_msg = ConcatString("failed to call WithValue function, 1th dim[", true_classes.GetDim(1), 
+                                        "] of input[true_classes] not equal attr[", num_true, "]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   
@@ -163,7 +169,9 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   GeShape sampled_candidates;
   if (WithRank(sampled_candidates_desc, 1, sampled_candidates) !=
       GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input sampled_candidates must be 1-D.");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(sampled_candidates_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -202,11 +210,8 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   }
 
   Shape v_dims;
-  if (Vector(count, v_dims) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Fail to gen vDims.");
-    return GRAPH_FAILED;
-  }
-
+  Vector(count, v_dims);
+  
   auto indices_desc = op_desc->MutableOutputDesc(0);
   indices_desc->SetShape(GeShape(v_dims.GetDims()));
   indices_desc->SetDataType(DT_INT32);

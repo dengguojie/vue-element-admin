@@ -20,6 +20,7 @@
  */
 #include "inc/batch_ops.h"
 #include "op_log.h"
+#include "util/error_util.h"
 #include "util/common_shape_fns.h"
 #include "util/lookup_ops_shape_fns.h"
 
@@ -29,7 +30,9 @@ IMPLEMT_INFERFUNC(Batch, BatchInfer) {
     Shape out_shapes;
     if (ReplaceDim(op.GetInputDesc(i).GetShape(), 0, ge::UNKNOWN_DIM, out_shapes, op.GetName().c_str()) ==
         GRAPH_FAILED) {
-      OP_LOGE(op.GetName().c_str(), "input param is error");
+      std::string err_msg = ConcatString(
+        "failed to call ReplaceDim function, the input x_tensors[", i, "] is a real number without 0 dimension " );
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     auto y_tensor_type = op.GetDynamicInputDesc("x_tensors", i).GetDataType();

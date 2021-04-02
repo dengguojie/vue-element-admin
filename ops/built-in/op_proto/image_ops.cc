@@ -695,8 +695,8 @@ IMPLEMT_INFERFUNC(SampleDistortedBoundingBox, SampleDistortedBoundingBoxInfer) {
 
   int64_t image_size_unused_dim;
   int64_t bounding_boxes_unused_dim2;
-  const int64_t kImageSizeDimValue = op.get_input_desc_image_size().GetShape().GetDim(0);
-  const int64_t kBoundingBoxesDim2Value = op.get_input_desc_bounding_boxes().GetShape().GetDim(2);
+  const int64_t kImageSizeDimValue = image_size.GetDim(0);
+  const int64_t kBoundingBoxesDim2Value = bounding_boxes.GetDim(2);
   if (WithValue(kImageSizeDimValue, 3, image_size_unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(),
             "First dimention of input image_size must be 3, real dim is %lld", kImageSizeDimValue);
@@ -845,35 +845,45 @@ IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
   if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
-            boxes_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(boxes_desc->GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
   if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
-            scores_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(scores_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
   if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
-            max_output_size_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t unused_dim;
   if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0] and scores[0].");
+    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
+                                       boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
+                                       scores_shape.GetDim(0), "] of input[scores]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4 but %lld", boxes_shape.GetDim(1));
+    std::string err_msg = ConcatString("0th dim[", boxes_shape.GetDim(1), "] of input[boxes] not equal 4");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -892,43 +902,55 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
   if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
-            boxes_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(boxes_desc->GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
   if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
-            scores_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(scores_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
   if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
-            max_output_size_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
   if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0, real rank is %lld",
-            iou_threshold_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(3,
+        DebugString(iou_threshold_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t unused_dim;
   if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0] and scores[0].");
+    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
+                                       boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
+                                       scores_shape.GetDim(0), "] of input[scores]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4 but %lld", boxes_shape.GetDim(1));
+    std::string err_msg = ConcatString("1th dim[", boxes_shape.GetDim(1), "] of input[boxes] not equal 4.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -947,52 +969,65 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
   if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
-            boxes_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(boxes_desc->GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
   if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
-            scores_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(scores_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
   if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
-            max_output_size_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
   if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0, real rank is %lld",
-            iou_threshold_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(3,
+        DebugString(iou_threshold_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape score_threshold_shape;
   auto score_threshold_desc = op_desc->MutableInputDesc(4);
   if (WithRank(score_threshold_desc, 0, score_threshold_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0, real rank is %lld",
-            score_threshold_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(4,
+        DebugString(score_threshold_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t unused_dim;
   if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to merge boxes[0]=%lld and scores[0]=%lld",
-            boxes_shape.GetDim(0), scores_shape.GetDim(0));
+    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
+                                       boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
+                                       scores_shape.GetDim(0), "] of input[scores]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (boxes_shape.GetDim(1) != 4 && boxes_shape.GetDim(1) != UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4 but %lld", boxes_shape.GetDim(1));
+    std::string err_msg = ConcatString("1th dim[", boxes_shape.GetDim(1), "] of input[boxes] not equal 4.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

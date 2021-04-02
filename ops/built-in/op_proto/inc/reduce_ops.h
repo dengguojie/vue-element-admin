@@ -1143,6 +1143,7 @@ include:
 
 *@par Attributes:
 *@li keep_dims:A bool, An optional bool. Defaults to False. If True, retain reduced dimensions with length 1..
+*@li separator:string.
 
 *@par output:
 *@li output::A Tensor of type string..

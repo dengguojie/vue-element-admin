@@ -339,6 +339,7 @@ REG_OP(StaticRegexFullMatch)
 
 *@par Inputs:
 include:
+*@li input:A Tensor of type string. The text to be processed. 
 *@li segment_ids:A Tensor. Must be one of the following types: int32, int64. 
 *A tensor whose shape is a prefix of data.shape. Negative segment ids are not supported.
 *@li num_segments:A Tensor. Must be one of the following types: int32, int64. A scalar. 

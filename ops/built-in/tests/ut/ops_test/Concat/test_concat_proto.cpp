@@ -1280,3 +1280,9 @@ TEST_F(ConcatD, concatd_data_slice_infer6) {
   auto status = op_desc->InferDataSlice();
   EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(ConcatD, concat_infer_shape_fp161) {
+  ge::op::Concat op;
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

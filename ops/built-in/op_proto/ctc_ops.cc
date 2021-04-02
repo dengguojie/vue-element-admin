@@ -22,6 +22,7 @@
 #include "op_log.h"
 #include "util/common_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(CTCLoss, CTCLossInfer) {
@@ -133,28 +134,34 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
   Shape inputs_shape;
   auto inputs_desc = op.GetInputDesc(0);
   if (WithRank(inputs_desc, 3, inputs_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input inputs rank must be 3, got rank %lld", inputs_desc.GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(0, DebugString(inputs_desc.GetShape().GetDims()), "3D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   Shape sequence_length_shape;
   auto sequence_length_desc = op.GetInputDesc(1);
   if (WithRank(sequence_length_desc, 1, sequence_length_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input sequence_length rank must be 1, got rank %lld",
-            sequence_length_desc.GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1, DebugString(sequence_length_desc.GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t batch_size;
   if (Merge(inputs_shape.GetDim(1), sequence_length_shape.GetDim(0), batch_size) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "merge inputs dim 1 value %lld and sequence_length dim 0 value %lld faild",
-            inputs_shape.GetDim(1), sequence_length_shape.GetDim(0));
+    std::string err_msg = ConcatString("failed to call Merge function, 1th dim[", inputs_shape.GetDim(1),
+                                       "] of input[inputs] not equal 0th dim[", sequence_length_shape.GetDim(0),
+                                       "] of input[sequence_length]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int32_t top_paths;
   if (op.GetAttr("top_paths", top_paths) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "failed to get attr top_paths");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[top_paths] failed"));
     return GRAPH_FAILED;
   }
 
@@ -163,7 +170,8 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetShape(Shape({UNKNOWN_DIM, 2}));
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_indices", i, temp_desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to update dynamic output decoded_indices, id %lld", i);
+      std::string err_msg = ConcatString("update description for output decoded_indices[", i,"] failed");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -173,7 +181,8 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetShape(Shape({UNKNOWN_DIM}));
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_values", i, temp_desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to update dynamic output decoded_indices, id %lld", i);
+      std::string err_msg = ConcatString("update description for dynimic output decoded_values[", i,"] failed");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -183,7 +192,8 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
     temp_desc.SetShape(Shape({2}));
     temp_desc.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("decoded_shape", i, temp_desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "failed to update dynamic output decoded_indices, id %lld", i);
+      std::string err_msg = ConcatString("update description for dynimic output decoded_shape[", i,"] failed");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -192,7 +202,7 @@ IMPLEMT_INFERFUNC(CTCBeamSearchDecoder, CTCBeamSearchDecoderInfer) {
   log_probability_desc.SetShape(Shape({batch_size, top_paths}));
   log_probability_desc.SetDataType(inputs_desc.GetDataType());
   if (op.UpdateOutputDesc("log_probability", log_probability_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "faild to update output log_probability");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[log_probability] failed"));
     return GRAPH_FAILED;
   }
 

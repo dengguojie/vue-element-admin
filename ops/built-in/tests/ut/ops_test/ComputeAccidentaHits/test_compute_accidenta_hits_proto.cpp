@@ -23,18 +23,18 @@
 #include "op_proto_test_util.h"
 #include "candidate_sampling_ops.h"
 
-class ComuteAccidentalHitsTest : public testing::Test {
+class ComputeAccidentalHitsTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "ComuteAccidentalHitsTest SetUp" << std::endl;
+    std::cout << "ComputeAccidentalHitsTest SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "ComuteAccidentalHitsTest TearDown" << std::endl;
+    std::cout << "ComputeAccidentalHitsTest TearDown" << std::endl;
   }
 };
 
-TEST_F(ComuteAccidentalHitsTest, InferShape) {
+TEST_F(ComputeAccidentalHitsTest, InferShape) {
   ge::op::ComputeAccidentalHits op;
   op.UpdateInputDesc("true_classes", create_desc({3, 2}, ge::DT_INT64));
   op.UpdateInputDesc("sampled_candidates", create_desc({5}, ge::DT_INT64));
@@ -61,3 +61,37 @@ TEST_F(ComuteAccidentalHitsTest, InferShape) {
   EXPECT_EQ(weights_desc.GetShape().GetDims(), expected_weights_shape);
 }
 
+TEST_F(ComputeAccidentalHitsTest, InferShape2) {
+  ge::op::ComputeAccidentalHits op;
+  op.UpdateInputDesc("true_classes", create_desc({3, 2}, ge::DT_INT64));
+  op.UpdateInputDesc("sampled_candidates", create_desc({5}, ge::DT_INT64));
+  op.SetAttr("seed", 0);
+  op.SetAttr("seed2", 0);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(ComputeAccidentalHitsTest, InferShape3) {
+  ge::op::ComputeAccidentalHits op;
+  op.UpdateInputDesc("true_classes", create_desc({3, 2, 3}, ge::DT_INT64));
+  op.UpdateInputDesc("sampled_candidates", create_desc({5}, ge::DT_INT64));
+  op.SetAttr("num_true", 3);
+  op.SetAttr("seed", 0);
+  op.SetAttr("seed2", 0);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(ComputeAccidentalHitsTest, InferShape4) {
+  ge::op::ComputeAccidentalHits op;
+  op.UpdateInputDesc("true_classes", create_desc({3, 2}, ge::DT_INT64));
+  op.UpdateInputDesc("sampled_candidates", create_desc({5,4}, ge::DT_INT64));
+  op.SetAttr("num_true", 2);
+  op.SetAttr("seed", 0);
+  op.SetAttr("seed2", 0);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
