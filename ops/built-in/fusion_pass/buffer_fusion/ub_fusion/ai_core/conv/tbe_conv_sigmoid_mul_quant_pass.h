@@ -43,6 +43,10 @@ protected:
   Status GetFusionNodes(const BufferFusionMapping &mapping, vector<ge::NodePtr> &fusion_nodes) override;
 
 private:
+  /*
+   * Set split info for patterns
+   */
+  void SetSplitInfo(const BufferFusionMapping &mapping, std::vector<ge::NodePtr> &fusion_nodes);
   const string fused_op_type_ = "FusedOp";
 };
 

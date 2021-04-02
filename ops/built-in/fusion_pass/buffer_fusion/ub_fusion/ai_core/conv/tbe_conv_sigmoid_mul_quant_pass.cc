@@ -18,6 +18,8 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
+#include "common/lxfusion_json_util.h"
+#include "graph/utils/attr_utils.h"
 
 namespace fe {
 using std::vector;
@@ -72,6 +74,66 @@ vector<BufferFusionPattern*> ConvSigmoidMulQuantFusionPass::DefinePatterns() {
   return patterns;
 }
 
+/*
+ * Set split info for patterns
+ */
+void ConvSigmoidMulQuantFusionPass::SetSplitInfo(const BufferFusionMapping &mapping,
+                                                 std::vector<ge::NodePtr> &fusion_nodes) {
+  vector<ge::NodePtr> conv_nodes = GetMatchedNodesByDescName(PATTERN_CONV, mapping);
+  if (conv_nodes.empty()) {
+    return;
+  }
+  string slice_info = "";
+  ge::AttrUtils::GetStr(conv_nodes[0]->GetOpDesc(), fe::OP_SLICE_INFO, slice_info);
+  OP_LOGD(fused_op_type_.c_str(), "origin op slice info: %s", slice_info.c_str());
+  OpCalcInfo op_calc_info;
+  GetOpSliceInfoFromJson(op_calc_info, slice_info);
+  auto split_maps = op_calc_info.GetAxisSplitMapVec();
+  if (split_maps.empty()) {
+    OP_LOGD(fused_op_type_.c_str(), "axis split map vector is empty");
+    return;
+  }
+
+  // >>> start: get deq_scale mode
+  bool tensor_mode = false;
+  vector<ge::NodePtr> dequant_nodes = GetMatchedNodesByDescName(PATTERN_DEQUANT, mapping);
+  if (dequant_nodes.size() > 0) {
+    auto deq_scale = dequant_nodes[0]->GetOpDesc()->MutableInputDesc("deq_scale");
+    vector<int64_t> scalar = {1};
+    tensor_mode = deq_scale != nullptr && deq_scale->GetOriginShape().GetDims() != scalar;
+  }
+  // <<< end: get deq_scale mode
+
+  // >>> start: process quant and deq_scale
+  vector<ge::NodePtr> quant_nodes = GetMatchedNodesByDescName(PATTERN_QUANT, mapping);
+  bool has_quant = quant_nodes.size() > 0;
+  for (size_t i = 0; i < split_maps.size(); ++i) {
+    auto output_info = split_maps[i].GetOutputSplitInfoVec();
+    std::vector<int64_t> c_out = {1};
+    bool valid = !output_info.empty() && output_info[0].GetAxis() == c_out;
+    if (valid) {
+      if (has_quant) {
+        split_maps.erase(split_maps.begin() + i);
+      } else if (tensor_mode) {
+        InputSplitInfo input_info;
+        input_info.SetIndex(conv_nodes[0]->GetInDataNodes().size());
+        std::vector<int64_t> axis_n = {0};
+        input_info.SetAxis(axis_n);
+        split_maps[i].AddInputSplitInfo(input_info);
+      }
+      break;
+    }
+  }
+  // <<< end: process quant and deq_scale
+
+  op_calc_info.SetAxisSplitMaps(split_maps);
+  SetFusionOpSliceInfoToJson(op_calc_info, slice_info);
+  for (auto fusion_node : fusion_nodes) {
+    ge::AttrUtils::SetStr(fusion_node->GetOpDesc(), fe::FUSION_OP_SLICE_INFO, slice_info);
+  }
+  OP_LOGD(fused_op_type_.c_str(), "set fusion op slice info: %s", slice_info.c_str());
+}
+
 Status ConvSigmoidMulQuantFusionPass::GetFusionNodes(const BufferFusionMapping &mapping,
                                                      vector<ge::NodePtr> &fusion_nodes) {
   OP_LOGD(fused_op_type_.c_str(), "Begin to do ConvSigmoidMulQuantFusionPass.");
@@ -112,6 +174,7 @@ Status ConvSigmoidMulQuantFusionPass::GetFusionNodes(const BufferFusionMapping &
       }
     }
   }
+  SetSplitInfo(mapping, fusion_nodes);
   OP_LOGD(fused_op_type_.c_str(), "End to do ConvSigmoidMulQuantFusionPass.");
   return SUCCESS;
 }
