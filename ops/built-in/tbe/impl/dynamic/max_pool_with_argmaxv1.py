@@ -18,8 +18,8 @@ max_pool_with_argmaxv1
 """
 
 import te
-from te import tik
-from te.platform.cce_conf import CceProductParams
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 
 # min value of fp16
@@ -46,10 +46,10 @@ DT_INT32 = 3
 DT_INT64 = 9
 SCALAR_255 = 255
 # get available ub size
-UB_SIZE = CceProductParams().getParams("Unified_Buffer")
+UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
 # get available l1 size
-L1_SIZE = CceProductParams().getParams("L1_Buffer")
+L1_SIZE = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
 # pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
