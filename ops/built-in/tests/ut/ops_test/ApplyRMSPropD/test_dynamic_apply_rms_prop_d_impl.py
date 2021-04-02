@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ApplyRmsPropD ut case
 """
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ApplyRMSPropD", "impl.dynamic.apply_rms_prop_d", "apply_rms_prop_d")
@@ -63,5 +62,4 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case2)
 
 # pylint: disable=consider-using-sys-exit
 if __name__ == "__main__":
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
+    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])

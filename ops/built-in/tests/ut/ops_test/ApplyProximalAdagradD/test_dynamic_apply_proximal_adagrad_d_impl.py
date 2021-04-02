@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ApplyProximalAdagradD ut case
 """
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ApplyProximalAdagradD", "impl.dynamic.apply_proximal_adagrad_d", "apply_proximal_adagrad_d")
@@ -65,5 +64,4 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case2)
 
 # pylint: disable=consider-using-sys-exit
 if __name__ == "__main__":
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
+    ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])

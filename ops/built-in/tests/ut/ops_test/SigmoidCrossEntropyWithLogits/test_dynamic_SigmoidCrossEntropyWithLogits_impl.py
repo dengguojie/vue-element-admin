@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("SigmoidCrossEntropyWithLogits", "impl.dynamic.sigmoid_cross_entropy_with_logits", "sigmoid_cross_entropy_with_logits")
@@ -41,6 +40,4 @@ ut_case.add_case("all", gen_dynamic_case((5, -1), (-1, -1), ((5, 50), (1, None))
                                          "success"))
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

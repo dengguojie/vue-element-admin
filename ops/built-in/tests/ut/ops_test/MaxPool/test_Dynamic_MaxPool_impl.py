@@ -80,7 +80,4 @@ ut_case.add_case("all",
                                           "NC1HWC0","NHWC","float16",[1,1,1,1],[1,1,1,1],"XXX","NHWC","max_pool_case", RuntimeError))
 
 if __name__ == '__main__':
-    import tbe
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

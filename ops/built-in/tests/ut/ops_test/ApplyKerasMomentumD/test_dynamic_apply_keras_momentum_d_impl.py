@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ApplyFtrlV2D ut case
 """
-import te
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ApplyKerasMomentumD", "impl.dynamic.apply_keras_momentum_d",
@@ -42,6 +41,4 @@ ut_case.add_case("Ascend910A", case1)
 
 # pylint: disable=consider-using-sys-exit
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

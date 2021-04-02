@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ApproximateEqual ut case
 """
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ApproximateEqual", "impl.dynamic.approximate_equal", "approximate_equal")
@@ -33,6 +32,4 @@ ut_case.add_case("Ascend910A", case1)
 
 # pylint: disable=consider-using-sys-exit
 if __name__ == "__main__":
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

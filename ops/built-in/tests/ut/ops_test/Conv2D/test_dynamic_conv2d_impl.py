@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 import conv2D_ut_testcase as tc
-import tbe
 from te import tvm
 from impl.util.util_cube_dynamic import Conv2dParaProcess
 
@@ -41,6 +40,4 @@ print("adding Connv2D dyanmic op param process")
 ut_case.add_cust_test_func(test_func=test_conv2d_param_process)
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

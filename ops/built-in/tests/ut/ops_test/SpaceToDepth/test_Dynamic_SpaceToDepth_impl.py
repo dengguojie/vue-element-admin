@@ -44,7 +44,4 @@ ut_case.add_case(
                                   "spacetodepth_case", 2, "success"))
 
 if __name__ == '__main__':
-    import te
-    with te.op.dynamic():
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

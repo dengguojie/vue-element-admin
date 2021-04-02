@@ -138,6 +138,4 @@ for error_case in matmul_case_error:
     ut_case.add_case("Ascend910A", gen_matmul_dynamic_errorcase(*error_case))
 
 if __name__ == "__main__":
-    import tbe
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run()
+    ut_case.run()

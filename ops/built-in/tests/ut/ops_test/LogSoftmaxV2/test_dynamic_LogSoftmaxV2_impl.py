@@ -51,6 +51,4 @@ ut_case.add_case(["Ascend910A"],
                                        "float32", -0, "dynamic_logsoftmax_v2_4", "success"))
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
-    exit(0)
+    ut_case.run("Ascend910A")

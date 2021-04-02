@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("DynamicConcat", "impl.dynamic.concat_d", "concat_d")
@@ -138,6 +137,4 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"],
 #                   "support_expect": True})
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

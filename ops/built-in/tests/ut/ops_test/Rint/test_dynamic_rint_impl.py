@@ -4,7 +4,6 @@
 ut_test_dynamic_rint
 '''
 from op_test_frame.ut import OpUT
-import te
 
 ut_case = OpUT("Rint", "impl.dynamic.rint", "rint")
 
@@ -26,5 +25,4 @@ ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run(["Ascend310", "Ascend910A"])
+    ut_case.run(["Ascend310", "Ascend910A"])

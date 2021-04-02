@@ -186,6 +186,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if not case_name:
             self._auto_gen_case_name_count += 1
             case_name = "test_%s_auto_case_name_%d" % (self.op_type, self._auto_gen_case_name_count)
+        case_name = "_".join([self.op_type, str(self.imply_type.value), case_name])
         # case_name duplicated, auto change name to xxx__1, xxx__2
         if case_name in self._case_info_map.keys():
             idx = 1
@@ -514,8 +515,9 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             return True
         return False
 
-    def _get_kernel_name(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase) -> str:
-        return "_".join([self.op_type, str(self.imply_type.value), case_info.case_name, run_soc_version.lower()])
+    @staticmethod
+    def _get_kernel_name(run_soc_version: str, case_info: op_ut_case_info.OpUTCase) -> str:
+        return "_".join([case_info.case_name, run_soc_version.lower()])
 
     @staticmethod
     def _get_compile_info_file_name(kernel_name):

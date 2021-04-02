@@ -4,7 +4,6 @@
 ut_test_dynamic_apply_add_sign_d
 '''
 from op_test_frame.ut import OpUT
-import te
 
 ut_case = OpUT("SquareSumV1",
                "impl.dynamic.square_sum_v1",
@@ -30,5 +29,4 @@ ut_case.add_case(["Ascend310", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend910A"], case2)
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run(["Ascend910A", "Ascend310"])
+    ut_case.run(["Ascend910A", "Ascend310"])

@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
-import tbe
 
 ut_case = OpUT("DivNoNan", "impl.dynamic.div_no_nan", "div_no_nan")
 
@@ -80,5 +79,4 @@ ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
 
 if __name__ == "__main__":
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

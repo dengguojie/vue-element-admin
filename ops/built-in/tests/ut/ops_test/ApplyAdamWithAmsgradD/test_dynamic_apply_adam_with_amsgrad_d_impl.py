@@ -4,7 +4,6 @@
 ut_test_dynamic_apply_adam_with_amsgrad_d
 '''
 from op_test_frame.ut import OpUT
-import te
 
 ut_case = OpUT("ApplyAdamWithAmsgradD",
                "impl.dynamic.apply_adam_with_amsgrad_d",
@@ -43,5 +42,4 @@ ut_case.add_case("Ascend910A", case1)
 
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run(["Ascend910A", "Ascend310"])
+    ut_case.run(["Ascend910A", "Ascend310"])

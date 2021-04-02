@@ -3,7 +3,6 @@
 '''
 test_SigmoidCrossEntropyWithLogitsGradV2_dynamic
 '''
-import tbe
 from op_test_frame.ut import OpUT
 ut_case = OpUT("SigmoidCrossEntropyWithLogitsGradV2",
                "impl.dynamic.sigmoid_cross_entropy_with_logits_grad_v2",
@@ -49,5 +48,4 @@ ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run(["Ascend910A"])
+    ut_case.run(["Ascend910A"])

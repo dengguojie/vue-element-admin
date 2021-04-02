@@ -5,7 +5,6 @@ ut_test_dynamic_pow
 '''
 
 from op_test_frame.ut import OpUT
-import te
 
 ut_case = OpUT("Pow", "impl.dynamic.pow", "pow")
 
@@ -40,5 +39,4 @@ ut_case.add_case("all", case3)
 
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

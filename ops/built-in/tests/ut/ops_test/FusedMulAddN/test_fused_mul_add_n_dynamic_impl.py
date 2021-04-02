@@ -3,7 +3,6 @@
 '''
 test for FusedMulAddN
 '''
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("FusedMulAddN", "impl.dynamic.fused_mul_add_n", "fused_mul_add_n")
@@ -87,5 +86,4 @@ ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

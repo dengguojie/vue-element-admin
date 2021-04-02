@@ -3,7 +3,6 @@
 '''
 test for SquaredDifference
 '''
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("SquaredDifference", "impl.dynamic.squared_difference", "squared_difference")
@@ -190,5 +189,4 @@ ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_case(["Ascend910A"], case6)
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

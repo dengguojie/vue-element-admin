@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 #  pylint: disable=invalid-name,missing-module-docstring
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("AccumulateNV2", "impl.dynamic.accumulate_nv2", "accumulate_nv2")
@@ -32,5 +31,4 @@ ut_case.add_case("all",
                  gen_dynamic_accumulate_nv2_case((-1,), ((1, None),), "float32", 3,
                                         "dynamic_add_n_fp32_ND", "failed"))
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

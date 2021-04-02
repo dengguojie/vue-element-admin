@@ -186,6 +186,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         if not case_name:
             self._auto_gen_case_name_count += 1
             case_name = "test_%s_auto_case_name_%d" % (self.op_type, self._auto_gen_case_name_count)
+        case_name = "_".join([self.op_type, str(self.imply_type.value), case_name])
         # case_name duplicated, auto change name to xxx__1, xxx__2
         if case_name in self._case_info_map.keys():
             idx = 1
@@ -235,7 +236,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if not stack.filename.endswith("op_ut.py"):
                 case_line_num = stack.lineno
                 break
-
+            
         case_info = self._build_op_ut_case_info(support_soc, case, case_line_num=case_line_num)
         self._case_info_map[case_info.case_name] = case_info
 
@@ -516,7 +517,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def _get_kernel_name(run_soc_version: str, case_info: op_ut_case_info.OpUTCase) -> str:
-        return case_info.case_name + "_" + run_soc_version.lower()
+        return "_".join([case_info.case_name, run_soc_version.lower()])
 
     @staticmethod
     def _get_compile_info_file_name(kernel_name):
@@ -542,7 +543,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         return json.loads(compile_info_str)
 
     def _call_op_func(self, run_soc_version: str, op_func, case_info: op_ut_case_info.OpUTCase, check_exist=False):
-        kernel_name = case_info.case_name + "_" + run_soc_version.lower()
+        kernel_name = self._get_kernel_name(run_soc_version, case_info)
         if not case_info.addition_params:
             addition_params = {"kernel_name": kernel_name}
         else:

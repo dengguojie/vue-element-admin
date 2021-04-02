@@ -52,7 +52,5 @@ ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
 
 if __name__ == '__main__':
-    import te
 
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
+    ut_case.run("Ascend910A")

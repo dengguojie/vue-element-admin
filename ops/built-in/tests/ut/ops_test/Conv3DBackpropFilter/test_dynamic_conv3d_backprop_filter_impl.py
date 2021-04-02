@@ -71,8 +71,4 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(case2, "success", "dynamic_SAME_strides_2_2_2_case", True))
 
 if __name__ == '__main__':
-    import tbe
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run()
-    exit(0)
-
+    ut_case.run()

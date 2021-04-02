@@ -4,7 +4,6 @@
 ut_test_dynamic_apply_add_sign_d
 '''
 from op_test_frame.ut import OpUT
-import te
 
 ut_case = OpUT("ApplyAddSignD",
                "impl.dynamic.apply_add_sign_d",
@@ -36,5 +35,4 @@ ut_case.add_case("Ascend910A", case1)
 
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run(["Ascend910A"])
+    ut_case.run(["Ascend910A"])

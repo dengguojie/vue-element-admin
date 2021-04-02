@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Acos ut case
 """
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("Acos", "impl.dynamic.acos", "acos")
@@ -33,5 +32,4 @@ case1 = {
 ut_case.add_case("Ascend910A", case1)
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

@@ -14,7 +14,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 NMSWithMask dynamic ut case
 """
 from op_test_frame.ut import OpUT
-import tbe
 
 ut_case = OpUT("NMSWithMask", "impl.dynamic.nms_with_mask", "nms_with_mask")
 
@@ -34,5 +33,4 @@ ut_case.add_case(["Ascend910A"], {"params": [
 
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

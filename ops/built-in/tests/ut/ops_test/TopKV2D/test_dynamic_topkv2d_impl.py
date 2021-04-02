@@ -15,7 +15,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Dynamic Topk ut case
 """
-import tbe
 from op_test_frame.ut import OpUT
 
 
@@ -35,5 +34,4 @@ case1 = {"params": [{"shape": (1, 16), "dtype": "float16", "ori_shape": (1, 16),
 ut_case.add_case(["Ascend910A"], case1)
 
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run(["Ascend910A"])
+    ut_case.run(["Ascend910A"])

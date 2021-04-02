@@ -81,7 +81,7 @@ def main(argv):
 
     if ops_tag:
         print("[INFO]Run ops ut case!!!")
-        frame_path = os.path.join(root_path, 'tools', 'ops_test_frame',
+        frame_path = os.path.join(root_path, 'tools', 'op_test_frame',
                                   'python')
         os.environ['PYTHONPATH'] = ':'.join([frame_path, python_path])
         run_file_path = os.path.join(root_path, "ops", "built-in", "tests",

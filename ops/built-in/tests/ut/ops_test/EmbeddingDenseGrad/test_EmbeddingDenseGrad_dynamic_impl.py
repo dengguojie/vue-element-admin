@@ -180,7 +180,4 @@ ut_case.add_case("all", case11)
 ut_case.add_case("all", case12)
 
 if __name__ == '__main__':
-    import te
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
-
+    ut_case.run("Ascend910A")

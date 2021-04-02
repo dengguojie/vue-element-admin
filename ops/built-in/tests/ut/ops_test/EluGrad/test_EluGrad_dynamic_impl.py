@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("EluGrad", "impl.dynamic.elu_grad", "elu_grad")
@@ -18,5 +17,5 @@ case1 = {
 
 # ut_case.add_case(["Ascend910A", "Ascend610", "Ascend710"], case1)
 
-with te.op.dynamic():
+if __name__ == "__main__":
     ut_case.run(["Ascend910A", "Ascend610", "Ascend710"])

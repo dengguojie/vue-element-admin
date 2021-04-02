@@ -48,7 +48,4 @@ ut_case.add_case("Ascend910A",
                                            "int32", "dynamic_unsorted_segment_sum_case", "success"))
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 if __name__ == '__main__':
-    import tbe
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

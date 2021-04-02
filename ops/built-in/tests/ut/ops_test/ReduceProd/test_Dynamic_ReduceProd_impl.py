@@ -31,9 +31,4 @@ ut_case.add_case(
                                        (1,), [(1,1),], "uint8", "ND", (-1,3,-1,2), (1, ),
                                        True, "dynamic_reduce_prod_uint8_ND", "success"))
 if __name__ == '__main__':
-    import tbe
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
-
-
+    ut_case.run("Ascend910A")

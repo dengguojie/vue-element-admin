@@ -177,6 +177,4 @@ ut_case.add_case("all", case6)
 ut_case.add_case("all", case7)
 
 if __name__ == '__main__':
-    import tbe
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

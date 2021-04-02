@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("TransData", "impl.dynamic.trans_data", "trans_data")
@@ -249,6 +248,4 @@ ut_case.add_case(["Ascend910A"],
                                     "float32", "NCDHW", "NDC1HWC0", "case_43", "success"))
                                     
 if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    exit(0)
+    ut_case.run("Ascend910A")

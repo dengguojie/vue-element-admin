@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import tbe
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("ReduceMax", "impl.dynamic.reduce_max", "reduce_max")
@@ -27,7 +26,4 @@ ut_case.add_case("all", gen_dynamic_reduce_max_case((-1,3,-1,2), [(1,None), (3,3
                                        True, "dynamic_reduce_max_fp16_ND", "success"))
 
 if __name__ == "__main__":
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run("Ascend910A")
-    
-    
+    ut_case.run("Ascend910A")

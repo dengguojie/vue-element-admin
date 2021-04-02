@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ApplyProximalGradientDescent ut case
 """
-import tbe
 
 from op_test_frame.ut import OpUT
 
@@ -78,5 +77,4 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case3)
 
 # pylint: disable=consider-using-sys-exit
 if __name__ == "__main__":
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
+    ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])

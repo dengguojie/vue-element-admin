@@ -41,8 +41,4 @@ ut_case.add_case(["Ascend910A"],
                                       "float32", "dynamic_softmax_grad_2", "success"))
 
 if __name__ == '__main__':
-    with te.op.dynamic():
-        ut_case.run("Ascend910")
-    exit(0)
-
-
+    ut_case.run("Ascend910A")

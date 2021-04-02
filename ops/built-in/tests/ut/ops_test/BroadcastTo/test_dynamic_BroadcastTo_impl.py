@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import te
 from op_test_frame.ut import OpUT
 
 ut_case = OpUT("BroadcastTo", "impl.dynamic.broadcast_to", "broadcast_to")
@@ -26,5 +25,4 @@ ut_case.add_case("Ascend910A", gen_dynamic_broadcast_to_case((1, 1, -1), ((1, 1)
 
 
 if __name__ == "__main__":
-    with te.op.dynamic():
-        ut_case.run("Ascend910A")
+    ut_case.run("Ascend910A")

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import tbe
 import numpy as np
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
@@ -161,6 +160,4 @@ ut_case.add_precision_case("Ascend910A",
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
     ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-    #with tbe.common.context.op_context.OpContext("dynamic"):
-    #    ut_case.run("Ascend910A")
-    #exit(0)
+#    ut_case.run("Ascend910A")
