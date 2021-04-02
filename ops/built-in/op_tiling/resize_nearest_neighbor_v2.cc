@@ -153,6 +153,43 @@ static void GetTilingParamForDefault(const ResizeNearestNeighborV2CompileParams&
   tiling_params.cut_height_num = tiling_params.cut_height_num != 0 ? tiling_params.cut_height_num : 1;
 }
 
+static void GetTilingParamForResizeNearestNeighborV2Default(const ResizeNearestNeighborV2CompileParams& compile_params,
+                                     const bool is_w_nw,
+                                     ResizeNearestNeighborV2TilingParams& tiling_params) {
+  auto h_max = (tiling_params.input_height + compile_params.core_num - 1) / compile_params.core_num;
+  h_max = (tiling_params.input_height + h_max - 1) / h_max;
+  auto image_batch_c1 = tiling_params.input_batch * tiling_params.input_c1;
+  auto w_max = (tiling_params.input_weight + compile_params.core_num - 1) / compile_params.core_num;
+  w_max = (tiling_params.input_weight + w_max - 1) / w_max;
+  for (int64_t i = 0; i < compile_params.core_num; ++i) {
+    int64_t cut_weight_num_tmp = pow(2, i);
+    if (cut_weight_num_tmp > compile_params.core_num) {
+      tiling_params.cut_weight_num = min(cut_weight_num_tmp / 2, w_max);
+      break;
+    }
+    int64_t w_sigment = (tiling_params.input_weight + cut_weight_num_tmp - 1) / cut_weight_num_tmp;
+    if (w_sigment <= 256) {
+      tiling_params.cut_weight_num = min(cut_weight_num_tmp, w_max);
+      break;
+    }
+  }
+  auto left_core_num = compile_params.core_num / tiling_params.cut_weight_num;
+  auto nc_max = (image_batch_c1 + left_core_num - 1) / left_core_num;
+  nc_max = (image_batch_c1 + nc_max - 1) / nc_max;
+  // when w_cut * NC1 > compile_params.max_w_sigment, will cut NC1 first
+  int64_t w_sigment = (tiling_params.input_weight + tiling_params.cut_weight_num - 1) / tiling_params.cut_weight_num;
+  auto image_batch_c1_w = image_batch_c1 * min(w_sigment, int64_t(128));
+  auto nc_cut_by_compile = (image_batch_c1_w + compile_params.max_w_len - 1) / compile_params.max_w_len;
+  if (image_batch_c1_w > compile_params.max_w_len) {
+    tiling_params.cut_batch_c1_num = min(nc_cut_by_compile, nc_max);
+    tiling_params.cut_batch_c1_num = max(int64_t(1), tiling_params.cut_batch_c1_num);
+    left_core_num = compile_params.core_num / (tiling_params.cut_weight_num * tiling_params.cut_batch_c1_num);
+  }
+  // cut h
+  tiling_params.cut_height_num = min(left_core_num, h_max);
+  tiling_params.cut_height_num = tiling_params.cut_height_num != 0 ? tiling_params.cut_height_num : 1;
+}
+
 static bool GetTilingParam(const ResizeNearestNeighborV2CompileParams& compile_params,
                            ResizeNearestNeighborV2TilingParams& tiling_params) {
   // check whether h,w to nh,nw
@@ -183,6 +220,39 @@ static bool GetTilingParam(const ResizeNearestNeighborV2CompileParams& compile_p
     // 1. first cut by w to get more nc1
     // 2. second cut h
     GetTilingParamForDefault(compile_params, is_w_nw, tiling_params);
+  }
+  tiling_params.tiling_key = tiling_params.tiling_key + h_tiling_align_flag * HEIGHT_ALIGN_FLAG
+                             + w_tiling_align_flag * WEIGHT_ALIGN_FLAG;
+  return true;
+}
+
+static bool GetTilingParamResizeNearestNeighborV2Grad(const ResizeNearestNeighborV2CompileParams& compile_params,
+                           ResizeNearestNeighborV2TilingParams& tiling_params) {
+  // check whether h,w to nh,nw
+  bool is_h_nh = ((tiling_params.output_height % tiling_params.input_height == 0
+                   &&  compile_params.align_corners + compile_params.half_pixel_centers == 0)
+                  || (tiling_params.output_height == tiling_params.input_height));
+  bool is_w_nw = ((tiling_params.output_weight % tiling_params.input_weight == 0
+                   &&  compile_params.align_corners + compile_params.half_pixel_centers == 0)
+                  || tiling_params.output_weight == tiling_params.input_weight);
+  // h is not h-> mh and  w -> nw, will run output cut branch
+  // is the n is too large (> 100), will not use hign performance branch
+  is_w_nw = (!is_h_nh && tiling_params.output_weight > tiling_params.input_weight * 100) ? false : is_w_nw;
+  // h is h-> mh and  w -> nw, n > max_w_len,  will not use hign performance branch
+  is_w_nw = (is_h_nh && tiling_params.output_weight > tiling_params.input_weight * compile_params.max_w_len)
+            ? false : is_w_nw;
+  int64_t h_tiling_align_flag = 0;
+  int64_t w_tiling_align_flag = is_w_nw ? 1 : 0;
+
+  if (is_h_nh && is_w_nw) {
+    // process h * w, so cut by nc1 first from input
+    h_tiling_align_flag = 1;
+    GetTilingParamForHW2MHNW(compile_params, tiling_params);
+  } else {
+    // process nc1 * w
+    // 1. first cut by w to get more nc1
+    // 2. second cut h
+    GetTilingParamForResizeNearestNeighborV2Default(compile_params, is_w_nw, tiling_params);
   }
   tiling_params.tiling_key = tiling_params.tiling_key + h_tiling_align_flag * HEIGHT_ALIGN_FLAG
                              + w_tiling_align_flag * WEIGHT_ALIGN_FLAG;
@@ -278,11 +348,17 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
   tiling_params.cut_weight_num = 1;
 
   // calcu tiling
-  if (!GetTilingParam(compile_params, tiling_params)) {
+  bool get_tiling_result = false;
+  if (op_type == "ResizeNearestNeighborV2")
+    get_tiling_result = GetTilingParam(compile_params, tiling_params);
+  else
+    get_tiling_result = GetTilingParamResizeNearestNeighborV2Grad(compile_params, tiling_params);
+  if (!get_tiling_result) {
     PrintTilingParams(op_type, tiling_params, compile_params);
     OP_LOGE(op_type, "get tiling data failed.");
     return false;
-  }
+   }
+
   // get tiling data end
   PrintTilingParams(op_type, tiling_params, compile_params);
   SetTilingParams(tiling_params, run_info);
@@ -296,5 +372,7 @@ static bool ResizeNearestNeighborV2Tiling(const std::string& op_type, const TeOp
 
 // register tiling interface of the ResizeNearestNeighborV2 op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ResizeNearestNeighborV2, ResizeNearestNeighborV2Tiling);
-}  // namespace optiling
 
+// register tiling interface of the ResizeNearestNeighborV2Grad op.
+REGISTER_OP_TILING_FUNC_BUFFERED(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2Tiling);
+}  // namespace optiling
