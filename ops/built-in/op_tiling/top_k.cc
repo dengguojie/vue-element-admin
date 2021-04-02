@@ -114,9 +114,43 @@ bool GetTopkCompileParams(const std::string& op_type, const nlohmann::json& op_c
   return true;
 }
 
+bool GetConstValue(const TeOpParas& paras, const string& name, const string& dtype, vector<int64_t>& values) {
+  values.clear();
+  if (paras.const_inputs.count(name) == 0 || std::get<0>(paras.const_inputs.at(name)) == nullptr) {
+    return false;
+  }
+
+  auto size = std::get<1>(paras.const_inputs.at(name));
+  if (dtype == "int64") {
+    int count = size / sizeof(int64_t);
+    const int64_t *data_addr = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at(name)));
+    for (int i=0; i<count; i++) {
+      values.push_back(*data_addr);
+      data_addr++;
+    }
+  } else if (dtype == "int32") {
+    int count = size / sizeof(int32_t);
+    const int32_t *data_addr = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at(name)));
+    for (int i=0; i<count; i++) {
+      values.push_back(*data_addr);
+      data_addr++;
+    }
+  }
+
+  return true;
+}
+
 bool TopkTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
                 OpRunInfo& run_info) {
   GELOGI("TopkTiling running.");
+  std::vector<int64_t> values;
+  GetConstValue(op_paras, "k", op_paras.inputs[1].tensor[0].dtype, values);
+  if (values.size() != 0){
+    int32_t k_element = values[0];
+    if (k_element > 4096) {
+      return false;
+    }
+  }
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   int32_t input_dims = input_shape.size();
   int32_t row = 1;
