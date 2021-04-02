@@ -194,8 +194,11 @@ class CaseGenerator:
             utils.print_warn_log("The op_name is null, please modify it.")
         self.op_type = mindspore_ops_info.get(OP_NAME)
         if mindspore_ops_info.get('attr'):
-            attr_name = 'attr_{}'.format(mindspore_ops_info['attr'][0]['name'])
-            self.op_info[attr_name] = mindspore_ops_info['attr'][0]
+            # update mindspore operation of attr information in op_info
+            for attr_info in mindspore_ops_info.get('attr'):
+                if attr_info.get('name') is not None:
+                    attr_name = 'attr_' + attr_info.get('name')
+                    self.op_info[attr_name] = attr_info
         count_input = 0
         for key in PY_INPUT_OUTPUT:
             op_info = mindspore_ops_info.get(key)
@@ -325,7 +328,7 @@ class CaseGenerator:
                 raise utils.OpTestGenException(
                     utils.OP_TEST_GEN_CONFIG_INVALID_OPINFO_FILE_ERROR)
             self._check_op_info_list_valid(
-                [value.get('type')], 
+                [value.get('type')],
                 list(utils.ATTR_TYPE_MAP.keys()), key + '.type')
         # defaultValue is None
         data_type = None

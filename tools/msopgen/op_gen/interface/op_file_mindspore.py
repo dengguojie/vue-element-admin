@@ -54,6 +54,32 @@ class OpFileMindSpore(OPFile):
         ms_dir = os.path.join(self.output_path, utils.PROJ_MS_NAME)
         utils.make_dirs(ms_dir)
 
+    def _parse_attr_info(self):
+        attr_list = []
+        for attr_info in self.op_info.parsed_attr_info:
+            attr_str = []
+            if len(attr_info) == utils.OP_INFO_WITH_PARAM_TYPE_LEN \
+                    or len(attr_info) == utils.OP_INFO_WITH_FORMAT_LEN:
+                attr_name = attr_info[0]
+                attr_type = attr_info[1]
+                attr_type_format = utils.CheckFromConfig().trans_ini_attr_type(
+                    attr_type)
+                param_type = "required"
+                if len(attr_info) == utils.OP_INFO_WITH_FORMAT_LEN:
+                    param_type = attr_info[3]
+                attr_str = op_tmpl.PY_MS_ATTR_WITHOUT_VALUE_INFO.format(
+                    attr_name=attr_name,
+                    param_type=param_type,
+                    attr_type=attr_type_format)
+            else:
+                if len(attr_info):
+                    attr_name = attr_info[0]
+                    utils.print_warn_log(
+                        "The attr:'%s' in the .txt file can't parse."
+                        % attr_name)
+            attr_list.append(attr_str)
+        return attr_list
+
     def generate_impl(self):
         """
         Function Description:
@@ -79,6 +105,13 @@ class OpFileMindSpore(OPFile):
             output=op_output)
         # 3.parse op_info
         var_list = []
+        # parse attr information
+        attr_valid_list = []
+        attr_list = self._parse_attr_info()
+        for attr_item in attr_list:
+            # remove attr when it is empty list
+            if attr_item:
+                attr_valid_list.append(attr_item)
         # parse inputs
         input_list = []
         for input_name in self.op_info.parsed_input_info:
@@ -108,13 +141,21 @@ class OpFileMindSpore(OPFile):
             data_type_join = ', '.join(type_list)
             data_types_list.append(op_tmpl.PY_MS_DTYPE_FORMAT.format(
                 data_types_join=data_type_join))
-
-        head_str += op_tmpl.PY_MS_OP_INFO.format(
-            name=self.op_info.fix_op_type,
-            up_name=self.op_info.op_type,
-            inputs='\n    '.join(input_list),
-            outputs='\n    '.join(output_list),
-            data_types='\n    '.join(data_types_list))
+        if attr_valid_list:
+            head_str += op_tmpl.PY_MS_OP_WITH_ATTR_INFO.format(
+                name=self.op_info.fix_op_type,
+                up_name=self.op_info.op_type,
+                attrs='\n    '.join(attr_list),
+                inputs='\n    '.join(input_list),
+                outputs='\n    '.join(output_list),
+                data_types='\n    '.join(data_types_list))
+        else:
+            head_str += op_tmpl.PY_MS_OP_WITHOUT_ATTR_INFO.format(
+                name=self.op_info.fix_op_type,
+                up_name=self.op_info.op_type,
+                inputs='\n    '.join(input_list),
+                outputs='\n    '.join(output_list),
+                data_types='\n    '.join(data_types_list))
 
         # 4.make op_info_register
         tvm_placeholder_list = []

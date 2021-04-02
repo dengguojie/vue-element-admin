@@ -302,11 +302,13 @@ PY_MS_COMPUTE = """def {name}_compute({input_name}, {output}):
     return res
 
 """
+PY_MS_ATTR_WITHOUT_VALUE_INFO = \
+    """.attr("{attr_name}", "{param_type}", "{attr_type}", "all")\\"""
 PY_MS_INPUT_INFO = """.input(0, "{input_name}", False, "required", "all")\\"""
 PY_MS_OUTPUT_INFO = """.output(0, "{output_name}", False, "required", "all")\\"""
 PY_MS_DATA_TYPE = """DataType.{data_type}"""
 PY_MS_DTYPE_FORMAT = """.dtype_format({data_types_join})\\"""
-PY_MS_OP_INFO = """
+PY_MS_OP_WITHOUT_ATTR_INFO = """
 # Define the kernel info of {up_name}.
 {name}_op_info = TBERegOp("{up_name}") \\
     .fusion_type("OPAQUE") \\
@@ -315,6 +317,22 @@ PY_MS_OP_INFO = """
     .binfile_name("{name}.so") \\
     .compute_cost(10) \\
     .kernel_name("{name}_impl") \\
+    {inputs}
+    {outputs}
+    {data_types}
+    .get_op_info()
+
+"""
+PY_MS_OP_WITH_ATTR_INFO = """
+# Define the kernel info of {up_name}.
+{name}_op_info = TBERegOp("{up_name}") \\
+    .fusion_type("OPAQUE") \\
+    .partial_flag(True) \\
+    .async_flag(False) \\
+    .binfile_name("{name}.so") \\
+    .compute_cost(10) \\
+    .kernel_name("{name}_impl") \\
+    {attrs}
     {inputs}
     {outputs}
     {data_types}
