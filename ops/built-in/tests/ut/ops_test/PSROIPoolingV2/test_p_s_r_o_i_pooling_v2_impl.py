@@ -222,6 +222,17 @@ ut_case.add_case("all",
                      21, 7, 0.125,
                      "psroipooling_18", RuntimeError))
 
+ut_case.add_case("Ascend310",
+                 gen_psroipooling_case(
+                     {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 11), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 11), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (11, 1, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (11, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     13, 3, 0.125,
+                     "psroipooling_19", "success"))
+
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend910"])
     exit(0)

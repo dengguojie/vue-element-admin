@@ -409,7 +409,7 @@ class PSROIPoolingGradV2DClass(object):
                 self.tik_instance.vconv(MASK64, '', rois_floor_fp16_ub, rois_floor_ub,
                                         REP_TIMES[self.dtype] * DIGIT_5,
                                         STRIDE_ONE, STRIDE_ONE,
-                                        REP_STRIDE[FP16], REP_STRIDE[self.dtype], deqscale=1.0)
+                                        REP_STRIDE[FP16], REP_STRIDE[self.dtype], deqscale=DEQSCALE)
                 self.tik_instance.vconv(MASK64, '', rois_spatial_ub,
                                         rois_floor_fp16_ub[1, 0],
                                         REP_TIMES[self.dtype] * DIGIT_4,
@@ -443,13 +443,13 @@ class PSROIPoolingGradV2DClass(object):
                                STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
                                REP_STRIDE_EIGHT, REP_STRIDE_EIGHT, STRIDE_ZERO)
 
-        pooled_k_recip = self.tik_instance.Scalar(self.dtype, \
-                                                  name="pooled_k_recip", init_value=1.0 / self.group_size)
+        pooled_k_recip = self.tik_instance.Scalar(self.dtype,
+                                                  name="pooled_k_recip", init_value=self.group_size)
+        self.tik_instance.vector_dup(self.mask, point_one_ub, pooled_k_recip, REPEAT_1,
+                                     STRIDE_ONE, REP_STRIDE_EIGHT)
         # bin width and height
-        self.tik_instance.vmuls(self.mask, rois_spatial_ub[6, 0],
-                                rois_spatial_ub[4, 0], pooled_k_recip,
-                                REPEAT_2, STRIDE_ONE, STRIDE_ONE,
-                                REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
+        self._newton_div(rois_spatial_ub[6, :], rois_spatial_ub[4, :], point_one_ub, REPEAT_1)
+        self._newton_div(rois_spatial_ub[7, :], rois_spatial_ub[5, :], point_one_ub, REPEAT_1)
 
     def _newton_div(self, dst, divisor, dividend, repeat):
         """
@@ -640,7 +640,8 @@ class PSROIPoolingGradV2DClass(object):
                 self.tik_instance.vector_dup(C0, bin_area_int32_ub, bin_area_param, REPEAT_1, STRIDE_ONE, STRIDE_ONE)
                 if self.dtype == FP16:
                     self.tik_instance.vconv(C0, '', bin_area_float_ub, bin_area_int32_ub, REPEAT_1, STRIDE_ONE,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[self.dtype] // self.dsize, deqscale=1.0)
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[self.dtype] // self.dsize,
+                                            deqscale=DEQSCALE)
                     self.tik_instance.vrec(C0, bin_area_float_ub, bin_area_float_ub, REPEAT_1,
                                            STRIDE_ONE, STRIDE_ONE, REPEAT_1, REPEAT_1)
                     bin_area_inv.set_as(bin_area_float_ub[0])
@@ -648,7 +649,8 @@ class PSROIPoolingGradV2DClass(object):
                     bin_area_fp16_ub = self.tik_instance.Tensor(FP16, (C0,), name="bin_area_fp16_ub",
                                                                 scope=tbe_platform.scope_ubuf)
                     self.tik_instance.vconv(C0, '', bin_area_fp16_ub, bin_area_int32_ub, REPEAT_1, STRIDE_ONE,
-                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16] // self.dsize)
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16] // self.dsize,
+                                            deqscale=DEQSCALE)
                     self.tik_instance.vrec(C0, bin_area_fp16_ub, bin_area_fp16_ub, REPEAT_1,
                                            STRIDE_ONE, STRIDE_ONE, REPEAT_1, REPEAT_1)
                     self.tik_instance.vconv(C0, '', bin_area_float_ub, bin_area_fp16_ub, REPEAT_1, STRIDE_ONE,
@@ -666,7 +668,7 @@ class PSROIPoolingGradV2DClass(object):
                     if self.dtype == FP16:
                         self.tik_instance.vconv(C0, '', bin_area_float_ub, bin_area_int32_ub, REPEAT_1, STRIDE_ONE,
                                                 STRIDE_ONE, STRIDE_ONE, REP_STRIDE[self.dtype] // self.dsize,
-                                                deqscale=1.0)
+                                                deqscale=DEQSCALE)
                     else:
                         self.tik_instance.vconv(C0, '', bin_area_float_ub, bin_area_int32_ub, REPEAT_1, STRIDE_ONE,
                                                 STRIDE_ONE, STRIDE_ONE, REP_STRIDE[self.dtype] // self.dsize, None)
@@ -927,6 +929,10 @@ class PSROIPoolingGradV2DClass(object):
                 scalar_roi_start_h.set_as(rois_spatial_ub[1, roi_i])
                 bin_start_w_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,),
                                                           name="bin_start_w_ub", scope=tbe_platform.scope_ubuf)
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310" and self.dtype == FP32:
+                    bin_start_w_fp16_ub = \
+                        self.tik_instance.Tensor(FP16, (DIGIT_128,), name="bin_start_w_fp16_ub",
+                                                 scope=tbe_platform.scope_ubuf)
                 # scalar_roi_start_w + scalar_bin_width*(0...127)
                 self.tik_instance.vmuls(self.mask, bin_start_w_ub,
                                         self.const_0_127_ub, scalar_bin_width,
@@ -938,11 +944,20 @@ class PSROIPoolingGradV2DClass(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                # vconv.floor: f162s32f or f322s32f
-                self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
-                                        bin_start_w_ub, DIGIT_128 // DIGIT_64,
-                                        STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                        REP_STRIDE[self.dtype])
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310" and self.dtype == FP32:
+                    self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
+                                            bin_start_w_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16], REP_STRIDE_EIGHT)
+                    self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
+                                            bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[FP16])
+                else:
+                    # vconv.floor: f162s32f or f322s32f
+                    self.tik_instance.vconv(MASK64, 'floor', bin_start_w_floor,
+                                            bin_start_w_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[self.dtype])
 
                 # scalar_roi_start_w + scalar_bin_width*(0...127)
                 self.tik_instance.vmuls(self.mask, bin_start_w_ub,
@@ -955,10 +970,21 @@ class PSROIPoolingGradV2DClass(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
-                                        bin_start_w_ub, DIGIT_128 // DIGIT_64,
-                                        STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                        REP_STRIDE[self.dtype])
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310" and self.dtype == FP32:
+                    self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
+                                            bin_start_w_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16],
+                                            REP_STRIDE_EIGHT)
+                    self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
+                                            bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[FP16])
+                else:
+                    self.tik_instance.vconv(MASK64, 'ceil', bin_end_w_ceil,
+                                            bin_start_w_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[self.dtype])
+
 
                 bin_start_h_ub = self.tik_instance.Tensor(self.dtype, (DIGIT_128,), \
                                                           name="bin_start_h_ub", scope=tbe_platform.scope_ubuf)
@@ -974,10 +1000,20 @@ class PSROIPoolingGradV2DClass(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-                self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
-                                        bin_start_h_ub, DIGIT_128 // DIGIT_64,
-                                        STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                        REP_STRIDE[self.dtype])
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310" and self.dtype == FP32:
+                    self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
+                                            bin_start_h_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16],
+                                            REP_STRIDE_EIGHT)
+                    self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
+                                            bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[FP16])
+                else:
+                    self.tik_instance.vconv(MASK64, 'floor', bin_start_h_floor,
+                                            bin_start_h_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[self.dtype])
 
                 self.tik_instance.vmuls(self.mask, bin_start_h_ub,
                                         self.const_1_128_ub, scalar_bin_height,
@@ -989,11 +1025,20 @@ class PSROIPoolingGradV2DClass(object):
                                         DIGIT_128 // self.vec_elem_num,
                                         STRIDE_ONE, STRIDE_ONE,
                                         REP_STRIDE_EIGHT, REP_STRIDE_EIGHT)
-
-                self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
-                                        bin_start_h_ub, DIGIT_128 // DIGIT_64,
-                                        STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
-                                        REP_STRIDE[self.dtype])
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend310" and self.dtype == FP32:
+                    self.tik_instance.vconv(MASK64, '', bin_start_w_fp16_ub,
+                                            bin_start_h_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE[FP16],
+                                            REP_STRIDE_EIGHT)
+                    self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
+                                            bin_start_w_fp16_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[FP16])
+                else:
+                    self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil,
+                                            bin_start_h_ub, DIGIT_128 // DIGIT_64,
+                                            STRIDE_ONE, STRIDE_ONE, REP_STRIDE_EIGHT,
+                                            REP_STRIDE[self.dtype])
 
             self.tik_instance.vector_dup(MASK64, dup_tmp_ub, 0, REPEAT_1,
                                          STRIDE_ONE, REP_STRIDE_EIGHT)

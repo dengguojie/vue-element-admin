@@ -145,6 +145,17 @@ ut_case.add_case("Ascend910A",
                      13, 3, 0.125, (14, 14),
                      "psroipooling_v2_d_o11", "success"))
 
+ut_case.add_case("Ascend310",
+                 gen_psroipooling_v2_d_case(
+                     {"shape": (8, 1, 3, 3, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (8, 1, 3, 3, 16), "ori_format": "NC1HWC0", "param_type": "input"},
+                     {"shape": (1, 5, 8), "dtype": "float32", "format": "ND",
+                      "ori_shape": (1, 5, 8), "ori_format": "ND", "param_type": "input"},
+                     {"shape": (1, 1*3*3, 14, 14, 16), "dtype": "float32", "format": "NC1HWC0",
+                      "ori_shape": (1, 1*3*3, 14, 14, 16), "ori_format": "NC1HWC0", "param_type": "output"},
+                     11, 3, 0.0625, (14, 14),
+                     "psroipooling_v2_d_o12", "success"))
+
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend910"])
     exit(0)
