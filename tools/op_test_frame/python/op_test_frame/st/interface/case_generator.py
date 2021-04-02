@@ -646,10 +646,6 @@ class CaseGenerator:
                 if 'attr' not in base_case:
                     base_case['attr'] = []
                 base_case['attr'].append(self._make_attr(key, value))
-        # check operator exist dynamic shape.
-        dynamic_shape_support = self.op_info.get('dynamicShapeSupport')
-        dynamic_handle.check_dynamic_shape_support(
-            dynamic_shape_support, base_case)
         self._check_desc_valid(base_case, 'output_desc')
 
         # generate base case from model
@@ -756,23 +752,35 @@ class CaseGenerator:
                     self._update_format_from_model(format_value,
                                                    new_base_case)
 
+    def _get_info_from_model(self, item, attr, new_attr_list, new_base_case):
+        """get information from model"""
+        node_attr_name = item['name']
+        base_attr_name = attr.get('name')
+        if node_attr_name == base_attr_name:
+            attr_value = item.get('value')
+            # format attr_value when attr's type is 'string'.
+            if attr.get('type') == 'string':
+                attr_format_value = item.get('value').replace(
+                    utils.QUOTATION_MARK, utils.EMPTY)
+                attr_value = attr_format_value.replace(
+                    utils.SPACE, utils.EMPTY)
+            new_attr = {'name': node_attr_name,
+                        'type': attr['type'],
+                        'value': attr_value}
+            utils.check_attr_value_valid(new_attr)
+            new_attr_list.append(new_attr)
+        if node_attr_name == "data_format":
+            format_value = item['value'].replace('\"', "").strip()
+            self._update_format_from_model(format_value,
+                                           new_base_case)
+
     def _update_aicore_attr_from_model(self, base_case, node, new_base_case):
         if 'attr' in base_case and 'attr' in node:
             new_attr_list = []
             for (_, attr) in enumerate(base_case.get('attr')):
                 for item in node.get('attr'):
-                    node_attr_name = item['name']
-                    base_attr_name = attr.get('name')
-                    if node_attr_name == base_attr_name:
-                        new_attr = {'name': node_attr_name,
-                                    'type': attr['type'],
-                                    'value': item['value']}
-                        utils.check_attr_value_valid(new_attr)
-                        new_attr_list.append(new_attr)
-                    if node_attr_name == "data_format":
-                        format_value = item['value'].replace('\"', "").strip()
-                        self._update_format_from_model(format_value,
-                                                       new_base_case)
+                    self._get_info_from_model(
+                        item, attr, new_attr_list, new_base_case)
             if len(new_attr_list) > 0:
                 new_base_case['attr'] = new_attr_list
 

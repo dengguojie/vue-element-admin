@@ -11,30 +11,6 @@ from . import utils
 NEW_STR_KEY = ['shape_range']
 
 
-def _update_shape_range_in_base_list(base_case):
-    """
-    dynamic shape:
-    add shape_range when create case.json
-    """
-    if base_case.get(utils.INPUT_DESC):
-        for desc_list in base_case.get(utils.INPUT_DESC):
-            desc_list.update({
-                utils.SHAPE_RANGE: utils.SHAPE_RANGE_DEFAULT_VALUE})
-    if base_case.get(utils.OUTPUT_DESC):
-        for desc_list in base_case.get(utils.OUTPUT_DESC):
-            desc_list.update({
-                utils.SHAPE_RANGE: utils.SHAPE_RANGE_DEFAULT_VALUE})
-    return
-
-
-def check_dynamic_shape_support(dynamic_shape_support, base_case):
-    """check operator exist dynamic shape."""
-    if dynamic_shape_support and \
-            dynamic_shape_support.get('flag') == 'true':
-        _update_shape_range_in_base_list(base_case)
-    return
-
-
 def check_typical_shape_valid(typical_shape, json_path):
     """check typical_shape are integers and greater than 0"""
     for dim in typical_shape:
