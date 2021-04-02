@@ -115,11 +115,14 @@ void ConvSigmoidMulQuantFusionPass::SetSplitInfo(const BufferFusionMapping &mapp
       if (has_quant) {
         split_maps.erase(split_maps.begin() + i);
       } else if (tensor_mode) {
-        InputSplitInfo input_info;
-        input_info.SetIndex(conv_nodes[0]->GetInDataNodes().size());
-        std::vector<int64_t> axis_n = {0};
-        input_info.SetAxis(axis_n);
-        split_maps[i].AddInputSplitInfo(input_info);
+        auto exists = split_maps[i].GetInputSplitInfoVec();
+        if (!exists.empty()) {
+          InputSplitInfo input_info = exists[0];
+          input_info.SetIndex(conv_nodes[0]->GetInDataNodes().size());
+          std::vector<int64_t> axis_n = {0};
+          input_info.SetAxis(axis_n);
+          split_maps[i].AddInputSplitInfo(input_info);
+        }
       }
       break;
     }
