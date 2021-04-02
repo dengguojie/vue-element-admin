@@ -1463,13 +1463,14 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2DInferShape) {
   vector<int64_t> size_out;
   if (op.GetAttr("size", size_out) == ge::GRAPH_FAILED) {
     OpsGetAttrErrReport(op.GetName(), "size");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue size failed!");
+    std::string err_msg = GetInputInvalidErrMsg("size");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (size_out.size() != DIM_SIZE2) {
-    OpsAttrValueErrReport(op.GetName(), "size's length", "2", ConcatString(size_out.size()));
-    OP_LOGE(op.GetName().c_str(), "length of size_out must be equal to 2");
+    std::string err_msg = GetAttrSizeErrMsg("size_out", ConcatString(size_out.size()), ConcatString(DIM_SIZE2));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Format input_format = op.GetInputDesc("x").GetFormat();
@@ -1487,8 +1488,8 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2DInferShape) {
     y_shape.push_back(size_out[1]);
   } else {
     string expected_format_list = ConcatString("FORMAT_NHWC, FORMAT_NCHW");
-    OpsInputFormatErrReport(op.GetName(), "x", expected_format_list, ConcatString(input_format));
-    OP_LOGE(op.GetName().c_str(), "Not supported this format");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   td.SetShape(ge::Shape(y_shape));
   td.SetDataType(DT_FLOAT);
@@ -1807,8 +1808,8 @@ IMPLEMT_INFERFUNC(ResizeBilinearV2Grad, ResizeBilinearV2GradInfer) {
     y_range.push_back(image_range[3]);
   } else {
     string expected_format_list = ConcatString("FORMAT_NHWC, FORMAT_NCHW");
-    OpsInputFormatErrReport(op.GetName(), "grads", expected_format_list, ConcatString(input_format));
-    OP_LOGE(op.GetName().c_str(), "Not supported this format%d", input_format);
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   output_desc_y->SetShape(GeShape(y_shape));
   output_desc_y->SetOriginShape(GeShape(y_shape));

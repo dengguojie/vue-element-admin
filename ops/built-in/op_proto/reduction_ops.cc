@@ -40,17 +40,17 @@ static bool InferReductionShape(const ge::Operator& operation, const string& inp
   int64_t idx = 0;
 
   if (ge::GRAPH_SUCCESS != operation.GetAttr("axis", axis)) {
-    OP_LOGE("Reduction", "Get axis failed!");
-    OpsGetAttrErrReport(operation.GetName().c_str(), "axis");
+    std::string err_msg = GetInputInvalidErrMsg("axis");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(operation.GetName(), err_msg);
     return false;
   }
 
   if (axis < -dimNum || axis >= dimNum) {
-    OP_LOGE("Reduction", "The range of the axis must be between %ld and %ld !", -dimNum, dimNum - 1);
     string minvalue = ConcatString(-dimNum);
     string maxvalue = ConcatString(dimNum - 1);
-    string excepted_value = ConcatString("in the range of[", minvalue, ",", maxvalue, "]");
-    OpsAttrValueErrReport(operation.GetName(), "axis", excepted_value, ConcatString(axis));
+    string excepted_value = ConcatString("in the range of[", minvalue, ", ", maxvalue, "]");
+    std::string err_msg = GetAttrValueErrMsg("axis", ConcatString(axis), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(operation.GetName(), err_msg);
     return false;
   }
 

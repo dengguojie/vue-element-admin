@@ -39,11 +39,13 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
   auto xShape = op.get_input_desc_x().GetShape().GetDims();
   auto xDtype = op.get_input_desc_x().GetDataType();
   auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
-  CHECK(roisShape.size() < 2, OP_LOGE(op.GetName().c_str(), "rois shape is smaller than 2!"),
+  CHECK(roisShape.size() < 2,
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetShapeSizeErrMsg(1, ConcatString(roisShape.size()),ConcatString("smaller than 2!"))),
       return GRAPH_FAILED);
 
   int64_t inputN, inputC1, poolH, poolW;
-  CHECK(xShape.size() < 2, OP_LOGE(op.GetName().c_str(), "x shape is smaller than 2!"),
+  CHECK(xShape.size() < 2,
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetShapeSizeErrMsg(0, ConcatString(xShape.size()), ConcatString("smaller than 2!"))),
       return GRAPH_FAILED);
   inputN = xShape[0];
   inputC1 = xShape[1];
@@ -69,8 +71,8 @@ IMPLEMT_INFERFUNC(ROIPooling, ROIPoolingInferShape) {
 IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
   int64_t xDimNum = op.get_input_desc_x().GetShape().GetDimNum();
   if (xDimNum < 4) {
-    OpsOneInputShapeErrReport(op.GetName(), "x shape", "The rank of x shape is smaller than 4!");
-    OP_LOGE(op.GetName().c_str(), "The rank of x shape is smaller than 4!");
+    std::string err_msg = GetShapeErrMsg(0, ConcatString(xDimNum), ConcatString("more than or equal to 4!"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -80,23 +82,23 @@ IMPLEMT_VERIFIER(ROIPooling, ROIPoolingVerify) {
     auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
     roi_max_num = roisShape[2];
     if (roi_max_num > 6000 || roi_max_num % 16 != 0) {
-    OpsOneInputShapeErrReport(op.GetName(), "dim 2 of rois shape",
-        "the dim 2 of rois shape can not be greater than 6000 and can be divided by 16!");
-    OP_LOGE(op.GetName().c_str(), "The dim 2 of rois shape can not be greater than 6000 and can be divided by 16!");
+    std::string err_msg = GetShapeErrMsg(1, ConcatString(roi_max_num), ConcatString("the dim 2 of rois shape can not be greater than 6000 and can be divided by 16!"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
     }
   } else if (roisDimNum == 2) {
     auto roisShape = op.get_input_desc_rois().GetShape().GetDims();
     roi_max_num = roisShape[0];
     if (roi_max_num > 6000) {
-      OpsOneInputShapeErrReport(op.GetName(), "dim 2 of rois shape",
-          "the dim 2 of rois shape can not be greater than 6000!");
-      OP_LOGE(op.GetName().c_str(), "The dim 2 of rois shape can not be greater than 6000!");
+      string excepted_shape = ConcatString("the dim 2 of rois shape can not be greater than 6000!");
+      std::string err_msg = GetShapeErrMsg(1, ConcatString(roi_max_num), excepted_shape);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
     }
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "rois shape dim", "The input shape of rois not equal 3 or 2!");
-    OP_LOGE(op.GetName().c_str(), "The input shape of rois not equal 3  or 2, please check!");
+    string excepted_shape = ConcatString("The input shape of rois not equal 3 or 2!");
+    std::string err_msg = GetShapeErrMsg(1, ConcatString(roi_max_num), excepted_shape);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

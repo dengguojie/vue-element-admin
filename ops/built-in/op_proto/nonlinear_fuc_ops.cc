@@ -337,7 +337,8 @@ IMPLEMT_VERIFIER(Relu6D, Relu6DVerify) {
   // check input const attr for scale
   std::vector<float> const_attr;
   if (!GetConstAttr(op, {"scale"}, const_attr)) {
-    OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
+    std::string err_msg = GetInputInvalidErrMsg("scale");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

@@ -3742,13 +3742,12 @@ COMMON_INFER_FUNC_REG(Fills, FillsInferShape);
 
 // --------------MulNoNan
 IMPLEMT_VERIFIER(MulNoNan, MulNoNanVerify) {
-	DataType input_type_x1 = op.GetInputDesc("x1").GetDataType();
-	DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
-	if (input_type_x1 != input_type_x2) {
-		OP_LOGE(op.GetName().c_str(),
-			"The %s op dtype is not same, type1:%d, type2:%d",
-			op.GetName().c_str(), input_type_x1, input_type_x2);
-		return GRAPH_FAILED;
+  DataType input_type_x1 = op.GetInputDesc("x1").GetDataType();
+  DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
+  if (input_type_x1 != input_type_x2) {
+    std::string err_msg = OtherErrMsg("the dtype of input_type_x1 and input_type_x2 must be same!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
 	}
 	return GRAPH_SUCCESS;
 }

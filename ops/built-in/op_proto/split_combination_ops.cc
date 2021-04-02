@@ -897,15 +897,16 @@ INFER_DATA_SLICE_FUNC_REG(ConcatV2D, ConcatV2DInferDataSlice);
 static std::vector<int64_t> GetAttrValue(const ge::Operator& op, const std::string& key_name) {
   std::vector<int64_t> list;
   if (ge::GRAPH_SUCCESS != op.GetAttr(key_name, list)) {
-    OpsGetAttrErrReport(op.GetName(), key_name);
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue failed!");
+    std::string err_msg = GetInputInvalidErrMsg("ConstValue");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   return list;
 }
 
 static bool CheckListEmpty(const std::string& opName, const std::vector<int64_t>& list, const std::string& attrName) {
   if (list.empty()) {
-    OP_LOGE(opName.c_str(), "the %s is empty !", attrName.c_str());
+    std::string err_msg = OtherErrMsg("the list is empty !");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(opName, err_msg);
     return false;
   }
   return true;
@@ -921,8 +922,8 @@ IMPLEMT_COMMON_INFERFUNC(ParallelConcatInferShape) {
   }
 
   if (GRAPH_SUCCESS != op.GetAttr("N", num_1)) {
-    OpsGetAttrErrReport(op.GetName(), "N");
-    OP_LOGE(op.GetName().c_str(), "GetAttr of N failed.");
+    std::string err_msg = GetInputInvalidErrMsg("N");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   auto x_shape = tensordesc.GetShape();
@@ -930,19 +931,16 @@ IMPLEMT_COMMON_INFERFUNC(ParallelConcatInferShape) {
   dimnum = x_shape.GetDimNum();
   if (shape[0] != num_1) {
     string excepted_value = ConcatString("equal to the num of N[", num_1, "]");
-    OpsAttrValueErrReport(op.GetName(), "output_data's fisrt dim", excepted_value, ConcatString(shape[0]));
-    OP_LOGE(op.GetName().c_str(),
-            "first dim of output shape must"
-            "be equal to the num of input tensors.");
+    std::string err_msg = GetAttrValueErrMsg("attr shape[0]", ConcatString(shape[0]), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   for (int64_t i = 1; i < dimnum; i++) {
     if (x_shape.GetDim(i) != shape[i]) {
       string excepted_value = ConcatString("match the output_data's shape[", shape[i], "]");
-      OpsAttrValueErrReport(op.GetName(), "values's shape", excepted_value, ConcatString(x_shape.GetDim(i)));
-      OP_LOGE(op.GetName().c_str(),
-              "the input shape"
-              "do not match the output shape.");
+      string attr_name = ConcatString("x_shape.GetDim(", i, ")");
+      std::string err_msg = GetAttrValueErrMsg(attr_name, ConcatString(x_shape.GetDim(i)), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -961,14 +959,14 @@ IMPLEMT_COMMON_INFERFUNC(ParallelConcatInferShape) {
 IMPLEMT_VERIFIER(ParallelConcat, ParallelConcatVerify) {
   int64_t num;
   if (GRAPH_SUCCESS != op.GetAttr("N", num)) {
-    OpsGetAttrErrReport(op.GetName(), "N");
-    OP_LOGE(op.GetName().c_str(), "GetAttr of N failed.");
+    std::string err_msg = GetInputInvalidErrMsg("N");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   } else {
     if (op.GetInputsSize() != static_cast<uint64_t>(num)) {
       string excepted_value = ConcatString("same as N[", static_cast<uint64_t>(num), "]");
-      OpsAttrValueErrReport(op.GetName(), "values's size", excepted_value, ConcatString(op.GetInputsSize()));
-      OP_LOGE(op.GetName().c_str(), "input size and N must be same.");
+      std::string err_msg = GetAttrValueErrMsg("values's size", ConcatString(op.GetInputsSize()), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1139,21 +1137,23 @@ bool JoinShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape) {
 IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
   int64_t pack_num;
   if (op.GetAttr("N", pack_num) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "N");
-    OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    std::string err_msg = GetInputInvalidErrMsg("get attr N failed");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (pack_num < 1) {
-    OpsAttrValueErrReport(op.GetName(), "N", "greater than or equals to 1", ConcatString(pack_num));
-    OP_LOGE(op.GetName().c_str(), "N[%lld] is out of range.", pack_num);
+    string excepted_value = ConcatString("more than or equals to 1");
+    std::string err_msg = GetAttrValueErrMsg("pack_num", std::to_string(pack_num), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t axis;
   if (op.GetAttr("axis", axis) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "axis");
-    OP_LOGE(op.GetName().c_str(), "get attr axis failed");
+    std::string err_msg = GetInputInvalidErrMsg("attr axis");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+
     return GRAPH_FAILED;
   }
 
@@ -1163,9 +1163,8 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
   for (int64_t input_idx = 0; input_idx < pack_num; input_idx++) {
     auto input_shape_dims = op_info->MutableInputDesc(input_idx)->MutableShape().GetDims();
     if (!JoinShapes(output_shape_dims, input_shape_dims)) {
-      vector<vector<int64_t>> shapes = {output_shape_dims, input_shape_dims};
-      OpsInputShapeErrReport(op.GetName(), "the input shape dims should be equal", "x", ops::to_string(shapes).c_str());
-      OP_LOGE(op.GetName().c_str(), "the input shape dims should be equal %s.", ops::to_string(shapes).c_str());
+      std::string err_msg = OtherErrMsg( "the input shape dims should be equal");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1183,8 +1182,8 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
   int64_t dim_num = static_cast<int64_t>(output_shape_dims.size());
   if (axis < (-dim_num - 1) || axis > dim_num) {
     string correct_value = ConcatString("in range [", -dim_num - 1, ", ", dim_num, "]");
-    AttrValueErrReport("axis", op.GetName(), ConcatString(axis), correct_value);
-    OP_LOGE(op.GetName().c_str(), "attr axis is not in range");
+    std::string err_msg = GetAttrValueErrMsg("axis", ConcatString(axis), correct_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

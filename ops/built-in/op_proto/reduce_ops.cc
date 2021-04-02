@@ -1336,15 +1336,15 @@ IMPLEMT_COMMON_INFERFUNC(ReduceAnyDInferShape) {
   }
   std::vector<int64_t> axes_dim;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axes", axes_dim)) {
-    OpsGetAttrErrReport(op.GetName(), "axes");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of ReduceAnyD!");
+    std::string err_msg = GetInputInvalidErrMsg("axes");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (axes_dim.size() < DIM_SIZE1 || axes_dim.size() > DIM_SIZE8) {
-    OpsInputShapeDimErrReport(op.GetName(), "axes", ConcatString(DIM_SIZE8), ConcatString(DIM_SIZE1),
-                              ConcatString(axes_dim.size()));
-    OP_LOGE(op.GetName().c_str(), "axes must be between 1 and 8.");
+    string correct_size = ConcatString("must be between 1 and 8");
+    std::string err_msg = GetAttrSizeErrMsg("axes_dim", ConcatString(axes_dim.size()), correct_size);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   auto shape = result_desc.GetShape();

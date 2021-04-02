@@ -53,20 +53,14 @@ static graphStatus PadDInferShapeAndType(ge::Operator& op, std::vector<std::vect
   vector<int64_t> shape;
   int64_t dim_cur = 0;
   if (shape_x.GetDimNum() != paddings.size()) {
-    OpsInputShapeErrReport(op.GetName(), "Paddings and shape should be the same length", "x",
-                           ConcatString(shape_x.GetDimNum()));
-    OP_LOGE(op.GetName().c_str(),
-            "Paddings and shape"
-            "are not the same length.");
+    std::string err_msg = GetShapeErrMsg(0, ConcatString(shape_x.GetDimNum()), ConcatString(paddings.size()));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   for (size_t dim = 0; dim < shape_x.GetDimNum(); dim++) {
     if (paddings[dim].size() != 2) {
-      OpsInputShapeErrReport(op.GetName(), "Paddings's shape should be in the form of (n,2)", "paddings",
-                             ConcatString(paddings[dim].size()));
-      OP_LOGE(op.GetName().c_str(),
-              "Paddings's shape"
-              "is not in the form of (n,2)");
+      std::string err_msg = GetShapeErrMsg(1, ConcatString(paddings[dim].size()), ConcatString("2"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }

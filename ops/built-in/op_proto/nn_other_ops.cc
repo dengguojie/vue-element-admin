@@ -53,8 +53,8 @@ COMMON_INFER_FUNC_REG(CheckValid, CheckValidInferShape);
 IMPLEMT_INFERFUNC(ROIAlignGrad, ROIAlignGradInfer) {
   std::vector<int64_t> xdiff_shape;
   if (GRAPH_SUCCESS != op.GetAttr("xdiff_shape", xdiff_shape)) {
-    OpsGetAttrErrReport(op.GetName(), "xdiff_shape");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue xdiff_shape failed!");
+    std::string err_msg = GetInputInvalidErrMsg("xdiff_shape");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   auto inputType = op.GetInputDesc("ydiff").GetDataType();
@@ -276,7 +276,8 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
 
   auto xShape = featureDesc.GetShape().GetDims();
   if (xShape.size() < 4) {
-    OP_LOGE(op.GetName().c_str(), "input x dim is illegal, expected: > 3, actual: %zu.", xShape.size());
+    std::string err_msg = GetAttrSizeErrMsg("xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t inputH, inputW;
@@ -284,7 +285,8 @@ IMPLEMT_INFERFUNC(PriorBoxD, PriorBoxDInfer) {
   inputW = xShape[3];
   auto boxLen = boxDesc.GetShape().GetDims();
   if (boxLen.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input box dim is illegal, expected: > 0, actual: %zu.", boxLen.size());
+    std::string err_msg = GetAttrSizeErrMsg("boxLen", std::to_string(boxLen.size()), ConcatString("not equal to 1"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t priorNum;
@@ -315,7 +317,8 @@ IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
 
   auto xShape = featureDesc.GetShape().GetDims();
   if (xShape.size() < 4) {
-    OP_LOGE(op.GetName().c_str(), "input x dim is illegal, expected: > 3, actual: %zu.", xShape.size());
+    std::string err_msg = GetAttrSizeErrMsg("xShape", std::to_string(xShape.size()), ConcatString("more than or equal to 4"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t inputH, inputW;
@@ -323,7 +326,8 @@ IMPLEMT_INFERFUNC(PriorBoxDV2, PriorBoxDV2Infer) {
   inputW = xShape[3];
   auto boxLen = boxDesc.GetShape().GetDims();
   if (boxLen.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "input box dim is illegal, expected: > 0, actual: %zu.", boxLen.size());
+    std::string err_msg = GetAttrSizeErrMsg("boxLen", std::to_string(boxLen.size()), ConcatString("not equal to 1"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t priorNum;

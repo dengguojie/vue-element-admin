@@ -678,47 +678,44 @@ COMMON_INFER_FUNC_REG(Range, RangeInferShape);
 IMPLEMT_COMMON_INFERFUNC(RangeDInferShape) {
   float start;
   if (op.GetAttr("start", start) == ge::GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "start");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue start failed.");
+    std::string err_msg = GetInputInvalidErrMsg("start");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   float limit;
   if (op.GetAttr("limit", limit) == ge::GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "limit");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue limit failed.");
+    std::string err_msg = GetInputInvalidErrMsg("limit");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   float delta;
   if (op.GetAttr("delta", delta) == ge::GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "delta");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ConstValue delta failed.");
+    std::string err_msg = GetInputInvalidErrMsg("delta");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (limit == start) {
     string excepted_value = ConcatString("not equal to limit[", limit, "]");
-    OpsAttrValueErrReport(op.GetName(), "start", excepted_value, ConcatString(start));
-    OP_LOGE(op.GetName().c_str(), "start is not equal to limit");
+    std::string err_msg = GetAttrValueErrMsg("limit", ConcatString("limit"), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (delta == 0) {
-    OpsAttrValueErrReport(op.GetName(), "delta", "not equal to zero", ConcatString(delta));
-    OP_LOGE(op.GetName().c_str(), "the input of delta is not equal to zero");
+    string excepted_value = ConcatString("not equal to 0");
+    std::string err_msg = GetAttrValueErrMsg("delta", ConcatString("delta"), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (start > limit && delta > 0) {
-    string excepted_value = ConcatString("more than start[", start, "]");
-    OpsAttrValueErrReport(op.GetName(), "limit", excepted_value, ConcatString(limit));
-    OP_LOGE(op.GetName().c_str(),
-            "requires limit is more than start "
-            "when delta is more than zero");
+    string excepted_value = ConcatString("more than start[", start, "] when delta is more than zero");
+    std::string err_msg = GetAttrValueErrMsg("limit", ConcatString("limit"), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (start < limit && delta < 0) {
-    string excepted_value = ConcatString("more than limit[", limit, "]");
-    OpsAttrValueErrReport(op.GetName(), "start", excepted_value, ConcatString(start));
-    OP_LOGE(op.GetName().c_str(),
-            "requires start is more than limit "
-            "when delta is less than zero");
+    string excepted_value = ConcatString("more than start[", limit, "] when delta is less than zero");
+    std::string err_msg = GetAttrValueErrMsg("start", ConcatString("start"), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   (void)op.UpdateOutputDesc("y", op.GetInputDesc("x"));
@@ -1748,8 +1745,9 @@ bool BroadCastTwoinOneout(const Operator& op, std::vector<int64_t>& shape_x, std
   // set out dims
   for (size_t i = 0; i < dim_x.size(); i++) {
     if ((dim_x[i] != dim_y[i]) && (dim_x[i] != 1) && (dim_y[i] != 1)) {
-      OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
-              op.GetName().c_str(), dim_x[i], dim_y[i]);
+      string msg = ConcatString("The dimensions does not match the broadcast rule(", dim_x[i], ", ", dim_y[i], ")");
+      std::string err_msg = OtherErrMsg(msg);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return false;
     }
 
@@ -2274,7 +2272,8 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
   // get attr axis
   int32_t axis = -1;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
-    OP_LOGE(op.GetName().c_str(), "Get const axis failed from op of 'OneHot'!\n");
+    std::string err_msg = GetInputInvalidErrMsg("Get const axis failed from op of 'OneHot'!\n");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2585,16 +2584,16 @@ IMPLEMT_COMMON_INFERFUNC(ScatterNdDInferShape) {
     shape_dims.push_back(shape_out_list[i]);
   }
   if (shape_out_list.size() != shape_dims.size()) {
-    string excepted_value = ConcatString("same with output_y[", shape_dims.size(), "]");
-    OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(shape_out_list.size()));
-    OP_LOGE(op.GetName().c_str(), "the len of shape must be same with output_y.");
+    string correct_size = ConcatString("same with output_y[", shape_dims.size(), "]");
+    std::string err_msg = GetAttrSizeErrMsg("shape_out_list", ConcatString(shape_out_list.size()), correct_size);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   for (int64_t i = 0; i < (int64_t)shape_dims.size(); i++) {
     if (shape_out_list[i] != shape_dims[i]) {
       string excepted_value = ConcatString("same with output_y[", shape_dims[i], "]");
-      OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(shape_out_list[i]));
-      OP_LOGE(op.GetName().c_str(), "shape must be same with output_y.");
+      std::string err_msg = GetAttrValueErrMsg("x'shape", ConcatString(shape_out_list[i]), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -3261,8 +3260,8 @@ IMPLEMT_COMMON_INFERFUNC(ProposalDInferShape) {
 
   int64_t post_nms_topn = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", post_nms_topn)) {
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
-    OP_LOGE(op.GetName().c_str(), "get attr failed");
+    std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3305,7 +3304,10 @@ IMPLEMT_COMMON_INFERFUNC(PassThroughInferShape) {
     stride = 2;
   }
   if (stride == 0) {
-    OP_LOGE(op.GetName().c_str(), "stride[%d] error.", stride);
+    string excepted_value = ConcatString("not equal 0");
+    std::string err_msg = GetAttrValueErrMsg("stride", ConcatString(stride), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("reverse", reverse)) {
@@ -3363,41 +3365,58 @@ IMPLEMT_VERIFIER(PassThrough, PassThroughVerify) {
   }
 
   if (inputFormat != FORMAT_NCHW && inputFormat != FORMAT_NHWC) {
-    OP_LOGE("[ERROR]the PassThrough only support format NCHW&NHWC!");
-    OpsInputFormatErrReport(op.GetName().c_str(), "inputFormat", "NCHW or NHWC", ConcatString(inputFormat));
+    string expected_format_list = ConcatString("FORMAT_NCHW, FORMAT_NHWC");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("inputFormat", expected_format_list, ConcatString(inputFormat));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+
     return GRAPH_FAILED;
   }
 
   if (reverse) {
     if (stride < 1) {
-      OP_LOGE("[ERROR]the PassThrough op forward do not supported the stride!");
-      OpsAttrValueErrReport(op.GetName().c_str(), "stride", "greater than 0", ConcatString(stride));
+      std::string error_msg = OtherErrMsg("the PassThrough op forward do not supported the stride!");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
+      string excepted_value = ConcatString("greater than or equal to 1");
+      std::string err_msg = GetAttrValueErrMsg("stride", ConcatString(stride), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     int64_t modC = (inputFormat == FORMAT_NCHW) ? (int64_t)inputShape[1] % (stride * stride)
                                                 : (int64_t)inputShape[3] % (stride * stride);
     if (modC != 0) {
-      OP_LOGE("[ERROR]the PassThrough op forward do not supported the stride!");
-      OpsAttrValueErrReport(op.GetName().c_str(), "axis C", "times of stride'squre", ConcatString(modC));
+      std::string error_msg = OtherErrMsg("the PassThrough op forward do not supported the stride!");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
+      string excepted_value = ConcatString("0");
+      std::string err_msg = GetAttrValueErrMsg("modC", ConcatString(modC), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
 
   } else {
     if (stride < 1) {
-      OP_LOGE("[ERROR]the PassThrough op backward do not supported the stride!");
-      OpsAttrValueErrReport(op.GetName().c_str(), "stride", "greater than 0", ConcatString(stride));
+      std::string error_msg = OtherErrMsg("the PassThrough op backward  do not supported the stride!");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
+      string excepted_value = ConcatString("greater than or equal to 1");
+      std::string err_msg = GetAttrValueErrMsg("stride", ConcatString(stride), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     int64_t modH = (inputFormat == FORMAT_NCHW) ? (int64_t)inputShape[2] % stride : (int64_t)inputShape[1] % stride;
     int64_t modW = (inputFormat == FORMAT_NCHW) ? (int64_t)inputShape[3] % stride : (int64_t)inputShape[2] % stride;
     if (modH != 0) {
-      OP_LOGE("[ERROR]the PassThrough op backward do not supported the stride!");
-      OpsAttrValueErrReport(op.GetName().c_str(), "axis H", "times of stride", ConcatString(modH));
+      std::string error_msg = OtherErrMsg("the PassThrough op backward  do not supported the stride!");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
+      string excepted_value = ConcatString("0");
+      std::string err_msg = GetAttrValueErrMsg("modH", ConcatString(modH), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (modW != 0) {
-      OP_LOGE("[ERROR]the PassThrough op backward do not supported the stride!");
-      OpsAttrValueErrReport(op.GetName().c_str(), "axis W", "times of stride", ConcatString(modW));
+      std::string error_msg = OtherErrMsg("the PassThrough op backward  do not supported the stride!");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), error_msg);
+      string excepted_value = ConcatString("0");
+      std::string err_msg = GetAttrValueErrMsg("modW", ConcatString(modW), excepted_value);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }

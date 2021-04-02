@@ -1579,12 +1579,8 @@ IMPLEMT_COMMON_INFERFUNC(MatrixDiagDInferShape) {
   std::vector<int64_t> dim_vec;
   for (size_t i = 0; i < dims_x.size(); i++) {
     if ((dims_x[i] != dims_assist[i]) && (dims_x[i] != 1) && (dims_assist[i] != 1)) {
-      OpsInputShapeBroadcastErrReport(op.GetName(), "x", "assist", ConcatString(dims_x[i]),
-                                      ConcatString(dims_assist[i]));
-      OP_LOGE(op.GetName().c_str(),
-              "The %s op dimensions does not "
-              "match the broadcast rule(%lu %lu).",
-              op.GetName().c_str(), dims_x[i], dims_assist[i]);
+      std::string err_msg = OtherErrMsg(ConcatString("The dimensions does not match the broadcast rule(", dims_x[i], ", ", dims_assist[i], ")"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     }
 
     int64_t dims = dims_x[i] > dims_assist[i] ? dims_x[i] : dims_assist[i];
@@ -1599,11 +1595,8 @@ IMPLEMT_VERIFIER(MatrixDiagD, MatrixDiagDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "input_diagonal", "input_help", ConcatString(input_diagonal_dtype),
-                              ConcatString(input_help_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the matrix_diag op inputs "
-            "should have the same dtype!\n");
+    std::string err_msg = OtherErrMsg( "the inputs of diagonal and help should be the same dtype!\n");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1683,11 +1676,8 @@ IMPLEMT_VERIFIER(MatrixDiagPartD, MatrixDiagPartDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "input_diagonal", "input_help", ConcatString(input_diagonal_dtype),
-                              ConcatString(input_help_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the matrix_diag_part op inputs "
-            "should have the same dtype!\n");
+    std::string err_msg = OtherErrMsg( "the inputs of diagonal and help should be the same dtype!\n");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1732,11 +1722,8 @@ IMPLEMT_VERIFIER(MatrixSetDiagD, MatrixSetDiagDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(1).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(2).GetDataType();
   if ((input_matrix_dtype != input_diagonal_dtype) || (input_matrix_dtype != input_help_dtype)) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "input_matrix", "input_help", ConcatString(input_matrix_dtype),
-                              ConcatString(input_help_dtype));
-    OP_LOGE(op.GetName().c_str(),
-            "the matrix_set_part op inputs "
-            "should have the same dtype!\n");
+    std::string err_msg = OtherErrMsg( "the inputs of matrix and diagonal should be the same dtype!\n");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
