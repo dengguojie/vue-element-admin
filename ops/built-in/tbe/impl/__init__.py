@@ -83,6 +83,7 @@ from .max_pool import max_pool
 from .max_pool3d import max_pool3d
 from .max_pool3d_grad_grad_d import max_pool3d_grad_grad_d
 from .max_pool_ext2 import max_pool_ext2
+from .adaptive_max_pool2d import adaptive_max_pool2d
 from .neg import neg
 from .batch_norm_ext2 import batch_norm_ext2
 from .reciprocal_grad import reciprocal_grad
