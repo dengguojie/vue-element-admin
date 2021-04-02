@@ -289,3 +289,4 @@ from .clip_by_norm_no_div_sum import clip_by_norm_no_div_sum
 from .eltwise import eltwise
 from .bn_training_update import bn_training_update
 from .resize_nearest_neighbor_v2_grad import resize_nearest_neighbor_v2_grad
+from .layer_norm import layer_norm
