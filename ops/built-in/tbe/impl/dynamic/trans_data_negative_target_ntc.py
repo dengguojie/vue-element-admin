@@ -692,7 +692,7 @@ def _func_transform_200(tensor_args, tp_args):
      cr_in_idx_1_src_asize) = tp_args
 
     def _inner_func(tiling_args):
-        cr_lp_cnt, cr_left, c_lp_cnt, c_left, cl_lp_cnt, cl_lp_cnt, cl_left = tiling_args
+        cr_lp_cnt, cr_left, c_lp_cnt, c_left, cl_lp_cnt, cl_left = tiling_args
         cr_pln_size = tik_inst.Scalar(name="cr_pln_size")
         c_plp_size = tik_inst.Scalar(name="c_plp_size")
         cl_plp_size = tik_inst.Scalar(name="cl_plp_size")
@@ -831,11 +831,11 @@ def _func_transform_200(tensor_args, tp_args):
 
     with tik_inst.if_scope(block_idx != used_core_cnt - 1):
         nlc_args = (nlc_cr_lp_cnt, nlc_cr_left, nlc_c_lp_cnt,
-                    nlc_c_left, nlc_cl_lp_cnt, nlc_cl_lp_cnt, nlc_cl_left)
+                    nlc_c_left, nlc_cl_lp_cnt, nlc_cl_left)
         _inner_func(nlc_args)
     with tik_inst.else_scope():
         lc_args = (lc_cr_lp_cnt, lc_cr_left, lc_c_lp_cnt,
-                   lc_c_left, nlc_cl_lp_cnt, lc_cl_lp_cnt, lc_cl_left)
+                   lc_c_left, lc_cl_lp_cnt, lc_cl_left)
         _inner_func(lc_args)
 
 # pylint: disable=unused-argument

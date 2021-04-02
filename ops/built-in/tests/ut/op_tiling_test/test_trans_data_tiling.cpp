@@ -197,7 +197,7 @@ TEST_F(TransDataTiling, TransData_tiling4) {
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "201 63232 1 2 0 0 1 1 1 1 2 1 1 1 1 2 16 256 31 16 8 128 128 4 15 2 1 32 0 0 0 0 0 0 2 1 31 0 0 0 0 0 0 0 ");
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "2012 63232 0 1 1 16 64 62 1 1 1 0 0 0 1 1 1 0 0 0 1 16 31 16 31 2 1 16 1 32 32 15 2 32 31 64 62 1 1 16 1 1 0 1 ");
 }
 
 TEST_F(TransDataTiling, TransData_tiling5) {
@@ -234,7 +234,7 @@ TEST_F(TransDataTiling, TransData_tiling5) {
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "201 63232 1 25 0 0 7 1 4 11 3 7 1 4 11 3 16 256 42 1792 8 14336 128 2 10 100 1 5376 0 0 0 0 0 0 100 1 4494 0 0 0 0 0 0 0 ");
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "2011 63232 0 25 1 16 21504 17976 2 1 4 25 0 0 2 1 4 25 0 0 82 16 42 1312 3444 3 1 1792 1 5376 48 10 1 5376 4494 5376 4494 112 1 16 1 1 0 1 ");
 }
 
 TEST_F(TransDataTiling, TransData_tiling6) {
@@ -271,7 +271,7 @@ TEST_F(TransDataTiling, TransData_tiling6) {
 
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "201 63232 1 25 0 0 2 1 1 3 4 2 1 1 3 4 16 256 1575 2560 8 20480 128 2 15 5 1 512 5 5 10240 0 0 0 5 1 63 5 5 315 0 0 0 1 ");
+  EXPECT_EQ(to_string_int64(runInfo.tiling_data), "2011 63232 0 10 0 16 32 3150 1 1 1 0 0 0 1 1 1 0 0 1 25 0 63 0 1575 4 1 2560 1 10240 64 15 2 16 1575 32 3150 5 1 512 5 5 10240 2 ");
 }
 
 TEST_F(TransDataTiling, TransData_tiling7) {

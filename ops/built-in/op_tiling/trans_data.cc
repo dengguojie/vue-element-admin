@@ -426,6 +426,80 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew = {axisN, axisC, axisD, axisH * axisW};
   }
 
+  if (srcFormat == "NC1HWC0" && dstFormat == "NHWC") {
+    if (inShape.size() != 5 || outShape.size() != 4) {
+      OP_LOGE("trans_data", "The input shape dimension size should be 5 and output's should be 4!");
+      return false;
+    }
+    realSrcFormat = "NCHT";
+    realDstFormat = "NHC";
+    int64_t axisN = inShape[0];
+    int64_t axisC1 = inShape[1];
+    int64_t axisH = inShape[2];
+    int64_t axisW = inShape[3];
+    int64_t axisC0 = inShape[4];
+    int64_t axisC = outShape[outShape.size() - 1];
+    int64_t axisHW = axisH * axisW;
+    inShapeNew = {axisN, axisC1, axisHW, axisC0};
+    outShapeNew = {axisN, axisHW, axisC};
+  }
+
+  if ((srcFormat == "FRACTAL_NZ") && (dstFormat == "ND" || dstFormat == "NCHW" || dstFormat == "NHWC")) {
+    if (outShape.size() == 0) {
+      OP_LOGE("trans_data", "The output shape dimension size cannot be 0!");
+      return false;
+    }
+    realSrcFormat = "HCNT";
+    realDstFormat = "HNC";
+    int64_t axisN;
+    int64_t axisH;
+    int64_t axisC;
+    if (outShape.size() == 1) {
+      axisH = 1;
+      axisN = 1;
+      axisC = outShape[0];
+    } else if (outShape.size() == 2) {
+      axisH = 1;
+      axisN = outShape[0];
+      axisC = outShape[1];
+    } else {
+      int64_t shapeSize = 1;
+      for (int32_t i = 0; i < outShape.size() - 2; i++) {
+        shapeSize *= outShape[i];
+      }
+      axisH = shapeSize;
+      axisN = outShape[outShape.size() - 2];
+      axisC = outShape[outShape.size() - 1];
+    }
+    int64_t axisC0 = inShape[inShape.size() - 1];
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    int64_t axisNo = GetCeilDiv(axisN, NI_16);
+    inShapeNew = {axisH, axisC1, axisNo * NI_16, axisC0};
+    outShapeNew = {axisH, axisN, axisC};
+  }
+
+  if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC") {
+    if (inShape.size() != 4 || outShape.size() != 5) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      return false;
+    }
+    realSrcFormat = "DCHNT";
+    realDstFormat = "NDHC";
+    int64_t axisDC1HW = inShape[0];
+    int64_t axisNo = inShape[1];
+    int64_t axisNi = inShape[2];
+    int64_t axisC0 = inShape[3];
+    int64_t axisN = outShape[0];
+    int64_t axisD = outShape[1];
+    int64_t axisH = outShape[2];
+    int64_t axisW = outShape[3];
+    int64_t axisC = outShape[4];
+    int64_t axisC1 = axisDC1HW / (axisD * axisH * axisW);
+
+    inShapeNew = {axisD, axisC1, axisH * axisW, axisNo * axisNi, axisC0};
+    outShapeNew = {axisN, axisD, axisH * axisW, axisC};
+  }
+
   return true;
 }
 
@@ -621,15 +695,16 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
 
   } else if ((srcFormat == "NC1HWC0" && dstFormat == "NHWC") || (srcFormat == "FRACTAL_NZ" && dstFormat == "ND") ||
               (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC")) {
-    TransDataMode201Param runParams201;
-    flag = TillingNegativeMode201(inShape, outShape, srcFormat, dstFormat, blockDim, blockElemCnt, ubSize, runParams201);
+    TransDataTc201Param runParams201;
+    flag = TilingNegativeTc201(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
+                               ubSize, runParams201);
     if (!flag) {
-      OP_LOGE(opType.c_str(), "TransDataTiling: get TransDataMode201Param tiling params error");
+      OP_LOGE(opType.c_str(), "TransDataTiling: get TilingNegativeTc201 tiling params error");
       return false;
     }
     OP_LOGD(opType.c_str(), "***start to put mode 201 tiling parameters");
-    SetRunningMode201Params(runParams201, runInfo);
-    PrintTilingMode201Params(opType, runParams201);
+    SetRunningTc201Params(runParams201, runInfo);
+    PrintTilingModeTc201Params(opType, runParams201);
   } else if ((srcFormat == "NC1HWC0" && dstFormat == "NCHW") ||
              (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NCDHW") ||
              (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW")) {
