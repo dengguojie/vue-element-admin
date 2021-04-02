@@ -49,13 +49,25 @@ class TEST_WHERE_UT : public testing::Test {};
     EXPECT_EQ(res, true);                                                      \
   }
 
-
+#define ADD_EMPTY_CASE(data_type, aicpu_type, shapes)                          \
+  TEST_F(TEST_WHERE_UT, ADD_EMPTY_CASE) {                                      \
+    vector<DataType> data_types = {aicpu_type, DT_INT64};                      \
+    int64_t output[40] = {0};                                                  \
+    int64_t expect_out[1] = {0};                                               \
+    vector<void *> datas = {nullptr, (void *)output} ;                         \
+    CREATE_NODEDEF(shapes, data_types, datas);                                 \
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);                              \
+    bool res = CompareResult<int64_t>(output, expect_out, 0);                  \
+    EXPECT_EQ(res, true);                                                      \
+  }
 
 
 vector<int> data{0, 1, 2, 0, 4, 0, 3, 7};
-
+vector<int> data_0{0};
 vector<int64_t> data_nums = {4, 6};
 vector<vector<int64_t>> where_shapes1 = {{2, 2}, {3, 2}};
+vector<vector<int64_t>> shape1 = {{0}, {0, 1}};
+vector<int64_t> shape1_res = {};
 vector<vector<int64_t>> shape2 = {{8}, {5, 1}};
 vector<int64_t> shape2_res = {1, 2, 4, 6, 7};
 vector<vector<int64_t>> shape3 = {{2, 4}, {5, 2}};
@@ -85,6 +97,7 @@ vector<int64_t> shape9_res = {0, 0, 0, 0, 0, 0, 1, 0,
                               1, 0, 0, 0, 0, 0, 0, 0,
                               1, 0, 0, 1, 0, 0, 0, 0,
                               1, 0, 0, 1, 0, 0, 1, 0};
+ADD_CASE(bool_where, bool, DT_BOOL, where_shapes1, data_nums, data)
 ADD_CASE(int8_where, int8_t, DT_INT8, where_shapes1, data_nums, data)
 ADD_CASE(int16_where, int16_t, DT_INT16, where_shapes1, data_nums, data)
 ADD_CASE(int32_where, int32_t, DT_INT32, where_shapes1, data_nums, data)
@@ -96,6 +109,7 @@ ADD_CASE(uint64_where, uint64_t, DT_UINT64, where_shapes1, data_nums, data)
 ADD_CASE(float_where, float, DT_FLOAT, where_shapes1, data_nums, data)
 ADD_CASE(double_where, double, DT_DOUBLE, where_shapes1, data_nums, data)
 
+ADD_EMPTY_CASE(int8_t, DT_INT8, shape1)
 ADD_CASE_WITH_SHAPE(int8_1D, int8_t, DT_INT8, shape2, data, shape2_res)
 ADD_CASE_WITH_SHAPE(int8_2D, int8_t, DT_INT8, shape3, data, shape3_res)
 ADD_CASE_WITH_SHAPE(int8_3D, int8_t, DT_INT8, shape4, data, shape4_res)

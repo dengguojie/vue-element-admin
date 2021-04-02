@@ -163,6 +163,11 @@ uint32_t WhereCpuKernel::Compute(CpuKernelContext &ctx) {
   if (NormalCheck(ctx, 1, 1) != KERNEL_STATUS_OK) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
+  // if input empty tensor, return a empty output
+  if (IsEmptyTensor(ctx.Input(0))) {
+    KERNEL_LOG_WARN("Where kernel input tensor is empty.");
+    return KERNEL_STATUS_OK;
+  }
   auto data_type = static_cast<DataType>(ctx.Input(0)->GetDataType());
   switch (data_type) {
     WHERE_COMPUTE_CASE(DT_BOOL, bool)

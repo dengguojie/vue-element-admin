@@ -107,6 +107,14 @@ const std::map<std::string, DataType> dtype_maps{
     {"DT_DUAL", DT_DUAL},
     {"DT_UNDEFINED", DT_UNDEFINED}};
 
+bool IsEmptyTensor(Tensor *tensor) {
+  auto dims = tensor->GetTensorShape()->GetDimSizes();
+  if (tensor->GetData() == NULL && dims.size() == 1 && dims[0] == 0) {
+    return true;
+  }
+  return false;
+}
+
 uint32_t NormalMathCheck(CpuKernelContext &ctx) {
   const uint32_t kInputNum = 2;
   const uint32_t kOutputNum = 1;

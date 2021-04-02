@@ -87,6 +87,13 @@ inline int32_t GetSubFormat(int32_t format) {
 inline bool HasSubFormat(int32_t format) { return GetSubFormat(format) > 0; }
 
 /**
+ * @brief Judge whether tensor is empty 
+ * @param tensor need judged tensor
+ * @return true: is empty tensor, false: isn't empty tensor
+ */
+bool IsEmptyTensor(Tensor *tensor);
+
+/**
  * @brief multiply two nonnegative int64's
  * @param x mul value x
  * @param y mul value y
