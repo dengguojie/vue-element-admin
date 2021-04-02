@@ -172,8 +172,11 @@ IMPLEMT_INFERFUNC(HcomBroadcast, HcomBroadcastInferShape) {
     return GRAPH_FAILED;
   }
   for (size_t i = 0; i < inputsSize; i++) {
-    auto outputDesc = op.get_dynamic_input_desc_x(i);
-    op.update_dynamic_output_desc_y(i, outputDesc);
+    auto inputDesc = op.get_dynamic_input_desc_x(i);
+    auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+    auto outputDesc = opDesc->MutableOutputDesc(i);
+    outputDesc->SetShape(GeShape(inputDesc.GetShape().GetDims()));
+    outputDesc->SetDataType(inputDesc.GetDataType());
   }
   OP_LOGI(op.GetName().c_str(), "the op infershape end");
   return GRAPH_SUCCESS;
