@@ -57,6 +57,9 @@ from .scatter_max import scatter_max
 from .scatter_min import scatter_min
 from .scatter_mul import scatter_mul
 from .scatter_div import scatter_div
+from .scatter_nd_add import scatter_nd_add
+from .scatter_nd_sub import scatter_nd_sub
+from .scatter_nd_update import scatter_nd_update
 from .equal import equal
 from .sigmoid_cross_entropy_with_logits_grad import sigmoid_cross_entropy_with_logits_grad
 from .relu import relu
