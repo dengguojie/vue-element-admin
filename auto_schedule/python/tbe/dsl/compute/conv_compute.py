@@ -362,6 +362,7 @@ class ConvParam:
         cls.dim_map.clear()
         cls.tiling = None
         cls.var_map = None
+        cls.dynamic_para = None
         cls.tiling_query_param.clear()
         cls.convbn1_flag = False
         cls.conv_deq_req_double_out = False
@@ -408,6 +409,7 @@ class ConvParam:
     pre_relu_flag = False
     l0a_dma_flag = False
     has_padding = False
+    dynamic_para = None
     compress_index_shape = {}
     compress_tiling_ = {}
     compress_tiling_n = {}
@@ -1471,33 +1473,61 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             mode = 'f162f16'
         else:
             mode = 'f162f32'
-
+        fmap_c1 = ConvParam.para_dict["a_shape"][1]
+        kernel_h = ConvParam.para_dict["filter_h"]
+        kernel_w = ConvParam.para_dict["filter_w"]
+        reduce_c1hwc0 = fmap_c1*kernel_h*kernel_w*block_size
+        if TENSOR_MAP["c0_optim_flg"]:
+            reduce_c1hwc0 = fmap_c1*kernel_h*kernel_w*4
         if not ConvParam.v200_width_out_1_flag:
             remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]
         else: # invliad_data_rm uses removed_pad_m as the shape of UB tensor, so modify it to N*1 here
             remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1] // 2
 
         offset_d = offset_x if is_support_v200() else 0
-
-        c_col = tvm.compute(
-            mad_shape,
-            lambda group, batch, cout_1, howo, cout_0:
-            tvm.sum((
-                (fmap[group,
-                      batch,
-                      howo // block_size_m,
-                      axis_k1,
-                      howo % block_size_m,
-                      axis_k0] - offset_d) *
-                weight[group*reduce_k1+axis_k1,
-                       cout_1,
-                       cout_0,
-                       axis_k0]).astype(mad_dtype),
+        if TENSOR_MAP["c0_optim_flg"]:
+            reduce_c1hwc0 = fmap_c1*kernel_h*kernel_w*4
+            c_col = tvm.compute(
+                mad_shape,
+                lambda group, batch, cout_1, howo, cout_0:
+                tvm.sum(
+                    tvm.select(tvm.all((group * reduce_k1 + axis_k1) * block_size + axis_k0 < reduce_c1hwc0),
+                               ((fmap[group,
+                                      batch,
+                                      howo // block_size_m,
+                                      axis_k1,
+                                      howo % block_size_m,
+                                      axis_k0] - offset_d) *
+                                 weight[group*reduce_k1+axis_k1,
+                                        cout_1,
+                                        cout_0,
+                                        axis_k0]).astype(mad_dtype)),
                     axis=[axis_k1, axis_k0]),
-            name='mad1',
-            tag=OP_TAG + "c_col",
-            attrs={'mode': mode,
-                   'remove_pad_M': remove_pad_m}) # used in Feature: invalid_data_rm
+                name='mad1',
+                tag=OP_TAG + "c_col",
+                attrs={'mode': mode,
+                       'remove_pad_M': remove_pad_m}) # used in Feature: invalid_data_rm
+        else:
+            c_col = tvm.compute(
+                mad_shape,
+                lambda group, batch, cout_1, howo, cout_0:
+                tvm.sum((
+                   (fmap[group,
+                         batch,
+                         howo // block_size_m,
+                         axis_k1,
+                         howo % block_size_m,
+                         axis_k0] - offset_d) *
+                    weight[group*reduce_k1+axis_k1,
+                           cout_1,
+                           cout_0,
+                           axis_k0]).astype(mad_dtype),
+                    axis=[axis_k1, axis_k0]),
+                name='mad1',
+                tag=OP_TAG + "c_col",
+                attrs={'mode': mode,
+                       'remove_pad_M': remove_pad_m}) # used in Feature: invalid_data_rm
+
         return c_col
 
     def bias_add(in_tensor0, in_tensor1):

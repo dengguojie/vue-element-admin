@@ -290,7 +290,7 @@ def check_doubleout_reluv2(outs):
     """
     check if conv_reluv2 fusion
     """
-    if isinstance(outs, list) and len(outs) == 2:
+    if isinstance(outs, (list, tuple)) and len(outs) == 2:
         reluv2, mask = outs
         src_input_constraint = reluv2.op.input_tensors[0].op.name == "C"
         dtype_constraint = reluv2.dtype == "float16" and mask.dtype == "uint8"
