@@ -872,6 +872,26 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
                             tvm.const(spr7, dtype="uint64")))
 
     spr8 = 0
+    if 'padding' in aipp_config and aipp_config.get('padding') == 1:
+        if dtype == "float16":
+            padding_value = get_fp16(float(aipp_config.get('padding_value', 0)))
+        else:
+            padding_value = aipp_config.get('padding_value', 0)
+        if aipp_config.get('input_format') in ('YUV400_U8',):
+            if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+                spr8 = spr8 | (padding_value & 0xffff) << 32
+            else:
+                spr8 = spr8 | (padding_value & 0xffff)
+        if aipp_config.get('input_format') in ("YUV420SP_U8", "YUYV_U8", "YUV422SP_U8",
+                                               "RGB888_U8", "XRGB8888_U8", "RGB16"):
+            spr8 = spr8 | (padding_value & 0xffff)
+            spr8 = spr8 | (padding_value & 0xffff) << 16
+            spr8 = spr8 | (padding_value & 0xffff) << 32
+        if aipp_config.get('input_format') in ("AYUV444_U8", "ARGB8888_U8"):
+            spr8 = spr8 | (padding_value & 0xffff)
+            spr8 = spr8 | (padding_value & 0xffff) << 16
+            spr8 = spr8 | (padding_value & 0xffff) << 32
+            spr8 = spr8 | (padding_value & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_8",
                             tvm.const(spr8, dtype="uint64")))
 
@@ -1242,7 +1262,7 @@ def get_tiling_w(w, l1_image_buf_max, w_loop):
         return w, w_loop
     else:
         w_loop = w_loop * 2
-        w = w // w_loop
+        w = w // 2
         return get_tiling_w(w, l1_image_buf_max, w_loop)
 
 
@@ -1371,6 +1391,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
     output_shape = output_data.get('shape')
     output_ori_shape = output_data.get('ori_shape')
     output_ori_format = output_data.get('ori_format')
+    output_dtype = output_data.get('dtype').lower()
     _, c1, h, w, c0 = output_shape
 
     if 'input_format' not in aipp_config:
@@ -1763,6 +1784,14 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 4096" % w
                     raise_runtime_error(cause_desc)
+
+            # set default padding value if padding_value not in config
+            if 'padding_value' not in aipp_config:
+                aipp_config['padding_value'] = 0
+            if output_dtype != "float16" and isinstance(aipp_config.get('padding_value'), float):
+                cause_desc = "output dtype is %s, the dtype of padding_value should be the same as that of output" \
+                             % output_dtype
+                raise_runtime_error(cause_desc)
 
         crop_size_w = 0
         crop_size_h = 0
@@ -2240,9 +2269,10 @@ def get_padding_size(aipp_config):
            top_padding_size, bottom_padding_size
 
 
-def vector_dup(ib, dtype, buf, size):
-    """set buffer to all zero."""
-
+def vector_dup(ib, dtype, buf, size, padding_value):
+    """
+    set all buffer to padding_value.
+    """
     one_cnt = 128
     repeat = size // one_cnt
     remainder = size % one_cnt
@@ -2257,7 +2287,7 @@ def vector_dup(ib, dtype, buf, size):
             ib.emit(
                 tvm.call_extern(dtype, "vector_dup",
                                 buf.access_ptr("w", offset=offset_repeat),
-                                tvm.const(0, dtype=dtype), 255, 1, 1,
+                                tvm.const(padding_value, dtype=dtype), 255, 1, 1,
                                 8, 8))
 
     offset_remainder = loop_repeat*one_cnt*255
@@ -2267,7 +2297,7 @@ def vector_dup(ib, dtype, buf, size):
         ib.emit(
             tvm.call_extern(dtype, "vector_dup",
                             buf.access_ptr("w", offset=offset_remainder),
-                            tvm.const(0, dtype=dtype), loop_remainder,
+                            tvm.const(padding_value, dtype=dtype), loop_remainder,
                             1, 1, 8, 8))
 
     offset = one_cnt*loop_remainder + loop_repeat*one_cnt*255
@@ -2277,7 +2307,46 @@ def vector_dup(ib, dtype, buf, size):
         ib.emit(
             tvm.call_extern(dtype, "vector_dup",
                             buf.access_ptr("w", offset=offset),
-                            tvm.const(0, dtype=dtype), 1, 1, 1, 8, 8))
+                            tvm.const(padding_value, dtype=dtype), 1, 1, 1, 8, 8))
+
+
+def vadds_zero(ib, dtype, dst_ub_buf, src_ub_buf, src_blk_stride, elems_count):
+    """
+    do vadds, float16
+    """
+    one_cnt = 128
+    repeat = elems_count // one_cnt
+    remainder = elems_count % one_cnt
+    loop_repeat = repeat // 255
+    loop_remainder = repeat % 255
+
+    with ib.if_scope(loop_repeat > 0):
+        with ib.for_range(0, loop_repeat) as i:
+            mask = one_cnt
+            offset_repeat = i*one_cnt*255
+            tbe_platform.reset_mask_insn(ib, dtype, bits=mask)
+            ib.emit(tvm.call_extern(dtype, "vadds",
+                                    dst_ub_buf.access_ptr("w", offset=offset_repeat),
+                                    src_ub_buf.access_ptr("r", offset=0),
+                                    0, 255, 1, src_blk_stride, 8, 0))
+
+    offset_remainder = loop_repeat*one_cnt*255
+    with ib.if_scope(loop_remainder > 0):
+        mask = one_cnt
+        tbe_platform.reset_mask_insn(ib, dtype, bits=mask)
+        ib.emit(tvm.call_extern(dtype, "vadds",
+                                dst_ub_buf.access_ptr("w", offset=offset_remainder),
+                                src_ub_buf.access_ptr("r", offset=0),
+                                0, loop_remainder, 1, src_blk_stride, 8, 0))
+
+    offset = one_cnt*loop_remainder + loop_repeat*one_cnt*255
+    with ib.if_scope(remainder > 0):
+        mask = remainder
+        tbe_platform.reset_mask_insn(ib, dtype, bits=mask)
+        ib.emit(tvm.call_extern(dtype, "vadds",
+                                dst_ub_buf.access_ptr("w", offset=offset),
+                                src_ub_buf.access_ptr("r", offset=0),
+                                0, 1, 1, src_blk_stride, 8, 0))
 
 
 def conv(ib, output_dtype, src_dtype, output_buf, src_buf, size):

@@ -486,6 +486,9 @@ void SetPadding(nlohmann::json& root, ::domi::AippOpParams* aipp_op_params) {
   // padding
   if (aipp_op_params->padding()) {
     root["padding"] = aipp_op_params->padding();
+    if (aipp_op_params->padding_value()) {
+      root["padding_value"] = aipp_op_params->padding_value();
+    }
   }
   // left_padding_size
   if (aipp_op_params->left_padding_size()) {
@@ -745,21 +748,22 @@ IMPLEMT_INFERFUNC(Aipp, AippInfer) {
 }
 
 IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
-  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice start");
+  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice start.");
+
   auto images_desc = op.GetInputDesc("images");
   auto input_format = images_desc.GetFormat();
 
-  if (input_format != FORMAT_NCHW && input_format != FORMAT_NHWC && input_format != FORMAT_NC1HWC0_C04) {
+  if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW && input_format != FORMAT_NC1HWC0_C04) {
     OP_LOGE(op.GetName().c_str(), "aipp input format only support NCHW, NHWC, NC1HWC0_C04.");
     OpsInputFormatErrReport(op.GetName(), "images", "NCHW, NHWC or NC1HWC0_C04", ConcatString(input_format));
     return GRAPH_FAILED;
   }
 
-  vector<vector<int64_t>> output_data_slice = {{}, {}, {}, {}, {}};
-  vector<vector<int64_t>> images_data_slice = {{}, {}, {}, {}};
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("features");
+  vector<vector<int64_t>> images_data_slice = {{}, {}, {}, {}};
+  vector<vector<int64_t>> output_data_slice = {{}, {}, {}, {}, {}};
   GeTensorDescPtr tensor_desc_in = op_desc->MutableInputDesc("images");
+  GeTensorDescPtr tensor_desc_out = op_desc->MutableOutputDesc("features");
 
   if (!ge::AttrUtils::GetListListInt(tensor_desc_out, ge::ATTR_NAME_DATA_SLICE, output_data_slice)) {
     OP_LOGI(op.GetName().c_str(), "no data slice, use default as {{}, {}, {}, {}, {}}");
@@ -772,6 +776,7 @@ IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
         OP_LOGE(op.GetName().c_str(), "data slice format input size should be 2.");
         return GRAPH_FAILED;
       }
+
       if (i == 0) {
         int64_t n_start = output_data_slice[i][0];
         int64_t n_end = output_data_slice[i][1];
@@ -791,7 +796,7 @@ IMPLEMT_INFER_DATA_SLICE(Aipp, AippInferDataSlice) {
     }
   }
 
-  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice success");
+  OP_LOGI(op.GetName().c_str(), "AippInferDataSlice success.");
   return GRAPH_SUCCESS;
 }
 

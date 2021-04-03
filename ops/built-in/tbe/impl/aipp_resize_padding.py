@@ -27,6 +27,186 @@ from impl import aipp_comm
 NoneType = type(None)
 
 
+def set_padding_ub(ib, dtype, padding_ub_buf, vadds_src_ub_buf, src_block_stride, num):
+    """
+    set padding_ub
+    """
+    if dtype == "float16":
+        aipp_comm.vadds_zero(ib, dtype, padding_ub_buf, vadds_src_ub_buf, 0, num)
+    else:
+        with ib.new_scope():
+            tmp_padding_ub = ib.allocate("float16", (num,), "tmp_padding_ub", scope=tbe_platform.scope_ubuf)
+            tmp_padding_ub_buf = tvm.decl_buffer((num,), "float16", "tmp_padding_ub_buf",
+                                                 scope=tbe_platform.scope_ubuf, data=tmp_padding_ub)
+            aipp_comm.vadds_zero(ib, "float16", tmp_padding_ub_buf, vadds_src_ub_buf, src_block_stride, num)
+            aipp_comm.conv(ib, dtype, "float16", padding_ub_buf, tmp_padding_ub_buf, num)
+
+
+def padding_size_tiling(padding_size, w, buffer_upper_limit, dtype, output_format):
+    """
+    calculate tiling info of padding size
+    """
+    tiling_w, w_loop = aipp_comm.get_tiling_w(w, buffer_upper_limit, 1)
+    tiling_h = buffer_upper_limit // tiling_w
+    tail_w = w % tiling_w
+    tail_h = padding_size % tiling_h
+
+    if output_format == "NC1HWC0_C04" and tail_w > 0:
+        if dtype == "float16":
+            if tail_w < 4:
+                if 4 // w_loop > 0 and 4 % w_loop == 0:
+                    tiling_w = tiling_w - (4 // w_loop)
+                elif 4 // w_loop > 0 and 4 % w_loop != 0:
+                    tiling_w = tiling_w - (4 // w_loop) - 1
+                else:
+                    tiling_w = tiling_w - 1
+                tiling_h = buffer_upper_limit // tiling_w
+                tail_w = w - w_loop * tiling_w
+                tail_h = padding_size % tiling_h
+        else:
+            if tail_w < 8:
+                if 8 // w_loop > 0 and 8 % w_loop == 0:
+                    tiling_w = tiling_w - (8 // w_loop)
+                elif 8 // w_loop > 0 and 8 % w_loop != 0:
+                    tiling_w = tiling_w - (8 // w_loop) - 1
+                else:
+                    tiling_w = tiling_w - 1
+                tiling_h = buffer_upper_limit // tiling_w
+                tail_w = w - w_loop * tiling_w
+                tail_h = padding_size % tiling_h
+
+    h_loop = padding_size // tiling_h
+
+    return tiling_w, w_loop, tail_w, tiling_h, h_loop, tail_h
+
+
+def move_padding_ub_to_gm(ib, padding_ub_buf, output_buf, params):
+    """
+    move padding_ub to gm
+    """
+    gm_offset, elems, dtype, dsize, output_format = params
+
+    if output_format == "NC1HWC0_C04" and elems * dsize % 32 != 0 and elems * dsize > 32:
+        tail_ub = ib.allocate(dtype, (32 // dsize,), "tail_ub", scope=tbe_platform.scope_ubuf)
+        tail_ub_buf = tvm.decl_buffer((32 // dsize,), dtype, "tail_ub_buf", scope=tbe_platform.scope_ubuf,
+                                      data=tail_ub)
+        aipp_comm.copy_ubuf_to_gm_tail(ib, dtype, output_buf, padding_ub_buf, tail_ub_buf, elems, gm_offset, 0)
+
+    ib.emit(tvm.call_extern(dtype, 'copy_ubuf_to_gm',
+                            output_buf.access_ptr("w", ptr_type=dtype, offset=gm_offset),
+                            padding_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
+                            0, 1, elems*dsize // 32, 0, 0))
+
+
+def process_padding_value_impl(ib, output_buf, vadds_src_ub_buf, output_format, params):
+    """
+    process_padding_value implement
+    params: tuple, (dtype, dsize, elems, src_block_stride, gm_offset)
+    """
+    dtype, dsize, elems, src_block_stride, gm_offset = params
+    num = (((elems * dsize + 255) // 256) * 256) // dsize
+    padding_ub = ib.allocate(dtype, (num,), "padding_ub", scope=tbe_platform.scope_ubuf)
+    padding_ub_buf = tvm.decl_buffer((num,), dtype, "padding_ub_buf", scope=tbe_platform.scope_ubuf,
+                                     data=padding_ub)
+    set_padding_ub(ib, dtype, padding_ub_buf, vadds_src_ub_buf, src_block_stride, num)
+
+    move_padding_ub_to_gm(ib, padding_ub_buf, output_buf, (gm_offset, elems, dtype, dsize, output_format))
+
+
+def process_padding_value(ib, input_data, output_buf, input_format, output_format="NC1HWC0"):
+    """
+    process top or bottom padding value
+    """
+    dtype, w, c0, dsize, padding_size, offset, padding_value = input_data
+    ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - 2048
+
+    fp16 = "float16"
+    dsize_fp16 = 2
+    src_vadds_ub_size = 32
+    src_block_stride = 0
+    if dtype == fp16:
+        buffer_upper_limit = (ub_size // c0) // dsize
+    else:
+        if output_format == "NC1HWC0":
+            src_vadds_ub_size = 256
+            src_block_stride = 1
+        buffer_upper_limit = (ub_size // 3 // c0) // dsize
+
+    step = 4
+    loop = 1
+    channel_valid = 3
+    if input_format in ("YUV400_U8",):
+        channel_valid = 1
+    if input_format in ("YUV420SP_U8", "YUYV_U8", "YUV422SP_U8", "RGB888_U8", "XRGB8888_U8", "RGB16"):
+        channel_valid = 3
+    if input_format in ("AYUV444_U8", "ARGB8888_U8"):
+        channel_valid = 4
+    if output_format == "NC1HWC0_C04":
+        loop = 32 // step
+    if src_vadds_ub_size == 256:
+        step = 32
+        loop = 128 // step
+
+    with ib.new_scope():
+        # set src_ub of vadds
+        vadds_src_ub = ib.allocate(fp16, (src_vadds_ub_size // dsize_fp16,), "vadds_src_ub",
+                                   scope=tbe_platform.scope_ubuf)
+        vadds_src_ub_buf = tvm.decl_buffer((src_vadds_ub_size // dsize_fp16,), fp16, "vadds_src_ub_buf",
+                                           scope=tbe_platform.scope_ubuf, data=vadds_src_ub)
+        if src_vadds_ub_size == 32:
+            for i in range(src_vadds_ub_size // dsize_fp16):
+                ib.emit(tvm.call_extern(fp16, "reg_mov", vadds_src_ub_buf.access_ptr("w", offset=i),
+                                        tvm.call_extern(fp16, "reg", 0)))
+        else:
+            ib.emit(tvm.call_extern(fp16, "vector_dup", vadds_src_ub_buf.access_ptr("w", offset=0),
+                                    tvm.const(0, dtype=fp16), 1, 1, 1, 8, 8))
+        for i in range(loop):
+            for j in range(channel_valid):
+                ib.emit(tvm.call_extern(fp16, "reg_mov", vadds_src_ub_buf.access_ptr("w", offset=step*i + j),
+                                        tvm.call_extern(fp16, "reg", padding_value)))
+
+        if buffer_upper_limit >= padding_size * w:
+            with ib.new_scope():
+                elems = padding_size * w * c0
+                process_padding_value_impl(ib, output_buf, vadds_src_ub_buf, output_format,
+                                           (dtype, dsize, elems, src_block_stride, offset))
+        else:
+            tiling_w, w_loop, tail_w, tiling_h, h_loop, tail_h = \
+                padding_size_tiling(padding_size, w, buffer_upper_limit, dtype, output_format)
+            zero_const = tvm.const(0, dtype="uint64")
+            h_loop_const = tvm.const(h_loop, dtype="uint64")
+            w_loop_const = tvm.const(w_loop, dtype="uint64")
+
+            with ib.for_range(zero_const, h_loop_const, name="h1", dtype="uint64") as h1:
+                with ib.for_range(zero_const, w_loop_const, name="w1", dtype="uint64") as w1:
+                    with ib.new_scope():
+                        elems = tiling_h * tiling_w * c0
+                        gm_offset = offset + h1*tiling_h*w*c0 + w1*tiling_w*tiling_h*c0
+                        process_padding_value_impl(ib, output_buf, vadds_src_ub_buf, output_format,
+                                                   (dtype, dsize, elems, src_block_stride, gm_offset))
+
+                    if tail_w != 0:
+                        with ib.new_scope():
+                            elems = tiling_h * tail_w * c0
+                            gm_offset = offset + h1*tiling_h*w*c0 + w_loop*tiling_w*tiling_h*c0
+                            process_padding_value_impl(ib, output_buf, vadds_src_ub_buf, output_format,
+                                                       (dtype, dsize, elems, src_block_stride, gm_offset))
+
+            if tail_h != 0:
+                with ib.for_range(zero_const, w_loop_const, name="w1", dtype="uint64") as w1:
+                    with ib.new_scope():
+                        elems = tail_h * tiling_w * c0
+                        gm_offset = offset + h_loop*tiling_h*w*c0 + w1*tiling_w*tail_h*c0
+                        process_padding_value_impl(ib, output_buf, vadds_src_ub_buf, output_format,
+                                                   (dtype, dsize, elems, src_block_stride, gm_offset))
+                if tail_w != 0:
+                    with ib.new_scope():
+                        elems = tail_h * tail_w * c0
+                        gm_offset = offset + h_loop*tiling_h*w*c0 + w_loop*tiling_w*tail_h*c0
+                        process_padding_value_impl(ib, output_buf, vadds_src_ub_buf, output_format,
+                                                   (dtype, dsize, elems, src_block_stride, gm_offset))
+
+
 def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
     """
     :param ib:
@@ -41,6 +221,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
     size = input_data[3]
     padding_size = input_data[4]
     offset = input_data[5]
+    padding_value = input_data[6]
 
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if output_format == "NC1HWC0_C04":
@@ -57,7 +238,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                              "padding_ub", scope=tbe_platform.scope_ubuf,
                                              data=padding_ub)
             if dtype == "float16":
-                aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num)
+                aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num, padding_value)
             else:
                 with ib.new_scope():
                     tmp_padding_ub = ib.allocate("float16",
@@ -70,7 +251,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                          scope=tbe_platform.scope_ubuf,
                                                          data=tmp_padding_ub)
 
-                    aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num)
+                    aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num, padding_value)
                     aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
                                    tmp_padding_ub_buf, num)
 
@@ -140,7 +321,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                      data=padding_ub)
 
                     if dtype == "float16":
-                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num)
+                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num, padding_value)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16",
@@ -153,7 +334,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                                  scope=tbe_platform.scope_ubuf,
                                                                  data=tmp_padding_ub)
 
-                            aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num)
+                            aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num, padding_value)
                             aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
                                            tmp_padding_ub_buf, num)
 
@@ -189,7 +370,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                          data=padding_ub)
 
                         if dtype == "float16":
-                            aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num)
+                            aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num, padding_value)
                         else:
                             with ib.new_scope():
                                 tmp_padding_ub = ib.allocate("float16",
@@ -202,7 +383,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                                      scope=tbe_platform.scope_ubuf,
                                                                      data=tmp_padding_ub)
 
-                                aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num)
+                                aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num, padding_value)
                                 aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
                                                tmp_padding_ub_buf, num)
 
@@ -243,7 +424,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                      data=padding_ub)
 
                     if dtype == "float16":
-                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num)
+                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num, padding_value)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16", (num,),
@@ -255,7 +436,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                                  scope=tbe_platform.scope_ubuf,
                                                                  data=tmp_padding_ub)
 
-                            aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num)
+                            aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num, padding_value)
                             aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
                                            tmp_padding_ub_buf, num)
 
@@ -291,7 +472,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                      data=padding_ub)
 
                     if dtype == "float16":
-                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num)
+                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, num, padding_value)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16",
@@ -304,7 +485,7 @@ def process_padding(ib, input_data, output_buf, output_format="NC1HWC0"):
                                                                  scope=tbe_platform.scope_ubuf,
                                                                  data=tmp_padding_ub)
 
-                            aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num)
+                            aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf, num, padding_value)
                             aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
                                            tmp_padding_ub_buf, tail_h*tail_w*C0)
 
@@ -647,27 +828,41 @@ def aipp_compute(input_tensor, input_shape, input_format,
 
                 if "padding" in aipp_config and \
                         aipp_config.get("padding") == 1:
+                    padding_value = aipp_config.get("padding_value", 0)
+
                     if "top_padding_size" in aipp_config and \
                             aipp_config.get("top_padding_size") > 0:
-                        with ib.new_scope():
-                            top_offset = block_index*offset + n1*C1*H*W*C0
-                            process_padding(
-                                ib,
-                                (dtype, W, C0, size,
-                                 top_padding_size, top_offset),
-                                output_buf, output_format)
+                        top_offset = block_index*offset + n1*C1*H*W*C0
+                        if padding_value != 0 and not (C0 == 4 and aipp_config.get("input_format") in \
+                                                       ("AYUV444_U8", "ARGB8888_U8")):
+                            with ib.new_scope():
+                                process_padding_value(ib, (dtype, W, C0, size, top_padding_size,
+                                                           top_offset, padding_value),
+                                                      output_buf, aipp_config.get("input_format"), output_format)
+                        else:
+                            with ib.new_scope():
+                                process_padding(
+                                    ib,
+                                    (dtype, W, C0, size,
+                                     top_padding_size, top_offset, padding_value),
+                                    output_buf, output_format)
 
                     if "bottom_padding_size" in aipp_config and \
                             aipp_config.get("bottom_padding_size") > 0:
-                        with ib.new_scope():
-                            bottom_offset = block_index*offset +\
-                                            n1*C1*H*W*C0 +\
-                                            (H-bottom_padding_size)*W*C0
-                            process_padding(
-                                ib,
-                                (dtype, W, C0, size,
-                                 bottom_padding_size, bottom_offset),
-                                output_buf, output_format)
+                        bottom_offset = block_index*offset + n1*C1*H*W*C0 + (H - bottom_padding_size)*W*C0
+                        if padding_value != 0 and not (C0 == 4 and aipp_config.get("input_format") in \
+                                                       ("AYUV444_U8", "ARGB8888_U8")):
+                            with ib.new_scope():
+                                process_padding_value(ib, (dtype, W, C0, size, bottom_padding_size,
+                                                           bottom_offset, padding_value),
+                                                      output_buf, aipp_config.get("input_format"), output_format)
+                        else:
+                            with ib.new_scope():
+                                process_padding(
+                                    ib,
+                                    (dtype, W, C0, size,
+                                     bottom_padding_size, bottom_offset, padding_value),
+                                    output_buf, output_format)
                 scfIncVscl = 0
                 scfIncHscl = 0
                 if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
