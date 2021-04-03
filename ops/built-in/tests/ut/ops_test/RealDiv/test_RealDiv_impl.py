@@ -28,6 +28,54 @@ ut_case.add_broadcast_case_simple(["Ascend910"], ["float16", "float32"], (10, 13
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
+# test format is different, one input is FRACTAL_NZ, another is NCHW, NHWC, ND
+# FRACTAL_NZ, ND
+ut_case.add_broadcast_case("all", ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 15), "ND"],
+                           ["float16", (512, 1, 1), "ND"], expect=RuntimeError, case_name="nz_nd_1")
+
+ut_case.add_broadcast_case("all", ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"],
+                           ["float16", (512, 32, 32), "ND"], expect=RuntimeError, case_name="nz_nd_2")
+
+ut_case.add_broadcast_case("all", ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"],
+                           ["float16", (512, 1, 1), "ND"], case_name="nz_nd_3")
+
+ut_case.add_broadcast_case("all", ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"],
+                           ["float16", (512, 32, 1), "ND"], case_name="nz_nd_4")
+
+ut_case.add_broadcast_case("all", ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"],
+                           ["float16", (512, 1, 32), "ND"])
+# ND, FRACTAL_NZ
+ut_case.add_broadcast_case("all", ["float16", (512, 1, 32), "ND"],
+                           ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 31, 32), "ND"],
+                           expect=RuntimeError)
+
+ut_case.add_broadcast_case("all", ["float16", (512, 32, 32), "ND"],
+                           ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"],
+                           expect=RuntimeError)
+
+ut_case.add_broadcast_case("all", ["float16", (512, 32, 1), "ND"],
+                           ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"])
+
+ut_case.add_broadcast_case("all", ["float16", (512, 1, 32), "ND"],
+                           ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"])
+
+ut_case.add_broadcast_case("all", ["float16", (512, 1, 1), "ND"],
+                           ["float16", (512, 2, 2, 16, 16), "FRACTAL_NZ", (512, 32, 32), "ND"])
+
+# NHWC, FRACTAL_NZ
+ut_case.add_broadcast_case("all", ["float16", (32, 64, 1, 64), "NHWC"],
+                           ["float16", (32, 64, 4, 4, 16, 16), "FRACTAL_NZ", (32, 64, 64, 64), "ND"])
+
+ut_case.add_broadcast_case("all", ["float16", (32, 64, 4, 4, 16, 16), "FRACTAL_NZ", (32, 64, 64, 64), "ND"],
+                           ["float16", (32, 64, 1, 64), "NHWC"])
+
+ut_case.add_broadcast_case("all", ["float16", (32, 64, 1, 64), "NCHW"],
+                           ["float16", (32, 64, 4, 4, 16, 16), "FRACTAL_NZ", (32, 64, 64, 64), "ND"])
+
+ut_case.add_broadcast_case("all", ["float16", (32, 64, 4, 4, 16, 16), "FRACTAL_NZ", (32, 64, 64, 64), "ND"],
+                           ["float16", (32, 64, 1, 64), "NCHW"])
+# ==========================================================================================================
+
 def calc_expect_func(x1, x2, y):
     res =  x1['value'] / x2['value']
     return res

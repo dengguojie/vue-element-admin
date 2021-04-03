@@ -247,6 +247,118 @@ def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
     return param_dynamic_in_json
 
 
+def _check_format(x, y):
+    """
+    funtion to check format
+
+    Parameters
+    ----------
+    x: dict
+        dict of x, include keys(shape and dtype).
+    y: dict
+        dict of x, include keys(shape and dtype).
+
+    Returns:
+    -------
+    format_pattern: int
+    """
+    format_pattern = 0
+    shape1 = x.get("shape")
+    shape2 = y.get("shape")
+    list_format = [x.get("format"), y.get("format")]
+    shape1 = shape_util.scalar2tensor_one(shape1)
+    shape2 = shape_util.scalar2tensor_one(shape2)
+    check_list = [["FRACTAL_NZ", "ND"], ["ND", "FRACTAL_NZ"],
+                  ["FRACTAL_NZ", "NHWC"], ["NHWC", "FRACTAL_NZ"],
+                  ["FRACTAL_NZ", "NCHW"], ["NCHW", "FRACTAL_NZ"]]
+    if list_format == check_list[0] and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
+        format_pattern = 1
+    elif list_format == check_list[1] and (len(shape1) != 1 or (len(shape1) == 1 and shape1[0] != 1)):
+        format_pattern = 2
+    elif list_format == check_list[2] and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
+        format_pattern = 1
+    elif list_format == check_list[3] and (len(shape1) != 1 or (len(shape1) == 1 and shape1[0] != 1)):
+        format_pattern = 2
+    elif list_format == check_list[4] and (len(shape2) != 1 or (len(shape2) == 1 and shape2[0] != 1)):
+        format_pattern = 1
+    elif list_format == check_list[5] and (len(shape1) != 1 or (len(shape1) == 1 and shape1[0] != 1)):
+        format_pattern = 2
+
+    return format_pattern
+
+
+def _infer_shape(format_pattern, x, y):
+    """
+    funtion to infer shape
+
+    Parameters
+    ----------
+    format_pattern: int
+    x: dict
+        dict of x, include keys(shape and dtype).
+    y: dict
+        dict of x, include keys(shape and dtype).
+
+    Returns:
+    -------
+    shape_x: shape of x
+    shape_y: shape of y
+    """
+    shape_x = x.get("shape")
+    shape_y = y.get("shape")
+    ori_shape_x = x.get("ori_shape")
+    ori_shape_y = y.get("ori_shape")
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
+
+    if format_pattern == 1:
+        ori_shape_x, shape_y, shape_max = shape_util.broadcast_shapes(ori_shape_x, shape_y,
+                                                                      param_name_input1="input_x",
+                                                                      param_name_input2="input_y")
+        if shape_y[-2] == 1 and shape_y[-1] == ori_shape_x[-1]:
+            shape_y.append(1)
+            shape_y.append(1)
+            shape_y[-3] = 1
+            shape_y[-1] = shape_x[-1]
+            shape_y[-4] = shape_x[-4]
+
+        elif shape_y[-2] == ori_shape_x[-2] and shape_y[-1] == 1:
+            shape_y.append(1)
+            shape_y.append(1)
+            shape_y[-4] = 1
+            shape_y[-2] = shape_x[-2]
+            shape_y[-3] = shape_x[-3]
+
+        elif shape_y[-2] == shape_y[-1] == 1:
+            shape_y.append(1)
+            shape_y.append(1)
+
+    elif format_pattern == 2:
+        shape_x, ori_shape_y, shape_max = shape_util.broadcast_shapes(shape_x,
+                                                                      ori_shape_y,
+                                                                      param_name_input1="input_x",
+                                                                      param_name_input2="input_y")
+        if shape_x[-2] == 1 and shape_x[-1] == ori_shape_y[-1]:
+            shape_x.append(1)
+            shape_x.append(1)
+            shape_x[-3] = 1
+            shape_x[-1] = shape_y[-1]
+            shape_x[-4] = shape_y[-4]
+
+        elif shape_x[-2] == ori_shape_y[-2] and shape_x[-1] == 1:
+            shape_x.append(1)
+            shape_x.append(1)
+            shape_x[-4] = 1
+            shape_x[-2] = shape_y[-2]
+            shape_x[-3] = shape_y[-3]
+
+        elif shape_x[-2] == shape_x[-1] == 1:
+            shape_x.append(1)
+            shape_x.append(1)
+
+    return shape_x, shape_y
+
+
 @tbe_platform.fusion_manager.fusion_manager.register("real_div")
 def real_div_compute(x1, x2, y, kernel_name="real_div"):
     """
@@ -300,8 +412,10 @@ def real_div(x1, x2, y, kernel_name="real_div"):
     -------
     None
     """
-    shape_x = shape_util.scalar2tensor_one(x1.get("shape"))
-    shape_y = shape_util.scalar2tensor_one(x2.get("shape"))
+    format_pattern = _check_format(x1, x2)
+    shape_x, shape_y = _infer_shape(format_pattern, x1, x2)
+    shape_x = shape_util.scalar2tensor_one(shape_x)
+    shape_y = shape_util.scalar2tensor_one(shape_y)
     para_check.check_shape(shape_x, param_name="x1")
     para_check.check_shape(shape_y, param_name="x2")
 
