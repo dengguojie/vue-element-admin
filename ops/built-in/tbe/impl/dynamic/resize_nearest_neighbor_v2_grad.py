@@ -50,8 +50,7 @@ class ResizeNearestNeighborV2Grad:
         para_check.check_dtype(self.grads_dtype, ("float32"), param_name="grads")
 
         self.kernel_name = kernel_name
-        # self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ai_core_num = 1
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
 
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
