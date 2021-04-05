@@ -19,6 +19,8 @@ import time
 import unittest
 ut_case = OpUT("BatchMatmulV2", None, None)
 
+from impl.batch_matmul_v2 import get_op_support_info
+
 case1 = {"params": [{"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"}, #x
                     {"shape": (3, 64, 96), "dtype": "float16", "format": "NHWC", "ori_shape": (3,64, 96),"ori_format": "NHWC"},
                     {"shape": (64,), "dtype": "float16", "format": "NHWC", "ori_shape": (64,),"ori_format": "NHWC"},
@@ -94,6 +96,16 @@ ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case(["Ascend910A"], case6)
 
+
+def test_split_batch_matmul_v2(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    get_op_support_info(x1, x2, trans_a=True)
+
+    x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
+    x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
+    get_op_support_info(x1, x2, None, trans_b=True)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul_v2)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A"])

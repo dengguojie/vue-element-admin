@@ -20,6 +20,8 @@ import time
 import unittest
 import functools
 
+from impl.batch_matmul import get_op_support_info
+
 from batchmatmul_fusion_case import batchmatmul_ut_fusion_case
 from test_BatchMatMul_fusion import test_batchmatmul_fusion
 
@@ -85,6 +87,16 @@ print("==========add case for batchmamtul fusion===============")
 for fusion_case in batchmatmul_ut_fusion_case:
     ut_case.add_cust_test_func(["Ascend910", "Ascend310", "Ascend710"],
                                test_func=test_batchmatmul_fusion(fusion_case))
+
+def test_split_batch_matmul(test_arg):
+    x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    x2 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 2, 16, 16), "ori_shape": (16, 32, 16)}
+    get_op_support_info(x1, x2, trans_a=True)
+
+    x1 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 16, 32), "ori_shape": (16, 16, 32)}
+    x2 = {"format": "ND","ori_format": "ND", "dtype": "float16", "shape": (16, 32), "ori_shape": (16, 32)}
+    get_op_support_info(x1, x2, None, trans_b=True)
+ut_case.add_cust_test_func(test_func=test_split_batch_matmul)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])

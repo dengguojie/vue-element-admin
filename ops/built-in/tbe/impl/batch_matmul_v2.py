@@ -18,6 +18,7 @@ batch_matmul
 import functools
 
 from impl import batch_matmul_vector
+from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
@@ -31,6 +32,103 @@ SHAPE_SIZE_LIMIT = 2147483648
 NoneType = type(None)
 DYNAMIC_UNRANK = [-2]
 ND_LENGTH = 2
+NZ_LENGTH = 4
+
+# 2 means L1 enable
+L1FUSION_INPUT_CTR = 2
+
+def _cal_min_l1space(dtype_b):
+    block_reduce = tbe_platform.CUBE_MKN[dtype_b]["mac"][1]
+    block_out = tbe_platform.CUBE_MKN[dtype_b]["mac"][2]
+    mini_l1space = block_out * block_reduce * \
+                   util_deconv_comm.BIT_RATIO_DICT.get(dtype_b)
+    return mini_l1space
+
+
+def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
+                        input_y,
+                        bias=None,
+                        offset_w={},
+                        output_z={},
+                        trans_a=False,
+                        trans_b=False,
+                        kernel_name="matmul"):
+    """
+    get the batch_matmul_v2 split, which only split batch, m and n, cannot cut k with bias
+
+    """
+
+
+    format_a = input_x.get("format")
+    format_b = input_y.get("format")
+    a_shape = input_x.get("shape")
+    b_shape = input_y.get("shape")
+    dtype_b = input_y.get("dtype")
+    if format_a == 'FRACTAL_NZ':
+        trans_a = not trans_a
+    if format_b == 'FRACTAL_NZ':
+        trans_b = not trans_b
+
+    if format_a != 'FRACTAL_NZ':
+        batch_len_a = len(a_shape) - ND_LENGTH
+    else:
+        batch_len_a = len(a_shape) - NZ_LENGTH
+    if format_b in ('FRACTAL_NZ', 'FRACTAL_Z'):
+        batch_len_b = len(b_shape) - NZ_LENGTH
+    else:
+        batch_len_b = len(b_shape) - ND_LENGTH
+
+    # cut m
+    if not trans_a:
+        m_split_list = [0, [batch_len_a], [0], [0]]
+        mk_split_list = [0, [batch_len_a + 1]]
+    else:
+        m_split_list = [0, [batch_len_a + 1], [0], [0]]
+        mk_split_list = [0, [batch_len_a]]
+    # cut n
+    if not trans_b:
+        n_split_list = [[1, [batch_len_b + 1], [0], [0]]]
+        nk_split_list = [1, [batch_len_b]]
+    else:
+        n_split_list = [[1, [batch_len_b], [0], [0]]]
+        nk_split_list = [1, [batch_len_b + 1]]
+
+    if bias:
+        axis_reduce_list = None
+        n_split_list.append([2, [0], [0], [0]])
+    else:
+        # cut k_dim which is reduce dim
+        axis_reduce_list = [[util_select_op_base.ReduceInput(mk_split_list, nk_split_list),
+                            util_select_op_base.ReduceOutput([0, "REDUCE_ADD", False])]]
+
+    axis_split_matrix_batch = []
+    for i in range(batch_len_a):
+        batch_split_list = [[0, [i], [0], [0]]]
+        if batch_len_b != 0:
+            batch_split_list.append([1, [i], [0], [0]])
+        axis_split_matrix_batch.append(
+            [util_select_op_base.SplitInput(*batch_split_list),
+                util_select_op_base.SplitOutput([0, [i]])]
+        )
+
+    out_m_axis = batch_len_a + 1 if format_a == "FRACTAL_NZ" else batch_len_a
+    axis_split_matrix_a = [
+        [util_select_op_base.SplitInput(m_split_list),
+            util_select_op_base.SplitOutput([0, [out_m_axis]])]
+    ]
+
+    out_n_axis = batch_len_a if format_b in ("FRACTAL_NZ", "FRACTAL_Z") else batch_len_a + 1
+    axis_split_matrix_b = [
+        [util_select_op_base.SplitInput(*n_split_list),
+            util_select_op_base.SplitOutput([0, [out_n_axis]])]
+    ]
+
+    axis_split_matrix = axis_split_matrix_a + axis_split_matrix_b + axis_split_matrix_batch
+    min_l1space = _cal_min_l1space(dtype_b)
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
+
+    return op_cal_info_in_json
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unnecessary-comprehension
