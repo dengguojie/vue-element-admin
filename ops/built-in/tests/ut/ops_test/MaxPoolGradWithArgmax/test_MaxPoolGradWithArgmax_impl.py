@@ -60,13 +60,24 @@ case5 = {"params": [{"shape": (2,32,96,144,16), "dtype": "float16", "format": "N
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case6 = {"params": [{"shape": (256,4,112,112,16), "dtype": "float16", "format": "NC1HWC", "ori_shape": (256,112,112,64),"ori_format": "NHWC"},
+                    {"shape": (256,4,56,56,16), "dtype": "float16", "format": "NC1HWC", "ori_shape": (256,56,56,64),"ori_format": "NHWC"},
+                    {"shape": (256,4,9,197,16), "dtype": "uint16", "format": "NC1HWC", "ori_shape": (256,4,9,197,16),"ori_format": "NHWC"},
+                    {"shape": (256,4,112,112,16), "dtype": "float16", "format": "NC1HWC", "ori_shape": (256,112,112,64),"ori_format": "NHWC"},
+                    [1, 3, 3, 1],
+                    [1, 2, 2, 1],
+                    "SAME"],
+         "case_name": "max_pool_grad_with_arxmax_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend710", "Ascend910"], case5)
-
+ut_case.add_case(["Ascend710", "Ascend910"], case6)
 
 from impl.max_pool_grad_with_argmax import check_supported
 

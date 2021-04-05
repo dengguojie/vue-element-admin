@@ -146,66 +146,65 @@ class MaxpoolGradResnet50():
                                                      scope=tik.scope_gm)
 
         grad_ub_size = 4 * 2 * 112 * 16
-        ub_grad_buf0 = self.tik_instance.Tensor(dtype, (grad_ub_size,),
-                                                name="ub_grad_buf0",
-                                                scope=tik.scope_ubuf)
-        ub_grad_buf1 = self.tik_instance.Tensor(dtype, (grad_ub_size,),
-                                                name="ub_grad_buf1",
-                                                scope=tik.scope_ubuf)
-
-        select_ub_size = input_block_size
-        ub_select_fp16_buf = self.tik_instance.Tensor(dtype, (select_ub_size,),
-                                                      name="ub_select_fp16_buf",
-                                                      scope=tik.scope_ubuf)
-
-        max_pool_ub_size = input_block_size
-        maxpool_ub_input_buf0 = self.tik_instance.Tensor(dtype,
-                                                         (max_pool_ub_size,),
-                                                         name="maxpool_ub0",
-                                                         scope=tik.scope_ubuf)
-        maxpool_ub_input_buf1 = self.tik_instance.Tensor(dtype,
-                                                         (max_pool_ub_size,),
-                                                         name="maxpool_ub1",
-                                                         scope=tik.scope_ubuf)
-
-        mask_ub_size = 9 * 4 * 56 * 16 // 16
-        ub_loc_mask_buf0 = self.tik_instance.Tensor("uint16", (mask_ub_size,),
-                                                    name="ub_loc_mask_buf0",
-                                                    scope=tik.scope_ubuf)
-        ub_loc_mask_buf1 = self.tik_instance.Tensor("uint16", (mask_ub_size,),
-                                                    name="ub_loc_mask_buf1",
-                                                    scope=tik.scope_ubuf)
-
-        ub_zero_buf = self.tik_instance.Tensor(dtype, (128,),
-                                               name="ub_zero_buf",
-                                               scope=tik.scope_ubuf)
-
-        ub_select_fp32_buf = self.tik_instance.Tensor("float32",
-                                                      (select_ub_size,),
-                                                      name="ub_select_fp32_buf",
-                                                      scope=tik.scope_ubuf)
-
-        fm_f32_ub_size = (4 * 2 + 1) * 112 * 16
-        ub_fm_fp32_buf = self.tik_instance.Tensor("float32", (fm_f32_ub_size,),
-                                                  name="ub_fm_fp32_buf",
-                                                  scope=tik.scope_ubuf)
-
-        fm_f32_tail_ub_size = 1 * 112 * 16
-        ub_fm_fp32_tail_buf = self.tik_instance.Tensor("float32",
-                                                       (fm_f32_tail_ub_size,),
-                                                       name="ub_fm_fp32_tail",
-                                                       scope=tik.scope_ubuf)
-
-        self.tik_instance.data_move(ub_zero_buf[0],
-                                    data_input_origin[0],
-                                    constant.SID,
-                                    constant.DEFAULT_NBURST,
-                                    constant.DEFAULT_BURST_LEN,
-                                    constant.STRIDE_ZERO,
-                                    constant.STRIDE_ZERO)
-
-        with self.tik_instance.for_range(0, batch_num*c1_dim,
+        with self.tik_instance.for_range(0, batch_num * c1_dim,
                                          block_num=block_num) as batch_idx:
+            ub_grad_buf0 = self.tik_instance.Tensor(dtype, (grad_ub_size,),
+                                                    name="ub_grad_buf0",
+                                                    scope=tik.scope_ubuf)
+            ub_grad_buf1 = self.tik_instance.Tensor(dtype, (grad_ub_size,),
+                                                    name="ub_grad_buf1",
+                                                    scope=tik.scope_ubuf)
+
+            select_ub_size = input_block_size
+            ub_select_fp16_buf = self.tik_instance.Tensor(dtype, (select_ub_size,),
+                                                          name="ub_select_fp16_buf",
+                                                          scope=tik.scope_ubuf)
+
+            max_pool_ub_size = input_block_size
+            maxpool_ub_input_buf0 = self.tik_instance.Tensor(dtype,
+                                                             (max_pool_ub_size,),
+                                                             name="maxpool_ub0",
+                                                             scope=tik.scope_ubuf)
+            maxpool_ub_input_buf1 = self.tik_instance.Tensor(dtype,
+                                                             (max_pool_ub_size,),
+                                                             name="maxpool_ub1",
+                                                             scope=tik.scope_ubuf)
+
+            mask_ub_size = 9 * 4 * 56 * 16 // 16
+            ub_loc_mask_buf0 = self.tik_instance.Tensor("uint16", (mask_ub_size,),
+                                                        name="ub_loc_mask_buf0",
+                                                        scope=tik.scope_ubuf)
+            ub_loc_mask_buf1 = self.tik_instance.Tensor("uint16", (mask_ub_size,),
+                                                        name="ub_loc_mask_buf1",
+                                                        scope=tik.scope_ubuf)
+
+            ub_zero_buf = self.tik_instance.Tensor(dtype, (128,),
+                                                   name="ub_zero_buf",
+                                                   scope=tik.scope_ubuf)
+
+            ub_select_fp32_buf = self.tik_instance.Tensor("float32",
+                                                          (select_ub_size,),
+                                                          name="ub_select_fp32_buf",
+                                                          scope=tik.scope_ubuf)
+
+            fm_f32_ub_size = (4 * 2 + 1) * 112 * 16
+            ub_fm_fp32_buf = self.tik_instance.Tensor("float32", (fm_f32_ub_size,),
+                                                      name="ub_fm_fp32_buf",
+                                                      scope=tik.scope_ubuf)
+
+            fm_f32_tail_ub_size = 1 * 112 * 16
+            ub_fm_fp32_tail_buf = self.tik_instance.Tensor("float32",
+                                                           (fm_f32_tail_ub_size,),
+                                                           name="ub_fm_fp32_tail",
+                                                           scope=tik.scope_ubuf)
+
+            self.tik_instance.data_move(ub_zero_buf[0],
+                                        data_input_origin[0],
+                                        constant.SID,
+                                        constant.DEFAULT_NBURST,
+                                        constant.DEFAULT_BURST_LEN,
+                                        constant.STRIDE_ZERO,
+                                        constant.STRIDE_ZERO)
             batch = batch_idx / c1_dim
             loopc = batch_idx % c1_dim
             # avoid tik take data_vsel_ub_zero as a input
