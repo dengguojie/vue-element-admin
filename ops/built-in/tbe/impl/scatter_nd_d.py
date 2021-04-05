@@ -74,9 +74,7 @@ def scatter_nd_d(indices, x, y, shape, kernel_name="scatter_nd_d"):
         output_size = tik_instance.Scalar("int32")
         output_size.set_as(cycle_each_block*process.update_each_size)
 
-        with tik_instance.if_scope(tik.all(block_dim == \
-                                           constant_util.MAX_BLOCK_NUMBER,
-                                           last_spilt != 0,
+        with tik_instance.if_scope(tik.all(last_spilt != 0,
                                            block_id < last_spilt)):
             cycle_each_block.set_as(loop_cycle + 1)
             output_size.set_as(cycle_each_block*process.update_each_size)

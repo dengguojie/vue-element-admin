@@ -45,10 +45,10 @@ TEST_F(transdata_fusion_test, transdata_fusion_test_1) {
 
   std::vector<int64_t> input_vec{16, 2, 1, 1, 16};
   ge::Shape input_shape(input_vec);
-  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT);
   std::vector<int64_t> output_vec{16, 1, 1, 32};
   ge::Shape output_shape(output_vec);
-  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT);
   trans.update_input_desc_src(input_desc);
   trans.update_output_desc_dst(output_desc);
 
@@ -79,10 +79,10 @@ TEST_F(transdata_fusion_test, transdata_fusion_test_2) {
 
   std::vector<int64_t> input_vec{16, 2, 1, 1, 16};
   ge::Shape input_shape(input_vec);
-  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT);
   std::vector<int64_t> output_vec{16, 32, 1, 1};
   ge::Shape output_shape(output_vec);
-  ge::TensorDesc output_desc(output_shape, FORMAT_NCHW, DT_FLOAT16);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NCHW, DT_FLOAT);
   trans.update_input_desc_src(input_desc);
   trans.update_output_desc_dst(output_desc);
 
@@ -113,10 +113,10 @@ TEST_F(transdata_fusion_test, transdata_fusion_test_3) {
 
   std::vector<int64_t> input_vec{16, 2, 1, 1, 16};
   ge::Shape input_shape(input_vec);
-  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT);
   std::vector<int64_t> output_vec{16, 1, 1, 32};
   ge::Shape output_shape(output_vec);
-  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT);
   trans.update_input_desc_src(output_desc);
   trans.update_output_desc_dst(input_desc);
 
@@ -147,10 +147,10 @@ TEST_F(transdata_fusion_test, transdata_fusion_test_4) {
 
   std::vector<int64_t> input_vec{16, 2, 1, 1, 16};
   ge::Shape input_shape(input_vec);
-  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT);
   std::vector<int64_t> output_vec{16, 32, 1, 1};
   ge::Shape output_shape(output_vec);
-  ge::TensorDesc output_desc(output_shape, FORMAT_NCHW, DT_FLOAT16);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NCHW, DT_FLOAT);
   trans.update_input_desc_src(output_desc);
   trans.update_output_desc_dst(input_desc);
 
@@ -181,10 +181,10 @@ TEST_F(transdata_fusion_test, transdata_fusion_test_5) {
 
   std::vector<int64_t> input_vec{16, 2, 2, 2, 16};
   ge::Shape input_shape(input_vec);
-  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT);
   std::vector<int64_t> output_vec{16, 2, 2, 32};
   ge::Shape output_shape(output_vec);
-  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT);
   trans.update_input_desc_src(input_desc);
   trans.update_output_desc_dst(output_desc);
 
@@ -215,10 +215,10 @@ TEST_F(transdata_fusion_test, transdata_fusion_test_6) {
 
   std::vector<int64_t> input_vec{16, 2, 1, 1, 16};
   ge::Shape input_shape(input_vec);
-  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT);
   std::vector<int64_t> output_vec{16, 1, 1, 31};
   ge::Shape output_shape(output_vec);
-  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT);
   trans.update_input_desc_src(output_desc);
   trans.update_output_desc_dst(input_desc);
 
@@ -249,16 +249,50 @@ TEST_F(transdata_fusion_test, transdata_fusion_test_7) {
 
   std::vector<int64_t> input_vec{-1, 2, 1, 1, 16};
   ge::Shape input_shape(input_vec);
-  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT);
   std::vector<int64_t> output_vec{-1, 1, 1, 32};
   ge::Shape output_shape(output_vec);
-  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT);
   trans.update_input_desc_src(output_desc);
   trans.update_output_desc_dst(input_desc);
 
   auto invert = op::Invert("invert").set_input_x(trans);
   invert.update_input_desc_x(input_desc);
   invert.update_output_desc_y(input_desc);
+
+  std::vector<Operator> inputs{input};
+  std::vector<Operator> outputs{invert};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::RunGraphFusionPass("TransDataPass", fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS,
+                                              *compute_graph_ptr);
+
+  bool findOp = true;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "TransData") {
+      findOp = false;
+    }
+  }
+  EXPECT_EQ(findOp, false);
+}
+TEST_F(transdata_fusion_test, transdata_fusion_test_8) {
+  ge::Graph graph("transdata_fusion_test_8");
+  auto input = op::Data().set_attr_index(0);
+  auto trans = op::TransData("transdata").set_input_src(input);
+
+  std::vector<int64_t> input_vec{16, 2, 1, 1, 16};
+  ge::Shape input_shape(input_vec);
+  ge::TensorDesc input_desc(input_shape, FORMAT_NC1HWC0, DT_FLOAT16);
+  std::vector<int64_t> output_vec{16, 1, 1, 32};
+  ge::Shape output_shape(output_vec);
+  ge::TensorDesc output_desc(output_shape, FORMAT_NHWC, DT_FLOAT16);
+  trans.update_input_desc_src(input_desc);
+  trans.update_output_desc_dst(output_desc);
+
+  auto invert = op::Invert("invert").set_input_x(trans);
+  invert.update_input_desc_x(output_desc);
+  invert.update_output_desc_y(output_desc);
 
   std::vector<Operator> inputs{input};
   std::vector<Operator> outputs{invert};

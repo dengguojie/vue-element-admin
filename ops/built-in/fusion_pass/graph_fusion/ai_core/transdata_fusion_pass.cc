@@ -79,12 +79,16 @@ Status TransDataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   TensorDesc inputDesc = transdataOp.GetInputDesc("src");
   Format inputFormat = inputDesc.GetFormat();
   Shape inputShape = inputDesc.GetShape();
+  DataType inputDtype = inputDesc.GetDataType();
   TensorDesc outputDesc = transdataOp.GetOutputDesc("dst");
   Format outputFormat = outputDesc.GetFormat();
   Shape outputShape = outputDesc.GetShape();
 
   // check dynamic shape
   FUSION_PASS_CHECK(IsUnknownShape(inputShape.GetDims()), OP_LOGI(FUSED_OP_TYPE.c_str(), "TransData is dynamic."),
+                    return NOT_CHANGED);
+  // check input dtype
+  FUSION_PASS_CHECK(inputDtype != DT_FLOAT, OP_LOGI(FUSED_OP_TYPE.c_str(), "Input dtype must be float."),
                     return NOT_CHANGED);
 
   int32_t hDim = 1;
