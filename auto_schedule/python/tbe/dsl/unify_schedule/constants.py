@@ -37,6 +37,7 @@ class Pattern:
     CONV3D_BACKPROP_FILTER = "Conv3d_backprop_filter"
     BN_UPDATE = "BnTrainingUpdate"
     LayerNorm = "LayerNorm"
+    BN_TRAINING_UPDATE_GRAD = "BNTrainingUpdateGrad"
 
 
 class CompileInfo:

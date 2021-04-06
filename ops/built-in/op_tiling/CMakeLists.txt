@@ -117,6 +117,7 @@ set(_optiling_files
   maxpoolwithargmaxv1.cc
   bounding_box_decode.cc
   layer_norm.cc
+  bn_update_grad_tiling.cc
 )
 
 set(_op_tiling_include
