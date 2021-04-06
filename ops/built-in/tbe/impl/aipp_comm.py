@@ -1389,9 +1389,9 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
         c0 = input_data[4]
 
     output_shape = output_data.get('shape')
-    output_ori_shape = output_data.get('ori_shape')
-    output_ori_format = output_data.get('ori_format')
     output_dtype = output_data.get('dtype').lower()
+    output_ori_format = output_data.get('ori_format')
+    output_ori_shape = output_data.get('ori_shape')
     _, c1, h, w, c0 = output_shape
 
     if 'input_format' not in aipp_config:
@@ -1412,21 +1412,21 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
         raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") in \
-            ["YUV420SP_U8", "RGB888_U8", "YUYV_U8", "YUV420SP_U8", "RGB16", "RGB20", "RGB24"]:
+            ("YUV420SP_U8", "RGB888_U8", "YUYV_U8", "YUV420SP_U8", "RGB16", "RGB20", "RGB24"):
         if c != 3:
             cause_desc = "input c[%d] must be 3 when input_format is %s" % \
                          (c, aipp_config.get("input_format"))
             raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") in \
-            ["XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8", "RGB8_IR", "RGB16_IR", "RGB24_IR"]:
+            ("XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8", "RGB8_IR", "RGB16_IR", "RGB24_IR"):
         if c != 4:
             cause_desc = "input c[%d] must be 4 when input_format is %s" % \
                          (c, aipp_config.get("input_format"))
             raise_runtime_error(cause_desc)
 
     if aipp_config.get("input_format") in \
-            ["YUV400_U8", "RAW10", "RAW12", "RAW16", "uint16"]:
+            ("YUV400_U8", "RAW10", "RAW12", "RAW16", "uint16"):
         if c != 1:
             cause_desc = "input c[%d] must be 1 when input_format is %s" % \
                          (c, aipp_config.get("input_format"))
@@ -1439,7 +1439,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          (c0, aipp_config.get("input_format"))
             raise_runtime_error(cause_desc)
 
-    if aipp_config.get("input_format") not in ["NC1HWC0DI_S8", "NC1HWC0DI_FP16"]:
+    if aipp_config.get("input_format") not in ("NC1HWC0DI_S8", "NC1HWC0DI_FP16"):
         if c1 != 1:
             if output_ori_format == "NCHW":
                 output_ori_c = output_ori_shape[1]
@@ -1774,12 +1774,12 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 raise_runtime_error(cause_desc)
 
         if ('padding' in aipp_config and aipp_config.get('padding') == 1):
-            if cur_cce_product in ["Ascend310", "Ascend910", "Ascend610", "Ascend710"]:
+            if cur_cce_product in ("Ascend310", "Ascend910", "Ascend610", "Ascend710"):
                 if w > 1080:
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 1080" % w
                     raise_runtime_error(cause_desc)
-            if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
+            if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 if w > 4096:
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 4096" % w
@@ -1940,11 +1940,11 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          "current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
-    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
+    if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if aipp_config.get('input_format') not in \
-                ["YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8",
+                ("YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8",
                  "YUYV_U8", "YUV422SP_U8", "AYUV444_U8", "YUV400_U8", "RAW10",
-                 "RAW12", "RAW16", "uint16"]:
+                 "RAW12", "RAW16", "uint16"):
             cause_desc = "Hi3796CV300ES, Hi3796CV300CS and SD3403 only support " \
                          "YUV420SP_U8, RGB888_U8, XRGB8888_U8, XRGB8888_U8, " \
                          "YUYV_U8, YUV422SP_U8, AYUV444_U8, YUV400_U8, " \
@@ -1971,15 +1971,15 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                          (w, aipp_config.get('src_image_size_w'))
             raise_runtime_error(cause_desc)
 
-        if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
+        if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             if aipp_config.get('input_format') in \
-                ["YUV420SP_U8", "YUV400_U8", "YUV422SP_U8", "RAW10",
-                 "RAW12", "RAW16", "uint16"]:
+                ("YUV420SP_U8", "YUV400_U8", "YUV422SP_U8", "RAW10",
+                 "RAW12", "RAW16", "uint16"):
                 if (('src_image_size_w' in aipp_config) and \
                         aipp_config.get('src_image_size_w') % 16 != 0) or w % 16 != 0:
                     cause_desc = "src_image_size_w[%d] of %s must " \
                                  "be multiples of 16" % \
-                                 (aipp_config.get('src_image_size_w'),
+                                 (aipp_config.get('src_image_size_w') if ('src_image_size_w' in aipp_config) else w,
                                   aipp_config.get('input_format'))
                     raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["RGB888_U8"]:
@@ -1987,7 +1987,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                         (aipp_config.get('src_image_size_w')*3) % 16 != 0) or (w*3) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*3 of %s must " \
                                  "be multiples of 16" % \
-                                 (aipp_config.get('src_image_size_w'),
+                                 (aipp_config.get('src_image_size_w') if ('src_image_size_w' in aipp_config) else w,
                                   aipp_config.get('input_format'))
                     raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["XRGB8888_U8", "ARGB8888_U8", "AYUV444_U8"]:
@@ -1995,7 +1995,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                         (aipp_config.get('src_image_size_w')*4) % 16 != 0) or (w*4) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*4 of %s must " \
                                  "be multiples of 16" % \
-                                 (aipp_config.get('src_image_size_w'),
+                                 (aipp_config.get('src_image_size_w') if ('src_image_size_w' in aipp_config) else w,
                                   aipp_config.get('input_format'))
                     raise_runtime_error(cause_desc)
             elif aipp_config.get('input_format') in ["YUYV_U8"]:
@@ -2003,7 +2003,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                         (aipp_config.get('src_image_size_w')*2) % 16 != 0) or (w*2) % 16 != 0:
                     cause_desc = "src_image_size_w[%d]*2 of %s must " \
                                  "be multiples of 16" % \
-                                 (aipp_config.get('src_image_size_w'),
+                                 (aipp_config.get('src_image_size_w') if ('src_image_size_w' in aipp_config) else w,
                                   aipp_config.get('input_format'))
                     raise_runtime_error(cause_desc)
 
@@ -2269,7 +2269,7 @@ def get_padding_size(aipp_config):
            top_padding_size, bottom_padding_size
 
 
-def vector_dup(ib, dtype, buf, size, padding_value):
+def vector_dup(ib, dtype, buf, size, padding_value=0):
     """
     set all buffer to padding_value.
     """
