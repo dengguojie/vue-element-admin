@@ -42,6 +42,10 @@ using namespace ge;
 namespace fe {
 static const char* FUSED_NODE = "CommonGRU";
 static const std::string PATTERN_FUSEDNODE = "CommonGRU";
+static const int BIAS_INPUT_INDEX = 3;
+static const int BIAS_SPLIT_GROUP = 2;
+static const int BIAS_CHANNEL_INDEX = 1;
+
 
 vector<FusionPattern*> GRUFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
@@ -146,63 +150,25 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   GeShape yShape(yDims);
   y.Update(yShape, ge::FORMAT_FRACTAL_NZ, y.GetDataType());
   gruOpDesc->UpdateOutputDesc("y", y);
-
   gruOpDesc->UpdateOutputDesc("output_h", y);
-
   gruOpDesc->UpdateOutputDesc("update", y);
   gruOpDesc->UpdateOutputDesc("reset", y);
   gruOpDesc->UpdateOutputDesc("new", y);
   gruOpDesc->UpdateOutputDesc("hidden_new", y);
 
-  // create a splitD Op
-  OpDescPtr splitDesc = nullptr;
-  splitDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/DynamicGRUV2_split", "SplitD");
-  FUSION_PASS_CHECK(splitDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "splitD is null, SplitD failed."),
-                    return PARAM_INVALID);
-
-  int groups = 2;
-  AttrUtils::SetInt(splitDesc, "split_dim", 1);
-  AttrUtils::SetInt(splitDesc, "num_split", groups);
-
-  // add input
-  bool hasB = fusedDesc->MutableInputDesc("b") != nullptr;
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "hasB");
-  if (hasB) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "yes hasB");
-    ge::GeTensorDesc bias = fusedDesc->GetInputDesc(3);
-    FUSION_PASS_CHECK(splitDesc->AddInputDesc(bias) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add SplitD input"),
-                      return FAILED);
-  }
-
-  GeTensorDesc inputDesc = fusedDesc->GetInputDesc(3);
-  size_t inChannelIdx = -1;
-  FUSION_PASS_CHECK(
-      SUCCESS != PatternFusionUtil::ParseChannelIdx(inputDesc, inChannelIdx),
-      OP_LOGE(FUSED_OP_TYPE.c_str(),
-              "The original format of the gru node[name=%s, type=%s]'s input is %s, which is unsupportable.",
-              fusedDesc->GetName().c_str(), fusedDesc->GetType().c_str(),
-              ge::TypeUtils::FormatToSerialString(inputDesc.GetFormat()).c_str()),
-      return FAILED);
-
-  // add output
-  GeShape inputShape = inputDesc.GetShape();
-  int newInputChn = inputShape.GetDim(inChannelIdx);
-  GeShape splitOutShape = inputShape;
-  splitOutShape.SetDim(inChannelIdx, newInputChn / 2);
-
-  std::vector<int64_t> splitOutDims = RemoveNumDirectionsDim(splitOutShape.GetDims(), false);
-  GeShape splitDShape(splitOutDims);
-  GeTensorDesc splitOutDesc = inputDesc;
-  splitOutDesc.Update(splitDShape, ge::FORMAT_ND, DT_FLOAT16);
-  splitOutDesc.SetOriginShape(splitDShape);
-  for (int i = 0; i < groups; i++) {
-    splitDesc->AddOutputDesc(splitOutDesc);
-  }
-
+  // create a splitD Op for bias
   bool hasBias = fusedDesc->MutableInputDesc("b") != nullptr;
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "hasBias");
+  ge::NodePtr splitNode = nullptr;
   if (hasBias) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "yes hasBias");
+    // add bias Node
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "CommonGRU has bias input.");
+    FUSION_PASS_CHECK(AddBiasSplitNode(graph, fusedNode, splitNode) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add bias split node failed."), return FAILED);
+    // splitNode must not be nullptr when AddBiasSplit returns SUCCESS
+    ge::OpDescPtr splitDesc = splitNode->GetOpDesc();
+    FUSION_PASS_CHECK(splitDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "splitNode's OpDesc is null."),
+                      return PARAM_INVALID);
+    GeTensorDesc splitOutDesc = splitDesc->GetOutputDesc(0);
     gruOpDesc->UpdateInputDesc("bias_input", splitOutDesc);
     gruOpDesc->UpdateInputDesc("bias_hidden", splitOutDesc);
   }
@@ -212,21 +178,14 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
   FUSION_PASS_CHECK(gruNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "DynamicGRUV2 node is null, fusion failed."),
                     return FAILED);
 
-  // create SplitD Node
-  ge::NodePtr splitNode = graph.AddNode(splitDesc);
-  FUSION_PASS_CHECK(splitNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "SplitD node is null, fusion failed."),
-                    return FAILED);
-
-  graphStatus status =
-      GraphUtils::AddEdge(fusedNode->GetInDataAnchor(3)->GetPeerOutAnchor(), splitNode->GetInDataAnchor(0));
-
-  FUSION_PASS_CHECK(status != GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add data to Split edge fail"),
-                    return false);
-
-  for (int i = 0; i < groups; i++) {
-    status = GraphUtils::AddEdge(splitNode->GetOutDataAnchor(i), gruNode->GetInDataAnchor(i + 3));
-    FUSION_PASS_CHECK(status != GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add slice to conv edge fail"),
-                      return false);
+  // connect bias(splitD) to gru bias input
+  if (hasBias) {
+    for (int i = 0; i < BIAS_SPLIT_GROUP; i++) {
+      graphStatus status = GraphUtils::AddEdge(splitNode->GetOutDataAnchor(i),
+                                               gruNode->GetInDataAnchor(i + BIAS_INPUT_INDEX));
+      FUSION_PASS_CHECK(status != GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add slice to conv edge fail"),
+                        return FAILED);
+    }
   }
 
   // connect x
@@ -306,6 +265,48 @@ Status GRUFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
         OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicLSTMV2 edge to fusion node output y_h failed."), return FAILED);
   }
 
+  return SUCCESS;
+}
+
+Status GRUFusionPass::AddBiasSplitNode(ge::ComputeGraph& graph, ge::NodePtr& fusedNode, ge::NodePtr& splitNode) {
+  OpDescPtr splitDesc = std::make_shared<ge::OpDesc>(fusedNode->GetName() + "/DynamicGRUV2_split", "SplitD");
+  FUSION_PASS_CHECK(splitDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "splitD is null, SplitD failed."),
+                    return PARAM_INVALID);
+  AttrUtils::SetInt(splitDesc, "split_dim", 1);
+  AttrUtils::SetInt(splitDesc, "num_split", BIAS_SPLIT_GROUP);
+
+  ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+  FUSION_PASS_CHECK(fusedDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null."),
+                    return PARAM_INVALID);
+  ge::GeTensorDesc bias = fusedDesc->GetInputDesc(BIAS_INPUT_INDEX);
+  FUSION_PASS_CHECK(splitDesc->AddInputDesc(bias) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add SplitD input"),
+                    return FAILED);
+
+  // build split node Output Desc
+  GeTensorDesc inputDesc = fusedDesc->GetInputDesc(BIAS_INPUT_INDEX);
+  GeShape inputShape = inputDesc.GetShape();
+  int newInputChn = inputShape.GetDim(BIAS_CHANNEL_INDEX);
+  GeShape splitOutShape = inputShape;
+  splitOutShape.SetDim(BIAS_CHANNEL_INDEX, newInputChn / BIAS_SPLIT_GROUP);
+  std::vector<int64_t> splitOutDims = RemoveNumDirectionsDim(splitOutShape.GetDims(), false);
+  GeShape splitDShape(splitOutDims);
+  GeTensorDesc splitOutDesc = inputDesc;
+  splitOutDesc.SetShape(splitDShape);
+  splitOutDesc.SetOriginShape(splitDShape);
+  for (int i = 0; i < BIAS_SPLIT_GROUP; i++) {
+    FUSION_PASS_CHECK(splitDesc->AddOutputDesc(splitOutDesc) != SUCCESS,
+                      OP_LOGE(FUSED_OP_TYPE.c_str(), "add bias split output failed."), return FAILED);
+  }
+
+  // create SplitD Node
+  splitNode = graph.AddNode(splitDesc);
+  FUSION_PASS_CHECK(splitNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "SplitD node is null, fusion failed."),
+                    return FAILED);
+  // connect bias to Split input
+  graphStatus status = GraphUtils::AddEdge(fusedNode->GetInDataAnchor(BIAS_INPUT_INDEX)->GetPeerOutAnchor(),
+                                           splitNode->GetInDataAnchor(0));
+  FUSION_PASS_CHECK(status != GRAPH_SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "add data to Split edge fail"),
+                    return FAILED);
   return SUCCESS;
 }
 

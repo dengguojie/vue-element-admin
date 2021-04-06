@@ -43,7 +43,7 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_1) {
   w_tensor.SetTensorDesc(data_w_desc);
   w_tensor.SetData((uint8_t*)w_tensor_value, 10*48*1*sizeof(float));
   data_w.set_attr_value(w_tensor);
-  data_w.update_output_desc_y(data_w_desc);
+  // data_w.update_output_desc_y(data_w_desc);
   
   // r
   auto data_r = op::Const("r");
@@ -55,7 +55,7 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_1) {
   r_tensor.SetTensorDesc(data_r_desc);
   r_tensor.SetData((uint8_t*)r_tensor_value, 1*48*16*sizeof(float));
   data_r.set_attr_value(r_tensor);
-  data_r.update_output_desc_y(data_r_desc);
+  // data_r.update_output_desc_y(data_r_desc);
 
   // b
   auto data_b = op::Const("b");
@@ -67,7 +67,7 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_1) {
   b_tensor.SetTensorDesc(data_b_desc);
   b_tensor.SetData((uint8_t*)b_tensor_value, 1*96*sizeof(float));
   data_b.set_attr_value(b_tensor);
-  data_b.update_output_desc_y(data_b_desc);
+  // data_b.update_output_desc_y(data_b_desc);
 
   auto common_gru_op = op::CommonGRU("CommonGRU");
   common_gru_op.set_input_x(data_x)
@@ -75,26 +75,26 @@ TEST_F(common_gru_fusion_test, common_gru_fusion_test_1) {
            .set_input_r(data_r)
            .set_input_b(data_b)
            .set_attr_hidden_size(16);
-  std::vector<Operator> inputs{data_x};
+  std::vector<Operator> inputs{data_x, data_w, data_r, data_b};
   std::vector<Operator> outputs{common_gru_op};
 
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr computeGraphPtr = ge::GraphUtils::GetComputeGraph(graph);
-  // fe::FusionPassTestUtils::InferShapeAndType(computeGraphPtr);
+  fe::FusionPassTestUtils::InferShapeAndType(computeGraphPtr);
   fe::FusionPassTestUtils::RunGraphFusionPass("GRUFusionPass", fe::BUILT_IN_GRAPH_PASS, *computeGraphPtr);
 
-  // bool findDynamicGRUV2 = false;
-  // bool findSplitD = false;
+  bool findDynamicGRUV2 = false;
+  bool findSplitD = false;
 
-  // for (auto node: computeGraphPtr->GetAllNodes()) {
-  //   if (node->GetType() == "DynamicGRUV2") {
-  //     findDynamicGRUV2 = true;
-  //   }
+  for (auto node: computeGraphPtr->GetAllNodes()) {
+    if (node->GetType() == "DynamicGRUV2" || node->GetType() == "DynamicGRUV2Hidden") {
+       findDynamicGRUV2 = true;
+     }
 
-  //   if (node->GetType() == "SplitD") {
-  //       findSplitD = true;
-  //   }
-  // }
-  // EXPECT_EQ(findDynamicGRUV2, true);
-  // EXPECT_EQ(findSplitD, true);
+     if (node->GetType() == "SplitD") {
+         findSplitD = true;
+     }
+  }
+  EXPECT_EQ(findDynamicGRUV2, true);
+  EXPECT_EQ(findSplitD, true);
 }
