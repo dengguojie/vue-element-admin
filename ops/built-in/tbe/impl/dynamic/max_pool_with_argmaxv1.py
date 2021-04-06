@@ -21,6 +21,7 @@ import te
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # min value of fp16
 MIN_VALUE_FP16 = -65504.0
@@ -366,11 +367,12 @@ class MaxPoolWithargmaxPytorch(object):
         self.tik_instance.BuildCCE(kernel_name=kernel_name, inputs=self.input_fmap_gm,
                                    outputs=(self.output_max_gm, self.output_mask_gm), flowtable=[self.tiling_gm])
         ceil_mode_int = 1 if self.ceil_mode else 0
-        te.op.add_compile_info("vars", {"core_num": self.core_num, "ub_size": UB_SIZE, "l1_size": L1_SIZE,
-                                        "kernel_h": self.kernel_h, "kernel_w": self.kernel_w,
-                                        "stride_h": self.stride_h, "stride_w": self.stride_w,
-                                        "pad_h": self.pad_h, "pad_w": self.pad_w, "dilation_h": self.dilation_h,
-                                        "dilation_w": self.dilation_w, "ceil_mode": ceil_mode_int})
+        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num, "ub_size": UB_SIZE,
+                                                            "l1_size": L1_SIZE, "kernel_h": self.kernel_h,
+                                                            "kernel_w": self.kernel_w, "stride_h": self.stride_h,
+                                                            "stride_w": self.stride_w, "pad_h": self.pad_h,
+                                                            "pad_w": self.pad_w, "dilation_h": self.dilation_h,
+                                                            "dilation_w": self.dilation_w, "ceil_mode": ceil_mode_int})
         return self.tik_instance
 
     def _fun_no_cut(self, block_index, nc1_index, nc1_size):
