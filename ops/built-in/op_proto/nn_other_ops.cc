@@ -108,17 +108,31 @@ INFER_FUNC_REG(ROIAlign, ROIAlignInfer);
 
 // ----------------Iou-------------------
 IMPLEMT_COMMON_INFERFUNC(IouInferShape) {
-  auto shapeBbox = op.GetInputDesc("bboxes").GetShape();
-  auto shapeGbox = op.GetInputDesc("gtboxes").GetShape();
-  vector<int64_t> shapeOut;
-  shapeOut.push_back(shapeGbox.GetDim(0));
-  shapeOut.push_back(shapeBbox.GetDim(0));
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr bboxes_desc = op_desc->MutableInputDesc("bboxes");
+  auto inputType = bboxes_desc->GetDataType();
+  vector<int64_t> bboxes_shape = bboxes_desc->MutableShape().GetDims();
+  GeTensorDescPtr gtboxes_desc = op_desc->MutableInputDesc("gtboxes");
+  vector<int64_t> gtboxes_shape = gtboxes_desc->MutableShape().GetDims();
 
-  Shape outputShape(shapeOut);
-  DataType inputType = op.GetInputDesc("bboxes").GetDataType();
+  vector<pair<int64_t, int64_t>> bboxes_shape_range;
+  bboxes_desc->GetShapeRange(bboxes_shape_range);
+  MakeUpShapeRange(bboxes_shape, bboxes_shape_range);
+
+  vector<pair<int64_t, int64_t>> gtboxes_shape_range;
+  gtboxes_desc->GetShapeRange(gtboxes_shape_range);
+  MakeUpShapeRange(gtboxes_shape, gtboxes_shape_range);
+  
+  if (IsUnknownRankShape(bboxes_shape) || IsUnknownRankShape(gtboxes_shape)){
+    OP_LOGE(op.GetName().c_str(), "op [Iou] InferShape Failed, UnknownRankShape of bboxes or gtboxes.");
+    return GRAPH_FAILED;
+  }
+  vector<int64_t> overlap_shape;
+  overlap_shape.push_back(bboxes_shape[0]);
+  overlap_shape.push_back(gtboxes_shape[0]);
 
   TensorDesc td = op.GetOutputDesc("overlap");
-  td.SetShape(outputShape);
+  td.SetShape(Shape{overlap_shape});
   td.SetDataType(inputType);
   (void)op.UpdateOutputDesc("overlap", td);
 

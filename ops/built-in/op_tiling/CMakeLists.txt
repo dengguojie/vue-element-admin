@@ -116,6 +116,7 @@ set(_optiling_files
   one_hot.cc
   maxpoolwithargmaxv1.cc
   bounding_box_decode.cc
+  iou.cc
   layer_norm.cc
   bn_update_grad_tiling.cc
 )
