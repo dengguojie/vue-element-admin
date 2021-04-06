@@ -224,8 +224,8 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
                            .set_attr_strides(tbe_attr.strides)
                            .set_attr_padding_mode(tbe_attr.padding_mode)
                            .set_attr_pads(tbe_attr.pads)
-                           .set_attr_ceil_mode(tbe_attr.ceil_mode == 0)
-                           .set_attr_exclusive(tbe_attr.exclusive == 0)
+                           .set_attr_ceil_mode(tbe_attr.ceil_mode != 0)
+                           .set_attr_exclusive(tbe_attr.exclusive != 0)
                            .set_attr_data_format("NCHW");
       outputs.emplace_back(avgpoolv2, std::vector<std::size_t>{0});
     }
@@ -235,7 +235,7 @@ Status ParseOpToGraphAveragePool(const Operator& op, Graph& graph) {
                          .set_attr_ksize(tbe_attr.ksize)
                          .set_attr_strides(tbe_attr.strides)
                          .set_attr_pads(tbe_attr.pads)
-                         .set_attr_count_include_pad(tbe_attr.exclusive == 0)
+                         .set_attr_count_include_pad(tbe_attr.exclusive != 0)
                          .set_attr_ceil_mode(tbe_attr.ceil_mode)
                          .set_attr_data_format("NCDHW");
     if (AvgUpdateFormat(avgpool3d, ge::FORMAT_NCDHW) != SUCCESS) {
