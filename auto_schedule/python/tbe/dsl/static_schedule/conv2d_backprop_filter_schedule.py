@@ -719,7 +719,8 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
 
                 if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") \
                         == OPEN_DOUBLE_BUFFER:
-                    sch[dw_ub].double_buffer()
+                    if not self.cube_vector_split:
+                        sch[dw_ub].double_buffer()
 
         def _emit_insn():
             """

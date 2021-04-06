@@ -72,7 +72,7 @@ class GEMM_Params:
         self.cv_split_nd_in_flag = False
         self.is_dynamic = False
         self.MAT_MUL = False
-        self.fusion_type = None
+        self.fusion_type = FusionType.DEFAULT_MODE
 
 
     def print_debug(self, *info):
@@ -2063,13 +2063,8 @@ class GEMM_Schedule:
             self.gemm_params.cv_split_nd_in_flag = False
 
         self.gemm_params.TENSOR_MAP["fix_pipe_bias"] = all_tensor.get("tensor_bias")
-
-        if "tensor_c_gm" in all_tensor:
-            self.gemm_params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c_matrix")
-            sch[self.gemm_params.TENSOR_MAP["c_l0c"]].set_scope(tbe_platform_info.scope_cc)
-        else:
-            self.gemm_params.TENSOR_MAP["c_l0c"] = sch.cache_write(self.gemm_params.TENSOR_MAP["c_gm"], tbe_platform_info.scope_cc)
-
+        self.gemm_params.TENSOR_MAP["c_l0c"] = all_tensor.get("tensor_c_matrix")
+        sch[self.gemm_params.TENSOR_MAP["c_l0c"]].set_scope(tbe_platform_info.scope_cc)
         self._get_ops_mode()
         _init_map()
 
@@ -2237,7 +2232,7 @@ class GEMM_Schedule:
         self._set_data_layout_enter(res, sch)
 
         self.gemm_params.print_ir_matmul("orgin", sch)
-        if self.gemm_params.fusion_type == FusionType.DEFAULT_MODE:
+        if self.gemm_params.fusion_type == FusionType.DEFAULT_MODE or self.gemm_params.cube_vector_split:
             kernel_name = self.gemm_params.TENSOR_MAP["c_gm"].op.attrs["kernel_name"]
         else:
             kernel_name = self.gemm_params.TENSOR_MAP["c_ub"].op.attrs["kernel_name"]

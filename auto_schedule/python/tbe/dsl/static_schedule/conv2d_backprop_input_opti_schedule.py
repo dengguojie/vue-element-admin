@@ -662,6 +662,7 @@ class Conv2dDxOptiSchedule:
                 self._check_tilinng_k_l1()
             return data_amount_l1b
 
+        cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         _, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
         # if filter dtype is int8, than channel block_size is 32
         if tensor.dtype == "int32" or fusion_type in (
@@ -735,6 +736,9 @@ class Conv2dDxOptiSchedule:
             else:
                 TILING = deepcopy(tiling_case)
 
+        if cube_vector_split_flag:
+            TILING["CUB_matrix"] = TILING["CL0_matrix"]
+
         if "dedy_w" in var_map and not var_map.get("dedy_w")[1]:
             mc = int_ceil_div(DIM_MAP["img_shape"][3], TILING["AL0_matrix"][2]) + 1
             TILING["AL0_matrix"][0] = TILING["CL0_matrix"][1] = TILING["CUB_matrix"][1] = mc
@@ -796,7 +800,6 @@ class Conv2dDxOptiSchedule:
         )
 
         # check tilling in CUB  attention:light when stride get  #########
-        cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         if "dedy_h" not in var_map and "dedy_w" not in var_map and not cube_vector_split_flag:
             self._check_tilling_cub(
                 strideh,

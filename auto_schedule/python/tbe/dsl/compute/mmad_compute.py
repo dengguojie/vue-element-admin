@@ -3889,7 +3889,11 @@ class MatMulCompute:
         self.block_in = tbe_platform.BLOCK_IN
         self.block_out = tbe_platform.BLOCK_OUT
         self.block_reduce = tbe_platform.BLOCK_REDUCE
-        self.matrix_type = "float32"
+        self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        if self.cube_vector_split and self.tensor_bias is not None:
+            self.matrix_type = self.tensor_bias.dtype
+        else:
+            self.matrix_type = "float32"
         self.format_out = format_out
 
     @staticmethod
@@ -4035,9 +4039,7 @@ class MatMulCompute:
                         reduce_kb, nb, np, reduce_kp]).astype(
                         self.matrix_type),
                     axis=[reduce_kb, reduce_kp]),
-                name="tensor_c_matrix",
-                tag="gemm" if not nz2nd_flag else "",
-                attrs={"kernel_name": self.kernel_name})
+                name="tensor_c_matrix")
         else:
             tensor_c_matrix = tvm.compute(
                 (self.n_shape * self.batch_shape,
@@ -4052,8 +4054,7 @@ class MatMulCompute:
                         reduce_kb, nb, np, reduce_kp]).astype(
                         self.matrix_type)),
                     axis=[reduce_kb, reduce_kp]),
-                name='tensor_c_matrix', tag="gemm" if not nz2nd_flag else "",
-                attrs={"kernel_name": self.kernel_name})
+                name='tensor_c_matrix')
 
         if nz2nd_flag:
             tensor_c_gm = tvm.compute(
@@ -4061,12 +4062,17 @@ class MatMulCompute:
                 lambda i, j: tensor_c_matrix[j // self.block_out,
                                              i // self.block_in,
                                              i % self.block_in,
-                                             j % self.block_out],
+                                             j % self.block_out].astype(self.dst_dtype),
                 tag="gemm",
                 name="tensor_c_gm",
                 attrs={"kernel_name": self.kernel_name})
         else:
-            tensor_c_gm = tensor_c_matrix
+            tensor_c_gm = tvm.compute((n_shape_l0 * self.batch_shape, m_shape_l0,
+                                       self.block_in, self.block_out),
+                                      lambda *indices: tensor_c_matrix(*indices).astype(self.dst_dtype),
+                                      tag="gemm",
+                                      name="tensor_c_gm",
+                                      attrs={"kernel_name": self.kernel_name})
 
         return tensor_c_gm
 

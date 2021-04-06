@@ -33,8 +33,9 @@ protected:
 
 private:
   Status Relink(ge::NodePtr outBackprop_node, ge::NodePtr dilation_node,
-                ge::NodePtr conv2dbp_input_node, ge::NodePtr y_node,
-                const int pre_achor, const int sub_achor, bool pre_dilation);
+                ge::NodePtr conv2dbp_input_node, ge::NodePtr y_node, ge::NodePtr pad_node,
+                const int pre_achor, const int sub_achor, bool pre_dilation,
+                const vector<int> &y_idxs);
   const string FUSED_OP_TYPE = "Conv2DBackpropInputD";
 };
 } // namespace fe
