@@ -30,7 +30,7 @@ from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.register import set_fusion_buildcfg
 from tbe.common.utils.errormgr import error_manager_cube as err_man
-from te.tvm.buffer_manager import get_buffer_manager
+from tbe.tvm.buffer_manager import get_buffer_manager
 
 # tiling check
 TILING_AL1_SHAPWE_DIM = 4
