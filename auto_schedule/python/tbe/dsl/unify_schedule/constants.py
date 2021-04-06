@@ -32,6 +32,7 @@ class Pattern:
     CONV2D_BACKPROP_FILTER = "Conv2d_backprop_filter"
     MAT_MUL = "Matmul"
     BATCH_MATMUL = "BatchMatmul"
+    LAYER_NORM_BETA_GAMMA_BACKPROP = "Layer_norm_beta_gamma_backprop"
     CONV3D = "conv3d"
     CONV3D_BACKPROP_INPUT = "Conv3d_backprop_input"
     CONV3D_BACKPROP_FILTER = "Conv3d_backprop_filter"

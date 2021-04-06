@@ -13,21 +13,22 @@
 # limitations under the License.
 # ============================================================================
 """
-auto_schedule template, if user call auto_schedule, this file will choose a
-corresponding schedule template for user's compute
+layer_norm_beta_gamma_backprop tiling case
 """
 
+from tbe.dsl.base.operation import register_tiling_case
+from te.lang.dynamic.schedule.constants import Pattern
 
-class Pattern:
+@register_tiling_case(pattern=Pattern.LAYER_NORM_BETA_GAMMA_BACKPROP)
+def calc_layernorm_beta_gamma(outs, option=None):
+    """tiling_case func for dynamic shape layernormbetagammabackprop
+
+    Parameters
+    ----------
+    outs: tvm tensor or list of tvm tensor, results for tvm compute
+
+    Returns
+    -------
+    list of dict, each dict for a tiling case
     """
-    Built-in Patterns
-    """
-    OPAQUE = "Opaque"
-    CONV2D = "Convolution"
-    CONV2D_BACKPROP_INPUT = "Conv2d_backprop_input"
-    CONV2D_BACKPROP_FILTER = "Conv2d_backprop_filter"
-    MAT_MUL = "Matmul"
-    BATCH_MATMUL = "BatchMatmul"
-    LAYER_NORM_BETA_GAMMA_BACKPROP = "Layer_norm_beta_gamma_backprop"
-    CONV3D = "conv3d"
-    CONV3D_BACKPROP_INPUT = "Conv3d_backprop_input"
+    return [None]

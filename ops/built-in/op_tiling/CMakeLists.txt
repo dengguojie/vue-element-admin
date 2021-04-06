@@ -54,6 +54,7 @@ set(_optiling_files
   gather_nd.cc
   gather_v2.cc
   lock.cc
+  layer_norm_beta_gamma_backprop.cc
   nms_with_mask.cc
   pad_common.cc
   pad_d.cc

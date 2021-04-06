@@ -115,6 +115,7 @@ from .add_n import add_n
 from .rsqrt import rsqrt
 from .greater_equal import greater_equal
 from .apply_gradient_descent import apply_gradient_descent
+from .layer_norm_beta_gamma_backprop import layer_norm_beta_gamma_backprop
 from .less import less
 from .less_equal import less_equal
 from .floor_div import floor_div

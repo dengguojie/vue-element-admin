@@ -97,6 +97,11 @@ Status LayerNormGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   OpDescUtils::ClearOutputDesc(layerNormXDesc, 1);
   OpDescUtils::ClearOutputDesc(layerNormBetaGammaDesc, 0);
 
+  std::map<string, uint32_t> output_name_idx_0 = {{"pd_x",0}};
+  std::map<string, uint32_t> output_name_idx_1 = {{"pd_gamma", 0}, {"pd_beta", 1}};
+  layerNormXDesc->UpdateOutputName(output_name_idx_0);
+  layerNormBetaGammaDesc->UpdateOutputName(output_name_idx_1);
+
   // get shape of layerNormBetaGammaDesc's 5th Input, and convert it to attr
   OpDescUtils::ClearInputDesc(layerNormBetaGammaDesc, 4);
   std::vector<int64_t> inputDescShapeData = fusedDesc->GetInputDesc(4).GetShape().GetDims();
