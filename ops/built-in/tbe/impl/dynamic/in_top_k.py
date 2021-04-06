@@ -15,11 +15,12 @@
 """
 in_top_k
 """
-import te.platform as tbe_platform
-from te import tik
-from te.utils import para_check
-import te.lang.base as tbe_base
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # size of useful UB buffer
 UB_SIZE_BYTES = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
@@ -125,7 +126,7 @@ class GlobalVarTilingScalar:
         return self.num_cores_scalar
 
 
-@tbe_base.register_operator("InTopKD")
+@register_operator("InTopKD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
@@ -203,7 +204,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     obj_gm.set_targets_gm(target_tensor)
     obj_gm.set_tensor_output_gm(output_tensor)
     mini_cloud_core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-    tbe_base.add_compile_info("vars", {
+    tbe_context.get_context().add_compile_info("vars", {
         "mini_cloud_core_nums": mini_cloud_core_nums
     })
 
