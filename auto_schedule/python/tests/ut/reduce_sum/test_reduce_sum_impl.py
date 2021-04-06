@@ -27,7 +27,7 @@ def dsl_reduce_sum(x, _, axis, keep_dim, kernel_name='dsl_reduce_sum'):
 ut_case = OpUT("reduce_sum", "reduce_sum.test_reduce_sum_impl", "dsl_reduce_sum")
 
 
-def test_axis_in_none(soc):
+def test_axis_in_none(_):
     try:
         input1 = tvm.placeholder((128, 128), name="input1", dtype="float16")
         tbe.sum(input1, [None])

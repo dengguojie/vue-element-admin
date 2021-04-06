@@ -1,11 +1,14 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
-from sch_test_frame.utils.op_param_util import cartesian_set_format_dtype
 from sch_test_frame.common import precision_info
 import numpy as np
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
+
+
+warnings.filterwarnings("ignore")
 
 
 def dsl_vabs(x, _, kernel_name='dsl_vabs'):

@@ -107,6 +107,11 @@
         "dsl_cpu/test_array_cpu_impl.py"
     ],
     "auto_schedule/python/lang/cce/te_compute/segment_compute.py":[
+        "unsorted_segment_max",
+        "unsorted_segment_min",
+        "unsorted_segment_mean",
+        "unsorted_segment_prod",
+        "unsorted_segment_sum",
         "dsl_cpu/test_segment_compute_cpu_impl.py"
     ],
     "auto_schedule/python/tbe/dsl/compute/pooling2d.py":[
