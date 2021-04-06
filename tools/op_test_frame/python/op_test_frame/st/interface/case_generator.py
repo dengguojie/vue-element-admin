@@ -381,6 +381,14 @@ class CaseGenerator:
                 "please check." % (op_key, head_file))
             return
 
+    def _get_aicpu_op_dtype_from_ini_file(self, op_info_key):
+        """get tensor type of aicpu operators from ini file"""
+        if op_info_key in self.op_info:
+            input_tensor_type  = self.op_info[op_info_key].get('type')
+            if input_tensor_type is not None:
+                return input_tensor_type
+        return
+
     def _parse_aicpu_input_output_info(self, line, input_count, output_count):
         for op_key in utils.IN_OUT_OP_KEY_MAP.keys():
             if line.startswith(op_key):
@@ -397,17 +405,21 @@ class CaseGenerator:
                 op_info_key = ''
                 # record the input information of key
                 if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'input':
-                    input_count += 1
                     op_info_key = '%s%s' % (
                         utils.IN_OUT_OP_KEY_MAP.get(op_key), input_count)
+                    input_count += 1
                 # record the output information of key
                 if utils.IN_OUT_OP_KEY_MAP.get(op_key) == 'output':
-                    output_count += 1
                     op_info_key = '%s%s' % (
                         utils.IN_OUT_OP_KEY_MAP.get(op_key), output_count)
+                    output_count += 1
                 if op_info_key not in self.op_info:
                     self.op_info[op_info_key] = {}
                 if op_info_key:
+                    tensor_type_from_ini = \
+                        self._get_aicpu_op_dtype_from_ini_file(op_info_key)
+                    if tensor_type_from_ini is not None:
+                        input_tensor_type = tensor_type_from_ini
                     input_tensor_type = input_tensor_type.replace(
                         utils.NEW_LINE_MARK, utils.EMPTY)
                     input_tensor_type = input_tensor_type.replace(
