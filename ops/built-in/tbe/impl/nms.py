@@ -1152,7 +1152,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                     with tik_instance.new_stmt_scope():
                         if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
-                                                                                 "SD3403"
+                                                                                 "SD3403",
                                                                                  "Ascend610",
                                                                                  "Ascend710",
                                                                                  "Ascend615"):
@@ -1165,7 +1165,7 @@ def cce_nms(input_data, temp_proposal_out, proposal_box, proposal_actual_num,
                     with tik_instance.new_stmt_scope():
                         if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES",
                                                                                  "Hi3796CV300CS",
-                                                                                 "SD3403"
+                                                                                 "SD3403",
                                                                                  "Ascend610",
                                                                                  "Ascend710",
                                                                                  "Ascend615"):
