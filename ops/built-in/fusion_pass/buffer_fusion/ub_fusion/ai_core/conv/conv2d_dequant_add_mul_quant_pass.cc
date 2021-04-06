@@ -113,7 +113,7 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
   GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
   auto split_maps = op_calc_info.GetAxisSplitMapVec();
   if (split_maps.empty()) {
-    OP_LOGW(fused_op_type_.c_str(), "axis split map vector is empty");
+    OP_LOGD(fused_op_type_.c_str(), "axis split map vector is empty");
     return;
   }
   int c_axis = 1;
@@ -122,18 +122,21 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
     auto input_split_infos = (*it).GetInputSplitInfoVec();
     vector<int64_t> minus_one_vec = {-1};
     if (input_split_infos.empty()) {
-      OP_LOGW(fused_op_type_.c_str(), "input_split_infos is empty");
-      return;
+      continue;
     }
     vector<int64_t> axis_vec = input_split_infos[0].GetAxis();
-    InputSplitInfo input_split_info;
+    InputSplitInfo input_split_info = input_split_infos[0];
     input_split_info.SetIndex(inpre);
     input_split_info.SetAxis(axis_vec);
     input_split_info.SetHeadOverLap(minus_one_vec);
     input_split_info.SetTailOverLap(minus_one_vec);
     (*it).AddInputSplitInfo(input_split_info);
 
-    OutputSplitInfo output_split_info;
+    auto output_split_infos = (*it).GetOutputSplitInfoVec();
+    if (output_split_infos.empty()) {
+      continue;
+    }
+    OutputSplitInfo output_split_info = output_split_infos[0];
     output_split_info.SetIndex(1);
     output_split_info.SetAxis(axis_vec);
     (*it).AddOutputSplitInfo(output_split_info);
@@ -145,7 +148,7 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
   }
   OP_LOGD(fused_op_type_.c_str(), "set _fusion_op_slice_info is %s", op_slice_info_str.c_str());
 }
- 
+
 /*
  * @brief: parse nodes matched in mapping and call DoFusion
  * @param [in] graph: original graph
