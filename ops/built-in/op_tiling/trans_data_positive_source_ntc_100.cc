@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file trans_data_positive_source_ntc_100.cpp
+ * \file trans_data_positive_source_ntc_100.cc
  * \brief dynamic TransData op tiling
  */
 #include <string>

@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file trans_data_common.cc
+ * \file trans_data_common.h
  * \brief dynamic TransData common function
  */
 
@@ -539,7 +539,7 @@ struct TransDataNtc100Param {
   }
 };
 
-static int64_t GetFloorDiv(const int64_t uValue, const int64_t dValue) {
+static int64_t GetFloorDiv(int64_t uValue, int64_t dValue) {
   int64_t resValue = 0;
   if (dValue == 0) {
     return uValue;
@@ -550,7 +550,7 @@ static int64_t GetFloorDiv(const int64_t uValue, const int64_t dValue) {
   return resValue;
 }
 
-static int64_t GetCeilFill(const int64_t uValue, const int64_t dValue) {
+static int64_t GetCeilFill(int64_t uValue, int64_t dValue) {
   int64_t resValue = 0;
   if (dValue == 0) {
     return uValue;
@@ -561,7 +561,7 @@ static int64_t GetCeilFill(const int64_t uValue, const int64_t dValue) {
   return resValue;
 }
 
-static int64_t GetCeilDiv(const int64_t uValue, const int64_t dValue) {
+static int64_t GetCeilDiv(int64_t uValue, int64_t dValue) {
   int64_t resValue = 0;
   if (dValue == 0) {
     return uValue;
@@ -584,58 +584,14 @@ static int64_t GetShapeSize(std::vector<int64_t> inShape, int32_t pos) {
   return shapeSize;
 }
 
-static int64_t GetAxisIdx(const std::string format, const char axis) {
-  int64_t resValue = format.find(axis);
+static int64_t GetAxisIdx(std::string format, char axis) {
+  size_t resValue = format.find(axis);
   if (resValue == std::string::npos) {
     resValue = 0;
     OP_LOGE("TransData", "Axis is not in format.");
   }
   return resValue;
 }
-
-static bool CalcMcTilingParams(int32_t multiCoreAxisPos, int64_t multiCoreAxisSize, int32_t shapeLen, int32_t axisPosC,
-                        int64_t c0Len, int64_t coreNum, vector<int64_t> outShape, std::string dstFormat,
-                        std::string srcFormat, int64_t blockElemCnt, vector<int64_t> inShape, int64_t& usedCoreCnt,
-                        int64_t& coreStepIn, int64_t& coreStepOut, int64_t& nlcAxisMcSize, int64_t& lcAxisMcSize) {
-  if (multiCoreAxisPos == axisPosC && multiCoreAxisPos != shapeLen - 1) {
-    int64_t c0CntInC = GetCeilDiv(multiCoreAxisSize, c0Len);
-    usedCoreCnt = GetCeilDiv(c0CntInC, GetCeilDiv(c0CntInC, coreNum));
-    int64_t nlcC1Cnt = GetCeilDiv(c0CntInC, usedCoreCnt);
-    nlcAxisMcSize = nlcC1Cnt * c0Len;
-    lcAxisMcSize = multiCoreAxisSize - (usedCoreCnt - 1) * nlcAxisMcSize;
-    coreStepIn = GetShapeSize(inShape, axisPosC + 1) * nlcAxisMcSize;
-    coreStepOut = GetShapeSize(outShape, std::strchr(dstFormat.c_str(), 'C') - dstFormat.c_str() + 1) * nlcC1Cnt;
-  } else if (multiCoreAxisPos == shapeLen - 1) {
-    int64_t axisLast8BlockCnt = GetCeilDiv(multiCoreAxisSize, 8 * blockElemCnt);
-    usedCoreCnt = GetCeilDiv(axisLast8BlockCnt, GetCeilDiv(axisLast8BlockCnt, coreNum));
-    int64_t nlc8BlockCnt = GetCeilDiv(axisLast8BlockCnt, usedCoreCnt);
-
-    nlcAxisMcSize = nlc8BlockCnt * 8 * blockElemCnt;
-    lcAxisMcSize = multiCoreAxisSize - (usedCoreCnt - 1) * nlcAxisMcSize;
-    int32_t axisMcDstPos = std::strchr(dstFormat.c_str(), srcFormat[multiCoreAxisPos]) - dstFormat.c_str();
-    coreStepIn = GetShapeSize(inShape, -1) * nlcAxisMcSize;
-    if (srcFormat[multiCoreAxisPos] == 'C') {
-      coreStepOut = GetShapeSize(outShape, axisMcDstPos + 1) * nlcAxisMcSize / 16;
-    } else {
-      coreStepOut = GetShapeSize(outShape, axisMcDstPos + 1) * nlcAxisMcSize;
-    }
-  } else {
-    usedCoreCnt = GetCeilDiv(multiCoreAxisSize, GetCeilDiv(multiCoreAxisSize, coreNum));
-    nlcAxisMcSize = GetCeilDiv(multiCoreAxisSize, usedCoreCnt);
-    lcAxisMcSize = multiCoreAxisSize - (usedCoreCnt - 1) * nlcAxisMcSize;
-    int32_t axisMcDstPos = std::strchr(dstFormat.c_str(), srcFormat[multiCoreAxisPos]) - dstFormat.c_str();
-    coreStepIn = GetShapeSize(inShape, multiCoreAxisPos + 1) * nlcAxisMcSize;
-    coreStepOut = GetShapeSize(outShape, axisMcDstPos + 1) * nlcAxisMcSize;
-  }
-  return true;
-}
-bool TillingPositiveMode100(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, int64_t& c0Len,
-                            int64_t& ubSize, TransDataMode100Param& params);
-
-bool TillingPositiveMode101(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int32_t& multiCoreAxisPos, int32_t& axisPosC, int64_t& coreNum,
-                            int64_t& blockElemCnt, int64_t& c0Len, int64_t& ubSize, TransDataMode101Param& params);
 
 bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt,
@@ -645,10 +601,6 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt,
                             int64_t& ubSize, TransDataMode1011Param& params);
 
-bool TillingPositiveMode200(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, int64_t& c0Len,
-                            int64_t& ubSize, TransDataMode200Param& params);
-
 bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
                             int64_t& ubSize, TransDataNtc200Param& params);
@@ -657,33 +609,21 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
                             std::string& dstFormat, int64_t& coreNum, int64_t& blockElemCnt, std::string& dtype,
                             int64_t& ubSize, TransDataTc201Param& params);
 
-bool TillingNegativeMode201(std::vector<int64_t>& inShape, std::vector<int64_t>& outShape, std::string& srcFormat,
-                            std::string& dstFormat, const int64_t coreNum, const int64_t blockElemCnt,
-                            const int64_t ubSize, TransDataMode201Param& params);
-
 bool TilingPositiveSourceNtc100(const vector<int64_t>& inShape, const vector<int64_t>& outShape,
                                       const std::string& srcFormat, const std::string& dstFormat,
                                       const int64_t& coreNum, const int64_t& blockElemCnt, const int64_t& ubSize,
                                       const int64_t& c0Len, const std::string& dType, TransDataNtc100Param& params);
 
-void SetRunningMode100Params(const TransDataMode100Param& runParams, OpRunInfo& runInfo);
-void SetRunningMode101Params(const TransDataMode101Param& runParams, OpRunInfo& runInfo);
 void SetRunningMode1010Params(const TransDataMode1010Param& runParams, OpRunInfo& runInfo);
 void SetRunningMode1011Params(const TransDataMode1011Param& runParams, OpRunInfo& runInfo);
-void SetRunningMode200Params(const TransDataMode200Param& runParams, OpRunInfo& runInfo);
 void SetRunningNtc200Params(const TransDataNtc200Param& runParams, OpRunInfo& runInfo);
 void SetRunningTc201Params(const TransDataTc201Param& runParams, OpRunInfo& runInfo);
-void SetRunningMode201Params(const TransDataMode201Param& runParams, OpRunInfo& runInfo);
 void SetRunningNtc100Params(const TransDataNtc100Param& runParams, OpRunInfo& runInfo);
 
-void PrintTilingMode100Params(const std::string& opType, const TransDataMode100Param& params);
-void PrintTilingMode101Params(const std::string& opType, const TransDataMode101Param& params);
 void PrintTilingMode1010Params(const std::string& opType, const TransDataMode1010Param& params);
 void PrintTilingMode1011Params(const std::string& opType, const TransDataMode1011Param& params);
-void PrintTilingMode200Params(const std::string& opType, const TransDataMode200Param& params);
 void PrintTilingModeNtc200Params(const std::string& opType, const TransDataNtc200Param& params);
 void PrintTilingModeTc201Params(const std::string& opType, const TransDataTc201Param& params);
-void PrintTilingMode201Params(const std::string& opType, const TransDataMode201Param& params);
 void PrintTilingNtc100Params(const std::string& opType, const TransDataNtc100Param& params);
 
 }  // namespace optiling

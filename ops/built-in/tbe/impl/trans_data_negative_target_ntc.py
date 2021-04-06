@@ -339,7 +339,7 @@ def _tiling_params_negative(args):
         tp_200_dst_cl_lp_unit = tmp_dst_cl_lp_unit if tmp_dst_cl_lp_unit < supposed_lp_unit else supposed_lp_unit
     dst_cl_lp_cnt = tdc.ceil_div(axis_dst_cl_size, tp_200_dst_cl_lp_unit)
     dst_cl_left = axis_dst_cl_size % tp_200_dst_cl_lp_unit
-    tp_200_left_cl_c_cr_size = dst_cl_left * src_c_dst_cr_size  # for tiling mode 2003
+    tp_200_left_cl_c_cr_size = dst_cl_left * axis_dst_c_size * axis_dst_cr_size  # for tiling mode 2003
     tmp_dst_cl_format = dst_format[:dst_format.index("C")]
     tmp_c_left_shape = out_shape[:dst_format.index("C")]
     tmp_c_left_shape.append(1)

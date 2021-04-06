@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file trans_data_positive_target_t_mode100.cpp
+ * \file trans_data_positive_source_tc_1010.cc
  * \brief dynamic TransData op tiling
  */
 #include <string>
@@ -150,7 +150,7 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
   // target axis c-left tiling parameters
   int32_t dstAxisPosC = std::strchr(dstFormat.c_str(), 'C') - dstFormat.c_str();
   int64_t axisDstClSize = 1;
-  for (size_t i = 0; i < dstAxisPosC; i++) {
+  for (int32_t i = 0; i < dstAxisPosC; i++) {
     axisDstClSize *= outShape[i];
   }
   char dstClChar = dstFormat[dstAxisPosC - 1];
@@ -176,7 +176,6 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
   int32_t tmpSrcPos = std::strchr(srcFormat.c_str(), dstFormat[dstFormat.length() - 2]) - srcFormat.c_str();
   int64_t axisDstCrSize = GetShapeSize(inShape, tmpSrcPos) / inShape[inShape.size() - 1];
 
-  int32_t srcAxisPosC = std::strchr(srcFormat.c_str(), 'C') - srcFormat.c_str();
   params.plnDstCrSize = params.vncLineSize / GetCeilFill(params.cLpUnit, c0Len);
   params.vncRowSize = VNC_LINES;
   int64_t perVncDstCrCnt = params.plnDstCrSize * params.vncRowSize;
@@ -191,8 +190,6 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
     llDstCrLeft = params.plnDstCrSize;
   }
 
-  int64_t c0Size;
-  int64_t cModC0;
   params.dstCrLpStepIn = inShape[inShape.size() - 1] * perVncDstCrCnt;
   int32_t tmpDstPos = std::strchr(dstFormat.c_str(), srcFormat[srcFormat.length() - 2]) - dstFormat.c_str();
   params.dstCrLpStepOut = GetShapeSize(outShape, tmpDstPos + 1) * perVncDstCrCnt;

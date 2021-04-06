@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file trans_data_positive_target_t_mode100.cpp
+ * \file trans_data_negative_target_ntc.cc
  * \brief dynamic TransData op tiling
  */
 #include <string>
@@ -251,7 +251,7 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   // dst axis C-LEFT tiling parameters
   params.dstClDims = 2;
   int64_t axisDstClSize = 1;
-  for (size_t i = 0; i < dstAxisPosC; i++) {
+  for (int32_t i = 0; i < dstAxisPosC; i++) {
     axisDstClSize *= outShape[i];
   }
   int64_t srcCDstCrSize = axisSrcCSize * axisDstCrSize;
@@ -287,7 +287,7 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   params.leftClCCrSize = dstClLeft * srcCDstCrSize;
   string tmpDstClFormat = dstFormat.substr(0, dstAxisPosC);
   vector<int64_t> tmpCLeftShape;
-  for (size_t i = 0; i < dstAxisPosC; i++) {
+  for (int32_t i = 0; i < dstAxisPosC; i++) {
     tmpCLeftShape.push_back(outShape[i]);
   }
   tmpCLeftShape.push_back(1);

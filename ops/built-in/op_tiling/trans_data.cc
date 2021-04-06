@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file trans_data.cpp
+ * \file trans_data.cc
  * \brief dynamic TransData op tiling
  */
 #include <string>
@@ -613,10 +613,10 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     ge::Tensor const_tensor(ge::TensorDesc(ge_shape, ge::Format::FORMAT_ND, ge::DataType::DT_INT64));
     int64_t buf[4];
     std::map<char, std::int64_t> DimIndex;
-    for (int64_t i = 0; i < srcFormat.size(); i++) {
+    for (size_t i = 0; i < srcFormat.size(); i++) {
       DimIndex[srcFormat[i]] = i;
     }
-    for (int64_t i = 0; i < dstFormat.size(); i++) {
+    for (size_t i = 0; i < dstFormat.size(); i++) {
       buf[i] = DimIndex[dstFormat[i]];
     }
     opParasTranspose.const_inputs["perm"] = std::make_tuple((const unsigned char*)buf, sizeof(buf), const_tensor);

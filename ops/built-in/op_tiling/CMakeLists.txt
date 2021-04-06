@@ -95,12 +95,8 @@ set(_optiling_files
   transpose_d.cc
   transpose.cc
   trans_data.cc
-  trans_data_negative_target_tc.cc
   trans_data_negative_target_tc_201.cc
   trans_data_negative_target_ntc.cc
-  trans_data_positive_target_t_mode100.cc
-  trans_data_positive_target_t_mode101.cc
-  trans_data_negative_target_h_mode200.cc
   trans_data_positive_source_tc_1010.cc
   trans_data_positive_source_tc_1011.cc
   trans_data_positive_source_ntc_100.cc

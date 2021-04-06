@@ -15,7 +15,7 @@
  */
 
 /*!
- * \file trans_data_positive_target_t_mode100.cpp
+ * \file trans_data_positive_source_tc_1011.cc
  * \brief dynamic TransData op tiling
  */
 #include <string>

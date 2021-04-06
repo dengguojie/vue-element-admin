@@ -391,10 +391,6 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/slice.cc \
         built-in/op_tiling/transpose_d.cc \
         built-in/op_tiling/trans_data.cc \
-        built-in/op_tiling/trans_data_negative_target_tc.cc \
-        built-in/op_tiling/trans_data_positive_target_t_mode100.cc \
-        built-in/op_tiling/trans_data_positive_target_t_mode101.cc \
-        built-in/op_tiling/trans_data_negative_target_h_mode200.cc \
 	built-in/op_tiling/trans_data_positive_source_ntc_100.cc \
         built-in/op_tiling/unpack.cc \
         built-in/op_tiling/pad_common.cc \
