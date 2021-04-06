@@ -154,8 +154,9 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
             if tiles > 1:
                 res = tile_with_axis_compute(data_x, shape_y)
             else:
-                zero_data = tvm.const(0, dtype=dtype_x)
-                res = tbe.vadds(data_x, zero_data)
+                data_zero = tvm.const(0, dtype=dtype_x)
+                zero_broadcast = tbe.broadcast(data_zero, shape_x)
+                res = tbe.vadd(data_x, zero_broadcast)
 
             tensors.append([data_x, res])
 

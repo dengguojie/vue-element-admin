@@ -165,10 +165,8 @@ def _sign_compute(input_data):
     input_x = tbe.broadcast(tvm.const(CONST_ONE, input_dtype), input_data.shape)
     input_y = tbe.broadcast(tvm.const(CONST_ZERO, input_dtype), input_data.shape)
     input_z = tbe.broadcast(tvm.const(CONST_ONE_NEG, input_dtype), input_data.shape)
-    new_data = tbe.vcmp(input_data, tvm.const(CONST_ZERO, input_dtype), operation="gt", mode="bool")
-    res1 = tbe.vsel(new_data, input_x, input_y)
-    new_data_one = tbe.vcmp(input_data, tvm.const(CONST_ZERO, input_dtype), operation="lt", mode="bool")
-    res2 = tbe.vsel(new_data_one, input_z, input_y)
+    res1 = tbe.vcmpsel(input_data, tvm.const(CONST_ZERO, input_dtype), "gt", input_x, input_y)
+    res2 = tbe.vcmpsel(input_data, tvm.const(CONST_ZERO, input_dtype), "lt", input_z, input_y)
     res = tbe.vadd(res1, res2)
 
     return res
