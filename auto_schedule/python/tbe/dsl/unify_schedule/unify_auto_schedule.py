@@ -269,6 +269,8 @@ class Builder:
             m_config_items.update({"parse_ddr_args": True, "build_fatbin": True})
         if 'build_args' in self.config_map:
             m_config_items.update(self.config_map['build_args'])
+        elif 'fusion_build_config' in self.config_map:
+            m_config_items.update(self.config_map['fusion_build_config'])
         m_config_items.update(operation.get_build_args())
 
         from te import platform as cce
