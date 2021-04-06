@@ -163,20 +163,21 @@ def lars_v2_update(weight,
     for input_val in inputs:
         input_dtype = input_val.get("dtype").lower()
         para_check.check_dtype(input_dtype, check_list)
-    
-    ins = classify(inputs, OpPatternMode.ELEWISE)
+
+    shape_scaler = [1]
+    data_weights = tvm.placeholder(shape_scaler, name="data_weights", dtype=weight_dtype)
+    data_grads = tvm.placeholder(shape_scaler, name="data_grads", dtype=weight_dtype)
+    data_weight_decay = tvm.placeholder(shape_scaler, name="data_weight_decay", dtype=weight_dtype)
+    data_learning_rate = tvm.placeholder(shape_scaler, name="data_lr", dtype=weight_dtype)
+
+    ins = classify([weight, grad], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 
-    for (_weight, _grad, _weights, _grads, _weight_decay, _learning_rate) in ins:
+    for (_weight, _grad) in ins:
         with tbe.compute():
-            shape_weight, shape_grad, shape_weights, shape_grads, shape_weight_decay, shape_learning_rate \
-                = shape_util.variable_shape([_weight, _grad, _weights, _grads, _weight_decay, _learning_rate])
+            shape_weight, shape_grad = shape_util.variable_shape([_weight, _grad])
             data_weight = tvm.placeholder(shape_weight, name="data_weight", dtype=weight_dtype)
             data_grad = tvm.placeholder(shape_grad, name="data_grad", dtype=weight_dtype)
-            data_weights = tvm.placeholder(shape_weights, name="data_weights", dtype=weight_dtype)
-            data_grads = tvm.placeholder(shape_grads, name="data_grads", dtype=weight_dtype)
-            data_weight_decay = tvm.placeholder(shape_weight_decay, name="data_weight_decay", dtype=weight_dtype)
-            data_learning_rate = tvm.placeholder(shape_learning_rate, name="data_lr", dtype=weight_dtype)
             inputs_place_holders = [data_weight, data_grad, data_weights, data_grads, data_weight_decay, data_learning_rate]
             res = lars_v2_update_compute(inputs_place_holders, hyperparam, epsilon, use_clip, out, kernel_name)
             tensors.append(inputs_place_holders + [res])
