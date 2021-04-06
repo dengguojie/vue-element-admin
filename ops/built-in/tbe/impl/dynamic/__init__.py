@@ -232,6 +232,7 @@ from .scale import scale
 from .asinh import asinh
 from .asinh_grad import asinh_grad
 from .expm1 import expm1
+from .mse_loss import mse_loss
 from .floor import floor
 from .rint import rint
 from .round import round

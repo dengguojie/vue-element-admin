@@ -1264,72 +1264,39 @@ VERIFY_FUNC_REG(MseLossGrad, MseLossGradVerify);
 // ----------------MseLossGrad END---------------------
 
 // ----------------MseLoss Begin-------------------
-static bool InferMseLossShape(ge::Operator& op, const string& inputName,
-                              const string& reduction,
-                              ge::TensorDesc& resultDesc) {
-  resultDesc = op.GetInputDesc(inputName);
-  auto shape = resultDesc.GetShape();
-  auto dtype = resultDesc.GetDataType();
-  int64_t dimNum = shape.GetDimNum();
-  std::vector<int64_t> dimVec = {1};
-  Shape shapeOne = Shape(dimVec);
-
-  if (reduction == "none") {
-    resultDesc.SetShape(shape);
-    OP_LOGD(op.GetName().c_str(), "op reduction is none");
-  } else {
-    resultDesc.SetShape(shapeOne);
+IMPLEMT_COMMON_INFERFUNC(MseLossInferShape) {
+  std::string reduceType = "mean";
+  if (op.GetAttr("reduction", reduceType) == GRAPH_FAILED) {
+    OpsGetAttrErrReport(op.GetName(), "reduction");
+    OP_LOGE(op.GetName().c_str(), "get attr reduction failed");
+    return GRAPH_FAILED;
   }
-  resultDesc.SetDataType(dtype);
-  return true;
-}
-
-IMPLEMT_COMMON_INFERFUNC(InferMseLossShape) {
-  Shape predict_shape = op.GetInputDesc("predict").GetShape();
-  Shape label_shape = op.GetInputDesc("label").GetShape();
-  std::vector<int64_t> dims_predict = predict_shape.GetDims();
-  std::vector<int64_t> dims_label = label_shape.GetDims();
-  ge::TensorDesc resultDesc;
-  string reduction;
-  if (ge::GRAPH_SUCCESS != op.GetAttr("reduction", reduction)) {
-    if (reduction != "none" && reduction != "mean" && reduction != "sum" &&
-        reduction != "") {
-      OP_LOGE(op.GetName().c_str(),
-              "Attr reduction only support 'none', 'mean', 'sum'");
+  if (reduceType == "none") {
+    // if reduction == "none" , output shape == x.shape
+    OP_LOGI(op.GetName().c_str(), "the attr reduction = none");
+    if (OneInOneOutDynamicInfer(op, "predict", {"y"})){
+      return GRAPH_SUCCESS;
+    }
+    return GRAPH_FAILED;
+  } else {
+    auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+    if (op_info == nullptr) {
+      OP_LOGE(op.GetName().c_str(), "op_info should not be nullptr");
       return GRAPH_FAILED;
     }
+    auto outputTensordesc = op_info->MutableOutputDesc("y");
+    auto x_desc = op_info->MutableInputDesc("predict");
+    DataType x_dtype = x_desc->GetDataType();
+    std::vector<int64_t> o_shape;
+    std::vector<std::pair<int64_t, int64_t>> o_range;
+    outputTensordesc->SetShape(GeShape(o_shape));
+    outputTensordesc->SetShapeRange(o_range);
+    outputTensordesc->SetDataType(x_dtype);
+    return GRAPH_SUCCESS;
   }
-  if (dims_predict.size() != dims_label.size()) {
-    OP_LOGE(op.GetName().c_str(), "predict dim must be equal label dim");
-    return GRAPH_FAILED;
-  }
-  if (!InferMseLossShape(op, "predict", reduction, resultDesc)) {
-    OP_LOGE(op.GetName().c_str(),
-            "infershape failed ,plase check the paramters");
-    return GRAPH_FAILED;
-  }
-  auto shape = resultDesc.GetShape();
-  auto dtype = resultDesc.GetDataType();
-  // update output desc
-  ge::TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(shape);
-  output_desc.SetDataType(dtype);
-  (void)op.UpdateOutputDesc("y", output_desc);
-  return GRAPH_SUCCESS;
 }
 
-IMPLEMT_VERIFIER(MseLoss, MseLossVerify) {
-  DataType input_type_predict = op.GetInputDesc("predict").GetDataType();
-  DataType input_type_label = op.GetInputDesc("label").GetDataType();
-  if (input_type_predict != input_type_label) {
-    OP_LOGE(op.GetName().c_str(), "predict type must be same as lable type");
-    return GRAPH_FAILED;
-  }
-  return GRAPH_SUCCESS;
-}
-
-COMMON_INFER_FUNC_REG(MseLoss, InferMseLossShape);
-VERIFY_FUNC_REG(MseLoss, MseLossVerify);
+COMMON_INFER_FUNC_REG(MseLoss, MseLossInferShape);
 // ----------------MseLoss END---------------------
 
 // ----------------SoftMarginLoss Begin-------------------
