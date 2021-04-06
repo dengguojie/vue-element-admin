@@ -470,7 +470,7 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
 
-    if tik_name in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS) and \
+    if tik_name in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
             (pre_nms_topn > 3000 or post_nms_topn > 3000):
         rule_desc = "pre_nms_topn and post_nms_topn must be <=3000 in HISI"
         param_value = ','.join((str(pre_nms_topn), str(post_nms_topn)))
@@ -491,7 +491,7 @@ def proposal_d(cls_prob_dic, bbox_delta_dic, im_info_dic, rpn_bbox_dic,
                       'real_value': str(iou_threshold)}
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be in the range "
-                           "of [%s, %s], but actually is [%s]." %
+                           "of (%s, %s), but actually is [%s]." %
                            (error_info['op_name'], error_info['param_name'],
                             error_info['min_value'], error_info['max_value'],
                             error_info['real_value']))
