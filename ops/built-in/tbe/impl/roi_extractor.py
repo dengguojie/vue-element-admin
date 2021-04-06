@@ -647,7 +647,7 @@ class RoiExtractor:
                             self.output_size,
                             self.sample_ratio,
                             0,
-                            True
+                            self.aligned
                         )
                     with self.tik_instance.else_scope():
                         pass
