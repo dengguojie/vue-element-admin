@@ -20,6 +20,7 @@ import math
 from impl.util import fusion_util
 from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -346,6 +347,62 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
     if bias:
         tensor_list.append(bias)
     return {"op_placeholder": tensor_list, "op_res": [op_res]}
+
+
+def _generate_unknown_shape(shape):
+    return [DYNAMIC_FLAG for i in shape]
+
+
+def _generalize_input_keep_rank(input_dict):
+    if input_dict["format"] in ("NHWC", "ND"):
+        input_dict["shape"] = _generate_unknown_shape(input_dict["shape"])
+        input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
+    else:
+        x_old_1 = input_dict["shape"][-1]
+        x_old_2 = input_dict["shape"][-2]
+        input_dict["shape"] = _generate_unknown_shape(input_dict["shape"])
+        input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
+        input_dict["shape"][-1] = x_old_1
+        input_dict["shape"][-2] = x_old_2
+    
+
+@tbe_register.register_param_generalization("MatMul")
+def  matmul_generalization(input_x1, input_x2, bias, offset_w={}, output_y={},
+                           trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul",
+                           generalize_config={"mode": "keep_rank"}):
+    result = []
+    if generalize_config["mode"] == "keep_rank": #fuzzy compile
+        _generalize_input_keep_rank(input_x1)
+        _generalize_input_keep_rank(input_x2)
+        if bias:
+            _generalize_input_keep_rank(bias)
+        _generalize_input_keep_rank(output_y)
+        result.append([input_x1, input_x2, bias, offset_w, output_y, 
+                       {"trans_a": trans_a}, {"trans_b": trans_b}, {"offset_x": offset_x}])
+    else:
+        error_manager_cube.raise_err_one_para(
+            "E62306",
+            "MatMul",
+            "Invalid generalize mode, currently only support keep_rank"
+        )
+    
+    match_dict = {}
+    k_m_index = 1 if trans_a else 1
+    k_n_index = 1 if trans_b else 0
+
+    match_dict["match_dim"] = [
+        [
+            {
+                "input_index": 0, 
+                "dim_index": k_m_index
+            },
+            {
+                "input_index": 1,
+                "dim_index": k_n_index
+            }
+        ]
+    ]
+    return result, match_dict
 
 
 @register_operator("MatMul")

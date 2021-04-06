@@ -9,8 +9,8 @@ ut_case = OpUT("BatchMatMul", "impl.dynamic.batch_matmul", "batch_matmul")
 
 # batch_range, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batchb_flag, case_name
 matmul_case = [
-    (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, False, "dynamic_batch_matmul_v2_succcase0"),
-    (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", True, True, True, True, "dynamic_batch_matmul_v2_succcase1"),
+    (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, False, "dynamic_batch_matmul_v2_successcase0"),
+    (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", True, True, True, True, "dynamic_batch_matmul_v2_successcase1"),
     # dtype error
     (((1, 5), ), (1, 4), (1, 2), (2, 4), "float16", "float32", "NZ", False, False, False, True, "dynamic_matmul_errorcase0", "dtype"),
     # format error
@@ -113,11 +113,24 @@ def test_op_check_supported(test_arg):
     input_x2 = {"ori_shape": (2, 16, 16), "shape": (2, 1, 1, 16, 16),"dtype": 'float16'}
     check_supported(input_x1, input_x2)
 
+
+def test_batch_matmul_generalization(test_arg):
+    from impl.dynamic.batch_matmul import batch_matmul_generalization
+    input_x1_dynamic = {"ori_shape": (5, 2, 3), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND"}
+    input_x2_dynamic = {"ori_shape": (5, 3, 5), "shape": (5, 1, 1, 16, 16), "range": ((1,3), (1,3), (1,3)), "dtype": 'float16', "format": "ND"}
+    output_dynamic = {"ori_shape": (5, 2, 5), "shape": (5, 1, 1, 16, 16), "range": ((4,7), (1,3), (1,3)), "dtype": 'float16', "format": "ND"}
+    bias_dynamic = {"ori_shape": (5, ), "dtype": 'float16', "shape": (5,), "format": "ND", "ori_format": "ND", "range": (1, 48)}
+    batch_matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, output_z=output_dynamic,
+                                trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
+                                generalize_config={"mode": "keep_rank"})
+
+
 for case in matmul_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
 
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization)
 
 if __name__ == "__main__":
     ut_case.run()

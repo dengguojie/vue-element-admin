@@ -17,11 +17,15 @@ gemm tiling case
 """
 import collections
 import copy
+import json
 import math
 from functools import reduce
 
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.context import op_context
+from tbe.common import platform as tbe_platform
+from tbe.common.utils.errormgr import error_manager_cube
 from tbe.dsl.compute.gemm_compute import GEMMComputeParam
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
@@ -41,6 +45,8 @@ INT_32_MAX = 2147483647
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
                   "uint8": 1, "int8": 1, "uint4": 0.5, "int4": 0.5}
 BIT_DIR = {"float32": 16, "int32": 16, "float16": 16, "int8": 32}
+UNKNOWN_DIM = -1
+INITIAL_TILING_ID = 10000
 
 
 def set_var_value(info, target_area):
@@ -173,6 +179,291 @@ def change_full_load_to_value(tiling_list):
     return transed_tiling_list
 
 
+def _get_kernel_compile_info(tiling_key, compile_info_ori, change_keys, tiling_case):
+    """
+    get compile info for kernel list
+
+    Parameters
+    ----------
+    tiling_key: tiling_key
+    compile_info_ori: compile info
+    change_keys: keys in compile_info_ori to be updated
+    tiling_case: tiling case
+
+    Returns
+    -------
+    dict, compile info
+    """
+    compile_info = copy.deepcopy(compile_info_ori)
+    for key in change_keys:
+        content = compile_info_ori[key].get(tiling_key, [])
+        compile_info[key] = {tiling_key: content} if len(content) > 0 else {}
+    block_dim = reduce(lambda x, y: x * y, tiling_case["tiling_strategy"]["block_dim"])
+    compile_info["block_dim"] = {tiling_key: block_dim}
+    return compile_info
+
+
+def _get_kernel_support_info(tiling_case, mode):
+    """
+    get support info for kernel list
+
+    Parameters
+    ----------
+    tiling_case: tiling_case
+    mode: dynamic mode
+
+    Returns
+    -------
+    dict, support info, range supported
+    """
+
+    order_dict = tiling_case['var_range']
+    m_range = [
+        (order_dict["m"][0] - 1) * tbe_platform.BLOCK_REDUCE + 1,
+        order_dict["m"][1] * tbe_platform.BLOCK_REDUCE
+    ]
+    k_range = [
+        (order_dict["k"][0] - 1) * tbe_platform.BLOCK_REDUCE + 1,
+        order_dict["k"][1] * tbe_platform.BLOCK_REDUCE
+    ]
+    n_range = [
+        (order_dict["n"][0] - 1) * tbe_platform.BLOCK_REDUCE + 1,
+        order_dict["n"][1] * tbe_platform.BLOCK_REDUCE
+    ]
+    input0_shape = [UNKNOWN_DIM, UNKNOWN_DIM]
+    input1_shape = [UNKNOWN_DIM, UNKNOWN_DIM]
+    output_shape = [UNKNOWN_DIM, UNKNOWN_DIM]
+    trans_a = GEMMComputeParam.tiling_info_dict["trans_a"]
+    trans_b = GEMMComputeParam.tiling_info_dict["trans_b"]
+    input0_range = []
+    input1_range = []
+    output_range = []
+    if mode == "dynamic_mknb":
+        batch_range = [
+            order_dict["batch"][0],
+            order_dict["batch"][1]
+        ]
+        input0_shape.append(UNKNOWN_DIM)
+        input1_shape.append(UNKNOWN_DIM)
+        output_shape.append(UNKNOWN_DIM)
+        input0_range.append(batch_range)
+        input1_range.append(batch_range)
+        output_range.append(batch_range)
+    if trans_a:
+        input0_range.append(k_range)
+        input0_range.append(m_range)
+    else:
+        input0_range.append(m_range)
+        input0_range.append(k_range)
+    if trans_b:
+        input1_range.append(n_range)
+        input1_range.append(k_range)
+    else:
+        input1_range.append(k_range)
+        input1_range.append(n_range)
+    output_range.append(m_range)
+    output_range.append(n_range)
+    support_info = {
+        "inputs": [
+            {
+                "index": 0,
+                "tensor": [
+                    {
+                        "shape": input0_shape,
+                        "range": input0_range
+                    }
+                ]
+            },
+            {
+                "index": 1,
+                "tensor": [
+                    {
+                        "shape": input1_shape,
+                        "range": input1_range
+                    }
+                ]
+            }
+        ],
+        "outputs": [
+            {
+                "index": 0,
+                "tensor": [
+                    {
+                        "shape": output_shape,
+                        "range": output_range
+                    }
+                ]
+            },
+        ]
+    }
+    return support_info
+
+
+def _set_build_json_info(tiling_cases_list, mode):
+    """
+    set kernel info to context
+
+    Parameters
+    ----------
+    tiling_cases_list: tiling case list
+    mode: dynamic mode
+    """
+
+    kernel_list = []
+    context = op_context.get_context()
+    compile_info_ori = context.get_compile_info()
+    change_keys = [
+        "cost_range", "repo_seeds", "repo_range"
+    ]
+    max_tiling_key = tiling_cases_list[0]["key"]
+    for tiling_case in tiling_cases_list:
+        tiling_key = tiling_case["key"]
+        if tiling_key > max_tiling_key:
+            max_tiling_key = tiling_key
+        kernel = {
+            "supportInfo": _get_kernel_support_info(tiling_case, mode),
+            "compileInfo": _get_kernel_compile_info(tiling_key, compile_info_ori, change_keys, tiling_case),
+            "implMode": "high_performance"
+        }
+        kernel_list.append(kernel)
+    context.add_build_json_result("kernelList", kernel_list)
+    context.add_build_json_result("maxKernelId", max_tiling_key)
+
+
+def _list_comprehensive(array, factor):
+    return list(map(lambda x: (x + factor - 1) // factor, array))
+
+
+def _calc_tiling_case(mode, target_area, cnt):
+    """
+    calculate tiling case
+
+    Parameters
+    ----------
+    mode: dynamic mode
+    target_area: range to be compiled
+    cnt: initial value of tiling key
+
+    Returns
+    -------
+    list of dict, each dict for a tiling case
+    """
+
+    info = copy.deepcopy(GEMMComputeParam.tiling_info_dict)
+    info = set_var_value(info, target_area)
+
+    tiling_op = MatmulTiling(info, mode)
+
+    if check_range_value(target_area):
+        return set_default_tiling_case(target_area, tiling_op)
+
+    tiling_cases = TilingSelection(tiling_op, cnt).calc_tiling(target_area)
+    return tiling_cases
+
+
+def _calc_intersection(range_a, range_b):
+    """
+    calculate intersection of range_a and range_b
+
+    Parameters
+    ----------
+    range_a: list or tuple
+    range_b: list or tuple
+
+    Returns
+    -------
+    list: intersection of range_a and range_b
+    """
+
+    intersection = [max(range_a[0], range_b[0]), min(range_a[1], range_b[1])]
+    if intersection[0] > intersection[1]:
+        return []
+    return intersection
+
+
+def _calc_tiling_case_with_support_info(missing_support_info_list, mode, tiling_key_cnt, context):
+    """
+    calculate tiling cases with support info
+
+    Parameters
+    ----------
+    missing_support_info_list: missing ranges
+    mode: dynamic mode
+    tiling_key_cnt: initial value of tiling key
+    context: context
+
+    Returns
+    -------
+    list of dict, each dict for a tiling case
+    """
+
+    tiling_case = []
+    op_name = "Matmul" if mode == "dynamic_mkn" else "BatchMatMul"
+    if not isinstance(missing_support_info_list, str):
+        error_manager_cube.raise_err_one_para(
+            "E62306",
+            op_name,
+            "invalud missing support info"
+        )
+    missing_support_info_list = json.loads(missing_support_info_list)
+    max_kernel_id = context.get_addition("max_kernel_id")
+    if isinstance(max_kernel_id, int) and max_kernel_id > 0:
+        tiling_key_cnt = max_kernel_id + 1
+    else:
+        error_manager_cube.raise_err_one_para(
+            "E62306",
+            op_name,
+            "invalid max_kernel_id"
+        )
+    dtype = GEMMComputeParam.tiling_info_dict["A_dtype"]
+    factor = tbe_platform.BLOCK_REDUCE_INT8 if dtype == "int8" else tbe_platform.BLOCK_REDUCE
+    for missing_support_info in missing_support_info_list:
+        inputs = missing_support_info["inputs"]
+        input_a = inputs[0]
+        input_b = inputs[1]
+        trans_a = GEMMComputeParam.tiling_info_dict["trans_a"]
+        trans_b = GEMMComputeParam.tiling_info_dict["trans_b"]
+
+        offset = 0
+        if mode == "dynamic_mknb":
+            offset = 1
+        m_index = 1 + offset if trans_a else 0 + offset
+        k_m_index = 0 + offset if trans_a else 1 + offset
+        k_n_index = 1 + offset if trans_b else 0 + offset
+        n_index = 0 + offset if trans_b else 1 + offset
+        
+        m_range = _list_comprehensive(input_a["tensor"][0]["range"][m_index], factor)
+        k_m_range = _list_comprehensive(input_a["tensor"][0]["range"][k_m_index], factor)
+        k_n_range = _list_comprehensive(input_b["tensor"][0]["range"][k_n_index], factor)
+        n_range = _list_comprehensive(input_b["tensor"][0]["range"][n_index], factor)
+
+        k_range = _calc_intersection(k_m_range, k_n_range)
+        if not k_range:
+            error_manager_cube.raise_err_one_para(
+                "E62306",
+                op_name,
+                "k_range in input1 has no intersection with k_range in input2"
+            )
+        area = [m_range, k_range, n_range]
+
+        if mode == "dynamic_mknb":
+            batch_range_a = input_a["tensor"][0]["range"][0]
+            batch_range_b = input_b["tensor"][0]["range"][0]
+            batch_range = _calc_intersection(batch_range_a, batch_range_b)
+            if not batch_range:
+                error_manager_cube.raise_err_one_para(
+                    "E62306",
+                    op_name,
+                    "batch_range in input1 has no intersection with batch_range in input2"
+                )
+            area.append(batch_range)
+        
+        tiling_case_part = _calc_tiling_case(mode, area, tiling_key_cnt + len(tiling_case))
+        tiling_case += tiling_case_part
+    
+    return tiling_case
+
+
 @register_tiling_case(pattern=Pattern.MAT_MUL)
 def calc_matmul(outs, option=None):
     """
@@ -190,16 +481,22 @@ def calc_matmul(outs, option=None):
     mode = GEMMComputeParam.dynamic_mode
     var_names = {"dynamic_mkn": ("m", "k", "n"), "dynamic_mknb": ("m", "k", "n", "batch")}
     target_area = [get_te_var(v).get_bound() for v in var_names[mode]]
-    info = GEMMComputeParam.tiling_info_dict
-    info = set_var_value(info, target_area)
 
-    tiling_op = MatmulTiling(info, mode)
+    context = op_context.get_context()
+    fuzzy_build = (context.get_build_type() == "fuzzily_build")
+    if fuzzy_build:
+        missing_support_info_list = context.get_addition("missing_support_info")
+        if not missing_support_info_list:
+            tiling_case = _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)
+        else:
+            tiling_case = _calc_tiling_case_with_support_info(missing_support_info_list, 
+                                                              mode, 
+                                                              INITIAL_TILING_ID, 
+                                                              context)
+        _set_build_json_info(tiling_case, mode)
+        return tiling_case
 
-    if check_range_value(target_area):
-        return set_default_tiling_case(target_area, tiling_op)
-
-    tiling_cases = TilingSelection(tiling_op).calc_tiling(target_area)
-    return tiling_cases
+    return _calc_tiling_case(mode, target_area, INITIAL_TILING_ID)   
 
 
 class MatmulTiling(CubeTilingOp):
@@ -245,7 +542,7 @@ class MatmulTiling(CubeTilingOp):
         self.b_info[1] = shape[2]
 
         cost_seeds = get_tiling(self.tiling_info)
-
+        cost_seeds = change_full_load_to_value(cost_seeds)
         tiling = cost_seeds[0]
 
         # check whether the tiling is default

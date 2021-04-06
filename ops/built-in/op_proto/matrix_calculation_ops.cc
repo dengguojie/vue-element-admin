@@ -517,6 +517,11 @@ static const std::pair<int64_t, int64_t> FULL_RANGE = {1, -1};
 static const std::pair<int64_t, int64_t> EMPTY_RANGE = {0, 0};
 static const std::pair<int64_t, int64_t> NORMALIZE_FULL_RANGE = {1, std::numeric_limits<int64_t>::max()};
 static const int64_t VALUE_UNKNOWN_RANK = -2;
+static const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
+static const std::vector<int64_t> BATCH_GRAR = {0, 1, 3, 7, 15, 31, MAX_RANGE};
+static const std::vector<int64_t> SHAPE_GEAR = {0, 16*3, 16*7, 16*15, 16*31, 16*63, 16*127, 16*191,
+                                                16*255, 16*511, 16*767, 16*1023, MAX_RANGE};
+
 bool IsDimValid(int64_t dim) {
   return dim >= VALUE_UNKNOWN_RANK && dim != 0;
 }
@@ -959,7 +964,34 @@ bool InferShapeMatMul::GetShapeRangeOfOutput() {
   return true;
 }
 
-graphStatus GetMatMulOutputShape(const Operator &op,
+void GetMatmulShapeGear(int64_t dim_size,
+                        const std::vector<int64_t> &shape_gear,
+                        std::pair<int64_t, int64_t> &range) {
+  int position = 1;
+  while (position < shape_gear.size() && shape_gear[position] < dim_size) {
+    position++;
+  }
+  range = {shape_gear[position - 1] + 1, shape_gear[position]};
+}
+
+int32_t CalculateMatmulShapeRange(const std::vector<int64_t> &shape,
+                                  std::vector<std::pair<int64_t, int64_t>> &single_point_range) {
+  for (int i = 0; i < shape.size() - 2; i++) {
+    if (shape[i] > MAX_RANGE) {
+      return -1;
+    }
+    GetMatmulShapeGear(shape[i], BATCH_GRAR, single_point_range[i]);
+  }
+  for (int i = shape.size() - 2; i < shape.size(); i++) {
+    if (shape[i] > MAX_RANGE) {
+      return -1;
+    }
+    GetMatmulShapeGear(shape[i], SHAPE_GEAR, single_point_range[i]);
+  }
+  return 0;
+}
+
+graphStatus GetMatMulOutputShape(Operator &op,
                                  std::vector<int64_t> &shape_out,
                                  std::vector<std::pair<int64_t, int64_t>> &shape_range_out,
                                  const std::string &name_attr, bool has_batch) {
@@ -1002,15 +1034,39 @@ graphStatus GetMatMulOutputShape(const Operator &op,
             op.GetName().c_str(), name_attr.c_str());
     return GRAPH_FAILED;
   }
+
+  bool fuzzy_flag = false;
+  bool is_static_shape = !IsUnKnownShape(shape_a) && !IsUnKnownShape(shape_b) && !IsUnknownShape(shape_bias);
+  if (ge::GRAPH_SUCCESS == op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzzy_flag) && fuzzy_flag && is_static_shape) {
+    int shape_length = shape_a.size();
+    std::vector<std::pair<int64_t, int64_t>> single_point_range_a(shape_length);
+    std::vector<std::pair<int64_t, int64_t>> single_point_range_b(shape_length);
+    int32_t calc_range_a = CalculateMatmulShapeRange(shape_a, single_point_range_a);
+    if (calc_range_a < 0) {
+      OP_LOGE(op.GetName().c_str(), "shape of input_x1 is too large");
+      return GRAPH_FAILED;
+    }
+    int32_t calc_range_b = CalculateMatmulShapeRange(shape_b, single_point_range_b);
+    if (calc_range_b < 0) {
+      OP_LOGE(op.GetName().c_str(), "shape of input_x2 is too large");
+      return GRAPH_FAILED;
+    }
+    shape_range_a = single_point_range_a;
+    shape_range_b = single_point_range_b;
+    desc_a.SetShapeRange(shape_range_a);
+    desc_b.SetShapeRange(shape_range_b);
+    (void) op.UpdateInputDesc("x1", desc_a);
+    (void) op.UpdateInputDesc("x2", desc_b);
+    OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "transpose").c_str());
+  }
   auto obj = InferShapeMatMul(op.GetName(), shape_a, shape_b, shape_bias, shape_range_a, shape_range_b,
                               shape_range_bias, trans_a, trans_b, shape_out, shape_range_out, has_batch);
   if (!obj.GetShapeRangeOfOutput()) {
     return GRAPH_FAILED;
   }
-
+  OP_LOGD(op.GetName().c_str(), "fuzzy_flag = %d", fuzzy_flag);
   return GRAPH_SUCCESS;
 }
-
 
 bool InferMatmulInputNZ(const Operator &op,
                         vector<vector<int64_t>> &output,
@@ -1370,7 +1426,7 @@ IMPLEMT_VERIFIER(BatchMatMul, BatchMatMulVerify) {
   return GRAPH_SUCCESS;
 }
 
-graphStatus CommonBatchMatMulInferShape(const Operator &op) {
+graphStatus CommonBatchMatMulInferShape(Operator &op) {
   OP_LOGD(op.GetName().c_str(), "%s", GetMatMulInfo(op, "adj").c_str());
 
   auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);

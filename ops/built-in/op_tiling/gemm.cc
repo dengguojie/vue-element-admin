@@ -166,33 +166,22 @@ string DebugInfoGEMM(const TeOpParas &op_paras, const json &compile_info) {
   return oss.str();
 }
 
-/*
- * @brief: tiling function of gemm
- * @param [in] op_type: op_type of the gemm
- * @param [in] op_paras: inputs/outputs/atts of the gemm
- * @param [in] op_compile_info: compile time generated info of the gemm
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
-                OpRunInfo& run_info) {
-  OP_LOGD(op_type.c_str(), "%s", DebugInfoGEMM(op_paras, compile_info).c_str());
-
+std::string GEMMTilingSelect(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
+                             OpRunInfo& run_info) {
+  string tiling_id("-1");
   auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
   if (dynamic_mode != "dynamic_mkn" && dynamic_mode != "dynamic_mknb") {
-    OP_LOGE(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb");
-    return false;
+    OP_LOGE(op_type.c_str(), "Only support dynamic mode: dynamic_mkn, dynamic_mknb");
+    return tiling_id;
   }
-
   auto tensor_a = op_paras.inputs[0].tensor[0];
   auto tensor_b = op_paras.inputs[1].tensor[0];
   int64_t m, k, n, batch;
   if (!CalcGEMMMknb(op_type, compile_info, tensor_a, tensor_b, &m, &k, &n, &batch)) {
     OP_LOGE(op_type.c_str(), "Failed to calculate m, k, n, batch");
-    return false;
+    return tiling_id;
   }
 
-  string tiling_id("-1");
   int64_t min_distance = LLONG_MAX;
   // check tiling of repository
   for (auto &element : compile_info["repo_seeds"].items()) {
@@ -224,6 +213,9 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
       auto in_range = range[kIdxMLow] <= m && m <= range[kIdxMHigh] &&
                       range[kIdxKLow] <= k && k <= range[kIdxKHigh] &&
                       range[kIdxNLow] <= n && n <= range[kIdxNHigh];
+      if (dynamic_mode == "dynamic_mknb") {
+        in_range = in_range && range[kIdxBLow] <= batch && batch <= range[kIdxBHigh];
+      }
       if (in_range) {
         tiling_id = element.key();
         OP_LOGD(op_type.c_str(), "match tiling_id(%s) in costmodel", tiling_id.c_str());
@@ -234,19 +226,47 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
     OP_LOGD(op_type.c_str(), "match tiling_id(%s) in repository", tiling_id.c_str());
   }
 
+  if (tiling_id != "-1") {
+    run_info.block_dim = static_cast<int32_t>(compile_info["block_dim"][tiling_id]);
+    run_info.tiling_key = stoi(tiling_id);
+    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(m));
+    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(k));
+    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(n));
+    if (dynamic_mode == "dynamic_mknb") {
+      ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(batch));
+    }
+  }
+  return tiling_id;
+}
+
+
+/*
+ * @brief: tiling function of gemm
+ * @param [in] op_type: op_type of the gemm
+ * @param [in] op_paras: inputs/outputs/atts of the gemm
+ * @param [in] op_compile_info: compile time generated info of the gemm
+ * @param [out] run_info: result data
+ * @return bool: success or not
+ */
+bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const json &compile_info,
+                OpRunInfo& run_info) {
+  OP_LOGD(op_type.c_str(), "%s", DebugInfoGEMM(op_paras, compile_info).c_str());
+  std::string tiling_id("-1");
+  if (compile_info.type() == json::value_t::object) {
+    tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info, run_info);
+  }else {
+    for (int i = 0; i < compile_info.size(); i++) {
+      tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info[i], run_info);
+      if (tiling_id != "-1") {
+        break;
+      }
+    }
+  }
+
   if (tiling_id == "-1") {
     OP_LOGE(op_type.c_str(), "This shape is not covered by any tiling, "
             "please modify range and recompile");
     return false;
-  }
-
-  run_info.block_dim = static_cast<int32_t>(compile_info["block_dim"][tiling_id]);
-  run_info.tiling_key = stoi(tiling_id);
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(m));
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(k));
-  ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(n));
-  if (dynamic_mode == "dynamic_mknb") {
-    ByteBufferPut(run_info.tiling_data, static_cast<int32_t>(batch));
   }
 
   return true;

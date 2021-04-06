@@ -19,6 +19,7 @@ import math
 
 from impl.util import fusion_util
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
@@ -85,8 +86,8 @@ def _get_batch_range(range_x1, range_x2):
             batch_range = [1, None]
             break
         else:
-            batch_range[0] *= range_mem[0]
-            batch_range[1] *= range_mem[1]
+            batch_range[0] = min(batch_range[0] * range_mem[0], SHAPE_SIZE_LIMIT)
+            batch_range[1] = min(batch_range[1] * range_mem[1], SHAPE_SIZE_LIMIT)
 
     return batch_range
 
@@ -369,6 +370,74 @@ def batch_matmul_fuse_compute(input_x1, input_x2, bias, output_z,
     if bias:
         tensor_list.append(bias)
     return {"op_placeholder": tensor_list, "op_res": [op_res]}
+
+
+def _generate_unknown_shape(shape):
+    return [DYNAMIC_FLAG for i in shape]
+
+
+def _generalize_input_keep_rank(input_dict) :
+    if input_dict["format"] in ("NHWC", "ND"):
+        input_dict["shape"] = _generate_unknown_shape(input_dict["shape"])
+        input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
+    else:
+        x_old_1 = input_dict["shape"][-1]
+        x_old_2 = input_dict["shape"][-2]
+        input_dict["shape"] = _generate_unknown_shape(input_dict["shape"])
+        input_dict["ori_shape"] = _generate_unknown_shape(input_dict["ori_shape"])
+        input_dict["shape"][-1] = x_old_1
+        input_dict["shape"][-2] = x_old_2
+    
+
+@tbe_register.register_param_generalization("BatchMatMul")
+def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z={},
+                                trans_a=False, trans_b=False, kernel_name="batchmatmul",
+                                generalize_config = {"mode": "keep_rank"}):
+    result = []
+    if generalize_config["mode"] == "keep_rank": # fuzzy compile
+        _generalize_input_keep_rank(input_x1)
+        _generalize_input_keep_rank(input_x2)
+        if bias:
+            _generalize_input_keep_rank(bias)
+        _generalize_input_keep_rank(output_z)
+        result.append([input_x1, input_x2, bias, output_z, {"trans_a": trans_a}, {"trans_b": trans_b}])
+    else:
+        error_manager_cube.raise_err_one_para(
+            "E62306",
+            "BatchMatMul",
+            "Invalid generalize mode, currently only support keep_rank"
+        )
+    
+    match_dict = {}
+    shape_a_len = len(input_x1["ori_shape"])
+    shape_b_len = len(input_x2["ori_shape"])
+    k_m_index = shape_a_len - 2 if trans_a else shape_a_len - 1
+    k_n_index = shape_b_len - 1 if trans_b else shape_b_len - 2
+    batch_index = 0
+
+    match_dict["match_dim"] = [
+        [
+            {
+                "input_index": 0, 
+                "dim_index": k_m_index
+            },
+            {
+                "input_index": 1,
+                "dim_index": k_n_index
+            }
+        ],
+        [
+            {
+                "input_index": 0, 
+                "dim_index": batch_index
+            },
+            {
+                "input_index": 1,
+                "dim_index": batch_index
+            }
+        ],
+    ]
+    return result, match_dict
 
 
 @register_operator("BatchMatMul")
