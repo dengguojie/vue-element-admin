@@ -84,7 +84,10 @@ TEST_F(boundingboxdecode, boundingboxdecode_infershape_test4) {
     op.UpdateInputDesc("deltas", create_desc({36, 36, 4}, ge::DT_FLOAT));
 
     auto ret = op.VerifyAllAttr(true);
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+    auto output_desc = op.GetOutputDesc("bboxes");
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT);
 }
 
 TEST_F(boundingboxdecode, boundingboxdecode_infershape_test5) {

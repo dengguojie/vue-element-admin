@@ -53,16 +53,17 @@ case3 = {"params": [{"shape": (-1, -1), "dtype": "float16", "format": "ND", "ori
          "expect": "success",
          "support_expect": True}
 
-'''
-case4 = {"params": [{"shape": (15, 32, 1, 1), "dtype": "float16", "format": "ND", "ori_shape": (15, 32, 1, 1),"ori_format": "ND"}, #x
-                    {"shape": (15, 32, 1, 1), "dtype": "float16", "format": "ND", "ori_shape": (15, 32, 1, 1),"ori_format": "ND"}, #h
-                    {"shape": (15, 32, 1, 1), "dtype": "float16", "format": "ND", "ori_shape": (15, 32, 1, 1),"ori_format": "ND"},
-                    (0.0, 0.0, 0.0, 0.0),(1.0, 1.0, 1.0, 1.0),None,0.016,
+case4 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+                     "range":[(1,None),(4,4)]}, #x
+                    {"shape": (-1, 4), "dtype": "float32", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+                     "range":[(1,None),(4,4)]}, #h
+                    {"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
+                     "range":[(1,None),(4,4)]},
+                    (1.0, 2.1, 0.0, 1.8),(2.1, 1.0, 3.6, 1.9),None,0.016,
                     ],
          "case_name": "BoundingBoxDecode_dynamic_4",
          "expect": RuntimeError,
          "support_expect": True}
-'''
 
 case5 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_shape": (-1, 4),"ori_format": "ND", 
                      "range":[(1,None),(4,4)]}, #x
@@ -79,6 +80,7 @@ case5 = {"params": [{"shape": (-1, 4), "dtype": "float16", "format": "ND", "ori_
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
 
 

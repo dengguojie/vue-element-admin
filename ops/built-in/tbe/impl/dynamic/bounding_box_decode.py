@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import error_manager_vector
 from impl import constant_util as constant
 
 
@@ -902,6 +903,10 @@ def bounding_box_decode(rois,
     deltas_dtype = deltas.get("dtype").lower()
     para_check.check_dtype(rois_dtype, ["float16", "float32"])
     para_check.check_dtype(deltas_dtype, ["float16", "float32"])
+    if rois_dtype != deltas_dtype:
+        error_detail = "dtype of rois and deltas should be same"
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "rois", "deltas", error_detail)
+
     bboxes_instance = BoundingBoxDecode(rois, deltas, means, stds, max_shape,
                                         wh_ratio_clip, kernel_name)
     instance = bboxes_instance.tik_instance_function()

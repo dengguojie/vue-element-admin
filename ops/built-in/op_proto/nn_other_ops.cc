@@ -140,11 +140,6 @@ IMPLEMT_COMMON_INFERFUNC(BoundingBoxDecodeInferShape) {
 }
 
 IMPLEMT_VERIFIER(BoundingBoxDecode, BoundingBoxDecodeVerify) {
-    if (!CheckTwoInputDtypeSame(op, "rois", "deltas")) {
-        OP_LOGE(op.GetName().c_str(), "the BoundingBoxDecode verify Failed.case differ inputs dtype");
-        return GRAPH_FAILED;
-    }
-
     auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
     std::vector<int64_t> rois_shape = op_desc->MutableInputDesc("rois")->MutableShape().GetDims();
     std::vector<int64_t> deltas_shape = op_desc->MutableInputDesc("deltas")->MutableShape().GetDims();
