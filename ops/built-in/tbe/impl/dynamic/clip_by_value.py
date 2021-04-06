@@ -66,18 +66,17 @@ def clip_by_value_compute(input_t,
         shape_util.broadcast_shapes(input_shape, shape_max_org, param_name_input1="input_t",
                                     param_name_input2="clip_value_max")
 
-    clip_value_max = tbe.broadcast(clip_value_max, shape_broadcast)
-    input_t = tbe.broadcast(input_t, shape_broadcast)
-
-    res_min = tbe.vmin(input_t, clip_value_max)
     _, _, shape_broadcast2 = \
         shape_util.broadcast_shapes(shape_min_org, 
                                     shape_broadcast, 
                                     param_name_input1="clip_value_min",
                                     param_name_input2="input_t_broadcast")
-    clip_value_min = tbe.broadcast(clip_value_min, shape_broadcast2)
-    res_min = tbe.broadcast(res_min, shape_broadcast2)
 
+    input_t = tbe.broadcast(input_t, shape_broadcast2)
+    clip_value_max = tbe.broadcast(clip_value_max, shape_broadcast2)
+    clip_value_min = tbe.broadcast(clip_value_min, shape_broadcast2)
+
+    res_min = tbe.vmin(input_t, clip_value_max)
     res = tbe.vmax(res_min, clip_value_min)
     return res
 
