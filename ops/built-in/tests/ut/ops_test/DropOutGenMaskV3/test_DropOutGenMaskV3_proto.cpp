@@ -27,7 +27,7 @@ TEST_F(dropOutGenMaskV3, dropOutGenMaskV3_infershape_diff_test_1){
   ge::op::DropOutGenMaskV3 op;
 
   ge::Tensor constTensor;
-  ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_NHWC, ge::DT_INT32);
+  ge::TensorDesc constDesc(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT32);
   constDesc.SetSize(4 * sizeof(int32_t));
   constTensor.SetTensorDesc(constDesc);
   int32_t constData[4] = {2, 3, 4, 5};
@@ -47,4 +47,56 @@ TEST_F(dropOutGenMaskV3, dropOutGenMaskV3_infershape_diff_test_1){
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(dropOutGenMaskV3, dropOutGenMaskV3_infershape_align_test_1){
+  ge::op::DropOutGenMaskV3 op;
+
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT32);
+  constDesc.SetSize(4 * sizeof(int32_t));
+  constTensor.SetTensorDesc(constDesc);
+  int32_t constData[4] = {2, 2, 16, 32};
+  constTensor.SetData((uint8_t*)constData, 4 * sizeof(int32_t));
+  auto output_size = ge::op::Constant().set_attr_value(constTensor);
+
+  op.set_input_shape(output_size);
+  auto desc = op.GetInputDesc("shape");
+  desc.SetDataType(ge::DT_INT32);
+  op.UpdateInputDesc("shape", desc);
+
+  auto probDesc = op.GetInputDesc("prob");
+  probDesc.SetDataType(ge::DT_FLOAT);
+  probDesc.SetShape(ge::Shape());
+  op.UpdateInputDesc("prob", probDesc);
+  
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(dropOutGenMaskV3, dropOutGenMaskV3_infershape_invalid_dim_test_1){
+  ge::op::DropOutGenMaskV3 op;
+
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT32);
+  constDesc.SetSize(4 * sizeof(int32_t));
+  constTensor.SetTensorDesc(constDesc);
+  int32_t constData[4] = {2, 2, -16, 32};
+  constTensor.SetData((uint8_t*)constData, 4 * sizeof(int32_t));
+  auto output_size = ge::op::Constant().set_attr_value(constTensor);
+
+  op.set_input_shape(output_size);
+  auto desc = op.GetInputDesc("shape");
+  desc.SetDataType(ge::DT_INT32);
+  op.UpdateInputDesc("shape", desc);
+
+  auto probDesc = op.GetInputDesc("prob");
+  probDesc.SetDataType(ge::DT_FLOAT);
+  probDesc.SetShape(ge::Shape());
+  op.UpdateInputDesc("prob", probDesc);
+  
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }

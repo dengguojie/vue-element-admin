@@ -282,17 +282,49 @@ IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
     return GRAPH_FAILED;
   }
 
-  uint64_t random_count = static_cast<uint64_t>(shape.GetShapeSize());
-  // due to align to 16
-  if (random_count > (INT64_MAX - 15)) {
-    OP_LOGE(op.GetName().c_str(),
-      "Required random count[%llu] exceed INT64_MAX - 15", random_count);
-    return GRAPH_FAILED;
+  Shape out_shape;
+  if (ShapeFullDefined(shape)) {
+    for (const auto& dim : shape.GetDims()) {
+      if (dim < 0) {
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+            ConcatString("invalid value[", dim, "] of 0th input",
+            DebugString(shape.GetDims())));
+        return GRAPH_FAILED;
+      }
+    }
+    // aign to 16
+    const int64_t align = 16;
+    size_t rank = shape.GetDimNum();
+    // [*batch, M, N] -> [*batch, N/16, M/16, 16, 16]
+    if (rank >= 2 &&
+        shape.GetDim(rank - 1) % align == 0 &&
+        shape.GetDim(rank - 2) % align == 0) {
+      int64_t last_dim = shape.GetDim(rank - 1);
+      int64_t second_last_dim = shape.GetDim(rank - 2);
+      last_dim /= align;
+      second_last_dim /= align;
+      out_shape = shape;
+      out_shape.SetDim(rank - 1, second_last_dim);
+      out_shape.SetDim(rank - 2, last_dim);
+      Shape tmp_shape({align, align});
+      (void)Concatenate(out_shape, tmp_shape, out_shape);
+    } else {
+      uint64_t random_count = static_cast<uint64_t>(shape.GetShapeSize());
+      // due to align to 16
+      if (random_count > (INT64_MAX - 15)) {
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+            ConcatString("required random count[", random_count,
+            "] exceed INT64_MAX - 15"));
+        return GRAPH_FAILED;
+      }
+      // align to 16
+      random_count = (random_count + 15) & (~15);
+      std::vector<int64_t> out_dims = {static_cast<int64_t>(random_count)};
+      out_shape = ge::Shape(out_dims);
+    }
+  } else {
+    out_shape = ge::Shape(ge::UNKNOWN_RANK);
   }
-  // align to 16
-  random_count = (random_count + 15) & (~15);
-  std::vector<int64_t> out_dims = {static_cast<int64_t>(random_count)};
-  Shape out_shape(out_dims);
 
   TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(out_shape);
