@@ -52,6 +52,7 @@ from impl import nchw_2_fractal_z_g
 from impl import hwcn_2_fractal_z_g
 from impl import trans_data_positive_source_ntc
 from impl import trans_data_negative_target_ntc
+from impl import trans_data_positive_source_tc
 
 
 # pylint: disable=locally-disabled,redefined-builtin,too-many-statements
@@ -118,6 +119,9 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     if src_format.upper() == "NC1HWC0" and dst_format.upper() == "NCHW" and \
             src.get("dtype") == "int8" and src.get("shape")[-1] == 32:
         trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
+    elif src_format.upper() == "NHWC" and dst_format.upper() == "NC1HWC0" and \
+            src.get("dtype") == "int8" and dst.get("shape")[-1] == 32:
+        trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
     elif (src_format.upper() == "NHWC" or src_format.upper() == "NCHW") \
             and dst_format.upper() == "NC1HWC0":
         if check_whether_2d(src_format.upper(), src):

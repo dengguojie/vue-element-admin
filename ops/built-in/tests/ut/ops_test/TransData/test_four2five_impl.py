@@ -6,10 +6,10 @@ ut_case = OpUT("TransData", "impl.trans_data", "trans_data")
 
 
 def gen_trans_data_case(src, dtype, case_name_val, expect,
-                        src_format, dst_format="NC1HWC0"):
+                        src_format, dst_format="NC1HWC0", dst=(8,1,1,1,16)):
     return {"params": [{"shape": src, "dtype": dtype, "ori_shape": src,
                         "ori_format": src_format, "format": src_format},
-                       {"shape": src, "dtype": dtype, "ori_shape": src,
+                       {"shape": dst, "dtype": dtype, "ori_shape": dst,
                         "ori_format": dst_format, "format": dst_format},
                        src_format, dst_format],
             "case_name": case_name_val,
@@ -38,6 +38,16 @@ ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((1,3,1,63488),"float32", "nhwc_8", "success", "NHWC"))
 ut_case.add_case(["Ascend910"],
                  gen_trans_data_case((3,32,15,3968),"float32", "nhwc_8", "success", "NHWC"))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((8,640,640,3),"float16", "nhwc_9", "success", "NHWC"))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((8,640,640,3),"int8", "nhwc_10", "success", "NHWC", "NC1HWC0",(8, 1, 1, 1, 32)))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((8,2,3,1),"int8", "nhwc_11", "success", "NHWC", "NC1HWC0",(8, 1, 1, 1, 32)))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((1,1,1,10001),"int8", "nhwc_12", "success", "NHWC", "NC1HWC0",(8, 1, 1, 1, 32)))
+ut_case.add_case(["Ascend910A", "Ascend310"],
+                 gen_trans_data_case((10001,1,1,11),"int8", "nhwc_13", "success", "NHWC", "NC1HWC0",(8, 1, 1, 1, 32)))
 
 # NCHW
 ut_case.add_case(["Ascend910"],

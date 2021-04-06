@@ -30,6 +30,7 @@ from te import tvm
 from topi import generic
 from topi.cce import util
 from impl.four_2_five_computer import compute_four_2_five
+from impl import trans_data_positive_source_tc
 
 # available ub size
 UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
@@ -1210,6 +1211,9 @@ def four_2_five(src, dst, src_format, dst_format, kernel_name="four_2_five"):
     util.check_tensor_shape_size(shape_input)
 
     _check_parameters(src, dst, src_format, dst_format)
+    if src_format.upper() == "NHWC" and shape_input == [8, 640, 640, 3] and dtype_input == "float16":
+        trans_data_positive_source_tc.trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name)
+        return
     dtype = src.get("dtype")
     if _check_move_full(shape_input, src_format, dtype):
         n_i = shape_input[0]
