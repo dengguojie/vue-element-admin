@@ -59,12 +59,12 @@ vector<FusionPattern*> GemmTransFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status GemmTransFusionPass::GenerateTransposeNode(ge::ComputeGraph* graph,
-                                                  const ge::GeTensorDesc& prev_out_desc,
-                                                  ge::GeTensorDesc* next_in_desc,
-                                                  const vector<int64_t>& perm,
-                                                  ge::NodePtr* transpose_node,
-                                                  const std::string& basename) {
+static Status GenerateTransposeNode(ge::ComputeGraph* graph,
+                                    const ge::GeTensorDesc& prev_out_desc,
+                                    ge::GeTensorDesc* next_in_desc,
+                                    const vector<int64_t>& perm,
+                                    ge::NodePtr* transpose_node,
+                                    const std::string& basename) {
   vector<int64_t> next_in_shape(2);
   for (size_t i = 0; i < perm.size(); ++i) {
     next_in_shape[i] = prev_out_desc.GetShape().GetDim(perm[i]);
@@ -78,36 +78,7 @@ Status GemmTransFusionPass::GenerateTransposeNode(ge::ComputeGraph* graph,
   next_in_desc->SetOriginShape(ge::GeShape(next_in_shape));
   transpose_desc->AddOutputDesc("y", *next_in_desc);
   ge::AttrUtils::SetListInt(transpose_desc, "perm", perm);
-
-  bool is_transpose_supported = CheckOpSupported(transpose_desc);
-  if (is_transpose_supported) {
-    *transpose_node = graph->AddNode(transpose_desc);
-  } else {
-    transpose_desc->SetType("Transpose");
-    transpose_desc->DelAttr("perm");
-    /* add perm tensor desc */
-    std::vector<int64_t> dims = {perm};
-    ge::GeShape const_shape = ge::GeShape(dims);
-    auto output_format = ge::FORMAT_ND;
-    auto second_input_desc = ge::GeTensorDesc(const_shape, output_format, ge::DT_INT32);
-    transpose_desc->AddInputDesc("perm", second_input_desc);
-
-    /* Add const node and link edge */
-    ge::GeTensorPtr const_out_tensor = std::make_shared<ge::GeTensor>(second_input_desc);
-
-    vector<int32_t> perm_data;
-    for (auto ele : perm){
-      perm_data.emplace_back(static_cast<int32_t>(ele));
-    }
-    const_out_tensor->SetData(reinterpret_cast<uint8_t *>(perm_data.data()), perm_data.size() * sizeof(int32_t));
-    ge::OpDescPtr const_op_desc = ge::OpDescUtils::CreateConstOp(const_out_tensor);
-    auto const_node = graph->AddNode(const_op_desc);
-    *transpose_node = graph->AddNode(transpose_desc);
-    if (ge::GraphUtils::AddEdge(const_node->GetOutDataAnchor(0), (*transpose_node)->GetInDataAnchor(1)) != SUCCESS) {
-      return FAILED;
-    }
-  }
-
+  *transpose_node = graph->AddNode(transpose_desc);
   return SUCCESS;
 }
 

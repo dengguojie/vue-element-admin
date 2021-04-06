@@ -52,17 +52,18 @@ static void PrintScreen(const string & logStr) {
 
 // 1/16 usage of UB with vnchwconv
 static int64_t CalcVnchwconvPartialUbSize(int64_t coreNum, int64_t ubBlocks) {
-    int scalarBorrow = 8; //unit: kb
+    int scalarBorrow = 8 * 1024; // unit: bytes
+    int vorBorrow = 128;// unit: bytes 
     if (coreNum > 2 && ubBlocks == 8192) {
         return 3952; // 910, UB : 256KB
     }
     else if (coreNum == 2 && ubBlocks == 8192) {
-        return 3824; // 310, UB : 248KB
+        return 3696; // 310, UB : 248KB
     }
     else if (coreNum == 1 && ubBlocks == 6144) {
         return 2832; // cs and es, UB : 192KB
     } else {
-        return (ubBlocks * 32 / 1024 - scalarBorrow - TILING_FIXED_MAX_LEN) * 1024 / 33 / 2 / 16 * 16;
+        return (ubBlocks * 32 - scalarBorrow - vorBorrow - TILING_FIXED_MAX_LEN) / 33 / 2 / 16 * 16;
     }
 }
 

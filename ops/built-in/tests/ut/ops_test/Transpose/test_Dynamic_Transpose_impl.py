@@ -34,8 +34,41 @@ def test_op_check_supported(test_arg):
     if check_supported(input_x, perm, output_y) == False:
         raise Exception("Failed to call check_supported in Transpose.")
 
+def test_op_check_supported_in_white_list_return_false(test_arg):
+    from impl.transpose import check_supported
+    input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (2), 'shape': (2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    if check_supported(input_x, perm, output_y) == False:
+        raise Exception("1024,1024,fp16 in white list, should return True, then call transpose instead of transpose_d")
+
+def test_op_check_supported_not_in_white_list_return_true(test_arg):
+    from impl.transpose import check_supported
+    input_x = {'ori_shape': (1234, 4321), 'shape': (1234, 4321), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    perm = {'ori_shape': (2), 'shape': (2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (4321, 1234), 'shape': (4321, 1234), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    if check_supported(input_x, perm, output_y) == True:
+        raise Exception("1234,4321,fp16 not in white list, should return False")
+
+def test_op_check_supported_dtype_not_in_white_list_return_true(test_arg):
+    from impl.transpose import check_supported
+    input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'int8'}
+    perm = {'ori_shape': (2), 'shape': (2), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    output_y = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'int8'}
+    if check_supported(input_x, perm, output_y) == True:
+        raise Exception("1024,1024,int8 not in white list, should return False")
+
+def test_op_check_cpu_false(test_arg):
+    from impl.transpose import by_dynamic_static_union_version 
+    input_x = {'ori_shape': (1024, 1024), 'shape': (1024, 1024), 'ori_format': 'NCDHW', 'format': 'NCDHW', 'dtype': 'float16'}
+    if by_dynamic_static_union_version(input_x, 1) == True:
+        raise Exception("lhisi not support, should return False")
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_in_white_list_return_false)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_not_in_white_list_return_true)
+ut_case.add_cust_test_func(test_func=test_op_check_supported_dtype_not_in_white_list_return_true)
+
 
 ut_case.add_precision_case("Ascend910A",
                            {

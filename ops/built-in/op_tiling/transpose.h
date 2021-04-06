@@ -66,7 +66,7 @@ namespace optiling {
 #define SMALL_SHAPE_SIZE_THRESHOLD     1024
 #define F2T_THRESHOLD_B16  64 // unit : byte
 #define F2T_THRESHOLD_B32  32 // unit : byte
-#define TILING_FIXED_MAX_LEN 1 // unit: kb, keep same with transpose.py
+#define TILING_FIXED_MAX_LEN 1024 // unit: bytes, keep same with transpose.py
 
 enum TransposeScenario {
     SCENARIO_0 = 0,     //identical shape

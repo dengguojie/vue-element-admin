@@ -164,60 +164,6 @@ Status PermuteFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     }
   }
 
-  permuteOpDesc = permuteNode->GetOpDesc();
-  bool isTransposdSupported = CheckOpSupported(permuteOpDesc);
-  if (isTransposdSupported == false) {
-    std::vector<int64_t> perm;
-    ge::AttrUtils::GetListInt(permuteOpDesc, "perm", perm);
-    permuteOpDesc->DelAttr("perm");
-    ge::GeShape constInPerm = ge::GeShape(perm);
-    auto permInputDesc = ge::GeTensorDesc(constInPerm, ge::FORMAT_ND, ge::DT_INT32);
-    ge::GeTensorPtr outTensor = std::make_shared<ge::GeTensor>(permInputDesc);
-    vector<int32_t> permB32;
-    for (auto ele : perm){
-        permB32.push_back(static_cast<int32_t>(ele));
-    }
-    outTensor->SetData(reinterpret_cast<uint8_t *>(permB32.data()), permB32.size() * sizeof(int32_t));
-    ge::OpDescPtr outOpDesc = ge::OpDescUtils::CreateConstOp(outTensor);
-    auto constNode = graph.AddNode(outOpDesc);
-    permuteOpDesc->SetType("Transpose");
-
-    if (permuteNode->AddLinkFrom("perm", constNode) != SUCCESS) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to AddEdge for Transpose");
-      return FAILED;
-    }
-  }
-
-  if (permuteNodeNew != nullptr) {
-    permuteOpDesc = permuteNodeNew->GetOpDesc();
-    if (permuteOpDesc == nullptr) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to GetOpDesc");
-      return FAILED;
-    }
-    isTransposdSupported = CheckOpSupported(permuteOpDesc);
-    if (!isTransposdSupported) {
-      std::vector<int64_t> perm;
-      ge::AttrUtils::GetListInt(permuteOpDesc, "perm", perm);
-      permuteOpDesc->DelAttr("perm");
-      ge::GeShape constInPerm = ge::GeShape(perm);
-      auto permInputDesc = ge::GeTensorDesc(constInPerm, ge::FORMAT_ND, ge::DT_INT32);
-      ge::GeTensorPtr outTensor = std::make_shared<ge::GeTensor>(permInputDesc);
-      vector<int32_t> permB32;
-      for (auto ele : perm){
-          permB32.push_back(static_cast<int32_t>(ele));
-      }
-      outTensor->SetData(reinterpret_cast<uint8_t *>(permB32.data()), permB32.size() * sizeof(int32_t));
-      ge::OpDescPtr outOpDesc = ge::OpDescUtils::CreateConstOp(outTensor);
-      auto constNode = graph.AddNode(outOpDesc);
-      permuteOpDesc->SetType("Transpose");
-
-      if (permuteNode->AddLinkFrom("perm", constNode) != SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to AddEdge for Transpose");
-        return FAILED;
-      }
-    }
-  }
-
   return SUCCESS;
 }
 

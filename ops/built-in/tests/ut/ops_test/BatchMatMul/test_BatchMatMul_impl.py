@@ -15,7 +15,6 @@ BatchMatmul ut case
 """
 from op_test_frame.ut import OpUT
 import sys
-import sys
 import time
 import unittest
 import functools
@@ -33,7 +32,7 @@ case1 = {"params": [{"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC",
                     {"shape": (3, 96, 32), "dtype": "float16", "format": "NHWC", "ori_shape": (3,96, 32),"ori_format": "NHWC"},
                     True,True
                     ],
-         "case_name": "BatchMatmul_1",
+         "case_name": "BatchMatmul_v1_1",
          "expect": "success",
          "support_expect": True}
 
@@ -43,7 +42,7 @@ case2 = {"params": [{"shape": (3, 32, 96), "dtype": "float32", "format": "NHWC",
                     {"shape": (3, 96, 96), "dtype": "float32", "format": "NHWC", "ori_shape": (3, 96, 96),"ori_format": "NHWC"},
                     True,True,
                     ],
-         "case_name": "BatchMatmul_2",
+         "case_name": "BatchMatmul_v1_2",
          "expect": "success",
          "support_expect": True}
 
@@ -53,7 +52,7 @@ case3 = {"params": [{"shape": (3, 32, 128), "dtype": "float16", "format": "NHWC"
                     {"shape": (3, 32, 128), "dtype": "float16", "format": "NHWC", "ori_shape": (3, 32, 128),"ori_format": "NHWC"},
                     True,True,
                     ],
-         "case_name": "BatchMatmul_3",
+         "case_name": "BatchMatmul_v1_3",
          "expect": "success",
          "support_expect": True}
 
@@ -63,7 +62,7 @@ case4 = {"params": [{"shape": (3, 112, 64), "dtype": "float32", "format": "ND", 
                     {"shape": (3, 112, 64), "dtype": "float32", "format": "ND", "ori_shape": (3, 112, 64),"ori_format": "ND"},
                     True,True,
                     ],
-         "case_name": "BatchMatmul_4",
+         "case_name": "BatchMatmul_v1_4",
          "expect": "success",
          "support_expect": True}
 
@@ -73,7 +72,7 @@ case5 = {"params": [{"shape": (112, 64), "dtype": "float32", "format": "ND", "or
                     {"shape": (112, 64), "dtype": "float32", "format": "ND", "ori_shape": (112, 64),"ori_format": "ND"},
                     True,True,
                     ],
-         "case_name": "BatchMatmul_5",
+         "case_name": "BatchMatmul_v1_5",
          "expect": "success",
          "support_expect": True}
 

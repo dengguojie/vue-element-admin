@@ -487,6 +487,10 @@ class Transpose(object):
             self.row_reorder = tiling_reg_list[reg_base + 6]
             self.rt_dst_addr = tiling_reg_list[reg_base + 7]
 
+    def _init_mem_make_ub_allocated(self, ub_input):
+        ub_input_b16 = ub_input.reinterpret_cast_to("int16")
+        self.tik_inst.vector_dup(128, ub_input_b16, 0, 1, 1, 0)
+
     def __init__(self, tik_inst, x_dtype, tensor_list, kernel_name):
         self.tik_inst = tik_inst
         self.x_dtype = x_dtype
@@ -495,7 +499,10 @@ class Transpose(object):
         self.ub_size = self._get_ub_size_by_dtype()
         self.ub_size_64 = self._get_ub_size_by_int64()
         self.ub_input_64_t = self.tik_inst.Tensor("int64", (128,), tik.scope_ubuf, "ub_input_64_t")
+        self.ub_input_b16_vor = self.tik_inst.Tensor("int16", (128,), tik.scope_ubuf, "ub_input_b16_vor")
+        self._init_mem_make_ub_allocated(self.ub_input_b16_vor)
         self.ub_input_64 = self.tik_inst.Tensor("int64", (self.ub_size_64,), tik.scope_ubuf, "ub_input_64")
+        self._init_mem_make_ub_allocated(self.ub_input_64)
         self.tiling_reg_list = [self.tik_inst.Scalar("int64") for i in range(TILING_MAX_PARAM_NUM)]
         self.element_per_block = self._element_per_block(self.x_dtype)
         self.fp16_times = self._sizeof_dtype(x_dtype) // self._sizeof_dtype("float16") # fp32/int32:2  fp16/int16:1
@@ -636,8 +643,10 @@ class Transpose(object):
                 self.tik_inst.data_move(ub_input, self.data_in[tp.base], 0, 1, 1, 0, 0)
                 self.tik_inst.data_move(self.data_out[tp.base], ub_input, 0, 1, 1, 0, 0)
             with self.tik_inst.else_scope():
-                self.tik_inst.data_move(ub_input, self.data_in[tp.base + tp.ele_num - self.ele_per_block], 0, 1, 1, 0, 0)
-                self.tik_inst.data_move(self.data_out[tp.base + tp.ele_num - self.ele_per_block], ub_input, 0, 1, 1, 0, 0)
+                self.tik_inst.data_move(ub_input, self.data_in[tp.base + tp.ele_num - self.ele_per_block],
+                                        0, 1, 1, 0, 0)
+                self.tik_inst.data_move(self.data_out[tp.base + tp.ele_num - self.ele_per_block], ub_input,
+                                        0, 1, 1, 0, 0)
 
     def _get_src_addr_s1(self, tp):
         with self.tik_inst.if_scope(tp.trans_axis_num == 7):
@@ -1630,10 +1639,10 @@ class Transpose(object):
         # step1. make all elements in the first col
         tp.fp16_offset_1.set_as(self._get_offset_1())
         tp.fp16_offset_2.set_as(self._get_offset_2(self._get_offset_1()))
-        ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
+        ub_input_b16 = ub_input.reinterpret_cast_to("int16")
         src_ele_num_in_fp16 = self._get_src_size()  # minus 16 avoid bank conflict
-        src_list = [ub_input_fp16[src_ele_num_in_fp16 * i] for i in range(EPB16)]
-        dst_list_intermediate = [ub_input_fp16[tp.fp16_offset_1 + EPB16 * i] \
+        src_list = [ub_input_b16[src_ele_num_in_fp16 * i] for i in range(EPB16)]
+        dst_list_intermediate = [ub_input_b16[tp.fp16_offset_1 + EPB16 * i] \
                                  for i in range(EPB16)]
         with self.tik_inst.if_scope(ub_offset == 1):
             self.tik_inst.vnchwconv(False, False, dst_list_intermediate, src_list, 1, 0, 0)
@@ -1646,9 +1655,17 @@ class Transpose(object):
             with self.tik_inst.if_scope(tik.all(self.fp16_times == 1, row_ele_num < 32)):
                 with self.tik_inst.new_stmt_scope(disable_sync=True):
                     with self.tik_inst.for_range(0, row_ele_num) as i:
-                        self.tik_inst.vadds(128, ub_input_fp16[tp.fp16_offset_2 + i * EPB16],
-                                            ub_input_fp16[tp.fp16_offset_1 + i * col_ele_num * EPB16],
-                                            0, col_ele_num // 8, row_ele_num, 1, row_ele_num * 8, 8)
+                        self.tik_inst.vor(128,
+                                          ub_input_b16[tp.fp16_offset_2 + i * EPB16],
+                                          ub_input_b16[tp.fp16_offset_1 + i * col_ele_num * EPB16],
+                                          self.ub_input_b16_vor,
+                                          col_ele_num // 8,
+                                          row_ele_num,
+                                          1,
+                                          1,
+                                          row_ele_num * 8,
+                                          8,
+                                          0)
 
             with self.tik_inst.if_scope(tik.all(self.fp16_times == 1, row_ele_num >= 32)):
                 loop_num = self.tik_inst.Scalar("int32")
@@ -1657,35 +1674,57 @@ class Transpose(object):
                 tail_num.set_as(row_ele_num % 8)
                 with self.tik_inst.new_stmt_scope(disable_sync=True):
                     with self.tik_inst.for_range(0, loop_num) as i:
-                        self.tik_inst.vadds(128, ub_input_fp16[tp.fp16_offset_2 + i * 8 * EPB16],
-                                            ub_input_fp16[tp.fp16_offset_1 + i * col_ele_num * 8 * EPB16],
-                                            0, col_ele_num, 1, col_ele_num, row_ele_num, 1)
+                        self.tik_inst.vor(128,
+                                          ub_input_b16[tp.fp16_offset_2 + i * 8 * EPB16],
+                                          ub_input_b16[tp.fp16_offset_1 + i * col_ele_num * 8 * EPB16],
+                                          self.ub_input_b16_vor,
+                                          col_ele_num,
+                                          1,
+                                          col_ele_num,
+                                          1,
+                                          row_ele_num,
+                                          1,
+                                          0)
                     with self.tik_inst.if_scope(tail_num != 0):
-                        self.tik_inst.vadds(tail_num * 16, ub_input_fp16[tp.fp16_offset_2 + loop_num * 8 * EPB16],
-                                            ub_input_fp16[tp.fp16_offset_1 + loop_num * col_ele_num * 8 * EPB16],
-                                            0, col_ele_num, 1, col_ele_num, row_ele_num, 1)
+                        self.tik_inst.vor(tail_num * 16,
+                                          ub_input_b16[tp.fp16_offset_2 + loop_num * 8 * EPB16],
+                                          ub_input_b16[tp.fp16_offset_1 + loop_num * col_ele_num * 8 * EPB16],
+                                          self.ub_input_b16_vor,
+                                          col_ele_num,
+                                          1,
+                                          col_ele_num,
+                                          1,
+                                          row_ele_num,
+                                          1,
+                                          0)
 
             with self.tik_inst.if_scope(self.fp16_times == 2):
                 with self.tik_inst.new_stmt_scope(disable_sync=True):
                     with self.tik_inst.for_range(0, row_ele_num) as i:
-                        self.tik_inst.data_move(ub_input_fp16[tp.fp16_offset_2 + i * self.fp16_times * EPB16],
-                                                ub_input_fp16[tp.fp16_offset_1 + \
+                        self.tik_inst.data_move(ub_input_b16[tp.fp16_offset_2 + i * self.fp16_times * EPB16],
+                                                ub_input_b16[tp.fp16_offset_1 + \
                                                               i * col_ele_num * self.fp16_times * EPB16],
-                                                0, col_ele_num, self.fp16_times,
-                                                0, row_ele_num * self.fp16_times - self.fp16_times)
+                                                0,
+                                                col_ele_num,
+                                                self.fp16_times,
+                                                0,
+                                                row_ele_num * self.fp16_times - self.fp16_times)
         with self.tik_inst.else_scope():
             # t2f
             with self.tik_inst.new_stmt_scope(disable_sync=True):
                 with self.tik_inst.for_range(0, col_ele_num) as i:
-                    self.tik_inst.data_move(ub_input_fp16[tp.fp16_offset_2 + i * row_ele_num * self.fp16_times * EPB16],
-                                            ub_input_fp16[tp.fp16_offset_1 + i * self.fp16_times * EPB16],
-                                            0, row_ele_num, self.fp16_times,
-                                            col_ele_num * self.fp16_times - self.fp16_times, 0)
+                    self.tik_inst.data_move(ub_input_b16[tp.fp16_offset_2 + i * row_ele_num * self.fp16_times * EPB16],
+                                            ub_input_b16[tp.fp16_offset_1 + i * self.fp16_times * EPB16],
+                                            0,
+                                            row_ele_num,
+                                            self.fp16_times,
+                                            col_ele_num * self.fp16_times - self.fp16_times,
+                                            0)
 
         # step3. make all elements in the first col be in memory of contiguous
-        src_list_intermediate = [ub_input_fp16[tp.fp16_offset_2 + EPB16 * i]\
+        src_list_intermediate = [ub_input_b16[tp.fp16_offset_2 + EPB16 * i]\
                 for i in range(EPB16)]
-        dst_list_finally = [ub_input_fp16[self._get_dst_size() * 16 * i] for i in range(EPB16)]
+        dst_list_finally = [ub_input_b16[self._get_dst_size() * 16 * i] for i in range(EPB16)]
 
         with self.tik_inst.if_scope(ub_offset == 1):
             self.tik_inst.vnchwconv(False, False, dst_list_finally, src_list_intermediate, 1, 0, 0)
@@ -1699,13 +1738,22 @@ class Transpose(object):
             with self.tik_inst.for_range(0, tp.row_per_mr) as line:
                 self.tik_inst.data_move(ub_input[ub_offset * self.ele_per_block],
                                         self.data_in[self._get_src_addr(tp, ln, lc, 0, 0)],
-                                        0, 1, tp.col_per_mc // self.ele_per_block, 0, 0)
+                                        0,
+                                        1,
+                                        tp.col_per_mc // self.ele_per_block,
+                                        0,
+                                        0)
                 self._update_tuple(tp.src_axis_num, tp.rt_src_tuple, tp.src_jump_factor)
                 ub_offset.set_as(ub_offset + tp.col_per_mc // self.ele_per_block)
 
     def _copy_out_major_col_f2t(self, tp, ub_input, ub_offset, lc):
-        self.tik_inst.data_move(self.data_out[tp.rt_dst_addr], ub_input,
-                                0, 1, (tp.col_per_mc * tp.row_per_mr) // self.ele_per_block, 0, 0)
+        self.tik_inst.data_move(self.data_out[tp.rt_dst_addr],
+                                ub_input,
+                                0,
+                                1,
+                                (tp.col_per_mc * tp.row_per_mr) // self.ele_per_block,
+                                0,
+                                0)
         self._update_dst_addr_f2t(tp)
 
     def _copy_in_tail_col_f2t(self, tp, ub_input, ub_offset, ln, lc):
@@ -1715,21 +1763,34 @@ class Transpose(object):
             with self.tik_inst.for_range(0, tp.row_per_mr) as line:
                 self.tik_inst.data_move(ub_input[ub_offset * self.ele_per_block],
                                         self.data_in[self._get_src_addr(tp, ln, lc, 0, tp.back_step_left)],
-                                        0, 1, tp.col_tc // self.ele_per_block, 0, 0)
+                                        0,
+                                        1,
+                                        tp.col_tc // self.ele_per_block,
+                                        0,
+                                        0)
                 self._update_tuple(tp.src_axis_num, tp.rt_src_tuple, tp.src_jump_factor)
                 ub_offset.set_as(ub_offset + tp.col_tc // self.ele_per_block)
 
     def _copy_out_tail_col_f2t(self, tp, ub_input, ub_offset, ln, lc):
         self._tail_dst_addr_f2t(tp, ln)
-        self.tik_inst.data_move(self.data_out[tp.rt_dst_addr], ub_input, 0, 1,
-                                (tp.col_tc * tp.row_per_mr) // self.ele_per_block, 0, 0)
+        self.tik_inst.data_move(self.data_out[tp.rt_dst_addr],
+                                ub_input,
+                                0,
+                                1,
+                                (tp.col_tc * tp.row_per_mr) // self.ele_per_block,
+                                0,
+                                0)
 
     def _copy_in_major_row_t2f(self, tp, ub_input, ub_offset, ln, lr):
         ub_offset.set_as(0)
         self._update_src_tuple_t2f(tp, lr)
         self.tik_inst.data_move(ub_input[ub_offset * self.ele_per_block],
                                 self.data_in[self._get_src_addr(tp, ln, 0, lr, 0)],
-                                0, 1, (tp.col_per_mc * tp.row_per_mr) // self.ele_per_block, 0, 0)
+                                0,
+                                1,
+                                (tp.col_per_mc * tp.row_per_mr) // self.ele_per_block,
+                                0,
+                                0)
         ub_offset.set_as(ub_offset + (tp.col_per_mc * tp.row_per_mr) // self.ele_per_block)
 
     def _copy_out_major_row_t2f(self, tp, ub_input, ub_offset, ln, lr):
@@ -1738,7 +1799,11 @@ class Transpose(object):
             with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
                 self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, 0, lr, col_id, 0, 0)],
                                         ub_input[col_id * tp.row_per_mr],
-                                        0, 1, tp.row_per_mr // self.ele_per_block, 0, 0)
+                                        0,
+                                        1,
+                                        tp.row_per_mr // self.ele_per_block,
+                                        0,
+                                        0)
                 self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
     def _copy_in_tail_row_t2f(self, tp, ub_input, ub_offset, ln, lr):
@@ -1746,7 +1811,11 @@ class Transpose(object):
         self._tail_src_tuple(tp)
         self.tik_inst.data_move(ub_input[ub_offset * self.ele_per_block],
                                 self.data_in[self._get_src_addr(tp, ln, 0, lr, 0)],
-                                0, 1, (tp.col_per_mc * tp.row_tr) // self.ele_per_block, 0, 0)
+                                0,
+                                1,
+                                (tp.col_per_mc * tp.row_tr) // self.ele_per_block,
+                                0,
+                                0)
         ub_offset.set_as(ub_offset + (tp.col_per_mc * tp.row_tr) // self.ele_per_block)
 
     def _copy_out_tail_row_t2f(self, tp, ub_input, ub_offset, ln, lr):
@@ -1755,7 +1824,11 @@ class Transpose(object):
             with self.tik_inst.for_range(0, tp.col_per_mc) as col_id:
                 self.tik_inst.data_move(self.data_out[self._get_dst_addr(tp, ln, 0, lr, col_id, 0, tp.back_step_up)],
                                         ub_input[col_id * tp.row_tr],
-                                        0, 1, tp.row_tr // self.ele_per_block, 0, 0)
+                                        0,
+                                        1,
+                                        tp.row_tr // self.ele_per_block,
+                                        0,
+                                        0)
                 self._update_tuple(tp.dst_axis_num, tp.rt_dst_tuple, tp.dst_jump_factor)
 
     def _move_data_last_axis_university(self, tp, ub_input_64):
@@ -1884,9 +1957,9 @@ class Transpose(object):
         return scenario, fixed_len, per_core_len, sub_scenario
 
     def compute_tiling(self):
-        '''
+        """
         execution function
-        '''
+        """
         scenario, fixed_len, per_core_len, sub_scenario = self._decode_tiling_head()
 
         with self.tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
@@ -1921,9 +1994,9 @@ class Transpose(object):
                             self._move_data_s0(tp, self.ub_input_64)
 
     def compute(self, input_list):
-        '''
+        """
         entrance function
-        '''
+        """
         self.compute_tiling()
         tbe_context.get_context().add_compile_info("vars", {
             "ub_size": UB_SIZE // BLOCK_SIZE, "core_num": CORE_NUM, "dtype": self.x_dtype})
