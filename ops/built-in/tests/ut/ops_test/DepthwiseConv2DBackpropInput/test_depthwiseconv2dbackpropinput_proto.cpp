@@ -3,6 +3,8 @@
 #include "op_proto_test_util.h"
 #include "array_ops.h"
 #include "nn_calculation_ops.h"
+#include "utils/attr_utils.h"
+#include "utils/op_desc_utils.h"
 
 
 class DepthwiseConv2dBackpropInputProtoTest : public testing::Test {
@@ -100,6 +102,90 @@ TEST_F(DepthwiseConv2dBackpropInputProtoTest, Input_Size){
     op.SetAttr("padding", "SAME");
     op.SetAttr("pads", {-1, -1, -1, -1});
     op.SetAttr("data_format", "NCHW");
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+
+// dynamic nwc ut
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2dBackpropInputDynamicNWC) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto input_sizes_desc = op_desc->MutableInputDesc("input_size");
+    ge::AttrUtils::SetListInt(*input_sizes_desc, "_pre_op_in_range", {1, 10, 16, 32, 24, 24, 6, -1});
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic opti ut outbackprop shape [-2]
+TEST_F(DepthwiseConv2dBackpropInputProtoTest, DepthwiseConv2dBackpropInputDynamicRank) {
+    ge::op::DepthwiseConv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({1, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {1, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({-2},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-2},
+                                               ge::FORMAT_NCHW,
+                                               {{}}));
+    op.UpdateOutputDesc("input_grad", create_desc_shape_range({-1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {1, -1}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);

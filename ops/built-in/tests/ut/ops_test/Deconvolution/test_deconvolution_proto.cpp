@@ -2,6 +2,7 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "nn_calculation_ops.h"
+#include "array_ops.h"
 #include "common/util/error_manager/error_manager.h"
 #include "graph/utils/type_utils.h"
 #include "op_log.h"
@@ -47,6 +48,7 @@ TEST_F(DeconvProtoTest, deconvBaseTestFp16) {
     deconv.SetAttr("strides", {1, 1});
     deconv.SetAttr("pads", {0, 0, 0, 0});
     deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
     auto status = deconv.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 
@@ -63,6 +65,7 @@ TEST_F(DeconvProtoTest, deconvBaseTestInt8) {
     deconv.SetAttr("strides", {1, 1});
     deconv.SetAttr("pads", {0, 0, 0, 0});
     deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
     auto status = deconv.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
 
@@ -88,11 +91,70 @@ TEST_F(DeconvProtoTest, deconvDynamicBaseTestFp16) {
                                                         {{1, 1}, {16, 16}, {6, 26}, {6, 26}}));
     deconv.SetAttr("strides", {1, 1});
     deconv.SetAttr("pads", {0, 0, 0, 0});
-    deconv.SetAttr("padding", "SAME");
     deconv.SetAttr("dilations", {1, 1, 1, 1});
+    deconv.SetAttr("data_format","NCHW");
     auto status = deconv.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = deconv.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic nwc ut
+TEST_F(DeconvProtoTest, deconvDynamicNWC) {
+    ge::op::Deconvolution op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("x",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.SetAttr("strides", {1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("groups", 1);
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic opti ut outbackprop shape [-2]
+TEST_F(DeconvProtoTest, deconvDynamicRank) {
+    ge::op::Deconvolution op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("x",
+                       create_desc_shape_range({-2},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-2},
+                                               ge::FORMAT_NCHW,
+                                               {{}}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {1, -1}, {1, -1}}));
+    op.SetAttr("strides", {1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
@@ -107,7 +169,6 @@ TEST_F(DeconvProtoTest, deconvBaseInputTest) {
     deconv.SetAttr("dilations", {1, 1, 1, 1});
     auto status = deconv.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
-
     auto ret = deconv.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
@@ -123,7 +184,6 @@ TEST_F(DeconvProtoTest, deconvBaseFilterTest) {
     deconv.SetAttr("dilations", {1, 1, 1, 1});
     auto status = deconv.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
-
     auto ret = deconv.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

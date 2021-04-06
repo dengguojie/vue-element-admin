@@ -1128,7 +1128,7 @@ class DeconvolutionParaProcess(Conv2dBackpropParaProcess):
 
         self.check_input_dict(self.out_backprop, "out_backprop", True)
 
-        dy_shape = self.out_backprop.get("ori_shape")
+        dy_shape = list(self.out_backprop.get("ori_shape"))
         dy_range = self.out_backprop.get("range")
         filter_shape = self.filters.get("ori_shape")
         dx_shape = self.y.get("ori_shape")

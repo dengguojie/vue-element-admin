@@ -2,6 +2,7 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "nn_calculation_ops.h"
+#include "array_ops.h"
 #include "common/util/error_manager/error_manager.h"
 #include "graph/utils/type_utils.h"
 #include "op_log.h"
@@ -32,7 +33,6 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyBaseTest) {
         ge::DT_FLOAT16, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
     op.UpdateInputDesc("bias", create_desc_with_ori({128, 256, 14, 14},
         ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
-    op.SetAttr("input_size", {128, 256, 14, 14});
     op.SetAttr("strides", {1, 1, 2, 2});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
@@ -41,8 +41,29 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyBaseTest) {
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
 
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{128, 256, 14, 14};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
 //check fm type diff filter type
@@ -62,28 +83,72 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyfilterTest1) {
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
-    auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
-//check dynamic mode
-TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyfilterTestDynamic1) {
+// dynamic nwc ut
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeDynamicNWC) {
     ge::op::Conv2DTranspose op;
-    op.UpdateInputDesc("x", create_desc_shape_range({128, 512, -1, -1},
-                                                    ge::DT_FLOAT16,
-                                                    ge::FORMAT_NCHW,
-                                                    {128, 512, -1, -1},
-                                                    ge::FORMAT_NCHW,
-                                                    {{128, 128}, {512, 512}, {6, 26}, {6, 26}}));
-    op.UpdateInputDesc("input_size", create_desc_shape_range({128, 512, -1, -1},
-                                                    ge::DT_INT64,
-                                                    ge::FORMAT_NCHW,
-                                                    {128, 512, -1, -1},
-                                                    ge::FORMAT_NCHW,
-                                                    {{128, 128}, {512, 512}, {12, 52}, {12, 52}}));                            
-    op.UpdateInputDesc("filter", create_desc({512, 256, 1, 1}, ge::DT_FLOAT16));
-    op.UpdateInputDesc("bias", create_desc({128, 256, 14, 14}, ge::DT_FLOAT16));
-    op.SetAttr("strides", {1, 1, 2, 2});
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("x",
+                       create_desc_shape_range({-1, -1, 24, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-1, -1, 24, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 5}, {16, 32}, {14, 24}, {6, -1}}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, 24, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, 24, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {24, 24}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("data_format","NCHW");
+    op.SetAttr("output_padding", {0, 0, 0, 0});
+    op.SetAttr("offset_x", 0);
+
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    auto input_sizes_desc = op_desc->MutableInputDesc("input_size");
+    ge::AttrUtils::SetListInt(*input_sizes_desc, "_pre_op_in_range", {1, 10, 16, 32, 24, 24, 6, -1});
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+// dynamic opti ut outbackprop shape [-2]
+TEST_F(Conv2DTransposeProtoTest, conv2dTransposeDynamicRank) {
+    ge::op::Conv2DTranspose op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("x",
+                       create_desc_shape_range({-2},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {-2},
+                                               ge::FORMAT_NCHW,
+                                               {{}}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({-1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {-1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 5}, {16, 16}, {1, -1}, {1, -1}}));
+
+    op.SetAttr("strides", {1, 1, 1, 1});
     op.SetAttr("pads", {0, 0, 0, 0});
     op.SetAttr("dilations", {1, 1, 1, 1});
     op.SetAttr("groups", true);
@@ -91,10 +156,19 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyfilterTestDynamic1) {
     op.SetAttr("output_padding", {0, 0, 0, 0});
     op.SetAttr("offset_x", 0);
 
+    auto fmap_ori_shape_data = ge::op::Data("input_size");
+    std::vector<int64_t> ori_dims{4};
+    ge::Shape ori_shape(ori_dims);
+    ge::TensorDesc ori_tensorDesc(ori_shape, ge::FORMAT_NCHW, ge::DT_INT32);
+    fmap_ori_shape_data.update_input_desc_x(ori_tensorDesc);
+    fmap_ori_shape_data.update_output_desc_y(ori_tensorDesc);
+    op.set_input_input_size(fmap_ori_shape_data);
+    op.UpdateInputDesc("input_size", ori_tensorDesc);
+
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
 //check filter out of size 4
@@ -114,8 +188,6 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyfilterTest2) {
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
-    auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 // check x size
@@ -135,8 +207,6 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyInputTest1) {
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
-    auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 // no stride
@@ -324,25 +394,6 @@ TEST_F(Conv2DTransposeProtoTest, conv2dTransposeVerifyOutputpaddingTest2) {
 
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
-    auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
-// no input size
-TEST_F(Conv2DTransposeProtoTest, conv2dTransposeInferInputSizesTest1) {
-    ge::op::Conv2DTranspose op;
-    op.UpdateInputDesc("x", create_desc({128, 512, 7, 7}, ge::DT_FLOAT16));
-    op.UpdateInputDesc("filter", create_desc({512, 256, 1, 1}, ge::DT_FLOAT16));
-    op.UpdateInputDesc("bias", create_desc({128, 256, 14, 14}, ge::DT_FLOAT16));
-    //   op.SetAttr("input_size", {128, 256, 14, 14});
-    op.SetAttr("strides", {1, 1, 2, 2});
-    op.SetAttr("pads", {0, 0, 0, 0});
-    op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
-    op.SetAttr("data_format","NCHW");
-    op.SetAttr("output_padding", {0, 0, 0, 0});
-    op.SetAttr("offset_x", 0);
-
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
