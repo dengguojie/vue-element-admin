@@ -345,7 +345,7 @@ def test_conv2d_l1(test_arg):
 
     test_conv_lhisi()
 
-ut_case.add_cust_test_func(test_func=test_conv2d_l1)
+# ut_case.add_cust_test_func(test_func=test_conv2d_l1)
 
 
 

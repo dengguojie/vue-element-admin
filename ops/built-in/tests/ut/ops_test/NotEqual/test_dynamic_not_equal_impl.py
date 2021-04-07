@@ -37,10 +37,10 @@ def gen_dynamic_not_equal_case(shape_x, shape_y, range_x, range_y,
     }
 
 
-ut_case.add_case(
-    "all",
-    gen_dynamic_not_equal_case((-1,), (1,), ((2, 16),), ((1, 1),),
-                               "float16", "dynamic_not_equal_fp16_ND", "success"))
+# ut_case.add_case(
+#     "all",
+#     gen_dynamic_not_equal_case((-1,), (1,), ((2, 16),), ((1, 1),),
+#                                "float16", "dynamic_not_equal_fp16_ND", "success"))
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

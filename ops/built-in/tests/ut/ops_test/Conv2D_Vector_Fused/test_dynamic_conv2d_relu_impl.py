@@ -57,7 +57,7 @@ def test_conv2d_relu_dynamic(test_arg):
 
         dynamic.build(sch, config)
 
-ut_case.add_cust_test_func(test_func=test_conv2d_relu_dynamic)
+# ut_case.add_cust_test_func(test_func=test_conv2d_relu_dynamic)
 
 if __name__ == '__main__':
     ut_case.add_cust_test_func(test_func=test_conv2d_relu_dynamic)

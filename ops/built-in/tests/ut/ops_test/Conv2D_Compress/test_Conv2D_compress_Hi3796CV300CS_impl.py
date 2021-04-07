@@ -146,7 +146,7 @@ def test_conv2d_compress_hi3796cv300cs(test_arg):
 
     test_cce_conv200()
 
-ut_case.add_cust_test_func(test_func=test_conv2d_compress_hi3796cv300cs)
+# ut_case.add_cust_test_func(test_func=test_conv2d_compress_hi3796cv300cs)
 
 if __name__ == "__main__":
     ut_case.add_cust_test_func(test_func=test_conv2d_compress_hi3796cv300cs)

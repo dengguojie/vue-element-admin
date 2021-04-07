@@ -46,9 +46,9 @@ case4 = {"params": [{"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_s
          "format_expect": [],
          "support_expect": True}
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
+# ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 
 def calc_expect_func(labels, predictions, weights, y, num_classes, dtype):
     out = tf.math.confusion_matrix(labels['value'], predictions['value'], 

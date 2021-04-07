@@ -38,7 +38,7 @@ def test_conv2d_compress(test_arg):
         print("111111[ %s ] %s" % (succ_str, sys._getframe().f_code.co_name))
 
 
-ut_case.add_cust_test_func(test_func=test_conv2d_compress)
+# ut_case.add_cust_test_func(test_func=test_conv2d_compress)
 
 if __name__ == "__main__":
     ut_case.add_cust_test_func(test_func=test_conv2d_compress)

@@ -48,10 +48,10 @@ ut_case.add_precision_case("all", {"params": [{"shape": (16, 32), "dtype": "floa
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
                                    })
-ut_case.add_precision_case("all", {"params": [{"shape": (16, 4, 32), "dtype": "float16", "format": "ND", "ori_shape": (16, 4, 32),"ori_format": "ND", "param_type": "input"},
-                                              {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND", "param_type": "output"},
-                                              (1, 2)],
-                                   "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
-                                   })
+# ut_case.add_precision_case("all", {"params": [{"shape": (16, 4, 32), "dtype": "float16", "format": "ND", "ori_shape": (16, 4, 32),"ori_format": "ND", "param_type": "input"},
+#                                               {"shape": (16,), "dtype": "float16", "format": "ND", "ori_shape": (16,),"ori_format": "ND", "param_type": "output"},
+#                                               (1, 2)],
+#                                    "calc_expect_func": calc_expect_func,
+#                                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
+#                                    })
 

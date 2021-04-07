@@ -327,7 +327,7 @@ def test_conv2d_lx(test_arg):
 
     test_conv_lx_fusion()
 
-ut_case.add_cust_test_func(test_func=test_conv2d_lx)
+# ut_case.add_cust_test_func(test_func=test_conv2d_lx)
 
 if __name__ == '__main__':
     ut_case.add_cust_test_func(test_func=test_conv2d_lx)

@@ -167,20 +167,20 @@ ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_101",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910A", "Ascend310"],
-                           gen_trans_data_precision_case((128, 4, 3, 3), (72, 1, 16, 16),
-                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_102",
-                                                         "success"))
+# ut_case.add_precision_case(["Ascend910A", "Ascend310"],
+#                            gen_trans_data_precision_case((128, 4, 3, 3), (72, 1, 16, 16),
+#                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_102",
+#                                                          "success"))
 
 ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((128, 8, 3, 3), (144, 1, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_103",
                                                          "success"))
 
-ut_case.add_precision_case(["Ascend910A", "Ascend310"],
-                           gen_trans_data_precision_case((256, 8, 3, 3), (144, 1, 16, 16),
-                                                         "int16", 32, "nchw_2_fractal_z_g_precision_net_104",
-                                                         "success"))
+# ut_case.add_precision_case(["Ascend910A", "Ascend310"],
+#                            gen_trans_data_precision_case((256, 8, 3, 3), (144, 1, 16, 16),
+#                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_104",
+#                                                          "success"))
 ut_case.add_precision_case(["Ascend910A", "Ascend310"],
                            gen_trans_data_precision_case((256, 16, 3, 3), (288, 1, 16, 16),
                                                          "int16", 32, "nchw_2_fractal_z_g_precision_net_105",

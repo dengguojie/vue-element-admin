@@ -45,7 +45,7 @@ case2 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
                      "ori_format": "ND", "range":[(1, 1)]},
                     "none"
                     ],
-         "case_name": "BinaryCrossEntroy_1",
+         "case_name": "BinaryCrossEntroy_2",
          "expect": "success",
          "support_expect": True}
 case3 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
@@ -62,7 +62,7 @@ case3 = {"params": [{"shape": (-1, 8, 375), "dtype": "float16",
                      "ori_format": "ND", "range": [(1, 1)]},
                     "none"
                     ],
-         "case_name": "BinaryCrossEntroy_1",
+         "case_name": "BinaryCrossEntroy_3",
          "expect": "success",
          "support_expect": True}
 

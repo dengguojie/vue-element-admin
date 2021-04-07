@@ -95,5 +95,5 @@ def test_ssd_detection_output_v200(test_args):
     run_testcase()
     set_version("v100")
 
-ut_case.add_cust_test_func("Ascend710", test_ssd_detection_output_v200)
+# ut_case.add_cust_test_func("Ascend710", test_ssd_detection_output_v200)
 ut_case.run("Ascend710")

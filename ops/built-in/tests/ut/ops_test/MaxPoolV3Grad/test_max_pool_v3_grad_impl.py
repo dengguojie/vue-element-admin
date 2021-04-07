@@ -154,9 +154,9 @@ grad = {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shap
 output = {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": ori_input_ori_shape,
           "shape": ori_input_shape, "param_type": "output"}
 
-ut_case.add_case(["Ascend910"], case={
-    "params": [ori_input, ori_output, grad, output, ksize, strides, "CALCULATED", pads, "NCHW", False, False],
-})
+# ut_case.add_case(["Ascend910"], case={
+#     "params": [ori_input, ori_output, grad, output, ksize, strides, "CALCULATED", pads, "NCHW", False, False],
+# })
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

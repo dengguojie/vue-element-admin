@@ -85,46 +85,46 @@ ut_case.add_case("all", {
     "case_name": "test_is_log_space_d_case_2"
 })
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "output"}, 0.0, 0.0, 1, 0.0],
-    "case_name": "test_is_log_space_d_case_3"
-})
+# ut_case.add_case("all", {
+#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
+#                 "param_type": "input"},
+#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
+#                 "param_type": "output"}, 0.0, 0.0, 1, 0.0],
+#     "case_name": "test_is_log_space_d_case_3"
+# })
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
-                "param_type": "output"}, -1.0, 10.0, -1],
-    "case_name": "test_is_log_space_d_case_4",
-    "expect": RuntimeError
-})
+# ut_case.add_case("all", {
+#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
+#                 "param_type": "input"},
+#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
+#                 "param_type": "output"}, -1.0, 10.0, -1],
+#     "case_name": "test_is_log_space_d_case_4",
+#     "expect": RuntimeError
+# })
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
-                "param_type": "output"}, -1.0, 10.0, 1],
-    "case_name": "test_is_log_space_d_case_5",
-    "expect": RuntimeError
-})
+# ut_case.add_case("all", {
+#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
+#                 "param_type": "input"},
+#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
+#                 "param_type": "output"}, -1.0, 10.0, 1],
+#     "case_name": "test_is_log_space_d_case_5",
+#     "expect": RuntimeError
+# })
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1), "shape": (1, 1),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1), "shape": (1, 1),
-                "param_type": "output"}, 2.0, 3.0, 1, 0.2, 0],
-    "case_name": "test_is_log_space_d_case_6",
-    "expect": RuntimeError
-})
+# ut_case.add_case("all", {
+#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1), "shape": (1, 1),
+#                 "param_type": "input"},
+#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1, 1), "shape": (1, 1),
+#                 "param_type": "output"}, 2.0, 3.0, 1, 0.2, 0],
+#     "case_name": "test_is_log_space_d_case_6",
+#     "expect": RuntimeError
+# })
 
-ut_case.add_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
-                "param_type": "input"},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
-                "param_type": "output"}, -1.0, 10.0, 100, 10.0, 2],
-    "case_name": "test_is_log_space_d_case_7",
-    "expect": RuntimeError
-})
+# ut_case.add_case("all", {
+#     "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
+#                 "param_type": "input"},
+#                {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (100,), "shape": (100,),
+#                 "param_type": "output"}, -1.0, 10.0, 100, 10.0, 2],
+#     "case_name": "test_is_log_space_d_case_7",
+#     "expect": RuntimeError
+# })

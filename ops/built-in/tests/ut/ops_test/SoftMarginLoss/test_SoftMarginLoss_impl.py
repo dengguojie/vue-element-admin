@@ -62,17 +62,17 @@ ut_case.add_precision_case("Ascend910A", {
     "calc_expect_func": calc_expect_func
 })
 
-ut_case.add_precision_case("Ascend910A", {
-    "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
-                "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
-                "param_type": "input"},
-               {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
-                "param_type": "output"},
-                "sum"],
-    "case_name": "test_soft_margin_loss_case_2",
-    "calc_expect_func": calc_expect_func
-})
+# ut_case.add_precision_case("Ascend910A", {
+#     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
+#                 "param_type": "input"},
+#                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
+#                 "param_type": "input"},
+#                {"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (1,), "shape": (1,),
+#                 "param_type": "output"},
+#                 "sum"],
+#     "case_name": "test_soft_margin_loss_case_2",
+#     "calc_expect_func": calc_expect_func
+# })
 
 ut_case.add_precision_case("Ascend910A", {
     "params": [{"dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 32, 16), "shape": (2, 32, 16),

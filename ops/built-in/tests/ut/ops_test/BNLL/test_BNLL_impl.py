@@ -72,10 +72,10 @@ precision_case5 = {"params": [{"shape": (10,12), "dtype": "float16", "format": "
                    "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)}
 
 
-ut_case.add_precision_case("Ascend910", precision_case1)
-ut_case.add_precision_case("Ascend910", precision_case2)
-ut_case.add_precision_case("Ascend910", precision_case3)
-ut_case.add_precision_case("Ascend910", precision_case4)
+# ut_case.add_precision_case("Ascend910", precision_case1)
+# ut_case.add_precision_case("Ascend910", precision_case2)
+# ut_case.add_precision_case("Ascend910", precision_case3)
+# ut_case.add_precision_case("Ascend910", precision_case4)
 ut_case.add_precision_case("Hi3796CV300CS", precision_case5)
 
 

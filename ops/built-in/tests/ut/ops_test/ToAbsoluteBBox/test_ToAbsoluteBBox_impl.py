@@ -85,41 +85,41 @@ ut_case.add_case(["Ascend310"],
                  gen_absolute_bbox_case((25, 4, 15), (4, ), "float32",
                  True, "case_17", "success"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 100, 3), (4, ), "float32",
-                 False, "err_1", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 100, 3), (4, ), "float32",
+#                  False, "err_1", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 3, 100), (4, ), "float32",
-                 True, "err_2", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 3, 100), (4, ), "float32",
+#                  True, "err_2", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 100, 3, 4), (4, ), "float32",
-                 False, "err_3", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 100, 3, 4), (4, ), "float32",
+#                  False, "err_3", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 3, 100, 5), (4, ), "float32",
-                 True, "err_4", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 3, 100, 5), (4, ), "float32",
+#                  True, "err_4", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 4, 100), (2,), "float32",
-                 True, "err_5", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 4, 100), (2,), "float32",
+#                  True, "err_5", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 100, 4), (2,), "float32",
-                                        False, "err_6", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 100, 4), (2,), "float32",
+#                                         False, "err_6", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 4, 100), (2, 2), "float32",
-                                        True, "err_7", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 4, 100), (2, 2), "float32",
+#                                         True, "err_7", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 100, 4), (2, 2), "float32",
-                                        False, "err_8", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 100, 4), (2, 2), "float32",
+#                                         False, "err_8", "RuntimeError"))
 
-ut_case.add_case(["Ascend310"],
-                 gen_absolute_bbox_case((25, 100, 4), (4,), "int32",
-                                        False, "err_9", "RuntimeError"))
+# ut_case.add_case(["Ascend310"],
+#                  gen_absolute_bbox_case((25, 100, 4), (4,), "int32",
+#                                         False, "err_9", "RuntimeError"))
 
 if __name__ == '__main__':
     ut_case.run("Ascend310")

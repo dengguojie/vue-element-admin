@@ -211,4 +211,4 @@ def test_conv2d_conv_cce(test_arg):
   pass
   print("============================================================")
 print("adding Conv2D testcase testcases")
-ut_case.add_cust_test_func(test_func=test_conv2d_conv_cce)
+# ut_case.add_cust_test_func(test_func=test_conv2d_conv_cce)

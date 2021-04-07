@@ -448,10 +448,10 @@ def test_conv2d_l1_fp16(test_arg):
         print("[ UNITTEST START conv2d v100]")
         run_testcase()
 
-    test_conv_v100()
+    # test_conv_v100()
 
 
-ut_case.add_cust_test_func(test_func=test_conv2d_l1_fp16)
+# ut_case.add_cust_test_func(test_func=test_conv2d_l1_fp16)
 
 if __name__ == '__main__':
     ut_case.add_cust_test_func(test_func=test_conv2d_l1_fp16)

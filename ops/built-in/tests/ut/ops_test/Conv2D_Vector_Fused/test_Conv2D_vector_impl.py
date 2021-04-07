@@ -602,7 +602,7 @@ def test_conv2d_vector(test_arg):
     test_conv2d_write_select__stride_write()
     test_conv2d_inner_batch()
 
-ut_case.add_cust_test_func(test_func=test_conv2d_vector)
+# ut_case.add_cust_test_func(test_func=test_conv2d_vector)
 
 if __name__ == '__main__':
     ut_case.add_cust_test_func(test_func=test_conv2d_vector)
