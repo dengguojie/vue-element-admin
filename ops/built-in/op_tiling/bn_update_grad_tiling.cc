@@ -10,7 +10,7 @@
 
 namespace optiling {
 
-struct TilingInfo {
+struct BNGradTilingInfo {
     int32_t block_dim;
     int32_t block_tiling_axis;
     int64_t block_tiling_factor;
@@ -18,7 +18,7 @@ struct TilingInfo {
     int64_t ub_tiling_factor;
 };
 
-struct CompileInfo {
+struct BNGradCompileInfo {
     bool is_const = false;
     bool is_const_post = false;
     bool atomic = false;
@@ -27,7 +27,7 @@ struct CompileInfo {
     int32_t input_block_size;
 };
 
-int32_t CalcTilingKey(TilingInfo& tilingInfo, int32_t pattern, CompileInfo& compileInfo) {
+int32_t CalcBNGradTilingKey(BNGradTilingInfo& tilingInfo, int32_t pattern, BNGradCompileInfo& compileInfo) {
     using namespace std;
     int db = 0;
     int shape_type = 0;
@@ -41,7 +41,7 @@ int32_t CalcTilingKey(TilingInfo& tilingInfo, int32_t pattern, CompileInfo& comp
     return key;
 }
 
-bool GetTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, int64_t max_ub_count, int32_t core_num, TilingInfo& tilingInfo) {
+bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, int64_t max_ub_count, int32_t core_num, BNGradTilingInfo& tilingInfo) {
     tilingInfo.block_dim = -1;
     tilingInfo.block_tiling_axis = -1;
     tilingInfo.block_tiling_factor = -1;
@@ -76,7 +76,7 @@ bool GetTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, int6
 
 }
 
-bool GetCompileInfo(CompileInfo& compileInfo, const std::string& op_type, const nlohmann::json& op_info) {
+bool GetBNGradCompileInfo(BNGradCompileInfo& compileInfo, const std::string& op_type, const nlohmann::json& op_info) {
     std::vector<int32_t> common_info;
     std::vector<int32_t> pattern_info;
     try {
@@ -114,16 +114,16 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     int32_t c0 = input_shape[4];
 
     int64_t max_ub_count = op_info.at("max_ub_count").get<std::int64_t>();
-    CompileInfo compileInfo;
-    TilingInfo tilingInfo;
-    GetCompileInfo(compileInfo, op_type, op_info);
+    BNGradCompileInfo compileInfo;
+    BNGradTilingInfo tilingInfo;
+    GetBNGradCompileInfo(compileInfo, op_type, op_info);
     int32_t core_num = compileInfo.core_num;
 
-    GetTilingData(n, c1, h, w, c0, max_ub_count, core_num, tilingInfo);
+    GetBNGradTilingData(n, c1, h, w, c0, max_ub_count, core_num, tilingInfo);
 
     run_info.block_dim = tilingInfo.block_dim;
     int32_t pattern = 134;
-    int32_t tiling_key = CalcTilingKey(tilingInfo, pattern, compileInfo);
+    int32_t tiling_key = CalcBNGradTilingKey(tilingInfo, pattern, compileInfo);
 
     run_info.tiling_key = tiling_key;
     ByteBufferPut(run_info.tiling_data, n);
