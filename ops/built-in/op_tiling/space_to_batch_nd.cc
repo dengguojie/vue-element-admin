@@ -225,7 +225,7 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
 
   // get compile info
   int32_t ub_ele = 0;
-  int32_t core_num = 0;
+  int32_t core_num = 1;
   int32_t block_size = 0;
   const map<string, int32_t&> compile_params = {
       {"ub_ele", ub_ele},
