@@ -29,35 +29,35 @@ def _get_dync_padding_size(ib, p_ub_buf, tmp, padding_info):
     :return:
     """
 
-    ib.emit(tvm.call_extern("int8",  # actual data type
+    ib.emit(tvm.call_extern("int8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             aipp_comm.BATCH_OFFSET_PAD_SWITCH)))
 
     with ib.if_scope(tmp[0]):
-        ib.emit(tvm.call_extern("int32",  # actual data type
+        ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                                 aipp_comm.BATCH_OFFSET_PAD_TOP)))
         padding_info[0] = tmp[0]
 
-        ib.emit(tvm.call_extern("int32",  # actual data type
+        ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                                 aipp_comm.BATCH_OFFSET_PAD_BOTTOM)))
         padding_info[1] = tmp[0]
 
-        ib.emit(tvm.call_extern("int32",  # actual data type
+        ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                                 aipp_comm.BATCH_OFFSET_PAD_LEFT)))
         padding_info[2] = tmp[0]
 
-        ib.emit(tvm.call_extern("int32",  # actual data type
+        ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
@@ -120,26 +120,21 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
         move_tail = totol_num - move_num*((ub_size // 2) // size)
 
         with ib.for_range(tvm.const(0, dtype="uint64"),
-                          tvm.const(move_num,
-                                    dtype="uint64"),
-                          name="move_index",
-                          dtype="uint64") as move_index:
+                          tvm.const(move_num, dtype="uint64"),
+                          name="move_index", dtype="uint64") as move_index:
             with ib.new_scope():
-                output_ub = ib.allocate(dtype, (ub_size // 2,),
-                                        "output_ub",
+                output_ub = ib.allocate(dtype, (ub_size // 2,), "output_ub",
                                         scope=tbe_platform.scope_ubuf)
                 output_ub_buf = tvm.decl_buffer(
                     (ub_size // 2,), dtype, "output_ub_buf",
                     scope=tbe_platform.scope_ubuf, data=output_ub)
 
                 lenBurst, nBurst = \
-                    aipp_comm.get_lenburst_and_nburst(
-                        (ub_size // 2) // 32, 1)
+                    aipp_comm.get_lenburst_and_nburst((ub_size // 2) // 32, 1)
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_cbuf_to_ubuf',
-                    output_ub_buf.access_ptr("w", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                     output_cb_buf.access_ptr("rw", ptr_type=dtype,
                                              offset=move_index*((ub_size // 2) // size)),
                     0, nBurst, lenBurst, 0, 0))
@@ -149,26 +144,22 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                     output_buf.access_ptr("w", ptr_type=dtype,
                                           offset=gm_output_offset +
                                           move_index*((ub_size // 2) // size)),
-                    output_ub_buf.access_ptr("rw", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
                     0, nBurst, lenBurst, 0, 0))
         if move_tail != 0:
             with ib.new_scope():
-                output_ub = ib.allocate(dtype, (ub_size // 2,),
-                                        "output_ub",
+                output_ub = ib.allocate(dtype, (ub_size // 2,), "output_ub",
                                         scope=tbe_platform.scope_ubuf)
                 output_ub_buf = tvm.decl_buffer(
                     (ub_size // 2,), dtype, "output_ub_buf",
                     scope=tbe_platform.scope_ubuf, data=output_ub)
 
                 lenBurst, nBurst = \
-                    aipp_comm.get_lenburst_and_nburst(
-                        move_tail*size // 32, 1)
+                    aipp_comm.get_lenburst_and_nburst(move_tail*size // 32, 1)
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_cbuf_to_ubuf',
-                    output_ub_buf.access_ptr("w", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                     output_cb_buf.access_ptr("rw", ptr_type=dtype,
                                              offset=move_num*((ub_size // 2) // size)),
                     0, nBurst, lenBurst, 0, 0))
@@ -178,8 +169,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                     output_buf.access_ptr("w", ptr_type=dtype,
                                           offset=gm_output_offset +
                                           move_num*((ub_size // 2) // size)),
-                    output_ub_buf.access_ptr("rw", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
                     0, nBurst, lenBurst, 0, 0))
 
 
@@ -206,8 +196,7 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
     tmp_reg[0] = tbe_platform.get_const(totol_num)*tvm.const(size, dtype="uint64")
     with ib.if_scope(tmp_reg[0] < (ub_size // 2)):
         with ib.new_scope():
-            output_ub = ib.allocate(dtype, (ub_size // 2,),
-                                    "output_ub",
+            output_ub = ib.allocate(dtype, (ub_size // 2,), "output_ub",
                                     scope=tbe_platform.scope_ubuf)
             output_ub_buf = tvm.decl_buffer(
                 (ub_size // 2,), dtype, "output_ub_buf",
@@ -215,22 +204,17 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
 
             ib.emit(tvm.call_extern(
                 dtype, 'copy_cbuf_to_ubuf',
-                output_ub_buf.access_ptr("w",
-                                         ptr_type=dtype,
-                                         offset=0),
-                output_cb_buf.access_ptr("rw",
-                                         ptr_type=dtype,
-                                         offset=0),
-                0, 1, totol_num*size//32, 0, 0))
+                output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
+                output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
+                0, 1, totol_num*size // 32, 0, 0))
 
             ib.emit(tvm.call_extern(
                 dtype, 'copy_ubuf_to_gm',
                 output_buf.access_ptr(
                     "w", ptr_type=dtype,
                     offset=gm_output_offset),
-                output_ub_buf.access_ptr("rw", ptr_type=dtype,
-                                         offset=0),
-                0, 1, totol_num*size//32, 0, 0))
+                output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
+                0, 1, totol_num*size // 32, 0, 0))
     with ib.else_scope():
         # move_num
         tmp_reg[1] = tbe_platform.get_const(totol_num // ((ub_size // 2) // size))
@@ -238,25 +222,20 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
         tmp_reg[2] = tbe_platform.get_const(totol_num % ((ub_size // 2) // size))
 
         with ib.for_range(tvm.const(0, dtype="uint64"),
-                          tmp_reg[1],
-                          name="move_index",
-                          dtype="uint64") as move_index:
+                          tmp_reg[1], name="move_index", dtype="uint64") as move_index:
             with ib.new_scope():
-                output_ub = ib.allocate(dtype, (ub_size // 2,),
-                                        "output_ub",
+                output_ub = ib.allocate(dtype, (ub_size // 2,), "output_ub",
                                         scope=tbe_platform.scope_ubuf)
                 output_ub_buf = tvm.decl_buffer(
                     (ub_size // 2,), dtype, "output_ub_buf",
                     scope=tbe_platform.scope_ubuf, data=output_ub)
 
                 lenBurst, nBurst = \
-                    aipp_comm.get_lenburst_and_nburst(
-                        (ub_size // 2) // 32, 1)
+                    aipp_comm.get_lenburst_and_nburst((ub_size // 2) // 32, 1)
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_cbuf_to_ubuf',
-                    output_ub_buf.access_ptr("w", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                     output_cb_buf.access_ptr("rw", ptr_type=dtype,
                                              offset=move_index*((ub_size // 2) // size)),
                     0, nBurst, lenBurst, 0, 0))
@@ -266,13 +245,11 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
                     output_buf.access_ptr("w", ptr_type=dtype,
                                           offset=gm_output_offset +
                                           move_index*((ub_size // 2) // size)),
-                    output_ub_buf.access_ptr("rw", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
                     0, nBurst, lenBurst, 0, 0))
         with ib.if_scope(tmp_reg[2] != 0):
             with ib.new_scope():
-                output_ub = ib.allocate(dtype, (ub_size // 2,),
-                                        "output_ub",
+                output_ub = ib.allocate(dtype, (ub_size // 2,), "output_ub",
                                         scope=tbe_platform.scope_ubuf)
                 output_ub_buf = tvm.decl_buffer(
                     (ub_size // 2,), dtype, "output_ub_buf",
@@ -280,8 +257,7 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_cbuf_to_ubuf',
-                    output_ub_buf.access_ptr("w", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                     output_cb_buf.access_ptr("rw", ptr_type=dtype,
                                              offset=tmp_reg[1]*((ub_size // 2) // size)),
                     0, 1, tmp_reg[2]*size//32, 0, 0))
@@ -291,8 +267,7 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
                     output_buf.access_ptr("w", ptr_type=dtype,
                                           offset=gm_output_offset +
                                           tmp_reg[1]*((ub_size // 2) // size)),
-                    output_ub_buf.access_ptr("rw", ptr_type=dtype,
-                                             offset=0),
+                    output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
                     0, 1, tmp_reg[2]*size//32, 0, 0))
 
 
@@ -323,8 +298,7 @@ def process_padding(ib, input_data, output_buf):
                                              "padding_ub", scope=tbe_platform.scope_ubuf,
                                              data=padding_ub)
             if dtype == "float16":
-                aipp_comm.vector_dup(ib, "float16", padding_ub_buf,
-                                     padding_size*W*C0)
+                aipp_comm.vector_dup(ib, "float16", padding_ub_buf, padding_size*W*C0)
             else:
                 with ib.new_scope():
                     tmp_padding_ub = ib.allocate("float16",
@@ -359,21 +333,16 @@ def process_padding(ib, input_data, output_buf):
         tail_w = W % tiling_w
         tail_h = padding_size % tiling_h
 
-        with ib.for_range(zero_const, h_loop_const, name="h1",
-                          dtype="uint64") as h1:
-            with ib.for_range(zero_const, w_loop_const,
-                              name="w1", dtype="uint64") as w1:
+        with ib.for_range(zero_const, h_loop_const, name="h1", dtype="uint64") as h1:
+            with ib.for_range(zero_const, w_loop_const, name="w1", dtype="uint64") as w1:
                 with ib.new_scope():
                     padding_ub = ib.allocate(dtype, (tiling_h*tiling_w*C0,), "padding_ub",
                                              scope=tbe_platform.scope_ubuf)
-                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,), dtype,
-                                                     "padding_ub",
-                                                     scope=tbe_platform.scope_ubuf,
-                                                     data=padding_ub)
+                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,), dtype, "padding_ub",
+                                                     scope=tbe_platform.scope_ubuf, data=padding_ub)
 
                     if dtype == "float16":
-                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf,
-                                             tiling_h*tiling_w*C0)
+                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, tiling_h*tiling_w*C0)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16",
@@ -396,7 +365,7 @@ def process_padding(ib, input_data, output_buf):
                         output_buf.access_ptr("w", ptr_type=dtype,
                                               offset=offset+h1*tiling_h*W*C0+w1*tiling_w*tiling_h*C0),
                         padding_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                        0, 1, tiling_h*tiling_w*C0*size//32, 0, 0))
+                        0, 1, tiling_h*tiling_w*C0*size // 32, 0, 0))
             if tail_w != 0:
                 with ib.new_scope():
                     padding_ub = ib.allocate(dtype, (tiling_h*tail_w*C0,), "padding_ub",
@@ -434,20 +403,15 @@ def process_padding(ib, input_data, output_buf):
                         0, 1, tiling_h*tail_w*C0*size//32, 0, 0))
 
         with ib.if_scope(tail_h != 0):
-            with ib.for_range(zero_const,
-                              w_loop_const,
-                              name="w1", dtype="uint64") as w1:
+            with ib.for_range(zero_const, w_loop_const, name="w1", dtype="uint64") as w1:
                 with ib.new_scope():
                     padding_ub = ib.allocate(dtype, (tiling_h*tiling_w*C0,),
                                              "padding_ub", scope=tbe_platform.scope_ubuf)
-                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,), dtype,
-                                                     "padding_ub",
-                                                     scope=tbe_platform.scope_ubuf,
-                                                     data=padding_ub)
+                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,), dtype, "padding_ub",
+                                                     scope=tbe_platform.scope_ubuf, data=padding_ub)
 
                     if dtype == "float16":
-                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf,
-                                             tail_h*tiling_w*C0)
+                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, tail_h*tiling_w*C0)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16", (tiling_h*tiling_w*C0,),
@@ -517,15 +481,13 @@ def get_dync_src_image_size(ib, p_ub_buf, tmp, src_image_size):
     :return:
     """
 
-    ib.emit(tvm.call_extern("int32",  # actual data type
-                            "reg_mov",
+    ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_SRCIMAGE_H)))
     with ib.if_scope(tmp[0] > 0):
         src_image_size[0] = tmp[0]
 
-    ib.emit(tvm.call_extern("int32",  # actual data type
-                            "reg_mov",
+    ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_SRCIMAGE_W)))
     with ib.if_scope(tmp[0] > 0):
@@ -541,32 +503,28 @@ def get_dync_crop_info(ib, p_ub_buf, tmp, load_image_info):
     :return:
     """
 
-    ib.emit(tvm.call_extern("int32",
-                            "reg_mov",
+    ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             aipp_comm.BATCH_OFFSET_CROP_STARTPOS_W)))
     # load_start_pos_w
     load_image_info[1] = tmp[0]
 
-    ib.emit(tvm.call_extern("int32",
-                            "reg_mov",
+    ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             aipp_comm.BATCH_OFFSET_CROP_STARTPOS_H)))
     # load_start_pos_h
     load_image_info[0] = tmp[0]
 
-    ib.emit(tvm.call_extern("int32",
-                            "reg_mov",
+    ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             aipp_comm.BATCH_OFFSET_CROP_W)))
     # load_image_w
     load_image_info[3] = tmp[0]
 
-    ib.emit(tvm.call_extern("int32",
-                            "reg_mov",
+    ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             aipp_comm.BATCH_OFFSET_CROP_H)))
@@ -618,8 +576,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
         ib = tvm.ir_builder.create()
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
-        device_core_num = \
-            tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         batch_num = N
         batch_factor = 1
 
@@ -691,8 +648,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
             resize_input_h_end_pos = ib.allocate("uint64", [1], name="resize_input_h_end_pos",
                                                  scope=tbe_platform.scope_reg)
 
-            with ib.for_range(zero_const,
-                              tvm.const(batch_factor, dtype="uint64"),
+            with ib.for_range(zero_const, tvm.const(batch_factor, dtype="uint64"),
                               name="n1", dtype="uint64") as n1:
                 batch_id = batch_factor * block_index + n1
                 ib.emit(tvm.call_extern("uint8", 'copy_gm_to_ubuf',
@@ -724,8 +680,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                 padding_info[3] = tvm.const(0, dtype="uint64")
 
 
-                ib.emit(tvm.call_extern("int8",  # actual data type
-                                        "reg_mov",
+                ib.emit(tvm.call_extern("int8", "reg_mov",
                                         tvm.call_extern("uint64", "reg", tmp[0]),
                                         p_ub_buf.access_ptr('r',
                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
@@ -740,8 +695,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
                 aipp_xt = (src_image_size[1] - 1)
 
-                ib.emit(tvm.call_extern("uint8",  # actual data type
-                                        "reg_mov",
+                ib.emit(tvm.call_extern("uint8", "reg_mov",
                                         tvm.call_extern("uint64", "reg", tmp[0]),
                                         p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_INPUT_FORMAT)))
 
@@ -763,11 +717,11 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                              src_image_size[0] * src_image_size[1]))
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
 
-                    ib.emit(tvm.call_extern("int8",  # actual data type
+                    ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
-                    if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
+                    if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                         spr[1] = tvm.const(1 << 63, dtype="uint64") | uv_addr
                     else:
                         spr[1] = (tmp[0] & 0x1) << 63 | uv_addr
@@ -782,7 +736,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                              n1*((4*src_image_size[0] * src_image_size[1]))))
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
 
-                    ib.emit(tvm.call_extern("int8",  # actual data type
+                    ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
@@ -798,7 +752,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                              n1*((3*src_image_size[0] * src_image_size[1]))))
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
 
-                    ib.emit(tvm.call_extern("int8",  # actual data type
+                    ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
@@ -814,7 +768,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                              n1*((4*src_image_size[0] * src_image_size[1]))))
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
 
-                    ib.emit(tvm.call_extern("int8",  # actual data type
+                    ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
@@ -831,7 +785,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
 
-                    ib.emit(tvm.call_extern("int8",  # actual data type
+                    ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
@@ -855,7 +809,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                              src_image_size[0] * src_image_size[1]))
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
 
-                    ib.emit(tvm.call_extern("int8",  # actual data type
+                    ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
@@ -875,7 +829,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_0", spr0))
 
-                    ib.emit(tvm.call_extern("int8",  # actual data type
+                    ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
@@ -897,10 +851,17 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     spr[1] = tvm.const(0, dtype="uint64") << 63
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr[1]))
 
-                aipp_comm.set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp)
+                if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+                    # YUV400_U8, ihisi, set chn_2 with chn_0 value in config
+                    with ib.if_scope(input_format[0] == 10):
+                        aipp_comm.set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp, True)
+                    with ib.else_scope():
+                        aipp_comm.set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp)
+                else:
+                    aipp_comm.set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp)
 
                 resize[0] = tvm.const(0, dtype="uint64")
-                if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
+                if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                     scfIncVscl[0] = tvm.const(0, dtype="uint64")
                     scfIncHscl[0] = tvm.const(0, dtype="uint64")
 

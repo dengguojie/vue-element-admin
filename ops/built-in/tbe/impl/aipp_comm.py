@@ -556,15 +556,15 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
     return p_ub_buf, spr, tmp
 
 
-def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
+def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp, is_hisi_yuv400=False):
     """
-    :param ib:
-    :param dtype:
-    :param p_ub_buf:
-    :param spr:
-    :param tmp:
-    :return:
+    set_spr_dync_in_batch
     """
+    chn_0_position = 0
+    chn_2_position = 32
+    if is_hisi_yuv400:
+        chn_0_position = 32
+        chn_2_position = 0
 
     # spr5
     ib.emit(tvm.call_extern("int16",
@@ -572,7 +572,7 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             BATCH_OFFSET_DTC_MEAN_C0)))
-    spr[5] = (tmp[0] & 0xffff)
+    spr[5] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
@@ -586,7 +586,7 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             BATCH_OFFSET_DTC_MEAN_C2)))
-    spr[5] = spr[5] | (tmp[0] & 0xffff) << 32
+    spr[5] = spr[5] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
@@ -602,7 +602,7 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             BATCH_OFFSET_DTC_MIN_C0)))
-    spr[6] = (tmp[0] & 0xffff)
+    spr[6] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
@@ -616,7 +616,7 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             BATCH_OFFSET_DTC_MIN_C2)))
-    spr[6] = spr[6] | (tmp[0] & 0xffff) << 32
+    spr[6] = spr[6] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
@@ -632,7 +632,7 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             BATCH_OFFSET_DTC_VAR_C0)))
-    spr[7] = (tmp[0] & 0xffff)
+    spr[7] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
@@ -646,7 +646,7 @@ def set_spr_dync_in_batch(ib, dtype, p_ub_buf, spr, tmp):
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             p_ub_buf.access_ptr('r', offset=DYNC_PARAM_HEAD_STRUCT_SIZE + \
                                                             BATCH_OFFSET_DTC_VAR_C2)))
-    spr[7] = spr[7] | (tmp[0] & 0xffff) << 32
+    spr[7] = spr[7] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
@@ -811,29 +811,35 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4",
                                 tvm.const(spr4, dtype="uint64")))
 
+    chn_0_position = 0
+    chn_2_position = 32
+    if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
+            aipp_config.get('input_format') in ("YUV400_U8",):
+        chn_0_position = 32
+        chn_2_position = 0
     spr5 = 0
     if aipp_config.get('input_format') in ("RAW10", "RAW12", "RAW16", "uint16") \
             and dtype == "float16":
         spr5 = 0
         if 'mean_chn_0' in aipp_config:
             mean_chn_0 = get_fp16(aipp_config.get('mean_chn_0'))
-            spr5 = spr5 | (mean_chn_0 & 0xffff)
+            spr5 = spr5 | (mean_chn_0 & 0xffff) << chn_0_position
         if 'mean_chn_1' in aipp_config:
             mean_chn_1 = get_fp16(aipp_config.get('mean_chn_1'))
             spr5 = spr5 | (mean_chn_1 & 0xffff) << 16
         if 'mean_chn_2' in aipp_config:
             mean_chn_2 = aipp_config.get('mean_chn_2')
-            spr5 = spr5 | (mean_chn_2 & 0xffff) << 32
+            spr5 = spr5 | (mean_chn_2 & 0xffff) << chn_2_position
         if 'mean_chn_3' in aipp_config:
             mean_chn_3 = aipp_config.get('mean_chn_3')
             spr5 = spr5 | (mean_chn_3 & 0xffff) << 48
     else:
         if 'mean_chn_0' in aipp_config:
-            spr5 = spr5 | (aipp_config.get('mean_chn_0') & 0xffff)
+            spr5 = spr5 | (aipp_config.get('mean_chn_0') & 0xffff) << chn_0_position
         if 'mean_chn_1' in aipp_config:
             spr5 = spr5 | (aipp_config.get('mean_chn_1') & 0xffff) << 16
         if 'mean_chn_2' in aipp_config:
-            spr5 = spr5 | (aipp_config.get('mean_chn_2') & 0xffff) << 32
+            spr5 = spr5 | (aipp_config.get('mean_chn_2') & 0xffff) << chn_2_position
         if 'mean_chn_3' in aipp_config:
             spr5 = spr5 | (aipp_config.get('mean_chn_3') & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_5",
@@ -842,13 +848,13 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     spr6 = 0
     if 'min_chn_0' in aipp_config:
         min_chn_0 = get_fp16(float(aipp_config.get('min_chn_0')))
-        spr6 = spr6 | (min_chn_0 & 0xffff)
+        spr6 = spr6 | (min_chn_0 & 0xffff) << chn_0_position
     if 'min_chn_1' in aipp_config:
         min_chn_1 = get_fp16(float(aipp_config.get('min_chn_1')))
         spr6 = spr6 | (min_chn_1 & 0xffff) << 16
     if 'min_chn_2' in aipp_config:
         min_chn_2 = get_fp16(float(aipp_config.get('min_chn_2')))
-        spr6 = spr6 | (min_chn_2 & 0xffff) << 32
+        spr6 = spr6 | (min_chn_2 & 0xffff) << chn_2_position
     if 'min_chn_3' in aipp_config:
         min_chn_3 = get_fp16(float(aipp_config.get('min_chn_3')))
         spr6 = spr6 | (min_chn_3 & 0xffff) << 48
@@ -858,13 +864,13 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
     spr7 = 0
     if 'var_reci_chn_0' in aipp_config:
         var_reci_chn_0 = get_fp16(float(aipp_config.get('var_reci_chn_0')))
-        spr7 = spr7 | (var_reci_chn_0) & 0xffff
+        spr7 = spr7 | (var_reci_chn_0 & 0xffff) << chn_0_position
     if 'var_reci_chn_1' in aipp_config:
         var_reci_chn_1 = get_fp16(float(aipp_config.get('var_reci_chn_1')))
         spr7 = spr7 | ((var_reci_chn_1) & 0xffff) << 16
     if 'var_reci_chn_2' in aipp_config:
         var_reci_chn_2 = get_fp16(float(aipp_config.get('var_reci_chn_2')))
-        spr7 = spr7 | ((var_reci_chn_2) & 0xffff) << 32
+        spr7 = spr7 | ((var_reci_chn_2) & 0xffff) << chn_2_position
     if 'var_reci_chn_3' in aipp_config:
         var_reci_chn_3 = get_fp16(float(aipp_config.get('var_reci_chn_3')))
         spr7 = spr7 | (var_reci_chn_3 & 0xffff) << 48
@@ -1127,6 +1133,12 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
             if 'output_bias_2' in aipp_config:
                 spr4 = spr4 | (aipp_config.get('output_bias_2') & 0xff) << 32
 
+    chn_0_position = 0
+    chn_2_position = 32
+    if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
+            aipp_config.get('input_format') in ("YUV400_U8",):
+        chn_0_position = 32
+        chn_2_position = 0
     spr5 = 0
     if aipp_config.get('input_format') in ["RAW10", "RAW12",
                                            "RAW16", "uint16"] and \
@@ -1134,36 +1146,36 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
         spr5 = 0
         if 'mean_chn_0' in aipp_config:
             mean_chn_0 = get_fp16(aipp_config.get('mean_chn_0'))
-            spr5 = spr5 | (mean_chn_0 & 0xffff)
+            spr5 = spr5 | (mean_chn_0 & 0xffff) << chn_0_position
         if 'mean_chn_1' in aipp_config:
             mean_chn_1 = get_fp16(aipp_config.get('mean_chn_1'))
             spr5 = spr5 | (mean_chn_1 & 0xffff) << 16
         if 'mean_chn_2' in aipp_config:
             mean_chn_2 = aipp_config.get('mean_chn_2')
-            spr5 = spr5 | (mean_chn_2 & 0xffff) << 32
+            spr5 = spr5 | (mean_chn_2 & 0xffff) << chn_2_position
         if 'mean_chn_3' in aipp_config:
             mean_chn_3 = aipp_config.get('mean_chn_3')
             spr5 = spr5 | (mean_chn_3 & 0xffff) << 48
     else:
         if 'mean_chn_0' in aipp_config:
-            spr5 = spr5 | (aipp_config.get('mean_chn_0') & 0xffff)
+            spr5 = spr5 | (aipp_config.get('mean_chn_0') & 0xffff) << chn_0_position
         if 'mean_chn_1' in aipp_config:
             spr5 = spr5 | (aipp_config.get('mean_chn_1') & 0xffff) << 16
         if 'mean_chn_2' in aipp_config:
-            spr5 = spr5 | (aipp_config.get('mean_chn_2') & 0xffff) << 32
+            spr5 = spr5 | (aipp_config.get('mean_chn_2') & 0xffff) << chn_2_position
         if 'mean_chn_3' in aipp_config:
             spr5 = spr5 | (aipp_config.get('mean_chn_3') & 0xffff) << 48
 
     spr6 = 0
     if 'min_chn_0' in aipp_config:
         min_chn_0 = get_fp16(float(aipp_config.get('min_chn_0')))
-        spr6 = spr6 | (min_chn_0 & 0xffff)
+        spr6 = spr6 | (min_chn_0 & 0xffff) << chn_0_position
     if 'min_chn_1' in aipp_config:
         min_chn_1 = get_fp16(float(aipp_config.get('min_chn_1')))
         spr6 = spr6 | (min_chn_1 & 0xffff) << 16
     if 'min_chn_2' in aipp_config:
         min_chn_2 = get_fp16(float(aipp_config.get('min_chn_2')))
-        spr6 = spr6 | (min_chn_2 & 0xffff) << 32
+        spr6 = spr6 | (min_chn_2 & 0xffff) << chn_2_position
     if 'min_chn_3' in aipp_config:
         min_chn_3 = get_fp16(float(aipp_config.get('min_chn_3')))
         spr6 = spr6 | (min_chn_3 & 0xffff) << 48
@@ -1171,13 +1183,13 @@ def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
     spr7 = 0
     if 'var_reci_chn_0' in aipp_config:
         var_reci_chn_0 = get_fp16(float(aipp_config.get('var_reci_chn_0')))
-        spr7 = spr7 | (var_reci_chn_0) & 0xffff
+        spr7 = spr7 | (var_reci_chn_0 & 0xffff) << chn_0_position
     if 'var_reci_chn_1' in aipp_config:
         var_reci_chn_1 = get_fp16(float(aipp_config.get('var_reci_chn_1')))
         spr7 = spr7 | ((var_reci_chn_1) & 0xffff) << 16
     if 'var_reci_chn_2' in aipp_config:
         var_reci_chn_2 = get_fp16(float(aipp_config.get('var_reci_chn_2')))
-        spr7 = spr7 | ((var_reci_chn_2) & 0xffff) << 32
+        spr7 = spr7 | ((var_reci_chn_2) & 0xffff) << chn_2_position
     if 'var_reci_chn_3' in aipp_config:
         var_reci_chn_3 = get_fp16(float(aipp_config.get('var_reci_chn_3')))
         spr7 = spr7 | (var_reci_chn_3 & 0xffff) << 48

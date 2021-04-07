@@ -104,15 +104,38 @@ ut_case.add_case(["Ascend310", "Ascend710"],
 aipp_config_dict["input_format"] = "RGB888_U8"
 aipp_config5 = json.dumps(aipp_config_dict)
 ut_case.add_case(["Ascend310", "Ascend710"],
-                 gen_static_aipp_case((1,3,418,416), (1,1,258,240,32),
+                 gen_static_aipp_case((1,3,418,416), (1,1,258,240,16),
                                       "uint8", "float16", "NCHW", "NC1HWC0", aipp_config5, "aipp_6", "success"))
 
 aipp_config_dict["input_format"] = "YUV400_U8"
 aipp_config_dict["csc_switch"] = 0
 aipp_config6 = json.dumps(aipp_config_dict)
 ut_case.add_case(["Ascend310", "Ascend710"],
-                 gen_static_aipp_case((1,1,418,416), (1,1,258,240,32),
+                 gen_static_aipp_case((1,1,418,416), (1,1,258,240,16),
                                       "uint8", "float16", "NCHW", "NC1HWC0", aipp_config6, "aipp_5", "success"))
+
+
+def gen_dynamic_aipp_case(input_shape, output_shape, dtype_x, dtype_y, format, output_format,
+                          aipp_config_json, case_name_val, expect):
+    return {"params": [{"shape": input_shape, "dtype": dtype_x, "ori_shape": input_shape, "ori_format": format, "format": format},
+                       {"shape": (10000,), "dtype": "uint8", "ori_shape": (10000,), "ori_format": "ND", "format": "ND"},
+                       {"shape": output_shape, "dtype": dtype_y, "ori_shape": output_shape, "ori_format": format, "format": output_format},
+                       aipp_config_json],
+            "case_name": case_name_val,
+            "expect": expect,
+            "format_expect": [],
+            "support_expect": True}
+
+aipp_config_dict_dynamic = {"aipp_mode":"dynamic",
+                            "related_input_rank":0,
+                            "input_format":"YUV400_U8",
+                            "max_src_image_size":921600
+                           }
+aipp_config_dynamic = json.dumps(aipp_config_dict_dynamic)
+ut_case.add_case(["Ascend310", "Ascend710"],
+                 gen_dynamic_aipp_case((1,1,224,224), (1,1,223,223,16),
+                                       "uint8", "float16", "NCHW", "NC1HWC0", aipp_config_dynamic,
+                                       "aipp_dynamic_1", "success"))
 
 
 if __name__ == '__main__':
