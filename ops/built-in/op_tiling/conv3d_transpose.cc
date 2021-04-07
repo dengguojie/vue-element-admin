@@ -25,6 +25,7 @@
 #include "cube_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
+#include "../op_proto/util/error_util.h"
 
 namespace {
   constexpr int32_t kConv3dTransposeDimSizeLimit = 6;
@@ -46,13 +47,13 @@ bool Conv3DTransposeTiling(const std::string& op_type, const TeOpParas& op_paras
       op_paras.inputs[kConv3dTransposeDedyInputIndex].tensor.empty() || op_paras.outputs[0].tensor.empty() ||
       (op_paras.inputs[kConv3dTransposeDedyInputIndex].tensor[0].shape.size() != kConv3dTransposeDimSizeLimit) ||
       (op_paras.outputs[0].tensor[0].shape.size() != kConv3dTransposeDimSizeLimit)) {
-    OP_LOGE(op_type.c_str(), "param check failed");
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "param check failed");
     return false;
   }
 
   if (compile_info.contains("dedy_c1") &&
       op_paras.inputs[kConv3dTransposeDedyInputIndex].tensor[0].shape[2] != compile_info["dedy_c1"]) {
-    OP_LOGE(op_type.c_str(), "not support, input dedy channel should be equal to filter");
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "not support, input dedy channel should be equal to filter");
     return false;
   }
 

@@ -36,6 +36,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 #include "securec.h"
+#include "error_util.h"
 
 using namespace std;
 using namespace ge;
@@ -56,7 +57,7 @@ vector<FusionPattern*> AvgPoolV2FusionPass::DefinePatterns() {
 
   // define AvgPoolFusion
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AvgPoolV2FusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   // define origin graph
   pattern->AddOpDesc(PATTERN_AVGPOOL, {AVGPOOL}).SetOutput(PATTERN_AVGPOOL);
@@ -79,7 +80,8 @@ NodePtr AvgPoolV2FusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoo
   // creat a mul node
   std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
   mulDesc = std::make_shared<ge::OpDesc>(avgPoolNode->GetName() + "_mul_layer", "Mul");
-  FUSION_PASS_CHECK(mulDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
+  FUSION_PASS_CHECK(mulDesc == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
 
   // add input
   ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
@@ -99,7 +101,7 @@ NodePtr AvgPoolV2FusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoo
       mulC = dimMul[1];
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimMul is invalid, please check!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimMul is invalid, please check!");
     return nullptr;
   }
 
@@ -112,11 +114,11 @@ NodePtr AvgPoolV2FusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoo
   input_desc.SetFormat(ge::FORMAT_NC1HWC0);
   input_desc.SetOriginFormat(inputOriginFormat);
   FUSION_PASS_CHECK(mulDesc->AddInputDesc(input_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
 
   // add output
   FUSION_PASS_CHECK(mulDesc->AddOutputDesc(input_desc) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
 
   // add node
   mulNode = graph.AddNode(mulDesc);
@@ -131,14 +133,14 @@ NodePtr AvgPoolV2FusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoo
 
     // add edge between mul and next_node
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                              mulNode->GetName().c_str(), postNode->GetName().c_str()),
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                                            mulNode->GetName().c_str(), postNode->GetName().c_str()),
                       return nullptr);
   }
   // add edge between avgpool and mul
   FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(avgPoolAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                            avgPoolNode->GetName().c_str(), mulNode->GetName().c_str()),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                                          avgPoolNode->GetName().c_str(), mulNode->GetName().c_str()),
                     return nullptr);
 
   return mulNode;
@@ -226,7 +228,8 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
       dimW = dimInfo[3];
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimOut is invalid, please check!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                          "dimOut is invalid, please check! actual is %d, expect is 4", dimOut.size());
     return PARAM_INVALID;
   }
   outputC1 = (outputC + outputC0 - 1) / outputC0;
@@ -246,17 +249,19 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
 
   ge::GeTensorPtr coffePtr = nullptr;
   int64_t coffeSize = outputN * outputC1 * outputH * outputW * outputC0;
-  FUSION_PASS_CHECK(coffeSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "coffeSize is Invalid"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(coffeSize <= 0,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "coffeSize is Invalid"), return PARAM_INVALID);
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[coffeSize]());
-  FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
 
   Status ret = NnSet(coffeSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
 
   vector<int64_t> coffeDimInfo = {outputN, outputC1, outputH, outputW, outputC0};
   ret = GenCoffeFP16(coffeDimInfo, ksize, stride, pad, dimH, dimW, *inputAssit.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "CoffeFP16 is failed."), return ret);
 
   vector<int64_t> coffeDimInfoOrigin;
   if (inputDesc0OriginFormat == FORMAT_NHWC) {
@@ -264,7 +269,8 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
   } else if (inputDesc0OriginFormat == FORMAT_NCHW) {
     coffeDimInfoOrigin = {outputN, outputC, outputH, outputW};
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "format is wrong, please check!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+      "format is wrong, please check!expect is NHWC or NCHW, actual is %s", inputDesc0OriginFormat);
     return PARAM_INVALID;
   }
 
@@ -283,7 +289,8 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
                           coffePtr = nullptr;
                           return PARAM_INVALID);
   ge::OpDescPtr mulDesc = mulNode->GetOpDesc();
-  FUSION_PASS_CHECK(mulDesc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode's OpDesc is null, fusion failed."),
+  FUSION_PASS_CHECK(mulDesc == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   vector<ge::GeTensorPtr> weights = {coffePtr};
@@ -293,7 +300,7 @@ Status AvgPoolV2FusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNo
   if (constInputNodes.size() != 0) {
     constInput = constInputNodes[0];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
     return PARAM_INVALID;
   }
   constInput->GetOpDesc()->SetType(CONSTANTOP);
@@ -338,13 +345,14 @@ Status GenerateFilterFP16V2(const int64_t size, const float areaFactor, uint16_t
 Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   // avgpool node
   ge::NodePtr avgPoolNode = GetNodeFromMapping(PATTERN_AVGPOOL, mapping);
-  FUSION_PASS_CHECK(avgPoolNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolV2Node is null, fusion failed."),
+  FUSION_PASS_CHECK(avgPoolNode == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolV2Node is null, fusion failed."),
                     return PARAM_INVALID);
 
   // input of AvgPool
   ge::OpDescPtr avgPoolDesc = avgPoolNode->GetOpDesc();
   FUSION_PASS_CHECK(avgPoolDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolV2Node's OpDesc is null, fusion failed."),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolV2Node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::GeTensorDesc avgPoolInputTensor = avgPoolNode->GetOpDesc()->GetInputDesc(0);
@@ -370,12 +378,12 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     for (size_t i = 1; i <= 3; i++) {
       auto dim = dimInfo[i];
       if (PatternFusionUtil::IsUnknownShape(dim)) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolV2FusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimInfo is invalid, please check!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimInfo is invalid, please check!");
     return PARAM_INVALID;
   }
 
@@ -410,7 +418,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       stridesH = strides[1];
       stridesW = strides[2];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ksize or strides is invalid, please check!");
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ksize or strides is invalid, please check!");
       return PARAM_INVALID;
     }
   } else if (dataFormat == "NCHW") {
@@ -420,11 +428,11 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       stridesH = strides[2];
       stridesW = strides[3];
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "ksize or strides is invalid, please check!");
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ksize or strides is invalid, please check!");
       return PARAM_INVALID;
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dataFormat is invalid, please check!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dataFormat is invalid, please check!");
     return PARAM_INVALID;
   }
 
@@ -456,26 +464,29 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   ge::NodePtr preNode = preAnchorPtr0->GetOwnerNode();
 
   int64_t matrixSize = inputC * 1 * ksizeH * ksizeW;
-  FUSION_PASS_CHECK(matrixSize <= 0, OP_LOGE(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
+  FUSION_PASS_CHECK(matrixSize <= 0,
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matrixSize is Invalid"), return PARAM_INVALID);
 
   unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[matrixSize]());
-  FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                     return PARAM_INVALID);
 
   Status ret;
   ret = NnSet(matrixSize, UINT_NUM_ZERO, *reinterpret_cast<uint16_t*>(inputAssit.get()));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet failed."), return ret);
   vector<int64_t> assitDimInfoOrigin = {inputC, 1, ksizeH, ksizeW};
   if (!exclusive || padding == "VALID") {
     float areaFactor = 1.0 / (ksizeH * ksizeW);
     // generate one matrix
     ret = GenerateFilterFP16V2(matrixSize, areaFactor, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
   } else if (padding == "SAME") {
     float areaFactor = 1.0;
     // generate one matrix
     ret = GenerateFilterFP16V2(matrixSize, areaFactor, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
     // judge for unknown shape
     int64_t mulC = 0;
     vector<int64_t> dimMul = avgPoolNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
@@ -491,7 +502,8 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       }
     }
     ge::NodePtr mulNode = AddMul(graph, avgPoolNode, inputOriginFormat);
-    FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+    FUSION_PASS_CHECK(mulNode == nullptr,
+                      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                       return PARAM_INVALID);
     // judge input dims for unknown shape
     ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
@@ -505,12 +517,13 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       }
     }
     FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
   } else if (padding == "CALCULATED") {
     float areaFactor = 1.0;
     // generate one matrix
     ret = GenerateFilterFP16V2(matrixSize, areaFactor, *inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
     // judge for unknown shape
     int64_t mulC = 0;
     vector<int64_t> dimMul = avgPoolNode->GetOpDesc()->GetOutputDesc(0).GetShape().GetDims();
@@ -526,7 +539,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       }
     }
     ge::NodePtr mulNode = AddMul(graph, avgPoolNode, inputOriginFormat);
-    FUSION_PASS_CHECK(mulNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
+    FUSION_PASS_CHECK(mulNode == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, AddMul failed."),
                       return PARAM_INVALID);
     // judge input dims for unknown shape
     ge::GeTensorDesc inputDesc0 = mulNode->GetOpDesc()->GetInputDesc(0);
@@ -540,12 +553,13 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
       }
     }
     FUSION_PASS_CHECK(AddCoffe(graph, mulNode, padding, dimInfo, window, stride, pads) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AddCoffe failed."), return ret);
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padding is wrong, please check!");
     return PARAM_INVALID;
   }
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GenerateFilterFP16V2 failed."), return ret);
 
   GeTensorDesc tensorDesc;
   ge::GeShape assitShape(assitDimInfoOrigin);
@@ -568,7 +582,7 @@ Status AvgPoolV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   if (constInputNodes.size() != 0) {
     constInput = constInputNodes[0];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "constInputNodes is null, please check!");
     return PARAM_INVALID;
   }
   constInput->GetOpDesc()->SetType(CONSTANTOP);

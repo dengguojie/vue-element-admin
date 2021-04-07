@@ -31,6 +31,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 #include "tbe_fusion_pass_util.h"
+#include "error_util.h"
 
 namespace fe {
 static const std::string PATTEN_MATMUL = "batmatmul";
@@ -38,7 +39,8 @@ static const int32_t DIM_LIMIT = 2;
 vector<FusionPattern*> BatchMatmulFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("batchMatmulFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE("BatchMatmulFusionPass", "new pattern error"), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    CUBE_CALL_ERR_REPORT("BatchMatmulFusionPass", "new pattern error"), return patterns);
   pattern->AddOpDesc(PATTEN_MATMUL, {"BatchMatMul"}).SetOutput(PATTEN_MATMUL);
   patterns.push_back(pattern);
   return patterns;
@@ -46,7 +48,8 @@ vector<FusionPattern*> BatchMatmulFusionPass::DefinePatterns() {
 
 Status BatchMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr fused_node = GetNodeFromMapping(PATTEN_MATMUL, mapping);
-  FUSION_PASS_CHECK(fused_node == nullptr, OP_LOGE("BatchMatmulFusionPass", "Fusion GetNode Error"),
+  FUSION_PASS_CHECK(fused_node == nullptr,
+                    CUBE_CALL_ERR_REPORT("BatchMatmulFusionPass", "Fusion GetNode Error"),
                     return PARAM_INVALID);
   if (!CheckIsNeedFusion(fused_node)) {
     return SUCCESS;
@@ -54,11 +57,12 @@ Status BatchMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   ge::NodePtr matmul_node = nullptr;
   auto ret = CreateMatMulNode(graph, fused_node, matmul_node);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "CreateMatMulNode FAIL"), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMatMulNode FAIL"), return FAILED);
   ret = AddEdgeForMatMulNode(fused_node, matmul_node);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "AddEdgeForMatMulNode FAIL"), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT("MatmulFusionPass", "AddEdgeForMatMulNode FAIL"), return FAILED);
   ret = RemoveFusedNode(graph, fused_node);
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "RemoveFusedNode FAIL"), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT("MatmulFusionPass", "RemoveFusedNode FAIL"), return FAILED);
   fusionNodes.push_back(matmul_node);
   return SUCCESS;
 }
@@ -89,7 +93,8 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   ge::Format data_format = input_desc.GetFormat();
   ge::DataType data_type = input_desc.GetDataType();
   auto ret = new_desc->AddInputDesc(GeTensorDesc(input_shape, data_format, data_type));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "CreateMulNode AddInputDesc one fail."), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMulNode AddInputDesc one fail."), return FAILED);
   auto new_input_desc1 = new_desc->GetInputDesc(0);
   new_input_desc1.SetOriginShape(origin_input_shape);
   new_input_desc1.SetOriginDataType(data_type);
@@ -102,7 +107,8 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   ge::Format data_format1 = input_desc1.GetFormat();
   ge::DataType data_type1 = input_desc1.GetDataType();
   ret = new_desc->AddInputDesc(GeTensorDesc(input_shape1, data_format1, data_type1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "CreateMulNode AddinputDesc two fail."), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMulNode AddinputDesc two fail."), return FAILED);
   auto new_input_desc2 = new_desc->GetInputDesc(1);
   new_input_desc2.SetOriginShape(origin_input_shape1);
   new_input_desc2.SetOriginDataType(data_type1);
@@ -115,7 +121,8 @@ Status BatchMatmulFusionPass::CreateMatMulNode(ge::ComputeGraph& graph, ge::Node
   ge::Format output_format = output_desc.GetFormat();
   ge::DataType output_dtype = output_desc.GetDataType();
   ret = new_desc->AddOutputDesc(GeTensorDesc(output_shape, output_format, output_dtype));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "CreateMulNode AddoutputDesc fail."), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT("MatmulFusionPass", "CreateMulNode AddoutputDesc fail."), return FAILED);
   auto new_output_desc = new_desc->GetOutputDesc(0);
   new_output_desc.SetOriginShape(origin_output_shape);
   new_output_desc.SetOriginDataType(output_dtype);
@@ -136,21 +143,25 @@ Status BatchMatmulFusionPass::AddEdgeForMatMulNode(ge::NodePtr& fused_node, ge::
   auto in_data_anchor = fused_node->GetInDataAnchor(0);
   auto peer_out_anchor = in_data_anchor->GetPeerOutAnchor();
   auto ret = ge::GraphUtils::AddEdge(peer_out_anchor, matmul_node->GetInDataAnchor(0));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "AddEdg to MatMulNode fail"), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT("MatmulFusionPass", "AddEdg to MatMulNode fail"), return FAILED);
 
   auto in_data_anchor1 = fused_node->GetInDataAnchor(1);
   auto peer_out_anchor1 = in_data_anchor1->GetPeerOutAnchor();
   ret = ge::GraphUtils::AddEdge(peer_out_anchor1, matmul_node->GetInDataAnchor(1));
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "AddEdg to MatMulNode fail"), return FAILED);
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT("MatmulFusionPass", "AddEdg to MatMulNode fail"), return FAILED);
 
   auto out_data_anchor = fused_node->GetOutDataAnchor(0);
   auto peer_indata_anchors = out_data_anchor->GetPeerInDataAnchors();
   for (auto in_data_anchor : peer_indata_anchors) {
     ret = ge::GraphUtils::RemoveEdge(fused_node->GetOutDataAnchor(0), in_data_anchor);
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "AddEdg to MatMulNode removeEdge fail"),
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      CUBE_INNER_ERR_REPORT("MatmulFusionPass", "AddEdg to MatMulNode removeEdge fail"),
                       return FAILED);
     ret = ge::GraphUtils::AddEdge(matmul_node->GetOutDataAnchor(0), in_data_anchor);
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE("MatmulFusionPass", "AddEdg to MatMulNode addEdge fail"), return FAILED);
+    FUSION_PASS_CHECK(ret != SUCCESS,
+                      CUBE_INNER_ERR_REPORT("MatmulFusionPass", "AddEdg to MatMulNode addEdge fail"), return FAILED);
   }
   return SUCCESS;
 }
@@ -167,8 +178,8 @@ Status BatchMatmulFusionPass::RemoveFusedNode(ge::ComputeGraph& graph, ge::NodeP
       out_anchor->UnlinkAll();
     }
   }
-
-  FUSION_PASS_CHECK(graph.RemoveNode(fused_node) != SUCCESS, OP_LOGE("MatmulFusionPass", "RemoveFusedNode error"),
+  FUSION_PASS_CHECK(graph.RemoveNode(fused_node) != SUCCESS,
+                    CUBE_INNER_ERR_REPORT("MatmulFusionPass", "RemoveFusedNode error"),
                     return FAILED);
   return SUCCESS;
 }

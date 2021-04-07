@@ -33,6 +33,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "securec.h"
+#include "error_util.h"
 
 using namespace std;
 using namespace ge;
@@ -89,7 +90,8 @@ vector<FusionPattern*> AvgPool3DGradFusionPass::DefinePatterns() {
   OP_LOGI("get into avgpool3DGrad define patterns...");
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (nothrow) FusionPattern("AvgPool3DGradFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "New a pattern obj failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "New a pattern obj failed."),
+    return patterns);
   pattern->AddOpDesc(kPatternAvgPool3DGrad, {"AvgPool3DGrad"}).SetOutput(kPatternAvgPool3DGrad);
   patterns.push_back(pattern);
   return patterns;
@@ -102,9 +104,8 @@ bool DeleteNodeFromGraph(ComputeGraph& graph, NodePtr& node_ptr)
       in_anchor->UnlinkAll();
     }
   }
-
   FUSION_PASS_CHECK(graph.RemoveNode(node_ptr) != SUCCESS,
-                    OP_LOGE("avgpool3d_grad", "remove node %s failed.", node_ptr->GetName().c_str()),
+                    CUBE_CALL_ERR_REPORT("avgpool3d_grad", "remove node %s failed.", node_ptr->GetName().c_str()),
                     return false);
   return true;
 }
@@ -156,7 +157,7 @@ void GenMultiplies(const vector<int64_t> &input_shape, const vector<int64_t> &gr
             tmp16 = tmp;
             for (int c0 = 0; c0 < grads_shape[5]; ++c0) {
               FUSION_PASS_CHECK(cnt >= size,
-                                OP_LOGE("Multiplier size exceed"),
+                                CUBE_CALL_ERR_REPORT("avgpool3d_grad", "Multiplier size exceed"),
                                 return);
               data[cnt ++] = tmp16.val;
             }
@@ -181,7 +182,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   OP_LOGI("get into avgpool_3d_grad fusion pass..");
   ge::NodePtr node_ptr = GetNodeFromMapping("AvgPool3DGrad", mapping);
   FUSION_PASS_CHECK(node_ptr == nullptr,
-                    OP_LOGE(kOpType.c_str(), "AvgPool3DGrad node ptr is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(kOpType.c_str(), "AvgPool3DGrad node ptr is null, fusion failed."),
                     return PARAM_INVALID);
 
   std::string fusion_op_type = "AvgPool3DGradD";
@@ -199,7 +200,8 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   // get opdesc pointer
   ge::OpDescPtr op_desc = fusion_node_ptr->GetOpDesc();
   FUSION_PASS_CHECK(op_desc == nullptr,
-                    OP_LOGE(kOpType.c_str(), "AvgPool3DGrad is null, fusion failed"), return PARAM_INVALID);
+                    CUBE_CALL_ERR_REPORT(kOpType.c_str(), "AvgPool3DGrad is null, fusion failed"),
+                    return PARAM_INVALID);
 
   vector<int64_t> ksize;
   vector<int64_t> strides;
@@ -221,16 +223,18 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
 
   // check attributes' size
   FUSION_PASS_CHECK(orig_input_shape.size() != kOriShapeDim,
-                    OP_LOGE(kOpType.c_str(), "orig_input_shape dim must be 5."), return PARAM_INVALID);
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "orig_input_shape dim must be 5."), return PARAM_INVALID);
   FUSION_PASS_CHECK(format_str != "NDHWC" && format_str != "NCDHW",
-                    OP_LOGE(kOpType.c_str(), "format should be NDHWC or NCDHW."), return PARAM_INVALID);
-  FUSION_PASS_CHECK(ksize.size() != kKsizeDim, OP_LOGE(kOpType.c_str(), "ksize len should be 3."),
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(),
+                                            "format should be NDHWC or NCDHW."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(ksize.size() != kKsizeDim,
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "ksize len should be 3."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(strides.size() != kStridesDim,
-                    OP_LOGE(kOpType.c_str(), "strides len should be 5."),
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "strides len should be 5."),
                     return PARAM_INVALID);
   FUSION_PASS_CHECK(pads.size() != kPadsDim,
-                    OP_LOGE(kOpType.c_str(), "pads len should be 6."),
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "pads len should be 6."),
                     return PARAM_INVALID);
 
   // format to NDHWC
@@ -251,8 +255,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
     FUSION_PASS_CHECK(grads_ori_shape_vec_formated[1] != 1 ||
                         grads_ori_shape_vec_formated[2] != 1 ||
                         grads_ori_shape_vec_formated[3] != 1,
-                      OP_LOGE(kOpType.c_str(),
-                              "global mode, grads shape is incorrected."),
+                      CUBE_INNER_ERR_REPORT(kOpType.c_str(), "global mode, grads shape is incorrected."),
                       return PARAM_INVALID);
     return SUCCESS;
   }
@@ -268,17 +271,18 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                                     1, kC0, kC0};
   int64_t filter_size = 1;
   for (auto i: filter_shape_vec) {
-    FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(i), OP_LOGE("input:ksize has an unknown shape."),
+    FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(i),
+                      CUBE_INNER_ERR_REPORT(kOpType.c_str(), "input:ksize has an unknown shape."),
                       return NOT_CHANGED);
     FUSION_PASS_CHECK(filter_size == 0 || filter_size * i / filter_size != i,
-                      OP_LOGE("input:filter input size exceed INT64_MAX."),
+                      CUBE_INNER_ERR_REPORT(kOpType.c_str(), "input:filter input size exceed INT64_MAX."),
                       return NOT_CHANGED);
     filter_size *= i;
   }
   GeTensorPtr filter_ptr{nullptr};
   shared_ptr<uint16_t> filter_mem(new (nothrow) uint16_t[filter_size],
                                     default_delete<uint16_t[]>());
-  FUSION_PASS_CHECK(filter_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "Filter is NULL."),
+  FUSION_PASS_CHECK(filter_mem.get() == nullptr, CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Filter is NULL."),
                     return PARAM_INVALID);
 
   GenFilter(filter_size, val, filter_mem.get());
@@ -306,17 +310,19 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
                                        kC0};
     int64_t grads_size = 1;
     for (auto i: grads_shape_vec) {
-      FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(i), OP_LOGE("input:grads has an unknown shape."),
+      FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(i),
+                        CUBE_INNER_ERR_REPORT(kOpType.c_str(), "input:grads has an unknown shape."),
                         return NOT_CHANGED);
       FUSION_PASS_CHECK(grads_size == 0 || grads_size * i / grads_size != i,
-                        OP_LOGE("input:grads input size exceed INT64_MAX."),
+                        CUBE_INNER_ERR_REPORT(kOpType.c_str(), "input:grads input size exceed INT64_MAX."),
                         return NOT_CHANGED);
       grads_size *= i;
     }
     GeTensorPtr multiplier_ptr;
     shared_ptr<uint16_t> multiplies_mem(new (nothrow) uint16_t[grads_size],
                                       default_delete<uint16_t[]>());
-    FUSION_PASS_CHECK(multiplies_mem.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "multiplies is NULL."),
+    FUSION_PASS_CHECK(multiplies_mem.get() == nullptr,
+                      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "multiplies is NULL."),
                       return PARAM_INVALID);
     GenMultiplies(orig_input_shape_formated, grads_shape_vec, ksize, strides, pads, ceil_mode, count_include_pad, grads_size, multiplies_mem.get());
     GeShape mul_shape(grads_shape_vec);
@@ -335,7 +341,7 @@ Status AvgPool3DGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, ve
   // set filter and mul inputas constant input
   auto const_input_nodes = OpDescUtils::GetConstInputs(fusion_node_ptr);
   FUSION_PASS_CHECK(const_input_nodes.size() <= 0,
-                    OP_LOGE(kOpType.c_str(), "GetConstInputs Error Size: %u", const_input_nodes.size()),
+                    CUBE_INNER_ERR_REPORT(kOpType.c_str(), "GetConstInputs Error Size: %u", const_input_nodes.size()),
                     return PARAM_INVALID);
   for (int i = 0; i < const_input_nodes.size(); i++) {
     NodePtr const_input = const_input_nodes[i];

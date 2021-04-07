@@ -29,6 +29,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 #include "graph/utils/graph_utils.h"
+#include "error_util.h"
 
 namespace fe {
 static const string PATTERN_MATMUL = "matmul";
@@ -116,25 +117,25 @@ Status MatmulCastFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
     return NOT_CHANGED;
   }
   if (DoFusion(matmulNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "matmul and cast fusion failed!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "matmul and cast fusion failed!");
     return FAILED;
   }
   ge::GeTensorDesc castOutputDesc = castNode->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(matmulNode->GetOpDesc()->UpdateOutputDesc(0, castOutputDesc) != ge::GRAPH_SUCCESS,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to update output desc of MatMul node[%s].",
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Fail to update output desc of MatMul node[%s].",
                             matmulNode->GetOpDesc()->GetName().c_str()),
                     return FAILED);
   if (PatternFusionUtil::RemoveInputEdge(castNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
     return FAILED;
   }
   if (LinkOutputEdgeWithoutControl(castNode, matmulNode) == FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "link output edge Failed.");
     return FAILED;
   }
   // link matmul output with cast output and remove cast node
   if (graph.RemoveNode(castNode) == ge::GRAPH_FAILED) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "cast node remove failed");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "cast node remove failed");
     return FAILED;
   }
 
@@ -147,12 +148,12 @@ Status MatmulCastFusionPass::DoFusion(ge::NodePtr matmulNode) {
   std::shared_ptr<ge::OpDesc> matmulOp = matmulNode->GetOpDesc();
   FUSION_PASS_CHECK(matmulOp == nullptr, OP_LOGD(FUSED_OP_TYPE.c_str(), "matmul op is null"), return FAILED);
   if (ge::AttrUtils::SetInt(matmulOp, OUT_T, ge::DT_FLOAT) == false) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "set Matmul[%s]'s out_T DT_FLOAT failed", matmulOp->GetName().c_str());
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set Matmul[%s]'s out_T DT_FLOAT failed", matmulOp->GetName().c_str());
     return FAILED;
   }
 
   if (ge::AttrUtils::SetBool(matmulOp, DATA_TYPE_FIXED, true) == false) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "set Matmul[%s]'s DataTypeFixed true failed", matmulOp->GetName().c_str());
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set Matmul[%s]'s DataTypeFixed true failed", matmulOp->GetName().c_str());
     return FAILED;
   }
 
@@ -164,18 +165,18 @@ Status MatmulCastFusionPass::DoFusion(ge::NodePtr matmulNode) {
 Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(ge::NodePtr oldNode, ge::NodePtr newNode) {
   ge::OutDataAnchorPtr newOutDataAnchor = newNode->GetOutDataAnchor(0);
   if (newOutDataAnchor == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[newOutDataAnchor] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[newOutDataAnchor] must not be null.");
     return fe::PARAM_INVALID;
   }
   for (ge::OutDataAnchorPtr &anchor : oldNode->GetAllOutDataAnchors()) {
     if (anchor == nullptr) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[anchor] must not be null.");
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[anchor] must not be null.");
       return fe::PARAM_INVALID;
     }
     for (ge::InDataAnchorPtr &dstAnchor : anchor->GetPeerInDataAnchors()) {
       if (ge::GraphUtils::RemoveEdge(anchor, dstAnchor) != ge::GRAPH_SUCCESS ||
           ge::GraphUtils::AddEdge(newOutDataAnchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Replace out data anchor Failed.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace out data anchor Failed.");
         return FAILED;
       }
     }
@@ -185,7 +186,7 @@ Status MatmulCastFusionPass::LinkOutputEdgeWithoutControl(ge::NodePtr oldNode, g
     for (ge::InControlAnchorPtr &dstAnchor : outControlAnchor->GetPeerInControlAnchors()) {
       if (ge::GraphUtils::RemoveEdge(outControlAnchor, dstAnchor) != ge::GRAPH_SUCCESS ||
           ge::GraphUtils::AddEdge(newNode->GetOutControlAnchor(), dstAnchor) != ge::GRAPH_SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "Replace input control anchor Failed.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace input control anchor Failed.");
         return FAILED;
       }
     }

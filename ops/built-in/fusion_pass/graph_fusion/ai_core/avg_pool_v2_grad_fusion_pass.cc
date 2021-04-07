@@ -32,6 +32,7 @@
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "error_util.h"
 
 using namespace ge;
 namespace fe {
@@ -48,7 +49,7 @@ Status AvgPoolV2GradFusionPass::WindowedOutputSizeV2(int32_t input, int32_t kSiz
   int32_t tmpPadBefor = 0;
   int32_t tmpPadAfter = 0;
   if (stride <= 0) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "stride less or equal than zero");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "stride less or equal than zero");
     return FAILED;
   }
 
@@ -71,7 +72,7 @@ Status AvgPoolV2GradFusionPass::WindowedOutputSizeV2(int32_t input, int32_t kSiz
     tmpPadBefor = pad_1;
     tmpPadAfter = tmpPadneed - tmpPadBefor;
   } else {
-    OP_LOGE("AvgPoolV2Grad padding arg not surport padding model");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad padding arg not surport padding model");
     return FAILED;
   }
 
@@ -86,18 +87,18 @@ Status AvgPoolV2GradFusionPass::TransposeNCHW2NHWCV2(int32_t nOutput, int32_t hO
   uint64_t len = static_cast<uint64_t>(nOutput) * static_cast<uint64_t>(hOutput) * static_cast<uint64_t>(wOutput) *
                  static_cast<uint64_t>(cOutput);
   if ((len > INT_MAX) || (len <= 0)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "malloc memory too large");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "malloc memory too large");
     return FAILED;
   }
   uint16_t* tmp = new (std::nothrow) uint16_t[len];
   if (tmp == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "malloc memory failed");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "malloc memory failed");
     return FAILED;
   }
   auto retMem = memset_s(tmp, len * sizeof(uint16_t), 0, len * sizeof(uint16_t));
   if (retMem != EOK) {
     delete[] tmp;
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "memst failed!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "memst failed!");
     return FAILED;
   }
   for (int32_t n = 0; n < nOutput; n++) {
@@ -112,7 +113,7 @@ Status AvgPoolV2GradFusionPass::TransposeNCHW2NHWCV2(int32_t nOutput, int32_t hO
   }
   errno_t ret = memcpy_s(avgpoolout, len * sizeof(uint16_t), tmp, len * sizeof(uint16_t));
   if (ret != EOK) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "memcpy_s fail!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "memcpy_s fail!");
     delete[] tmp;
     return FAILED;
   }
@@ -137,7 +138,7 @@ Status AvgPoolV2GradFusionPass::AvgValueTableGenV2(vector<int64_t> dimInfo, vect
   // dimInfo must NHWC
   if (dimInfo.size() != len_size || ksize.size() != len_size || strides.size() != len_size ||
         pads.size() != len_size) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "dimInfo ksize strides and pads must list of 4 element.");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimInfo ksize strides and pads must list of 4 element.");
     return FAILED;
   }
   n_input = dimInfo[0];
@@ -149,7 +150,7 @@ Status AvgPoolV2GradFusionPass::AvgValueTableGenV2(vector<int64_t> dimInfo, vect
     h_ksize = ksize[1];
     w_ksize = ksize[2];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad ksize error");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad ksize error");
     return FAILED;
   }
 
@@ -157,7 +158,7 @@ Status AvgPoolV2GradFusionPass::AvgValueTableGenV2(vector<int64_t> dimInfo, vect
     h_stride = strides[1];
     w_stride = strides[2];
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad strides arg error");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolV2Grad strides arg error");
     return FAILED;
   }
   int32_t nOutput = n_input;
@@ -273,7 +274,7 @@ Status AvgPoolV2GradFusionPass::KernelGenV2(int32_t h_ksize, int32_t w_ksize, in
 vector<FusionPattern*> AvgPoolV2GradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AvgPoolV2GradFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_AVGPOOLV2GRAD, {AVGPOOLV2GRAD}).SetOutput(PATTERN_AVGPOOLV2GRAD);
   patterns.push_back(pattern);
@@ -290,7 +291,7 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   // get node pointer
   ge::NodePtr avpPoolGradfusedNode = GetNodeFromMapping(PATTERN_AVGPOOLV2GRAD, mapping);
   FUSION_PASS_CHECK(avpPoolGradfusedNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "avpPoolGradfusedNode is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avpPoolGradfusedNode is null, fusion failed."),
                     return PARAM_INVALID);
 
   std::vector<PassAttrInfo> avgPoolGradPassInfo;
@@ -308,7 +309,7 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   // get opdesc pointer
   ge::OpDescPtr avgPoolGradDesc = fusion_node->GetOpDesc();
   FUSION_PASS_CHECK(avgPoolGradDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "avgPoolGradDesc is null, fusion failed."), return PARAM_INVALID);
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "avgPoolGradDesc is null, fusion failed."), return PARAM_INVALID);
   string dataFormat;
   vector<int64_t> ksize;
   vector<int64_t> strides;
@@ -416,25 +417,26 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     for (size_t i = 0; i <= 3; i++) {
       auto dim = avgPoolDimInfo[i];
       if (PatternFusionUtil::IsUnknownShape(dim)) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "AvgPoolV2GradFusionPass cannot be applied for unknown shape.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AvgPoolV2GradFusionPass cannot be applied for unknown shape.");
         return NOT_CHANGED;
       }
     }
     int64_t valueTableSize = avgPoolDimInfo[0] * avgPoolDimInfo[1] * avgPoolDimInfo[2] * avgPoolDimInfo[3];
 
     FUSION_PASS_CHECK((((avgPoolDimInfo[1] * avgPoolDimInfo[2] * avgPoolDimInfo[3]) == 0) || (valueTableSize <= 0)),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "valueTableSize have 0 element"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "valueTableSize have 0 element"), return FAILED);
     FUSION_PASS_CHECK(
         (avgPoolDimInfo[0] != valueTableSize / (avgPoolDimInfo[1] * avgPoolDimInfo[2] * avgPoolDimInfo[3])),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "valueTableSize overlap , over int64"), return FAILED);
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "valueTableSize overlap , over int64"), return FAILED);
 
     unique_ptr<uint16_t[]> inputAssit(new (std::nothrow) uint16_t[valueTableSize]());
-    FUSION_PASS_CHECK(inputAssit.get() == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
+    FUSION_PASS_CHECK(inputAssit.get() == nullptr,
+                      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputAssit is NULL"),
                       return PARAM_INVALID);
     vector<int64_t> avgPoolAssitDimInfo;
     Status ret = AvgValueTableGenV2(origInputShapeV, ksize, strides, padding, pads, dataFormat, ceil_mode, exclusive,
                                     avgPoolAssitDimInfo, inputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "AssitHelp failed."), return ret);
     ge::GeShape avpPoolAssitShape(avgPoolAssitDimInfo);
     ge::GeTensorDesc tensorDesc(GeShape(), ge::FORMAT_NHWC, ge::DT_FLOAT16);
     if (dataFormat == "NHWC") {
@@ -469,12 +471,12 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     int64_t kernelTableSize = origInputShapeV[3] * ksize[1] * ksize[2];
     if (((ksize[1] * ksize[2]) == 0) || (kernelTableSize <= 0)){
       AvgTableAssitPtr = nullptr;
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "kernelTableSize have O element");
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelTableSize have O element");
       return FAILED;
     }
     if (origInputShapeV[3] != kernelTableSize / (ksize[1] * ksize[2])){
       AvgTableAssitPtr = nullptr;
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "kernelTableSize overlap , over int64");
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelTableSize overlap , over int64");
       return FAILED;
     }
     ge::GeTensorPtr kernelTableassitPtr = nullptr;
@@ -482,12 +484,12 @@ Status AvgPoolV2GradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
     unique_ptr<uint16_t[]> kernelTableinputAssit(new (std::nothrow) uint16_t[kernelTableSize]());
     if (kernelTableinputAssit.get() == nullptr) {
       AvgTableAssitPtr = nullptr;
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "kernelTableinputAssit is NULL");
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelTableinputAssit is NULL");
       return PARAM_INVALID;
     }
     vector<int64_t> kernelTableassitDimInfo;
     ret = KernelGenV2(ksize[1], ksize[2], origInputShapeV[3], kernelTableassitDimInfo, kernelTableinputAssit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "kernelTable matrix AssitHelp failed."),
+    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "kernelTable matrix AssitHelp failed."),
                       return ret);
     kernelTableassitDimInfo.push_back((int64_t)ksize[1]);
     kernelTableassitDimInfo.push_back((int64_t)ksize[2]);

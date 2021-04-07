@@ -34,6 +34,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "error_util.h"
 
 using namespace ge;
 namespace fe {
@@ -49,7 +50,8 @@ Status AvgPoolGradFusionPass::WindowedOutputSize(const int32_t input, const int3
   int32_t tmp_padneed = 0;
   int32_t tmp_pad_befor = 0;
   int32_t tmp_pad_after = 0;
-  FUSION_PASS_CHECK(stride <= 0, OP_LOGE(kFusedOpType.c_str(), "Stride less or equal than zero"), return FAILED);
+  FUSION_PASS_CHECK(stride <= 0,
+    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Stride less or equal than zero"), return FAILED);
 
   if (padding == "VALID") {
     tmp_output = (input - k_size + stride) / stride;
@@ -61,7 +63,7 @@ Status AvgPoolGradFusionPass::WindowedOutputSize(const int32_t input, const int3
     tmp_pad_befor = tmp_padneed / 2;
     tmp_pad_after = tmp_padneed - tmp_pad_befor;
   } else {
-    OP_LOGE(kFusedOpType.c_str(), "AvgPoolGrad padding arg not surport padding model");
+    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "AvgPoolGrad padding arg not surport padding model");
     return FAILED;
   }
   output = tmp_output;
@@ -74,11 +76,13 @@ Status AvgPoolGradFusionPass::TransposeNCHW2NHWC(const int32_t n_output, const i
                                                  const int32_t c_output, uint16_t* avgpoolout) {
   uint64_t len = static_cast<uint64_t>(n_output) * static_cast<uint64_t>(h_output) * static_cast<uint64_t>(w_output) *
                  static_cast<uint64_t>(c_output);
-  FUSION_PASS_CHECK((len > INT_MAX) || (len <= 0), OP_LOGE(kFusedOpType.c_str(), "Cannot malloc too large memory!"),
+  FUSION_PASS_CHECK((len > INT_MAX) || (len <= 0),
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Cannot malloc too large memory!"),
                     return FAILED);
 
   uint16_t* tmp = new (std::nothrow) uint16_t[len];
-  FUSION_PASS_CHECK(tmp == nullptr, OP_LOGE(kFusedOpType.c_str(), "Run malloc memory failed!"), return FAILED);
+  FUSION_PASS_CHECK(tmp == nullptr,
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Run malloc memory failed!"), return FAILED);
   for (int32_t n = 0; n < n_output; n++) {
     for (int32_t h = 0; h < h_output; h++) {
       for (int32_t w = 0; w < w_output; w++) {
@@ -91,7 +95,7 @@ Status AvgPoolGradFusionPass::TransposeNCHW2NHWC(const int32_t n_output, const i
   }
   errno_t ret = memcpy_s(avgpoolout, len * sizeof(uint16_t), tmp, len * sizeof(uint16_t));
   if (ret != EOK) {
-    OP_LOGE(kFusedOpType.c_str(), "Run memcpy_s fail!");
+    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Run memcpy_s fail!");
     delete[] tmp;
     return FAILED;
   }
@@ -117,14 +121,14 @@ Status AvgPoolGradFusionPass::AvgValueTableGen(const vector<int64_t> dim_info, c
     h_ksize = k_size[1];
     w_ksize = k_size[2];
   } else {
-    OP_LOGE(kFusedOpType.c_str(), "AvgPoolGrad ksize error");
+    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "AvgPoolGrad ksize error");
     return FAILED;
   }
   if ((strides[0] == 1) || (strides[3] == 1)) {
     h_stride = strides[1];
     w_stride = strides[2];
   } else {
-    OP_LOGE(kFusedOpType.c_str(), "AvgPoolGrad strides arg error");
+    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "AvgPoolGrad strides arg error");
     return FAILED;
   }
   int32_t n_output = n_input;
@@ -134,14 +138,14 @@ Status AvgPoolGradFusionPass::AvgValueTableGen(const vector<int64_t> dim_info, c
   int32_t pad_top = 0;
   int32_t pad_bottom = 0;
   FUSION_PASS_CHECK(WindowedOutputSize(h_input, h_ksize, h_stride, padding, h_output, pad_top, pad_bottom) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "WindowedOutputSize failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "WindowedOutputSize failed"), return FAILED);
   int32_t w_output = 0;
   int32_t pad_left = 0;
   int32_t pad_right = 0;
   int32_t add_flag_h = 0;
   int32_t add_flag_w = 0;
   FUSION_PASS_CHECK(WindowedOutputSize(w_input, w_ksize, w_stride, padding, w_output, pad_left, pad_right) != SUCCESS,
-                    OP_LOGE(kFusedOpType.c_str(), "WindowedOutputSize failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "WindowedOutputSize failed"), return FAILED);
   int64_t out_offset_point = 0;
   for (int n = 0; n < n_output; n++) {
     for (int c = 0; c < c_output; c++) {
@@ -175,7 +179,7 @@ Status AvgPoolGradFusionPass::AvgValueTableGen(const vector<int64_t> dim_info, c
   }
   if (data_format == "NHWC") {
     FUSION_PASS_CHECK(TransposeNCHW2NHWC(n_output, h_output, w_output, c_output, output) != SUCCESS,
-                      OP_LOGE(kFusedOpType.c_str(), "TransposeNCHW2NHWC failed"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "TransposeNCHW2NHWC failed"), return FAILED);
   }
   if (data_format == "NHWC") {
     assit_dim_info = {n_output, h_output, w_output, c_output};
@@ -190,7 +194,8 @@ Status KernelGen(const int32_t h_ksize, const int32_t w_ksize, const int32_t c_i
   // this 6D is not safe ,because gragh donot know this info
   // from depthwise, filter is HWNC, but ge get shape by NHWC, so, plugin set format HWNC.
   int64_t len = static_cast<int64_t>(h_ksize) * static_cast<int64_t>(w_ksize) * static_cast<int64_t>(c_input);
-  FUSION_PASS_CHECK(len > kernel_table_size, OP_LOGE(kPatternAvgPoolGrad.c_str(), "Access kernel_table_size overflow."),
+  FUSION_PASS_CHECK(len > kernel_table_size,
+                    CUBE_INNER_ERR_REPORT(kPatternAvgPoolGrad.c_str(), "Access kernel_table_size overflow."),
                     return FAILED);
   fp16_t tmp;
   tmp.val = 0;
@@ -227,7 +232,8 @@ Status KernelGenDynamic(const vector<int64_t> shape, const float areaFactor, uin
 vector<FusionPattern*> AvgPoolGradFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("AvgPoolGradFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(kFusedOpType.c_str(), "new a pattern object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "new a pattern object failed."), return patterns);
   pattern->AddOpDesc(kPatternAvgPoolGrad, {"AvgPoolGrad"}).SetOutput(kPatternAvgPoolGrad);
   patterns.push_back(pattern);
   return patterns;
@@ -243,12 +249,13 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   // get node pointer
   NodePtr avg_pool_grad_fused_node = GetNodeFromMapping(kPatternAvgPoolGrad, mapping);
   FUSION_PASS_CHECK(avg_pool_grad_fused_node == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "Pointer avg_pool_grad_fused_node is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(),
+                                          "Pointer avg_pool_grad_fused_node is null, fusion failed."),
                     return PARAM_INVALID);
   // get opdesc pointer
   OpDescPtr avg_pool_grad_desc = avg_pool_grad_fused_node->GetOpDesc();
   FUSION_PASS_CHECK(avg_pool_grad_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "Pointer avg_pool_grad_desc is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "Pointer avg_pool_grad_desc is null, fusion failed."),
                     return PARAM_INVALID);
   string data_format;
   vector<int64_t> k_size;
@@ -259,25 +266,26 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   // data_format is optional
   AttrUtils::GetStr(avg_pool_grad_desc, "data_format", data_format);
   FUSION_PASS_CHECK(!AttrUtils::GetListInt(avg_pool_grad_desc, "ksize", k_size),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr ksize failed."), return PARAM_INVALID);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Get attr ksize failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(!AttrUtils::GetListInt(avg_pool_grad_desc, "strides", strides),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr strides failed."), return PARAM_INVALID);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Get attr strides failed."), return PARAM_INVALID);
   FUSION_PASS_CHECK(!AttrUtils::GetStr(avg_pool_grad_desc, "padding", padding),
-                    OP_LOGE(kFusedOpType.c_str(), "Get attr padding failed."), return PARAM_INVALID);
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Get attr padding failed."), return PARAM_INVALID);
 
   // get const org_input_shape desc, dtype, format, dims
   InDataAnchorPtr avg_pool_grad_const_anchor_ptr0 = avg_pool_grad_fused_node->GetInDataAnchor(0);
   FUSION_PASS_CHECK(avg_pool_grad_const_anchor_ptr0 == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "Pointer avg_pool_grad_const_anchor_ptr0 is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(),
+                                         "Pointer avg_pool_grad_const_anchor_ptr0 is null, fusion failed."),
                     return PARAM_INVALID);
   OutDataAnchorPtr const_anchor_ptr = avg_pool_grad_const_anchor_ptr0->GetPeerOutAnchor();
   FUSION_PASS_CHECK(const_anchor_ptr == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "Pointer const_anchor_ptr is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "Pointer const_anchor_ptr is null, fusion failed."),
                     return PARAM_INVALID);
   NodePtr const_node = const_anchor_ptr->GetOwnerNode();
   auto const_node_desc = const_node->GetOpDesc();
   FUSION_PASS_CHECK(const_node_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "Pointer const_node_desc is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "Pointer const_node_desc is null, fusion failed."),
                     return PARAM_INVALID);
   GeTensorDesc org_input_shape_tensor = const_node_desc->GetOutputDesc(0);
   DataType data_type = org_input_shape_tensor.GetDataType();
@@ -295,7 +303,8 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                     return NOT_CHANGED);
   int32_t* orig_input_shape_const_tensor_ptr = (int32_t*)orig_input_shape_const_tensor.GetData();
   FUSION_PASS_CHECK(PatternFusionUtil::IsUnknownShape(dim_info[0]),
-                    OP_LOGE(kFusedOpType.c_str(), "AvgPoolGradFusionPass cannot be applied for unknown shape."),
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(),
+                                          "AvgPoolGradFusionPass cannot be applied for unknown shape."),
                     return GRAPH_FAILED);
   FUSION_PASS_CHECK(dim_info[0] != 4, OP_LOGW(kFusedOpType.c_str(), "The orig_input_shape must be list of 4."),
                     return NOT_CHANGED);
@@ -303,7 +312,7 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
   // gen avgtable matrix
   auto avg_pool_grad_fused_node_desc = avg_pool_grad_fused_node->GetOpDesc();
   FUSION_PASS_CHECK(avg_pool_grad_fused_node_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "Pointer const_node_desc is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "Pointer const_node_desc is null, fusion failed."),
                     return PARAM_INVALID);
   GeTensorDesc avg_pool_input_shape_tensor = avg_pool_grad_fused_node_desc->GetInputDesc(1);
   GeShape avg_pool_shape = avg_pool_input_shape_tensor.GetShape();
@@ -421,12 +430,13 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
         OP_LOGW(kFusedOpType.c_str(), "The value_table_size overlap , over int64"), return NOT_CHANGED);
 
     unique_ptr<uint16_t> input_assit(new (std::nothrow) uint16_t[value_table_size]());
-    FUSION_PASS_CHECK(input_assit.get() == nullptr, OP_LOGE(kFusedOpType.c_str(), "The input_assit is NULL"),
+    FUSION_PASS_CHECK(input_assit.get() == nullptr,
+                      CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The input_assit is NULL"),
                       return PARAM_INVALID);
     vector<int64_t> avg_pool_assit_dim_info;
     ret = AvgValueTableGen(orig_input_shape_v, k_size, strides, padding, data_format, avg_pool_assit_dim_info,
                                   input_assit.get());
-    FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "AssitHelp failed."), return ret);
+    FUSION_PASS_CHECK(ret != SUCCESS, CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "AssitHelp failed."), return ret);
     GeShape avg_pool_assit_shape(avg_pool_assit_dim_info);
     GeTensorDesc tensor_desc(GeShape(), FORMAT_NHWC, DT_FLOAT16);
     if (data_format == "NHWC") {
@@ -446,12 +456,14 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
         return PARAM_INVALID);
     vector<GeTensorPtr> avg_pool_grad_weights = {avg_table_assit_ptr};
     ret = OpDescUtils::SetWeights(avg_pool_grad_fused_node, avg_pool_grad_weights);
-    FUSION_PASS_CHECK(ret != GRAPH_SUCCESS, OP_LOGE(kFusedOpType.c_str(), "add mean matrix failed."), return ret);
+    FUSION_PASS_CHECK(ret != GRAPH_SUCCESS, CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "add mean matrix failed."),
+                      return ret);
     auto avg_pool_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
     NodePtr avg_pool_const_input = avg_pool_const_input_nodes[0];
     auto avg_pool_const_input_desc = avg_pool_const_input->GetOpDesc();
     FUSION_PASS_CHECK(avg_pool_const_input_desc == nullptr,
-                      OP_LOGE(kFusedOpType.c_str(), "The avg_pool_const_input_desc is NULL"), return PARAM_INVALID);
+                      CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The avg_pool_const_input_desc is NULL"),
+                      return PARAM_INVALID);
     avg_pool_const_input_desc->SetType(kConstantOp);
   }
 
@@ -476,7 +488,8 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
 
   unique_ptr<uint16_t> kernel_table_input_assit(new (std::nothrow) uint16_t[kernel_table_size]());
   FUSION_PASS_CHECK(kernel_table_input_assit.get() == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "The kernel_table_input_assit is NULL"), return PARAM_INVALID);
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The kernel_table_input_assit is NULL"),
+                    return PARAM_INVALID);
   vector<int64_t> assit_dim_info_dynamic = {inputC1 * k_size[1] *k_size[2], 1, CIN, COUT};
   if (!is_dynamic) {
     ret = KernelGen(k_size[1], k_size[2], orig_input_shape_v[3], kernel_table_input_assit.get(), kernel_table_size);
@@ -484,8 +497,8 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
     float areaFactor = 1.0;
     ret = KernelGenDynamic(assit_dim_info_dynamic, areaFactor, *kernel_table_input_assit.get());
   }
-  
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGE(kFusedOpType.c_str(), "The kernel_table matrix AssitHelp failed."),
+  FUSION_PASS_CHECK(ret != SUCCESS,
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "The kernel_table matrix AssitHelp failed."),
                     return ret);
   vector<int64_t> kernel_table_assit_dim_info{k_size[1], k_size[2], orig_input_shape_v[3], 1LL};
   vector<int64_t> kernel_table_assit_dim_info_dynamic{k_size[1], k_size[2], 1LL, avg_pool_dim_info[3]};
@@ -514,12 +527,14 @@ Status AvgPoolGradFusionPass::Fusion(ComputeGraph& graph, Mapping& mapping, vect
                           return PARAM_INVALID);
   vector<GeTensorPtr> kernel_weights = {kernel_table_assit_ptr};
   ret = OpDescUtils::SetWeights(avg_pool_grad_fused_node, kernel_weights);
-  FUSION_PASS_CHECK(ret != GRAPH_SUCCESS, OP_LOGE(kFusedOpType.c_str(), "Add kernel matrix failed."), return ret);
+  FUSION_PASS_CHECK(ret != GRAPH_SUCCESS,
+                    CUBE_INNER_ERR_REPORT(kFusedOpType.c_str(), "Add kernel matrix failed."), return ret);
   auto kernel_const_input_nodes = OpDescUtils::GetConstInputs(avg_pool_grad_fused_node);
   NodePtr kernel_const_input = kernel_const_input_nodes[0];
   auto kernel_const_input_desc = kernel_const_input->GetOpDesc();
   FUSION_PASS_CHECK(kernel_const_input_desc == nullptr,
-                    OP_LOGE(kFusedOpType.c_str(), "The kernel_const_input_desc is NULL"), return PARAM_INVALID);
+                    CUBE_CALL_ERR_REPORT(kFusedOpType.c_str(), "The kernel_const_input_desc is NULL"),
+                    return PARAM_INVALID);
   kernel_const_input_desc->SetType(kConstantOp);
 
   if (!is_dynamic) {

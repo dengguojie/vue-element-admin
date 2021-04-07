@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string>
 #include "cube_tiling.h"
+#include "../op_proto/util/error_util.h"
 
 namespace {
   constexpr int32_t kConv3dDimSizeLimit = 6;
@@ -91,7 +92,7 @@ namespace {
     }
 
     if (!compile_info.contains("tiling_range")) {
-      OP_LOGE(op_type.c_str(), "no tiling_range in compile info json");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no tiling_range in compile info json");
       return tiling_id;
     }
 
@@ -111,7 +112,7 @@ namespace {
                                   const nlohmann::json& compile_info) {
     std::string tiling_id("0");
     if (!compile_info.contains("repo_seeds") || !compile_info.contains("repo_range")) {
-      OP_LOGE(op_type.c_str(), "no repo_sends or repo_range in compile info json");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "no repo_sends or repo_range in compile info json");
       return tiling_id;
     }
 
@@ -132,7 +133,7 @@ namespace {
 
     if (tiling_id == "0") {
       if (!compile_info.contains("cost_range")) {
-        OP_LOGE(op_type.c_str(), "no cost_range in compile info json");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no cost_range in compile info json");
         return tiling_id;
       }
 
@@ -249,12 +250,11 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
     }
     if (tilingID == "0") {
         if (opInfo.contains("correct_range_flag") && opInfo["correct_range_flag"]) {
-            OP_LOGE(opType.c_str(), "The original range does not meet requirements,"
-                               "new range is generated during op compile, but the shape is not covered by new range");
+            CUBE_INNER_ERR_REPORT(opType.c_str(), "The original range does not meet requirements,"
+              "new range is generated during op compile, but the shape is not covered by new range");
         }
-        OP_LOGE(opType.c_str(),
-                "This shape is not covered by any tiling, "
-                "please modify range and recompile");
+        CUBE_INNER_ERR_REPORT(opType.c_str(), "This shape is not covered by any tiling, "
+          "please modify range and recompile");
         return false;
     }
     runInfo.block_dim = (uint32_t)opInfo["block_dim"][tilingID];
@@ -278,7 +278,7 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
     std::vector<std::string> all_vars;
     GetVarNames(op_type, all_vars);
     if (all_vars.size() != kConv3dVarDimSizeLimit) {
-      OP_LOGE(op_type.c_str(), "found unrecoginzed var name list.");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "found unrecoginzed var name list.");
       return false;
     }
 
@@ -307,16 +307,17 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
       if (tiling_id == "0") {
         if (op_type == "Conv3D") {
           if (compile_info["correct_range_flag"]) {
-            OP_LOGE(op_type.c_str(), "The original range does not meet requirements,"
-                                "new range is generated during op compile, but the shape is not covered by new range");
+            CUBE_INNER_ERR_REPORT(op_type.c_str(), "The original range does not meet requirements,"
+              "new range is generated during op compile, but the shape is not covered by new range");
           }
         }
-        OP_LOGE(op_type.c_str(), "This shape is not covered by any tiling, please modify range and recompile");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(),
+          "This shape is not covered by any tiling, please modify range and recompile");
         return false;
       }
 
       if (!compile_info.contains("block_dim")) {
-        OP_LOGE(op_type.c_str(), "no block_dim in compile info json");
+        CUBE_INNER_ERR_REPORT(op_type.c_str(), "no block_dim in compile info json");
         return false;
       }
 

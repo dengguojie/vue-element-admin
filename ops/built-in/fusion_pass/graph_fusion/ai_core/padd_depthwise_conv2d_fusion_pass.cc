@@ -27,6 +27,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph/utils/graph_utils.h"
+#include "error_util.h"
 
 namespace fe {
 
@@ -45,7 +46,7 @@ vector<FusionPattern*> PaddDepthwiseConv2dFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("PaddDepthwiseConv2dFusionPass");
 
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed."),
                     return patterns);
 
   pattern->AddOpDesc(PATTERN_PADD, {PADD})
@@ -62,18 +63,18 @@ Status PaddDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
                                              vector<ge::NodePtr>& fusionNodes) {
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define PaddDepthwiseConv2dFusionPass fusion begin");
   ge::NodePtr paddNode = GetNodeFromMapping(PATTERN_PADD, mapping);
-  FUSION_PASS_CHECK(paddNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
+  FUSION_PASS_CHECK(paddNode == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "padD Node is null, fusion failed."),
                     return PARAM_INVALID);
 
   ge::NodePtr depthwiseConv2dNode = GetNodeFromMapping(PATTERN_DEPTHWISECONV2D, mapping);
   FUSION_PASS_CHECK(depthwiseConv2dNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "DepthwiseConv2D Node is null, fusion failed."),
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "DepthwiseConv2D Node is null, fusion failed."),
                     return PARAM_INVALID);
 
   Operator op = ge::OpDescUtils::CreateOperatorFromNode(depthwiseConv2dNode);
   std::string paddingMode;
   if (op.GetAttr("padding", paddingMode) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "GetOpAttr DepthwiseConv2D padding failed!");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "GetOpAttr DepthwiseConv2D padding failed!");
     return PARAM_INVALID;
   }
 
@@ -173,34 +174,34 @@ Status PaddDepthwiseConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
     string nodeName = nodePtr->GetOpDesc()->GetType();
     // update input desc
     FUSION_PASS_CHECK(nodePtr->GetOpDesc()->UpdateInputDesc(0, paddNode->GetOpDesc()->GetInputDesc(0)) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Update %s input failed.", nodeName.c_str()), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Update %s input failed.", nodeName.c_str()), return FAILED);
     // change input edge of padd to depthwise_conv2d
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(nodePtr->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                                  nodePtr->GetInDataAnchor(0)) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove %s input0 edge error", nodeName.c_str()), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove %s input0 edge error", nodeName.c_str()), return FAILED);
     FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(paddNode->GetInDataAnchor(0)->GetPeerOutAnchor(),
                                               nodePtr->GetInDataAnchor(0)) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
                               paddNode->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode()->GetName().c_str(),
                               nodePtr->GetName().c_str()),
                       return FAILED);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(nodePtr->GetOpDesc(), PADS, pads),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Set paddings to %s failed.", nodeName.c_str()), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set paddings to %s failed.", nodeName.c_str()), return FAILED);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(nodePtr->GetOpDesc(), PADDING, "SAME"),
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Set padding attr failed."), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Set padding attr failed."), return FAILED);
   }
   // remove paddNode output
   for (auto inDataAnchor : paddNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
     FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(paddNode->GetOutDataAnchor(0), inDataAnchor) != SUCCESS,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
+                      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out data edge failed."), return FAILED);
   }
   if (paddNode->GetOutControlAnchor()) {
     for (auto inControlAnchor : paddNode->GetOutControlAnchor()->GetPeerInControlAnchors()) {
       FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(paddNode->GetOutControlAnchor(), inControlAnchor) != SUCCESS,
-                        OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."), return FAILED);
+                        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove out control edge failed."), return FAILED);
     }
   }
-  FUSION_PASS_CHECK(graph.RemoveNode(paddNode) != SUCCESS, OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove PadD node failed."),
+  FUSION_PASS_CHECK(graph.RemoveNode(paddNode) != SUCCESS, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Remove PadD node failed."),
                     return FAILED);
   fusionNodes.push_back(depthwiseConv2dNode);
 

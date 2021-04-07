@@ -29,6 +29,7 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "op_log.h"
 #include "pattern_fusion_util.h"
+#include "error_util.h"
 
 using namespace std;
 using namespace ge;
@@ -54,7 +55,7 @@ vector<FusionPattern *> AdaptiveAvgPoolGradFusionPass::DefinePatterns() {
     vector<FusionPattern *> patterns;
     FusionPattern *pattern = new (std::nothrow) FusionPattern("AdaptiveAvgPool2dGradFusion");
     if (!pattern) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "New a pattern object failed.");
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "New a pattern object failed.");
         return patterns;
     }
     // FUSED_NODE should be the OpType
@@ -90,7 +91,7 @@ void AdaptiveAvgPoolGradFusionPass::GetNodeInfo(ge::NodePtr node) {
 // calculate the start index of kernel
 int AdaptiveAvgPoolGradFusionPass::StartIndex(int a, int b, int c) const {
     if (b == 0) {
-        OP_LOGE("divied by zero error", "get start index failed.");
+        CUBE_INNER_ERR_REPORT("divied by zero error", "get start index failed.");
         return 0;
     }
     return static_cast<int>(std::floor(static_cast<float>(a * c) / b));
@@ -99,7 +100,7 @@ int AdaptiveAvgPoolGradFusionPass::StartIndex(int a, int b, int c) const {
 // calculate the end index of kernel
 int AdaptiveAvgPoolGradFusionPass::EndIndex(int a, int b, int c) const {
     if (b == 0) {
-        OP_LOGE("divied by zero error", "get end index failed.");
+        CUBE_INNER_ERR_REPORT("divied by zero error", "get end index failed.");
         return 0;
     }
     return static_cast<int>(std::ceil(static_cast<float>((a + 1) * c) / b));
@@ -152,7 +153,7 @@ bool AdaptiveAvgPoolGradFusionPass::GenVectorMulAssistMatrix(uint16_t &matrix) c
         for (int j = 0; j < this->input_dims[INDEX_W]; j++) {
             int coefficient = (this->w_kernel_index[j][1] - this->w_kernel_index[j][0]) * h_param;
             if (coefficient == 0) {
-                OP_LOGE(FUSED_OP_TYPE.c_str(), "coefficient is invalid.");
+                CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "coefficient is invalid.");
                 return false;
             }
             // float value = 1.0 / coefficient;
@@ -186,12 +187,12 @@ Status AdaptiveAvgPoolGradFusionPass::CreateVectorMulWeightNode(ge::NodePtr &vmu
     tmp = 1.0;
     const uint16_t init_value = tmp.val;
     if (NnSet(size, init_value, *reinterpret_cast<uint16_t *>(data.get())) != SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet data failed.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet data failed.");
         return FAILED;
     }
 
     if (!(this->GenVectorMulAssistMatrix(*data.get()))) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "gen assist matrix fail.");
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "gen assist matrix fail.");
         return PARAM_INVALID;
     }
 
@@ -200,7 +201,7 @@ Status AdaptiveAvgPoolGradFusionPass::CreateVectorMulWeightNode(ge::NodePtr &vmu
     ge::GeTensorPtr weight_ptr =
         std::make_shared<ge::GeTensor>(desc, reinterpret_cast<uint8_t *>(data.get()), size * sizeof(uint16_t));
     if (!weight_ptr) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "create weight failed.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create weight failed.");
         return FAILED;
     }
 
@@ -208,7 +209,7 @@ Status AdaptiveAvgPoolGradFusionPass::CreateVectorMulWeightNode(ge::NodePtr &vmu
     ge::OpDescUtils::SetWeights(vmul_node, weights);
     auto const_input_nodes = OpDescUtils::GetConstInputs(vmul_node);
     if (const_input_nodes.empty()) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "ConstInputNodes is empty, fusion failed.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ConstInputNodes is empty, fusion failed.");
         return PARAM_INVALID;
     }
 
@@ -226,7 +227,7 @@ Status AdaptiveAvgPoolGradFusionPass::CreateBatchMatMulWeightNode(ge::NodePtr &m
     unique_ptr<uint16_t[]> data(new (std::nothrow) uint16_t[size]());
     const uint16_t init_value = 0;
     if (NnSet(size, init_value, *reinterpret_cast<uint16_t *>(data.get())) != SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "NnSet data failed.");
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "NnSet data failed.");
         return FAILED;
     }
     this->GenBatchMatMulAssistMatrix(*data.get(), is_left_mat);
@@ -236,7 +237,7 @@ Status AdaptiveAvgPoolGradFusionPass::CreateBatchMatMulWeightNode(ge::NodePtr &m
     ge::GeTensorPtr weight_ptr =
         std::make_shared<ge::GeTensor>(desc, reinterpret_cast<uint8_t *>(data.get()), size * sizeof(uint16_t));
     if (!weight_ptr) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "create weight failed.");
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "create weight failed.");
         return FAILED;
     }
 
@@ -244,7 +245,7 @@ Status AdaptiveAvgPoolGradFusionPass::CreateBatchMatMulWeightNode(ge::NodePtr &m
     ge::OpDescUtils::SetWeights(matmul_node, weights);
     auto const_input_nodes = OpDescUtils::GetConstInputs(matmul_node);
     if (const_input_nodes.empty()) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "ConstInputNodes is empty, fusion failed.");
+        CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "ConstInputNodes is empty, fusion failed.");
         return PARAM_INVALID;
     }
     NodePtr const_input = const_input_nodes[0];
@@ -256,7 +257,7 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddNewNode(ge::ComputeGraph &graph, g
                                                       vector<ge::NodePtr> &new_nodes) const {
     ge::NodePtr node = graph.AddNode(op_desc);
     if (!node) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", node->GetName().c_str());
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.", node->GetName().c_str());
         return nullptr;
     }
     new_nodes.push_back(node);
@@ -287,7 +288,8 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddVectorMulNode(ge::NodePtr avgpool_
 
     // create matmul node
     ge::NodePtr mul_node = this->AddNewNode(graph, mul_op_desc, new_nodes);
-    FUSION_PASS_CHECK(mul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add vmul node failed."), return nullptr);
+    FUSION_PASS_CHECK(mul_node == nullptr, CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add vmul node failed."),
+        return nullptr);
     this->CreateVectorMulWeightNode(mul_node);
 
     // input Edge, assist * input_tensor
@@ -327,7 +329,8 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddLeftMatmulNode(ge::NodePtr avgpool
 
     // create matmul node
     ge::NodePtr matmul_node = this->AddNewNode(graph, matmul_op_desc, new_nodes);
-    FUSION_PASS_CHECK(matmul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add left matmul node failed."),
+    FUSION_PASS_CHECK(matmul_node == nullptr,
+                      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add left matmul node failed."),
                       return nullptr);
     vector<int64_t> weight_dim = {this->input_dims[INDEX_N], this->output_dims[INDEX_H], this->input_dims[INDEX_H]};
     this->CreateBatchMatMulWeightNode(matmul_node, weight_dim, true);
@@ -368,7 +371,7 @@ ge::NodePtr AdaptiveAvgPoolGradFusionPass::AddRightMatmulNode(ge::NodePtr avgpoo
 
     // create matmul node
     ge::NodePtr matmul_node = this->AddNewNode(graph, matmul_op_desc, new_nodes);
-    FUSION_PASS_CHECK(matmul_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "add right matmul node failed."),
+    FUSION_PASS_CHECK(matmul_node == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add right matmul node failed."),
                       return nullptr);
     vector<int64_t> weight_dim = {this->input_dims[INDEX_N], this->input_dims[INDEX_W], this->output_dims[INDEX_W]};
     this->CreateBatchMatMulWeightNode(matmul_node, weight_dim, false);
@@ -393,20 +396,20 @@ Status AdaptiveAvgPoolGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &m
     // add vector_mul
     ge::NodePtr vector_mul_node = this->AddVectorMulNode(grad_node, graph, new_node);
     if (!vector_mul_node) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "VectorMulNode:check failed, fusion failed.");
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "VectorMulNode:check failed, fusion failed.");
         return FAILED;
     }
 
     // add left batch_mat_mul
     ge::NodePtr left_matmul_node = this->AddLeftMatmulNode(grad_node, vector_mul_node, graph, new_node);
     if (!left_matmul_node) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "LeftMatMulNode:check failed, fusion failed.");
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "LeftMatMulNode:check failed, fusion failed.");
         return FAILED;
     }
 
     ge::NodePtr right_matmul_node = this->AddRightMatmulNode(grad_node, left_matmul_node, graph, new_node);
     if (!right_matmul_node) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "RightMatMulNode:check failed, fusion failed.");
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "RightMatMulNode:check failed, fusion failed.");
         return FAILED;
     }
 
@@ -419,7 +422,7 @@ Status AdaptiveAvgPoolGradFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &m
 
     // remove grad_node from graph
     if (graph.RemoveNode(grad_node) != ge::GRAPH_SUCCESS) {
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", grad_node->GetName().c_str());
+        CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove fusedNode node[%s] failed", grad_node->GetName().c_str());
         return FAILED;
     }
     return SUCCESS;

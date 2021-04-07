@@ -280,7 +280,8 @@ def _tiling(context, core_n):
     if _try_tiling(ub_size0):
         return False, factors["c1_factor"], factors["ho_factor"], factors[
             "wo_factor"]
-    raise RuntimeError("Cannot find tiling, kw and kh is too big!")
+        args_dict = {"errorCode": "E61001", "reason": "Cannot find tiling, kw and kh is too big!"}
+    raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
 
 def _set_round_emit_insn(round_mode):

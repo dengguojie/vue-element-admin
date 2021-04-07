@@ -34,6 +34,7 @@
 #include "graph/utils/tensor_utils.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "error_util.h"
 
 using namespace ge;
 namespace fe {
@@ -51,7 +52,8 @@ static const int64_t DIM_COUNT = 4;
 vector<FusionPattern*> BiasaddConvFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("BiasaddFusion");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed."), return patterns);
 
   pattern->AddOpDesc(PATTERN_BIASADD, {BIASADD, ADD_3D})
       .AddOpDesc(PATTERN_SRC, {CONVOLUTION, DEPTHWISECONVOLUTION, CONVOLUTION_3D})
@@ -175,9 +177,11 @@ Status BiasaddConvFusionPass::GetWeightNode(const ge::NodePtr &biasadd_node, con
 }
 
 Status BiasaddConvFusionPass::CheckParam(const ge::NodePtr &conv, const ge::NodePtr &biasadd_node) {
-  FUSION_PASS_CHECK(conv == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node conv2d is null, fusion failed."),
+  FUSION_PASS_CHECK(conv == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node conv2d is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(biasadd_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node BiasAdd is null, fusion failed."),
+  FUSION_PASS_CHECK(biasadd_node == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node BiasAdd is null, fusion failed."),
                     return PARAM_INVALID);
 
   if (conv->GetOutDataNodes().size() > 1) {
@@ -210,8 +214,9 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   std::map<string, uint32_t> inputNameMap = src_op->GetAllInputName();
   ge::OpDescPtr biasadd_op = biasadd_node->GetOpDesc();
-  FUSION_PASS_CHECK(biasadd_op == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
-                                                   biasadd_node->GetName().c_str()),
+  FUSION_PASS_CHECK(biasadd_op == nullptr,
+                    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Node:%s's OpDesc is null, fusion failed.",
+                    biasadd_node->GetName().c_str()),
                     return PARAM_INVALID);
 
   ge::NodePtr weight_node;
@@ -222,8 +227,8 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   }
 
   FUSION_PASS_CHECK(SUCCESS != PatternFusionUtil::LinkControlEdge(biasadd_node, conv),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Link control edge from [%s] to [%s] failed",
-                            biasadd_node->GetName().c_str(), conv->GetName().c_str()),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Link control edge from [%s] to [%s] failed",
+                                          biasadd_node->GetName().c_str(), conv->GetName().c_str()),
                     return FAILED);
 
   GeTensorDesc constTensor = weight_node->GetOpDesc()->GetOutputDesc(0);
@@ -237,11 +242,11 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   weight_node->GetOpDesc()->UpdateOutputDesc(0, constTensor);
 
   FUSION_PASS_CHECK(conv->AddLinkFrom(2, weight_node) != ge::GRAPH_SUCCESS,
-                    OP_LOGE(conv->GetName().c_str(), "Fail to link const node with conv node."),
+                    CUBE_INNER_ERR_REPORT(conv->GetName().c_str(), "Fail to link const node with conv node."),
                     return FAILED);
 
   FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(conv->GetOpDesc(), ge::MATMUL_HAS_BIAS, true),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Biasadd op weight should be 1-D."), return FAILED);
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Biasadd op weight should be 1-D."), return FAILED);
   GeTensorDesc convbiasTensor = src_op->GetInputDesc(2);
   GeTensorDesc inputTensor = src_op->GetInputDesc(0);
   convbiasTensor.SetOriginShape(convbiasTensor.GetShape());
@@ -261,7 +266,8 @@ Status BiasaddConvFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Conv2D's 2nd input origin format is %d.", src_op->GetInputDesc(2).GetOriginFormat());
 
   FUSION_PASS_CHECK(ge::GRAPH_SUCCESS != graph.RemoveNode(biasadd_node),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Remove node:[%s] failed", biasadd_node->GetName().c_str()),
+                    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                          "Remove node:[%s] failed", biasadd_node->GetName().c_str()),
                     return FAILED);
   fusionNodes.push_back(conv);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "BiasaddConvFusionPass fusion success.");

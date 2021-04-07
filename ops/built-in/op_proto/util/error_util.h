@@ -50,32 +50,32 @@
       "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
   } while (0)
 
-#define CUBE_INNER_ERR_REPORT(op_name, err_msg)\
+#define CUBE_INNER_ERR_REPORT(op_name, err_msg, ...)\
   do { \
-    OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
-    REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::CUBE_INNER_ERROR), \
-      "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
+    OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+    REPORT_INNER_ERROR(ge::GetViewErrorCodeStr(ge::ViewErrorCode::CUBE_INNER_ERROR), \
+      ge::ConcatString("op[", op_name, "], ", err_msg).c_str(), ##__VA_ARGS__); \
   } while (0)
 
-#define CUBE_CALL_ERR_REPORT(op_name, err_msg) \
+#define CUBE_CALL_ERR_REPORT(op_name, err_msg, ...) \
   do { \
-    OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
-    REPORT_CALL_ERROR(GetViewErrorCodeStr(ViewErrorCode::CUBE_INNER_ERROR), \
-      "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
+    OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+    REPORT_CALL_ERROR(ge::GetViewErrorCodeStr(ge::ViewErrorCode::CUBE_INNER_ERROR), \
+      ge::ConcatString("op[", op_name, "], ", err_msg).c_str(), ##__VA_ARGS__); \
   } while(0)
 
-#define CUBE_INNER_ERR_REPORT_PLUGIN(op_name, err_msg)\
+#define CUBE_INNER_ERR_REPORT_PLUGIN(op_name, err_msg, ...)\
   do { \
-    OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
-    REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::CUBE_INNER_ERROR_PLUGIN), \
-      "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
+    OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+    REPORT_INNER_ERROR(ge::GetViewErrorCodeStr(ge::ViewErrorCode::CUBE_INNER_ERROR_PLUGIN), \
+      ge::ConcatString("op[", op_name, "], ", err_msg).c_str(), ##__VA_ARGS__); \
   } while (0)
 
-#define CUBE_CALL_ERR_REPORT_PLUGIN(op_name, err_msg) \
+#define CUBE_CALL_ERR_REPORT_PLUGIN(op_name, err_msg, ...) \
   do { \
-    OP_LOGE(op_name.c_str(), "%s", err_msg.c_str()); \
-    REPORT_CALL_ERROR(GetViewErrorCodeStr(ViewErrorCode::CUBE_INNER_ERROR_PLUGIN), \
-      "%s", ConcatString("op[", op_name, "], ", err_msg).c_str()); \
+    OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
+    REPORT_CALL_ERROR(ge::GetViewErrorCodeStr(ge::ViewErrorCode::CUBE_INNER_ERROR_PLUGIN), \
+      ge::ConcatString("op[", op_name, "], ", err_msg).c_str(), ##__VA_ARGS__); \
   } while(0)
 
 namespace ge {

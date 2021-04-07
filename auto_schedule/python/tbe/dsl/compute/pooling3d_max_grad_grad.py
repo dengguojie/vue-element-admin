@@ -446,7 +446,8 @@ def max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
         return 0, 0, 0
 
     if _check_max_grad_grad_params():
-        raise RuntimeError("Failed to check max grad grad params.")
+        args_dict = {"errorCode": "E61001", "reason": "Failed to check max grad grad params."}
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     n, d, c1, h, w, c0 = _get_dim_param()
     k_d, k_h, k_w = _get_kernel_param()

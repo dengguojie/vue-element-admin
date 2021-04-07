@@ -24,6 +24,7 @@
 #include "graph/debug/ge_log.h"
 #include "cube_tiling.h"
 #include "op_log.h"
+#include "../op_proto/util/error_util.h"
 
 namespace {
   const unsigned int SHAPE_SIZE_6HD = 6;
@@ -47,7 +48,7 @@ bool Conv3DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   }
 
   if (opCompileInfo.contains("fmap_c1") && opParas.inputs[0].tensor[0].shape[2] != opCompileInfo["fmap_c1"]) {
-    OP_LOGE(opType.c_str(), "not support, input x channel should be equal to filter * groups");
+    CUBE_INNER_ERR_REPORT(opType.c_str(), "not support, input x channel should be equal to filter * groups");
     return false;
   }
 

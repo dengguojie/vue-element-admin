@@ -30,7 +30,7 @@
 #include "graph/utils/type_utils.h"
 #include "op_log.h"
 #include "op_tiling.h"
-
+#include "../op_proto/util/error_util.h"
 using namespace std;
 using json = nlohmann::json;
 using utils = ge::TypeUtils;
@@ -70,7 +70,7 @@ bool GetGEMMBatch(const string &op_type, const vector<int64_t> &shape_a, const v
 
   for (int i = shape_broadcast.size() - 3; i >= static_cast<int>(shape_broadcast.size() - shape_short.size()); --i) {
     if (shape_short[i] != shape_long[i] && shape_short[i] != 1 && shape_long[i] != 1) {
-      OP_LOGE(op_type.c_str(), "Tensor a and b do not meet the broadcast rule");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "Tensor a and b do not meet the broadcast rule");
       return false;
     }
     shape_broadcast[i] = max(shape_short[i], shape_long[i]);
@@ -110,7 +110,7 @@ bool CalcGEMMMknb(const string &op_type, const json &compile_info,
     idx_n_of_b += tensor_b.ori_shape.size();
 
     if (tensor_a.ori_shape[idx_k_of_a] != tensor_b.ori_shape[idx_k_of_b]) {
-      OP_LOGE(op_type.c_str(), "The k-axis of a and b tensors must be the same");
+      CUBE_INNER_ERR_REPORT(op_type.c_str(), "The k-axis of a and b tensors must be the same");
       return false;
     }
 
@@ -171,14 +171,14 @@ std::string GEMMTilingSelect(const std::string &op_type, const TeOpParas &op_par
   string tiling_id("-1");
   auto dynamic_mode = compile_info["dynamic_mode"].get<std::string>();
   if (dynamic_mode != "dynamic_mkn" && dynamic_mode != "dynamic_mknb") {
-    OP_LOGE(op_type.c_str(), "Only support dynamic mode: dynamic_mkn, dynamic_mknb");
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "Only support dynamic_mode: dynamic_mkn, dynamic_mknb");
     return tiling_id;
   }
   auto tensor_a = op_paras.inputs[0].tensor[0];
   auto tensor_b = op_paras.inputs[1].tensor[0];
   int64_t m, k, n, batch;
   if (!CalcGEMMMknb(op_type, compile_info, tensor_a, tensor_b, &m, &k, &n, &batch)) {
-    OP_LOGE(op_type.c_str(), "Failed to calculate m, k, n, batch");
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "Failed to calculate m, k, n, batch");
     return tiling_id;
   }
 
@@ -264,8 +264,8 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
   }
 
   if (tiling_id == "-1") {
-    OP_LOGE(op_type.c_str(), "This shape is not covered by any tiling, "
-            "please modify range and recompile");
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "This shape is not covered by any tiling, "
+      "please modify range and recompile");
     return false;
   }
 

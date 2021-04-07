@@ -33,6 +33,8 @@
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
 #include "conv_fusion_pass_base.h"
+#include "error_util.h"
+
 namespace fe {
 static const char PATTERN_CONV[] = "conv";
 static const string FC = "FullyConnection";
@@ -51,7 +53,7 @@ static const std::map<ge::Format, std::map<std::string, int32_t>> FE_AXIS_INDEX_
 vector<FusionPattern*> ConvToFullyConnectionFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("ConvToFullyConnectionFusionPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new an object not success."), return patterns);
+  FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object not success."), return patterns);
 
   pattern->AddOpDesc(PATTERN_CONV, {CONV2D}).SetOutput(PATTERN_CONV);
   patterns.push_back(pattern);
@@ -68,11 +70,11 @@ int64_t ConvToFullyConnectionFusionPass::GetDimByAxisName(const ge::GeTensorDesc
     if (iter2 != iter->second.end()) {
       index = iter2->second;
     } else {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Do not support this axis %s", axis.c_str());
+      CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Do not support this axis %s", axis.c_str());
       index = -1;
     }
   } else {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Do not support this format %s",
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Do not support this format %s",
             ge::TypeUtils::FormatToSerialString(format).c_str());
     index = -1;
   }
@@ -195,7 +197,7 @@ Status ConvToFullyConnectionFusionPass::CheckFusionParm(ge::NodePtr convNode) {
 Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
                                                vector<ge::NodePtr>& fusionNodes) {
   ge::NodePtr convNode = GetNodeFromMapping(PATTERN_CONV, mapping);
-  FUSION_PASS_CHECK(convNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new convNode not success."),
+  FUSION_PASS_CHECK(convNode == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new convNode not success."),
                     return PARAM_INVALID);
 
   FUSION_PASS_CHECK(CheckFusionParm(convNode) != SUCCESS,
@@ -203,7 +205,7 @@ Status ConvToFullyConnectionFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
                     return NOT_CHANGED);
 
   ge::OpDescPtr convOp = convNode->GetOpDesc();
-  FUSION_PASS_CHECK(convOp == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "convOp not success."), return PARAM_INVALID);
+  FUSION_PASS_CHECK(convOp == nullptr, CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "convOp not success."), return PARAM_INVALID);
 
   // set optype to fullyconnection
   convOp->SetType(FC);

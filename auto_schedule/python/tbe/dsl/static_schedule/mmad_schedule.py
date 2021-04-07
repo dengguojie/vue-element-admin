@@ -689,13 +689,13 @@ def check_placeholders_shared(fusion_ele, tensor_a, tensor_b,
     if tensor_a in in_out_tensor_map:
         for ten_i in in_out_tensor_map[tensor_a]:
             if ten_i not in matmul_tensors:
-                raise RuntimeError("matmul placeholders can't be shared "
-                                   "with elementwise op")
+                args_dict = {"errorCode": "E61001", "reason": "matmul placeholders can't be shared with elementwise op."}
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
     if tensor_b in in_out_tensor_map:
         for ten_i in in_out_tensor_map[tensor_b]:
             if ten_i not in matmul_tensors:
-                raise RuntimeError("matmul placeholders can't be shared "
-                                   "with elementwise op")
+                args_dict = {"errorCode": "E61001", "reason": "matmul placeholders can't be shared with elementwise op."}
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(dict_args))
 
 
 def get_output_format(tensor):
@@ -788,7 +788,8 @@ def set_compress_info(sch,  # pylint: disable=R0913, R0914
     set weigths compress info
     """
     if out_axis is None:
-        raise RuntimeError("compress index axis is None, it's error.")
+        args_dict = {"errorCode":"E61001", "reason": "compress index axis is None, it's error."}
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     engine, ratios, channel, mode = tbe_platform_info.get_soc_spec("UNZIP")
     frac_size = 512
@@ -911,8 +912,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         size = tbe_platform_info.get_soc_spec("L1_SIZE")
         if size == 0 and is_l1fusion:
             if trans_b:
-                raise RuntimeError(
-                    "If the size of L1 is zero, trans_b is not unexpected.")
+                args_dict = {"errorCode": "E61001", "reason": "If the size of L1 is zero, trans_b is unexpected."}
+                raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
             return True
         return False
 
@@ -1162,8 +1163,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
     elif tensor_a_l1 is not None:
         tensor_a = tensor_a_l1.op.input_tensors[0]
     else:
-        raise RuntimeError(
-            "Lack of tensor_a_ub or tensor_a_l1.")
+        args_dict = {"errorCode": "E61001", "reason": "Lack of tensor_a_ub or tensor_a_l1."}
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     in_addr_type = _get_addr_type(tensor_a)
 
@@ -1470,7 +1471,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
     tiling_shape = get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape)
 
     if tiling_shape.find('_') == -1:
-        raise RuntimeError(tiling_shape)
+        args_dict = {"errorCode": "E61001", "reason": "get tiling_shape fail"}
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     tiled_shape = tiling_shape.split('_')
     m_l1_shape = int(tiled_shape[0])
@@ -1545,11 +1547,14 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         if not n_cut_even:
             return
         if n_l1_tile % 2 != 0:
-            raise RuntimeError("L1 n tiling factor should be even number, "
-                               "actual factor equal %d " % (n_l1_tile,))
+            args_dict = {"errorCode": "E61001", "reason": "L1 n tiling factor should be even number, "
+                "actual factor equal {}".format(n_l1_tile)}
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
+
         if n_l0_tile % 2 != 0:
-            raise RuntimeError("L0 n tiling factor should be even number, "
-                               "actual factor equal %d " % (n_l0_tile,))
+            args_dict = {"errorCode": "E61001", "reason": "L0 n tiling factor should be even number, "
+                "actual factor equal {}".format(n_l0_tile)}
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     _date_transfer_tiling_check(date_transfer_fusion, n_l1_tile, n_l0_tile)
 
@@ -1943,7 +1948,9 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
         length = len(tensor_ub.shape)
         if length in (0, 1):
-            raise RuntimeError("tensor ub shape length should be larger than 1.", tensor_ub)
+            args_dict = {"errorCode": "E61001", "reason": "tensor ub shape length "
+                "should be larger than 1, actual is {}".format(length)}
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         if (tensor_ub.shape[length - 1].value == 1 or \
                 tensor_ub.shape[length - 2].value == 1) and inline_flag:
             sche[tensor_ub].compute_inline()
@@ -2015,8 +2022,9 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     def get_block_split_factor(tensor_out, n_nparts_mode, m_factors, n_factors):
         if len(tensor_out.shape) < 4:
-            raise RuntimeError(
-                "res shape error, should be >= 4, curr is ", tensor_out.shape)
+            args_dict = {"errorCode": "E61001", "reason": "res shape error, "
+                "should be >= 4, actual is {}".format(tensor_out.shape)}
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         m_factor = (tensor_out.shape[-3].value + m_factors - 1) // m_factors
         m_cnt = m_factors
         n_cnt = 0

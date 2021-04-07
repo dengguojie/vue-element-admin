@@ -49,7 +49,7 @@ vector<FusionPattern*> GemmTransFusionPass::DefinePatterns() {
       new (std::nothrow) FusionPattern("GemmTransFusionPass");
   FUSION_PASS_CHECK(
       pattern == nullptr,
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
       return patterns);
 
   pattern->AddOpDesc(PATTERN_GEMM, {GEMM}).SetOutput(PATTERN_GEMM);

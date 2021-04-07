@@ -307,10 +307,13 @@ def _check_ub_tiling(window_d, window_h, window_w, pooling_mode, dtype):
     if pooling_mode == "MAX":
         data_size = _get_ub_least_data_size_for_max(window_d, window_h, window_w, dtype)
     else:
-        raise RuntimeError("Not suport pooling_mode yet.")
+        args_dict = {"errorCode": "E61001", "reason": "Not suport this pooling_mode yet. "
+                     "current pooling_mode is {}, the pooling_mode suported is MAX".format(pooling_mode)}
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     if data_size > get_soc_spec("UB_SIZE"):
-        raise RuntimeError("Window size greater than UB.")
+        args_dict = {"errorCode":"E61001", "reason": "Window size greater than UB."}
+        raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
 
 def _get_ub_least_data_size_for_max(window_d, window_h, window_w, dtype):

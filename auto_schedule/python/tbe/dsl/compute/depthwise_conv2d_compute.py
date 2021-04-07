@@ -100,7 +100,9 @@ def _fusion_fmap_select(fmap, l1_fusion_para):
                                                                     w_offset, c0 + c0_offset),
                                    name="fusion_fmap_select")
         else:
-            raise RuntimeError("feature_map shape length only support 5 or 6")
+            args_dict = {"errorCode": "E61001", "reason": "feature_map shape length "
+                         "only support 5 or 6, actual is {}".format(len(fmap.shape))}
+            raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
     if valid_shape and input_memory_type == 1:
         fmp_select_n, fmp_select_c1, fmp_select_h, fmp_select_w, fmp_select_c0 = valid_shape
     return data_res, fmp_select_h, fmp_select_w

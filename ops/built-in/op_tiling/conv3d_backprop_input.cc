@@ -25,6 +25,7 @@
 #include "cube_tiling.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
+#include "../op_proto/util/error_util.h"
 
 namespace {
   constexpr int32_t kConv3dBpInputDimSizeLimit = 6;
@@ -46,13 +47,13 @@ bool Conv3DBackpropInputTiling(const std::string& op_type, const TeOpParas& op_p
       op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor.empty() || op_paras.outputs[0].tensor.empty() ||
       (op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape.size() != kConv3dBpInputDimSizeLimit) ||
       (op_paras.outputs[0].tensor[0].shape.size() != kConv3dBpInputDimSizeLimit)) {
-    OP_LOGE(op_type.c_str(), "param check failed");
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "param check failed");
     return false;
   }
 
   if (compile_info.contains("dedy_c1") &&
       op_paras.inputs[kConv3dBpInputDedyInputIndex].tensor[0].shape[2] != compile_info["dedy_c1"]) {
-    OP_LOGE(op_type.c_str(), "not support, input dedy channel should be equal to filter");
+    CUBE_INNER_ERR_REPORT(op_type.c_str(), "not support, input dedy channel should be equal to filter");
     return false;
   }
 

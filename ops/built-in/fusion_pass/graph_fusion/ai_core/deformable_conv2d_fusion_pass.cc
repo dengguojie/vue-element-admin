@@ -29,6 +29,7 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "error_util.h"
 
 using namespace ge;
 
@@ -62,7 +63,7 @@ static const std::set<string> kFilterFmt = {"HWCN", "NCHW"};
 vector<FusionPattern*> DeformableConv2dPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("DeformableConv2dPass");
-  FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(fused_op_type_.c_str(), "new new_offset_name pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr, CUBE_CALL_ERR_REPORT(fused_op_type_.c_str(), "new new_offset_name pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(kPatternDfmConv2D, {kDfmConv2DType})
       .SetOutput(kPatternDfmConv2D);
@@ -159,7 +160,7 @@ bool DeformableConv2dPass::AddOffsetDesc(ge::NodePtr& dfm_conv_node, ge::OpDescP
       PatternFusionUtil::IsUnknownShape(out_shape[out_pos_w]) ||
       PatternFusionUtil::IsUnknownShape(ksize[0]) ||
       PatternFusionUtil::IsUnknownShape(ksize[1])) {
-    OP_LOGE(fused_op_type_.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape.");
+    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "AvgPool1DFusionPass cannot be applied for unknown shape.");
     return false;
   }
   y_shape[pos_h] = out_shape[out_pos_h] * ksize[0];
@@ -254,7 +255,7 @@ bool DeformableConv2dPass::AddConvDesc(ge::NodePtr& dfm_conv_node, ge::OpDescPtr
 
   std::vector<int64_t> strides;
   AttrUtils::GetListInt(dfm_conv_desc, kAttrStrides, strides);
-  FUSION_PASS_CHECK(strides.size() != 4, OP_LOGE(fused_op_type_.c_str(), "get strides attr failed"), return false);
+  FUSION_PASS_CHECK(strides.size() != 4, CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "get strides attr failed"), return false);
   strides[pos_h] = ksize[0];
   strides[pos_w] = ksize[1];
   AttrUtils::SetListInt(conv_desc, kAttrStrides, strides);
@@ -328,7 +329,7 @@ Status DeformableConv2dPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
     auto src_anchor = dfm_conv_node->GetInDataAnchor(idx)->GetPeerOutAnchor();
     Status add_res = GraphUtils::AddEdge(src_anchor, new_offset->GetInDataAnchor(i));
     FUSION_PASS_CHECK(add_res != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge of new deformable_offset inputs failed"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "add edge of new deformable_offset inputs failed"), return FAILED);
   }
   std::vector<string> conv_in_data = {"filter"};
   if (with_bias) {
@@ -339,21 +340,21 @@ Status DeformableConv2dPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, s
     auto src_anchor = dfm_conv_node->GetInDataAnchor(idx)->GetPeerOutAnchor();
     Status add_res = GraphUtils::AddEdge(src_anchor, new_conv->GetInDataAnchor(i + 1));
     FUSION_PASS_CHECK(add_res != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add edge of new conv2d inputs failed"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "add edge of new conv2d inputs failed"), return FAILED);
   }
   Status add_res = GraphUtils::AddEdge(new_offset->GetOutDataAnchor(0), new_conv->GetInDataAnchor(0));
   FUSION_PASS_CHECK(add_res != GRAPH_SUCCESS,
-                    OP_LOGE(fused_op_type_.c_str(), "add edge from deformable_offset to conv2d failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "add edge from deformable_offset to conv2d failed"), return FAILED);
   auto out_anchor = dfm_conv_node->GetOutDataAnchor(0);
   auto peer_in_anchor = out_anchor->GetPeerInDataAnchors();
   for (size_t i = 0; i < peer_in_anchor.size(); ++i) {
     out_anchor->Unlink(peer_in_anchor.at(i));
     Status add_res = GraphUtils::AddEdge(new_conv->GetOutDataAnchor(0), peer_in_anchor.at(i));
     FUSION_PASS_CHECK(add_res != GRAPH_SUCCESS,
-                      OP_LOGE(fused_op_type_.c_str(), "add conv2d output edge failed"), return FAILED);
+                      CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "add conv2d output edge failed"), return FAILED);
   }
   FUSION_PASS_CHECK(graph.RemoveNode(dfm_conv_node) != GRAPH_SUCCESS,
-                    OP_LOGE(fused_op_type_.c_str(), "remove deformable_conv2d node failed"), return FAILED);
+                    CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "remove deformable_conv2d node failed"), return FAILED);
   OP_LOGD(fused_op_type_.c_str(), "Leave DeformableConv2dPass.");
 
   return SUCCESS;

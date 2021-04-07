@@ -32,6 +32,8 @@
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 
+#include "error_util.h"
+
 namespace fe {
 static const string HAS_BIAS = "has_bias";
 static const string PATTERN_MATMUL = "mat_mul";
@@ -69,26 +71,26 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::NodePtr nodeBiasAdd = GetNodeFromMapping(PATTERN_BIASADD, mapping);
 
   if (nodeMatMul == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[nodeMatMul] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[nodeMatMul] must not be null.");
     return fe::PARAM_INVALID;
   }
   if (nodeBias == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[nodeBias] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[nodeBias] must not be null.");
     return fe::PARAM_INVALID;
   }
   if (nodeBiasAdd == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[nodeBiasAdd] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[nodeBiasAdd] must not be null.");
     return fe::PARAM_INVALID;
   }
 
   auto biasAddOpDesc = nodeBiasAdd->GetOpDesc();
   if (biasAddOpDesc == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[biasAddOpDesc] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[biasAddOpDesc] must not be null.");
     return fe::PARAM_INVALID;
   }
   auto matMulOpDesc = nodeMatMul->GetOpDesc();
   if (matMulOpDesc == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[matMulOpDesc] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[matMulOpDesc] must not be null.");
     return fe::PARAM_INVALID;
   }
 
@@ -158,14 +160,14 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
 
   // add HAS_BIAS attr to MatMul, and set value with "true"
   if (ge::AttrUtils::SetBool(matMulOpDesc, HAS_BIAS, true) == false) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "set attr:has_bias=true to matmul failed");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "set attr:has_bias=true to matmul failed");
     return FAILED;
   }
 
   // add link from nodeBias to nodeMatMul,x3 is the name of third input of
   // MatMul in IR matmul.h
   if (nodeMatMul->AddLinkFrom("bias", nodeBias) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "add link from Bias to MatMul failed");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add link from Bias to MatMul failed");
     return FAILED;
   }
 
@@ -187,29 +189,29 @@ Status MatMulBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   // replace src (BiasAdd(0) -> OtherNode) to (MatMul -> OtherNode)
   auto matMulOutAnchor = nodeMatMul->GetOutDataAnchor(0);
   if (matMulOutAnchor == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[matMulOutAnchor] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[matMulOutAnchor] must not be null.");
     return fe::PARAM_INVALID;
   }
   auto biasAddOutAnchor0 = nodeBiasAdd->GetOutDataAnchor(0);
   if (biasAddOutAnchor0 == nullptr) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[biasAddOutAnchor0] must not be null.");
+    CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[biasAddOutAnchor0] must not be null.");
     return fe::PARAM_INVALID;
   }
   for (auto &dstAnchor : biasAddOutAnchor0->GetPeerInDataAnchors()) {
     if (dstAnchor == nullptr) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Parameter[dstAnchor] must not be null.");
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Parameter[dstAnchor] must not be null.");
       return fe::PARAM_INVALID;
     }
     if (ge::GraphUtils::RemoveEdge(biasAddOutAnchor0, dstAnchor) != ge::GRAPH_SUCCESS ||
         ge::GraphUtils::AddEdge(matMulOutAnchor, dstAnchor) != ge::GRAPH_SUCCESS) {
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "Replace edge src Failed.");
+      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace edge src Failed.");
       return FAILED;
     }
   }
 
   // delete BiasAdd node
   if (graph.RemoveNode(nodeBiasAdd) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "delete BiasAdd failed");
+    CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "delete BiasAdd failed");
     return FAILED;
   }
   fusionNodes.push_back(nodeMatMul);

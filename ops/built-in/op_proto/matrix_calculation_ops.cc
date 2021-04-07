@@ -148,7 +148,7 @@ IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
       }
       changedXShape.push_back(km_shape);
     } else {
-      OP_LOGE(op.GetName().c_str(), "Not enough info about M and K!\n");
+      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Not enough info about M and K!\n");
       return GRAPH_FAILED;
     }
 
@@ -569,7 +569,7 @@ bool IntersectDimensionAndRange(const std::string &op_name,
 
   if (dim_a > 0 && dim_b > 0) {
     if (dim_a != dim_b || range_a != range_b) {
-      OP_LOGE(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be same", dim_a, dim_b);
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be same", dim_a, dim_b);
       return false;
     }
     dim = dim_a;
@@ -581,8 +581,8 @@ bool IntersectDimensionAndRange(const std::string &op_name,
     auto lower_bound = std::max(range_a.first, range_b.first);
     auto upper_bound = std::min(range_a.second, range_b.second);
     if (lower_bound > upper_bound) {
-      OP_LOGE(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
-              range_a.first, range_a.second, range_b.first, range_b.second);
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
+        range_a.first, range_a.second, range_b.first, range_b.second);
       return false;
     }
 
@@ -597,8 +597,8 @@ bool IntersectDimensionAndRange(const std::string &op_name,
       range = range_b;
       return true;
     }
-    OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_b, range_a.first,
-            range_b.second);
+    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+                          dim_b, range_a.first, range_b.second);
     return false;
   }
   if (range_b.first <= dim_a && dim_a <= range_b.second) {
@@ -606,8 +606,8 @@ bool IntersectDimensionAndRange(const std::string &op_name,
     range = range_a;
     return true;
   }
-  OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_a, range_b.first,
-          range_b.second);
+  CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+    dim_a, range_b.first, range_b.second);
   return false;
 }
 
@@ -650,7 +650,8 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
 
   if (dim_a > 1 && dim_b > 1) {
     if (dim_a != dim_b) {
-      OP_LOGE(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be equal", dim_a, dim_b);
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimensions a(%lld) and b(%lld) must be equal",
+        dim_a, dim_b);
       return false;
     }
     dim = dim_a;
@@ -663,8 +664,8 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
       range = range_a;
       return true;
     }
-    OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_a, range_b.first,
-            range_b.second);
+    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+      dim_a, range_b.first, range_b.second);
     return false;
   }
   if (dim_b > 1) {
@@ -673,8 +674,8 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
       range = range_b;
       return true;
     }
-    OP_LOGE(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)", dim_b, range_a.first,
-            range_a.second);
+    CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] dimension(%lld) must be in range(%lld, %lld)",
+      dim_b, range_a.first, range_a.second);
     return false;
   }
 
@@ -687,8 +688,8 @@ bool BroadcastDimensionAndRange(const std::string &op_name,
     auto lower_bound = std::max(range_a.first, range_b.first);
     auto upper_bound = std::min(range_a.second, range_b.second);
     if (lower_bound > upper_bound) {
-      OP_LOGE(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
-              range_a.first, range_a.second, range_b.first, range_b.second);
+      CUBE_INNER_ERR_REPORT(op_name.c_str(), "[InferShape] range a(%lld, %lld) and b(%lld, %lld) must have intersections",
+        range_a.first, range_a.second, range_b.first, range_b.second);
       return false;
     }
     dim = UNKNOWN_DIM;
@@ -906,16 +907,16 @@ bool InferShapeMatMul::InferBatch() {
   for (auto i = 0; i < num_dim - 2; ++i) {
     if (!BroadcastDimensionAndRange(op_name, infer_shape_a[i], infer_shape_b[i], infer_range_a[i], infer_range_b[i],
                                     shape_out[i], range_out[i])) {
-      OP_LOGE(op_name.c_str(),
-              "[InferShape] The broadcst operation for tensor a and b on the n-th dimension is failed");
+      CUBE_INNER_ERR_REPORT(op_name.c_str(),
+        "[InferShape] The broadcst operation for tensor a and b on the n-th dimension is failed");
       return false;
     }
 
     if (!shape_bias.empty()) {
       if (!BroadcastDimensionAndRange(op_name, shape_out[i], infer_shape_bias[i], range_out[i], infer_range_bias[i],
                                       shape_out[i], range_out[i])) {
-        OP_LOGE(op_name.c_str(),
-                "[InferShape] The broadcst operation for tensor out and bias on the n-th dimension is failed");
+        CUBE_INNER_ERR_REPORT(op_name.c_str(),
+          "[InferShape] The broadcst operation for tensor out and bias on the n-th dimension is failed");
         return false;
       }
     }
@@ -1460,7 +1461,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   }
   OP_LOGD(op.GetName().c_str(), "[MatMulV2 Infershape] Check the input shape length.");
   if (shape_x1.GetDims() != UNKNOWN_RANK && shape_x1.GetDims().size() != 2 && shape_x1.GetDims().size() != 4) {
-    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]Matmul the first input dims is not 2 or 4!");
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "[Plugin][ERROR]Matmul the first input dims is not 2 or 4!");
     return GRAPH_FAILED;
   }
 
@@ -1627,7 +1628,7 @@ graphStatus CommonBatchMatMulInferShape(Operator &op) {
   int dim_num = std::max(dim_num_x1, dim_num_x2);
   bool any_unknown_rank = shape_x1 == UNKNOWN_RANK || shape_x1 == UNKNOWN_RANK || shape_bias == UNKNOWN_RANK;
   if (!any_unknown_rank && (dim_num < 1 || dim_num > 8)) {
-    OP_LOGE(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 1 to 8.");
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "[Infershape]The shape can only be in the range of 1 to 8.");
     return GRAPH_FAILED;
   }
 
