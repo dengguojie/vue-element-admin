@@ -1649,4 +1649,69 @@ COMMON_INFER_FUNC_REG(RnnGenMask, RnnGenMaskInferShape);
 //Registered verify function
 VERIFY_FUNC_REG(RnnGenMask, RnnGenMaskVerify);
 // --------------------------RnnGenMask END---------------------
+// --------------------------MultilabelMarginLoss-------------------------
+IMPLEMT_VERIFIER(MultilabelMarginLoss, MultilabelMarginLossVerify) { return GRAPH_SUCCESS; }
+
+IMPLEMT_INFERFUNC(MultilabelMarginLoss, MultilabelMarginLossInferShape) {
+  string input_name1 = "x";
+  string input_name2 = "target";
+  string output_name1 = "y";
+  string output_name2 = "is_target";
+
+  DataType input_dtype = op.GetInputDesc(input_name1).GetDataType();
+  Format input_format = op.GetInputDesc(input_name1).GetFormat();
+  DataType target_dtype = op.GetInputDesc(input_name2).GetDataType();
+  Format target_format = op.GetInputDesc(input_name2).GetFormat();
+
+  ge::Shape shape_x = op.GetInputDesc(input_name1).GetShape();
+  ge::Shape shape_y = op.GetInputDesc(input_name2).GetShape();
+  std::vector<int64_t> dims_x = shape_x.GetDims();
+  std::vector<int64_t> dims_y = shape_y.GetDims();
+
+  if (dims_x.size() != dims_y.size()) {
+    OP_LOGE(op.GetName().c_str(), "InputSize and OutputSize are not the same.");
+    return GRAPH_FAILED;
+  }
+
+  if (dims_x.size() != 1 && dims_x.size() != 2) {
+    OP_LOGE(op.GetName().c_str(), "InputSize Must Equalt to 1 or 2");
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc outputDesc = op.GetOutputDesc(output_name1);
+  TensorDesc isTargetDesc = op.GetOutputDesc(output_name2);
+
+  std::string reduction = op.get_attr_reduction();
+  std::vector<int64_t> outputDimVec;
+  std::vector<int64_t> isTargetDimVec;
+  for (size_t i = 0; i < dims_x.size(); i++) {
+    if (dims_x[i] != dims_y[i]) {
+      OP_LOGE(op.GetName().c_str(), "InputSize and OutputSize are not the same.");
+      return GRAPH_FAILED;
+    }
+    isTargetDimVec.push_back(dims_x[i]);
+  }
+
+  if (reduction == "none" && dims_x.size() == 2) outputDimVec.push_back(dims_x[0]);
+
+  ge::Shape outputShape = ge::Shape(outputDimVec);
+  outputDesc.SetShape(outputShape);
+  outputDesc.SetDataType(input_dtype);
+  outputDesc.SetFormat(input_format);
+
+  ge::Shape isTargetShape = ge::Shape(isTargetDimVec);
+  isTargetDesc.SetShape(isTargetShape);
+  isTargetDesc.SetDataType(target_dtype);
+  isTargetDesc.SetFormat(target_format);
+
+  op.UpdateOutputDesc(output_name1, outputDesc);
+  op.UpdateOutputDesc(output_name2, isTargetDesc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(MultilabelMarginLoss, MultilabelMarginLossInferShape);
+VERIFY_FUNC_REG(MultilabelMarginLoss, MultilabelMarginLossVerify);
+// ----------------MultiLabelMarginLoss end----------------------------------
+
 }  // namespace ge

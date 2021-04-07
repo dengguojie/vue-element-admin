@@ -1462,6 +1462,38 @@ REG_OP(RnnGenMask)
     .REQUIRED_ATTR(num_step, Int)
     .REQUIRED_ATTR(hidden_size, Int)
     .OP_END_FACTORY_REG(RnnGenMask)
+
+/**
+* @brief Creates a criterion that optimizes a multi-class multi-classification hinge loss (margin-based loss) 
+*        between input x (a 2D mini-batch Tensor) and output y (which is a 2D Tensor of target class indices) \n
+ 
+* @par Inputs:
+* Two inputs, including:
+* @li x: A tensor. Must be one of the following types:
+*     float16, float32. \n
+* 
+* @par Inputs:
+* @li target: A tensor. Must be the following types:
+*     int32. \n
+
+* @par Attributes:
+* @li reduction: An optional string. Defaults to "mean" \n
+
+* @par Outputs:
+* y: A Tensor has same element type as input x. \n
+* is_target: A Tensor has same element type as input target. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator MultiLabelMarginLoss. \n
+*/
+REG_OP(MultilabelMarginLoss)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(target, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(is_target, TensorType({DT_INT32}))
+    .ATTR(reduction, String, "mean")
+    .OP_END_FACTORY_REG(MultilabelMarginLoss)
+
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_NORM_OPS_H_
