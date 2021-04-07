@@ -1086,7 +1086,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
   int64_t kw;
   int64_t sh;
   int64_t sw;
-  int64_t padding_int;
+  int64_t padding_int = 0;
   string padding;
   string data_format;
   flag = GetUssCompileParams(op_type, op_compile_info_json, core_num_ys, ub_size, kh, kw, sh, sw, padding_int, l1_size);
