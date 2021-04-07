@@ -48,11 +48,11 @@ struct SliceParameters {
 };
 
 struct SliceMasks {
-  int64_t beginmask = 0;
-  int64_t endmask = 0;
-  int64_t ellipsismask = 0;
-  int64_t newaxismask = 0;
-  int64_t shrinkaxismask = 0;
+  uint64_t beginmask = 0;
+  uint64_t endmask = 0;
+  uint64_t ellipsismask = 0;
+  uint64_t newaxismask = 0;
+  uint64_t shrinkaxismask = 0;
 };
 
 struct PadCompileParams {
@@ -61,11 +61,11 @@ struct PadCompileParams {
   int64_t dtype_rate;
   std::string op_type;
   // Add For StridedSliceGrad
-  int64_t begin_mask;
-  int64_t end_mask;
-  int64_t ellipsis_mask;
-  int64_t new_axis_mask;
-  int64_t shrink_axis_mask;
+  uint64_t begin_mask;
+  uint64_t end_mask;
+  uint64_t ellipsis_mask;
+  uint64_t new_axis_mask;
+  uint64_t shrink_axis_mask;
 };
 
 struct PadTilingParams {
@@ -167,31 +167,31 @@ static bool GetPadCompileParams(const nlohmann::json& compile_info,
       OP_LOGE(compile_params.op_type, "GetCompileParams, get begin_mask error");
       return false;
     }
-    compile_params.begin_mask = allVars["begin_mask"].get<std::int64_t>();
+    compile_params.begin_mask = allVars["begin_mask"].get<std::uint64_t>();
 
     if (allVars.count("end_mask") == 0) {
       OP_LOGE(compile_params.op_type, "GetCompileParams, get end_mask error");
       return false;
     }
-    compile_params.end_mask = allVars["end_mask"].get<std::int64_t>();
+    compile_params.end_mask = allVars["end_mask"].get<std::uint64_t>();
 
     if (allVars.count("ellipsis_mask") == 0) {
       OP_LOGE(compile_params.op_type, "GetCompileParams, get ellipsis_mask error");
       return false;
     }
-    compile_params.ellipsis_mask = allVars["ellipsis_mask"].get<std::int64_t>();
+    compile_params.ellipsis_mask = allVars["ellipsis_mask"].get<std::uint64_t>();
 
     if (allVars.count("new_axis_mask") == 0) {
       OP_LOGE(compile_params.op_type, "GetCompileParams, get new_axis_mask error");
       return false;
     }
-    compile_params.new_axis_mask = allVars["new_axis_mask"].get<std::int64_t>();
+    compile_params.new_axis_mask = allVars["new_axis_mask"].get<std::uint64_t>();
 
     if (allVars.count("shrink_axis_mask") == 0) {
       OP_LOGE(compile_params.op_type, "GetCompileParams, get shrink_axis_mask error");
       return false;
     }
-    compile_params.shrink_axis_mask = allVars["shrink_axis_mask"].get<std::int64_t>();
+    compile_params.shrink_axis_mask = allVars["shrink_axis_mask"].get<std::uint64_t>();
   }
   return true;
 }
@@ -379,7 +379,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   std::vector<int64_t> merge_paddings_values;
   int64_t merge_input_shape_dim = 1;
   bool pre_dim_pidding_flag = true;
-  for (int64_t i = 0; i < shape_len; i++) {
+  for (auto i = 0; i < shape_len; i++) {
     auto cu_idx = shape_len - i - 1;
     auto cu_input_dim = input_shape[cu_idx];
     auto cu_paddings_value_left = paddings_const_values[cu_idx * 2];
@@ -408,7 +408,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   }
 
   shape_len = merge_input_shape_dims.size();
-  for (int64_t i = 0; i < 6 - shape_len; i++) {
+  for (auto i = 0; i < 6 - shape_len; i++) {
     merge_input_shape_dims.insert(merge_input_shape_dims.begin(), 1);
     merge_paddings_values.insert(merge_paddings_values.begin(), 0);
     merge_paddings_values.insert(merge_paddings_values.begin(), 0);
@@ -456,6 +456,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
     tiling_params.tiling_key = TILING_MODE_0;
     tiling_params.tiling_input_dim_cut_axis = 0;
   }
+  return true;
 }
 
 bool PadTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
