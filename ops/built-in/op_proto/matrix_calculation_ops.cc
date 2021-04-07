@@ -1197,6 +1197,172 @@ bool InferMatmul(const Operator &op) {
   }
 }
 
+bool InferBatchMatmulInputNZ(const Operator &op,
+                             vector<vector<int64_t>> &output,
+                             bool trans_a, bool trans_b,
+                             size_t x1_dims, size_t x2_dims) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  vector<vector<int64_t>> x1_data_slice(x1_dims);
+  vector<vector<int64_t>> x2_data_slice(x2_dims);
+  size_t y_dims = output.size();
+
+  for(int i = 0; i < y_dims; i++) {
+    if (output[i].size() > 1) {
+      if (i == y_dims - 4) {
+        // split n
+        if (!trans_b) {
+          x2_data_slice[x2_dims - 3] = output[i];
+        } else {
+          x2_data_slice[x2_dims - 4] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        return true;
+      } else if (i == y_dims - 3) {
+        if (!trans_a) {
+          x1_data_slice[x1_dims - 4] = output[i];
+        } else {
+          x1_data_slice[x2_dims - 3] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        return true;
+      } else if (i < y_dims - 4){
+        // split batch
+        x1_data_slice[i] = output[i];
+        if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
+          return false;
+        }
+        if (x2_dims == x1_dims) {
+          x2_data_slice[i] = output[i];
+          if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
+            return false;
+          }
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in batch success");
+        return true;
+      } else {
+        OP_LOGI(op.GetName().c_str(), "cannot support cut in block_n and block_m");
+        return false;
+      }
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  return false;
+}
+
+bool InferBatchMatmulInputND(const Operator &op,
+                             vector<vector<int64_t>> &output,
+                             bool trans_a, bool trans_b,
+                             size_t x1_dims, size_t x2_dims) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_x1 = op_desc->MutableInputDesc("x1");
+  GeTensorDescPtr tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  vector<vector<int64_t>> x1_data_slice(x1_dims);
+  vector<vector<int64_t>> x2_data_slice(x2_dims);
+  size_t y_dims = output.size();
+
+  for(int i = 0; i < y_dims; i++) {
+    if (output[i].size() > 1) {
+      if (i == y_dims - 2) {
+        // split m
+        if (!trans_a) {
+          x1_data_slice[x1_dims - 2] = output[i];
+        } else {
+          x1_data_slice[x1_dims - 1] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in M success");
+        return true;
+      } else if (i == y_dims - 1) {
+        // split n
+        if (!trans_b) {
+          x2_data_slice[x2_dims - 1] = output[i];
+        } else {
+          x2_data_slice[x2_dims - 2] = output[i];
+        }
+        if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
+          return false;
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in N success");
+        return true;
+      } else {
+        x1_data_slice[i] = output[i];
+        if(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice)) {
+          return false;
+        }
+        if (x2_dims == x1_dims) {
+          x2_data_slice[i] = output[i];
+          if(!AttrUtils::SetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice)) {
+            return false;
+          }
+        }
+        OP_LOGI(op.GetName().c_str(), "infer input in Batch success");
+        return true;
+      }
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  return false;
+}
+
+bool InferBatchMatmul(const Operator &op) {  
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+
+  bool trans_a = false;
+  bool trans_b = false;
+  if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x1", trans_a)) {
+    OpsGetAttrErrReport(op.GetName(), "transposeA");
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transposeA failed!",
+            op.GetName().c_str());
+    return false;
+  }
+  if (ge::GRAPH_SUCCESS != op.GetAttr("adj_x2", trans_b)) {
+    OpsGetAttrErrReport(op.GetName(), "transposeB");
+    OP_LOGE(op.GetName().c_str(), "[Plugin][ERROR]%s GetOpAttr transposeB failed!",
+            op.GetName().c_str());
+    return false;
+  }
+
+  Format x1_format = op.GetInputDesc("x1").GetFormat();
+  Format x2_format = op.GetInputDesc("x2").GetFormat();
+  size_t x1_dims = op.GetInputDesc("x1").GetShape().GetDimNum();
+  size_t x2_dims = op.GetInputDesc("x2").GetShape().GetDimNum();
+  if (x1_format == FORMAT_FRACTAL_NZ) {
+    trans_a = !trans_a;
+  }
+  if (x2_format == FORMAT_FRACTAL_NZ) {
+    trans_b = !trans_b;
+  }
+
+  vector<vector<int64_t>> y_data_slice;
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return false;
+  }
+
+  if (x1_format == FORMAT_FRACTAL_NZ) {
+    if(!InferBatchMatmulInputNZ(op, y_data_slice, trans_a, trans_b, x1_dims, x2_dims)) {
+      return false;
+    }
+    return true;
+  } else {
+    if(!InferBatchMatmulInputND(op, y_data_slice, trans_a, trans_b, x1_dims, x2_dims)) {
+      return false;
+    }
+    return true;
+  }
+}
+
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(MatMul, MatMulVerify) {
   std::vector<DataType> support_list;
@@ -1486,12 +1652,23 @@ IMPLEMT_COMMON_INFERFUNC(BatchMatMulInferShape) {
   return CommonBatchMatMulInferShape(op);
 }
 
+// the slice infer
+IMPLEMT_INFER_DATA_SLICE(BatchMatMul, BatchMatMulInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter BatchMatmul InferDataSlice.");
+  if (!InferBatchMatmul(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(BatchMatMul, BatchMatMulInferShape);
 
 // Registered verify function
 VERIFY_FUNC_REG(BatchMatMul, BatchMatMulVerify);
 
+// Registered slice function
+INFER_DATA_SLICE_FUNC_REG(BatchMatMul, BatchMatMulInferDataSlice);
 
 // ----------------BatchMatMulV2-------------------
 // Check the dtype and attr of the input tensor description.
@@ -1519,12 +1696,24 @@ IMPLEMT_INFERFORMAT_FUNC(BatchMatMulV2, BatchMatMulV2InferFormat) {
   return GRAPH_SUCCESS;
 }
 
+// the slice infer
+IMPLEMT_INFER_DATA_SLICE(BatchMatMulV2, BatchMatMulV2InferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter BatchMatmulV2 InferDataSlice.");
+  if (!InferBatchMatmul(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 // Registered inferfunction
 INFER_FORMAT_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferFormat);
 COMMON_INFER_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferShape);
 
 // Registered verify function
 VERIFY_FUNC_REG(BatchMatMulV2, BatchMatMulV2Verify);
+
+// Registered slice function
+INFER_DATA_SLICE_FUNC_REG(BatchMatMulV2, BatchMatMulV2InferDataSlice);
 
 // - ---------------L2Loss-------------------
 IMPLEMT_COMMON_INFERFUNC(L2LossInferShape) {

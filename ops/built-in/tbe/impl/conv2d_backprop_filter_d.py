@@ -252,7 +252,7 @@ def get_op_support_info(
         # only Cout1 can be cut
         axis_split_matrix = [
             [
-                util_select_op_base.SplitInput([1, [1], [-1], [-1]]),
+                util_select_op_base.SplitInput([1, [1], [0], [0]]),
                 util_select_op_base.SplitOutput([0, [1]])
             ]
         ]

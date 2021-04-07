@@ -2993,6 +2993,57 @@ INFER_FUNC_REG(Conv2DBackpropInputD, Conv2DBackpropInputDInfer);
 VERIFY_FUNC_REG(Conv2DBackpropInputD, Conv2DBackpropInputDVerify);
 
 // ----------------Conv2DBackpropFilter-------------------
+bool InferConv2DBackpropFilter(ge::Operator& op) {
+  auto y_tensor = op.GetOutputDesc("y");
+  auto filter_format = y_tensor.GetOriginFormat();
+  std::string filter_format_str = format2str[filter_format];
+  int32_t n_filter_position = filter_format_str.find("N");
+  // get shape for output from filter_size
+  std::vector<int32_t> filter_sizes;
+  if (GRAPH_SUCCESS != op.GetAttr("filter_size", filter_sizes)) {
+    OP_LOGE(op.GetName().c_str(), "get filter_size list failed.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = "Conv2DBackpropFilter";
+    err_map["param_name"] = "filter_size";
+    std::string report_error_code = "E50030";
+    (void)ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  GeTensorDescPtr tensor_desc_dedy = op_desc->MutableInputDesc("out_backprop");
+
+  vector<vector<int64_t>> y_data_slice;
+  vector<vector<int64_t>> dedy_data_slice = {{}, {}, {}, {}, {}};
+
+  if (!AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice)) {
+    OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+    return false;
+  }
+
+  for(int i = 0; i < y_data_slice.size(); i++) {
+    if (y_data_slice[i].size() > 1) {
+      int32_t y_extend = y_data_slice[i][1] - y_data_slice[i][0] + 1;
+      if (i == 1) {
+        dedy_data_slice[i] = y_data_slice[i];
+        if(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice)) {
+          return false;
+        }
+        filter_sizes[n_filter_position] = y_extend * 16;
+        op.SetAttr("filter_size", filter_sizes);
+        OP_LOGI(op.GetName().c_str(), "infer input in Cout success");
+        return true;
+      } else {
+         OP_LOGI(op.GetName().c_str(), "can not supported split in Cin, H and W");
+         return false;
+      }
+    }
+  }
+  OP_LOGI(op.GetName().c_str(), "no data slice, not need infer input");
+  return false;
+}
+
 static graphStatus VerifyConv2dbpFilterCommon(const ge::Operator& op) {
   auto x_desc = op.GetInputDesc("x");
   auto out_backprop_desc = op.GetInputDesc("out_backprop");
@@ -3240,8 +3291,17 @@ IMPLEMT_VERIFIER(Conv2DBackpropFilter, Conv2DBackpropFilterVerify) {
   }
 }
 
+IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropFilter, Conv2DBackpropFilterInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DBackpropFilter InferDataSlice.");
+  if (!InferConv2DBackpropFilter(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 INFER_FUNC_REG(Conv2DBackpropFilter, Conv2DBackpropFilterInfer);
 VERIFY_FUNC_REG(Conv2DBackpropFilter, Conv2DBackpropFilterVerify);
+INFER_DATA_SLICE_FUNC_REG(Conv2DBackpropFilter, Conv2DBackpropFilterInferDataSlice);
 
 // ----------------Conv2DBackpropFilterD-------------------
 IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
@@ -3341,8 +3401,17 @@ IMPLEMT_VERIFIER(Conv2DBackpropFilterD, Conv2DBackpropFilterDVerify) {
   return GRAPH_SUCCESS;
 }
 
+IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropFilterD, Conv2DBackpropFilterDInferDataSlice) {
+  OP_LOGD(op.GetName().c_str(), "Enter Conv2DBackpropFilterD InferDataSlice.");
+  if (!InferConv2DBackpropFilter(op)) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
 INFER_FUNC_REG(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer);
 VERIFY_FUNC_REG(Conv2DBackpropFilterD, Conv2DBackpropFilterDVerify);
+INFER_DATA_SLICE_FUNC_REG(Conv2DBackpropFilterD, Conv2DBackpropFilterDInferDataSlice);
 
 // --------------------------Conv2D------------------------------
 /*!
