@@ -15,7 +15,7 @@
 """
 iou
 """
-import te
+import tbe.common.register as tbe_register
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as tbe_platform
@@ -810,7 +810,7 @@ def iou_compute(bboxes, gtboxes, overlap, mode, kernel_name):
     return iou_res.run_tik(kernel_name)
 
 
-@te.op.register_operator('PtIou')
+@tbe_register.register_operator('PtIou')
 @op_utils.check_op_params(
     op_utils.REQUIRED_INPUT,
     op_utils.REQUIRED_INPUT,
