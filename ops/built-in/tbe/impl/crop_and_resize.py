@@ -31,6 +31,9 @@ def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
     """To check whether the AICORE operator can support the length of w/h or not
     """
     input_shape = x.get("ori_shape")
+    if -1 in input_shape or -2 in input_shape:
+        return False
+
     input_type = x.get("dtype")
     input_format = x.get("ori_format")
     output_h, output_w = crop_size
@@ -80,20 +83,21 @@ def op_select_format(x, boxes, box_index, y, crop_size, extrapolation_value,
     input_shape = x.get("ori_shape")
     input_format = x.get("ori_format")
 
-    input_h, input_w = [0, 0]
-    # format must be ("NHWC", "NCHW")
-    if input_format in ("NHWC",):
-        input_h = input_shape[1]
-        input_w = input_shape[2]
-    elif input_format in ("NCHW",):
-        input_h = input_shape[2]
-        input_w = input_shape[3]
-
     support_dtype = []
-    if input_h * input_w <= 65530:
-        support_dtype.append("float16")
-    if input_h * input_w <= 65530 // 2:
-        support_dtype.append("float32")
+    if -1 not in input_shape and -2 not in input_shape:
+        input_h, input_w = [0, 0]
+        # format must be ("NHWC", "NCHW")
+        if input_format in ("NHWC",):
+            input_h = input_shape[1]
+            input_w = input_shape[2]
+        elif input_format in ("NCHW",):
+            input_h = input_shape[2]
+            input_w = input_shape[3]
+
+        if input_h * input_w <= 65530:
+            support_dtype.append("float16")
+        if input_h * input_w <= 65530 // 2:
+            support_dtype.append("float32")
 
     dtype_base_in = support_dtype.copy()
     dtype_base_out = ["float32"] * len(support_dtype)
