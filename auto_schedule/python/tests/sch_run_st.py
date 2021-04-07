@@ -28,11 +28,12 @@ cur_dir = os.path.realpath(__file__)
 
 def run_st(case_dir, soc_version, out_dir):
     soc_version = soc_version
-    case_list_file = os.listdir(case_dir)
-
-    if not case_list_file or case_list_file == ['get_change.log']:
-        # has no relate ut, not need run ut.
-        exit(0)
+    if os.path.isdir(case_dir):
+        case_list_file = os.listdir(case_dir)
+        if not case_list_file or case_list_file == ['get_change.log']:
+            # has no relate ut, not need run ut.
+            exit(0)
+    
     cov_report_path = "./cov_report/ops/python_utest"
     report_path = "./report/ops/python_report"
 
@@ -54,6 +55,9 @@ def run_st(case_dir, soc_version, out_dir):
                     case_res = "Failed"
             result[case_name] = case_res
 
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
     with open(os.path.join(out_dir, "result.txt"), "w") as res_file:
         for k, v in result.items():
             res_str="{} {}".format(k,v)
@@ -72,6 +76,10 @@ if __name__ == "__main__":
         case_dir = sys.argv[1]
         soc_version = sys.argv[2]
         out_dir = sys.argv[3]
+    elif len(sys.argv) == 3:
+        case_dir = sys.argv[1]
+        soc_version = sys.argv[2]
+        out_dir = './'
     else:
         print("args error!!")
         exit(-1)
