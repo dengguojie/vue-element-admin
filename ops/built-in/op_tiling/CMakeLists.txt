@@ -82,6 +82,7 @@ set(_optiling_files
   sparse_apply_proximal_adagrad_d.cc
   split_d.cc
   split_v.cc
+  expand.cc
   strided_slice.cc
   select.cc
   tile_d.cc

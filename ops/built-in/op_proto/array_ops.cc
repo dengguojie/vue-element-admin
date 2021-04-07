@@ -2246,31 +2246,53 @@ template<typename T> static bool ExpandCalDim(const Tensor &data,
   return true;
 }
 
-IMPLEMT_COMMON_INFERFUNC(ExpandInferShape) {
+IMPLEMT_INFERFUNC(Expand, ExpandInferShape) {
   Shape x_shape = op.GetInputDesc("x").GetShape();
   DataType x_dtype = op.GetInputDesc("x").GetDataType();
   std::vector <int64_t> dims_x = x_shape.GetDims();
   Tensor data;
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   std::vector <int64_t> vec_dim;
   TensorDesc td = op.GetOutputDesc("y");
   if (op.GetInputConstData("shape", data) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get constValue failed of [shape]");
-    return GRAPH_FAILED;
-  } else {
+    OP_LOGI(op.GetName().c_str(), "Get constValue failed of [shape]");
+    auto shape_desc = op_info->MutableInputDesc("shape");
+    vector<int64_t> shapedims = shape_desc->MutableShape().GetDims();
+    size_t dim_num = shapedims.size();
+
+    DataType input_dtype = op.GetInputDesc("x").GetDataType();
+
+    if (dim_num > 1) {
+      OP_LOGE(op.GetName().c_str(), "The dim numbles of constnode are less than one.");
+      return GRAPH_FAILED;
+    }
+
+    std::vector<int64_t> shape_vector;
+    std::vector<std::pair<int64_t, int64_t>> range_vector;
+    for (int64_t item = 0; item < shapedims[0]; ++item) {
+      shape_vector.push_back(-1);
+      range_vector.push_back(std::make_pair(1, -1));
+    }
+    auto output_desc = op_info->MutableOutputDesc("y");
+    output_desc->SetShape(GeShape(shape_vector));
+    output_desc->SetShapeRange(range_vector);
+    output_desc->SetDataType(input_dtype);
+    return GRAPH_SUCCESS;
+    }else {
+
     DataType data_type = data.GetTensorDesc().GetDataType();
-    std::vector <int64_t> vec_dim;
     if (data_type == DT_INT32) {
       if (!ExpandCalDim <int32_t>(data, vec_dim, dims_x)) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Data shape are not compatible!");
+        OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
         return GRAPH_FAILED;
       }
     } else if (data_type == DT_INT64) {
       if (!ExpandCalDim <int64_t>(data, vec_dim, dims_x)) {
-        CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Data shape are not compatible!");
+        OP_LOGE(op.GetName().c_str(), "Data shape are not compatible!");
         return GRAPH_FAILED;
       }
     } else {
-      CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Data type not supported!");
+      OP_LOGE(op.GetName().c_str(), "Data type not supported!");
       return GRAPH_PARAM_INVALID;
     }
 
@@ -2281,7 +2303,7 @@ IMPLEMT_COMMON_INFERFUNC(ExpandInferShape) {
   }
 }
 
-COMMON_INFER_FUNC_REG(Expand, ExpandInferShape);
+INFER_FUNC_REG(Expand, ExpandInferShape);
 // ----------------Expand END---------------------
 
 // ----------------ExpandD Begin-------------------
