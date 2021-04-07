@@ -410,4 +410,4 @@ class NormalLayerNormSchedule:
 
     def _add_compile_info(self):
         add_compile_info("max_ub_size_normal_fp16", 10 * 1024)
-        add_compile_info("max_ub_size_normal_fp32", 512)
+        add_compile_info("max_ub_size_normal_fp32", 10 * 1024)

@@ -259,14 +259,12 @@ class WorkspaceLayerNormSchedule:
             res_ub_gm_outer, res_ub_gm_inner = self.schedule[self.res_tensor].split(
                 self.res_tensor.op.axis[self.ub_split_axis_index], factor=ub_inner)
             # judge open multi_core
-            """
             if case.multi_core is None:
                 raise RuntimeError("Tilingcase didn`t declare multi_core switch")
             if case.multi_core:
                 block = tvm.thread_axis("blockIdx.x")
                 self.schedule[self.res_tensor].bind(res_block_outer, block)
                 self.schedule[self.sub_gm_tensor].bind(self.sub_block_split_result[0], block)
-            """
             self.res_block_split_result = [res_block_outer, res_block_inner]
             self.res_ub_fuse_split_result = [res_ub_fuse_outer, res_ub_fuse_inner]
             self.res_ub_split_result = [res_ub_gm_outer, res_ub_gm_inner]
@@ -547,4 +545,4 @@ class WorkspaceLayerNormSchedule:
 
     def _add_compile_info(self):
         add_compile_info("max_ub_size_normal_fp16", 10 * 1024)
-        add_compile_info("max_ub_size_normal_fp32", 512)
+        add_compile_info("max_ub_size_normal_fp32", 10 * 1024)
