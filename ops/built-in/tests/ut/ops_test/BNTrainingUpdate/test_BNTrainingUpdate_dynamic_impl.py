@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from op_test_frame.ut import OpUT
-ut_case = OpUT("BnTrainingUpdate", "impl.dynamic.bn_training_update", "bn_training_update")
+ut_case = OpUT("BNTrainingUpdate", "impl.dynamic.bn_training_update", "bn_training_update")
 
 def gen_bn_training_update_case(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset,
                                 shape_mean, shape_variance, dtype, dtype_others, factor, epsilon, case_name_val):

@@ -155,7 +155,7 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset
     para_check.check_dtype(dtype_variance, ("float32",), param_name="variance")
 
 
-@register_operator_compute("BnTrainingUpdate", op_mode="dynamic", support_fusion=False)
+@register_operator_compute("BNTrainingUpdate", op_mode="dynamic", support_fusion=False)
 def bn_training_update_compute(x,
                                sum,
                                square_sum,
@@ -269,7 +269,7 @@ def bn_training_update_compute(x,
     return res
 
 
-@register_operator("BnTrainingUpdate", "BnTrainingUpdate")
+@register_operator("BNTrainingUpdate", "BnTrainingUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, 
