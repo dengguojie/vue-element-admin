@@ -29,40 +29,22 @@
 
 namespace optiling {
 
-struct TilingInfo {
-  int32_t block_dim;
-  int32_t block_tiling_axis;
-  int64_t block_tiling_factor;
-  int32_t ub_tiling_axis;
-  int64_t ub_tiling_factor;
+struct SoftmaxTilingInfo {
+  int32_t block_dim{0};
+  int32_t block_tiling_axis{-1};
+  int64_t block_tiling_factor{1};
+  int32_t ub_tiling_axis{-1};
+  int64_t ub_tiling_factor{1};
 };
 
-struct TilingNewInfo {
-  int32_t core_num;
-  int32_t block_tiling_axis;
-  int64_t block_tiling_outer;
-  int64_t block_tiling_inner;
-  int32_t ub_tiling_axis;
-  int64_t ub_tiling_outer;
-  int64_t ub_tiling_inner;
-};
-
-struct ReorderInfo {
-  std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(10, 0)};
-  std::vector<int32_t> fused_block_tiling_axis;
-  // pos after reorder : pos before reorder
-  //    vector.idx     :      vector[idx]
-  std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(10, 0)};
-};
-
-struct CompileInfo {
-  bool is_const = false;
-  bool is_const_post = false;
-  bool atomic = false;
-  bool is_keep_dims = false;
-  int64_t max_ub_count;
-  int32_t core_num;
-  int32_t reduce_block_size;
+struct SoftmaxCompileInfo {
+  bool is_const{false};
+  bool is_const_post{false};
+  bool atomic{false};
+  bool is_keep_dims{false};
+  int64_t max_ub_count{0};
+  int32_t core_num{1};
+  int32_t reduce_block_size{0};
 };
 
 class Softmax {
@@ -91,10 +73,8 @@ class Softmax {
   const TeOpParas& op_paras;
   const nlohmann::json& op_info;
   OpRunInfo& run_info;
-  CompileInfo compileInfo;
-  TilingInfo tilingInfo;
-  TilingNewInfo tilingNewInfo;
-  ReorderInfo reorderInfo;
+  SoftmaxCompileInfo compileInfo;
+  SoftmaxTilingInfo tilingInfo;
 
   std::vector<int64_t> input_shape_ori;
   std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(10, 0)};
@@ -102,14 +82,10 @@ class Softmax {
   std::vector<int32_t> reduce_axis{std::vector<int32_t>(10, 0)};
   std::vector<int64_t> output_shape{std::vector<int64_t>(10, 0)};
 
-  bool is_last_axis_reduce;
+  bool is_last_axis_reduce{false};
   std::string output_dtypeUB;
-  int64_t total_output_count;
-  int64_t total_reduce_count;
-  int32_t pattern;
-  int32_t set_reduce_mean_cof_flag;
-  int32_t block_size;
-  float reduce_mean_cof;
+  int32_t pattern{0};
+  int32_t block_size{1};
 };
 }  // namespace optiling
 

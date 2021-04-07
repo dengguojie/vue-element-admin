@@ -64,7 +64,7 @@ bool Softmax::Init() {
 bool Softmax::FusedReduceAxis() {
   size_t capacity_shape = 0;
   size_t capacity_axis = 1;
-  int32_t axis_ori = reduce_axis_ori[0];
+  auto axis_ori = reduce_axis_ori[0];
   if (input_shape_ori.size() == 1) {
     reduce_axis[0] = 1;
     input_shape[0] = 1;
@@ -75,7 +75,7 @@ bool Softmax::FusedReduceAxis() {
     reduce_axis[0] = 0;
     input_shape[0] = input_shape_ori[0];
     input_shape[1] = 1;
-    for (int i = 1; i < input_shape_ori.size(); i++) {
+    for (auto i = 1; i < input_shape_ori.size(); i++) {
       input_shape[1] *= input_shape_ori[i];
     }
     capacity_shape = 2;
@@ -84,7 +84,7 @@ bool Softmax::FusedReduceAxis() {
     reduce_axis[0] = 1;
     input_shape[1] = input_shape_ori[input_shape_ori.size() - 1];
     input_shape[0] = 1;
-    for (int i = 0; i < input_shape_ori.size() - 1; i++) {
+    for (auto i = 0; i < input_shape_ori.size() - 1; i++) {
       input_shape[0] *= input_shape_ori[i];
     }
     capacity_shape = 2;
@@ -95,10 +95,10 @@ bool Softmax::FusedReduceAxis() {
     input_shape[1] = input_shape_ori[axis_ori];
     input_shape[0] = 1;
     input_shape[2] = 1;
-    for (int i = 0; i < axis_ori - 1; i++) {
+    for (auto i = 0; i < axis_ori - 1; i++) {
       input_shape[0] *= input_shape_ori[i];
     }
-    for (int i = axis_ori + 1; i < input_shape_ori.size(); i++) {
+    for (auto i = axis_ori + 1; i < input_shape_ori.size(); i++) {
       input_shape[2] *= input_shape_ori[i];
     }
     pattern = 500000000;
@@ -123,13 +123,11 @@ bool Softmax::GetCompileInfo() {
 
 bool Softmax::GetBlockTilingInfo() {
   // rewrite block_tiling_axis, block_tiling_factor.
-  bool is_find_block_tiling = false;
   int32_t core_num = compileInfo.core_num;
   if (pattern == 300000000) {
     tilingInfo.block_tiling_axis = 1;
     tilingInfo.block_tiling_factor = 1;
     if (input_shape[1] > core_num) {
-      is_find_block_tiling = true;
       tilingInfo.block_tiling_factor = (input_shape[1] + core_num - 1) / core_num;
       tilingInfo.block_dim = core_num;
     } else {
@@ -138,7 +136,6 @@ bool Softmax::GetBlockTilingInfo() {
   } else if (pattern == 400000000) {
     tilingInfo.block_tiling_axis = 0;
     tilingInfo.block_tiling_factor = 1;
-    is_find_block_tiling = true;
     int32_t output_block_size = GetBlockSize(output_dtypeUB);
     if (input_shape[1] <= output_block_size) {
       tilingInfo.block_tiling_factor = 1;
@@ -152,7 +149,6 @@ bool Softmax::GetBlockTilingInfo() {
   } else if (pattern == 500000000) {
     if (input_shape[0] > core_num) {
       tilingInfo.block_tiling_axis = 0;
-      is_find_block_tiling = true;
       tilingInfo.block_tiling_factor = (input_shape[0] + core_num - 1) / core_num;
       tilingInfo.block_dim = core_num;
       pattern = 500000010;
@@ -166,7 +162,6 @@ bool Softmax::GetBlockTilingInfo() {
         tilingInfo.block_dim = input_shape[0] * input_shape[2];
       }
       pattern = 500000030;
-      is_find_block_tiling = true;
     }
   }
   return true;
@@ -209,7 +204,7 @@ bool Softmax::GetUbTilingInfo() {
         } else {
           tilingInfo.ub_tiling_axis = 2;
           tilingInfo.ub_tiling_factor = compileInfo.max_ub_count / input_shape[1];
-          pattern == 500000020;
+          pattern = 500000020;
         }
       } else {
         tilingInfo.ub_tiling_axis = 2;
@@ -263,16 +258,17 @@ bool Softmax::WriteTilingData() {
   // tiling_key
   run_info.tiling_key = pattern;
 
-  for (uint32_t i = 0; i < input_shape.size(); i++) {
+  for (auto i = 0; i < input_shape.size(); i++) {
     ByteBufferPut(run_info.tiling_data, (int32_t)input_shape[i]);
   }
 
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
-  OP_LOGD(op_type.c_str(), "block/res_ub tilling axis:%d", tilingInfo.block_tiling_axis);
-  OP_LOGD(op_type.c_str(), "block/res_ub tilling factor:%d", tilingInfo.block_tiling_factor);
-  OP_LOGD(op_type.c_str(), "ub/input_ub tilling axis:%d", tilingInfo.ub_tiling_axis);
-  OP_LOGD(op_type.c_str(), "ub/input_ub tilling factor:%d", tilingInfo.ub_tiling_factor);
+  OP_LOGD(op_type.c_str(), "block tilling axis:%d", tilingInfo.block_tiling_axis);
+  OP_LOGD(op_type.c_str(), "block tilling factor:%d", tilingInfo.block_tiling_factor);
+  OP_LOGD(op_type.c_str(), "ub tilling axis:%d", tilingInfo.ub_tiling_axis);
+  OP_LOGD(op_type.c_str(), "ub tilling factor:%d", tilingInfo.ub_tiling_factor);
+  OP_LOGD(op_type.c_str(), "block dim:%d", tilingInfo.block_dim);
 
   return true;
 }
@@ -280,7 +276,8 @@ bool Softmax::WriteTilingData() {
 bool SoftmaxTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                   OpRunInfo& run_info) {
   Softmax softmax(op_type, op_paras, op_info, run_info);
-  bool ret = softmax.DoTiling();
+  bool ret = true;
+  ret = softmax.DoTiling();
   ret = ret && softmax.WriteTilingData();
   OP_LOGD(op_type.c_str(), "SoftmaxTiling end");
   return ret;
