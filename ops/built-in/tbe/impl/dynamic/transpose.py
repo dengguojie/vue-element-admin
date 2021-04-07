@@ -1230,6 +1230,27 @@ class Transpose(object):
     def _get_src_addr(self, tp, ln, lc, lr, bsl):
         src_addr = self.tik_inst.Scalar("int64", init_value=0)
 
+        with self.tik_inst.if_scope(tp.src_axis_num == 7):
+            src_addr.set_as(tp.col_offset + lc * tp.col_per_mc + \
+                            tp.rt_src_tuple[0] * tp.src_jump_stride[0] + \
+                            tp.rt_src_tuple[1] * tp.src_jump_stride[1] + \
+                            tp.rt_src_tuple[2] * tp.src_jump_stride[2] + \
+                            tp.rt_src_tuple[3] * tp.src_jump_stride[3] + \
+                            tp.rt_src_tuple[4] * tp.src_jump_stride[4] + \
+                            tp.rt_src_tuple[5] * tp.src_jump_stride[5] + \
+                            tp.rt_src_tuple[6] * tp.src_jump_stride[6] - \
+                            bsl + self._get_n_src_offset(tp))
+
+        with self.tik_inst.if_scope(tp.src_axis_num == 6):
+            src_addr.set_as(tp.col_offset + lc * tp.col_per_mc + \
+                            tp.rt_src_tuple[0] * tp.src_jump_stride[0] + \
+                            tp.rt_src_tuple[1] * tp.src_jump_stride[1] + \
+                            tp.rt_src_tuple[2] * tp.src_jump_stride[2] + \
+                            tp.rt_src_tuple[3] * tp.src_jump_stride[3] + \
+                            tp.rt_src_tuple[4] * tp.src_jump_stride[4] + \
+                            tp.rt_src_tuple[5] * tp.src_jump_stride[5] - \
+                            bsl + self._get_n_src_offset(tp))
+
         with self.tik_inst.if_scope(tp.src_axis_num == 5):
             src_addr.set_as(tp.col_offset + lc * tp.col_per_mc + \
                             tp.rt_src_tuple[0] * tp.src_jump_stride[0] + \
@@ -1269,6 +1290,17 @@ class Transpose(object):
 
     def _get_dst_addr(self, tp, ln, lc, lr, col_id, bsl, bsu):
         dst_addr = self.tik_inst.Scalar("int64")
+
+        with self.tik_inst.if_scope(tp.dst_axis_num == 7):
+            dst_addr.set_as(tp.n_offset_actual + tp.row_offset + lr * tp.row_per_mr + \
+                            tp.rt_dst_tuple[0] * tp.dst_jump_stride[0] + \
+                            tp.rt_dst_tuple[1] * tp.dst_jump_stride[1] + \
+                            tp.rt_dst_tuple[2] * tp.dst_jump_stride[2] + \
+                            tp.rt_dst_tuple[3] * tp.dst_jump_stride[3] + \
+                            tp.rt_dst_tuple[4] * tp.dst_jump_stride[4] + \
+                            tp.rt_dst_tuple[5] * tp.dst_jump_stride[6] + \
+                            tp.rt_dst_tuple[6] * tp.dst_jump_stride[6] - \
+                            bsu + ln * tp.right_part_vol)
 
         with self.tik_inst.if_scope(tp.dst_axis_num == 6):
             dst_addr.set_as(tp.n_offset_actual + tp.row_offset + lr * tp.row_per_mr + \

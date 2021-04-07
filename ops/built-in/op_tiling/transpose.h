@@ -120,6 +120,7 @@ public:
                                                                        maxRow(0),
                                                                        subScenario(scenario),
                                                                        modelName(name) {}
+    virtual ~TilingModel(){};
     virtual void Decision(const NCR & ncr, int64_t dim) = 0;
     virtual bool Isf2t() {
         return false;

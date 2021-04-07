@@ -1779,6 +1779,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
         maxRow = 128;
     }
+    ~Model001() {}
     void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
         if (res) {
@@ -1796,6 +1797,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
         maxRow = 128;
     }
+    ~Model002() {}
     void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
         if (res) {
@@ -1813,6 +1815,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
         maxRow = 128;
     }
+    ~Model003() {}
     void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
         if (res) {
@@ -1827,6 +1830,7 @@ public:
 class Model004 : public TilingModel {
 public:
     Model004(int64_t coreNum, int64_t ubBlocks) : TilingModel(4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_f2t") {}
+    ~Model004() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.col.size() != 1) {
@@ -1857,6 +1861,7 @@ public:
 class Model005 : public TilingModel {
 public:
     Model005(int64_t coreNum, int64_t ubBlocks) : TilingModel(5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_t2f") {}
+    ~Model005() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.row.size() != 1) {
@@ -1902,6 +1907,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
         maxRow = 128;
     }
+    ~Model006() {}
     void Decision(const NCR & n, int64_t dim) {
         if (n.nVol >= coreNum) {
             if (n.cVol >= 8 && n.rVol >= 8) {
@@ -1927,6 +1933,7 @@ public:
 class Model007 : public TilingModel {
 public:
     Model007(int64_t coreNum, int64_t ubBlocks) : TilingModel(7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_f2t") {}
+    ~Model007() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.col.size() != 1) {
@@ -1951,6 +1958,7 @@ public:
 class Model008 : public TilingModel {
 public:
     Model008(int64_t coreNum, int64_t ubBlocks) : TilingModel(8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_t2f") {}
+    ~Model008() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.row.size() != 1) {
@@ -1991,6 +1999,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
         maxRow = 128;
     }
+    ~Model001_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
         if (res) {
@@ -2009,6 +2018,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
         maxRow = 128;
     }
+    ~Model002_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
         if (res) {
@@ -2027,6 +2037,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
         maxRow = 128;
     }
+    ~Model003_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
         if (res) {
@@ -2042,6 +2053,7 @@ class Model004_b16 : public TilingModel {
 public:
     Model004_b16(int64_t coreNum, int64_t ubBlocks) :
                  TilingModel(4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_b16_f2t") {}
+    ~Model004_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.col.size() != 1) {
@@ -2076,6 +2088,7 @@ class Model005_b16 : public TilingModel {
 public:
     Model005_b16(int64_t coreNum, int64_t ubBlocks) :
                  TilingModel(5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_b16_t2f") {}
+    ~Model005_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.row.size() != 1) {
@@ -2122,6 +2135,7 @@ public:
         maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
         maxRow = 128;
     }
+    ~Model006_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         if (n.nVol >= coreNum) {
             if (n.cVol >= 16 && n.rVol >= 16) {
@@ -2149,6 +2163,7 @@ public:
     Model007_b16(int64_t coreNum, int64_t ubBlocks) :
                  TilingModel(7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_b16_f2t") {
     }
+    ~Model007_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.col.size() != 1) {
@@ -2175,6 +2190,7 @@ public:
     Model008_b16(int64_t coreNum, int64_t ubBlocks) :
                  TilingModel(8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_b16_t2f") {
     }
+    ~Model008_b16() {}
     void Decision(const NCR & n, int64_t dim) {
         ncr = n;
         if (n.row.size() != 1) {
