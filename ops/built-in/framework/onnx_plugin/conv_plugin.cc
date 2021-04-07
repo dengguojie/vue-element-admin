@@ -225,12 +225,14 @@ Status GetConvAttr(const ge::Operator& op, ConvAttr& convAttr) {
   auto ret_dilations = op.GetAttr("dilations", convAttr.dilations);
   op.GetAttr("auto_pad", pad_mode);
   if (pad_mode != "NOTSET") {
-    OP_LOGE("Conv", "The attr of auto_pad is not NOTSET, unsupported other value for now,transform failed.");
-    return FAILED;
+    OP_LOGW("Conv",
+            "The attr of auto_pad is not NOTSET, unsupported other value for now,transform failed, may cause precision "
+            "error.");
   }
   if (ret_strides != SUCCESS && ret_pads != SUCCESS && ret_dilations != SUCCESS) {
-    OP_LOGE("Conv", "get attr of strides or pads or dilations from op failed, can not distinguish 2D/3D.");
-    return FAILED;
+    OP_LOGW("Conv",
+            "get attr of strides or pads or dilations from op failed, can not distinguish 2D/3D, use default 2D,"
+            " please set one of them obviously.");
   }
   if (op.GetAttr("dim_size", convAttr.dim_size) != SUCCESS) {
     OP_LOGE("Conv", "get dim size from op failed");
