@@ -338,6 +338,7 @@ class ResizeNearestNeighborV2Grad:
             # one segment h and one segment w
             def _do_single_nc(do_nc_num, _nc_loop_idx):
                 def _do_one_height(h_idx, output_ub, input_ub):
+                    h_gm_offset = h_idx + h_loop_offset
                     scalar_in_h_idx = self.tik_instance.Scalar("int32", name="scalar_in_h_idx")
                     height_idx_ub = self.tik_instance.Tensor("int32", (64,), name="height_idx", scope=tik.scope_ubuf)
                     height_idx_ub_fp32 = self.tik_instance.Tensor("float32", (64,),
@@ -358,7 +359,7 @@ class ResizeNearestNeighborV2Grad:
                                 (_nc_loop_idx * nc_max_segment + self.core_nc_start + _segment_idx) \
                                 * self.tiling_in_width * self.tiling_in_height
                             data_move_gm_offset = \
-                                nc_gm_input_offset + h_idx * self.tiling_in_width + w_gm_offset
+                                nc_gm_input_offset + h_gm_offset * self.tiling_in_width + w_gm_offset
                             self.tik_instance.data_move(output_ub[data_move_ubuf_offset],
                                                         self.grads_gm[data_move_gm_offset * self.grads_shape_c0],
                                                         0, 1,
@@ -367,7 +368,7 @@ class ResizeNearestNeighborV2Grad:
                         data_move_ubuf_offset = 0
                         nc_gm_input_offset = (_nc_loop_idx * nc_max_segment + self.core_nc_start) \
                                              * self.tiling_in_width * self.tiling_in_height
-                        data_move_gm_offset = nc_gm_input_offset + h_idx * self.tiling_in_width + w_gm_offset
+                        data_move_gm_offset = nc_gm_input_offset + h_gm_offset * self.tiling_in_width + w_gm_offset
                         data_move_burst_num = do_nc_num
                         data_move_burst_len = w_loop_segment * self.grads_shape_c0 // self.block_num
                         data_move_src_stride = (self.tiling_in_width * self.tiling_in_height - w_loop_segment) \
