@@ -33,15 +33,15 @@ const int32_t SMALL_SHAPE_THRESHOLD = 1024;
 const int32_t FUSED_NON_REDUCE_AXIS = 0;
 const int32_t FUSED_REDUCE_AXIS = 1;
 
-struct TilingInfo {
-  int32_t block_dim;
-  int32_t block_tiling_axis;
-  int64_t block_tiling_factor;
-  int32_t ub_tiling_axis;
-  int64_t ub_tiling_factor;
+struct TilingInfoReduce {
+  int32_t block_dim{-1};
+  int32_t block_tiling_axis{-1};
+  int64_t block_tiling_factor{-1};
+  int32_t ub_tiling_axis{-1};
+  int64_t ub_tiling_factor{-1};
 };
 
-struct ReorderInfo {
+struct ReorderInfoReduce {
   std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(10, 0)};
   std::vector<int32_t> fused_block_tiling_axis;
   // pos after reorder : pos before reorder
@@ -49,15 +49,15 @@ struct ReorderInfo {
   std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(10, 0)};
 };
 
-struct CompileInfo {
-  bool is_const = false;
-  bool is_const_post = false;
-  bool atomic = false;
-  bool is_keep_dims = false;
-  int64_t max_ub_count;
-  int32_t core_num;
-  int32_t min_block_size;
-  int32_t coef;
+struct CompileInfoReduce {
+  bool is_const{false};
+  bool is_const_post{false};
+  bool atomic{false};
+  bool is_keep_dims{false};
+  int64_t max_ub_count{-1};
+  int32_t core_num{-1};
+  int32_t min_block_size{-1};
+  int32_t coef{-1};
 };
 
 class Reduce {
@@ -108,14 +108,14 @@ class Reduce {
   const TeOpParas& op_paras;
   const nlohmann::json& op_info;
   OpRunInfo& run_info;
-  CompileInfo compileInfo;
-  TilingInfo tilingInfo;
-  ReorderInfo reorderInfo;
+  CompileInfoReduce compileInfo;
+  TilingInfoReduce tilingInfo;
+  ReorderInfoReduce reorderInfo;
 
-  bool exit_zero_axis = false;
-  bool exit_non_reduce_zero_axis = false;
-  int64_t fusion_dim_value = 1;
-  int64_t zero_tiling_key = 0;
+  bool exit_zero_axis{false};
+  bool exit_non_reduce_zero_axis{false};
+  int64_t fusion_dim_value{1};
+  int64_t zero_tiling_key{0};
 
   std::vector<int64_t> input_shape_ori;
   std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(10, 0)};
@@ -128,14 +128,14 @@ class Reduce {
   std::vector<int32_t> normalize_axis{std::vector<int32_t>(10, 0)};
   std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
 
-  bool is_last_axis_reduce;
-  int64_t total_output_count;
-  int64_t total_reduce_count;
-  int32_t pattern;
-  int32_t block_size;
+  bool is_last_axis_reduce{false};
+  int64_t total_output_count{-1};
+  int64_t total_reduce_count{-1};
+  int32_t pattern{-1};
+  int32_t block_size{-1};
 
-  int32_t ubSizeA;
-  int32_t ubSizeB;
+  int32_t ubSizeA{-1};
+  int32_t ubSizeB{-1};
 };
 }  // namespace optiling
 

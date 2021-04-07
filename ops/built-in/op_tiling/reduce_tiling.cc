@@ -357,7 +357,7 @@ bool Reduce::ChooseAtomic() {
     }
   }
 
-  // block_size: would be used for storage align in whole graph(min dtype)
+  // block_size: would be used fTilingInfoReduceor storage align in whole graph(min dtype)
   // nodes after reduce(include reduce) have same space(ubSizeA)
   // nodes before reduce have same space(ubSizeB)
   // ubSizeB = ubSizeA * coef (max dtype)
@@ -385,13 +385,13 @@ bool Reduce::ChooseAtomic() {
   // Check if outermost reduce axis is larger than or equal to core_num
   bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * 4;
   // Check nlast_reduce again
-  bool n_last_reduce_shape_limitation = pattern & 1 == 1 && input_shape[input_shape.size() - 1] < ubSizeB;
+  bool n_last_reduce_shape_limitation = ((pattern & 1) == 1) && (input_shape[input_shape.size() - 1] < ubSizeB);
   // AND expression for all checks
   bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
   // check extracted here because of 120 characters per line static check rule
-  compileInfo.atomic = compileInfo.atomic || shape_limitation && is_outermost_nlast_reduce;
+  compileInfo.atomic = compileInfo.atomic || (shape_limitation && is_outermost_nlast_reduce);
   // Final
-  compileInfo.atomic = atomic_available && compileInfo.atomic;
+  compileInfo.atomic = compileInfo.atomic && atomic_available;
   return true;
 }
 
@@ -667,7 +667,7 @@ bool Reduce::ProcessAtomicTiling() {
   ProcessReorderAxis(FUSED_REDUCE_AXIS);
 
   // align
-  if (block_size != 0 && reorderInfo.reorder_input_shape.size() > 0 &&
+  if (reorderInfo.reorder_input_shape.size() > 0 &&
       reorderInfo.reorder_input_shape.back() % block_size != 0) {
     reorderInfo.reorder_input_shape.back() =
         (reorderInfo.reorder_input_shape.back() + block_size - 1) / block_size * block_size;
