@@ -89,7 +89,6 @@ bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, cons
   int32_t fmap_c1 = input_shape[1];
   int32_t fmap_h = input_shape[2];
   int32_t fmap_w = input_shape[3];
-  int32_t c0 = input_shape[4];
   int32_t wo = output_shape[3];
   int32_t fmap_nc1h = fmap_n * fmap_c1 * fmap_h;
   int32_t core_num = op_compile_info_json["core_num"].get<int32_t>();

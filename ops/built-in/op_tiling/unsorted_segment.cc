@@ -162,15 +162,9 @@ int32_t _ceil_div(int32_t val, int32_t block)
 
 class FrontLast {
 public:
-    FrontLast()
-    {
-        front = 0;
-        last = 0;
-        times = 0;
-    }
-    int32_t front;
-    int32_t last;
-    int32_t times;
+    int32_t front{0};
+    int32_t last{0};
+    int32_t times{0};
 
     void div_by_num(int32_t total, int32_t _times, int32_t min_part = 1)
     {

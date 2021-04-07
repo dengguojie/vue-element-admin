@@ -128,10 +128,10 @@ namespace optiling
         compileinfo.min_block_size = common_info[2];
         compileinfo.atomic = (bool)common_info[3];
 
-        V_OP_TILING_CHECK(!compileinfo.min_block_size <= 0,
+        V_OP_TILING_CHECK(compileinfo.min_block_size > 0,
                             OP_LOGE(op_type.c_str(), "min_block_size is %d that is illegal", compileinfo.min_block_size), return false);
 
-        V_OP_TILING_CHECK(!compileinfo.core_num <= 0,
+        V_OP_TILING_CHECK(compileinfo.core_num > 0,
                             OP_LOGE(op_type.c_str(), "core_num is %d that is illegal", compileinfo.core_num), return false);
 
         float reduce_mean_cof = 1.0;
@@ -248,7 +248,7 @@ namespace optiling
         return 0;
     }
 
-    bool GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams, std::vector<int32_t> reduce_axis,
+    void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams, std::vector<int32_t> reduce_axis,
                        int32_t core_num, int32_t max_ub_size, CompileInfo &compileinfo, const std::string input_dtype)
     {
         // std::vector<int32_t> tiling_params;
@@ -311,7 +311,7 @@ namespace optiling
 
                         if (block_inner < input_x[0] && block_inner > 32)
                         {
-                            for (size_t n = block_inner; n > 32; n--)
+                            for (int32_t n = block_inner; n > 32; n--)
                             {
                                 if (n < max_ub_size && block_inner % n > 32)
                                 {
@@ -395,7 +395,6 @@ namespace optiling
                 }
             }
         }
-        return true;
     }
 
     bool LayerNormTiling(const std::string &op_type, const TeOpParas &op_paras, const nlohmann::json &op_info,
@@ -431,13 +430,12 @@ namespace optiling
         TilingParams tilingparams;
         CompileInfo compileinfo;
         bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis, input_x, run_info);
-
         if (!compileflag)
         {
             OP_LOGE("op[%s] GetCompileInfo failed.", op_type.c_str());
         }
 
-        bool tilingflag = GetTilingData(input_x, tilingparams, reduce_axis, core_num, max_ub_size, compileinfo, input_dtype);
+        GetTilingData(input_x, tilingparams, reduce_axis, core_num, max_ub_size, compileinfo, input_dtype);
 
         // tiling_key
         int32_t tiling_key = CalcTilingKey(compileinfo, input_x, tilingparams, reduce_axis);

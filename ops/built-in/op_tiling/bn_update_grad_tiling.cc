@@ -118,8 +118,6 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     TilingInfo tilingInfo;
     GetCompileInfo(compileInfo, op_type, op_info);
     int32_t core_num = compileInfo.core_num;
-    int32_t is_keep_dims = compileInfo.is_keep_dims;
-    bool atomic = compileInfo.atomic;
 
     GetTilingData(n, c1, h, w, c0, max_ub_count, core_num, tilingInfo);
 

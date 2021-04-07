@@ -163,7 +163,7 @@ namespace optiling{
         ByteBufferPut(run_info.tiling_data, (float)num_rec);
         ByteBufferPut(run_info.tiling_data, (float)batch_var_scalar);
 
-        for(int i = 0; i < tiling_data.size(); i++){
+        for(size_t i = 0; i < tiling_data.size(); i++){
             ByteBufferPut(run_info.tiling_data, tiling_data[i]);
         }
         GELOGI("BnTrainingUpdateTiling end.");
