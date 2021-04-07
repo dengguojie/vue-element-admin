@@ -381,13 +381,24 @@ class CaseGenerator:
                 "please check." % (op_key, head_file))
             return
 
-    def _get_aicpu_op_dtype_from_ini_file(self, op_info_key):
-        """get tensor type of aicpu operators from ini file"""
-        if op_info_key in self.op_info:
-            input_tensor_type  = self.op_info[op_info_key].get('type')
-            if input_tensor_type is not None:
-                return input_tensor_type
-        return
+    def _get_aicpu_op_info_from_ini_file(self):
+        """
+        Function:get tensor type of aicpu operators from .ini file
+        return: count type in .ini file.
+        """
+        count_ini_with_type = 0
+        for (key, value) in list(self.op_info.items()):
+            if key.startswith(INI_INPUT) or key.startswith(INI_OUTPUT):
+                # check and transform type of Tensor.
+                op_tensor  = self.op_info.get(key)
+                if op_tensor.get('type') is not None:
+                    tensor_type = list(set(op_tensor.get('type').split(',')))
+                    self._check_op_info_list_valid(tensor_type, list(
+                        utils.DTYPE_TO_TYPE_MAP.keys()), key + '.type')
+                    if tensor_type:
+                        self.op_info.get(key)['type'] = op_tensor.get('type')
+                    count_ini_with_type += 1
+        return count_ini_with_type
 
     def _parse_aicpu_input_output_info(self, line, input_count, output_count):
         for op_key in utils.IN_OUT_OP_KEY_MAP.keys():
@@ -416,10 +427,6 @@ class CaseGenerator:
                 if op_info_key not in self.op_info:
                     self.op_info[op_info_key] = {}
                 if op_info_key:
-                    tensor_type_from_ini = \
-                        self._get_aicpu_op_dtype_from_ini_file(op_info_key)
-                    if tensor_type_from_ini is not None:
-                        input_tensor_type = tensor_type_from_ini
                     input_tensor_type = input_tensor_type.replace(
                         utils.NEW_LINE_MARK, utils.EMPTY)
                     input_tensor_type = input_tensor_type.replace(
@@ -427,10 +434,10 @@ class CaseGenerator:
                     dtype_list = list(set(input_tensor_type.split(
                         utils.COMMA)))
                     self._check_op_info_list_valid(dtype_list, list(
-                        utils.DTYPE_TO_TYPE_MAP.keys()), INI_INPUT + '.dtype')
+                        utils.DTYPE_TO_TYPE_MAP.keys()), INI_INPUT + '.type')
                     self.op_info[op_info_key]['name'] = name
                     self.op_info[op_info_key][
-                        'dtype'] = input_tensor_type.replace(' ', '')
+                        'type'] = input_tensor_type.replace(' ', '')
                     self.op_info[op_info_key]['format'] = ''
         return input_count, output_count
 
@@ -532,18 +539,20 @@ class CaseGenerator:
         if not is_file_exist or not is_parse_success:
             utils.print_warn_log("There are unavailable operator information "
                                  "in %s." % op_proto_file_path)
-            return False
-        return True
 
     def _generate_aicpu_op_desc(self, value, base_case, op_key):
         varible_name = value.get('name')
-        op_format = [] if len(value['format']) == 0 else \
-            list(set(value['format'].split(',')))
+        if value.get('format') is None or len(value.get('format')) == 0:
+            op_format = []
+        else:
+            format_value = value.get('format').replace(
+                utils.QUOTATION_MARK, utils.EMPTY)
+            op_format = list(set(format_value.split(',')))
 
-        if len(value['dtype']) == 0:
+        if value.get('type') is None or len(value.get('type')) == 0:
             op_dtype = []
         else:
-            dtype_list = list(set(value['dtype'].split(',')))
+            dtype_list = list(set(value.get('type').split(',')))
             trans_dtype_list = []
             for dtype_key in dtype_list:
                 if dtype_key in utils.DTYPE_TO_TYPE_MAP.keys():
@@ -566,29 +575,34 @@ class CaseGenerator:
         base_case[op_key].append(op_desc)
 
     def _generate_aicpu_base_case(self):
-        # find aicpu op_proto op_name.h file, if it existed, parse it.
-        is_find_op_proto_path = self._find_aicpu_op_proto_path()
+        # get tensor type of aicpu operators from .ini file
+        count_ini_with_type = self._get_aicpu_op_info_from_ini_file()
+        # if .ini file without type information, op_proto file is parsed.
+        if not count_ini_with_type:
+            self._find_aicpu_op_proto_path()
+
         base_case = {'case_name': 'Test_' + self.op_type.replace('/', '_')
                                   + '_001',
                      'op': self.op_type,
                      'input_desc': [],
                      'output_desc': []}
-        if is_find_op_proto_path:
-            for (key, value) in list(self.op_info.items()):
-                if key.startswith(INI_INPUT):
-                    self._generate_aicpu_op_desc(value, base_case, 'input_desc')
-                elif key.startswith(INI_OUTPUT):
-                    self._generate_aicpu_op_desc(value, base_case,
-                                                 'output_desc')
-                elif key.startswith("attr_"):
-                    if 'attr' not in base_case:
-                        base_case['attr'] = []
-                    base_case['attr'].append(self._make_attr(key, value))
+        for (key, value) in list(self.op_info.items()):
+            if key.startswith(INI_INPUT):
+                self._generate_aicpu_op_desc(value, base_case, 'input_desc')
+            elif key.startswith(INI_OUTPUT):
+                self._generate_aicpu_op_desc(value, base_case,
+                                             'output_desc')
+            elif key.startswith("attr_"):
+                if 'attr' not in base_case:
+                    base_case['attr'] = []
+                base_case['attr'].append(self._make_attr(key, value))
+        # format/type/shape is empty in input_desc.
         if not base_case['input_desc']:
             input_desc = {'format': [], 'type': [],
                           'shape': [], 'data_distribute': ['uniform'],
                           'value_range': [[0.1, 1.0]]}
             base_case['input_desc'].append(input_desc)
+        # format/type/shape is empty in output_desc.
         if not base_case['output_desc']:
             output_desc = {'format': [], 'type': [],
                            'shape': []}
