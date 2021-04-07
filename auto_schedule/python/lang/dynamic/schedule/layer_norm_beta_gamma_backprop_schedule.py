@@ -141,7 +141,7 @@ class LayerNormBetaGammaSchedule:
             else:
                 sch[tensor].set_scope(tbe_platform.scope_ubuf)
                 insn = self._get_emit_insn_map(tensor)
-                emit_insn_list.appen((tensor, insn))
+                emit_insn_list.append((tensor, insn))
         res_ub = sch.cache_write(res, tbe_platform.scope_ubuf)
 
         dim_0 = res_ub.op.axis[0]

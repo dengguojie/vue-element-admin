@@ -447,8 +447,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean, shape_gamma_ori):
     params = _get_params(shape_x, shape_mean, shape_gamma_ori)
 
     has_improve_precision = False
-    if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
-            "te.lang.cce.vexp", "float32"):
+    if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         has_improve_precision = True
         dtype = "float32"
     data_dy_2 = None
