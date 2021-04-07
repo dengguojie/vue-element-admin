@@ -265,8 +265,9 @@ def _tiling_params_negative(args):
     # dst axis C-RIGHT tiling parameters
     tp_200_dst_cr_dims = 2
     axis_dst_cr_size = tdc.get_shape_size(out_shape[dst_format.index("C") + 1:])
+    cr_gate = 3 * c0_len  # select different tiling mode
     # once vnchwconv flow
-    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32)) and axis_dst_cr_size >= c0_len:
+    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32)) and axis_dst_cr_size >= cr_gate:
         tmp_dst_cr_lp_unit = half_ub_size // c0_len // block_elem_cnt * block_elem_cnt  # block align
     else:  # twice vnchwconv flow
         if in_dtype in INT8_DTYPES:
@@ -323,7 +324,7 @@ def _tiling_params_negative(args):
     tp_200_dst_cl_dims = 2
     axis_dst_cl_size = tdc.get_shape_size(out_shape[:dst_format.index("C")])
     src_c_dst_cr_size = axis_src_c_size * axis_dst_cr_size
-    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32)) and axis_dst_cr_size >= c0_len:
+    if (in_dtype == "float16" or (in_dtype in INT8_DTYPES and c0_len == tdc.C0_32)) and axis_dst_cr_size >= cr_gate:
         tp_200_tiling_mode = 2001
         tmp_dst_cl_lp_unit = half_ub_size // (tp_200_src_c_lp_unit *
                                               tdc.ceil_fill(tp_200_dst_cr_lp_unit, block_elem_cnt) * c0_len)
@@ -957,6 +958,13 @@ def _copy_data_in_1(in_offset_args, tik_args):
                                 c0_pad_size, cr_cl_block_mod, cr_pln_size, dst_cr_step_in, cl_plp_size, cr_cl_gap,
                                 c0_len, ele_per_block)
                 _move_data_in_cr_cl_one_dims(data_in_args)
+
+            with tik_inst.new_stmt_scope(disable_sync=True):  # do chnt -> ncht
+                sub_c_cr_size = c_plp_size * cr_pln_size
+                with tik_inst.for_range(0, cl_plp_size) as cl_idx:
+                    tik_inst.data_move(src_ub[cl_idx * sub_c_cr_size * c0_len],
+                                       src_ub[ub_offset + cl_idx * c0_len], 0, sub_c_cr_size,
+                                       c0_len // ele_per_block, (cl_plp_size - 1) * c0_len // ele_per_block, 0)
 
         with tik_inst.else_scope():  # dst_cr_dims is 2 and dst_cl_dims is 1
             with tik_inst.if_scope(dst_cr_dims == 2):
