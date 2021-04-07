@@ -262,6 +262,8 @@ from .reciprocal_grad import reciprocal_grad
 from .not_equal import not_equal
 from .erf import erf
 from .erfc import erfc
+from .roi_align_grad import roi_align_grad
+from .roi_align import roi_align
 from .data_format_dim_map import data_format_dim_map
 from .elu import elu
 from .bn_infer import bn_infer

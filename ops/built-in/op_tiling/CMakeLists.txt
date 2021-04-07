@@ -117,6 +117,8 @@ set(_optiling_files
   iou.cc
   layer_norm.cc
   bn_update_grad_tiling.cc
+  roi_align.cc
+  roi_align_grad.cc
 )
 
 set(_op_tiling_include
