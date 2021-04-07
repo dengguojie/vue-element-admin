@@ -304,13 +304,15 @@ class MaxPoolWithargmaxPytorch(object):
         :param block_index:
         :return:
         """
+        per_core = self.tik_instance.Scalar("int32")
         with self.tik_instance.if_scope(block_index != self.need_core_num - 1):
-            with self.tik_instance.for_range(0, self.nc1_per_core) as nc1_index:
-                self._fun_no_cut(block_index, nc1_index, self.nc1_per_core)
+            per_core.set_as(self.nc1_per_core)
 
         with self.tik_instance.else_scope():
-            with self.tik_instance.for_range(0, self.nc1_last_core) as nc1_index:
-                self._fun_no_cut(block_index, nc1_index, self.nc1_per_core)
+            per_core.set_as(self.nc1_last_core)
+
+        with self.tik_instance.for_range(0, per_core) as nc1_index:
+            self._fun_no_cut(block_index, nc1_index, self.nc1_per_core)
 
     def compute_cut_h(self, block_index):
         """
@@ -318,15 +320,16 @@ class MaxPoolWithargmaxPytorch(object):
         :param block_index:
         :return:
         """
+        per_core = self.tik_instance.Scalar("int32")
         with self.tik_instance.if_scope(block_index != self.need_core_num - 1):
-            with self.tik_instance.for_range(0, self.nc1_per_core) as nc1_cuth_index:
-                self._fun_only_cut_h(block_index, nc1_cuth_index, self.cut_h_size, self.cut_stride,
-                                     self.cut_h_num, self.nc1_per_core, self.flag_cut_h)
+            per_core.set_as(self.nc1_per_core)
 
         with self.tik_instance.else_scope():
-            with self.tik_instance.for_range(0, self.nc1_last_core) as nc1_cuth_index:
-                self._fun_only_cut_h(block_index, nc1_cuth_index, self.cut_h_size, self.cut_stride,
-                                     self.cut_h_num, self.nc1_per_core, self.flag_cut_h)
+            per_core.set_as(self.nc1_last_core)
+
+        with self.tik_instance.for_range(0, per_core) as nc1_cuth_index:
+            self._fun_only_cut_h(block_index, nc1_cuth_index, self.cut_h_size, self.cut_stride,
+                                 self.cut_h_num, self.nc1_per_core, self.flag_cut_h)
 
     def compute_cut_h_w(self, block_index):
         """
@@ -334,15 +337,16 @@ class MaxPoolWithargmaxPytorch(object):
         :param block_index:
         :return:
         """
+        per_core = self.tik_instance.Scalar("int32")
         with self.tik_instance.if_scope(block_index != self.need_core_num - 1):
-            with self.tik_instance.for_range(0, self.nc1_per_core) as nc1_cuth_index:
-                self._fun_need_cut_h_w(block_index, nc1_cuth_index, self.cut_h_size, self.cut_stride,
-                                       self.cut_h_num, self.nc1_per_core, self.flag_cut_h)
+            per_core.set_as(self.nc1_per_core)
 
         with self.tik_instance.else_scope():
-            with self.tik_instance.for_range(0, self.nc1_last_core) as nc1_cuth_index:
-                self._fun_need_cut_h_w(block_index, nc1_cuth_index, self.cut_h_size, self.cut_stride,
-                                       self.cut_h_num, self.nc1_per_core, self.flag_cut_h)
+            per_core.set_as(self.nc1_last_core)
+
+        with self.tik_instance.for_range(0, per_core) as nc1_cuth_index:
+            self._fun_need_cut_h_w(block_index, nc1_cuth_index, self.cut_h_size, self.cut_stride,
+                                   self.cut_h_num, self.nc1_per_core, self.flag_cut_h)
 
     def compute(self, kernel_name):
         """
