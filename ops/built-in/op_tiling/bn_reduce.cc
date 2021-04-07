@@ -269,18 +269,25 @@ bool BNReduce::GetCompileInfo() {
   compileInfo.reduce_block_size = info[3];
   compileInfo.atomic =  (bool)info[4];
   compileInfo.customised =  (bool)info[5];
-  output_dtypeUB = op_paras.inputs[0].tensor[0].dtype;
-  is_last_axis_reduce = IsInVector(reduce_axis, input_shape.size() - 1);
+  
+  block_size = compileInfo.reduce_block_size;
 
-  OP_LOGD(op_type, "max_ub_count = %lld, core_num = %lld, atomic = %d, is_customised = %d ",
+  if (compileInfo.max_ub_count <= 0 || compileInfo.core_num <= 0 || compileInfo.reduce_block_size <= 0) {
+    OP_LOGE(op_type, "invalid compile info: max_ub_count = %lld, core_num = %d, reduce_block_size = %d ",
+          compileInfo.max_ub_count, compileInfo.core_num, compileInfo.reduce_block_size);
+    return false;
+  }
+  
+  OP_LOGD(op_type, "max_ub_count = %lld, core_num = %d, atomic = %d, is_customised = %d ",
           compileInfo.max_ub_count, compileInfo.core_num,
           compileInfo.atomic, compileInfo.customised);
   return true;
 }
 
 bool BNReduce::ChooseAtomic() {
-  total_output_count = 1;
-  total_reduce_count = 1;
+  int64_t total_output_count = 1;
+  int64_t total_reduce_count = 1;
+
   output_shape.resize(input_shape.size());
 
   for (uint32_t i = 0; i < input_shape.size(); i++) {
@@ -301,8 +308,6 @@ bool BNReduce::ChooseAtomic() {
   bool atomic_available = compileInfo.atomic;
   bool is_outermost_reduce = std::find(reduce_axis.begin(), reduce_axis.end(), 1) != reduce_axis.end() && input_shape[0] == 1;
   // Layer 1
-  block_size = compileInfo.reduce_block_size;
-
   compileInfo.atomic = total_output_count <= compileInfo.max_ub_count &&
                          total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
                          // total_output_count < static_cast<int64_t>(compileInfo.core_num * block_size / 2) &&
@@ -333,7 +338,7 @@ bool BNReduce::ChooseAtomic() {
 
   // Final
   compileInfo.atomic = atomic_available && compileInfo.atomic && !except_flag;
-  OP_LOGD(op_type, "block_size = %d, change atomic = %d", block_size, compileInfo.atomic);
+  OP_LOGD(op_type, "change atomic = %d", compileInfo.atomic);
   return true;
 }
 
@@ -502,8 +507,7 @@ bool BNReduce::ProcessAtomicTiling() {
   ProcessReorderAxis(FUSED_REDUCE_AXIS);
 
   // align
-  if (block_size != 0 && reorderInfo.reorder_input_shape.size() > 0 &&
-      reorderInfo.reorder_input_shape.back() % block_size != 0) {
+  if (reorderInfo.reorder_input_shape.size() > 0 && reorderInfo.reorder_input_shape.back() % block_size != 0) {
     reorderInfo.reorder_input_shape.back() =
       (reorderInfo.reorder_input_shape.back() + block_size - 1) / block_size * block_size;
   }
@@ -704,7 +708,7 @@ bool BNReduce::CustomisedGetUBTiling() {
 
   int64_t split_size = 1;
   if (need_split) {
-    for (int64_t i = 1; i <= input_shape_ori[split_axis]; i++) {
+    for (int64_t i = 2; i <= input_shape_ori[split_axis]; i++) {
       if ((temp_size * i) == bound_size) {
         split_size = i;
         break;
@@ -917,15 +921,15 @@ bool BNReduce::DoTiling() {
     return true;
   }
 
-  (void)GetCompileInfo();
+  ret = ret && GetCompileInfo();
 
-  ret = ret && DoCustomisedTiling();
+  ret = ret && DoCustomisedTiling();        //  try customised tiling first 
   if (!ret) {
-    ret = DoGeneralTiling();
+    ret = DoGeneralTiling();                // if customised tiling failed, than do atomic tiling next 
   }
 
   if (!ret) {
-    ret = DoDefaultTiling();
+    ret = DoDefaultTiling();                // if atomic tiling failed, than do default tiling
   }
 
   return ret;

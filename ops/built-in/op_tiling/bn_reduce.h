@@ -67,7 +67,8 @@ public:
   explicit BNReduce(const std::string& _op_type, const TeOpParas& _op_paras, 
                     const nlohmann::json& _op_info, OpRunInfo& _run_info)
                     : op_type(_op_type), op_paras(_op_paras), op_info(_op_info), run_info(_run_info),
-                    is_customised(false), is_fuse_hn(false) {
+                    is_customised(false), is_fuse_hn(false), saved_customised_ub_axis(0), 
+                    saved_customised_ub_factor(0) {
   }
 
   ~BNReduce() {
@@ -124,14 +125,8 @@ private:
   std::vector<int32_t> normalize_axis{std::vector<int32_t>(10, 0)};
   std::vector<int32_t> reduce_flag{std::vector<int32_t>(10, 0)};
 
-  bool is_last_axis_reduce;
-  int64_t total_output_count;
-  int64_t total_reduce_count;
-  std::string output_dtypeUB;
   int32_t pattern;
-  int32_t set_reduce_mean_cof_flag;
   int32_t block_size;
-  float reduce_mean_cof;
   bool is_customised;
   bool is_fuse_hn;
   int32_t saved_customised_ub_axis;
