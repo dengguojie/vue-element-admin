@@ -23,9 +23,92 @@ from functools import reduce as  functools_reduce
 import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
+from te.utils import shape_util
+from te.utils.error_manager import error_manager_vector
 from topi.cce import util
 
+MATMUL_BATCH_SIZE = 0
+BATCH_MATMUL_BATCH_SIZE1 = 1
+BATCH_MATMUL_BATCH_SIZE2 = 2
+BATCH_MATMUL_BATCH_SIZE3 = 3
+BATCH_MATMUL_BATCH_SIZE4 = 4
+
 SHAPE_SIZE_LIMIT = 1 << 30
+
+
+def reshape_input_mask(input_tensor, input_mask, kernel_name):
+    """
+    Reshape mask shape ND to matmul shape FRACTAL_NZ,
+    e.g. [batch1, batch2, K//16, M//16, 16, 16] -> [batch, K//16, M//16, 16, 16].
+
+    Params
+    ----------------
+    input_tensor: matmul, tvm.tensor, fp16/fp32
+    input_mask: dropout_gen_mask, tvm.tensor, uint8
+    kernel_name: str
+
+    Returns
+    ----------------
+    input_mask: reshaped mask
+    """
+    matmul_flag = "matmul" in input_tensor.op.tag \
+        and input_tensor.op.attrs["format"] == "FRACTAL_NZ"
+    matmul_shape = shape_util.shape_to_list(input_tensor.shape)
+    mask_shape = shape_util.shape_to_list(input_mask.shape)
+    batch_shape = mask_shape[:-4]
+
+    if matmul_flag:
+        lambda_expression = None
+        if len(batch_shape) == MATMUL_BATCH_SIZE:
+            lambda_expression = lambda *indices: input_mask(*indices)
+        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE1:
+            lambda_expression = lambda *indices: input_mask(*indices)
+        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE2:
+            lambda_expression = lambda *indices: input_mask(
+                indices[0] // batch_shape[-1],
+                indices[0] % batch_shape[-1],
+                indices[-4],
+                indices[-3],
+                indices[-2],
+                indices[-1]
+            )
+        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE3:
+            lambda_expression = lambda *indices: input_mask(
+                indices[0] // batch_shape[-1] // batch_shape[-2],
+                indices[0] // batch_shape[-1] % batch_shape[-2],
+                indices[0] % batch_shape[-1],
+                indices[-4],
+                indices[-3],
+                indices[-2],
+                indices[-1]
+            )
+        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE4:
+            lambda_expression = lambda *indices: input_mask(
+                indices[0] // batch_shape[-1] // batch_shape[-2] // batch_shape[-3],
+                indices[0] // batch_shape[-1] // batch_shape[-2] % batch_shape[-3],
+                indices[0] // batch_shape[-1] % batch_shape[-2],
+                indices[0] % batch_shape[-1],
+                indices[-4],
+                indices[-3],
+                indices[-2],
+                indices[-1]
+            )
+        else:
+            error_detail = ("Only support to adjust batch shape [2, 3, 4], " +
+                "but the recent batch shape is [%d]."%(len(batch_shape)))
+            error_manager_vector.raise_err_input_shape_invalid(
+                kernel_name, "input_mask", error_detail
+            )
+
+        if lambda_expression:
+            input_mask = tvm.compute(
+                matmul_shape,
+                lambda_expression,
+                name="dropout_reshape",
+                tag="dropout_broadcast"
+            )
+
+    return input_mask
 
 
 @fusion_manager.register("drop_out_do_mask_v3_d")
@@ -34,6 +117,7 @@ def drop_out_do_mask_v3_d_compute(input_tensor: tvm.tensor.Tensor,
                                   output,
                                   input_keep_prob: float,
                                   kernel_name="drop_out_do_mask_v3_d"):
+    input_mask = reshape_input_mask(input_tensor, input_mask, kernel_name)
     input_dtype = input_tensor.dtype
     input_mask = te.lang.cce.cast_to(input_mask, input_dtype)
     rec_keep_prob = 1 / input_keep_prob
@@ -114,3 +198,4 @@ def drop_out_do_mask_v3_d(input_tensor, input_mask, output, input_keep_prob,
     config = {"name": kernel_name,
               "tensor_list": build_list}
     te.lang.cce.cce_build_code(sch, config)
+    fusion_manager.set_current_op_pattern("DropOutDoMaskV3D")
