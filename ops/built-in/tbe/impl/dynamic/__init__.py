@@ -43,6 +43,7 @@ from .gather import gather
 from .gather_v2 import gather_v2
 from .max_pool_grad import max_pool_grad
 from .kl_div import kl_div
+from .add_mat_mat_elements import add_mat_mat_elements
 from .tile_with_axis import tile_with_axis
 from .bias import bias
 from .dequantize import dequantize

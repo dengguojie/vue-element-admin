@@ -3809,6 +3809,34 @@ REG_OP(ArgMaxGradD)
     .OP_END_FACTORY_REG(ArgMaxGradD)
 
 /**
+*@brief Calculates the reversed outputs of the function "AddMatMatElements"
+*  c = c * beta + alpha * a * b
+
+*@par Inputs:
+*Three inputs, including:
+* @li c: A mutable Tensor. Must be one of the following types:
+*     float16, float32.
+* @li a: A mutable Tensor of the same type as "c".
+* @li b: A mutable Tensor of the same type as "c".
+* @li beta: A mutable scalar of the same type as "c".
+* @li alpha: A mutable scalar of the same type as "c". \n
+
+*@par Outputs:
+* @li c: A mutable Tensor. Has the same type as "c". \n
+
+*@par Third-party framework compatibility
+* Compatible with the TensorFlow operator AddMatMatElements.
+*/
+REG_OP(AddMatMatElements)
+    .INPUT(c, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(a, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(b, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(beta, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(alpha, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(c, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .OP_END_FACTORY_REG(AddMatMatElements)
+
+/**
 *@brief Returns cosine similarity between x1 and x2,computed along dim. \n
 
 *@par Inputs:

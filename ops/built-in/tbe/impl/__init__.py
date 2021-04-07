@@ -165,6 +165,7 @@ from .sparse_apply_adadelta_d import sparse_apply_adadelta_d
 from .apply_adam_with_amsgrad_d import apply_adam_with_amsgrad_d
 
 # tbe it13
+from .add_mat_mat_elements import add_mat_mat_elements
 from .select_v2 import select_v2
 from .leaky_relu import leaky_relu
 from .leaky_relu_grad import leaky_relu_grad

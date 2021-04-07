@@ -5163,6 +5163,24 @@ INFER_FUNC_REG(ArgMaxGrad, ArgMaxGradInferShape);
 VERIFY_FUNC_REG(ArgMaxGrad, ArgMaxGradVerify);
 // ------------------ArgMaxGrad END---------------------
 
+// ----------------AddMatMatElements-------------------
+IMPLEMT_VERIFIER(AddMatMatElements, AddMatMatElementsVerify) {
+  if (!CheckTwoInputDtypeSame(op, "c", "a") || !CheckTwoInputDtypeSame(op, "c", "b")) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_COMMON_INFERFUNC(AddMatMatElementsInferShape) {
+  if (OneInOneOutDynamicInfer(op, "c", {"c"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+
+COMMON_INFER_FUNC_REG(AddMatMatElements, AddMatMatElementsInferShape);
+VERIFY_FUNC_REG(AddMatMatElements, AddMatMatElementsVerify);
+
 // ----------------ArgMaxGradD--------------------
 IMPLEMT_COMMON_INFERFUNC(ArgMaxGradDInferShape) {
     Shape shape = op.GetInputDesc("var").GetShape();
