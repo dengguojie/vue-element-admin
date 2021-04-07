@@ -98,59 +98,78 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
         shape_dy_filling = (dy_batch, dy_deep, kernel_cout1, dy_h * stride_h,
                             dy_w * stride_w, kernel_cout0)
         cout1_filling = self._real_g * self._cout_g // kernel_cout0
+        cout1_g = self._cout_g // kernel_cout0
         shape_dy_filling_l1 = (dy_batch, dy_deep, cout1_filling, dy_h * stride_h,
                                dy_w * stride_w, kernel_cout0)
 
         self.dy_d = dy_deep
         if stride_h == 1 and stride_w == 1:
-            dy_filling = tvm.compute(shape_dy_filling_l1,
-                                lambda i, j, k, l, m, n: tvm.select(k < kernel_cout1,
-                                dy_ddr(i, j, k, l, m, n)),
-                                name="dy_l1_s1",
-                                tag=self.op_tag + "dy_l1_s1")
+            if not self._var_map:
+                dy_filling = tvm.compute(shape_dy_filling_l1,
+                                         lambda i, j, k, l, m, n: tvm.select(k < kernel_cout1,
+                                         dy_ddr(i, j, k, l, m, n)),
+                                         name="dy_l1_s1",
+                                         tag=self.op_tag + "dy_l1_s1")
+            else:
+                shape_dy_filling_l1_group = (
+                    self._real_g, dy_batch, dy_deep, cout1_filling, dy_h, dy_w, kernel_cout0)
+                dy_filling_l1 = tvm.compute(
+                    shape_dy_filling_l1_group,
+                    lambda g_idx, batch_idx, dy_deep, cout1_g_idx, ho_idx, wo_idx, kernel_cout0_idx:
+                    tvm.select(cout1_g_idx + g_idx * cout1_g < kernel_cout1,
+                        dy_ddr(batch_idx, dy_deep, cout1_g_idx + g_idx * cout1_g,
+                               ho_idx, wo_idx, kernel_cout0_idx)),
+                    name="dy_l1_dyn_s1",
+                    tag=self.op_tag + "dy_l1_dyn_s1")
         else:
-            dy_zero = tvm.compute(
-                shape_dy_filling,
-                lambda *indice: tvm.convert(0).astype(dy_ddr.dtype),
-                name="dy_zero",
-                tag=self.op_tag + "dy_zero")
             if self._var_map:
+                dy_zero = tvm.compute(
+                    shape_dy_filling_l1,
+                    lambda *indice: tvm.convert(0).astype(dy_ddr.dtype),
+                    name="dy_zero",
+                    tag=self.op_tag + "dy_zero")
                 dy_filling = tvm.compute(
-                    shape_dy_filling,
+                    shape_dy_filling_l1,
                     lambda batch_idx, dy_deep_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
-                    tvm.select(tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0),
-                               dy_ddr(batch_idx,
-                                      dy_deep_idx,
-                                      kernel_cout1_idx,
-                                      ho_idx // stride_h,
-                                      wo_idx // stride_w,
-                                      kernel_cout0_idx)),
+                    tvm.select(tvm.all(ho_idx % stride_h == 0, wo_idx % stride_w == 0,
+                                       kernel_cout1_idx < kernel_cout1),
+                            dy_ddr(batch_idx,
+                                    dy_deep_idx,
+                                    kernel_cout1_idx,
+                                    ho_idx // stride_h,
+                                    wo_idx // stride_w,
+                                    kernel_cout0_idx)),
                     name="dy_filling",
                     tag=self.op_tag + "dy_filling",
                     attrs={"stride_expand": (self._stride_h, self._stride_w)})
                 dy_vn = tvm.compute(
-                    shape_dy_filling,
+                    shape_dy_filling_l1,
                     lambda *indice: dy_zero(*indice) + dy_filling(*indice),
                     name = "dy_vn",
                     tag = self.op_tag + "dy_vn")
             else:
+                dy_zero = tvm.compute(
+                    shape_dy_filling,
+                    lambda *indice: tvm.convert(0).astype(dy_ddr.dtype),
+                    name="dy_zero",
+                    tag=self.op_tag + "dy_zero")
                 dy_filling = tvm.compute(
                     shape_dy_filling,
                     lambda batch_idx, dy_deep_idx, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
                     tvm.select(tvm.all(ho_idx % stride_h == 0,
-                                       wo_idx % stride_w == 0),
-                               dy_ddr(batch_idx,
-                                      dy_deep_idx,
-                                      kernel_cout1_idx,
-                                      ho_idx // stride_h,
-                                      wo_idx // stride_w,
-                                      kernel_cout0_idx),
-                               dy_zero(batch_idx,
-                                       dy_deep_idx,
-                                       kernel_cout1_idx,
-                                       ho_idx,
-                                       wo_idx,
-                                       kernel_cout0_idx)),
+                                    wo_idx % stride_w == 0),
+                            dy_ddr(batch_idx,
+                                    dy_deep_idx,
+                                    kernel_cout1_idx,
+                                    ho_idx // stride_h,
+                                    wo_idx // stride_w,
+                                    kernel_cout0_idx),
+                            dy_zero(batch_idx,
+                                    dy_deep_idx,
+                                    kernel_cout1_idx,
+                                    ho_idx,
+                                    wo_idx,
+                                    kernel_cout0_idx)),
                     name="dy_filling",
                     tag=self.op_tag + "dy_filling",
                     attrs={"stride_expand": (self._stride_h, self._stride_w)})
@@ -174,12 +193,33 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                                   (dx_d, dx_h, dx_w),
                                   dilate_shape))
         pad_tail_after, pad_down_after, pad_right_after = new_pad_after
-
-        # stride > 1 ub->l1 may cut
-        if stride_h > 1 or stride_w > 1:
-            if self._var_map or (pad_down_after < 0 or pad_right_after < 0 or pad_tail_after < 0):
-                shape_down_modify = (pad_down_after - tvm_abs(pad_down_after)) // 2
-                shape_right_modify = (pad_right_after - tvm_abs(pad_right_after)) // 2
+        func_abs = tvm_abs if self._var_map else abs
+        shape_down_modify = (pad_down_after - func_abs(pad_down_after)) // 2
+        shape_right_modify = (pad_right_after - func_abs(pad_right_after)) // 2
+        if self._var_map:
+            shape_dy_filling_6d = (self._real_g, dy_batch, dy_deep, cout1_g,
+                                   dy_h * stride_h + shape_down_modify,
+                                   dy_w * stride_w + shape_right_modify,
+                                   kernel_cout0)
+            if stride_h > 1 or stride_w > 1:
+                dy_filling_l1 = tvm.compute(
+                    shape_dy_filling_6d,
+                    lambda g_idx, batch_idx, dy_deep_idx, cout1_g_idx, ho_idx, wo_idx, kernel_cout0_idx:
+                    tvm.select(cout1_g_idx + g_idx * cout1_g < kernel_cout1,
+                               dy_vn(batch_idx,
+                                     dy_deep_idx,
+                                     cout1_g_idx + g_idx * cout1_g,
+                                     ho_idx,
+                                     wo_idx,
+                                     kernel_cout0_idx)),
+                    name="dy_l1_6d",
+                    tag=self.op_tag + "dy_l1_6d")
+            pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
+            pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
+            pad_tail_after = (pad_tail_after + tvm_abs(pad_tail_after)) // 2
+        elif stride_h > 1 or stride_w > 1:
+            # stride > 1 ub->l1 may cut
+            if (pad_down_after < 0 or pad_right_after < 0 or pad_tail_after < 0):
                 shape_dy_filling_cut = (dy_batch, dy_deep,
                                         cout1_filling,
                                         dy_h * stride_h + shape_down_modify,
@@ -188,24 +228,20 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
                 # cut dy_filling
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling_cut,
-                    lambda batch_idx,
-                    dy_deep,
-                    kernel_cout1_idx,
-                    ho_idx,
-                    wo_idx,
-                    kernel_cout0_idx:tvm.select(kernel_cout1_idx < kernel_cout1,
-                                                dy_vn[batch_idx,
-                                                      dy_deep,
-                                                      kernel_cout1_idx,
-                                                      ho_idx,
-                                                      wo_idx,
-                                                      kernel_cout0_idx]),
+                    lambda batch_idx, dy_deep, kernel_cout1_idx, ho_idx, wo_idx, kernel_cout0_idx:
+                    tvm.select(kernel_cout1_idx < kernel_cout1,
+                               dy_vn[batch_idx,
+                                     dy_deep,
+                                     kernel_cout1_idx,
+                                     ho_idx,
+                                     wo_idx,
+                                     kernel_cout0_idx]),
                     name="dy_l1",
                     tag=self.op_tag + "dy_l1")
 
-                pad_down_after = (pad_down_after + tvm_abs(pad_down_after)) // 2
-                pad_right_after = (pad_right_after + tvm_abs(pad_right_after)) // 2
-                pad_tail_after = (pad_tail_after + tvm_abs(pad_tail_after)) // 2
+                pad_down_after = (pad_down_after + abs(pad_down_after)) // 2
+                pad_right_after = (pad_right_after + abs(pad_right_after)) // 2
+                pad_tail_after = (pad_tail_after + abs(pad_tail_after)) // 2
             else:
                 dy_filling_l1 = tvm.compute(
                     shape_dy_filling_l1,
@@ -236,7 +272,7 @@ class DeConvPattern(conv3d_dx_utils.CubeDslPattern):  # pylint: disable=R0902
 
         pat_conv = conv3d_dx_utils.ConvDslPattern(kernel_h, kernel_w, new_stride, new_pad, dilate_shape)
 
-        if stride_h > 1 or stride_w > 1:
+        if stride_h > 1 or stride_w > 1 or self._var_map:
             dy_col = pat_conv.generate_a(dy_filling_l1, self._group_dict, self._var_map, self.op_tag)
         else:
             dy_col = pat_conv.generate_a(dy_filling, self._group_dict, self._var_map, self.op_tag)

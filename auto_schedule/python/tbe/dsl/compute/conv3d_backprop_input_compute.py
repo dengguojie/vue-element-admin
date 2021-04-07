@@ -131,6 +131,7 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
     cin1_g = group_dict["cin1_g"]
     real_g = group_dict["real_g"]
     dedy_shape = tbe_utils.shape_util.shape_to_list(out_backprop.shape)
+    ori_cout = dedy_shape[2]
     dedy_shape[2] = cout_g // _BLOCK_SIZE
     _, _, filter_d, filter_h, filter_w = filter_sizes
     filter_frac_6d = [cout_g, filter_d, cin1_g, filter_h, filter_w, _BLOCK_SIZE]
@@ -155,7 +156,8 @@ def _conv3d_backprop_input_compute(filters,  # pylint: disable=R0913,R0914
             "fused_coefficient": [0, 0, 0],
             "bias_flag": False,
             "kernel_name": kernel_name,
-            "dynamic_shape_flag": True
+            "dynamic_shape_flag": True,
+            "ori_cout": ori_cout
         }
         DynamicConv3dBpInputParams.var_map = var_map
     pattc = conv3d_bp_gen_dx.DeConvPattern(filter_sizes, strides=strides,

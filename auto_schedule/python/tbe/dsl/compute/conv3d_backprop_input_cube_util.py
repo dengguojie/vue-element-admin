@@ -207,9 +207,10 @@ def _im2col_fractal_v2(shape, img2col_para, tag=''):
             ),
             tvm.const(0, fmap.dtype),
             fmap(
+                g_index,
                 n_index,
                 deep_index,
-                c1_index + g_index * cout1_g,
+                c1_index,
                 dy_h_index - padding[0],
                 dy_w_index - padding[2],
                 k0_index
@@ -506,7 +507,10 @@ class ConvDslPattern(CubeDslPattern):  # pylint: disable=R0902
         -------
         a_col : a_im2col_fractal tensor
         """
-        a_batch, a_deep, a_c1, a_h, a_w, a_c0 = cube_util.shape_to_list(feature_map.shape)
+        if var_map:
+            _, a_batch, a_deep, a_c1, a_h, a_w, a_c0 = cube_util.shape_to_list(feature_map.shape)
+        else:
+            a_batch, a_deep, a_c1, a_h, a_w, a_c0 = cube_util.shape_to_list(feature_map.shape)
         kernel_h, kernel_w = self._kernel_h, self._kernel_w
 
         new_pad = [self._pad_up, self._pad_down,

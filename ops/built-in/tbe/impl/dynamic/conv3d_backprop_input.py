@@ -274,7 +274,7 @@ def _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_
     real_g = group_dict["real_g"]
     cin1_g = group_dict["cin1_g"]
     cout_g = group_dict["cout_g"]
-    shape_filter_frac = (real_g * filter_depth *cin1_g * filter_h * filter_w,
+    shape_filter_frac = (real_g * filter_depth * cin1_g * filter_h * filter_w,
                          cout_g // _C0_SIZE, _C0_SIZE, _C0_SIZE)
 
     if dedx_batch == -1:
@@ -662,9 +662,6 @@ def check_and_config_para(filter, out_backprop, y, input_size, strides, pads,
     dx_shape, dedy, filter_frac, input_sizes, shape_out_backprop, group_dict = \
         _config_placeholder(shape_out_backprop, shape_filters, input_sizes, filters_dtype,
                             out_backprop_dtype, range_dedy, range_input, groups)
-
-    if groups != 1:
-        error_manager_cube.raise_err_specific('conv3d_backprop_input', "group must be 1 now.")
 
     res = check_conv3dbp_input_params(shape_filters, shape_out_backprop,
                                       input_sizes, shape_strides, pads,
