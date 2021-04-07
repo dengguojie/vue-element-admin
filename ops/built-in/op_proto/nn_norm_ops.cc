@@ -1244,23 +1244,27 @@ VERIFY_FUNC_REG(LpLoss, LpLossVerify);
 // ----------------LpLoss END---------------------
 
 // ----------------MseLossGrad Begin-------------------
-IMPLEMT_VERIFIER(MseLossGrad, MseLossGradVerify) { return GRAPH_SUCCESS; }
-
 IMPLEMT_COMMON_INFERFUNC(MseLossGradInferShape) {
-  TensorDesc output_y = op.GetOutputDesc("y");
+  bool is_dynamic_output = true;
+
   auto tensor_predict = op.GetInputDesc("predict");
-  auto shape = tensor_predict.GetShape();
-  auto data_type = tensor_predict.GetDataType();
-  output_y.SetShape(shape);
-  output_y.SetDataType(data_type);
-  (void)op.UpdateOutputDesc("y", output_y);
+  auto predict_type = tensor_predict.GetDataType();
+  auto tensor_label = op.GetInputDesc("label");
+  auto label_type = tensor_label.GetDataType();
+
+  if (predict_type != label_type) {
+    OP_LOGE(op.GetName().c_str(), "predict dtype is not same as label's dtype.");
+    return GRAPH_FAILED;
+  }
+
+  if (!InferShapeAndTypeTwoInOneOutBroadcast(op, "predict", "label", "y", is_dynamic_output)){
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(MseLossGrad, MseLossGradInferShape);
-// Registered verify function
-VERIFY_FUNC_REG(MseLossGrad, MseLossGradVerify);
 // ----------------MseLossGrad END---------------------
 
 // ----------------MseLoss Begin-------------------

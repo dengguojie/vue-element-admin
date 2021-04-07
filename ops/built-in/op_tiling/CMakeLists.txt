@@ -44,6 +44,7 @@ set(_optiling_files
   depthwise_conv2d.cc
   conv3d.cc
   mse_loss.cc
+  mse_loss_grad.cc
   conv3d_backprop_filter.cc
   cube_tiling.cc
   deconvolution.cc
