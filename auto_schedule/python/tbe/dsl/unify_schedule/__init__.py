@@ -43,3 +43,5 @@ from . import conv3d_bp_input_schedule
 from . import conv3d_bp_input_tilingcase
 from . import cube_schedule
 from . import gemm_tilingcase
+from . import conv2d_schedule
+from . import conv2d_tilingcase

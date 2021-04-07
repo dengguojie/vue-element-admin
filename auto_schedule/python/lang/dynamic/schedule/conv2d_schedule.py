@@ -15,59 +15,16 @@
 """
 conv2d schedule
 """
-from tbe.dsl.static_schedule.conv_schedule import CceConvOp
-from tbe.dsl.static_schedule.util import gen_dfs_tensor_map
-from te.lang.dynamic.schedule.constants import Pattern
-
-from tbe.tvm import schedule as tvm
-from tbe.dsl.base.operation import register_schedule
+import warnings
 
 
-@register_schedule(pattern=Pattern.CONV2D)
 def schedule(outs, tiling_case):
     """
     schedule for conv2d dynamic shape
     """
+    warnings.warn("te.lang.dynamic.schedule.conv2d_schedule.schedule is deprecated, " \
+        "please replace it with tbe.dsl.unify_schedule.conv2d_schedule.schedule",
+                  DeprecationWarning)
+    from tbe.dsl.unify_schedule.conv2d_schedule import schedule as new_schedule
+    return new_schedule(outs, tiling_case)
 
-    return Conv2dSchedule(outs, tiling_case).do_schedule()
-
-
-def get_op_tensor_map(outs):
-    """
-    get tensor_map
-    """
-    _, _, _, tensor_map = gen_dfs_tensor_map(outs)
-
-    return tensor_map
-
-class Conv2dSchedule:
-    """
-    Conv2dSchedule
-    """
-
-    def __init__(self, outs, tiling_case):
-        self._outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-
-        self._schedule = None
-        self._tiling_case = tiling_case
-
-        self._scope = "local.UB"
-        self._cce_conv_op = CceConvOp()
-
-    def do_schedule(self):
-        """
-        do schedule
-        """
-
-        op_info = get_op_tensor_map(self._outs)
-        self._var_range = self._tiling_case['var_range']
-
-        self._schedule = tvm.create_schedule(
-            [res.op for res in self._outs if res not in op_info])
-        self._schedule.tiling_key = self._tiling_case['key']
-        self._tiling_strategy = self._tiling_case['tiling_strategy']
-
-        self._cce_conv_op.schedule(self._outs[0], self._outs, [self._schedule],
-                                   convbn1_flag=False, tiling_case=self._tiling_strategy, var_range=self._var_range)
-
-        return self._schedule
