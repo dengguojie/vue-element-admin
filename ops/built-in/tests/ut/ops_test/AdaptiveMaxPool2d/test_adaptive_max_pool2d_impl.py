@@ -10,6 +10,7 @@ ut_case = OpUT("AdaptiveMaxPool2d", None, None)
 
 case1 = {"params": [{"shape": (1,1,5,5,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 16, 5, 5),"ori_format": "NCHW"},
                     {"shape": (1,1,5,5,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 16, 5, 5),"ori_format": "NCHW"},
+                    {"shape": (1,1,5,5,16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (1, 16, 5, 5),"ori_format": "NCHW"},
                     [5, 5]],
          "case_name": "adaptive_max_pool2d_case_001",
          "expect": "success",
@@ -17,6 +18,7 @@ case1 = {"params": [{"shape": (1,1,5,5,16), "dtype": "float16", "format": "NC1HW
          "support_expect": True}
 case2 = {"params": [{"shape": (11,11,5,5,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (11, 176, 5, 5),"ori_format": "NCHW"},
                     {"shape": (11,11,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (11, 176, 3, 3),"ori_format": "NCHW"},
+                    {"shape": (11,11,3,3,16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (11, 176, 3, 3),"ori_format": "NCHW"},
                     [3, 3]],
          "case_name": "adaptive_max_pool2d_case_002",
          "expect": "success",
@@ -24,6 +26,7 @@ case2 = {"params": [{"shape": (11,11,5,5,16), "dtype": "float16", "format": "NC1
          "support_expect": True}
 case3 = {"params": [{"shape": (1,1,7,4096,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 112, 7, 4096),"ori_format": "NCHW"},
                     {"shape": (1,1,3,37,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 48, 3, 37),"ori_format": "NCHW"},
+                    {"shape": (1,1,3,37,16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (1, 48, 3, 37),"ori_format": "NCHW"},
                     [3, 37]],
          "case_name": "adaptive_max_pool2d_case_003",
          "expect": "success",
@@ -42,6 +45,7 @@ def test_check_support(test_arg):
     res = check_supported(
                    {"shape": (11,11,5,5,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (11, 176, 5, 5),"ori_format": "NCHW"},
                     {"shape": (11,11,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (11, 176, 3, 3),"ori_format": "NCHW"},
+                    {"shape": (11,11,3,3,16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (11, 176, 3, 3),"ori_format": "NCHW"},
                     [3, 3],
                     "adaptive_max_pool2d_check_support_case_001")
     assert res
@@ -84,10 +88,13 @@ def calc_expect_func(x, y, output_size):
     C1 = (channel + C0 - 1) // C0
     shape_output = [batch, C1, height, width, C0]
     outputArr = NCHW2NC1HWC0(outputArr_NCHW, shape_output, "float16")
-    return outputArr
+    out_argmax = np.zeros(shape_output).astype(np.int32)
+
+    return outputArr, out_argmax
 
 ut_case.add_precision_case("Ascend910", {"params": [{"shape": (11,11,5,5,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (11, 176, 5, 5),"ori_format": "NCHW"},
                                                     {"shape": (11,11,3,3,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (11, 176, 3, 3),"ori_format": "NCHW"},
+                                                    {"shape": (11,11,3,3,16), "dtype": "int32", "format": "NC1HWC0", "ori_shape": (11, 176, 3, 3),"ori_format": "NCHW"},
                                                     [3, 3]],
                                          "case_name": "adaptive_max_pool2d_prec_case_001",
                                          "expect": "success",

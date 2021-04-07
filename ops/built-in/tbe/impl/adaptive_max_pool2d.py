@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from tbe.common.utils import para_check
 from te.utils.op_utils import REQUIRED_INPUT
 from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import OPTION_OUTPUT
 from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
 from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import check_op_params
@@ -44,7 +45,7 @@ UB_DIVIDE_NUM = 2
 
 
 # pylint: disable=unused-argument,unused-variable
-def check_supported(x, y, output_size, kernel_name='adaptive_max_pool2d'):
+def check_supported(x, y, argmax, output_size, kernel_name='adaptive_max_pool2d'):
     """
     check whether ai_core is supported
     """
@@ -119,7 +120,7 @@ class AdaptiveMaxPool2d(object):
     The number of output features is equal to the number of input planes.
     """
 
-    def __init__(self, x, y, output_size, kernel_name='adaptive_max_pool2d'):
+    def __init__(self, x, y, argmax, output_size, kernel_name='adaptive_max_pool2d'):
         """
         Init DiagPart parameters.
 
@@ -149,6 +150,7 @@ class AdaptiveMaxPool2d(object):
         self.x_format = x.get("format").upper()
         self.y_shape = y.get("shape")
         self.y_dtype = y.get("dtype").lower()
+        self.argmax_dtype = argmax.get("dtype").lower()
         self.output_size = output_size
         self.kernel_name = kernel_name
         self.dtype = self.x_dtype
@@ -207,15 +209,25 @@ class AdaptiveMaxPool2d(object):
         self.cal_tiling_info()
 
         # variables run on npu
-        self.input_gm = self.tik_instance.Tensor(self.x_dtype, (x_size,), name="input_gm", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.y_dtype, (y_size,), name="output_gm", scope=tik.scope_gm)
+        self.input_gm = self.tik_instance.Tensor(
+            self.x_dtype, (x_size,), name="input_gm", scope=tik.scope_gm)
+        self.output_gm = self.tik_instance.Tensor(
+            self.y_dtype, (y_size,), name="output_gm", scope=tik.scope_gm)
+        self.argmax_gm = self.tik_instance.Tensor(
+            self.argmax_dtype, (y_size,), name="argmax_gm", scope=tik.scope_gm)
 
-        self.k_start_h = self.tik_instance.Tensor("int32", (self.output_h,), name="k_start_h", scope=tik.scope_ubuf)
-        self.k_end_h = self.tik_instance.Tensor("int32", (self.output_h,), name="k_end_h", scope=tik.scope_ubuf)
-        self.k_size_h = self.tik_instance.Tensor("int32", (self.output_h,), name="k_size_h", scope=tik.scope_ubuf)
-        self.k_start_w = self.tik_instance.Tensor("int32", (self.output_w,), name="k_start_w", scope=tik.scope_ubuf)
-        self.k_end_w = self.tik_instance.Tensor("int32", (self.output_w,), name="k_end_w", scope=tik.scope_ubuf)
-        self.k_size_w = self.tik_instance.Tensor("int32", (self.output_w,), name="k_size_w", scope=tik.scope_ubuf)
+        self.k_start_h = self.tik_instance.Tensor(
+            "int32", (self.output_h,), name="k_start_h", scope=tik.scope_ubuf)
+        self.k_end_h = self.tik_instance.Tensor(
+            "int32", (self.output_h,), name="k_end_h", scope=tik.scope_ubuf)
+        self.k_size_h = self.tik_instance.Tensor(
+            "int32", (self.output_h,), name="k_size_h", scope=tik.scope_ubuf)
+        self.k_start_w = self.tik_instance.Tensor(
+            "int32", (self.output_w,), name="k_start_w", scope=tik.scope_ubuf)
+        self.k_end_w = self.tik_instance.Tensor(
+            "int32", (self.output_w,), name="k_end_w", scope=tik.scope_ubuf)
+        self.k_size_w = self.tik_instance.Tensor(
+            "int32", (self.output_w,), name="k_size_w", scope=tik.scope_ubuf)
         self.k_max_h = self.k_max[0]
         self.k_max_w = self.k_max[1]
         self.k_mode_h = self.k_mode[1]
@@ -232,8 +244,10 @@ class AdaptiveMaxPool2d(object):
             self.ub_tensor = self.tik_instance.Tensor(
                 self.dtype, (self.ub_max_num,), name="ub_a", scope=tik.scope_ubuf)
         else:
-            self.ub_a = self.tik_instance.Tensor(self.dtype, (self.ub_sec_eles,), name="ub_a", scope=tik.scope_ubuf)
-            self.ub_b = self.tik_instance.Tensor(self.dtype, (self.ub_sec_eles,), name="ub_b", scope=tik.scope_ubuf)
+            self.ub_a = self.tik_instance.Tensor(
+                self.dtype, (self.ub_sec_eles,), name="ub_a", scope=tik.scope_ubuf)
+            self.ub_b = self.tik_instance.Tensor(
+                self.dtype, (self.ub_sec_eles,), name="ub_b", scope=tik.scope_ubuf)
 
     def cal_k_info(self):
         """calculate window start, end, size
@@ -664,13 +678,13 @@ class AdaptiveMaxPool2d(object):
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name,
             inputs=[self.input_gm],
-            outputs=[self.output_gm],
+            outputs=[self.output_gm, self.argmax_gm],
             config=opt_config)
 
 
 # pylint: disable=too-many-locals
-@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
-def adaptive_max_pool2d(x, y, output_size, kernel_name="adaptive_max_pool2d"):
+@check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME)
+def adaptive_max_pool2d(x, y, argmax, output_size, kernel_name="adaptive_max_pool2d"):
     """
     Applies a 2D adaptive max pooling over an input signal composed of several input planes.
 
@@ -708,6 +722,6 @@ def adaptive_max_pool2d(x, y, output_size, kernel_name="adaptive_max_pool2d"):
     -------
     None
     """
-    adaptive_max_pool2d_inst = AdaptiveMaxPool2d(x, y, output_size, kernel_name)
+    adaptive_max_pool2d_inst = AdaptiveMaxPool2d(x, y, argmax, output_size, kernel_name)
     adaptive_max_pool2d_inst.tik_instance_function()
     return adaptive_max_pool2d_inst.tik_instance
