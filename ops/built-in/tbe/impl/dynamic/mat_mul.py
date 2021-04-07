@@ -387,7 +387,7 @@ def  matmul_generalization(input_x1, input_x2, bias, offset_w={}, output_y={},
         )
     
     match_dict = {}
-    k_m_index = 1 if trans_a else 1
+    k_m_index = 0 if trans_a else 1
     k_n_index = 1 if trans_b else 0
 
     match_dict["match_dim"] = [
