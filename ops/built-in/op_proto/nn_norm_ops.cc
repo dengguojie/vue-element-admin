@@ -1155,19 +1155,27 @@ VERIFY_FUNC_REG(KlDivLossGrad, KlDivLossGradVerify);
 
 // ----------------L1LossGrad Begin-------------------
 IMPLEMT_VERIFIER(L1LossGrad, L1LossGradVerify) {
-  if (op.GetInputDesc("grads").GetDataType() !=
-      op.GetInputDesc("predict").GetDataType()) {
-    OP_LOGE(op.GetName().c_str(),
-            "grads' dtype is NOT same as predict's dtype");
+  DataType grads_type = op.GetInputDesc("grads").GetDataType();
+  DataType predict_type = op.GetInputDesc("predict").GetDataType();
+  DataType label_type = op.GetInputDesc("label").GetDataType();
+
+  if ((grads_type != DT_FLOAT16 && grads_type != DT_FLOAT) ||
+      (label_type != DT_FLOAT16 && label_type != DT_FLOAT) ||
+      (predict_type != DT_FLOAT16 && predict_type != DT_FLOAT)) {
+    OP_LOGE(op.GetName().c_str(), "input dtype should be fp32 or fp 16");
     return GRAPH_FAILED;
   }
-  if (op.GetInputDesc("grads").GetDataType() !=
-      op.GetInputDesc("label").GetDataType()) {
+  if (grads_type != predict_type) {
+    OP_LOGE(op.GetName().c_str(), "grads' dtype is NOT same as predict's dtype");
+    return GRAPH_FAILED;
+  }
+  if (grads_type != label_type) {
     OP_LOGE(op.GetName().c_str(), "label's dtype is NOT same as other inputs'");
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
+
 IMPLEMT_COMMON_INFERFUNC(L1LossGradInfer) {
   std::string reduction;
   if (op.GetAttr("reduction", reduction) == GRAPH_SUCCESS) {
@@ -1176,34 +1184,26 @@ IMPLEMT_COMMON_INFERFUNC(L1LossGradInfer) {
       return GRAPH_FAILED;
     }
   }
-  TensorDesc grad_bk = op.GetOutputDesc("y");
-  auto tensor_predict = op.GetInputDesc("predict");
-  auto tensor_grads = op.GetInputDesc("grads");
-  auto tensor_label = op.GetInputDesc("label");
-  ge::Shape predict_shape = tensor_predict.GetShape();
-  ge::Shape grads_shape = tensor_grads.GetShape();
-  ge::Shape label_shape = tensor_label.GetShape();
-  std::vector<int64_t> dims_pre = predict_shape.GetDims();
-  std::vector<int64_t> dims_gra = grads_shape.GetDims();
-  std::vector<int64_t> dims_lab = label_shape.GetDims();
-  if (dims_pre.size() != dims_gra.size() ||
-      dims_pre.size() != dims_lab.size()) {
+
+  Shape grads_shape = op.GetInputDesc("grads").GetShape();
+  Shape label_shape = op.GetInputDesc("label").GetShape();
+  Shape predict_shape = op.GetInputDesc("predict").GetShape();
+  if (predict_shape.GetDims().size() != grads_shape.GetDims().size() ||
+      predict_shape.GetDims().size() != label_shape.GetDims().size()) {
     OP_LOGE(op.GetName().c_str(),
             "predict, grads and label are NOT in same size");
     return GRAPH_FAILED;
   }
 
-  DataType predict_data_type = tensor_predict.GetDataType();
-  Format predict_format = tensor_predict.GetFormat();
-  grad_bk.SetDataType(predict_data_type);
-  grad_bk.SetFormat(predict_format);
-  grad_bk.SetShape(predict_shape);
-
-  (void)op.UpdateOutputDesc("y", grad_bk);
-  return GRAPH_SUCCESS;
+  if (OneInOneOutDynamicInfer(op, "predict", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
 
+// Registered inferfunction
 COMMON_INFER_FUNC_REG(L1LossGrad, L1LossGradInfer);
+// Registered verify function
 VERIFY_FUNC_REG(L1LossGrad, L1LossGradVerify);
 // ----------------L1LossGrad END---------------------
 
