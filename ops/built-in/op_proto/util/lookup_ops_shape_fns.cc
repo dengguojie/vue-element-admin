@@ -21,6 +21,7 @@
 #include "lookup_ops_shape_fns.h"
 #include "common_shape_fns.h"
 #include "graph/utils/op_desc_utils.h"
+#include "./error_util.h"
 
 #include <vector>
 #include <limits>
@@ -45,7 +46,8 @@ graphStatus ValidateTableResourceHandle(Shape keys, std::vector<ShapeAndType> ha
         int keys_rank = keys.GetDims().size();
         int keys_suffix_rank = key_shape_and_type.GetShape().GetDims().size();
         if (keys_rank < keys_suffix_rank) {
-          OP_LOGE(op_name, "Expected keys to have suffix");
+          std::string err_msg = OtherErrMsg("Expected keys to have suffix");
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
           return GRAPH_FAILED;
         }
         for (int d = 0; d < keys_suffix_rank; ++d) {
@@ -112,8 +114,8 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
   const ShapeAndType& key_shape_and_type = handle_data[0];
   const ShapeAndType& value_shape_and_type = handle_data[1];
   if (key_shape_and_type.GetDataType() != key_dtype) {
-    OP_LOGE(op_name, "trying to read value with wrong dtype, expected %d, got %d",
-            key_shape_and_type.GetDataType(), key_dtype);
+    std::string err_msg = GetInputDTypeErrMsg("key_dtype", ConcatString(key_shape_and_type.GetDataType()),ConcatString(key_dtype));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
     return GRAPH_FAILED;
   }
   if (value_shape_and_type.GetDataType() != value_dtype) {
@@ -128,15 +130,16 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
       int64_t keys_rank = keys.GetDimNum();
       int64_t key_suffix_rank = key_shape_and_type.GetShape().GetDimNum();
       if (keys_rank < key_suffix_rank) {
-        OP_LOGE(op_name, "Expected keys to have suffix %lld, but saw shape %lld",
-                key_suffix_rank, keys_rank);
+        std::string err_msg = OtherErrMsg(ConcatString("Expected keys to have suffix ", key_suffix_rank, ", but saw shape ", keys_rank));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
         return GRAPH_FAILED;
       }
       for (int64_t d = 0; d < key_suffix_rank; ++d) {
         // Ensure the suffix of keys match what's in the Table.
         int64_t dim = key_shape_and_type.GetShape().GetDim(d);
         if (ReplaceDim(keys, keys_rank - key_suffix_rank + d, dim, keys, op_name) == GRAPH_FAILED) {
-          OP_LOGE(op_name, "replace dim %lld in keys failed", keys_rank - key_suffix_rank + d);
+          std::string err_msg = OtherErrMsg(ConcatString("replace dim ", keys_rank - key_suffix_rank + d, " in keys failed"));
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
           return GRAPH_FAILED;
         }
       }
@@ -150,7 +153,8 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
 
       auto temp_shape = output_shape_and_type.GetShape();
       if (Concatenate(keys_prefix, value_shape_and_type.GetShape(), temp_shape) == GRAPH_FAILED) {
-        OP_LOGE(op_name, "concatenate keys_prefix and value shape failed");
+        std::string err_msg = OtherErrMsg("concatenate keys_prefix and value shape failed");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
         return GRAPH_FAILED;
       }
       output_shape_and_type.SetShape(temp_shape);
@@ -160,7 +164,8 @@ graphStatus ValidateTableResourceHandle(const Operator& op,
   } else {
     auto temp_shape = output_shape_and_type.GetShape();
     if (Concatenate(keys, value_shape_and_type.GetShape(), temp_shape) == GRAPH_FAILED) {
-      OP_LOGE(op_name, "concatenate keys and value shape failed");
+      std::string err_msg = OtherErrMsg("concatenate keys and value shape failed");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(std::string(op_name), err_msg);
       return GRAPH_FAILED;
     }
     output_shape_and_type.SetShape(temp_shape);

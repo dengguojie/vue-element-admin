@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "graph/debug/ge_log.h"
+#include "./error_util.h"
 
 namespace ge {
 #define UNCHANGED_SHAPE()                                      \
@@ -31,7 +32,8 @@ namespace ge {
   outputDesc.SetDataType(op.GetInputDesc(0).GetDataType());    \
   outputDesc.SetFormat(FORMAT_NCHW);                           \
   if (op.UpdateOutputDesc("y", outputDesc) != GRAPH_SUCCESS) { \
-    OP_LOGE(op.GetName().c_str(), "fail to update output y."); \
+    std::string err_msg = UpdateParamErrMsg("output y"); \
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName().c_str(), err_msg); \
     return GRAPH_FAILED;                                       \
   }                                                            \
   return GRAPH_SUCCESS;
