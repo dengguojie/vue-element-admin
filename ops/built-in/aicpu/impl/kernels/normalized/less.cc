@@ -110,6 +110,12 @@ uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx,
   auto output_y = reinterpret_cast<bool *>(calc_info.output->GetData());
 
   size_t data_num = calc_info.x_indexes.size();
+  uint32_t min_core_num = 1;
+  int64_t max_core_num =
+      std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+  if (max_core_num > data_num) {
+    max_core_num = data_num;
+  }
   auto shard_less = [&](size_t start, size_t end) {
     for (size_t i = start; i < end; i++) {
       auto x_index = input_x1 + calc_info.x_indexes[i]; // i-th value of input0
@@ -117,7 +123,7 @@ uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx,
       *(output_y + i) = *x_index < *y_index ? true : false;
     }
   };
-  KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, 1, shard_less),
+  KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_less),
                       "Less Compute failed.")
   return KERNEL_STATUS_OK;
 }

@@ -99,7 +99,11 @@ uint32_t CpuKernelRegister::RunCpuKernel(CpuKernelContext &ctx) {
     (void)aicpu::SetOpname(type);
   }
 
+  auto start = std::chrono::steady_clock::now();
   uint32_t ret = kernel->Compute(ctx);
+  auto end = std::chrono::steady_clock::now();
+  double dr_us=std::chrono::duration<double,std::micro>(end-start).count();
+  KERNEL_LOG_EVENT("RunCpuKernel[%s], run time is [%lf] us.", type.c_str(), dr_us);
   if (ret != KERNEL_STATUS_OK) {
     return ret;
   }
