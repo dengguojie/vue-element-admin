@@ -983,10 +983,6 @@ def general_schedule(
         print("general dx fusion tag:", deconv_res.op.tag)
         print("general dx kernel_name:", _kernel_name)
 
-    # close A overhead flag, compile error due to inferbound
-    # need to be deleted later
-    tiling['A_overhead_opt_flag'] = 0
-
     def _tiling_check_none():
         if (
             (tiling.get("AL1_shape") is None)
@@ -2198,20 +2194,26 @@ def general_schedule(
         # ddr axes: n, c1, hw, c0
         _, ddr_n, ddr_m, _ = sch[c_ddr].op.axis
 
+        # in this situation the data will be intermittent so cannot do allocate
+        if al1_tilling_m > 1:
+            tiling['A_overhead_opt_flag'] = 0
+
         if tiling.get('A_overhead_opt_flag') and attach_dict.get(sch[a_col]):
             # process AL1 full load
             if not attach_dict.get(sch[a_l1]):
                 attach_dict[sch[a_l1]] = sch[c_ddr]
                 compute_path[sch[a_l1]] = ax_core
-            # get related tensor and axis
-            if nbuffer_split_list:
-                al1_compute_at_axis = nbuffer_split_list[0]
-            else:
-                al1_compute_at_axis = compute_path.get(sch[a_col])
-            al0_compute_at_tensor = attach_dict.get(sch[a_col])
             # get run_once axes
             run_once_list = []
-            if al0_compute_at_tensor ==  attach_dict.get(sch[a_l1]):
+            if attach_dict.get(sch[a_col]) == attach_dict.get(sch[a_l1]):
+                # get related tensor and axis
+                if nbuffer_split_list:
+                    al1_compute_at_axis = nbuffer_split_list[0]
+                elif kernel_h * kernel_w == al0_tiling_ka:
+                    al1_compute_at_axis = compute_path.get(sch[a_col])
+                else:
+                    al1_compute_at_axis = compute_path.get(sch[a_l1])
+                al0_compute_at_tensor = attach_dict.get(sch[a_col])
                 # AL1 and AL0 compute at same tensor
                 n_axis = ddr_n if al0_compute_at_tensor == sch[c_ddr] else l0c_n
                 tmp_tensor = c_ddr if al0_compute_at_tensor == sch[c_ddr] else c_col
