@@ -220,15 +220,15 @@ def _get_kernel_support_info(tiling_case, mode):
     order_dict = tiling_case['var_range']
     m_range = [
         (order_dict["m"][0] - 1) * tbe_platform.BLOCK_REDUCE + 1,
-        order_dict["m"][1] * tbe_platform.BLOCK_REDUCE
+        min(INT_32_MAX, order_dict["m"][1] * tbe_platform.BLOCK_REDUCE)
     ]
     k_range = [
         (order_dict["k"][0] - 1) * tbe_platform.BLOCK_REDUCE + 1,
-        order_dict["k"][1] * tbe_platform.BLOCK_REDUCE
+        min(INT_32_MAX, order_dict["k"][1] * tbe_platform.BLOCK_REDUCE)
     ]
     n_range = [
         (order_dict["n"][0] - 1) * tbe_platform.BLOCK_REDUCE + 1,
-        order_dict["n"][1] * tbe_platform.BLOCK_REDUCE
+        min(INT_32_MAX, order_dict["n"][1] * tbe_platform.BLOCK_REDUCE)
     ]
     input0_shape = [UNKNOWN_DIM, UNKNOWN_DIM]
     input1_shape = [UNKNOWN_DIM, UNKNOWN_DIM]
@@ -241,7 +241,7 @@ def _get_kernel_support_info(tiling_case, mode):
     if mode == "dynamic_mknb":
         batch_range = [
             order_dict["batch"][0],
-            order_dict["batch"][1]
+            min(INT_32_MAX, order_dict["batch"][1])
         ]
         input0_shape.append(UNKNOWN_DIM)
         input1_shape.append(UNKNOWN_DIM)

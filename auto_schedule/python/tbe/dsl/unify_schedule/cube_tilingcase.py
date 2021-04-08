@@ -477,7 +477,8 @@ class TilingSelection:
 
         compile_time = _get_compile_time(target_area)
         if compile_time > DEFAULT_COMPILE_TIME and self.op.dynamic_mode == "dynamic_mkn":
-            return self._calc_gear_matmul(target_area)
+            tiling_cases, _, _ = self._calc_gear_matmul(target_area)
+            return tiling_cases
 
         candidates = {}
         repo_seeds = self.op.get_repo_tiling()
