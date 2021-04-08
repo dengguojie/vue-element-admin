@@ -3306,12 +3306,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
     reset_range(op, "out_backprop");
   }
   if (unknown_rank || filter_sizes[filter_ci_position] < 1 || x_c < 1){
-    OP_LOGI(op.GetName().c_str(), "Setgroups begin.");
-    int32_t groups_ori = 1;
-    op.GetAttr("groups", groups_ori);
-    OP_LOGD(op.GetName().c_str(), "ori groups is %d.", groups_ori);
-    op.SetAttr("groups", groups_ori);
-    OP_LOGI(op.GetName().c_str(), "op set groups succ.");
+    OP_LOGD(op.GetName().c_str(), "ignore set groups.");
   } else if (false == SetGroupsConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropFilter failed.");
     map<string, string> err_map;
@@ -3351,7 +3346,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
                                           x_sizes, x_format, attr_param)) {
       return GRAPH_FAILED;
     }
-  } else if (IsUnKnownShape(x_sizes)) {
+  } else if (IsUnKnownShape(x_sizes) || unknown_rank) {
+
     // update pads list by padding[SAME,VALID]
     std::string pad_str;
     if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
@@ -3361,12 +3357,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
       op.SetAttr("pads", {0, 0, 0, 0});
       OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0} when padding is VALID in dynamic_shape");
     }
-  } else if (unknown_rank) {
-    std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      ge::AttrUtils::SetBool(*op_desc, kForceInfershapeWhenRunning, true);
-    }
   }
+  
   OP_LOGI(op.GetName().c_str(), "Leaving Conv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
 }

@@ -120,19 +120,23 @@ def _check_type(shape, name, type_set):
             "type of {} should in {}".format(name, type_set))
 
 
-def _check_data_format(data_format, name, format_set=["NHWC", "NCHW"]):
+def _check_data_format(data_format, name, format_set=None):
+    if format_set is None:
+        format_set=["NHWC", "NCHW"]
     if data_format not in format_set:
         error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
             "format of {} should in {}".format(name, format_set))
 
 
-def _get_nchw_shape(fmap, out_backprop, filters):
+def _get_nchw_shape(fmap, out_backprop, filters, groups):
     def _check_shape_rules():
         _check_type(dedy_shape, "out_backprop", (tuple, list))
-        _check_dimensions(dedy_shape, "out_backprop", CONV_BACKPROP_SHAPE_DIM)
+        if list(dedy_shape) != [-2]:
+            _check_dimensions(dedy_shape, "out_backprop", CONV_BACKPROP_SHAPE_DIM)
 
         _check_type(x_shape, "x", (tuple, list))
-        _check_dimensions(x_shape, "x", CONV_BACKPROP_SHAPE_DIM)
+        if list(x_shape) != [-2]:
+            _check_dimensions(x_shape, "x", CONV_BACKPROP_SHAPE_DIM)
 
         _check_type(dedw_shape, "y", (tuple, list))
         _check_dimensions(dedw_shape, "y", CONV_BACKPROP_SHAPE_DIM)
@@ -151,24 +155,38 @@ def _get_nchw_shape(fmap, out_backprop, filters):
 
     _check_shape_rules()
 
-    x_shape = _get_shape(x_shape, x_format)
-    dedy_shape = _get_shape(dedy_shape, dedy_format)
     dedw_shape = _get_shape(dedw_shape, dedw_format)
-
-    # get range
-    if len(x_range) == 4:
-        pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(x_format)
-        x_range = [x_range[pos_n], x_range[pos_c], x_range[pos_h], x_range[pos_w]]
-    elif len(x_range) == 5:
-        x_range = [x_range[0], (x_shape[1], x_shape[1]), x_range[2], x_range[3]]
-        x_range = [tuple(r) for r in x_range]
+    cout, k_c, _, _ = dedw_shape
+    cin = k_c * groups
+    if list(dedy_shape) == [-2]:
+        dedy_shape = [-1, cout, -1, -1]
     else:
-        error_manager_cube.raise_err_equal_invalid('conv2d_backprop_filter', 'range_format', 'in_format')
+        dedy_shape = _get_shape(dedy_shape, dedy_format)
+        if dedy_shape[C_DIM] == DYNAMIC_FLAG:
+            dedy_shape[C_DIM] = cout
+    if list(x_shape) == [-2]:
+        x_shape = [-1, cout, -1, -1]
+        x_range = [(1, None), (cin, cin), (1, None), (1, None)]
+    else:
+        x_shape = _get_shape(x_shape, x_format)
+        if x_shape[C_DIM] == DYNAMIC_FLAG:
+            x_shape[C_DIM] = cin
 
-    return x_shape, dedy_shape, dedw_shape, x_range
+        # get range
+        if len(x_range) == 4:
+            pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(x_format)
+            x_range = [x_range[pos_n], x_range[pos_c], x_range[pos_h], x_range[pos_w]]
+        elif len(x_range) == 5:
+            x_range = [x_range[0], (x_shape[1], x_shape[1]), x_range[2], x_range[3]]
+            x_range = [tuple(r) for r in x_range]
+        else:
+            error_manager_cube.raise_err_equal_invalid('conv2d_backprop_filter', 'range_format', 'in_format')
+
+    ret = {"x_shape" : x_shape, "dedy_shape" : dedy_shape, "dedw_shape" : dedw_shape, "x_range" : x_range}
+    return ret
 
 
-def _get_attrs(strides, pads, dilations, data_format, fmap_shape, w_nchw):
+def _get_attrs(strides, pads, dilations, data_format):
     pos_n, pos_c, pos_h, pos_w = _get_pos_from_format(data_format)
     dilations = [dilations[pos_n], dilations[pos_c],
                  dilations[pos_h], dilations[pos_w]]
@@ -226,7 +244,7 @@ def _check_const_dim(dim_value, dim_name):
                  "the value of the {} dimension of shape must be -1 or >0".format(dim_name))
 
 
-def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw, fmap_range):
+def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw):
 
     fmap_n, fmap_c, fmap_h, fmap_w = fmap_nchw
     dedy_n, dedy_c, dedy_h, dedy_w = dedy_nchw
@@ -421,12 +439,10 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     upper_fmap_n, upper_fmap_c, upper_fmap_h, upper_fmap_w = upper_bound
     dedy_n_range, dedy_c_range, dedy_h_range, dedy_w_range = dedy_range
 
-    _, pad, _ = _get_attrs(strides, pads, dilations,
-                            "NCHW", fmap_shape, dedw_nchw)
+    _, pad, _ = _get_attrs(strides, pads, dilations, "NCHW")
     pad_up, pad_down, pad_left, pad_right = pad
 
-    _, upper_pad, _ = _get_attrs(strides, pads, dilations, "NCHW",
-                                 upper_bound, dedw_nchw)
+    _, upper_pad, _ = _get_attrs(strides, pads, dilations, "NCHW")
     upper_pad_up, upper_pad_down, upper_pad_left, upper_pad_right = upper_pad
     upper_fmap_w_padding = None
     upper_fmap_h_padding = None
@@ -435,8 +451,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     if upper_fmap_h:
         upper_fmap_h_padding = upper_fmap_h + upper_pad_up + upper_pad_down
 
-    _, lower_pad, _ = _get_attrs(strides, pads, dilations, "NCHW",
-                                 lower_bound, dedw_nchw)
+    _, lower_pad, _ = _get_attrs(strides, pads, dilations, "NCHW")
     lower_pad_up, lower_pad_down, lower_pad_left, lower_pad_right = lower_pad
     lower_fmap_w_padding = lower_fmap_w + lower_pad_left + lower_pad_right
     lower_fmap_h_padding = lower_fmap_h + lower_pad_up + lower_pad_down
@@ -538,7 +553,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     return results
 
 
-def _check_and_config_para(x, filter_size, out_backprop, y,
+def _check_and_config_para(x, out_backprop, y,
                            strides, pads, dilations,
                            groups, data_format, kernel_name):
     x_ori_shape = list(x.get("ori_shape"))
@@ -550,7 +565,6 @@ def _check_and_config_para(x, filter_size, out_backprop, y,
     x_format = x.get("ori_format")
     dedy_format = out_backprop.get("ori_format")
     dedw_format = y.get("ori_format")
-    x_range = x.get("range")
 
     x_dtype = x_dtype.lower()
     dedy_dtype = dedy_dtype.lower()
@@ -581,13 +595,16 @@ def _check_and_config_para(x, filter_size, out_backprop, y,
     if groups != 1:
         error_manager_cube.raise_err_specific_user(
             'conv2d_backprop_filter', "group != 1 is not supported yet in dynamic conv2d_backprop_filter")
-    x_nchw, dedy_nchw, dedw_nchw, fmap_range = _get_nchw_shape(x, out_backprop, y)
+    ret_nchw = _get_nchw_shape(x, out_backprop, y, groups)
+    x_nchw = ret_nchw.get("x_shape")
+    dedy_nchw = ret_nchw.get("dedy_shape")
+    dedw_nchw = ret_nchw.get("dedw_shape")
+    fmap_range = ret_nchw.get("x_range")
 
     fmap_shape, dedy_shape = \
-        _get_input_shape(x_nchw, dedy_nchw, dedw_nchw, fmap_range)
+        _get_input_shape(x_nchw, dedy_nchw, dedw_nchw)
 
-    strides, pads, dilations = _get_attrs(strides, pads, dilations,
-                                          data_format, fmap_shape, dedw_nchw)
+    strides, pads, dilations = _get_attrs(strides, pads, dilations, data_format)
     fmap_shape, dedy_shape, dedy_range, fmap_range, correct_range_flag = _check_conv2dbp_filter_params(
         fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
         groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name,
@@ -618,7 +635,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     dedy_dtype = dedy_dtype.lower()
     dedw_dtype = dedw_dtype.lower()
 
-    config_dict = _check_and_config_para(x, filter_size, out_backprop, y,
+    config_dict = _check_and_config_para(x, out_backprop, y,
                            strides, pads, dilations,
                            groups, data_format, kernel_name)
 
