@@ -301,3 +301,4 @@ from .resize_nearest_neighbor_v2_grad import resize_nearest_neighbor_v2_grad
 from .layer_norm import layer_norm
 from .l1_loss_grad import l1_loss_grad
 from .bn_training_update_grad import bn_training_update_grad
+from .masked_scale import masked_scale

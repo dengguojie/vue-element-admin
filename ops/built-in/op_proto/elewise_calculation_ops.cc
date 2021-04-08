@@ -4455,7 +4455,7 @@ IMPLEMT_VERIFIER(MaskedScale, MaskedScaleVerify) {
     DataType mask_dtype = mask_tensordesc.GetDataType();
 
     if (false == VerifyMaskedScaleShapeAndType(op, x_dtype, mask_dtype)) {
-        return GRAPH_FAILED;	
+        return GRAPH_FAILED;
     }
 
     return GRAPH_SUCCESS;
@@ -4476,12 +4476,17 @@ IMPLEMT_COMMON_INFERFUNC(MaskedScaleInferShape) {
         return GRAPH_FAILED;
     }
 
+    bool is_dynamic_output = true;
+    if (InferShapeAndTypeTwoInOneOutBroadcast(op, "x", "mask", "y", is_dynamic_output)) {
+        return GRAPH_SUCCESS;
+    }
+
     TensorDesc tensordesc_output = op.GetOutputDesc("y");
     tensordesc_output.SetShape(input_shape);
     tensordesc_output.SetDataType(input_dtype);
     (void)op.UpdateOutputDesc("y", tensordesc_output);
-
     return GRAPH_SUCCESS;
+    
 }
 
 COMMON_INFER_FUNC_REG(MaskedScale, MaskedScaleInferShape);
