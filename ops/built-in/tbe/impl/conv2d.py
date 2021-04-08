@@ -83,7 +83,7 @@ def check_supported(inputs, weights, bias, offset_w, outputs, strides,
                       offset_w_dtype, (bias is None), kernel_name, *return_list[6:9], groups]
         return_list = util_conv2d.conv_layer_cce_para_check(*check_list)
         return True
-    except Exception as e:
+    except (RuntimeError, ValueError, TypeError):
         msg = traceback.format_exc()
         print(msg)
         return False
