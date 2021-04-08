@@ -88,6 +88,7 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     return grad_res
 
 
+@register_operator("MseLossGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
