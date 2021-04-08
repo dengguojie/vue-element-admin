@@ -68,7 +68,7 @@ namespace optiling
         int32_t num_weights;
         int32_t padding_idx;
         int32_t core_num;
-        bool get_compile_info = GetCompileInfo(op_type, op_compile_info, num_weights, padding_idx, core_num);
+        (void)GetCompileInfo(op_type, op_compile_info, num_weights, padding_idx, core_num);
         tiling_params.core_num = core_num;
     }
 
