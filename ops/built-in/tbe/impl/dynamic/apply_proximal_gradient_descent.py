@@ -130,11 +130,6 @@ def _compute_process(var, alpha_broad, l1_broad, l2_broad, delta):
     l2_lr_1 = tbe.vadds(l2_lr, tvm.const(1, "float32"))
     var_t_neg = tbe.vdiv(prox_v, l2_lr_1)
 
-    l1_broad = tbe.cast_to(l1_broad, "float16")
-    const_zero_tensor = tbe.cast_to(const_zero_tensor, "float16")
-    var_res = tbe.cast_to(var_res, "float16")
-    var_t_neg = tbe.cast_to(var_t_neg, "float16")
-
     var_out = tbe.vcmpsel(l1_broad, const_zero_tensor, 'gt', var_res, var_t_neg)
 
     return var_out

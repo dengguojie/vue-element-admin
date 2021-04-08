@@ -55,18 +55,12 @@ def approximate_equal_compute(input_x, input_y, output_z, tolerance,
     -------
     the function of _approximate_equal_compute
     """
-    x_shape = shape_util.shape_to_list(input_x.shape)
-    y_shape = shape_util.shape_to_list(input_y.shape)
-    x_shape, y_shape, z_shape = shape_util.broadcast_shapes(x_shape, y_shape,
-                                                            param_name_input1="input_x",
-                                                            param_name_input2="input_y")
+
     input_dtype = input_x.dtype
     if input_dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
         input_x = tbe.cast_to(input_x, "float32")
         input_y = tbe.cast_to(input_y, "float32")
 
-    input_x = tbe.broadcast(input_x, z_shape)
-    input_y = tbe.broadcast(input_y, z_shape)
     res_vsub = tbe.vsub(input_x, input_y)
     res_vabs = tbe.vabs(res_vsub)
 
@@ -127,7 +121,7 @@ def approximate_equal(input_x, input_y, output_z, tolerance=1e-5,
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "tolerance", \
                                                            ">= 0", tolerance)
 
-    ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input_x, input_y], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (x_, y_) in ins:
         with tbe.compute():
