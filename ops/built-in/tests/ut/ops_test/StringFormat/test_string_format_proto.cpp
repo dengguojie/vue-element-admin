@@ -66,3 +66,4 @@ TEST_F(StringFormat, string_format_infer_shape_error) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+

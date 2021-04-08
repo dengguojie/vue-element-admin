@@ -21,6 +21,7 @@
 #include "inc/logging_ops.h"
 #include "op_log.h"
 #include "util/common_shape_fns.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(Timestamp, TimestampInfer) {
@@ -49,7 +50,10 @@ INFER_FUNC_REG(Print, PrintInfer);
 IMPLEMT_INFERFUNC(PrintV2, PrintV2Infer) {
   Shape unused;
   if (WithRank(op.GetInputDesc(0), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input x must be a scalar");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

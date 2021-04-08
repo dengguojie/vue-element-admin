@@ -33,12 +33,18 @@ IMPLEMT_INFERFUNC(StringSplit, StringSplitInfer) {
   auto tensor_sep = op.get_input_desc_delimiter();
 
   if (WithRank(tensor_input, 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of input must be 1");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(tensor_input.GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(tensor_sep, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of delimiter must be 0");
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(tensor_sep.GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -48,40 +54,49 @@ IMPLEMT_INFERFUNC(StringSplit, StringSplitInfer) {
 
   auto result = Matrix(ge::UNKNOWN_DIM, 2, indices_shape);
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate indices_shape failed !");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), 
+        ConcatString("failed to call Matrix function to generate shape[",
+        ge::UNKNOWN_DIM, ", 2] for output[indices]."));
     return GRAPH_FAILED;
   }
   TensorDesc indices_desc = op.get_output_desc_indices();
   indices_desc.SetShape(indices_shape);
   indices_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("indices", indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update indices desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[indices] desc failed."));
     return GRAPH_FAILED;
   }
 
   result = Vector(ge::UNKNOWN_DIM, values_shape);
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate values_shape failed !");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), 
+        ConcatString("failed to call Vector function to generate shape[",
+        ge::UNKNOWN_DIM, "] for output[values]."));
     return GRAPH_FAILED;
   }
   TensorDesc values_desc = op.get_output_desc_values();
   values_desc.SetShape(values_shape);
   values_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("values", values_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update values desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[values] desc failed."));
     return GRAPH_FAILED;
   }
 
   result = Vector(2, shape);
   if (result != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "generate shape failed !");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), 
+        string("failed to call Vector function to generate shape[2] for output[shape]."));
     return GRAPH_FAILED;
   }
   TensorDesc shape_desc = op.get_output_desc_shape();
   shape_desc.SetShape(shape);
   shape_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("shape", shape_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update shape desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[shape] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -265,12 +280,18 @@ IMPLEMT_INFERFUNC(StringSplitV2, StringSplitV2Infer) {
   auto tensor_sep = op.get_input_desc_sep();
 
   if (WithRank(tensor_input, 1, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of input must be 1");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(tensor_input.GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(tensor_sep, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of sep must be 0");
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(tensor_sep.GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -280,40 +301,48 @@ IMPLEMT_INFERFUNC(StringSplitV2, StringSplitV2Infer) {
 
   auto result = Matrix(ge::UNKNOWN_DIM, 2, indices_shape);
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate indices_shape failed !");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), 
+        ConcatString("failed to call Matrix function to generate shape[",
+        ge::UNKNOWN_DIM, ", 2] of output[indices]."));
     return GRAPH_FAILED;
   }
   TensorDesc indices_desc = op.get_output_desc_indices();
   indices_desc.SetShape(indices_shape);
   indices_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("indices", indices_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update indices desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[indices] desc failed."));
     return GRAPH_FAILED;
   }
 
   result = Vector(ge::UNKNOWN_DIM, values_shape);
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate values_shape failed !");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), 
+        ConcatString("failed to call Vector function to generate shape[",
+        ge::UNKNOWN_DIM, "] for output[values]."));
     return GRAPH_FAILED;
   }
   TensorDesc values_desc = op.get_output_desc_values();
   values_desc.SetShape(values_shape);
   values_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("values", values_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update values desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[values] desc failed."));
     return GRAPH_FAILED;
   }
 
   result = Vector(2, shape);
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate shape failed !");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), 
+        string("failed to call Vector function to generate shape[2] for output[shape]."));
     return GRAPH_FAILED;
   }
   TensorDesc shape_desc = op.get_output_desc_shape();
   shape_desc.SetShape(shape);
   shape_desc.SetDataType(DT_INT64);
   if (op.UpdateOutputDesc("shape", shape_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update shape desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[shape] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -526,14 +555,20 @@ IMPLEMT_INFERFUNC(Substr, SubstrInfer) {
   Shape len_shape = op.GetInputDesc(2).GetShape();
   Shape unused;
   if (WithRank(pos_tensor, len_shape.GetDimNum(), unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "pos and len must have same rank");
+    std::string err_msg = ConcatString("input[pos] rank value[", pos_shape.GetDimNum(),
+        "] must same as input[len] rank value[", len_shape.GetDimNum(), "]");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   for (size_t i = 0; i < pos_shape.GetDimNum(); ++i) {
     auto pos_dim = pos_shape.GetDim(i);
     auto len_dim = len_shape.GetDim(i);
     if (pos_dim != len_dim) {
-      OP_LOGE(op.GetName().c_str(), "pos and len must have same dim");
+      std::string err_msg = ConcatString("input[pos] dim[", i,
+          "] has wrong value[", pos_dim, "], it must same with input[len] dim[", i,
+          "] value[", len_dim,"]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -541,7 +576,8 @@ IMPLEMT_INFERFUNC(Substr, SubstrInfer) {
   TensorDesc desc = op.GetOutputDesc(0);
   desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("output", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[output] desc failed."));
     return GRAPH_FAILED;
   }
 
@@ -575,7 +611,9 @@ INFER_FUNC_REG(StringToHashBucketFast, StringToHashBucketFastInfer);
 IMPLEMT_INFERFUNC(StringToHashBucketStrong, StringToHashBucketStrongInfer) {
   DataType x_type = op.GetInputDesc("x").GetDataType();
   if (x_type != DT_STRING) {
-    OP_LOGE(op.GetName().c_str(), " illegal when input type is not DT_STRING");
+    std::string input_dt = DTypeStr(x_type);
+    std::string err_msg = ConcatString("input[x] data type[", input_dt,"] must be DT_STRING");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
   TensorDesc desc = op.GetOutputDesc("y");
@@ -583,7 +621,8 @@ IMPLEMT_INFERFUNC(StringToHashBucketStrong, StringToHashBucketStrongInfer) {
   desc.SetDataType(DT_INT64);
 
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -650,7 +689,8 @@ IMPLEMT_INFERFUNC(StringJoin, StringJoinInfer) {
   if (all_scalar) {
     desc.SetShape(Shape());
     if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update y desc failed.");
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y] desc failed."));
       return GRAPH_FAILED;
     }
     return GRAPH_SUCCESS;
@@ -661,14 +701,18 @@ IMPLEMT_INFERFUNC(StringJoin, StringJoinInfer) {
     Shape input_shape = op.GetInputDesc(i).GetShape();
     if ((RankKnown(input_shape)) && (input_shape.GetDimNum() != 0)) {
       if (Merge(out, input_shape, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "merge two dimension error.");
+        string err_msg = ConcatString("failed to call Merge function to merge out[y] shape",
+            DebugString(out.GetDims()), " and ", i, "th dynamic input[x] shape", 
+            DebugString(input_shape.GetDims()));
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
   }
   desc.SetShape(out);
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -680,11 +724,13 @@ IMPLEMT_INFERFUNC(StringFormat, StringFormatInfer) {
   string template_attr;
   string placeholder_attr;
   if (op.GetAttr("template", template_attr) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr[template] failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("get attr[template] failed."));
     return GRAPH_FAILED;
   }
   if (op.GetAttr("placeholder", placeholder_attr) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr[placeholder] failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("get attr[placeholder] failed."));
     return GRAPH_FAILED;
   }
 
@@ -700,7 +746,10 @@ IMPLEMT_INFERFUNC(StringFormat, StringFormatInfer) {
   }
 
   if (op.GetInputsSize() != num_placeholders) {
-    OP_LOGE(op.GetName().c_str(), "Num placeholders in template and num inputs must match.");
+    std::string err_msg = ConcatString("dynamic input[x] number ",
+        op.GetInputsSize(), " must match number placeholders[",
+        num_placeholders,"] in attr[template].");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -709,7 +758,8 @@ IMPLEMT_INFERFUNC(StringFormat, StringFormatInfer) {
   desc.SetShape(Shape());
 
   if (op.UpdateOutputDesc("y", desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Update y desc failed.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -763,7 +813,8 @@ IMPLEMT_INFERFUNC(AsString, AsStringInfer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");
@@ -787,7 +838,8 @@ IMPLEMT_INFERFUNC(DecodeBase64, DecodeBase64Infer) {
   TensorDesc out_desc = op.GetOutputDesc("y");
   out_desc.SetDataType(DT_STRING);
   if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y] desc failed."));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");
