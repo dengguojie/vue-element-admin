@@ -311,13 +311,22 @@ class ScatterNdSub():
 
         with self.tik_instance.if_scope(loop > 0):
             with self.tik_instance.for_range(0, loop) as i:
-                self.tik_instance.vec_sub(mask, self.subs_ub[i * 255 * mask], self.subs_ub[i * 255 * mask],
-                                          self.var_ub[i * 255 * mask], 255, 8, 8, 8)
+                self.tik_instance.vec_sub(mask, 
+                                          self.subs_ub[i * 255 * mask], 
+                                          self.var_ub[i * 255 * mask], 
+                                          self.subs_ub[i * 255 * mask],
+                                          255, 8, 8, 8)
         with self.tik_instance.if_scope(last > 0):
-            self.tik_instance.vec_sub(mask, self.subs_ub[loop * 255 * mask], self.subs_ub[loop * 255 * mask],
-                                      self.var_ub[loop * 255 * mask], last - 1, 8, 8, 8)
-            self.tik_instance.vec_sub(lastmaskScalar, self.subs_ub[lastindex * mask], self.subs_ub[lastindex * mask],
-                                      self.var_ub[lastindex * mask], 1, 8, 8, 8)
+            self.tik_instance.vec_sub(mask, 
+                                      self.subs_ub[loop * 255 * mask],
+                                      self.var_ub[loop * 255 * mask],
+                                      self.subs_ub[loop * 255 * mask],
+                                      last - 1, 8, 8, 8)
+            self.tik_instance.vec_sub(lastmaskScalar, 
+                                      self.subs_ub[lastindex * mask],
+                                      self.var_ub[lastindex * mask],
+                                      self.subs_ub[lastindex * mask],
+                                      1, 8, 8, 8)
 
     def vec_sub_with_subr(self, update_num, subs_subr, var_subr):
         """
@@ -335,16 +344,22 @@ class ScatterNdSub():
 
         with self.tik_instance.if_scope(loop > 0):
             with self.tik_instance.for_range(0, loop) as i:
-                self.tik_instance.vec_sub(mask, self.subs_ub[i * 255 * mask + subs_subr],
+                self.tik_instance.vec_sub(mask, 
                                           self.subs_ub[i * 255 * mask + subs_subr],
-                                          self.var_ub[i * 255 * mask + var_subr], 255, 8, 8, 8)
+                                          self.var_ub[i * 255 * mask + var_subr],
+                                          self.subs_ub[i * 255 * mask + subs_subr],
+                                          255, 8, 8, 8)
         with self.tik_instance.if_scope(last > 0):
-            self.tik_instance.vec_sub(mask, self.subs_ub[loop * 255 * mask + subs_subr],
+            self.tik_instance.vec_sub(mask, 
                                       self.subs_ub[loop * 255 * mask + subs_subr],
-                                      self.var_ub[loop * 255 * mask + var_subr], last - 1, 8, 8, 8)
-            self.tik_instance.vec_sub(lastmaskScalar, self.subs_ub[lastindex * mask + subs_subr],
+                                      self.var_ub[loop * 255 * mask + var_subr],
+                                      self.subs_ub[loop * 255 * mask + subs_subr],
+                                      last - 1, 8, 8, 8)
+            self.tik_instance.vec_sub(lastmaskScalar, 
                                       self.subs_ub[lastindex * mask + subs_subr],
-                                      self.var_ub[lastindex * mask + var_subr], 1, 8, 8, 8)
+                                      self.var_ub[lastindex * mask + var_subr],
+                                      self.subs_ub[lastindex * mask + subs_subr],
+                                      1, 8, 8, 8)
 
     def update_var(self, subs_loop_index, update_num, var_loop_index, mode):
         """
@@ -387,8 +402,11 @@ class ScatterNdSub():
                                             self.out_gm[var_loop_index + update_num - self.var_data_each_block], 0, 1,
                                             1, 0, 0)
                 self.vsub(update_num)
-                self.tik_instance.vec_sub(self.var_data_each_block, self.subs_tile_ub[0], self.subs_tile_ub[0],
-                                          self.var_tile_ub[0], 1, 8, 8, 8)
+                self.tik_instance.vec_sub(self.var_data_each_block, 
+                                          self.subs_tile_ub[0],
+                                          self.var_tile_ub[0],
+                                          self.subs_tile_ub[0],
+                                          1, 8, 8, 8)
                 self.tik_instance.data_move(self.out_gm[var_loop_index + update_num - self.var_data_each_block],
                                             self.subs_tile_ub, 0, 1, 1, 0, 0)
                 self.tik_instance.data_move(self.out_gm[var_loop_index], self.subs_ub, 0, 1, self.subs_burst_len - 1, 0,
