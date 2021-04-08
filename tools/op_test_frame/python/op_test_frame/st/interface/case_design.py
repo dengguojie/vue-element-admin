@@ -705,21 +705,17 @@ class CaseDesign:
             length = len(expect_str.split(":"))
             if length == 2:
                 pyfile, function = expect_str.split(":")
+                function = function.replace(utils.SPACE, utils.EMPTY)
                 utils.print_info_log("The expect data generate python file:%s."
                                      % pyfile)
                 utils.check_path_valid(pyfile)
                 if not function:
                     function = json_obj.get(OP)
-            elif length == 1:
-                pyfile = expect_str
-                function = json_obj.get(OP)
-                utils.print_info_log("The expect data generate python file:%s."
-                                     % pyfile)
-                utils.check_path_valid(pyfile)
             else:
-                utils.print_warn_log(
-                    "The value of calc_expect_func_file is '%s', is invalid! "
-                    "If no need to compare output data,ignore." % expect_str)
+                utils.print_warn_log("The value of calc_expect_func_file is "
+                                     "'%s' without function specified! If no "
+                                     "need to compare output data, ignore."
+                                     % expect_str)
         else:
             expect_str = json_obj.get("calc_expect_func")
             if not expect_str:
