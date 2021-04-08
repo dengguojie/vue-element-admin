@@ -45,6 +45,7 @@ UNKNOWN_FLAG = -2
 UNKNOWN_SHAPE = [-2]
 DIM_TO_NAME = {0: "N", 2: "H", 3: "W"}
 INPUT_SIZE_DEFAULT_SHAPE = [4]
+DX_OP_TYPE = ["deconvolution", "conv2d_transpose", "conv2d_backprop_input"]
 
 
 def ceil_div(x_1, x_2):
@@ -270,6 +271,10 @@ class CubeParaProcess:
             # dilation = 1
             return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1]
 
+        def _get_higher_input(y_in, k_size, pads, stride, dilation):
+            # dilation = 1
+            return stride * (y_in - 1) + dilation * (k_size - 1) + 1 - pads[0] - pads[1] + stride - 1
+
         correct_range_flag = False
         new_in_range = copy.deepcopy(in_range)
         if DYNAMIC_FLAG in self.pads:
@@ -298,6 +303,14 @@ class CubeParaProcess:
             warnings.warn("The output calculated based on the lower limit of the input h "+
                 "range is less than 1, and the lower limit of the output h range is corrected "+
                 "as {}".format(out_h_lower))
+        if out_h_upper and out_h_upper > self.valid_paras.get("hw_max"):
+            out_h_upper = min(out_h_upper, self.valid_paras.get("hw_max"))
+            new_in_range[H_DIM] = (new_in_range[H_DIM][0], _get_higher_input(out_h_upper, w_shape[H_DIM], (self.pads[0], self.pads[1]), 
+                                    self.strides[H_DIM],self.dilations[H_DIM]))
+            correct_range_flag = True
+            warnings.warn("The output calculated based on the higher limit of the input h "+
+                "range is more than 4096, and the higher limit of the output h range is corrected "+
+                "as {}".format(out_h_upper))
         if out_w_lower < self.valid_paras.get("nhw_min"):
             out_w_lower = max(out_w_lower, self.valid_paras.get("nhw_min"))
             new_in_range[W_DIM] = (_get_lower_input(out_w_lower, w_shape[W_DIM], (self.pads[2], self.pads[3]), self.strides[W_DIM],
@@ -306,6 +319,14 @@ class CubeParaProcess:
             warnings.warn("The output calculated based on the lower limit of the input w "+
                 "range is less than 1, and the lower limit of the output w range is corrected "+
                 "as {}".format(out_w_lower))
+        if out_w_upper and out_w_upper > self.valid_paras.get("hw_max"):
+            out_w_upper = min(out_w_upper, self.valid_paras.get("hw_max"))
+            new_in_range[W_DIM] = (new_in_range[W_DIM][0], _get_higher_input(out_w_upper, w_shape[W_DIM], (self.pads[2], self.pads[3]), 
+                                    self.strides[W_DIM],self.dilations[W_DIM]))
+            correct_range_flag = True
+            warnings.warn("The output calculated based on the higher limit of the input w "+
+                "range is more than 4096, and the higher limit of the output w range is corrected "+
+                "as {}".format(out_w_upper))
         if out_range:
             return [out_range[N_DIM], out_range[C_DIM], (out_h_lower, out_h_upper), (out_w_lower, out_w_upper)]
         return [in_range[N_DIM], (w_shape[N_DIM], w_shape[N_DIM]),
@@ -322,7 +343,8 @@ class CubeParaProcess:
             if self.pads[0]!=self.pads[1] or self.pads[2]!=self.pads[3]:
                 err_man.raise_err_specific_user(self.op_type,"value of pads for deconvolution should be [A, A, B, B].")
         elif DYNAMIC_FLAG in dy_shape[1:] and (DYNAMIC_FLAG not in self.pads and sum(self.pads) != 0):
-            err_man.raise_err_specific_user(self.op_type,"pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1.")
+            if op_type not in DX_OP_TYPE:
+                err_man.raise_err_specific_user(self.op_type,"pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1.")
 
     def calc_pads(self, in_shape_nc1hwc0, w_shape):
         """

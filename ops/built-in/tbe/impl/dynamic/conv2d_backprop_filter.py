@@ -289,7 +289,7 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         out_h_lower = _get_output(fmap_range_h[0], w_h,
                                   (pads[0], pads[1]), stride[0], dilation[2])
         if out_h_lower < 1:
-            fmap_range_h_lower = min(w_h, fmap_range_h[1]) if fmap_range_h[1] else w_h
+            fmap_range_h_lower = min(max(w_h-pads[0]-pads[1], 1), fmap_range_h[1]) if fmap_range_h[1] else max(w_h-pads[0]-pads[1], 1)
             fmap_range_h = (fmap_range_h_lower, fmap_range_h[1])
             out_h_lower = _get_output(fmap_range_h[0], w_h,
                                     (pads[0], pads[1]), stride[0], dilation[2])
@@ -305,7 +305,7 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
         out_w_lower = _get_output(fmap_range_w[0], w_w,
                                  (pads[2], pads[3]), stride[1], dilation[3])
         if out_w_lower < 2:
-            lower_new = w_w + stride[1]
+            lower_new = max(w_w-pads[2]-pads[3], 0) + stride[1]
             fmap_range_w_lower = min(lower_new, fmap_range_w[1]) if fmap_range_w[1] else lower_new
             fmap_range_w = (fmap_range_w_lower, fmap_range_w[1])
             out_w_lower = _get_output(fmap_range_w[0], w_w,
@@ -448,11 +448,6 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
     if _is_load3d_special():
         dedy_hw_min = 1
-
-    pads_status = -1 not in pads and sum(pads) != 0
-    if (fmap_h == DYNAMIC_FLAG or fmap_w == DYNAMIC_FLAG) and pads_status:
-        error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
-            "pads is [-1,-1,-1,-1] or [0,0,0,0] when h or w dim is -1")
 
     if -1 not in pads:
         fmap_h_min = max(fmap_h_min, filter_h - pad[0] - pad[1])

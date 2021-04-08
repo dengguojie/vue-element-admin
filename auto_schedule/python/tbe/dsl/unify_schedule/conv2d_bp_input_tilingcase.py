@@ -246,6 +246,41 @@ class Conv2dBpInputTiling(CubeTilingOp):
         self.tiling_info["tiling_type"] = "cost_model_tiling"
         for pad in ("padl", "padr", "padu", "padd"):
             self.tiling_info[pad] = 0
+        if self.pad_mode == "FIX":
+            _, _, dy_h, dy_w, _ = self.a_info
+            new_hw = (dy_h * self.stride_h, dy_w * self.stride_w)
+            new_pad_before = (
+                (self.k_h - 1) * self.dilate_h - self.cur_pads[2],
+                (self.k_w - 1) * self.dilate_w - self.cur_pads[0]
+            )
+            pad_up_before, pad_left_before = new_pad_before
+
+            _, _, dx_h, dx_w, _ = self.c_info
+            new_pad_after = tuple(
+                i - o - pb + (k - 1) * d
+                for i, o, pb, k, d in zip(
+                    (dx_h, dx_w),
+                    new_hw,
+                    new_pad_before,
+                    (self.k_h, self.k_w),
+                    (self.dilate_h, self.dilate_w)
+                )
+            )
+            pad_down_after, pad_right_after = new_pad_after
+
+            pad_up_before = (pad_up_before + abs(pad_up_before)) // 2
+            pad_left_before = (pad_left_before + abs(pad_left_before)) // 2
+            pad_down_after = (pad_down_after + abs(pad_down_after)) // 2
+            pad_right_after = (pad_right_after + abs(pad_right_after)) // 2
+
+            self.tiling_info["padl"] = pad_left_before
+            self.tiling_info["padr"] = pad_right_after
+            self.tiling_info["padu"] = pad_up_before
+            self.tiling_info["padd"] = pad_down_after
+            if self.k_h == 1 and self.k_w == 1 and self.cur_pads == [0, 0, 0, 0]:
+                self.tiling_info["general_flag"] = False
+            else:
+                self.tiling_info["general_flag"] = True
 
         cost_seeds = get_tiling(self.tiling_info)
         tiling_mess = self._check_and_set_default_tiling(cost_seeds[0])

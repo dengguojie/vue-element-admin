@@ -26,7 +26,7 @@ TEST_F(DepthwiseConv2DBackpropFilterProtoTest, DepthwiseConv2DBackpropFilterDyna
                                                {-1,32,-1,-1},
                                                ge::FORMAT_NCHW,
                                                {{1, 2}, {32, 32}, {63, 65}, {63, 65}}));
-    op.UpdateInputDesc("x",
+    op.UpdateInputDesc("input",
                        create_desc_shape_range({-1,32,-1,-1},
                                                ge::DT_FLOAT16,
                                                ge::FORMAT_NCHW,
@@ -74,7 +74,7 @@ TEST_F(DepthwiseConv2DBackpropFilterProtoTest, DepthwiseConv2DBackpropFilterUnKn
     ge::op::DepthwiseConv2DBackpropFilter op;
     op.UpdateInputDesc("out_backprop", create_desc_with_ori({-2},
         ge::DT_FLOAT16, ge::FORMAT_NCHW, {-2}, ge::FORMAT_NCHW));
-    op.UpdateInputDesc("x", create_desc_with_ori({-2},
+    op.UpdateInputDesc("input", create_desc_with_ori({-2},
         ge::DT_FLOAT16, ge::FORMAT_NCHW, {-2}, ge::FORMAT_NCHW));
     op.UpdateOutputDesc("filter_grad",
                        create_desc_with_ori({1, 32, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
