@@ -210,8 +210,8 @@ def apply_adam_with_amsgrad_d(var,
                                                     data_beta2_power, data_lr, beta1, beta2,
                                                     epsilon, data_grad, kernel_name)
 
-            tensors.append([data_var, data_m, data_v, data_vhat, data_grad, data_lr, data_beta1_power,
-                            data_beta2_power] + res)
+            tensors.append([data_var, data_m, data_v, data_vhat, data_beta1_power,
+                            data_beta2_power, data_lr, data_grad] + res)
 
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

@@ -170,7 +170,7 @@ def fused_mul_add(input0, input1, input2,
     _check_format(format_input0, format_input1, format_input2)
 
     # classify
-    ins = classify([input0, input1, input2], OpPatternMode.ELEWISE_WITH_BROADCAST)
+    ins = classify([input0, input1, input2], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_input0, _input1, _input2) in ins:
         with tbe.compute():
