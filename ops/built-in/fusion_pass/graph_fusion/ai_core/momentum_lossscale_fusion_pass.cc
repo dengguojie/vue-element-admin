@@ -128,7 +128,17 @@ Status MomentumLossscaleFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& map
       break;
     }
   }
-
+  for (unsigned int i = 0; i < mul_node->GetInControlAnchor()->GetPeerOutControlAnchors().size(); i++) {
+    FUSION_PASS_CHECK(
+        ge::GraphUtils::AddEdge(mul_node->GetInControlAnchor()->GetPeerOutControlAnchors().at(i),
+                                           momentum_node->GetInControlAnchor()) != GRAPH_SUCCESS,
+        OP_LOGE(kFusedOpType.c_str(),
+                "Add edge from fused node:%s's control index[%u] to fusion node:%s's control index failed.",
+                mul_node->GetName().c_str(), i, momentum_node->GetName().c_str()),
+        return FAILED);
+    OP_LOGD(kFusedOpType.c_str(), "Add edge from fused node:%s's control index[%u] to fusion node:%s's control index.",
+            mul_node->GetName().c_str(), i, momentum_node->GetName().c_str());
+  }
   // get mul Constant input
   // mul_node->GetOpDesc() would not be nullptr there
   ge::GeTensorDesc const_input = mul_node->GetOpDesc()->GetInputDesc(lossscale_input_index);
