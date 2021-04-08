@@ -531,29 +531,41 @@ def op_select_format(x, y, perm, shape, transpose_first,
 # pylint: disable=too-many-boolean-expressions
 def _is_matmul_fusion_case(y, perm, shape, transpose_first):
     "check if it is case of fusion with matmul"
+    soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if isinstance(y, dict) and\
             (isinstance(perm, (list, tuple))) and \
-            (isinstance(shape, (list, tuple))) and \
-            tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") == "Ascend910":
-        if not transpose_first:
-            if (list(y.get("shape")) == [128, 16, 4, 8, 16, 16] and
-                    list(perm) == [0, 2, 1, 3] and list(shape) == [128, 128, 16, 64]) or \
-                    (list(y.get("shape")) == [160, 16, 4, 8, 16, 16] and
-                     list(perm) == [0, 2, 1, 3] and list(shape) == [160, 128, 16, 64]) or \
-                    (list(y.get("shape")) == [16, 16, 4, 32, 16, 16] and
-                     list(perm) == [0, 2, 1, 3] and list(shape) == [16, 512, 16, 64]) or \
-                    (list(y.get("shape")) == [24, 16, 4, 32, 16, 16] and
-                     list(perm) == [0, 2, 1, 3] and list(shape) == [24, 512, 16, 64]):
-                return True
-        else:
-            if (list(y.get("shape")) == [64, 1280, 16, 16] and
-                    list(perm) == [0, 2, 1, 3] and list(shape) == [20480, 1024]) or \
-                   (list(y.get("shape")) == [64, 768, 16, 16] and
-                    list(perm) == [0, 2, 1, 3] and list(shape) == [12288, 1024]) or \
-                   (list(y.get("shape")) == [64, 1024, 16, 16] and
-                    list(perm) == [0, 2, 1, 3] and list(shape) == [16384, 1024]):
-                return True
-
+            (isinstance(shape, (list, tuple))):
+        if list(perm) == [0, 2, 1, 3]:
+            if soc_version == "Ascend910" :
+                if not transpose_first:
+                    batch_supported = [i for i in range(16, 176, 16)]
+                    if list(y.get("shape"))[1:] == [16, 4, 8, 16, 16] and list(shape)[1:] == [128, 16, 64] and \
+                        y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
+                        return True
+                    batch_supported = [i for i in range(4, 28, 4)]
+                    if list(y.get("shape"))[1:] == [16, 4, 32, 16, 16] and list(shape)[1:] == [512, 16, 64] and \
+                        y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
+                        return True
+                else:
+                    batch_supported_block = [i*128 for i in range(1, 11)]
+                    batch_supported = [i*16 for i in batch_supported_block]
+                    if y.get("shape")[0] == 64 and list(y.get("shape"))[2:] == [16, 16] and shape[1] == 1024 and \
+                        y.get("shape")[1] in batch_supported_block and shape[0] in batch_supported:
+                        return True
+            elif soc_version == "Ascend710":
+                if not transpose_first:
+                    batch_supported = [1, 4, 8, 16, 32, 64]
+                    if list(y.get("shape"))[1:] == [12, 4, 8, 16, 16] and list(shape)[1:] ==  [128, 12, 64] and \
+                        y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
+                        return True
+                else:
+                    batch_supported_block = [8, 32, 64, 128, 256, 512]
+                    batch_supported = [i*16 for i in batch_supported_block]
+                    if y.get("shape")[0] == 48 and list(y.get("shape"))[2:] == [16, 16] and shape[1] == 768 and \
+                        y.get("shape")[1] in batch_supported_block and shape[0] in batch_supported:
+                        return True
+            else:
+                return False
     return False
 
 
@@ -563,6 +575,7 @@ def confusion_transpose_d_compute(x, y, perm, shape, transpose_first,
     "compute for matmul + confusion_transpose_d fusion"
     if _is_matmul_fusion_case(y, perm, shape, transpose_first):
         setattr(x, "matmul_with_transpose", True)
+        setattr(x, "transpose_shape", y.get("shape"))
     else:
         raise RuntimeError("This case does not support fusion with matmul now.")
 

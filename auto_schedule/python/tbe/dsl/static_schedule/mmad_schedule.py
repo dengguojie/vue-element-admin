@@ -47,6 +47,7 @@ DEQ_SCALE_CHILD_LIST = [
 
 DOUBLE_VALUE = 2
 CORE_NUM_THRITY = 30
+CORE_NUM_THRITY_TWO = 32
 CORE_NUM_EIGHT = 8
 
 def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
@@ -255,17 +256,21 @@ def get_mini_frac_shape_map():
     return shape_map
 
 
-def get_cloud_shape_map():
+def get_cloud_shape_map(core_num):
     """
     the knowledge of matmul schedule tiling
     """
-    shape_map = {(1024, 20480, 1024, -1, 4): "256_512_160_256_64_160_2_2",
-                 (12288, 1024, 4096, -1, 2): "208_512_128_208_64_128_2_2",
-                 (12288, 4096, 1024, -1, 2): "208_512_128_208_64_128_2_2",
-                 (1024, 12288, 1024, -1, 4): "208_512_176_208_64_176_2_2",
-                 (12288, 1024, 1024, -1, 2): "208_512_128_208_64_128_2_2",
-                 (12288, 1024, 1024, -1, 4): "208_512_128_208_64_128_2_2"
-                 }
+    if core_num == CORE_NUM_THRITY:
+        shape_map = {(1024, 20480, 1024, -1, 4): "256_512_160_256_64_160_2_2",
+                    (12288, 1024, 4096, -1, 2): "208_512_128_208_64_128_2_2",
+                    (12288, 4096, 1024, -1, 2): "208_512_128_208_64_128_2_2",
+                    (1024, 12288, 1024, -1, 4): "208_512_176_208_64_176_2_2",
+                    (12288, 1024, 1024, -1, 2): "208_512_128_208_64_128_2_2",
+                    (12288, 1024, 1024, -1, 4): "208_512_128_208_64_128_2_2"
+                    }
+    else:
+        shape_map = {(18432, 1024, 1024, 1, 2): "144_512_256_144_64_256_2_2"
+        }
 
     return shape_map
 
@@ -276,7 +281,8 @@ def get_mdc_shape_map():
     shape_map = {(1024, 768, 768, -1, 4): "256_768_384_128_256_128_2_2",
                  (1024, 768, 3072, 1, 6): "128_384_32_128_96_32_3_2",
                  (2048, 768, 3072, 1, 6): "128_384_32_128_96_32_3_2",
-                 (1024, 768, 768, -1, 6): "256_768_384_128_256_128_2_2"
+                 (1024, 768, 768, -1, 6): "256_768_384_128_256_128_2_2",
+                 (512, 768, 768, 1, 2): "128_80_192_128_80_192_2_2"
                  }
 
     return shape_map
@@ -414,8 +420,8 @@ def get_knowledge_tiling(shape_tiling_args, is_b_nz, tiling_shape):
             shape_map = get_shape_map()
         else:
             shape_map = get_mini_frac_shape_map()
-    elif core_num == CORE_NUM_THRITY:
-        shape_map = get_cloud_shape_map()
+    elif core_num in (CORE_NUM_THRITY, CORE_NUM_THRITY_TWO):
+        shape_map = get_cloud_shape_map(core_num)
     elif core_num == CORE_NUM_EIGHT:
         shape_map = get_mdc_shape_map()
     if shape_map.get(shape_args) is not None:
@@ -970,6 +976,9 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
 
     tensor_c_gm = match_and_get_tensor(compute_tensors, 'tensor_c_gm')
     with_transpose = hasattr(res, "matmul_with_transpose")
+    if with_transpose:
+        transpose_shape = getattr(res, "transpose_shape")
+
     format_out = get_output_format(tensor_c_gm)
 
     tensor_b_l1, compress_index = \
@@ -1273,6 +1282,8 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
     n_shape = tensor_b_l0b.shape[l0_tensor_len_b - 3].value * block_out
     cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_m", m_shape)
     cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_n", n_shape)
+    if with_transpose:
+        cce_emitinsn_params.cceEmitParamsIns.insert_param("transpose_shape", transpose_shape)
 
     core_inner_m = m_shape
     core_inner_n = n_shape
@@ -1769,7 +1780,7 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         batch_factor = batch
         if batch > core_num:
             batch_factor = core_num
-
+        cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_batch_blk", batch_factor)
         batch_outer, batch_inner = sch[res].split(res.op.axis[0],
                                                   nparts=batch_factor)
         thread_block = tvm.thread_axis("blockIdx.x")

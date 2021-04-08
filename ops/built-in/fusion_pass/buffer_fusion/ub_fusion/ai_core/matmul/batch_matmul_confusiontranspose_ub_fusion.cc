@@ -68,6 +68,7 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
                                                              vector<ge::NodePtr>& fusionNodes) {
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Begin to do BatchMatmulConfusiontransposeUbFusion!");
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_BATCHMATMUL, mapping);
+  vector<ge::NodePtr> tranposeNodes = GetMatchedNodesByDescName(PATTERN_BATCH_MATMUL_CONFUSION_TRANSPOSE, mapping);
 
   for (auto matmulNode : matmulNodes) {
     for (auto matmulControlNode : matmulNode->GetOutControlNodes()) {
@@ -88,6 +89,27 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
       }
     }
   }
+
+  for  (auto tranposeNode : tranposeNodes) {
+    for (auto transposeControlNode : tranposeNode->GetInControlNodes()) {
+      if (transposeControlNode->GetType() != "BatchMatMul") {
+        continue;
+      }
+      FUSION_PASS_CHECK(
+          ge::GraphUtils::RemoveEdge(transposeControlNode->GetOutControlAnchor(), tranposeNode->GetInControlAnchor()) !=
+              SUCCESS,
+          OP_LOGD(FUSED_OP_TYPE.c_str(), "remove edge between batch_matmul and confusion_transpose_d error"),
+          return FAILED);
+       for (auto transposeOutNode : tranposeNode->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(
+            ge::GraphUtils::AddEdge(transposeControlNode->GetOutControlAnchor(), transposeOutNode->GetInControlAnchor()) !=
+                SUCCESS,
+            OP_LOGD(FUSED_OP_TYPE.c_str(), "add edge between batch_matmul and confusion_transpose_d's output error"),
+            return FAILED);
+      }
+    }
+  }
+
   fusionNodes = GetMatchedNodes(mapping);
 
   // buffer fusion do not support dynamic shape now
