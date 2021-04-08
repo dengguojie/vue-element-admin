@@ -24,7 +24,7 @@ bool PReluTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
                  OpRunInfo& run_info) {
     OP_LOGD(op_type, "Enter PReluTiling inputs size:%llu", op_paras.inputs.size());
 
-    if (!(op_info.count("broadcast_weight_shape")) > 0) {
+    if (op_info.count("broadcast_weight_shape") <= 0) {
           OP_LOGE(op_type.c_str(), "compile info not contain [broadcast_weight_shape].");
           return false;
     }
