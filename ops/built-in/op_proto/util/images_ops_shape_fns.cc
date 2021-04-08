@@ -27,14 +27,12 @@ graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name) {
   Shape shape;
   graphStatus status = WithRankAtLeast(op.GetInputDesc(0), 1, shape, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":input images must 1-D or higher rank.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input images must 1-D or higher rank.");
     return GRAPH_PARAM_INVALID;
   }
   int64_t dim = op.GetInputDesc(0).GetShape().GetDims().back();
   if (dim != 3) {
-    std::string info = ":input images last dimension must be size 3.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input images last dimension must be size 3.");
     return GRAPH_PARAM_INVALID;
   }
   TensorDesc desc = op.GetOutputDesc(output_name);
@@ -47,8 +45,7 @@ graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std:
   Shape shape;
   graphStatus status = WithRank(op.GetInputDesc(0), 4, shape, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":input images must 4-D.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input images must 4-D.");
     return GRAPH_PARAM_INVALID;
   }
   auto dims = op.GetInputDesc(0).GetShape().GetDims();
@@ -65,21 +62,18 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
   Shape size_shape;
   graphStatus status = WithRank(op.GetInputDesc(size_input_name), 1, size_shape, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":input size must be 1-D.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input size must be 1-D.");
     return GRAPH_PARAM_INVALID;
   }
   auto size_dims = op.GetInputDesc(size_input_name).GetShape().GetDims();
   if (size_dims[0] != 2) {
-    std::string info = ":input size must be 1-D tensor of 2 elements.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input size must be 1-D tensor of 2 elements.");
     return GRAPH_PARAM_INVALID;
   }
   Tensor size_tensor;
   status = op.GetInputConstData(size_input_name, size_tensor);
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":get size tensor failed.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get size tensor failed.");
     return GRAPH_FAILED;
   }
 

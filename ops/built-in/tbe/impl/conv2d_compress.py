@@ -22,7 +22,7 @@ import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_cube as err_man
+from tbe.common.utils.errormgr import error_manager_cube as err_man_cube
 from impl.util import util_select_op_base
 from impl.util import util_conv2d
 
@@ -72,7 +72,7 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
     tvm compute
     """
     if groups != 1:
-        raise RuntimeError("conv2dcompress_compute only supports groups=1")
+        err_man_cube.raise_err_specific("conv2d_compress", "conv2dcompress_compute only supports groups=1")
     compress_index_shape = compress_index.shape[0]
 
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
@@ -81,7 +81,8 @@ def conv2dcompress_compute(inputs, weight_compress, compress_index, bias, offset
 
     if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and \
     para_dict["filter_h"] * para_dict["filter_w"] > MAX_FITLER_HW:
-        err_man.raise_err_specific("conv2dcompress", "conv2d Min tiling still exceed ub buffer, when open weight unzip")
+        err_man_cube.raise_err_specific("conv2dcompress",
+                                        "conv2d Min tiling still exceed ub buffer, when open weight unzip")
 
     res = tbe.conv_compress(inputs, weight_compress, compress_index, \
                         compress_index_shape, para_dict, optim_dict)
@@ -135,7 +136,7 @@ def conv2dcompress(inputs, weight_compress, compress_index, bias, offset_w, outp
     None
     """
     if groups != 1:
-        raise RuntimeError("conv2dcompress only supports groups=1")
+        err_man_cube.raise_err_two_paras("E67017", "conv2d_compress", "conv2dcompress", "groups=1")
     in_dtype = inputs.get("dtype")
     w_dtype = weight_compress.get("dtype")
     res_dtype = outputs.get("dtype")
@@ -268,7 +269,8 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
         shape_in, shape_w, in_dtype, w_dtype, optim_dict, cout1_opt, c1_opt, group_opt, c1in_ori_align)
 
     if tbe_platform.get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES") and filter_h * filter_w > MAX_FITLER_HW:
-        err_man.raise_err_specific("conv2dcompress", "conv2d Min tiling still exceed ub buffer, when open weight unzip")
+        err_man_cube.raise_err_specific("conv2dcompress",
+                                        "conv2d Min tiling still exceed ub buffer, when open weight unzip")
 
     tensor_list = []
     with tvm.target.cce():
