@@ -75,7 +75,11 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
         trans_data_negative_target_tc_new.trans_data_negative_target_tc_new(src, dst, src_format, dst_format, kernel_name)
     elif ((src_format == "NC1HWC0" and dst_format == "NCHW") \
           or (src_format == "FRACTAL_Z_3D" and dst_format == "NCDHW") \
-          or (src_format == "NDC1HWC0" and dst_format == "NCDHW")):
+          or (src_format == "NDC1HWC0" and dst_format == "NCDHW") \
+          or ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "HWCN")) \
+          or ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "NCHW")) \
+          or ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "ND")) \
+          or (src_format == "FRACTAL_Z_3D" and dst_format == "DHWCN")):
         trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
     elif is_do_with_transpose_formats(src_format, dst_format):
         x_dtype = src.get("dtype").lower()

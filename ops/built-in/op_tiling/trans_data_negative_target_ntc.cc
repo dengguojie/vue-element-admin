@@ -159,7 +159,8 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   int64_t axisDstCrSize = GetShapeSize(outShape, dstAxisPosC + 1);
   // once vnchwconv flow
   int64_t tmpDstCrLpUnit;
-  if ((dtype == "float16" || ((c0Len == C0_32) && (dtype == "int8" || dtype == "uint8"))) && (axisDstCrSize >= c0Len)) {
+  int64_t crGate = 3 * c0Len;
+  if ((dtype == "float16" || ((c0Len == C0_32) && (dtype == "int8" || dtype == "uint8"))) && (axisDstCrSize >= crGate)) {
     tmpDstCrLpUnit = halfUbSize / c0Len / blockElemCnt * blockElemCnt;
   } else {
     // twice vnchwconv flow
@@ -255,7 +256,7 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
     axisDstClSize *= outShape[i];
   }
   int64_t srcCDstCrSize = axisSrcCSize * axisDstCrSize;
-  if ((dtype == "float16" || ((c0Len == C0_32) && (dtype == "int8" || dtype == "uint8"))) && (axisDstCrSize >= c0Len)) {
+  if ((dtype == "float16" || ((c0Len == C0_32) && (dtype == "int8" || dtype == "uint8"))) && (axisDstCrSize >= crGate)) {
     params.tilingMode = 2001;
     int64_t tmpDstClLpUnit = halfUbSize / (params.srcCLpUnit * GetCeilFill(params.dstCrLpUnit, blockElemCnt) * c0Len);
     if (axisDstClSize > tmpDstClLpUnit) {
@@ -284,7 +285,7 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   int64_t dstClLpCnt = GetCeilDiv(axisDstClSize, params.dstClLpUnit);
   int64_t dstClLeft = axisDstClSize % params.dstClLpUnit;
   // for tiling mode 2003
-  params.leftClCCrSize = dstClLeft * srcCDstCrSize;
+  params.leftClCCrSize = dstClLeft * axisDstCSize * axisDstCrSize;
   string tmpDstClFormat = dstFormat.substr(0, dstAxisPosC);
   vector<int64_t> tmpCLeftShape;
   for (int32_t i = 0; i < dstAxisPosC; i++) {

@@ -582,6 +582,13 @@ def _copy_data_in_1(in_offset_args, tik_args):
                                 c0_len, ele_per_block)
                 _move_data_in_cr_cl_one_dims(data_in_args)
 
+            with tik_inst.new_stmt_scope(disable_sync=True):  # do chnt -> ncht
+                sub_c_cr_size = c_plp_size * cr_pln_size
+                with tik_inst.for_range(0, cl_plp_size) as cl_idx:
+                    tik_inst.data_move(src_ub[cl_idx * sub_c_cr_size * c0_len],
+                                       src_ub[ub_offset + cl_idx * c0_len], 0, sub_c_cr_size,
+                                       c0_len // ele_per_block, (cl_plp_size - 1) * c0_len // ele_per_block, 0)
+
         with tik_inst.else_scope():  # dst_cr_dims is 2 and dst_cl_dims is 1
             with tik_inst.if_scope(dst_cr_dims == 2):
                 with tik_inst.if_scope(is_mc_cr == 1):

@@ -500,6 +500,107 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew = {axisN, axisD, axisH * axisW, axisC};
   }
 
+  if ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "HWCN")) {
+    realSrcFormat = "CHNT";
+    realDstFormat = "HCN";
+
+    if (outShape.size() != 4 || inShape.size() < 2) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect!");
+      return false;
+    }
+
+    int64_t axisH = outShape[0];
+    int64_t axisW = outShape[1];
+    int64_t axisC = outShape[2];
+    int64_t axisN = outShape[3];
+    int64_t axisC0 = inShape[inShape.size() - 1];
+    int64_t axisNi = inShape[inShape.size() - 2];
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+
+    inShapeNew = {axisC1, axisH * axisW, axisNo * axisNi, axisC0};
+    outShapeNew = {axisH * axisW, axisC, axisN};
+  }
+
+  if (srcFormat == "FRACTAL_Z_3D" && dstFormat == "DHWCN") {
+    if (inShape.size() < 2 || outShape.size() != 5) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      return false;
+    }
+    realSrcFormat = "DCHNT";
+    realDstFormat = "DHCN";
+    int64_t axisD = outShape[0];
+    int64_t axisH = outShape[1];
+    int64_t axisW = outShape[2];
+    int64_t axisC = outShape[3];
+    int64_t axisN = outShape[4];
+    int64_t axisC0 = inShape[inShape.size() - 1];
+    int64_t axisNi = inShape[inShape.size() - 2];
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+    inShapeNew = {axisD, axisC1, axisH * axisW, axisNo * axisNi, axisC0};
+    outShapeNew = {axisD, axisH * axisW, axisC, axisN};
+  }
+
+  if ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "NCHW")) {
+    realSrcFormat = "CHNT";
+    realDstFormat = "NCH";
+
+    if (outShape.size() != 4 || inShape.size() < 2) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect!");
+      return false;
+    }
+
+    int64_t axisN = outShape[0];
+    int64_t axisC = outShape[1];
+    int64_t axisH = outShape[2];
+    int64_t axisW = outShape[3];
+    int64_t axisC0 = inShape[inShape.size() - 1];
+    int64_t axisNi = inShape[inShape.size() - 2];
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+
+    inShapeNew = {axisC1, axisH * axisW, axisNo * axisNi, axisC0};
+    outShapeNew = {axisN, axisC, axisH * axisW};
+  }
+
+  if ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "ND")) {
+    realSrcFormat = "HCNT";
+    realDstFormat = "HCN";
+
+    if (inShape.size() < 2) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect!");
+      return false;
+    }
+    int64_t axisN;
+    int64_t axisH;
+    int64_t axisC;
+    if (outShape.size() == 1) {
+      axisH = 1;
+      axisC = 1;
+      axisN = outShape[0];
+    } else if (outShape.size() == 2) {
+      axisH = 1;
+      axisC = outShape[0];
+      axisN = outShape[1];
+    } else {
+      int64_t shapeSize = 1;
+      for (size_t i = 0; i < outShape.size() - 2; i++) {
+        shapeSize *= outShape[i];
+      }
+      axisH = shapeSize;
+      axisC = outShape[outShape.size() - 2];
+      axisN = outShape[outShape.size() - 1];
+    }
+    int64_t axisC0 = inShape[inShape.size() - 1];
+    int64_t axisNi = inShape[inShape.size() - 2];
+    int64_t axisC1 = GetCeilDiv(axisC, axisC0);
+    int64_t axisNo = GetCeilDiv(axisN, axisNi);
+
+    inShapeNew = {axisH, axisC1, axisNo * axisNi, axisC0};
+    outShapeNew = {axisH, axisC, axisN};
+  }
+
   return true;
 }
 
@@ -707,7 +808,11 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     PrintTilingModeTc201Params(opType, runParams201);
   } else if ((srcFormat == "NC1HWC0" && dstFormat == "NCHW") ||
              (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NCDHW") ||
-             (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW")) {
+             (srcFormat == "NDC1HWC0" && dstFormat == "NCDHW") ||
+             ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "HWCN")) ||
+             ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "NCHW")) ||
+             ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "ND")) ||
+             (srcFormat == "FRACTAL_Z_3D" && dstFormat == "DHWCN")) {
     TransDataNtc200Param runParams200;
     flag = TilingNegativeNtc200(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
                                 ubSize, runParams200);
