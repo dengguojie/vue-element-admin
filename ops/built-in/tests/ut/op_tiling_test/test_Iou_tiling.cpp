@@ -127,7 +127,7 @@ TEST_F(IouTilingTest, iou_tiling_test_2) {
   op_compile_info.key = "iou_32_4_4128_4";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 4128 0 1 4096 32 4128 0 128 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 129 0 32 4096 32 4128 0 128 0 ");
 }
 
 TEST_F(IouTilingTest, iou_tiling_test_3) {

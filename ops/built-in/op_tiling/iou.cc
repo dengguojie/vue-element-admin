@@ -180,7 +180,7 @@ int32_t GetPointPerCoreMode2(
     core_num = full_core_num;
   }
 
-  int32_t point_per_core = GetAlignInt32(gtboxes_num, core_num);
+  int32_t point_per_core = GetCeilInt(gtboxes_num, core_num);
   if (bboxes_num < min_point_per_core) {
     if (point_per_core < min_point_per_core) {
       point_per_core = min_point_per_core;
@@ -257,7 +257,7 @@ void CalRunningInfo(
   } else {
     int32_t eliments_per_block = GetElimentsPerBlock(dtype);
     point_per_core = GetPointPerCoreMode2(gtboxes_num, bboxes_num,
-    full_core_num, eliments_per_block, min_point_per_core);
+      full_core_num, eliments_per_block, min_point_per_core);
     core_tail_num = GetCoreTailNumMode2(gtboxes_num, point_per_core);
     core_num = GetCoreNumMode2(gtboxes_num, point_per_core);
     bb_ub_segment = GetBBoxUbSegment(dtype, product);
