@@ -43,6 +43,16 @@ namespace optiling
     return true;
   }
 
+  int64_t GetAxisIdx(std::string format, char axis) {
+    size_t resValue = format.find(axis);
+    if (resValue == std::string::npos) {
+      resValue = 0;
+      OP_LOGE("TransData", "Axis is not in format.");
+    }
+    return resValue;
+  }
+
+
   bool GetMcInfoPositiveNtc100(const int64_t &srcCrLpCnt, const int64_t &srcCrSize, const int64_t &srcCLpCnt,
                                const int64_t &srcCSize, const int64_t &srcClLpCnt, const int64_t &srcClSize,
                                const int64_t &coreNum, TransDataNtc100Param &params) {

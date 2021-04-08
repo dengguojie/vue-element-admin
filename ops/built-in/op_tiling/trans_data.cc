@@ -177,7 +177,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
         return false;
       }
       realSrcFormat = "NHC";
-      for (int32_t i = 0; i < hwIdx; i++) {
+      for (int64_t i = 0; i < hwIdx; i++) {
         inShapeNew.push_back(inShape[i]);
       }
       int64_t n = inShape.size() - 1;
@@ -464,7 +464,7 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
       axisC = outShape[1];
     } else {
       int64_t shapeSize = 1;
-      for (int32_t i = 0; i < outShape.size() - 2; i++) {
+      for (size_t i = 0; i < outShape.size() - 2; i++) {
         shapeSize *= outShape[i];
       }
       axisH = shapeSize;

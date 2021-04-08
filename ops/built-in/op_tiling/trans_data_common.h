@@ -550,7 +550,7 @@ static int64_t GetFloorDiv(int64_t uValue, int64_t dValue) {
   return resValue;
 }
 
-static int64_t GetCeilFill(int64_t uValue, int64_t dValue) {
+static const int64_t GetCeilFill(int64_t uValue, int64_t dValue) {
   int64_t resValue = 0;
   if (dValue == 0) {
     return uValue;
@@ -582,15 +582,6 @@ static int64_t GetShapeSize(std::vector<int64_t> inShape, int32_t pos) {
     shapeSize *= inShape[i];
   }
   return shapeSize;
-}
-
-static int64_t GetAxisIdx(std::string format, char axis) {
-  size_t resValue = format.find(axis);
-  if (resValue == std::string::npos) {
-    resValue = 0;
-    OP_LOGE("TransData", "Axis is not in format.");
-  }
-  return resValue;
 }
 
 bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape, std::string& srcFormat,
