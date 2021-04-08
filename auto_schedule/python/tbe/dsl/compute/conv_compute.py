@@ -137,7 +137,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if ConvParam.fusion_para["l1_fusion_type"] in (0, 1):
             pass
         elif int(max_feature_map_l1) > l1_buffer_size:
-            if not dynamic_para:
+            if not dynamic_para["var_map"]:
                 ConvParam.l0a_dma_flag = True
             else:
                 err_man.raise_err_specific("conv2d",
@@ -235,7 +235,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
 
     h_out = (h_i + pad_top + pad_bottom - hk_dilation) // strideh + 1
     w_out = (w_i + pad_left + pad_right - wk_dilation) // stridew + 1
-    if not dynamic_para and (int(w_out) < 1 or int(h_out) < 1):
+    if not dynamic_para["var_map"] and (int(w_out) < 1 or int(h_out) < 1):
         err_man.raise_err_specific("conv2d", "output shape should greater than 0, please check the input shape.\n")
 
     def _check_pad():
@@ -306,7 +306,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         """
 
         m_bit_ratio = {"float16": 2, "int8": 1}
-        if "fmap_w" in ConvParam.var_map and dynamic_para:
+        if "fmap_w" in ConvParam.var_map and dynamic_para["var_map"]:
             fmap_w_upper = get_te_var("fmap_w").get_bound()[1]
             if fmap_w_upper:
                 #same as static conv2d

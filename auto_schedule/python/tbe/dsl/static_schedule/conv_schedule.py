@@ -530,7 +530,7 @@ def reget_tensor_list(outs):
     return outputs
 
 
-def check_dynamic_quantfuse_doubleout(tensor_list, outs):
+def check_dyn_quantfuse_doubleout(tensor_list, outs):
     """
     checkout if deuquant requant(quant) double out or not
 
@@ -5580,7 +5580,8 @@ class CceConvOp:
                         self._schedule[c_reform_vector].emit_insn(ac1, "vector_auto")
                     else:
                         self._schedule[c_reform_vector].reorder(coo, *axis_list)
-                        self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2], "vector_auto")
+                        self._schedule[c_reform_vector].emit_insn(self._schedule[c_reform_vector].op.axis[2],
+                                                                  "vector_auto")
             if lop["op"] in dma_move_list:
                 _op_in_dma_move_list()
             elif "reform" in lop["op"]:

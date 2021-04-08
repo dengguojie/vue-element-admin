@@ -29,7 +29,7 @@ from tbe.dsl.base.var import Category
 from tbe.dsl.base.var import Var
 from tbe.tvm.build_module import BuildConfigs
 from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
-from tbe.dsl.static_schedule.conv_schedule import check_dynamic_quantfuse_doubleout
+from tbe.dsl.static_schedule.conv_schedule import check_dyn_quantfuse_doubleout
 
 from . import CompileInfo
 from . import Pattern
@@ -258,7 +258,7 @@ class Builder:
                 real_sch_tensors.remove(tensor_i)
             for tensor_i in real_outs:
                 real_sch_tensors.append(tensor_i)
-        real_sch_tensors = check_dynamic_quantfuse_doubleout(real_sch_tensors, real_outs)
+        real_sch_tensors = check_dyn_quantfuse_doubleout(real_sch_tensors, real_outs)
         return real_sch_tensors
 
     def _call_tvm_build(self):
