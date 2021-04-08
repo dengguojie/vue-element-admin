@@ -1002,7 +1002,7 @@ class RoiAlignGrad():
                               enable_l2=True, config=opt_config)
 
 
-@register_operator("RoiAlignGrad")
+@register_operator("ROIAlignGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT,

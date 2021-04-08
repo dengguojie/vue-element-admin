@@ -1208,7 +1208,7 @@ class RoiAlign():
 
 
 # pylint: disable=unused-argument
-@register_operator("RoiAlign")
+@register_operator("ROIAlign")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT,

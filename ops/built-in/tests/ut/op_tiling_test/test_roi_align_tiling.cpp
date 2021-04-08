@@ -32,8 +32,8 @@ static string to_string(const std::stringstream &tiling_data) {
 
 TEST_F(RoiAlignTiling, roi_align_tiling_0) {
   using namespace optiling;
-  std::string op_name = "RoiAlign";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("RoiAlign");
+  std::string op_name = "ROIAlign";
+  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ROIAlign");
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32}}";
