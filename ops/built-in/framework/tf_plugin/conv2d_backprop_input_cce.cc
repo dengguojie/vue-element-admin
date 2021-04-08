@@ -20,7 +20,6 @@
  */
 #include <map>
 #include "common/util/error_manager/error_manager.h"
-#include "../../op_proto/util/error_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "register/register.h"

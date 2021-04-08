@@ -20,7 +20,6 @@
  */
 #include "register/register.h"
 #include "common/util/error_manager/error_manager.h"
-#include "../../op_proto/util/error_util.h"
 #include "op_log.h"
 
 namespace domi {

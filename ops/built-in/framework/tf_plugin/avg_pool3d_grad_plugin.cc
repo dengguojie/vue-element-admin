@@ -23,8 +23,8 @@
 
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
-#include "../../op_proto/util/error_util.h"
 #include "common/util/error_manager/error_manager.h"
+
 #include "op_log.h"
 
 namespace domi {
@@ -41,7 +41,7 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
   OP_LOGI(op.GetName().c_str(), "Enter Parse Params AvgPool3dGrad.");
   auto res = AutoMappingFn(op_src, op);
   if (res != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "plugin parser failed. auto mapping failed.");
+    OP_LOGE(op.GetName().c_str(), "plugin parser failed. auto mapping failed.");
     return FAILED;
   }
 
@@ -54,7 +54,7 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
     } else if (data_format_attr == "NDHWC") {
       data_format = ge::FORMAT_NDHWC;
     } else {
-      CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "data_format only support NCDHW and NDHWC.");
+      OP_LOGE(op.GetName().c_str(), "data_format only support NCDHW and NDHWC.");
       return FAILED;
     }
   }
@@ -64,7 +64,7 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
 
   auto ret = op_dsc->UpdateInputDesc(kIndex0, org_tensor_grads);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update input:grads desc failed.");
+    OP_LOGE(op.GetName().c_str(), "update input:grads desc failed.");
     return FAILED;
   } 
 
@@ -73,17 +73,17 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
   org_tensor_out.SetFormat(data_format);
   ret = op_dsc->UpdateOutputDesc(kIndex0, org_tensor_out);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update output desc failed.");
+    OP_LOGE(op.GetName().c_str(), "update output desc failed.");
     return FAILED;
   }
 
   std::vector<int64_t> ksize;
   if (op.GetAttr("ksize", ksize) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Get ksize attr failed.");
+    OP_LOGE(op.GetName().c_str(), "Get ksize attr failed.");
     return FAILED;
   }
   if (ksize.size() != kKsizeLength) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Ksize has an incorrected length.");
+    OP_LOGE(op.GetName().c_str(), "Ksize has an incorrected length.");
     return FAILED;
   }
 
@@ -97,11 +97,11 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
 
   vector<int64_t> strides;
   if (op.GetAttr("strides", strides) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Get strides attr failed.");
+    OP_LOGE(op.GetName().c_str(), "Get strides attr failed.");
     return FAILED;
   }
   if (strides.size() != kStridesLength) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Strides has an incorrected length.");
+    OP_LOGE(op.GetName().c_str(), "Strides has an incorrected length.");
     return FAILED;
   }
   vector<int64_t> strides_hwd(kStridesLength);
@@ -114,11 +114,11 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
 
   std::string padding = "";
   if (op.GetAttr("padding", padding) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Get padding attr failed.");
+    OP_LOGE(op.GetName().c_str(), "Get padding attr failed.");
     return FAILED;
   }
   if (padding != "SAME" && padding != "VALID") {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "TF padding pattern is incorrected.");
+    OP_LOGE(op.GetName().c_str(), "TF padding pattern is incorrected.");
     return FAILED;
   }
 

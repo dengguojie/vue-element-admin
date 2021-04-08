@@ -35,8 +35,7 @@
 
 #include "pattern_fusion_util.h"
 #include "op_log.h"
-#include "../../../op_proto/util/error_util.h"
-#include "common/util/error_manager/error_manager.h"
+#include "error_util.h"
 
 using namespace ge;
 namespace fe {
@@ -314,7 +313,7 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   // update filter-mul non-const input Desc and output Desc
   auto conv_filter_op_desc = filter_node->GetOpDesc();
   FUSION_PASS_CHECK(conv_filter_op_desc == nullptr,
-                     CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "filter's OpDesc is null"), return FAILED);
+                    OP_LOGE(fused_op_type_.c_str(), "filter's OpDesc is null"), return FAILED);
   GeTensorDesc conv_filter_const_tensor = conv_filter_op_desc->GetOutputDesc(0);
   conv_filter_const_tensor.SetOriginShape(conv_filter_const_tensor.GetShape());
   conv_filter_const_tensor.SetOriginDataType(conv_filter_const_tensor.GetDataType());
@@ -397,7 +396,7 @@ Status Conv2DMulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
     auto conv_bias_op_desc = bias_node->GetOpDesc();
     FUSION_PASS_CHECK(conv_bias_op_desc == nullptr,
-                       CUBE_INNER_ERR_REPORT(fused_op_type_.c_str(), "bias's OpDesc is null"), return FAILED);
+                      OP_LOGE(fused_op_type_.c_str(), "bias's OpDesc is null"), return FAILED);
     GeTensorDesc conv_bias_const_tensor = conv_bias_op_desc->GetOutputDesc(0);
     conv_bias_const_tensor.SetOriginShape(conv_bias_const_tensor.GetShape());
     conv_bias_const_tensor.SetOriginDataType(conv_bias_const_tensor.GetDataType());

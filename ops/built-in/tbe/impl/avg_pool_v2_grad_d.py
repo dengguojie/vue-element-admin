@@ -117,9 +117,8 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
     max_dh_in_l1 = (l1_size // 2 - hk * wk * BLOCK_SIZE * BLOCK_SIZE *
                     data_size) // (data_size * dilated_w * BLOCK_SIZE)
     if max_dh_in_l1 < BLOCK_SIZE:
-        error_manager_vector.raise_err_specific_reson("avg_pool_v2_grad", 
-                                                      "L1's memory space is not enough \
-                                                      to support, dilated_h tiling with 16!")
+        raise RuntimeError("In op[avg_pool_v2_grad], L1's memory space is not enough to support "
+                           "dilated_h tiling with 16!")
     # limiting eque get_tiling, but tile_m get max(1024)
     # 3*max_h_in_ub * out_w  + (max_h_in_ub*stride - (stride - 1)) * dila_w
     # < (ub_size/2 - tile_m * BLOCK_SIZE)/BLOCK_SIZE
@@ -130,9 +129,8 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
                     +(strides[DIM_S_H] - 1) * dilated_w) // \
                    (3 * wo + strides[DIM_S_H] * dilated_w)
     if strides[DIM_S_H] > 1 > max_dh_in_ub:
-        error_manager_vector.raise_err_specific_reson("avg_pool_v2_grad",
-                                                      " UB's memory space is not enough \
-                                                      to support dilated_h tiling with 1!")
+        raise RuntimeError("In op[avg_pool_v2_grad], UB's memory space is not"
+                           " enough to support dilated_h tiling with 1!")
 
     if padding_mode != "CALCULATED":
         out_h, _, _ = common.tf_get_windowed_output_size_verbose(
@@ -706,8 +704,7 @@ def avg_pool_v2_grad_d(input_grad,
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "stride", expected_value, real_value)
 
     if ceil_mode and (padding_mode == "VALID"):
-        error_manager_vector.raise_err_specific_reson("avg_pool_v2_grad",
-                                                      "When padding_mode is VALID, ceil_mode must be False.")
+        raise RuntimeError("When padding_mode is VALID, ceil_mode must be False.")
 
     data_dtype = dtype.lower()
     para_check.check_dtype(data_dtype, ('float16',))

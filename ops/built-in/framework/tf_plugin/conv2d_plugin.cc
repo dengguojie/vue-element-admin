@@ -22,7 +22,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "operator.h"
 #include "common/util/error_manager/error_manager.h"
-#include "../../op_proto/util/error_util.h"
+
 #include "op_log.h"
 
 namespace domi {
@@ -40,7 +40,7 @@ const size_t kPaddingSize = 8;
 Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   // Convert original tf graph conv2d attrs to GE graph attrs
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "auto mapping failed.");
+    OP_LOGE(op.GetName().c_str(), "auto mapping failed.");
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
     err_map["description"] = "auto mapping failed.";
@@ -52,7 +52,7 @@ Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   // The filter format shuold be HWCN, not NHWC or NCHW, so set here to fix this problem
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "get op desc failed.");
+    OP_LOGE(op.GetName().c_str(), "get op desc failed.");
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
     err_map["description"] = "get op desc failed.";
@@ -65,7 +65,7 @@ Status ParseParamsConv2D(const Message* op_src, ge::Operator& op) {
   org_tensor_w.SetFormat(ge::FORMAT_HWCN);
   auto ret = op_dsc->UpdateInputDesc(kInputFilter, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update filter format failed.");
+    OP_LOGE(op.GetName().c_str(), "update filter format failed.");
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
     err_map["description"] = "update filter format failed.";

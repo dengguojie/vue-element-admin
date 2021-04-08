@@ -195,111 +195,6 @@
         "argList": "op_name,description"
     },
     {
-        "errCode": "E50061",
-        "errMessage": "The op [%s], [%s] is unsupported",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50062",
-        "errMessage": "The op [%s], add [%s] to [%s] fail.",
-        "argList": "op_name, param_name1, param_name2"
-    },
-    {
-        "errCode": "E50063",
-        "errMessage": "In op[%s], [%s] is not equal to [%s].",
-        "argList": "op_name, param_name1, param_name2"
-    },
-    {
-        "errCode": "E50064",
-        "errMessage": "The op [%s], fail to [%s] between [%s].",
-        "argList": "op_name, param_name1, param_name2"
-    },
-    {
-        "errCode": "E50065",
-        "errMessage": "The op [%s], fail to [%s] of [%s].",
-        "argList": "op_name, param_name1, param_name2"
-    },
-    {
-        "errCode": "E50066",
-        "errMessage": "The op [%s], new [%s] not success.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50067",
-        "errMessage": "The op [%s], removing [%s] is failed.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50068",
-        "errMessage": "The op [%s], adding [%s] for [%s] is failed.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50069",
-        "errMessage": "The op [%s], [%s] is null.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50070",
-        "errMessage": "The op [%s], [%s] is not success.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50071",
-        "errMessage": "The op [%s], [%s] is greater than [%s].",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50072",
-        "errMessage": "The op [%s], add [%s] failed.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50073",
-        "errMessage": "The op [%s], [%s] is only support [%s].",
-        "argList": "op_name, param_name1, param_name2"
-    },
-    {
-        "errCode": "E50074",
-        "errMessage": "The op [%s], [%s] has an incorrected [%s].",
-        "argList": "op_name, param_name1, param_name2"
-    },
-    {
-        "errCode": "E50075",
-        "errMessage": "The op [%s], [%s] is not [%s].",
-        "argList": "op_name, param_name1, param_name2"
-    },
-    {
-        "errCode": "E50076",
-        "errMessage": "The op [%s], [%s] is Invalid.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50077",
-        "errMessage": "The op [%s], [%s] failed.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50078",
-        "errMessage": "The op [%s], remove [%s] failed.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50079",
-        "errMessage": "The op [%s], update [%s] failed.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50080",
-        "errMessage": "The op [%s], get [%s] failed.",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E50081",
-        "errMessage": "The op [%s], [%s] is incorrected.",
-        "argList": "op_name, param_name"
-    },
-    {
         "errCode": "E60000",
         "errMessage": "The op[%s] input parameter[%s] should be [%s], actual the input is [%s]",
         "argList": "op_name,param_name,expected_value,input_value"
@@ -780,71 +675,6 @@
         "argList": "op_name,para1"
     },
     {
-        "errCode": "E62512",
-        "errMessage": "In op[%s], n dimension of input should be int, but actually it is [%s].",
-        "argList": "op_name, para1"
-    },
-    {
-        "errCode": "E62513",
-        "errMessage": "In op[%s], m dimension of [%s] should be [%s], but actually it is [%s].",
-        "argList": "op_name, param_name, expect_value, actual_value"
-    },
-    {
-        "errCode": "E62514",
-        "errMessage": "In op[%s], n dimension of inputs should be consistent.",
-        "argList": "op_name"
-    },
-    {
-        "errCode": "E62515",
-        "errMessage": "In op[%s], dimension of inputs should be [%s].",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E62516",
-        "errMessage": "In op[%s], dtype of inputs should be [%s].",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E62517",
-        "errMessage": "In op[%s], dtype of inputs should be [%s] and [%s].",
-        "argList": "op_name, param1, param2"
-    },
-    {
-        "errCode": "E62518",
-        "errMessage": "In op[%s], the third and forth dimension must be [%s].",
-        "argList": "op_name, param_name"
-    },
-    {
-        "errCode": "E62519",
-        "errMessage": "In op[%s], the dst shape's H and W must be [%s].",
-        "argList": "op_name, value"
-    },
-    {
-        "errCode": "E62520",
-        "errMessage": "In op[%s], the dst shape's N must be divide by [%s].",
-        "argList": "op_name, value"
-    },
-    {
-        "errCode": "E62521",
-        "errMessage": "In op[%s], the src and dst must be [%s] dimension.",
-        "argList": "op_name, value"
-    },
-    {
-        "errCode": "E62522",
-        "errMessage": "In op[%s], the src and dst is wrong.",
-        "argList": "op_name, value"
-    },
-    {
-        "errCode": "E62523",
-        "errMessage": "In op[%s], [%s] should be less than [%s], actual is [%s].",
-        "argList": "op_name, para1, para2, para3"
-    },
-    {
-        "errCode": "E62524",
-        "errMessage": "In op[%s], [%s] should be equal with [%s], actual is [%s].",
-        "argList": "op_name, para1, para2, para3"
-    },
-    {
         "errCode": "E64001",
         "errMessage": "In op[%s], the [%s] must be int and in range [%s], actual is [%s]",
         "argList": "op_name,attr_name, range, value"
@@ -1018,16 +848,6 @@
       "errCode": "E67016",
       "errMessage": "In op[%s], the lower range of [%s]'s [%s] must greater than 0, the upper range must greater or equal to lower range, actual is [%s]",
       "argList": "op_name, attr_name, value"
-    },
-    {
-      "errCode": "E67017",
-      "errMessage": "In op[%s], [%s] only support [%s].",
-      "argList": "op_name, param_name1, param_name2"
-    },
-    {
-      "errCode": "E67018",
-      "errMessage": "In op[%s], [%s] should be  [%s], actual is [%s].",
-      "argList": "op_name, param_name1, param_name2, param_name3"
     },
     {
       "errCode": "E80000",

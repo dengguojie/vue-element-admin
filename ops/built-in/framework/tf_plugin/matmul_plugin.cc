@@ -19,25 +19,24 @@
  * \brief
  */
 #include "register/register.h"
-#include "common/util/error_manager/error_manager.h"
-#include "../../op_proto/util/error_util.h"
+
 #include "op_log.h"
 
 namespace domi {
 Status AutoMappingFnMatMulV2(const google::protobuf::Message* op_src, ge::Operator& op) {
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "tensorflow plugin parser failed. auto mapping failed.");
+    OP_LOGE("MatMul", "tensorflow plugin parser failed. auto mapping failed.");
     return FAILED;
   }
   bool transposeA = false;
   if (op.GetAttr("transpose_a", transposeA) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "GetAttr transpose_a failed");
+    OP_LOGE("MatMul", "GetAttr transpose_a failed");
     return FAILED;
   }
   bool transposeB = false;
   if (op.GetAttr("transpose_b", transposeB) != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("MatMul", "GetAttr transpose_b failed");
+    OP_LOGE("MatMul", "GetAttr transpose_b failed");
     return FAILED;
   }
 

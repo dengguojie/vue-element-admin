@@ -20,19 +20,19 @@
  */
 #include "graph/utils/op_desc_utils.h"
 #include "register/register.h"
-#include "../../op_proto/util/error_util.h"
 #include "common/util/error_manager/error_manager.h"
+
 #include "op_log.h"
 
 namespace domi {
 Status DepthwiseConv2DMappingFn(const Message* op_src, ge::Operator& op) {
   if (AutoMappingFn(op_src, op) != SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "AutoMappingFn failed.");
+    OP_LOGE(op.GetName().c_str(), "AutoMappingFn failed.");
     return FAILED;
   }
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
+    OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator got nullptr failed.");
     return FAILED;
   }
   ge::GeTensorDesc tensorDescW = op_dsc->GetInputDesc(1);
@@ -47,7 +47,7 @@ Status DepthwiseConv2DMappingFn(const Message* op_src, ge::Operator& op) {
     err_map["format"] = "failed";
     std::string report_error_code = "E50012";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update filter format failed.");
+    OP_LOGE("[Plugin][ERROR]update filter format failed\n");
     return FAILED;
   }
   std::vector<int32_t> padList = {0, 0, 0, 0};

@@ -23,7 +23,7 @@
 #include "register/register.h"
 #include "graph/utils/op_desc_utils.h"
 #include "common/util/error_manager/error_manager.h"
-#include "../../op_proto/util/error_util.h"
+
 #include "op_log.h"
 
 namespace domi {
@@ -43,7 +43,7 @@ Status ParseParamsConv3DBackpropInput(const Message* op_src, ge::Operator& op) {
   org_tensor_w.SetFormat(ge::FORMAT_DHWCN);
   auto ret = op_dsc->UpdateInputDesc(kIndex1, org_tensor_w);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "Update filter format failed.");
+    OP_LOGE(op.GetName().c_str(), "Update filter format failed.");
     map<string, string> err_map;
     err_map["op_name"] = "Conv3dBackpropInput";
     err_map["param_name"] = "updating filter's format";
@@ -68,7 +68,7 @@ Status ParseParamsConv3DBackpropInput(const Message* op_src, ge::Operator& op) {
   org_tensor_y.SetFormat(data_format);
   ret = op_dsc->UpdateInputDesc(kIndex0, org_tensor_y);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update inout out_backprop format failed.");
+    OP_LOGE(op.GetName().c_str(), "update inout out_backprop format failed.");
     map<string, string> err_map;
     err_map["op_name"] = "Conv3dBackpropInput";
     err_map["param_name"] = "updating out_backprop's format";
@@ -85,7 +85,7 @@ Status ParseParamsConv3DBackpropInput(const Message* op_src, ge::Operator& op) {
   org_tensor_x.SetFormat(data_format);
   ret = op_dsc->UpdateOutputDesc(kIndex0, org_tensor_x);
   if (ret != ge::GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "update output dx format failed.");
+    OP_LOGE(op.GetName().c_str(), "update output dx format failed.");
     map<std::string, std::string> err_map;
     err_map["op_name"] = "Conv3dBackpropInput";
     err_map["param_name"] = "updating output_dx's format";
