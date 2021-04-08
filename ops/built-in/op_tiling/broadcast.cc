@@ -524,13 +524,9 @@ void Broadcast::OptimizeUbTiling() {
   // 1. convert BA pattern form split COMMON axis to BROADCAST axis
   // 2. avoid split BROADCAST axis
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
-  if (s_pattern == Pattern::BROADCAST_COMMON && block_axis < ub_axis && \
-      ub_axis == shape_len && ub_factor == output_shape[ub_axis]) {
+  if (!only_const_tiling && block_axis < ub_axis && ub_axis == shape_len && ub_factor == output_shape[ub_axis]) {
     ub_axis--;
     ub_factor = 1;
-  } else if (ub_factor == 1 && broadcast_axis[ub_axis]) {
-    ub_axis++;
-    ub_factor = output_shape[ub_axis];
   }
 }
 

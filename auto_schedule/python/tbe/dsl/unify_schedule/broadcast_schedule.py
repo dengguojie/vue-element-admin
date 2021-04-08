@@ -107,7 +107,7 @@ class BroadcastSchedule:
 
         self._broadcast_store_predicate = set()
         self._store_predicate_common_tensors = set()
-        self._all_pre_node_broadcast = []
+        self._all_pre_node_broadcast = set()
 
         self._dtypes = set()
         self._outs_dtypes = set()
@@ -586,16 +586,33 @@ class BroadcastSchedule:
         for tensor_i, param in self._compute_at_map.items():
             sch[tensor_i].compute_at(sch[param[0]], param[1])
 
+    def _get_ub_tensor(self, tensor_i):
+        if tensor_i in self._placeholder_tensor_map:
+            return self._placeholder_tensor_map[tensor_i]
+        if tensor_i in self._cache_write_tensor_map:
+            return self._cache_write_tensor_map[tensor_i]
+        return tensor_i
+
     def _do_store_predicate(self):
         sch = self._schedule
+        cond_limit = 1
+        if self._is_db:
+            # pass double buffer error, avoid it in schedule
+            # double buffer IR:
+            #' for i:a
+            #'   if i * 2 < cond_limit:
+            #'     do()
+            #'   if i * 2 + 1 < cond_limit:
+            #'     do()
+            cond_limit = 2
         for tensor_i in self._broadcast_store_predicate:
-            sch[tensor_i].set_store_predicate(self._compute_at_axis < 1)
-            sch[tensor_i].mem_unique()
+            sch[self._get_ub_tensor(tensor_i)].set_store_predicate(self._compute_at_axis < cond_limit)
+            sch[self._get_ub_tensor(tensor_i)].mem_unique()
         for tensor_i in self._all_pre_node_broadcast:
             if tensor_i in self._placeholder_tensor_map:
-                sch[self._placeholder_tensor_map[tensor_i]].set_store_predicate(self._compute_at_axis < 1)
+                sch[self._placeholder_tensor_map[tensor_i]].set_store_predicate(self._compute_at_axis < cond_limit)
             else:
-                sch[tensor_i].set_store_predicate(self._compute_at_axis < 1)
+                sch[tensor_i].set_store_predicate(self._compute_at_axis < cond_limit)
         for tensor_i in self._store_predicate_common_tensors:
             if tensor_i in self._placeholder_tensor_map:
                 sch[self._placeholder_tensor_map[tensor_i]].mem_unique()
@@ -662,7 +679,7 @@ class BroadcastSchedule:
                 sch[tensor_i].emit_insn(param[0], param[2])
             compile_broadcast_no_inline = (param[1] == "unified_broadcast" and \
                                            self._broadcast_axis_num.get(tensor_i, 0) > 1)
-            if param[1] == "unknown_broadcast"  or compile_broadcast_no_inline:
+            if param[1] == "unknown_broadcast" or compile_broadcast_no_inline:
                 u_idx = 0
                 if self._tiling_strategy != TilingStrategy.NONE_CUT:
                     u_idx = self._tiling_case["ub_tiling_axis"]
@@ -763,17 +780,32 @@ class BroadcastSchedule:
                 all_pre_node.add(_tensor)
                 _dfs_cur_tensor(_tensor)
 
-        if self._schedule.tiling_key == BA_KEY:
-            for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
-                if util.get_dsl_insn(tensor_i) != "unified_broadcast":
-                    continue
-                self._broadcast_store_predicate.add(tensor_i)
-                all_pre_node = set()
-                _dfs_cur_tensor(tensor_i)
-                self._all_pre_node_broadcast.extend(list(all_pre_node))
-            from collections import Counter
-            collect = Counter(self._all_pre_node_broadcast)
-            self._store_predicate_common_tensors = {key for (key, value) in collect.items() if value > 1}
+        def _is_only_calc_one(tensor_i):
+            if len(tensor_i.op.input_tensors) != 1:
+                return False
+            if self._tiling_strategy == TilingStrategy.ONE_CUT:
+                u_i = self._tiling_case["ub_tiling_axis"]
+                src_shape = tensor_i.op.input_tensors[0].shape
+                dst_shape = tensor_i.shape
+                return expr_equal(1, src_shape[u_i]) and not expr_equal(1, dst_shape[u_i])
+            return False
+
+        for tensor_i in self._broadcast_tensors:
+            if not _is_only_calc_one(tensor_i):
+                continue
+            cur_tensor = tensor_i
+            if tensor_i in self._absorbable_broadcast_tensors:
+                cur_tensor = tensor_i.op.input_tensors[0]
+            self._broadcast_store_predicate.add(cur_tensor)
+            all_pre_node = set()
+            _dfs_cur_tensor(cur_tensor)
+            self._all_pre_node_broadcast.update(all_pre_node)
+
+        for tensor_i in self._all_pre_node_broadcast:
+            common_tensor = self._in_out_map[tensor_i] - \
+                    (self._all_pre_node_broadcast | self._broadcast_store_predicate)
+            if len(common_tensor) > 0:
+                self._store_predicate_common_tensors.update(common_tensor)
 
     def _calc_storage_bound(self):
 
@@ -789,10 +821,14 @@ class BroadcastSchedule:
 
         def _calc_current_space(_tensor):
             # one of the input of the ternary instruction must be reused with the output
-            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in init_map:
+            if util.get_dsl_insn(_tensor) in TERNARY_INSNS or _tensor in dependent_map:
                 _current_space = len(dependent_map)
             else:
                 _current_space = len(dependent_map) + 1
+            for tensor_i in dependent_map.keys():
+                if tensor_i in self._absorbable_broadcast_tensors and \
+                    len(tensor_i.op.input_tensors) == 1 and tensor_i.op.input_tensors[0] in dependent_map:
+                    _current_space -= 1
             if util.need_extent_node(_tensor) and _tensor not in self._compute_inline_broadcast:
                 _current_space += 1
             if util.get_dsl_insn(_tensor) == "unified_broadcast" and \
@@ -819,10 +855,9 @@ class BroadcastSchedule:
             _need_space.append(_current_space)
             _refresh_dependent(_tensor)
             if _tensor not in dependent_map:
-                if _tensor in init_map:
-                    init_map.remove(_tensor)
-                else:
-                    dependent_map[_tensor] = self._in_out_map[_tensor].copy()
+                dependent_map[_tensor] = self._in_out_map[_tensor].copy()
+            elif _tensor in init_map:
+                init_map.remove(_tensor)
             return max(_need_space)
 
         def _refresh_dependent(_tensor):
@@ -834,8 +869,6 @@ class BroadcastSchedule:
                     dependent_map.pop(_tensor_i)
 
         def _need_external_space(_tensor):
-            # pass memory reuse exists error, avoid it in schedule
-
             exist_absorbable_broadcast = any([x in self._absorbable_broadcast_tensors
                                               for x in _tensor.op.input_tensors])
             if not exist_absorbable_broadcast:
@@ -852,33 +885,23 @@ class BroadcastSchedule:
         coexisting_quantities = []
         dependent_map = {}
         init_map = set()
-        if self._schedule.tiling_key == BA_KEY:
-            all_producers = self._middle_tensors.copy()
-            all_producers.update(self._outs)
-            for tensor_i in self._broadcast_store_predicate | self._store_predicate_common_tensors:
-                dependent_map[tensor_i] = all_producers
-                init_map.add(tensor_i)
+        all_producers = self._middle_tensors.copy()
+        all_producers.update(self._out_tensors | self._input_tensors)
+        for tensor_i in self._broadcast_store_predicate | self._store_predicate_common_tensors:
+            dependent_map[tensor_i] = all_producers.copy()
+            init_map.add(tensor_i)
         for tensor_i in self._out.op.input_tensors:
             coexisting_quantities.append(_r_coexisting(tensor_i))
         if not self._out.op.tag == FAKE_NODE_TAG:
-            if util.get_dsl_insn(self._out) in TERNARY_INSNS:
-                current_space = len(dependent_map)
-            else:
-                current_space = len(dependent_map) + 1
             if util.is_vtranspose_broadcast(self._out):
                 self._tmp_ub_size += VTRANSPOSE_TEMP_SPACE
+
+            _current_space = _calc_current_space(self._out)
 
             # correct ub size in vcmp or vsel or vcmpsel
             _correct_ub_size_by_cmp_sel(self._out)
 
-            if util.need_temp_space(self._out) or _need_external_space(self._out):
-                self._tmp_ub_size += BLOCK_SIZE_BYTE
-            if util.need_extent_node(self._out):
-                current_space += 1
-            if util.get_dsl_insn(self._out) == "unified_broadcast" and \
-                    self._broadcast_axis_num.get(self._out, 0) > 1:
-                current_space += 1
-            coexisting_quantities.append(current_space)
+            coexisting_quantities.append(_current_space)
 
         self._coexisting_quantity = max(coexisting_quantities)
         self._coexisting_quantity += self._redundant_coe
