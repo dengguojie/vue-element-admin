@@ -57,7 +57,9 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   input_name_idx["weight"] = 2;
   input_name_idx["pos_weight"] = 3;
   sigmoidNoneDesc->UpdateInputName(input_name_idx);
-
+  std::map<string, uint32_t> out_name_idx;
+  out_name_idx["loss"] = 0;
+  sigmoidNoneDesc->UpdateOutputName(out_name_idx);
   // input
   ge::GeTensorDesc inputTensorDesc = sigmoidNoneDesc->GetInputDesc(0);
 
