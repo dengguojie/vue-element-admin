@@ -81,12 +81,12 @@ Status AvgUpdateAttrFromOnnx(const NodeProto* node, AvgPoolAttr& node_attr) {
       }
     }
     if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      int len = attr.ints_size();
+      unsigned int len = attr.ints_size();
       if (len & 1) {
         OP_LOGE("AveragePool", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
         return FAILED;
       }
-      for (int i = 0; i < len / 2; i++) {
+      for (unsigned int i = 0; i < len / 2; i++) {
         node_attr.pads.push_back(attr.ints(i));
         node_attr.pads.push_back(attr.ints(i + len / 2));
       }

@@ -65,12 +65,12 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
     } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
       onnx_attr.auto_pad = attr.s();
     } else if (attr.name() == "pads" && attr.type() == ge::onnx::AttributeProto::INTS) {
-      int len = attr.ints_size();
+      unsigned int len = attr.ints_size();
       if (len & 1) {
         OP_LOGE("MaxPool", "the length of pads must be even, such as [x1_begin, x2_begin...x1_end, x2_end,...]");
         return FAILED;
       }
-      for (int i = 0; i < len / 2; i++) {
+      for (unsigned int i = 0; i < len / 2; i++) {
         onnx_attr.pads.push_back(attr.ints(i));
         onnx_attr.pads.push_back(attr.ints(i + len / 2));
       }
