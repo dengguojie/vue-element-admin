@@ -57,7 +57,7 @@ def cast_to_round(data, dtype):
     -------
     tensor : tvm.tensor
     """
-    warnings.warn("cast_to_round is expired, please replace it with the func round_half_up and cast_to",
+    warnings.warn("cast_to_round is deprecated, please replace it with the func round_half_up and cast_to",
                   DeprecationWarning)
     dtype = dtype.lower()
     if dtype != "int32":
@@ -89,7 +89,7 @@ def img2col(input_img,
     img2col
     """
     warnings.warn(
-        "te.lang.cce.te_compute.common.img2col is expired, please replace it with tbe.dsl.compute.common.img2col",
+        "te.lang.cce.te_compute.common.img2col is deprecated, please replace it with tbe.dsl.compute.common.img2col",
         DeprecationWarning)
     from tbe.dsl.compute.common import img2col
     return img2col(input_img, col_shape, filter_h, filter_w, pad, stride, tag, padding_value)
@@ -109,7 +109,7 @@ def im2col_6d(input_img,
     """
 
     # pylint: disable=too-many-locals
-    warnings.warn("te.lang.cce.te_compute.common.im2col_6d is expired, " \
+    warnings.warn("te.lang.cce.te_compute.common.im2col_6d is deprecated, " \
                   "please replace it with the func tbe.dsl.compute.common.im2col_6d",
                   DeprecationWarning)
     from tbe.dsl.compute.common import im2col_6d
@@ -121,7 +121,7 @@ def im2col_fractal(a_im2col_shape, in_a, dst='ca', tag=None):
     im2col_fractal
     """
     warnings.warn(
-        "te.lang.cce.te_compute.common.im2col_fractal is expired, please replace it with tbe.dsl.compute.common.im2col_fractal",
+        "te.lang.cce.te_compute.common.im2col_fractal is deprecated, please replace it with tbe.dsl.compute.common.im2col_fractal",
         DeprecationWarning)
     from tbe.dsl.compute.common import im2col_fractal
     return im2col_fractal(a_im2col_shape, in_a, dst, tag)
@@ -134,7 +134,7 @@ def im2col_fractal_6d(a_im2col_shape, in_a):
     last_dim = in_a.shape[-1]
 
     # pylint: disable=too-many-locals
-    warnings.warn("te.lang.cce.te_compute.common.im2col_fractal_6d is expired, " \
+    warnings.warn("te.lang.cce.te_compute.common.im2col_fractal_6d is deprecated, " \
                   "please replace it with the func tbe.dsl.compute.common.im2col_fractal_6d",
                   DeprecationWarning)
     from tbe.dsl.compute.common import im2col_fractal_6d

@@ -46,7 +46,7 @@ def unsorted_segment_sum(tensor, segment_ids, num_segments, init_value=0):
     -------
     tensor : segment_sum(tensor , segment_ids)
     """
-    warnings.warn("unsorted_segment_sum is expired, please do not use it", DeprecationWarning)
+    warnings.warn("unsorted_segment_sum is deprecated, please do not use it", DeprecationWarning)
     return __segment_op(tensor, segment_ids, num_segments, init_value, tensor.dtype, "segment_sum")
 
 
@@ -69,7 +69,7 @@ def unsorted_segment_mean(tensor, segment_ids, num_segments, init_value=0):
     -------
     tensor : segment_mean(tensor , segment_ids)
     """
-    warnings.warn("unsorted_segment_mean is expired, please do not use it", DeprecationWarning)
+    warnings.warn("unsorted_segment_mean is deprecated, please do not use it", DeprecationWarning)
     return __segment_op(tensor, segment_ids, num_segments, init_value, tensor.dtype, "segment_mean")
 
 
@@ -92,7 +92,7 @@ def unsorted_segment_prod(tensor, segment_ids, num_segments, init_value=0):
     -------
     tensor : segment_prod(tensor , segment_ids)
     """
-    warnings.warn("unsorted_segment_prod is expired, please do not use it", DeprecationWarning)
+    warnings.warn("unsorted_segment_prod is deprecated, please do not use it", DeprecationWarning)
     if isinstance(segment_ids, tvm.tensor.Tensor):
         init_value = 1
         return __segment_tensor_op(tensor, segment_ids, num_segments,
@@ -120,7 +120,7 @@ def unsorted_segment_min(tensor, segment_ids, num_segments, init_value=0):
     -------
     tensor : segment_min(tensor , segment_ids)
     """
-    warnings.warn("unsorted_segment_min is expired, please do not use it", DeprecationWarning)
+    warnings.warn("unsorted_segment_min is deprecated, please do not use it", DeprecationWarning)
     if isinstance(segment_ids, tvm.tensor.Tensor):
         return __segment_tensor_op(tensor, segment_ids, num_segments,
                                    init_value, tensor.dtype, "segmentensor_min")
@@ -147,7 +147,7 @@ def unsorted_segment_max(tensor, segment_ids, num_segments, init_value=0):
     -------
     tensor : segment_max(tensor , segment_ids)
     """
-    warnings.warn("unsorted_segment_max is expired, please do not use it", DeprecationWarning)
+    warnings.warn("unsorted_segment_max is deprecated, please do not use it", DeprecationWarning)
     if isinstance(segment_ids, tvm.tensor.Tensor):
         return __segment_tensor_op(tensor, segment_ids, num_segments,
                                    init_value, tensor.dtype, "segmentensor_max")

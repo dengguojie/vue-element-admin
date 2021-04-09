@@ -39,7 +39,7 @@ def ceil(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
-    warnings.warn("te.lang.cce.ceil is expired, please replace it with tbe.dsl.ceil",
+    warnings.warn("te.lang.cce.ceil is deprecated, please replace it with tbe.dsl.ceil",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.ceil(raw_tensor)
@@ -58,7 +58,7 @@ def floor(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
-    warnings.warn("te.lang.cce.floor is expired, please replace it with tbe.dsl.floor",
+    warnings.warn("te.lang.cce.floor is deprecated, please replace it with tbe.dsl.floor",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.floor(raw_tensor)
@@ -77,7 +77,7 @@ def round(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
-    warnings.warn("te.lang.cce.round is expired, please replace it with tbe.dsl.round",
+    warnings.warn("te.lang.cce.round is deprecated, please replace it with tbe.dsl.round",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.round(raw_tensor)
@@ -96,7 +96,7 @@ def trunc(raw_tensor):
     -------
     wrapped_tensor : casted tensor
     """
-    warnings.warn("te.lang.cce.trunc is expired, please replace it with tbe.dsl.trunc",
+    warnings.warn("te.lang.cce.trunc is deprecated, please replace it with tbe.dsl.trunc",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.trunc(raw_tensor)
@@ -115,7 +115,7 @@ def round_half_up(raw_tensor):
     wrapped_tensor : casted tensor
     """
     warnings.warn(
-        "te.lang.cce.round_half_up is expired, please replace it with tbe.dsl.round_half_up",
+        "te.lang.cce.round_half_up is deprecated, please replace it with tbe.dsl.round_half_up",
          DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.round_half_up(raw_tensor)
@@ -141,7 +141,7 @@ def cast_to(data, dtype, f1628IntegerFlag=True):
     -------
     tensor : tvm.tensor
     """
-    warnings.warn("te.lang.cce.cast_to is expired, please replace it with tbe.dsl.cast_to",
+    warnings.warn("te.lang.cce.cast_to is deprecated, please replace it with tbe.dsl.cast_to",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.cast_to(data, dtype, f1628IntegerFlag)
@@ -164,7 +164,7 @@ def vadd(lhs, rhs):
     -------
     wrapped_tensor : lhs + rhs
     """
-    warnings.warn("te.lang.cce.vadd is expired, please replace it with tbe.dsl.vadd",
+    warnings.warn("te.lang.cce.vadd is deprecated, please replace it with tbe.dsl.vadd",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vadd(lhs, rhs)
@@ -187,7 +187,7 @@ def vsub(lhs, rhs):
     -------
     wrapped_tensor : lhs - rhs
     """
-    warnings.warn("te.lang.cce.vsub is expired, please replace it with tbe.dsl.vsub",
+    warnings.warn("te.lang.cce.vsub is deprecated, please replace it with tbe.dsl.vsub",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vsub(lhs, rhs)
@@ -210,7 +210,7 @@ def vmul(lhs, rhs):
     -------
     wrapped_tensor : lhs*rhs
     """
-    warnings.warn("te.lang.cce.vmul is expired, please replace it with tbe.dsl.vmul",
+    warnings.warn("te.lang.cce.vmul is deprecated, please replace it with tbe.dsl.vmul",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmul(lhs, rhs)
@@ -232,7 +232,7 @@ def vdiv(lhs, rhs):
     -----
     wrapped_tensor: lhs / rhs
     """
-    warnings.warn("te.lang.cce.vdiv is expired, please replace it with tbe.dsl.vdiv",
+    warnings.warn("te.lang.cce.vdiv is deprecated, please replace it with tbe.dsl.vdiv",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vdiv(lhs, rhs)
@@ -252,7 +252,7 @@ def vrec(raw_tensor, priority_flag=1):
     -------
     wrapped_tensor : vrec(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vrec is expired, please replace it with tbe.dsl.vrec",
+    warnings.warn("te.lang.cce.vrec is deprecated, please replace it with tbe.dsl.vrec",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     impl_mode = "high_precision"
     from .te_compute.util import _get_priority_flag_value
@@ -278,7 +278,7 @@ def vmod(lhs, rhs):
     -----
     wrapped_tensor : lhs - floor(lhs/rhs) * rhs
     """
-    warnings.warn("te.lang.cce.vmod is expired, please replace it with tbe.dsl.vmod",
+    warnings.warn("te.lang.cce.vmod is deprecated, please replace it with tbe.dsl.vmod",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmod(lhs, rhs)
@@ -298,7 +298,7 @@ def vmax(lhs, rhs):
     -------
     wrapped_tensor : max(lhs , rhs)
     """
-    warnings.warn("te.lang.cce.vmax is expired, please replace it with tbe.dsl.vmax",
+    warnings.warn("te.lang.cce.vmax is deprecated, please replace it with tbe.dsl.vmax",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmax(lhs, rhs)
@@ -318,7 +318,7 @@ def vmin(lhs, rhs):
     -------
     wrapped_tensor : min(lhs , rhs)
     """
-    warnings.warn("te.lang.cce.vmin is expired, please replace it with tbe.dsl.vmin",
+    warnings.warn("te.lang.cce.vmin is deprecated, please replace it with tbe.dsl.vmin",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmin(lhs, rhs)
@@ -338,7 +338,7 @@ def vlog(raw_tensor, priority_flag=0):
     -------
     wrapped_tensor : log(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vlog is expired, please replace it with tbe.dsl.vlog",
+    warnings.warn("te.lang.cce.vlog is deprecated, please replace it with tbe.dsl.vlog",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     impl_mode = "high_performance"
     from .te_compute.util import _get_priority_flag_value
@@ -361,7 +361,7 @@ def vexp(raw_tensor):
     -------
     wrapped_tensor : exp(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vexp is expired, please replace it with tbe.dsl.vexp",
+    warnings.warn("te.lang.cce.vexp is deprecated, please replace it with tbe.dsl.vexp",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vexp(raw_tensor)
@@ -380,7 +380,7 @@ def vabs(raw_tensor):
     -------
     wrapped_tensor : abs(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vabs is expired, please replace it with tbe.dsl.vabs",
+    warnings.warn("te.lang.cce.vabs is deprecated, please replace it with tbe.dsl.vabs",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vabs(raw_tensor)
@@ -401,7 +401,7 @@ def vsqrt(raw_tensor, priority_flag=0):
     -------
     wrapped_tensor : vsqrt(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vsqrt is expired, please replace it with tbe.dsl.vsqrt",
+    warnings.warn("te.lang.cce.vsqrt is deprecated, please replace it with tbe.dsl.vsqrt",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     impl_mode = "high_performance"
     from .te_compute.util import _get_priority_flag_value
@@ -424,7 +424,7 @@ def vrsqrt(raw_tensor, priority_flag=0):
     -------
     wrapped_tensor : vrsqrt(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vrsqrt is expired, please replace it with tbe.dsl.vrsqrt",
+    warnings.warn("te.lang.cce.vrsqrt is deprecated, please replace it with tbe.dsl.vrsqrt",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     impl_mode = "high_performance"
     from .te_compute.util import _get_priority_flag_value
@@ -447,7 +447,7 @@ def vnot(raw_tensor):
     -------
     wrapped_tensor : vnot(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vnot is expired, please replace it with tbe.dsl.vnot",
+    warnings.warn("te.lang.cce.vnot is deprecated, please replace it with tbe.dsl.vnot",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vnot(raw_tensor)
@@ -467,7 +467,7 @@ def vor(lhs, rhs):
     -------
     wrapped_tensor : or(lhs , rhs)
     """
-    warnings.warn("te.lang.cce.vor is expired, please replace it with tbe.dsl.vor",
+    warnings.warn("te.lang.cce.vor is deprecated, please replace it with tbe.dsl.vor",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vor(lhs, rhs)
@@ -487,7 +487,7 @@ def vand(lhs, rhs):
     -------
     wrapped_tensor : max(lhs , rhs)
     """
-    warnings.warn("te.lang.cce.vand is expired, please replace it with tbe.dsl.vand",
+    warnings.warn("te.lang.cce.vand is deprecated, please replace it with tbe.dsl.vand",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vand(lhs, rhs)
@@ -511,7 +511,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
     -------
     wrapped_tensor
     """
-    warnings.warn("te.lang.cce.vlogic is expired, please replace it with tbe.dsl.vlogic",
+    warnings.warn("te.lang.cce.vlogic is deprecated, please replace it with tbe.dsl.vlogic",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vlogic(lhs, rhs, operation)
@@ -532,7 +532,7 @@ def vadds(raw_tensor, scalar):
     -------
     wrapped_tensor : raw_tensor + scalar
     """
-    warnings.warn("te.lang.cce.vadds is expired, please replace it with tbe.dsl.vadds",
+    warnings.warn("te.lang.cce.vadds is deprecated, please replace it with tbe.dsl.vadds",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vadds(raw_tensor, scalar)
@@ -554,7 +554,7 @@ def vmuls(raw_tensor, scalar):
     -------
     wrapped_tensor : raw_tensor*scalar
     """
-    warnings.warn("te.lang.cce.vmuls is expired, please replace it with tbe.dsl.vmuls",
+    warnings.warn("te.lang.cce.vmuls is deprecated, please replace it with tbe.dsl.vmuls",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmuls(raw_tensor, scalar)
@@ -576,7 +576,7 @@ def vmaxs(raw_tensor, scalar):
     -------
     wrapped_tensor : max(raw_tensor, scalar)
     """
-    warnings.warn("te.lang.cce.vmaxs is expired, please replace it with tbe.dsl.vmaxs",
+    warnings.warn("te.lang.cce.vmaxs is deprecated, please replace it with tbe.dsl.vmaxs",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmaxs(raw_tensor, scalar)
@@ -598,7 +598,7 @@ def vmins(raw_tensor, scalar):
     -------
     wrapped_tensor : min(raw_tensor, scalar)
     """
-    warnings.warn("te.lang.cce.vmins is expired, please replace it with tbe.dsl.vmins",
+    warnings.warn("te.lang.cce.vmins is deprecated, please replace it with tbe.dsl.vmins",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmins(raw_tensor, scalar)
@@ -618,7 +618,7 @@ def vaxpy(lhs, rhs, scalar):
     -------
     wrapped_tensor : max(lhs , rhs)
     """
-    warnings.warn("te.lang.cce.vaxpy is expired, please replace it with tbe.dsl.vaxpy",
+    warnings.warn("te.lang.cce.vaxpy is deprecated, please replace it with tbe.dsl.vaxpy",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vaxpy(lhs, rhs, scalar)
@@ -637,7 +637,7 @@ def vmla(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : X*tensor_1 + tensor_2
     """
-    warnings.warn("te.lang.cce.vmla is expired, please replace it with tbe.dsl.vmla",
+    warnings.warn("te.lang.cce.vmla is deprecated, please replace it with tbe.dsl.vmla",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmla(tensor_0, tensor_1, tensor_2)
@@ -656,7 +656,7 @@ def vmadd(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : tensor_0*tensor_2 + tensor_1
     """
-    warnings.warn("te.lang.cce.vmadd is expired, please replace it with tbe.dsl.vmadd",
+    warnings.warn("te.lang.cce.vmadd is deprecated, please replace it with tbe.dsl.vmadd",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmadd(tensor_0, tensor_1, tensor_2)
@@ -683,7 +683,7 @@ def vcmp(lhs, rhs, operation='lt', mode='bool'):
     -------
     wrapped_tensor
     """
-    warnings.warn("te.lang.cce.vcmp is expired, please replace it with tbe.dsl.vcmp",
+    warnings.warn("te.lang.cce.vcmp is deprecated, please replace it with tbe.dsl.vcmp",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vcmp(lhs, rhs, operation, mode)
@@ -706,7 +706,7 @@ def vsel(condition, lhs, rhs):
     -------
     wrapped_tensor :
     """
-    warnings.warn("te.lang.cce.vsel is expired, please replace it with tbe.dsl.vsel",
+    warnings.warn("te.lang.cce.vsel is deprecated, please replace it with tbe.dsl.vsel",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vsel(condition, lhs, rhs)
@@ -732,7 +732,7 @@ def vcmpsel(lhs, rhs=None, operation='lt', slhs=None, srhs=None):
     -------
     wrapped_tensor
     """
-    warnings.warn("te.lang.cce.vcmpsel is expired, please replace it with tbe.dsl.vcmpsel",
+    warnings.warn("te.lang.cce.vcmpsel is deprecated, please replace it with tbe.dsl.vcmpsel",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vcmpsel(lhs, rhs, operation, slhs, srhs)
@@ -751,7 +751,7 @@ def vmaddrelu(tensor_0, tensor_1, tensor_2):
     -------
     wrapped_tensor : relu(tensor_0*tensor_2 + tensor_1)
     """
-    warnings.warn("te.lang.cce.vmaddrelu is expired, please replace it with tbe.dsl.vmaddrelu",
+    warnings.warn("te.lang.cce.vmaddrelu is deprecated, please replace it with tbe.dsl.vmaddrelu",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vmaddrelu(tensor_0, tensor_1, tensor_2)
@@ -773,7 +773,7 @@ def vaddrelu(lhs, rhs):
     -------
     wrapped_tensor : relu (lhs + rhs)
     """
-    warnings.warn("te.lang.cce.vaddrelu is expired, please replace it with tbe.dsl.vaddrelu",
+    warnings.warn("te.lang.cce.vaddrelu is deprecated, please replace it with tbe.dsl.vaddrelu",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vaddrelu(lhs, rhs)
@@ -795,7 +795,7 @@ def vsubrelu(lhs, rhs):
     -------
     wrapped_tensor : relu (lhs - rhs)
     """
-    warnings.warn("te.lang.cce.vsubrelu is expired, please replace it with tbe.dsl.vsubrelu",
+    warnings.warn("te.lang.cce.vsubrelu is deprecated, please replace it with tbe.dsl.vsubrelu",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vsubrelu(lhs, rhs)
@@ -814,7 +814,7 @@ def vrelu(raw_tensor):
     -------
     wrapped_tensor : vrelu(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vrelu is expired, please replace it with tbe.dsl.vrelu",
+    warnings.warn("te.lang.cce.vrelu is deprecated, please replace it with tbe.dsl.vrelu",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.vrelu(raw_tensor)
@@ -832,7 +832,7 @@ def vlrelu(raw_tensor, alpha=0):
     -------
     wrapped_tensor : vlrelu(raw_tensor)
     """
-    warnings.warn("te.lang.cce.vlrelu is expired, please replace it with tbe.dsl.vlrelu",
+    warnings.warn("te.lang.cce.vlrelu is deprecated, please replace it with tbe.dsl.vlrelu",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
 
     dtype = raw_tensor.dtype
@@ -864,7 +864,7 @@ def round_to(data, max_value, min_value):
     -------
     tensor : tvm.tensor ,elements in tensor is in range [min_value,max_value]
     """
-    warnings.warn("te.lang.cce.round_to is expired, please replace it with tbe.dsl.round_to",
+    warnings.warn("te.lang.cce.round_to is deprecated, please replace it with tbe.dsl.round_to",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.clip(data, max_value, min_value)
@@ -886,7 +886,7 @@ def broadcast(var, shape, output_dtype=None):
     -------
     wrapped_tensor : broadcast tensor
     """
-    warnings.warn("te.lang.cce.broadcast is expired, please replace it with tbe.dsl.broadcast",
+    warnings.warn("te.lang.cce.broadcast is deprecated, please replace it with tbe.dsl.broadcast",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.broadcast(var, shape, output_dtype)
@@ -906,7 +906,7 @@ def sum(raw_tensor, axis, keepdims=False):
     -------
     res : wrapped_tensor
     """
-    warnings.warn("te.lang.cce.sum is expired, please replace it with tbe.dsl.sum",
+    warnings.warn("te.lang.cce.sum is deprecated, please replace it with tbe.dsl.sum",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.reduce_sum(raw_tensor, axis, keepdims)
@@ -926,7 +926,7 @@ def reduce_min(raw_tensor, axis, keepdims=False, priority_flag=False):
     -------
     res : wrapped_tensor
     """
-    warnings.warn("te.lang.cce.reduce_min is expired, please replace it with tbe.dsl.reduce_min",
+    warnings.warn("te.lang.cce.reduce_min is deprecated, please replace it with tbe.dsl.reduce_min",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     impl_mode = "high_performance"
     if priority_flag:
@@ -950,7 +950,7 @@ def reduce_max(raw_tensor, axis, keepdims=False, priority_flag=False):
     -------
     res : wrapped_tensor
     """
-    warnings.warn("te.lang.cce.reduce_max is expired, please replace it with tbe.dsl.reduce_max",
+    warnings.warn("te.lang.cce.reduce_max is deprecated, please replace it with tbe.dsl.reduce_max",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     impl_mode = "high_performance"
     if priority_flag:
@@ -973,7 +973,7 @@ def reduce_prod(raw_tensor, axis, keepdims=False):
     res : wrapped_tensor
     """
     warnings.warn(
-        "te.lang.cce.reduce_prod is expired, please replace it with tbe.dsl.reduce_prod",
+        "te.lang.cce.reduce_prod is deprecated, please replace it with tbe.dsl.reduce_prod",
          DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.reduce_prod(raw_tensor, axis, keepdims)
@@ -998,7 +998,7 @@ def split(data, split_dim, size_splits):
     output_tensor_list: list
         the list of output tensors, output tensor type is TVM tensor.
     """
-    warnings.warn("te.lang.cce.split is expired, please replace it with tbe.dsl.split",
+    warnings.warn("te.lang.cce.split is deprecated, please replace it with tbe.dsl.split",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.split(data, split_dim, size_splits)
@@ -1008,7 +1008,7 @@ def split_compute_com(data, split_dim, size_splits):
     """
     Split a tensor into len(size_splits) tensors along one dimension
     """
-    warnings.warn("split_compute_com is expired, please replace it with the func split",
+    warnings.warn("split_compute_com is deprecated, please replace it with the func split",
                   DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.split(data, split_dim, size_splits)
@@ -1035,7 +1035,7 @@ def split_schedule_com(data, split_dim, shape_list, tensor_list):
     build_list: list
         the list of input and output tensors, tensor type is TVM tensor.
     """
-    warnings.warn("te.lang.cce.split_schedule_com is expired",
+    warnings.warn("te.lang.cce.split_schedule_com is deprecated",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     from tbe.dsl.static_schedule.split_schedule import split_schedule_com
     return split_schedule_com(data, split_dim, shape_list, tensor_list)
@@ -1052,7 +1052,7 @@ def concat(raw_tensors, axis):
     -------
     concat tensor :
     """
-    warnings.warn("te.lang.cce.concat is expired, please replace it with tbe.dsl.concat",
+    warnings.warn("te.lang.cce.concat is deprecated, please replace it with tbe.dsl.concat",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.concat(raw_tensors, axis)
@@ -1077,7 +1077,7 @@ def inplace_add(lhs, inplace_ids, rhs):
     wrapped_tensor : computes lhs[inplace_ids, :] += rhs; return lhs.
     """
     warnings.warn(
-        "te.lang.cce.inplace_add is expired, please replace it with tbe.dsl.inplace_add",
+        "te.lang.cce.inplace_add is deprecated, please replace it with tbe.dsl.inplace_add",
          DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.inplace_add(lhs, inplace_ids, rhs)
@@ -1102,7 +1102,7 @@ def inplace_sub(lhs, inplace_ids, rhs):
     wrapped_tensor : computes lhs[inplace_ids, :] -= rhs; return lhs.
     """
     warnings.warn(
-        "te.lang.cce.inplace_sub is expired, please replace it with tbe.dsl.inplace_sub",
+        "te.lang.cce.inplace_sub is deprecated, please replace it with tbe.dsl.inplace_sub",
          DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.inplace_sub(lhs, inplace_ids, rhs)
@@ -1127,7 +1127,7 @@ def inplace_update(lhs, inplace_ids, rhs):
     wrapped_tensor : computes lhs[inplace_ids, :] = rhs; return lhs.
     """
     warnings.warn(
-        "te.lang.cce.inplace_update is expired, please replace it with tbe.dsl.inplace_update",
+        "te.lang.cce.inplace_update is deprecated, please replace it with tbe.dsl.inplace_update",
          DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.inplace_update(lhs, inplace_ids, rhs)
@@ -1149,7 +1149,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     :ceil_mode : caffe round_mode params, 0:CEIL(default), 1:FLOOR
     :return: pooling result
     """
-    warnings.warn("te.lang.cce.pooling2d is expired, please replace it with tbe.dsl.pooling2d",
+    warnings.warn("te.lang.cce.pooling2d is deprecated, please replace it with tbe.dsl.pooling2d",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.pooling2d(tensor_in, window, stride, pooling_mode,
@@ -1172,7 +1172,7 @@ def pooling3d(tensor_in, window, stride, padding_mode="SAME",
     :ceil_mode : caffe round_mode params, 0:CEIL(default), 1:FLOOR
     :return: pooling result
     """
-    warnings.warn("te.lang.cce.pooling3d is expired, please replace it with tbe.dsl.pooling3d",
+    warnings.warn("te.lang.cce.pooling3d is deprecated, please replace it with tbe.dsl.pooling3d",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.pooling3d(tensor_in, window, stride, padding_mode,
@@ -1199,7 +1199,7 @@ def max_pooling3d_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
     ceil_mode: reserved
     """
     warnings.warn(
-        "te.lang.cce.max_pooling3d_grad_grad is expired, please replace it with tbe.dsl.max_pooling3d_grad_grad",
+        "te.lang.cce.max_pooling3d_grad_grad is deprecated, please replace it with tbe.dsl.max_pooling3d_grad_grad",
          DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.max_pooling3d_grad_grad(orig_input,
@@ -1218,7 +1218,7 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                             data_format="NDHWC",
                             padding="SAME"):
     warnings.warn(
-        "pooling3d_max_grad_grad is expired, please replace it with max_pooling3d_grad_grad",
+        "pooling3d_max_grad_grad is deprecated, please replace it with max_pooling3d_grad_grad",
         DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.max_pooling3d_grad_grad(orig_input,
@@ -1247,7 +1247,7 @@ def auto_schedule(outs, option=None):
         The computation schedule for the op.
     """
     warnings.warn(
-        "te.lang.cce.auto_schedule is expired, please replace it with tbe.dsl.auto_schedule",
+        "te.lang.cce.auto_schedule is deprecated, please replace it with tbe.dsl.auto_schedule",
          DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.auto_schedule(outs, option)
@@ -1276,7 +1276,7 @@ def cce_build_code(sch, config_map=None):
     -------
     None
     """
-    warnings.warn("te.lang.cce.cce_build_code is expired, please replace it with tbe.dsl.build",
+    warnings.warn("te.lang.cce.cce_build_code is deprecated, please replace it with tbe.dsl.build",
                 DeprecationWarning, stacklevel = STACKLEVEL_FOR_DSL_NO_AUTOCAST)
     import tbe.dsl
     return tbe.dsl.build(sch, config_map)

@@ -56,6 +56,6 @@ def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
     """
     factory method of binary elewise operations
     """
-    warnings.warn("__binary_elewise_op is expired", DeprecationWarning)
+    warnings.warn("__binary_elewise_op is deprecated", DeprecationWarning)
     from tbe.dsl.compute.math import __binary_elewise_op
     return __binary_elewise_op(tensor_l, tensor_r, op_name, args)

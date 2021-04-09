@@ -814,7 +814,7 @@ def shape_to_list(shape):
     """
     import warnings
     warnings.warn(
-        "te.lang.cce.te_compute.shape_to_list is expired, please replace it with tbe.common.utils.shape_to_list", 
+        "te.lang.cce.te_compute.shape_to_list is deprecated, please replace it with tbe.common.utils.shape_to_list", 
         DeprecationWarning)
     import tbe.common.utils
     return tbe.common.utils.shape_to_list(shape)
