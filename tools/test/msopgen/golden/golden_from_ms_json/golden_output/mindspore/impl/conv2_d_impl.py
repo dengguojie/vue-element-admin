@@ -21,6 +21,9 @@ conv2_d_op_info = TBERegOp("Conv2D") \
     .binfile_name("conv2_d.so") \
     .compute_cost(10) \
     .kernel_name("conv2_d_impl") \
+    .attr("strides", "required", "listInt", "all")\
+    .attr("pads", "required", "listInt", "all")\
+    .attr("dilations", "optional", "listInt", "all")\
     .input(0, "x", False, "required", "all")\
     .input(0, "filter", False, "required", "all")\
     .output(0, "y", False, "required", "all")\

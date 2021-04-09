@@ -119,7 +119,8 @@ class DataGenerator:
             data = (np.exp(data_pool) - np.exp(-data_pool)) / \
                    (np.exp(data_pool) + np.exp(-data_pool))
         else:
-            utils.print_error_log('The distribution(%s) is invalid.')
+            utils.print_error_log('The distribution(%s) is invalid.' %
+                                  distribution)
             raise utils.OpTestGenException(
                 utils.OP_TEST_GEN_WRITE_FILE_ERROR)
         if real_dtype == np.bool:

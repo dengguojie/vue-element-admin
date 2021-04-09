@@ -1,0 +1,11 @@
+{
+    "Placeholder": {
+        "ori_shape": [
+            1,
+            224,
+            224,
+            3
+        ],
+        "new_shape": []
+    }
+}
