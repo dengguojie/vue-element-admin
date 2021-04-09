@@ -828,6 +828,8 @@ class Conv3dBackpropFilter:
             do coordinate calculation
 
             """
+            pad_front = self.pad[0]
+            fmap_depth = self.shape_list['fmap_6hd'][1]
             fmap_width = self.shape_list['fmap_6hd'][4]
             fmap_channel_1 = self.shape_list['fmap_6hd'][2]
             grads_depth = self.shape_list['grads_6hd'][1]
@@ -839,9 +841,12 @@ class Conv3dBackpropFilter:
             fmap_height_index = (hw_mad_indices // fmap_width)
             fmap_width_index = (hw_mad_indices % fmap_width)
             fmap_c0_index = fmap_c0_indices
-            return fmap(batch_size_index, fmap_depth_index,
-                        fmap_channel_1_index, fmap_height_index,
-                        fmap_width_index, fmap_c0_index)
+            return tvm.select(
+                tvm.all(fmap_depth_index >= pad_front,
+                        fmap_depth_index < pad_front + fmap_depth),
+                fmap(batch_size_index, fmap_depth_index - pad_front,
+                     fmap_channel_1_index, fmap_height_index,
+                     fmap_width_index, fmap_c0_index))
 
         return tvm.compute(
             fmap_shape_matrix,

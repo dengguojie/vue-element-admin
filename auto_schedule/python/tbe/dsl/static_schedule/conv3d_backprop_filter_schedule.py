@@ -386,7 +386,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     tiling["AL1_shape"] = tiling["AL1_shape"] + [1]
                 # nparts K1 in L1, nparts M1 in L1
                 grads_l1_tiling_nparts = [
-                    compute_util.int_ceil_div(hw_pad_1 // block_dim_hw,
+                    compute_util.int_ceil_div(
+                        compute_util.int_ceil_div(hw_pad_1, block_dim_hw),
                         (tiling["AL1_shape"][0] // _CUBE_DIM)),
                     dw_tiling_nparts[1] // tiling["AL1_shape"][1]
                 ]
@@ -398,7 +399,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     tiling["BL1_shape"] = tiling["BL1_shape"] + [1]  # tiling fkk=1
                 # DDR to L1 [nparts K1, nparts N1]
                 fmap_l1_tiling_nparts = [
-                    compute_util.int_ceil_div(hw_pad_1 // block_dim_hw,
+                    compute_util.int_ceil_div(
+                        compute_util.int_ceil_div(hw_pad_1, block_dim_hw),
                     (tiling["BL1_shape"][0] // _CUBE_DIM)),
                     dw_tiling_nparts[0] // tiling["BL1_shape"][1]
                 ]
@@ -418,7 +420,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             elif tiling["BL0_matrix"]:
                 dw_k = tiling["BL0_matrix"][0]
             else:  # both fully loaded
-                dw_k = hw_pad_1 // block_dim_hw
+                dw_k = compute_util.int_ceil_div(hw_pad_1, block_dim_hw)
 
             tiling_patrs_dict = dict()
             tiling_patrs_dict["dw_tiling_factor"] = dw_tiling_factor
@@ -569,6 +571,9 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 batch_do_axis = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
                     batch_dim_npart) * batch_dim_factor + batch_insn_o
+                batch_do_axis_outer = (
+                    (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
+                    batch_dim_npart) * batch_dim_factor
 
                 dk_c1_axis = (
                     (block % (block_dim_cin)) *
@@ -597,8 +602,18 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                         tvm.all((batch_do_axis % depth_grads - 1) * stride_depth +
                                 dk_c1_axis // c1_fmap_info < pad_front,
                                 axis_k_reduce_for_mad <= 0,
-                                batch_do_axis % batch_dim_factor < depth_grads),
-                        batch_insn_o + axis_k_reduce_for_mad <= 0)
+                                batch_do_axis % batch_dim_factor < depth_grads,
+                                batch_do_axis // depth_grads == batch_do_axis_outer // depth_grads),
+                        batch_insn_o + axis_k_reduce_for_mad <= 0,
+                        tvm.all((batch_do_axis_outer % depth_grads) * stride_depth +
+                                dk_c1_axis // c1_fmap_info >= pad_front + depth_fmap,
+                                (batch_do_axis % depth_grads) * stride_depth +
+                                dk_c1_axis // c1_fmap_info >= pad_front,
+                                (batch_do_axis - 1) % depth_grads * stride_depth +
+                                dk_c1_axis // c1_fmap_info >= pad_front + depth_fmap,
+                                batch_insn_o < depth_grads,
+                                axis_k_reduce_for_mad <= 0),
+                    )
                 }
 
             if self.dynamic_mode and not load2d_flag:
@@ -649,7 +664,10 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                                'set_fmatrix', setfmatrix_dict)
                     sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[1], 'im2col')
             else:
-                sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0], 'dma_copy')
+                if self.dynamic_mode and (pad_front != 0 or pad_back != 0):
+                    sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[2], 'dma_copy')
+                else:
+                    sch[fmap_matrix].emit_insn(fmap_matrix.op.axis[0], 'dma_copy')
                 sch[fmap_fractal].emit_insn(fmap_fractal.op.axis[0],
                                             'dma_copy')
 
@@ -659,19 +677,40 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
 
             # add condition for pad of D dimension
             if pad_front != 0 or pad_back != 0:
+                batch_insn_o_size1 = tvm.select((block.var // block_dim_cout // block_dim_cin // block_dim_g %
+                    batch_dim_npart) == (batch_dim_npart - 1),
+                    (batch_grads * depth_grads - (batch_dim_npart - 1) * batch_insn_o_size),
+                    batch_insn_o_size)
+                mid = tvm.select(tvm.floordiv(batch_insn_o_size1, 3) >= 1,
+                    tvm.floordiv(batch_insn_o_size1, 2),
+                    batch_insn_o_size1 - 1)
                 ddr_condition_left = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
-                    block_dim_batch) * compute_util.int_ceil_div(batch_fmap * depth_grads,
-                                        block_dim_batch) + batch_insn_o_size - 1
+                    batch_dim_npart) * batch_dim_factor + batch_insn_o_size1 - 1
+                ddr_condition_mid = (
+                    (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
+                    batch_dim_npart) * batch_dim_factor + mid
                 ddr_condition_right = (
                     (block.var) // block_dim_cout // block_dim_cin // block_dim_g %
-                    block_dim_batch) * compute_util.int_ceil_div(batch_fmap * depth_grads,
-                                        block_dim_batch)
+                    batch_dim_npart) * batch_dim_factor
+
                 sch[dw_ddr].set_store_predicate(
-                    tvm.all((ddr_condition_left % depth_grads) * stride_depth +
-                            dk_c1_axis // c1_fmap_info >= pad_front,
-                            (ddr_condition_right % depth_grads) * stride_depth +
-                            dk_c1_axis // c1_fmap_info < pad_front + depth_fmap))
+                    tvm.any(tvm.all(batch_insn_o_size1 > depth_grads,
+                                     tvm.floordiv(dilation_height, 1) == 1,
+                                     tvm.floordiv(dilation_width, 1) == 1),
+                            tvm.all(tvm.any((ddr_condition_left % depth_grads) * stride_depth +
+                                             dk_c1_axis // c1_fmap_info >= pad_front,
+                                             (ddr_condition_right % depth_grads) * stride_depth +
+                                             dk_c1_axis // c1_fmap_info >= pad_front,
+                                             (ddr_condition_mid % depth_grads) * stride_depth +
+                                             dk_c1_axis // c1_fmap_info >= pad_front),
+                                    tvm.any((ddr_condition_right % depth_grads) * stride_depth +
+                                             dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
+                                             (ddr_condition_left % depth_grads) * stride_depth +
+                                             dk_c1_axis // c1_fmap_info < pad_front + depth_fmap,
+                                             (ddr_condition_mid % depth_grads) * stride_depth +
+                                             dk_c1_axis // c1_fmap_info < pad_front + depth_fmap)))
+                )
 
             # move dw form UB to ddr
             sch[dw_ddr].emit_insn(c_fmap_2_ub_insn, 'dma_copy')
@@ -861,17 +900,11 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
             block_dim_hw = 1
 
         block_dim_batch = tiling.get("block_dim")[0]
-        factor_var = tvm.var("factor_var")
         if isinstance(batch_fmap, Var) or isinstance(depth_fmap, Var):
             block_dim_batch = tvm.min(block_dim_batch, batch_num)
             batch_dim_factor = compute_util.int_ceil_div(batch_num, block_dim_batch)
             batch_dim_npart = compute_util.int_ceil_div(batch_num, batch_dim_factor)
-            sch.set_var_value(factor_var,
-                tvm.select(tvm.any(tvm.floormod(depth_grads, batch_dim_factor) == 0,
-                                   tvm.floormod(batch_dim_factor, depth_grads) == 0),
-                           batch_dim_npart,
-                           batch_fmap))
-            block_dim_batch = factor_var
+            block_dim_batch = batch_dim_npart
 
         block_dim_cout = tiling.get("block_dim")[2]
         block_dim_cin = tiling.get("block_dim")[1]
@@ -1111,7 +1144,7 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                hw_mad_1_mad_at, batch_insn, fkk_mad_insn,
                                lc_mad_insn, sch[dw_cc].op.axis[4],
                                hw_mad_1_mad_insn, k_0)
-            
+
             return (al1_at_axis, bl1_at_axis, hw_mad_1_mad_at, batch_insn_o,
                     hw_mad_1_l1_out_at, hw_mad_1_l1_in_at, batch_insn,
                     axis_k_reduce_for_mad, batch_insn_o_size)
@@ -1285,7 +1318,8 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                     2. int for dynamic_batch
                 """
 
-                if self.dynamic_mode != _DYNAMIC_BATCH:
+                if (self.dynamic_mode & _DYNAMIC_HEIGHT != 0 or
+                    self.dynamic_mode & _DYNAMIC_WIDTH != 0):
                     # dynamic_hw returns exp
                     # generally fix shape:
                     # 1. kbl1 < wo: ho = 1 if wo % kbl1 == 0 else ho = 2
@@ -1307,7 +1341,9 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                                                     width_grads) == 0),
                                    0,
                                    tvm.select(
-                                       tvm.floormod(bl1_k*2, width_grads) == 0,
+                                       tvm.all(tvm.floormod(bl1_k*2, width_grads) == 0,
+                                               tvm.floormod(hw_single_core_factor,
+                                                    width_grads) == 0),
                                        1,
                                        _LOOSE_LINE_CONDITION)))
 
@@ -1392,28 +1428,25 @@ class CceConv3dBackpropFilterOp(object):  # pylint: disable=too-few-public-metho
                 else:
                     # hw splited one time before BL1 attach
                     axis_k_var = hw_mad_1_l1_out_at.var * bl1_k
-                
+
                 if self.dynamic_mode == _DYNAMIC_BATCH:
                     # multi_core offset
                     multi_core_offset = tvm.floordiv(
                                             tvm.floordiv(fused_multi_core,
-                                                         block_dim_cout * 
+                                                         block_dim_cout *
                                                          block_dim_cin),
                                             tvm.floordiv(batch_fmap * depth_grads - 1,
-                                                         compute_util.int_ceil_div(batch_fmap * depth_grads,
-                                                                   block_dim_batch)) +
+                                                         batch_dim_factor) +
                                             1) * hw_single_core_factor
 
                     if tile_mode == "tile_h_dw_cc":
                         ho_min = tvm.floordiv(multi_core_offset + axis_k_var,
                                               width_grads)
-                    
                     elif tile_mode == "tile_h_dw_ddr":
                         ho_min = tvm.floordiv(multi_core_offset, width_grads)
-
                 else:
                     # multi_core offset
-                    block_div = (block_dim_batch * block_dim_cout * block_dim_cin)
+                    block_div = (batch_dim_npart * block_dim_cout * block_dim_cin)
                     multi_core_offset = fused_multi_core // block_div * \
                                       hw_single_core_factor
 

@@ -835,7 +835,8 @@ class TilingSelection:
                 if self.op.op_type in ("conv2d", "conv2d_bp_input", "conv2d_bp_filter") \
                     and len(cut_range) == NHW_RANGE_LEN:
                     seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5]])
-                elif self.op.op_type in ("conv3d_backprop_input", "convolution_3d") and len(cut_range) == NDHW_RANGE_LEN:
+                elif (self.op.op_type in ("conv3d_backprop_input", "convolution_3d", "conv3d_bp_filter") and
+                      len(cut_range) == NDHW_RANGE_LEN):
                     seed_shape = tuple([cut_range[0], cut_range[3], cut_range[5], cut_range[7]])
                 else:
                     seed_shape = tuple(cut_range[1::2])
