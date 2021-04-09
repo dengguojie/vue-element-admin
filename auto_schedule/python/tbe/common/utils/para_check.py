@@ -32,6 +32,7 @@ MAX_UNKNOWN_SHAPE_NUM = 2 ** 31 - 1
 DEFAULT_MIN_SHAPE_DIM = 1
 DEFAULT_MAX_SHAPE_DIM = 8
 DEFAULT_MAX_SHAPE_NUM = 200000000
+DYNAMIC_SHAPE_FLAG = -1
 
 RANK_ZERO = 0
 RANK_LIMIT = 8
@@ -189,8 +190,9 @@ def check_op_params(*type_args, **type_kwargs):
             error_info['key'] = OpParamInfoKey.ORI_FORMAT.value
         elif OpParamInfoKey.D_TYPE.value not in op_param.keys():
             error_info['key'] = OpParamInfoKey.D_TYPE.value
-        elif operation.in_dynamic():
-            if OpParamInfoKey.RANGE.value not in op_param.keys():
+        elif operation.in_dynamic() and OpParamInfoKey.RANGE.value not in op_param.keys() :
+            shape = op_param.get(OpParamInfoKey.ORI_SHAPE.value)
+            if isinstance(shape, (tuple, list)) and DYNAMIC_SHAPE_FLAG in shape:
                 error_info['key'] = OpParamInfoKey.RANGE.value
 
         if "key" in error_info.keys():
@@ -205,14 +207,14 @@ def check_op_params(*type_args, **type_kwargs):
 
     def _check_input_output_dict(op_param, param_name, op_name=OP_NAME):
         _check_input_output_key(op_param, param_name, op_name)
-        if operation.in_dynamic():
-            _check_range(op_param[OpParamInfoKey.SHAPE.value],
-                         op_param[OpParamInfoKey.RANGE.value],
-                         param_name=param_name)
         check_shape(op_param[OpParamInfoKey.SHAPE.value],
                     param_name=param_name)
         check_shape(op_param[OpParamInfoKey.ORI_SHAPE.value],
                     param_name=param_name)
+        if operation.in_dynamic() and DYNAMIC_SHAPE_FLAG in op_param.get(OpParamInfoKey.ORI_SHAPE.value):
+            _check_range(op_param[OpParamInfoKey.SHAPE.value],
+                         op_param[OpParamInfoKey.RANGE.value],
+                         param_name=param_name)
 
         if op_param[OpParamInfoKey.FORMAT.value] not in ALL_FORMAT_LIST:
             error_info = {
