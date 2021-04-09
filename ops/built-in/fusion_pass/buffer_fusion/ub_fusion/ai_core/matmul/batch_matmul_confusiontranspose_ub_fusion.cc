@@ -72,7 +72,7 @@ Status BatchMatmulConfusiontransposeUbFusion::GetFusionNodes(const BufferFusionM
 
   for (auto matmulNode : matmulNodes) {
     for (auto matmulControlNode : matmulNode->GetOutControlNodes()) {
-      if (matmulControlNode->GetType() != "ConfusionTransposeD") {
+      if (matmulControlNode->GetType() != "ConfusionTransposeD" && matmulControlNode->GetType() != "DropOutDoMaskV3D") {
         continue;
       }
       FUSION_PASS_CHECK(

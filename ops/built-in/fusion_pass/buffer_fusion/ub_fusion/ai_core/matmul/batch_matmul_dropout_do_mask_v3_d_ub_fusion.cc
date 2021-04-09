@@ -74,12 +74,35 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "DropOutDoMaskV3D node is not matched."),
                     return SUCCESS);
 
+  // adjust control-edges to destroy the loop in BERT
+  // "dropout_do_mask -> batch_matmul1 (control-node) -> fusion_transpose
+  // -> batch_matmul2 (control-node) -> dropout_do_mask"
   for (const auto& batch_matmul_node : batch_matmul_nodes) {
     if (batch_matmul_node->GetType() != "BatchMatMul") {
       OP_LOGD(FUSED_OP_TYPE.c_str(),
               "The op_type of node [%s] should be BatchMatMul, but actually is [%s].",
               batch_matmul_node->GetName().c_str(), batch_matmul_node->GetType().c_str());
       return SUCCESS;
+    }
+    for (const auto& batch_matmul_control_node : batch_matmul_node->GetOutControlNodes()) {
+      if (batch_matmul_control_node->GetType() != "ConfusionTransposeD") {
+        continue;
+      }
+      // batch_matmul_control_node is confusion_transpose_node in this situation
+      FUSION_PASS_CHECK(
+        ge::GraphUtils::RemoveEdge(batch_matmul_node->GetOutControlAnchor(),
+          batch_matmul_control_node->GetInControlAnchor()) != SUCCESS,
+        OP_LOGD(FUSED_OP_TYPE.c_str(),
+                "Removing control-edge between BatchMatMul and ConfusionTransposeD is failed."),
+        return FAILED);
+      for (const auto& confusion_transpose_out_node : batch_matmul_control_node->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(
+          ge::GraphUtils::AddEdge(batch_matmul_node->GetOutControlAnchor(),
+            confusion_transpose_out_node->GetInControlAnchor()) != SUCCESS,
+          OP_LOGD(FUSED_OP_TYPE.c_str(),
+                  "Adding control-edge between BatchMatMul and ConfusionTransposeD's output node is failed."),
+          return FAILED);
+      }
     }
   }
   for (const auto& dropout_node : dropout_nodes) {
@@ -88,6 +111,26 @@ Status BatchMatmulDropOutDoMaskV3DFusionPass::GetFusionNodes(const BufferFusionM
               "The op_type of node [%s] should be DropOutDoMaskV3D, but actually is [%s].",
               dropout_node->GetName().c_str(), dropout_node->GetType().c_str());
       return SUCCESS;
+    }
+    for (const auto& dropout_control_node : dropout_node->GetInControlNodes()) {
+      if (dropout_control_node->GetType() != "BatchMatMul") {
+        continue;
+      }
+      // dropout_control_node is batch_matmul_node in this situation
+      FUSION_PASS_CHECK(
+        ge::GraphUtils::RemoveEdge(dropout_control_node->GetOutControlAnchor(),
+          dropout_node->GetInControlAnchor()) != SUCCESS,
+        OP_LOGD(FUSED_OP_TYPE.c_str(),
+                "Removing control-edge between BatchMatMul and DropOutDoMaskV3D is failed."),
+        return FAILED);
+      for (const auto& dropout_out_node : dropout_node->GetOutAllNodes()) {
+        FUSION_PASS_CHECK(
+          ge::GraphUtils::AddEdge(dropout_control_node->GetOutControlAnchor(),
+            dropout_out_node->GetInControlAnchor()) != SUCCESS,
+          OP_LOGD(FUSED_OP_TYPE.c_str(),
+                  "Adding control-edge between BatchMatMul and DropOutDoMaskV3D's output node is failed."),
+          return FAILED);
+      }
     }
   }
 
