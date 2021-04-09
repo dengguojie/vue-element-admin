@@ -26,14 +26,18 @@ Status ResizeBilinearV2GradMappingFn(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDesc tensor_desc_w = op_dsc->GetInputDesc(0);
-  ge::GeTensorDesc tensor_desc_w1 = op_dsc->GetOutputDesc(0);
+  ge::GeTensorDesc tensor_desc_w1 = op_dsc->GetInputDesc(1);
+  ge::GeTensorDesc tensor_desc_w2 = op_dsc->GetOutputDesc(0);
   tensor_desc_w.SetOriginFormat(ge::FORMAT_NHWC);
   tensor_desc_w1.SetOriginFormat(ge::FORMAT_NHWC);
+  tensor_desc_w2.SetOriginFormat(ge::FORMAT_NHWC);
   tensor_desc_w.SetFormat(ge::FORMAT_NHWC);
   tensor_desc_w1.SetFormat(ge::FORMAT_NHWC);
+  tensor_desc_w2.SetFormat(ge::FORMAT_NHWC);
   auto ret = op_dsc->UpdateInputDesc(0, tensor_desc_w);
-  auto ret1 = op_dsc->UpdateOutputDesc(0, tensor_desc_w1);
-  if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS) {
+  auto ret1 = op_dsc->UpdateInputDesc(1, tensor_desc_w1);
+  auto ret2 = op_dsc->UpdateOutputDesc(0, tensor_desc_w2);
+  if (ret != ge::GRAPH_SUCCESS || ret1 != ge::GRAPH_SUCCESS || ret2 != ge::GRAPH_SUCCESS) {
     return FAILED;
   }
 
