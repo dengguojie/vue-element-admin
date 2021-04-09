@@ -24,13 +24,14 @@ from impl.util.platform_adapter import error_manager_vector
 # define a scalar, value = -(2**32 - 1)
 MIN_VAL = -3402823424.0
 
+
 # pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals
 # pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
 def dilation2d_backprop_filter(x,
                                filter,
                                out_backprop,
@@ -146,6 +147,58 @@ def dilation2d_backprop_filter(x,
     return obj.instance
 
 
+def check_supported(x, filter, out_backprop, y, strides, rates, padding_mode="SAME", pads=(0, 0, 0, 0), ceil_mode=False,
+                    data_format="NHWC", kernel_name="dilation2d_backprop_filter"):
+    """
+    verify the types and params of dilation2d_backprop_filter supported by tbe
+    """
+    x_shape = x.get("shape")
+    x_format = x.get("format")
+    filter_shape = filter.get("shape")
+
+    if data_format == "NHWC":
+        stride_h = strides[1]
+        stride_w = strides[2]
+        rate_h = rates[1]
+        rate_w = rates[2]
+    elif data_format == "NCHW":
+        stride_h = strides[2]
+        stride_w = strides[3]
+        rate_h = rates[2]
+        rate_w = rates[3]
+    else:
+        return False
+
+    if x_format == "NHWC":
+        filter_h = filter_shape[0]
+        filter_w = filter_shape[1]
+        x_h = x_shape[1]
+        x_w = x_shape[2]
+    elif x_format == "NCHW":
+        filter_h = filter_shape[1]
+        filter_w = filter_shape[2]
+        x_h = x_shape[2]
+        x_w = x_shape[3]
+    elif x_format == "NC1HWC0":
+        filter_h = filter_shape[2]
+        filter_w = filter_shape[3]
+        x_h = x_shape[2]
+        x_w = x_shape[3]
+    else:
+        return False
+
+    window_h = (filter_h - 1) * rate_h + 1
+    window_w = (filter_w - 1) * rate_w + 1
+
+    if window_w < 1 or window_w > 255 or window_h < 1 or window_h > 255 or window_h * window_w > 512:
+        return False
+    if stride_h < 1 or stride_h > 255 or stride_w < 1 or stride_w > 255:
+        return False
+    if window_w > x_w or window_h > x_h:
+        return False
+    return True
+
+
 def _cal_pads(params):
     """
     calculate pad values
@@ -246,7 +299,7 @@ def _is_immediate(val):
 
 class Dilation2DBase:
     """
-    use to store dilation2d base parameters
+    use to store dilation2d_backprop_filter base parameters
     """
 
     def __init__(self, input_params):
@@ -567,7 +620,7 @@ class Dilation2DBase:
 
 class Dilation2D(Dilation2DBase):
     """
-    use to store dilation2d compute parameters
+    use to store dilation2d_backprop_filter compute parameters
     """
 
     def __init__(self, input_params):
@@ -703,7 +756,7 @@ class Dilation2D(Dilation2DBase):
 
     def dilation_compute(self):
         """
-        dilation2d compute function
+        dilation2d_backprop_filter compute function
         """
         ub_size = (self.ub_size - 4 * 1024) // self.x_dsize
         flag = self.do_tiling(self.out_backprop_shape, ub_size // 2)
@@ -721,7 +774,7 @@ class Dilation2D(Dilation2DBase):
             if flag_1:
                 self.tiling_params["thread_num"] = 1
             else:
-                error_manager_vector.raise_err_specific_reson("dilation2d",
+                error_manager_vector.raise_err_specific_reson("dilation2d_backprop_filter",
                                                               "can not find tiling, filter or rates is too big")
 
         block_num = self.tiling_params["block_num"]
@@ -745,8 +798,6 @@ class Dilation2D(Dilation2DBase):
                     each_cycle.set_as(block_cycle * block_element)
                     offset.set_as((block_idx * block_cycle + block_tail) * block_element)
 
-            ub_loop = each_cycle // ub_num
-            ub_tail = each_cycle % ub_num
             filter_ub = self.prepare_filter()
             if self.tiling_params["ub_index"] == 3:
                 loop = each_cycle // self.out_backprop_w
@@ -755,9 +806,11 @@ class Dilation2D(Dilation2DBase):
                 with self.instance.for_range(0, loop, thread_num=thread_num) as loop_idx:
                     with self.instance.for_range(0, ub_loop) as u_idx:
                         self.do_compute(ub_num, offset + loop_idx * self.out_backprop_w + u_idx * ub_num, filter_ub)
-                    with self.instance.if_scope(ub_tail > 0):
+                    if ub_tail != 0:
                         self.do_compute(ub_tail, offset + loop_idx * self.out_backprop_w + ub_loop * ub_num, filter_ub)
             else:
+                ub_loop = each_cycle // ub_num
+                ub_tail = each_cycle % ub_num
                 with self.instance.for_range(0, ub_loop, thread_num=thread_num) as loop_idx:
                     self.do_compute(ub_num, offset + loop_idx * ub_num, filter_ub)
                 with self.instance.if_scope(ub_tail > 0):
@@ -781,9 +834,6 @@ class Dilation2D(Dilation2DBase):
         """
         move_out_backprop_data
         """
-        burst_len = self.instance.Scalar("int32", name="burst_len")
-        burst_len.set_as(size // self.y_block_size)
-
         if self.need_vconv:
             out_backprop_size = self.tiling_params["ub_size_info"].get("out_backprop")
             out_backprop_fp16 = self.instance.Tensor(self.x_dtype, (out_backprop_size,),

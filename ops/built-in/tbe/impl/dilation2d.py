@@ -140,38 +140,34 @@ def check_supported(x, filter, y, strides, rates, padding_mode="SAME", pads=(0, 
     """
     verify the types and params of dilation2d supported by tbe
     """
-    x_dtype = x.get("dtype").lower()
     x_shape = x.get("shape")
     x_format = x.get("format")
     filter_shape = filter.get("shape")
-    check_list = ["float16"]
 
-    if x_dtype not in check_list:
-        return False
-
-    if x_format == "NHWC":
+    if data_format == "NHWC":
         stride_h = strides[1]
         stride_w = strides[2]
         rate_h = rates[1]
         rate_w = rates[2]
+    elif data_format == "NCHW":
+        stride_h = strides[2]
+        stride_w = strides[3]
+        rate_h = rates[2]
+        rate_w = rates[3]
+    else:
+        return False
+
+    if x_format == "NHWC":
         filter_h = filter_shape[0]
         filter_w = filter_shape[1]
         x_h = x_shape[1]
         x_w = x_shape[2]
     elif x_format == "NCHW":
-        stride_h = strides[2]
-        stride_w = strides[3]
-        rate_h = rates[2]
-        rate_w = rates[3]
         filter_h = filter_shape[1]
         filter_w = filter_shape[2]
         x_h = x_shape[2]
         x_w = x_shape[3]
     elif x_format == "NC1HWC0":
-        stride_h = strides[2]
-        stride_w = strides[3]
-        rate_h = rates[2]
-        rate_w = rates[3]
         filter_h = filter_shape[2]
         filter_w = filter_shape[3]
         x_h = x_shape[2]

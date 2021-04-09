@@ -409,6 +409,7 @@ from .ascend_requant import ascend_requant
 from .ascend_requant_s16 import ascend_requant_s16
 from .dilation2d import dilation2d
 from .dilation2d_backprop_filter import dilation2d_backprop_filter
+from .dilation2d_backprop_input import dilation2d_backprop_input
 from .euclidean_norm_d import euclidean_norm_d
 from .mul_no_nan import mul_no_nan
 from .adds import adds
