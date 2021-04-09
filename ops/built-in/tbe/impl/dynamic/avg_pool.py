@@ -31,6 +31,8 @@ AVG_KERNEL_SIZE = 20 # maximum ksize
 MAX_CUBE_STRIDE = 63 # maximum cube stride
 NONETYPE = type(None)
 
+UNKNOWN_RANK_SHAPE = [-2]
+
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,unused-variable,unnecessary-lambda
@@ -136,109 +138,30 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
     :return: None
     """
     if len(ksize) != 4:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'ksize'
-        error_info['min_value'] = '4'
-        error_info['max_value'] = '4'
-        error_info['real_value'] = len(ksize)
-        raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s] "
-                           "should be in the range of [%s, %s], "
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
-
+        error_manager_cube.raise_err_three_paras("E62304", "avg_pool", "ksize",
+                                                 "4", str(len(ksize)))
     if len(strides) != 4:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'strides'
-        error_info['min_value'] = '4'
-        error_info['max_value'] = '4'
-        error_info['real_value'] = len(strides)
-        raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s] "
-                           "should be in the range of [%s, %s], "
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_cube.raise_err_three_paras("E62304", "avg_pool", "strides",
+                                                 "4", str(len(strides)))
 
-    ksize_c = ksize[3] if data_format in ("NHWC",) else ksize[1]
-    strides_c = strides[3] if data_format in ("NHWC",) else strides[1]
-    if ksize[0] != 1 or (ksize_c != 1):
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_000
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = ",".join(("ksize[1]", "ksize[3]"))
-        error_info['expected_value'] = '1'
-        error_info['real_value'] = ",".join((str(ksize[1]), str(ksize[3])))
-        raise RuntimeError("In op[%s], the parameter[%s] should be [%s], "
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['expected_value'],
-                            error_info['real_value']))
-
-
-    if strides[0] != 1 or strides_c != 1:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_000
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = ",".join(("strides[1]", "strodes[3]"))
-        error_info['expected_value'] = '1'
-        error_info['real_value'] = ",".join((str(strides[1]), str(strides[3])))
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], "
-                           "but actually is [%s]." % (error_info['op_name'],
-                                                      error_info['param_name'],
-                                                      error_info['expected_value'],
-                                                      error_info['real_value']))
-
+    dim_n, dim_c, dim_h, dim_w = 0, 1, 2, 3
+    if data_format == "NHWC":
+        dim_n, dim_h, dim_w, dim_c = 0, 1, 2, 3
+    if ksize[dim_n] != 1 or ksize[dim_c] != 1:
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "(ksize_n, ksize_c)",
+                                                 "(1, 1)", str((ksize[dim_n], ksize[dim_c])))
+    if strides[dim_n] != 1 or strides[dim_c] != 1:
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "(stride_n, stride_c)",
+                                                 "(1, 1)", str((strides[dim_n], strides[dim_c])))
     if padding not in ("SAME", "VALID"):
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_015
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'padding'
-        error_info['expected_value_list'] = ",".join(("SAME", "VALID"))
-        error_info['real_value'] = padding
-        raise RuntimeError(error_info, "In op[%s], parameter[%s] should be one of [%s], "
-                            "but actually is [%s]." % (error_info['op_name'],
-                                                       error_info['param_name'],
-                                                       error_info['expected_value_list'],
-                                                       error_info['real_value']))
-
-    if data_format not in("NCHW", "NHWC", "NC1HWC0"):
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_015
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'x'
-        error_info['excepted_format_list'] = ",".join(("NC1HWC0",
-                                                       "NCHW", "NHWC"))
-        error_info['format'] = data_format
-        raise RuntimeError(error_info, "In op[%s], the format[%s] of input "
-                                       "should be one of [%s], "
-                                       "but actuall"
-                                       "y is [%s]."
-                           % (error_info['op_name'],
-                              error_info['param_name'],
-                              error_info['excepted_format_list'],
-                              error_info['format']))
-
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "padding",
+                                                 "SAME/VALID", padding)
+    if data_format not in("NCHW", "NHWC"):
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "data_format",
+                                                 "NCHW/NHWC", data_format)
     if offset_x != 0:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_000
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'offset_x'
-        error_info['expected_value'] = '0'
-        error_info['real_value'] = str(offset_x)
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s] should be [%s], "
-                                       "but actually is [%s]."
-                           % (error_info['op_name'],
-                              error_info['param_name'],
-                              error_info['expected_value'],
-                              error_info['real_value']))
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "offset_x",
+                                                 "0", str(offset_x))
 
 
 def _avg_pool_check_rule(input_shape, input_dtype, output_dtype,
@@ -268,28 +191,26 @@ def _check_filter_window(fmap, filter, window, stride):
     filter_shape = filter.get("ori_shape")
     filter_format = filter.get("ori_format")
     if stride[0] > MAX_CUBE_STRIDE or stride[1] > MAX_CUBE_STRIDE:
-        raise RuntimeError("In op[%s], the [%s] should less than [%s] when filter is None"
-                           % ('avgpool', 'stride', str(MAX_CUBE_STRIDE)))
+        error_manager_cube.raise_err_specific_user("avg_pool",
+                                                   "stride_h/stride_w should be less than " + \
+                                                   str(MAX_CUBE_STRIDE) + " when filter is not None.")
     if filter_format not in ("NCHW", "NHWC"):
-        raise RuntimeError("In op[%s], the ori_format of filter "
-                                       "should be [%s] or [%s]"
-                           % ('avgpool', 'NCHW', 'NHWC'))
+        error_manager_cube.raise_err_specific_user("avg_pool",
+                                                   "ori_format of filter should be 'NCHW' or 'NHWC'.")
     h_index = filter_format.index("H")
     w_index = filter_format.index("W")
     c_index = filter_format.index("C")
     n_index = filter_format.index("N")
     if filter_shape[h_index] != window[0] or filter_shape[w_index] != window[1]:
-        raise RuntimeError("In op[%s], the h_shape of filter "
-                                       "should be equal with [%s],"
-                           % ('avgpool', 'ksize'))
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "(filter_h, filter_w)",
+                                                 str((window[0], window[1])),
+                                                 str((filter_shape[h_index], filter_shape[w_index])))
     if filter_shape[c_index] != 1:
-        raise RuntimeError("In op[%s], the c_shape of filter "
-                                       "should be [%s],"
-                           % ('avgpool', '1'))
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "filter_c",
+                                                 "1", str(filter_shape[c_index]))
     if filter_shape[n_index] != fmap_shape[fmap.get("ori_format").index("C")]:
-        raise RuntimeError("In op[%s], the N shape of filter "
-                                       "should be equal with C shape of fmap,"
-                           % ('avgpool'))
+        error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "filter_n",
+                                                 "fmap_c", str(filter_shape[c_index]))
 
 
 @register_operator("AvgPool")
@@ -331,12 +252,10 @@ def avg_pool(x, filter, bias, y, ksize, strides,
 
     # get shape&dtype
     # input_shape only support format NCHW
-    input_shape = x.get("ori_shape")
-    input_dtype = x.get("dtype")
-    input_dtype = input_dtype.lower()
+    input_shape = list(x.get("ori_shape"))
+    input_dtype = x.get("dtype").lower()
     input_format = x.get("ori_format")
-    output_dtype = y.get("dtype")
-    output_dtype = output_dtype.lower()
+    output_dtype = y.get("dtype").lower()
     output_format = y.get("ori_format")
     if not output_format:
         y["ori_format"] = input_format
@@ -344,28 +263,35 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         error_manager_cube.raise_err_one_para("E62006", "avg_pool",
                                               "output_format should be 'NCHW or 'NHWC'")
 
+    if list(input_shape) == UNKNOWN_RANK_SHAPE:
+        input_shape = [-1, -1, -1, -1]
+        x["range"] = [(1, None)] * 4
+
     _avg_pool_check_rule(input_shape, input_dtype, output_dtype, ksize, strides, padding,
                          data_format, offset_x, kernel_name)
-    if input_format == "NCHW":
-        input_c, input_h, input_w = input_shape[1:4]
-        stride = [-1, -1, strides[2], strides[3]]
+    if data_format == "NCHW":
+        stride = [strides[2], strides[3]]
         window = [ksize[2], ksize[3]]
-    elif input_format == "NHWC":
-        input_h, input_w, input_c = input_shape[1:4]
-        stride = [-1, strides[1], strides[2], -1]
+    elif data_format == "NHWC":
+        stride = [strides[1], strides[2]]
         window = [ksize[1], ksize[2]]
-    else:
-        raise RuntimeError("Unsupported input format!")
-
+    if input_format != data_format:
+        error_manager_cube.raise_err_specific_user("avg_pool",
+                                                   "ori_format of fmap should be equal with data_format.")
     if bias is None and filter is not None:
+        dim_c = input_format.index("C")
+        group = filter.get("ori_shape")[0]
+        if input_shape[dim_c] == -1:
+            input_shape[dim_c] = group
+            x["ori_shape"] = input_shape
         dilations = (1, 1, 1, 1)
         _check_filter_window(x, filter, window, stride)
 
         offset_w = None
         pad = padding
 
-        conv2d(x, filter, bias, offset_w, y, stride, pad, dilations,
-               groups=input_c, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
+        conv2d(x, filter, bias, offset_w, y, strides, pad, dilations,
+               groups=group, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
     else:
         if filter is None:
             error_manager_cube.raise_err_input_params_not_expected("dynamic_avg_pool", "filter", "dict",
