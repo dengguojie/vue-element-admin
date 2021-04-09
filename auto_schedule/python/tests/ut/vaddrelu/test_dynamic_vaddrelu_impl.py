@@ -115,7 +115,7 @@ def calc_expect_func(x, y, z):
 
 
 ut_case.add_precision_case(
-    "all", {
+    ["Ascend310", "Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),

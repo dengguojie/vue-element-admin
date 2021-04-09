@@ -88,8 +88,8 @@ case2 = {
         True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 
 
 def calc_expect_func(x1, x2, x3, y):
@@ -102,7 +102,7 @@ def calc_expect_func(x1, x2, x3, y):
 
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),
@@ -123,14 +123,14 @@ ut_case.add_precision_case(
                 "dtype": "float16",
                 "range": [(2, 2), (1, 100)],
                 "run_shape": (2, 10),
-                "param_type": "output"
+                "param_type": "input"
             },
             {
                 "shape": (2, -1),
                 "dtype": "float16",
                 "range": [(2, 2), (1, 100)],
                 "run_shape": (2, 10),
-                "param_type": "input"
+                "param_type": "output"
             },
         ],
         "calc_expect_func":
@@ -142,8 +142,15 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910A"], {
         "params": [
+            {
+                "shape": (2, -1),
+                "dtype": "float32",
+                "range": [(2, 2), (1, 100)],
+                "run_shape": (2, 10),
+                "param_type": "input"
+            },
             {
                 "shape": (2, -1),
                 "dtype": "float32",
@@ -165,13 +172,6 @@ ut_case.add_precision_case(
                 "run_shape": (2, 10),
                 "param_type": "output"
             },
-            {
-                "shape": (2, -1),
-                "dtype": "float32",
-                "range": [(2, 2), (1, 100)],
-                "run_shape": (2, 10),
-                "param_type": "input"
-            },
         ],
         "calc_expect_func":
             calc_expect_func,
@@ -180,3 +180,4 @@ ut_case.add_precision_case(
         "case_name":
             "test_dync_vmadd_prec_02"
     })
+

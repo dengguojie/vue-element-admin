@@ -72,8 +72,8 @@ case2 = {
 }
 
 
-ut_case.add_case(["Ascend910", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
 
 
 def calc_expect_func(x, y):
@@ -83,13 +83,14 @@ def calc_expect_func(x, y):
 
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (-1, -1),
                 "dtype": "float32",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (1, 10),
+                "value_range":[0.5, 1],
                 "param_type": "input"
             },
             {
@@ -106,14 +107,16 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),
                 "dtype": "float16",
                 "range": [(1, 200), (1, 100)],
                 "run_shape": (2, 10),
+                "value_range":[0.5, 1],
                 "param_type": "input"
+                
             },
             {
                 "shape": (2, -1),

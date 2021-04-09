@@ -88,9 +88,9 @@ case3 = {
         True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310"], case3)
 
 
 def calc_expect_func(x, y, value):
@@ -100,7 +100,7 @@ def calc_expect_func(x, y, value):
 
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend310", "Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),
@@ -114,7 +114,7 @@ ut_case.add_precision_case(
                 "dtype": "float16",
                 "range": [(2, 2), (1, 100)],
                 "run_shape": (2, 10),
-                "param_type": "input"
+                "param_type": "output"
             }, 2.0],
         "calc_expect_func":
             calc_expect_func,
@@ -126,7 +126,7 @@ ut_case.add_precision_case(
 
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend310", "Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),
@@ -140,7 +140,7 @@ ut_case.add_precision_case(
                 "dtype": "float32",
                 "range": [(2, 2), (1, 100)],
                 "run_shape": (2, 10),
-                "param_type": "input"
+                "param_type": "output"
             }, 3.0],
         "calc_expect_func":
             calc_expect_func,
@@ -151,7 +151,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend310", "Ascend910A"], {
         "params": [
             {
                 "shape": (2, -1),
@@ -165,7 +165,7 @@ ut_case.add_precision_case(
                 "dtype": "int32",
                 "range": [(2, 2), (1, 100)],
                 "run_shape": (2, 10),
-                "param_type": "input"
+                "param_type": "output"
             }, 3],
         "calc_expect_func":
             calc_expect_func,

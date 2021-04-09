@@ -268,9 +268,9 @@ case4 = {
 }
 
 ut_case.add_case("all", case1)
-ut_case.add_case(["Ascend910", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case("all", case3)
-ut_case.add_case(["Ascend910", "Ascend710"], case4)
+ut_case.add_case(["Ascend910A"], case4)
 
 def calc_expect_func(x1, x2, y1, y2, z, operation):
     input_dtype = x1.get("dtype")
@@ -368,7 +368,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (-1, -1),
@@ -444,7 +444,7 @@ ut_case.add_precision_case(
     })
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (-1, -1),

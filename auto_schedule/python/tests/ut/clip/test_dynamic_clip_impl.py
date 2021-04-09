@@ -91,7 +91,7 @@ case3 = {
 
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
-ut_case.add_case(["Ascend910", "Ascend310"], case3)
+ut_case.add_case(["Ascend910A", "Ascend310"], case3)
 
 
 def calc_expect_func(x, y, max_value, min_value):

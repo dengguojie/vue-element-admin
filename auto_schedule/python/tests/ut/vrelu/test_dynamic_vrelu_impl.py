@@ -37,13 +37,13 @@ ut_case = OpUT("vrelu", "vrelu.test_dynamic_vrelu_impl", "dsl_dynamic_vrelu")
 
 case1 = {
     "params": [{
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
+        "shape": (2, -1),
+        "dtype": "float16",
+        "range": [(2, 2), (1, None)]
     }, {
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
+        "shape": (2, -1),
+        "dtype": "float16",
+        "range": [(2, 2), (1, None)]
     }],
     "case_name":
         "test_dync_vrelu_1",
@@ -53,27 +53,7 @@ case1 = {
         True
 }
 
-case2 = {
-    "params": [{
-        "shape": (2, -1),
-        "dtype": "float16",
-        "range": [(2, 2), (1, None)]
-    }, {
-        "shape": (2, -1),
-        "dtype": "float16",
-        "range": [(2, 2), (1, None)]
-    }],
-    "case_name":
-        "test_dync_vrelu_2",
-    "expect":
-        "success",
-    "support_expect":
-        True
-}
-
-
-ut_case.add_case(["Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 
 
 def calc_expect_func(x, y):

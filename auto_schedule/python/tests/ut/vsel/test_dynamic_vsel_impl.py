@@ -114,32 +114,6 @@ case1 = {
 case2 = {
     "params": [{
         "shape": (-1, -1),
-        "dtype": "uint1",
-        "range": [(1, None), (1, None)]
-    }, {
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
-    }, {
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
-    }, {
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
-    }],
-    "case_name":
-        "test_dync_vsel_2",
-    "expect":
-        "success",
-    "support_expect":
-        True
-}
-
-case3 = {
-    "params": [{
-        "shape": (-1, -1),
         "dtype": "bool",
         "range": [(1, None), (1, None)]
     },
@@ -154,61 +128,16 @@ case3 = {
         "range": [(1, None), (1, None)]
     }],
     "case_name":
-        "test_dync_vsel_3",
+        "test_dync_vsel_2",
     "expect":
         "success",
     "support_expect":
         True
 }
 
-case4 = {
-    "params": [{
-        "shape": (-1, -1),
-        "dtype": "uint1",
-        "range": [(1, None), (1, None)]
-    }, {
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
-    }, 
-    0.5,
-    {
-        "shape": (-1, -1),
-        "dtype": "float32",
-        "range": [(1, None), (1, None)]
-    }],
-    "case_name":
-        "test_dync_vsel_4",
-    "expect":
-        "success",
-    "support_expect":
-        True
-}
-
-case5 = {
-    "params": [{
-        "shape": (-1, -1),
-        "dtype": "bool",
-        "range": [(1, None), (1, None)]
-    }, 0.5, 2.0, 
-    {
-        "shape": (-1, -1),
-        "dtype": "float16",
-        "range": [(1, None), (1, None)]
-    }],
-    "case_name":
-        "test_dync_vsel_5",
-    "expect":
-        "success",
-    "support_expect":
-        True
-}
 
 ut_case.add_case("all", case1)
-ut_case.add_case(["Ascend710"], case2)
-ut_case.add_case("all", case3)
-ut_case.add_case(["Ascend710"], case4)
-ut_case.add_case(["Ascend710"], case5)
+ut_case.add_case("all", case2)
 
 
 def calc_expect_func(condition, x, y, z):
@@ -257,7 +186,7 @@ def calc_expect_func(condition, x, y, z):
         return np.array(output).reshape(condition_run_shape)
 
 ut_case.add_precision_case(
-    ["Ascend910", "Ascend710"], {
+    ["Ascend910A"], {
         "params": [
             {
                 "shape": (-1, -1),

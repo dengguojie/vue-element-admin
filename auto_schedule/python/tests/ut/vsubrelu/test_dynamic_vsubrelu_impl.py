@@ -57,54 +57,7 @@ case1 = {
         True
 }
 
-case2 = {
-    "params": [{
-        "shape": (30000, -1),
-        "dtype": "float32",
-        "range": [(30000, 30000), [1, 100]]
-    }, {
-        "shape": (30000, -1),
-        "dtype": "float32",
-        "range": [(30000, 30000), [1, 100]]
-    }, {
-        "shape": (30000, -1),
-        "dtype": "float32",
-        "range": [(30000, 30000), [1, 100]]
-    }],
-    "case_name":
-        "test_dync_vsubrelu_2",
-    "expect":
-        "success",
-    "support_expect":
-        True
-}
-
-case3 = {
-    "params": [{
-        "shape": (-1, 6400),
-        "dtype": "int16",
-        "range": [(1, 256), (6400, 6400)]
-    }, {
-        "shape": (-1, 6400),
-        "dtype": "int16",
-        "range": [(1, 256), (6400, 6400)]
-    }, {
-        "shape": (-1, 6400),
-        "dtype": "int16",
-        "range": [(1, 256), (6400, 6400)]
-    }],
-    "case_name":
-        "test_dync_vsubrelu_3",
-    "expect":
-        "success",
-    "support_expect":
-        True
-}
-
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend710"], case2)
-ut_case.add_case(["Ascend710"], case3)
-
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
 
 def calc_expect_func(x, y, z):
     x_value = x.get("value")

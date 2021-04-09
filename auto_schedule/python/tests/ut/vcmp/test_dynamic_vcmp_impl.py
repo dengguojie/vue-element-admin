@@ -237,13 +237,13 @@ case8 = {
 }
 
 ut_case.add_case("all", case1)
-ut_case.add_case(["Ascend910", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case("all", case3)
-ut_case.add_case(["Ascend910", "Ascend710"], case4)
+ut_case.add_case(["Ascend910A"], case4)
 ut_case.add_case("all", case5)
-ut_case.add_case(["Ascend910", "Ascend710"], case6)
+ut_case.add_case(["Ascend910A"], case6)
 ut_case.add_case("all", case7)
-ut_case.add_case(["Ascend910", "Ascend710"], case8)
+ut_case.add_case(["Ascend910A"], case8)
 
 
 def calc_expect_func(x, y, z, operation, mode):

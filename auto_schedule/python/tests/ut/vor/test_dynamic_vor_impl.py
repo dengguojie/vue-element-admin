@@ -80,8 +80,8 @@ case2 = {
         True
 }
 
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case1)
-ut_case.add_case(["Ascend910", "Ascend310", "Ascend710"], case2)
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+ut_case.add_case(["Ascend910A", "Ascend310"], case2)
 
 
 def calc_expect_func(x, y, z):
@@ -150,3 +150,4 @@ ut_case.add_precision_case(
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001),
         "case_name": "test_dync_vor_prec_02"
     })
+
