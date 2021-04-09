@@ -3,7 +3,7 @@
 
 # from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
-ut_case = OpUT("BnTrainingReduceGrad", "impl.dynamic.bn_training_reduce_grad", "bn_training_reduce_grad")
+ut_case = OpUT("BNTrainingReduceGrad", "impl.dynamic.bn_training_reduce_grad", "bn_training_reduce_grad")
 
 # pylint: disable=too-many-arguments
 def gen_bn_training_reduce_grad_case(shape_grads, shape_x_norm, shape_diff_scale, shape_diff_offset, shape_scale,

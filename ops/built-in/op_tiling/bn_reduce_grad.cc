@@ -59,5 +59,5 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_
 }
 
 // register tiling interface of the bn_training_reduce_grad op.
-REGISTER_OP_TILING_FUNC_BUFFERED(BnTrainingReduceGrad, BnTrainingReduceGradTiling);
+REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingReduceGrad, BnTrainingReduceGradTiling);
 }  // namespace optiling

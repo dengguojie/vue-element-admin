@@ -200,7 +200,7 @@ def _check_shape(shape_grads, shape_diff_scale, data_format):
 
 
 # pylint: disable=too-many-statements
-@register_operator("BnTrainingReduceGrad")
+@register_operator("BNTrainingReduceGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,

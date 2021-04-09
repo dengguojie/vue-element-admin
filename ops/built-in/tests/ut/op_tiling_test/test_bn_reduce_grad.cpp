@@ -75,7 +75,7 @@ static std::string compileInfo = R"({"_fusion_index": [[0], [1], [2], [3], [4]],
 
 TEST_F(BNReduceGradTiling, BnReduceGradTiling3) {
   using namespace optiling;
-  std::string op_name = "BnTrainingReduceGrad";
+  std::string op_name = "BNTrainingReduceGrad";
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
