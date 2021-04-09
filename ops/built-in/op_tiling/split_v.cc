@@ -192,7 +192,7 @@ bool CheckSizeSplitsSmall(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock,
 
 bool CheckSplitVAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> inputShape,
                      std::vector<int64_t> sizeSplitsVec) {
-  if (sizeSplitsVec.size() != numSplit) {
+  if (sizeSplitsVec.size() != static_cast<size_t>(numSplit)) {
     OP_LOGE("op [SplitVTiling] : num_split must be equal to the size_splits size");
     ge::OpsInputShapeErrReport("SplitVTiling", "The shape dim of size_splits must be equal to num_split",
                                "size_splits", to_string(sizeSplitsVec.size()));
@@ -262,7 +262,7 @@ bool CheckMode7(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t s
 
   bool ret = true;
   int64_t splitSizeSum = 0;
-  for (size_t i = 0; i < num - 1; ++i) {
+  for (int64_t i = 0; i < num - 1; ++i) {
     splitSizeSum += sizeSplitsVec[i] * shapeAfterDim;
   }
   if (splitSizeSum >= dataBlock) {
