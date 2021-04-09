@@ -271,8 +271,8 @@ def _tiling_params_positive(args):
     if pad_axis_cnt:
         tp_100_cr_dims = 1
         for _, idx in enumerate(PAD_IDX_LIST[len(tmp_src_cr_format):]):
-            tp_names["tp_100_cr_out_idx_" + str(idx) + "_size"] = 0
-            tp_names["tp_100_cr_out_idx_" + str(idx) + "_dst_rsize"] = 0
+            tp_names["tp_100_cr_out_idx_" + str(idx) + "_size"] = 1
+            tp_names["tp_100_cr_out_idx_" + str(idx) + "_dst_rsize"] = 1
             tp_names["tp_100_cr_out_idx_" + str(idx) + "_dst_asize"] = 0
     if src_format[-1] != dst_format[-2]:
         tp_100_r1st_src_r2nd_dst_same = 0
@@ -325,8 +325,8 @@ def _tiling_params_positive(args):
     if pad_axis_cnt:
         tp_100_cl_dims = 1
         for _, idx in enumerate(PAD_IDX_LIST[len(tmp_src_cl_format):]):
-            tp_names["tp_100_cl_out_idx_" + str(idx) + "_size"] = 0
-            tp_names["tp_100_cl_out_idx_" + str(idx) + "_dst_rsize"] = 0
+            tp_names["tp_100_cl_out_idx_" + str(idx) + "_size"] = 1
+            tp_names["tp_100_cl_out_idx_" + str(idx) + "_dst_rsize"] = 1
             tp_names["tp_100_cl_out_idx_" + str(idx) + "_dst_asize"] = 0
 
     tp_100_src_cl_step_in = tdc.get_shape_size(in_shape[src_c_idx:])

@@ -341,7 +341,7 @@ def _get_tiling_params_1010(tiling_args):
                          tp_1010_nlc_vnc_row_left, tp_1010_nlc_last_line_cr_cnt, tp_1010_nlc_c_lp_cnt,
                          tp_1010_nlc_c_left, tp_1010_lc_dst_cl_lp_cnt, tp_1010_lc_dst_cr_lp_cnt,
                          tp_1010_lc_vnc_row_left, tp_1010_lc_last_line_cr_cnt, tp_1010_lc_c_lp_cnt, tp_1010_lc_c_left]
-    pad_params = [0, 0, 0, 0, 0, 0]
+    pad_params = [1, 1, 0, 1, 1, 0]
     return sub_tiling_params + pad_params
 
 
@@ -400,8 +400,8 @@ def _get_tiling_params_1011(tiling_args):
     pad_axis_cnt = FRAME_LEVEL - len(src_format_left)
     if pad_axis_cnt:
         for _, idx in enumerate(PAD_IDX_LIST[len(src_format_left):]):
-            tp_names["tp_1011_cl_out_idx_" + str(idx) + "_size"] = 0
-            tp_names["tp_1011_cl_out_idx_" + str(idx) + "_src_rsize"] = 0
+            tp_names["tp_1011_cl_out_idx_" + str(idx) + "_size"] = 1
+            tp_names["tp_1011_cl_out_idx_" + str(idx) + "_src_rsize"] = 1
             tp_names["tp_1011_cl_out_idx_" + str(idx) + "_dst_asize"] = 0
 
     r2nd_args = axis_dst_r2nd_lp_cnt, tp_1011_dst_r2nd_lp_step_in, tp_1011_dst_r2nd_lp_step_out, axis_dst_r2nd_left

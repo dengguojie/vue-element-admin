@@ -336,18 +336,9 @@ namespace optiling
     int64_t padAxisCnt = FRAME_LEVEL - tmpSrcCrFormat.length();
     if (padAxisCnt) {
       params.crDims = 1;
-      if (tmpSrcCrFormat.length() == 0) {
-        params.crOutIdx0Size = 0;
-        params.crOutIdx0DstRSize = 0;
-        params.crOutIdx0DstASize = 0;
-        params.crOutIdx1Size = 0;
-        params.crOutIdx1DstRSize = 0;
-        params.crOutIdx1DstASize = 0;
-      } else if (tmpSrcCrFormat.length() == 1) {
-        params.crOutIdx1Size = 0;
-        params.crOutIdx1DstRSize = 0;
-        params.crOutIdx1DstASize = 0;
-      }
+      params.crOutIdx1Size = 1;
+      params.crOutIdx1DstRSize = 1;
+      params.crOutIdx1DstASize = 0;
     }
     if (*(srcFormatNew.rbegin()) != *(dstFormatNew.rbegin() + 1)) {
       params.r1stSrcR2ndDstSame = 0;
@@ -414,18 +405,9 @@ namespace optiling
     padAxisCnt = FRAME_LEVEL - tmpSrcClFormat.length();
     if (padAxisCnt) {
       params.clDims = 1;
-      if (tmpSrcClFormat.length() == 0) {
-        params.clOutIdx0Size = 0;
-        params.clOutIdx0DstRSize = 0;
-        params.clOutIdx0DstASize = 0;
-        params.clOutIdx1Size = 0;
-        params.clOutIdx1DstRSize = 0;
-        params.clOutIdx1DstASize = 0;
-      } else if (tmpSrcClFormat.length() == 1) {
-        params.clOutIdx1Size = 0;
-        params.clOutIdx1DstRSize = 0;
-        params.clOutIdx1DstASize = 0;
-      }
+      params.clOutIdx1Size = 1;
+      params.clOutIdx1DstRSize = 1;
+      params.clOutIdx1DstASize = 0;
     }
     params.srcClStepIn = GetShapeSize(inShapeNew, cIdx);
     params.srcClLpStepIn = params.srcClStepIn * params.srcClLpUnit;

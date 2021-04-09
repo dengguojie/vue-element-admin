@@ -29,6 +29,17 @@
 
 namespace optiling {
 
+int64_t GetCeilFillB(int64_t uValue, int64_t dValue) {
+  int64_t resValue = 0;
+  if (dValue == 0) {
+    return uValue;
+  }
+
+  resValue = (uValue + dValue - 1) / dValue * dValue;
+
+  return resValue;
+}
+
 bool GetMcInfoPositive1010(int64_t& axisDstClSize, int64_t& cLpCnt, int64_t& cLeft, int64_t& dstCrLpCnt,
                            int64_t& vncRowLeft, int64_t& llDstCrLeft, int64_t& coreNum,
                            TransDataMode1010Param& params) {
@@ -176,7 +187,7 @@ bool TillingPositiveMode1010(vector<int64_t>& inShape, vector<int64_t>& outShape
   int32_t tmpSrcPos = std::strchr(srcFormat.c_str(), dstFormat[dstFormat.length() - 2]) - srcFormat.c_str();
   int64_t axisDstCrSize = GetShapeSize(inShape, tmpSrcPos) / inShape[inShape.size() - 1];
 
-  params.plnDstCrSize = params.vncLineSize / GetCeilFill(params.cLpUnit, c0Len);
+  params.plnDstCrSize = params.vncLineSize / GetCeilFillB(params.cLpUnit, c0Len);
   params.vncRowSize = VNC_LINES;
   int64_t perVncDstCrCnt = params.plnDstCrSize * params.vncRowSize;
   int64_t dstCrLpCnt = GetCeilDiv(axisDstCrSize, perVncDstCrCnt);

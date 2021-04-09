@@ -232,11 +232,11 @@ def _tiling_params_negative(args):
     pad_axis_cnt = FRAME_LEVEL - len(tmp_left_dst_format)
     if pad_axis_cnt:
         for _, idx in enumerate(PAD_IDX_LIST[len(tmp_left_dst_format):]):
-            tp_names["tp_201_in_idx_" + str(idx) + "_size"] = 0
-            tp_names["tp_201_in_idx_" + str(idx) + "_dst_rsize"] = 0
+            tp_names["tp_201_in_idx_" + str(idx) + "_size"] = 1
+            tp_names["tp_201_in_idx_" + str(idx) + "_dst_rsize"] = 1
             tp_names["tp_201_in_idx_" + str(idx) + "_src_asize"] = 0
-            tp_names["tp_201_out_idx_" + str(idx) + "_size"] = 0
-            tp_names["tp_201_out_idx_" + str(idx) + "_dst_rsize"] = 0
+            tp_names["tp_201_out_idx_" + str(idx) + "_size"] = 1
+            tp_names["tp_201_out_idx_" + str(idx) + "_dst_rsize"] = 1
             tp_names["tp_201_out_idx_" + str(idx) + "_dst_asize"] = 0
 
     # vnchwconv tiling parameters

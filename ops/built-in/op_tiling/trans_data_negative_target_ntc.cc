@@ -31,6 +31,17 @@ namespace optiling {
 
 const int32_t FRAME_LEVEL = 2;
 
+int64_t GetCeilFillA(int64_t uValue, int64_t dValue) {
+  int64_t resValue = 0;
+  if (dValue == 0) {
+    return uValue;
+  }
+
+  resValue = (uValue + dValue - 1) / dValue * dValue;
+
+  return resValue;
+}
+
 bool GetMcInfoNegative200(int64_t& dstCrLpCnt, int64_t& dstCrLeft, int64_t& srcCLpCnt, int64_t& srcCLeft,
                           int64_t& dstClLpCnt, int64_t& dstClLeft, int64_t& coreNum, TransDataNtc200Param& params) {
   int64_t tmpFullLoopCntCr;
@@ -233,7 +244,7 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   if (dstCrLpCnt > 1 || axisSrcCSize == 1) {
     params.srcCLpUnit = 1;
   } else {
-    tmpSrcCLpUnit = tmpDstCrLpUnit / GetCeilFill(axisDstCrSize, blockElemCnt);
+    tmpSrcCLpUnit = tmpDstCrLpUnit / GetCeilFillA(axisDstCrSize, blockElemCnt);
     if (axisSrcCSize > tmpSrcCLpUnit) {
       params.srcCLpUnit = tmpSrcCLpUnit;
     } else {
@@ -258,7 +269,7 @@ bool TilingNegativeNtc200(vector<int64_t>& inShape, vector<int64_t>& outShape, s
   int64_t srcCDstCrSize = axisSrcCSize * axisDstCrSize;
   if ((dtype == "float16" || ((c0Len == C0_32) && (dtype == "int8" || dtype == "uint8"))) && (axisDstCrSize >= crGate)) {
     params.tilingMode = 2001;
-    int64_t tmpDstClLpUnit = halfUbSize / (params.srcCLpUnit * GetCeilFill(params.dstCrLpUnit, blockElemCnt) * c0Len);
+    int64_t tmpDstClLpUnit = halfUbSize / (params.srcCLpUnit * GetCeilFillA(params.dstCrLpUnit, blockElemCnt) * c0Len);
     if (axisDstClSize > tmpDstClLpUnit) {
       params.dstClLpUnit = tmpDstClLpUnit;
     } else {

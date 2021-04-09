@@ -550,17 +550,6 @@ static int64_t GetFloorDiv(int64_t uValue, int64_t dValue) {
   return resValue;
 }
 
-static const int64_t GetCeilFill(int64_t uValue, int64_t dValue) {
-  int64_t resValue = 0;
-  if (dValue == 0) {
-    return uValue;
-  }
-
-  resValue = (uValue + dValue - 1) / dValue * dValue;
-
-  return resValue;
-}
-
 static int64_t GetCeilDiv(int64_t uValue, int64_t dValue) {
   int64_t resValue = 0;
   if (dValue == 0) {

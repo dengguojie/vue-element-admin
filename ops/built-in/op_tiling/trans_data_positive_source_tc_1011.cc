@@ -29,7 +29,16 @@
 
 namespace optiling {
 
-const int32_t FRAME_LEVEL = 2;
+int64_t GetCeilFillC(int64_t uValue, int64_t dValue) {
+  int64_t resValue = 0;
+  if (dValue == 0) {
+    return uValue;
+  }
+
+  resValue = (uValue + dValue - 1) / dValue * dValue;
+
+  return resValue;
+}
 
 bool GetMcInfoPositive1011(int64_t& axisDstR2ndLpCnt, int64_t& axisDstR2ndLeft, int64_t& cLpCnt, int64_t& cLeft,
                            int64_t& axisSrcClLpCnt, int64_t& axisSrcClLeft, int64_t& coreNum,
@@ -193,7 +202,7 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
   }
   srcLeftShape.push_back(1);
   int64_t axisSrcClSize = GetShapeSize(srcLeftShape, 0);
-  int64_t plnSrcClCnt = params.vncLineSize / GetCeilFill(params.cLpUnit, c0Len);
+  int64_t plnSrcClCnt = params.vncLineSize / GetCeilFillC(params.cLpUnit, c0Len);
   if (axisSrcClSize < plnSrcClCnt) {
     params.srcClLpUnit = axisSrcClSize;
   } else {
@@ -218,21 +227,6 @@ bool TillingPositiveMode1011(vector<int64_t>& inShape, vector<int64_t>& outShape
       params.clOut1Size = inShape[srcChrPos];
       params.clOut1SrcRsize = GetShapeSize(srcLeftShape, -1 - i);
       params.clOut1DstAsize = GetShapeSize(outShape, dstChrPos + 1);
-    }
-  }
-  int64_t padAxisCnt = FRAME_LEVEL - srcFormatLeft.length();
-  if (padAxisCnt != 0) {
-    if (srcFormatLeft.length() == 0) {
-      params.clOut0Size = 0;
-      params.clOut0SrcRsize = 0;
-      params.clOut0DstAsize = 0;
-      params.clOut1Size = 0;
-      params.clOut1SrcRsize = 0;
-      params.clOut1DstAsize = 0;
-    } else if (srcFormatLeft.length() == 1) {
-      params.clOut1Size = 0;
-      params.clOut1SrcRsize = 0;
-      params.clOut1DstAsize = 0;
     }
   }
 
