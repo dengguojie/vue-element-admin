@@ -64,7 +64,7 @@ bool Softmax::Init() {
 bool Softmax::FusedReduceAxis() {
   size_t capacity_shape = 0;
   size_t capacity_axis = 1;
-  auto axis_ori = reduce_axis_ori[0];
+  size_t axis_ori = reduce_axis_ori[0];
   if (input_shape_ori.size() == 1) {
     reduce_axis[0] = 1;
     input_shape[0] = 1;
@@ -75,7 +75,7 @@ bool Softmax::FusedReduceAxis() {
     reduce_axis[0] = 0;
     input_shape[0] = input_shape_ori[0];
     input_shape[1] = 1;
-    for (auto i = 1; i < input_shape_ori.size(); i++) {
+    for (size_t i = 1; i < input_shape_ori.size(); i++) {
       input_shape[1] *= input_shape_ori[i];
     }
     capacity_shape = 2;
@@ -84,7 +84,7 @@ bool Softmax::FusedReduceAxis() {
     reduce_axis[0] = 1;
     input_shape[1] = input_shape_ori[input_shape_ori.size() - 1];
     input_shape[0] = 1;
-    for (auto i = 0; i < input_shape_ori.size() - 1; i++) {
+    for (size_t i = 0; i < input_shape_ori.size() - 1; i++) {
       input_shape[0] *= input_shape_ori[i];
     }
     capacity_shape = 2;
@@ -95,10 +95,10 @@ bool Softmax::FusedReduceAxis() {
     input_shape[1] = input_shape_ori[axis_ori];
     input_shape[0] = 1;
     input_shape[2] = 1;
-    for (auto i = 0; i < axis_ori - 1; i++) {
+    for (size_t i = 0; i < axis_ori - 1; i++) {
       input_shape[0] *= input_shape_ori[i];
     }
-    for (auto i = axis_ori + 1; i < input_shape_ori.size(); i++) {
+    for (size_t i = axis_ori + 1; i < input_shape_ori.size(); i++) {
       input_shape[2] *= input_shape_ori[i];
     }
     pattern = 500000000;
@@ -258,17 +258,17 @@ bool Softmax::WriteTilingData() {
   // tiling_key
   run_info.tiling_key = pattern;
 
-  for (auto i = 0; i < input_shape.size(); i++) {
+  for (size_t i = 0; i < input_shape.size(); i++) {
     ByteBufferPut(run_info.tiling_data, (int32_t)input_shape[i]);
   }
 
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.block_tiling_factor);
   ByteBufferPut(run_info.tiling_data, (int32_t)tilingInfo.ub_tiling_factor);
-  OP_LOGD(op_type.c_str(), "block tilling axis:%d", tilingInfo.block_tiling_axis);
-  OP_LOGD(op_type.c_str(), "block tilling factor:%d", tilingInfo.block_tiling_factor);
-  OP_LOGD(op_type.c_str(), "ub tilling axis:%d", tilingInfo.ub_tiling_axis);
-  OP_LOGD(op_type.c_str(), "ub tilling factor:%d", tilingInfo.ub_tiling_factor);
-  OP_LOGD(op_type.c_str(), "block dim:%d", tilingInfo.block_dim);
+  OP_LOGD(op_type.c_str(), "block tilling axis=%d", tilingInfo.block_tiling_axis);
+  OP_LOGD(op_type.c_str(), "block tilling factor=%d", tilingInfo.block_tiling_factor);
+  OP_LOGD(op_type.c_str(), "ub tilling axis=%d", tilingInfo.ub_tiling_axis);
+  OP_LOGD(op_type.c_str(), "ub tilling factor=%d", tilingInfo.ub_tiling_factor);
+  OP_LOGD(op_type.c_str(), "block dim=%d", tilingInfo.block_dim);
 
   return true;
 }
