@@ -79,10 +79,17 @@ Status Const2AttrFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr 
 
     if (needCheck) {
       bool unknownShape = false;
-      if (ge::NodeUtils::GetNodeUnknownShapeStatus(*(node.get()), unknownShape) == ge::GRAPH_SUCCESS && unknownShape) {
+      bool fuzz_build = false;
+      auto op_desc_ptr = node->GetOpDesc();
+      bool is_dynamic = ((ge::AttrUtils::GetBool(op_desc_ptr, ge::ATTR_NAME_FUZZ_BUILD, fuzz_build) && fuzz_build) ||
+                         (ge::NodeUtils::GetNodeUnknownShapeStatus(*(node.get()), unknownShape) == ge::GRAPH_SUCCESS &&
+                         unknownShape));
+      if (is_dynamic) {
         std::string oriUnSupportedReason;
         bool isOriSupported = opsKernelInfoStorePtr->CheckSupported(node->GetOpDesc(), oriUnSupportedReason);
-        if (isOriSupported) {
+        bool fuzz_build_use_accurate = false;
+        (void)ge::AttrUtils::GetBool(op_desc_ptr, "fuzz_build_use_accurate", fuzz_build_use_accurate);
+        if (isOriSupported && !fuzz_build_use_accurate) {
           OP_LOGD(opType.c_str(), "Op[name:%s,type:%s] is supported", node->GetOpDesc()->GetName().c_str(),
                   opType.c_str());
           continue;
