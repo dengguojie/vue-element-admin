@@ -63,7 +63,7 @@ IMPLEMT_INFERFUNC(AdjustHue, AdjustHueInfer) {
   auto images_desc = op_desc->MutableInputDesc(0);
 
   GeShape out;
-  if (WithRankAtLeast(images_desc, 3, out) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(images_desc, 3, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(images_desc->GetShape().GetDims()), "at least 3D");
     err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
@@ -91,7 +91,7 @@ IMPLEMT_INFERFUNC(AdjustSaturation, AdjustSaturationInfer) {
   auto images_desc = op_desc->MutableInputDesc(0);
 
   GeShape out;
-  if (WithRankAtLeast(images_desc, 3, out) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(images_desc, 3, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         0, DebugString(images_desc->GetShape().GetDims()), "at least 3D");
     err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
@@ -141,22 +141,23 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
   op_desc->SetOpInferDepends({"crop_size"});
 
   auto x_desc = op_desc->MutableInputDesc(0);
+  const char* op_name = op.GetName().c_str();
   GeShape x_shape;
-  if (WithRank(x_desc, 4, x_shape) != GRAPH_SUCCESS) {
+  if (WithRank(x_desc, 4, x_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input x must be 4-D, real rank is %lld", x_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   auto boxes_desc = op_desc->MutableInputDesc(1);
   GeShape boxes_shape;
-  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+  if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input boxes must be 2-D, real rank is %lld", boxes_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   auto box_index_desc = op_desc->MutableInputDesc(2);
   GeShape box_index_shape;
-  if (WithRank(box_index_desc, 1, box_index_shape) != GRAPH_SUCCESS) {
+  if (WithRank(box_index_desc, 1, box_index_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input box_index must be 1-D, real rank is %lld",
             box_index_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -164,7 +165,7 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
 
   auto crop_size_desc = op_desc->MutableInputDesc(3);
   GeShape crop_size_shape;
-  if (WithRank(crop_size_desc, 1, crop_size_shape) != GRAPH_SUCCESS) {
+  if (WithRank(crop_size_desc, 1, crop_size_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input crop_size must be 1-D, real rank is %lld",
             crop_size_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -287,21 +288,22 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
 
   auto grads_desc = op_desc->MutableInputDesc(0);
   GeShape grads_shape;
-  if (WithRank(grads_desc, 4, grads_shape) != GRAPH_SUCCESS) {
+  const char* op_name = op.GetName().c_str();
+  if (WithRank(grads_desc, 4, grads_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input grads must be 4-D, real rank is %lld", grads_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   auto boxes_desc = op_desc->MutableInputDesc(1);
   GeShape boxes_shape;
-  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+  if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input boxes must be 2-D, real rank is %lld", boxes_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   auto box_index_desc = op_desc->MutableInputDesc(2);
   GeShape box_index_shape;
-  if (WithRank(box_index_desc, 1, box_index_shape) != GRAPH_SUCCESS) {
+  if (WithRank(box_index_desc, 1, box_index_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input box_index must be 1-D, real rank is %lld",
             box_index_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -309,7 +311,7 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
 
   auto image_size_desc = op_desc->MutableInputDesc(3);
   GeShape image_size_shape;
-  if (WithRank(image_size_desc, 1, image_size_shape) != GRAPH_SUCCESS) {
+  if (WithRank(image_size_desc, 1, image_size_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input image_size must be 1-D, real rank is %lld",
             image_size_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -564,14 +566,15 @@ IMPLEMT_INFERFUNC(ResizeNearestNeighborV2Grad, ResizeNearestNeighborV2GradInfer)
   std::vector<std::string> input_infer_depends = {"size"};
   op_desc->SetOpInferDepends(input_infer_depends);
 
+  const char* op_name = op.GetName().c_str();
   GeShape grads_shape;
-  if (WithRank(grads_desc, 4, grads_shape) != GRAPH_SUCCESS) {
+  if (WithRank(grads_desc, 4, grads_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_desc->GetName().c_str(), "Input grads must be 4-D, real rank is [%lld]", grads_desc->GetShape().GetDimNum());
     return GRAPH_PARAM_INVALID;
   }
 
   GeShape size_shape;
-  if (WithRank(size_desc, 1, size_shape) != GRAPH_SUCCESS) {
+  if (WithRank(size_desc, 1, size_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op_desc->GetName().c_str(), "Input size must be 1-D, real rank is [%lld]", size_desc->GetShape().GetDimNum());
     return GRAPH_PARAM_INVALID;
   }
@@ -849,8 +852,9 @@ IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
   GeShape boxes_shape;
+  const char* op_name = op.GetName().c_str();
   auto boxes_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+  if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
         DebugString(boxes_desc->GetShape().GetDims()), "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -860,7 +864,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+  if (WithRank(scores_desc, 1, scores_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1,
         DebugString(scores_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -870,7 +874,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppression, NonMaxSuppressionInfer) {
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
-  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(2,
         DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -907,7 +911,8 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
 
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+  const char* op_name = op.GetName().c_str();
+  if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1,
         DebugString(boxes_desc->GetShape().GetDims()), "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -917,7 +922,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+  if (WithRank(scores_desc, 1, scores_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1,
         DebugString(scores_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -927,7 +932,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
-  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(2,
         DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -937,7 +942,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV2, NonMaxSuppressionV2Infer) {
 
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
-  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
+  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(3,
         DebugString(iou_threshold_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -974,7 +979,8 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
 
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+  const char* op_name = op.GetName().c_str();
+  if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0,
         DebugString(boxes_desc->GetShape().GetDims()), "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -984,7 +990,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+  if (WithRank(scores_desc, 1, scores_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1,
         DebugString(scores_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -994,7 +1000,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
-  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(2,
         DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -1004,7 +1010,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
 
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
-  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
+  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(3,
         DebugString(iou_threshold_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -1014,7 +1020,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV3, NonMaxSuppressionV3Infer) {
 
   GeShape score_threshold_shape;
   auto score_threshold_desc = op_desc->MutableInputDesc(4);
-  if (WithRank(score_threshold_desc, 0, score_threshold_shape) != GRAPH_SUCCESS) {
+  if (WithRank(score_threshold_desc, 0, score_threshold_shape, op_name) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(4,
         DebugString(score_threshold_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank, ") + err_msg;
@@ -1056,7 +1062,8 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
 
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(boxes_desc, 2, boxes_shape) != GRAPH_SUCCESS) {
+  const char* op_name = op.GetName().c_str();
+  if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
             boxes_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -1064,7 +1071,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(scores_desc, 1, scores_shape) != GRAPH_SUCCESS) {
+  if (WithRank(scores_desc, 1, scores_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
             scores_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -1072,7 +1079,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
-  if (WithRank(max_output_size_desc, 0, max_output_size_shape) != GRAPH_SUCCESS) {
+  if (WithRank(max_output_size_desc, 0, max_output_size_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
             max_output_size_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -1080,7 +1087,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
 
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
-  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape) != GRAPH_SUCCESS) {
+  if (WithRank(iou_threshold_desc, 0, iou_threshold_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0, real rank is %lld",
             iou_threshold_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -1088,7 +1095,7 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
 
   GeShape score_threshold_shape;
   auto score_threshold_desc = op_desc->MutableInputDesc(4);
-  if (WithRank(score_threshold_desc, 0, score_threshold_shape) != GRAPH_SUCCESS) {
+  if (WithRank(score_threshold_desc, 0, score_threshold_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0, real rank is %lld",
             score_threshold_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -1271,7 +1278,8 @@ IMPLEMT_INFERFUNC(DecodeAndCropJpeg, DecodeAndCropJpegInfer) {
     return GRAPH_FAILED;
   }
   std::string err_msg;
-  if (WithRank(contents_desc, 0, contents_shape) != GRAPH_SUCCESS) {
+  if (WithRank(contents_desc, 0, contents_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[contents] rank must be 0, got "
         "rank[",
@@ -1308,7 +1316,8 @@ IMPLEMT_INFERFUNC(DecodeAndCropJpeg, DecodeAndCropJpegInfer) {
                              "input[crop_window] desc is nullptr."));
     return GRAPH_FAILED;
   }
-  if (WithRank(crop_window_desc, 1, crop_window_shape) != GRAPH_SUCCESS) {
+  if (WithRank(crop_window_desc, 1, crop_window_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
     err_msg = ConcatString(
         "failed to call WithRank function, input[crop_window] rank must be 1, "
         "got rank[",

@@ -206,8 +206,8 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
     }
 
     std::string err_msg;
-    if (WithRankAtMost(temp_record_default_desc, 1, record_default_shape) !=
-        GRAPH_SUCCESS) {
+    if (WithRankAtMost(temp_record_default_desc, 1, record_default_shape,
+        op.GetName().c_str()) != GRAPH_SUCCESS) {
       err_msg = GetShapeErrMsg(
           i, DebugString(temp_record_default_desc->GetShape().GetDims()),
           "at most 1D");
@@ -379,7 +379,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
 
   GeShape serialized_shape;
   auto serialized_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(serialized_desc, 1, serialized_shape) != GRAPH_SUCCESS) {
+  if (WithRank(serialized_desc, 1, serialized_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         0, DebugString(serialized_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
@@ -389,7 +389,7 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
 
   GeShape unused_shape;
   auto unused_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(unused_desc, 1, unused_shape) != GRAPH_SUCCESS) {
+  if (WithRank(unused_desc, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     err_msg =
         GetShapeErrMsg(1, DebugString(unused_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
@@ -529,7 +529,8 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
 
   GeShape serialized_shape;
   auto serialized_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(serialized_desc, 0, serialized_shape) != GRAPH_SUCCESS) {
+  if (WithRank(serialized_desc, 0, serialized_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
         0, DebugString(serialized_desc->GetShape().GetDims()), "scalar ");
     err_msg = string("failed to call WithRank function, ") + err_msg;
@@ -540,7 +541,8 @@ IMPLEMT_INFERFUNC(ParseSingleSequenceExample, ParseSingleSequenceExampleInfer) {
 
   GeShape unused_shape;
   auto unused_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(unused_desc, 1, unused_shape) != GRAPH_SUCCESS) {
+  if (WithRank(unused_desc, 1, unused_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
     err_msg =
         GetShapeErrMsg(1, DebugString(unused_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;

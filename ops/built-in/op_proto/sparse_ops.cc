@@ -386,7 +386,7 @@ IMPLEMT_INFERFUNC(SparseAdd, SparseAddInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
   GeShape x1_shape;
-  if (WithRank(op_desc->MutableInputDesc(2), 1, x1_shape) != GRAPH_SUCCESS) {
+  if (WithRank(op_desc->MutableInputDesc(2), 1, x1_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         2, DebugString(op_desc->MutableInputDesc(2)->GetShape().GetDims()),
         "1D");
@@ -427,29 +427,31 @@ IMPLEMT_INFERFUNC(SparseFillEmptyRows, SparseFillEmptyRowsInfer) {
   op_desc->SetOpInferDepends(input_infer_depends);
 
   GeShape indices_shape;
+  const char* op_name = op.GetName().c_str();
   auto indices_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(indices_desc, 2, indices_shape) != GRAPH_SUCCESS) {
+  if (WithRank(indices_desc, 2, indices_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input indices must be 2-D");
     return GRAPH_FAILED;
   }
 
   GeShape values_shape;
   auto values_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(values_desc, 1, values_shape) != GRAPH_SUCCESS) {
+  if (WithRank(values_desc, 1, values_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input values must be 1-D");
     return GRAPH_FAILED;
   }
 
   GeShape dense_shape;
   auto dense_desc = op_desc->MutableInputDesc(2);
-  if (WithRank(dense_desc, 1, dense_shape) != GRAPH_SUCCESS) {
+  if (WithRank(dense_desc, 1, dense_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input dense_shape must be 1-D");
     return GRAPH_FAILED;
   }
 
   GeShape default_value_shape;
   auto default_value_desc = op_desc->MutableInputDesc(3);
-  if (WithRank(default_value_desc, 0, default_value_shape) != GRAPH_SUCCESS) {
+  if (WithRank(default_value_desc, 0, default_value_shape, op_name)
+      != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input default_value must be 0-D");
     return GRAPH_FAILED;
   }
@@ -1000,15 +1002,16 @@ IMPLEMT_INFERFUNC(SparseReshape, SparseReshapeInfer) {
   GeShape indices;
   GeShape unused;
   GeShape new_shape;
-  if (WithRank(indices_desc, 2, indices) != GRAPH_SUCCESS) {
+  const char* op_name = op.GetName().c_str();
+  if (WithRank(indices_desc, 2, indices, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input indices must be 2-D");
     return GRAPH_FAILED;
   }
-  if (WithRank(shape_desc, 1, unused) != GRAPH_SUCCESS) {
+  if (WithRank(shape_desc, 1, unused, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input shape must be 1-D");
     return GRAPH_FAILED;
   }
-  if (WithRank(new_shape_desc, 1, new_shape) != GRAPH_SUCCESS) {
+  if (WithRank(new_shape_desc, 1, new_shape, op_name) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input new_shape must be 1-D");
     return GRAPH_FAILED;
   }

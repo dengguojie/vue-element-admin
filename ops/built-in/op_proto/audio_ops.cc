@@ -148,13 +148,76 @@ IMPLEMT_INFERFUNC(AudioSpectrogram, AudioSpectrogramInfer) {
 INFER_FUNC_REG(AudioSpectrogram, AudioSpectrogramInfer);
 
 IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
-  return DecodeWavShapeFn(op);
+  Shape unused_shape;
+  if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "input must be scalar.");
+    return GRAPH_FAILED;
+  }
+
+  int64_t channels_dim = 0;
+  int32_t desired_channels = 0;
+  if (op.GetAttr("desired_channels", desired_channels) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "GetAttr desired_channels error.");
+    return GRAPH_FAILED;
+  }
+  if (desired_channels == -1) {
+    channels_dim = ge::UNKNOWN_DIM;
+  } else {
+    if (desired_channels < 0) {
+      OP_LOGE(op.GetName().c_str(), "channels must be non-negative.");
+      return GRAPH_FAILED;
+    }
+
+    channels_dim = static_cast<int64_t>(desired_channels);
+  }
+  int64_t samples_dim;
+  int32_t desired_samples;
+  if (op.GetAttr("desired_samples", desired_samples) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "GetAttr desired_samples error.");
+    return GRAPH_FAILED;
+  }
+  if (desired_samples == -1) {
+    samples_dim = ge::UNKNOWN_DIM;
+  } else {
+    if (desired_samples < 0) {
+      OP_LOGE(op.GetName().c_str(), "samples must be non-negative.");
+      return GRAPH_FAILED;
+    }
+    samples_dim = static_cast<int64_t>(desired_samples);
+  }
+
+  Shape audio_shape({samples_dim, channels_dim});
+  Shape sample_rate_shape;
+  (void)Scalar(sample_rate_shape);
+  TensorDesc audio_tensor = op.GetOutputDesc("audio");
+  audio_tensor.SetDataType(DT_FLOAT);
+  audio_tensor.SetShape(audio_shape);
+  (void)op.UpdateOutputDesc("audio", audio_tensor);
+  TensorDesc sample_rate_tensor = op.GetOutputDesc("sample_rate");
+  sample_rate_tensor.SetDataType(DT_INT32);
+  sample_rate_tensor.SetShape(sample_rate_shape);
+  return op.UpdateOutputDesc("sample_rate", sample_rate_tensor);
 }
 
 INFER_FUNC_REG(DecodeWav, DecodeWavInfer);
 
 IMPLEMT_INFERFUNC(EncodeWav, EncodeWavInfer) {
-  return EncodeWavShapeFn(op);
+  Shape unused_shape;
+  if (WithRank(op.GetInputDesc(0), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input audio must be rank 2.");
+    return GRAPH_FAILED;
+  }
+  if (WithRank(op.GetInputDesc(1), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input sample_rate must be scalar.");
+    return GRAPH_FAILED;
+  }
+
+  Shape output_shape;
+  (void)Scalar(output_shape);
+  TensorDesc contents_tensor = op.GetOutputDesc("contents");
+  contents_tensor.SetDataType(DT_STRING);
+  contents_tensor.SetShape(output_shape);
+  return op.UpdateOutputDesc("contents", contents_tensor);
 }
 
 INFER_FUNC_REG(EncodeWav, EncodeWavInfer);

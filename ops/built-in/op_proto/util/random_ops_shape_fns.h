@@ -32,7 +32,7 @@ namespace ge {
  * @param out_name Output name
  * @return status whether Shape's condition Satisfied
  */
-graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::string out_name);
+graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::string& out_name);
 
 /**
  * Set output shape that as same as a input for random op

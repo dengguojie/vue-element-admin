@@ -148,7 +148,7 @@ IMPLEMT_INFERFUNC(DenseToSparseSetOperation, DenseToSparseSetOperationInfer) {
   Shape x2_shape = x2_shape_tensor.GetShape();
   int64_t output_rank_dim = 0;
   const int64_t input_rank_dim = x2_shape.GetDim(0);
-  if (WithRankAtLeast(x1_desc, 2, x1_shape) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(x1_desc, 2, x1_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input x1 rank at least must be 2.");
     return GRAPH_FAILED;
   }

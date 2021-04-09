@@ -2107,7 +2107,7 @@ IMPLEMT_COMMON_INFERFUNC(CacheAddInferShape) {
   GeTensorDescPtr ids = op_desc->MutableInputDesc(1);
 
   GeShape ids_shape;
-  if (WithRank(ids, 1, ids_shape) != GRAPH_SUCCESS) {
+  if (WithRank(ids, 1, ids_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     ShapeErrReport(0, op.GetName(), DebugString(ids->GetShape().GetDims()), "1D");
     OP_LOGE(op.GetName().c_str(), "Input ids must be 1-D");
     return GRAPH_FAILED;

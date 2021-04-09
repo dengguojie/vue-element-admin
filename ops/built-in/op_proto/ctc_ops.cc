@@ -88,7 +88,7 @@ IMPLEMT_INFERFUNC(CTCGreedyDecoder, CTCGreedyDecoderInfer) {
 
   auto inputs_desc = op_desc->MutableInputDesc(0);
   GeShape inputs_shape;
-  if (WithRank(inputs_desc, 3, inputs_shape) != GRAPH_SUCCESS) {
+  if (WithRank(inputs_desc, 3, inputs_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input inputs rank must be 3, got rank %lld",
             inputs_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -96,7 +96,7 @@ IMPLEMT_INFERFUNC(CTCGreedyDecoder, CTCGreedyDecoderInfer) {
 
   auto sequence_length_desc = op_desc->MutableInputDesc(1);
   GeShape sequence_length_shape;
-  if (WithRank(sequence_length_desc, 1, sequence_length_shape) != GRAPH_SUCCESS) {
+  if (WithRank(sequence_length_desc, 1, sequence_length_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input sequence_length rank must be 1, got rank %lld",
             sequence_length_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;

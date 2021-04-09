@@ -26,6 +26,56 @@
 #include "util/error_util.h"
 namespace ge {
 
+graphStatus SparseSegmentReductionShapeFn(Operator& op) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeShape x_shape;
+  auto x_desc = op_desc->MutableInputDesc(0);
+  if (WithRankAtLeast(x_desc, 1, x_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input x should be at least 1-D.");
+    return GRAPH_FAILED;
+  }
+
+  GeShape indices_shape;
+  auto indices_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(indices_desc, 1, indices_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input indices must be 1-D.");
+    return GRAPH_FAILED;
+  }
+
+  GeShape segment_ids_shape;
+  auto segment_ids_desc = op_desc->MutableInputDesc(2);
+  if (WithRank(segment_ids_desc, 1, segment_ids_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input segment_ids must be 1-D.");
+    return GRAPH_FAILED;
+  }
+
+  GeShape unused;
+  if (Merge(indices_shape, segment_ids_shape, unused, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
+  GeShape subshape;
+  if (SubShape(x_shape, 1, x_shape.GetDimNum(), 1, subshape,
+               op.GetName().c_str()) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
+  GeShape out;
+  GeShape unknown_dim_shape({ge::UNKNOWN_DIM});
+  if (Concatenate(unknown_dim_shape, subshape, out) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetDataType(x_desc->GetDataType());
+  y_desc->SetShape(out);
+
+  return GRAPH_SUCCESS;
+}
+
 // ---------Power-------------------
 IMPLEMT_VERIFIER(Power, PowerVerify) {
     OP_LOGI(op.GetName().c_str(), "Enter PowerVerify.");
@@ -116,7 +166,7 @@ IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
 
   GeShape unused;
   auto size_desc = op_desc->MutableInputDesc(1);
-  if (WithRank(size_desc, 0, unused) != GRAPH_SUCCESS) {
+  if (WithRank(size_desc, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         1, DebugString(size_desc->GetShape().GetDims()), "scalar");
     err_msg = string("failed to call WithRank function, ") + err_msg;
@@ -261,14 +311,15 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
 
   auto x_desc = op_desc->MutableInputDesc(0);
   GeShape x_ge_shape;
-  if (WithRankAtLeast(x_desc, 1, x_ge_shape) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(x_desc, 1, x_ge_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input x should be at least 1-D, real rank is %lld", x_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
 
   auto indices_desc = op_desc->MutableInputDesc(1);
   GeShape indices_shape;
-  if (WithRank(indices_desc, 1, indices_shape) != GRAPH_SUCCESS) {
+  if (WithRank(indices_desc, 1, indices_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input indices must be 1-D, real rank is %lld", indices_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
   }
@@ -279,7 +330,7 @@ IMPLEMT_INFERFUNC(SparseSegmentMeanGrad, SparseSegmentMeanGradInfer) {
     return GRAPH_FAILED;
   }
   auto unused_desc = op_desc->MutableInputDesc(3);
-  if (WithRank(unused_desc, 0, unused) != GRAPH_SUCCESS) {
+  if (WithRank(unused_desc, 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "input output_dim0 must be scalar, real rank is %lld",
             unused_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;

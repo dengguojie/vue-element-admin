@@ -151,7 +151,7 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   op_desc->SetOpInferDepends({"true_classes", "sampled_candidates"});
 
   GeShape true_classes;
-  if (WithRank(true_classes_desc, 2, true_classes) != GRAPH_SUCCESS) {
+  if (WithRank(true_classes_desc, 2, true_classes, op.GetName().c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(0, DebugString(true_classes_desc->GetShape().GetDims()), "2D");
     err_msg = string("failed to call WithRank, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
@@ -167,7 +167,7 @@ IMPLEMT_INFERFUNC(ComputeAccidentalHits, ComputeAccidentalHitsInfer) {
   
   auto sampled_candidates_desc = op_desc->MutableInputDesc(1);
   GeShape sampled_candidates;
-  if (WithRank(sampled_candidates_desc, 1, sampled_candidates) !=
+  if (WithRank(sampled_candidates_desc, 1, sampled_candidates, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(1, DebugString(sampled_candidates_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank, ") + err_msg;

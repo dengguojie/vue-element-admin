@@ -47,7 +47,8 @@ graphStatus WithRankAtLeast(const TensorDesc& tensor, int64_t rank, Shape& out, 
  * @param out Output Shape
  * @return status whether Shape's condition Satisfied
  */
-graphStatus WithRankAtLeast(const GeTensorDescPtr& tensorDesc, int64_t rank, GeShape& out_shape);
+graphStatus WithRankAtLeast(const GeTensorDescPtr& tensorDesc, int64_t rank, GeShape& out_shape,
+                            const char* op_name);
 
 /**
  * Check whether Shape's rank is equal to rank
@@ -74,7 +75,8 @@ graphStatus WithRank(const TensorDesc& tensor, int64_t rank, Shape& out, const c
  * @param out Output Shape
  * @return status whether Shape's condition Satisfied
  */
-graphStatus WithRank(const GeTensorDescPtr& tensorDesc, int64_t rank, GeShape& out_shape);
+graphStatus WithRank(const GeTensorDescPtr& tensorDesc, int64_t rank,
+                     GeShape& out_shape, const char* op_name);
 
 /**
  * Check whether Shape's rank is equal to rank
@@ -83,7 +85,8 @@ graphStatus WithRank(const GeTensorDescPtr& tensorDesc, int64_t rank, GeShape& o
  * @param out Output Shape
  * @return status whether Shape's condition Satisfied
  */
-graphStatus WithRank(const GeTensorDescPtr& tensorDesc, int64_t rank, Shape& out_shape);
+graphStatus WithRank(const GeTensorDescPtr& tensorDesc, int64_t rank,
+                     Shape& out_shape, const char* op_name);
 
 /**
  * Check whether dim is equal to value
@@ -102,7 +105,8 @@ graphStatus WithValue(int64_t dim, int64_t value, int64_t& out, const char* op_n
  * @param prefix_out prefix out shape val
  * @return status whether this operation success
  */
-graphStatus MergePrefix(const Shape s, const Shape prefix, Shape &s_out, Shape &prefix_out, const char* op_name);
+graphStatus MergePrefix(const Shape& s, const Shape& prefix, Shape &s_out,
+                        Shape &prefix_out, const char* op_name);
 
 
 /**
@@ -289,7 +293,8 @@ graphStatus WithRankAtMost(const TensorDesc& tensor, int64_t rank, Shape& out, c
  * @param out output Shape
  * @return status whether Shape's condition Satisfied
  */
-graphStatus WithRankAtMost(const GeTensorDescPtr& tensorDesc, int64_t rank, GeShape& out_shape);
+graphStatus WithRankAtMost(const GeTensorDescPtr& tensorDesc, int64_t rank,
+                           GeShape& out_shape, const char* op_name);
 
 /**
  * make a empty dim shape
@@ -370,49 +375,6 @@ bool ValueKnown(const Shape& shape, const size_t& dim_index);
  */
 graphStatus ValidateSparseTensor(const TensorDesc& indices, const TensorDesc& values, const TensorDesc& shape,
                                  const char* op_name);
-
-/**
- * DecodeWavShapeFn, infereshape funtion of DecodeWav op
- * @param op Operator
- * @return status whether Shape's condition Satisfied
- */
-graphStatus DecodeWavShapeFn(Operator& op);
-
-/**
- * EncodeWavShapeFn, infereshape funtion of EncodeWav op
- * @param op Operator
- * @return status whether Shape's condition Satisfied
- */
-graphStatus EncodeWavShapeFn(Operator& op);
-
-/**
- * EncodeWavShapeFn, infereshape funtion of EncodeWav op
- * @param op Operator
- * @return status whether Shape's condition Satisfied
- */
-graphStatus EncodeWavShapeFn(Operator& op);
-
-/**
- * Infereshape funtion of SparseSegmentReduction op
- * @param op Operator
- * @return status whether Shape's condition Satisfied
- */
-graphStatus SparseSegmentReductionShapeFn(Operator& op);
-
-/**
- * Infereshape funtion of SparseSegmentReductionGrad op
- * @param op Operator
- * @return status whether Shape's condition Satisfied
- */
-graphStatus SparseSegmentReductionGradShapeFn(Operator& op);
-
-/**
- * Validates variable resource handle
- * @param op Operator
- * @param shape_and_type ShapeAndType vector
- * @return status whether this operation success
- */
-graphStatus ValidateVariableResourceHandle(Operator& op, std::vector<ShapeAndType>& shape_and_type);
 
 /**
  * Fill op_desc with input shape

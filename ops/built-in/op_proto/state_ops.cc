@@ -80,7 +80,7 @@ IMPLEMT_INFERFUNC(CountUpTo, CountUpToInfer) {
   auto ref_desc = op_desc->MutableInputDesc(0);
 
   GeShape out;
-  if (WithRank(ref_desc, 0, out) != GRAPH_SUCCESS) {
+  if (WithRank(ref_desc, 0, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
   }
 

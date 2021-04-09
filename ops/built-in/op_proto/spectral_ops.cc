@@ -193,7 +193,7 @@ IMPLEMT_INFERFUNC(IFFT2D, IFFT2DInfer) {
   auto x_desc = op_desc->MutableInputDesc(0);
 
   GeShape out;
-  if (WithRankAtLeast(x_desc, 2, out) != GRAPH_SUCCESS) {
+  if (WithRankAtLeast(x_desc, 2, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op.GetName().c_str(), "Input rank must be at least 2.");
     return GRAPH_FAILED;
   }

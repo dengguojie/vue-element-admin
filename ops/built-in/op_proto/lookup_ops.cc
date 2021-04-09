@@ -35,7 +35,8 @@ IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
 
   auto handle_desc = op_desc->MutableInputDesc(0);
   GeShape handle_shape;
-  if (WithRank(handle_desc, 0, handle_shape) != GRAPH_SUCCESS) {
+  if (WithRank(handle_desc, 0, handle_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "input handle must be 0-D, real rank is %lld",
             handle_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;
@@ -44,7 +45,8 @@ IMPLEMT_INFERFUNC(LookupTableFind, LookupTableFindInfer) {
   auto default_value_desc = op_desc->MutableInputDesc(2);
   GeShape default_value_shape;
   // Default value must be scalar or vector.
-  if (WithRankAtMost(default_value_desc, 1, default_value_shape) != GRAPH_SUCCESS) {
+  if (WithRankAtMost(default_value_desc, 1, default_value_shape,
+      op.GetName().c_str()) != GRAPH_SUCCESS) {
     OP_LOGE(op_name, "input default_value at most be 1-D, real rank is %lld",
             default_value_desc->GetShape().GetDimNum());
     return GRAPH_FAILED;

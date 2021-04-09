@@ -19,11 +19,12 @@
  * \brief
  */
 #include "random_ops_shape_fns.h"
+#include "error_util.h"
 #include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 
 namespace ge {
-graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::string out_name) {
+graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::string& out_name) {
   std::vector<std::string> input_infer_depends = {shape_name};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
@@ -35,8 +36,8 @@ graphStatus RandomShape(Operator& op, const std::string& shape_name, const std::
   }
   Shape shape;
   if (MakeShapeFromShapeTensor(tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string info = ": MakeShapeFromShapeTensor failed.";
-    OP_LOGE(op.GetName().c_str(), "%s", info.c_str());
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("call "
+        "MakeShapeFromShapeTensor function failed to get data of shape tensor"));
     return GRAPH_FAILED;
   }
   TensorDesc output_desc = op.GetOutputDesc(out_name);
@@ -54,7 +55,8 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
   DataType type;
   if (op.GetAttr(date_type_attr_name.c_str(), type) != GRAPH_SUCCESS) {
     std::string info = ": Get dtype attr failed.";
-    OP_LOGE(op_desc->GetName().c_str(), "%s", info.c_str());
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+        ConcatString("get attr[", date_type_attr_name, "] failed"));
     return GRAPH_FAILED;
   }
   if (op.GetInputConstData(shape_name, tensor) != GRAPH_SUCCESS) {
@@ -65,8 +67,8 @@ graphStatus RandomShapeWithDataType(Operator& op, const std::string& shape_name,
   }
   Shape shape;
   if (MakeShapeFromShapeTensor(tensor, shape, op_desc->GetName().c_str()) != GRAPH_SUCCESS) {
-    std::string info = ": MakeShapeFromShapeTensor failed.";
-    OP_LOGE(op_desc->GetName().c_str(), "%s", info.c_str());
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("call "
+          "MakeShapeFromShapeTensor function failed to get data of shape tensor"));
     return GRAPH_FAILED;
   }
   std::vector<int64_t> output_shape = shape.GetDims();
