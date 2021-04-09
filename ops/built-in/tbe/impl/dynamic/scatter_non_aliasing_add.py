@@ -41,7 +41,7 @@ class ScatterNonAliasingAdd():
     Function: use to store scatter_non_aliasing_add base parameters
     Modify: 2020-10-29
     """
-    def __init__(self, var, indices, adds, var_out, use_locking, kernel_name):
+    def __init__(self, var, indices, adds, var_out, kernel_name):
         """
         Init ScatterNonAliasingAdd parameters
         Paramters
@@ -54,8 +54,6 @@ class ScatterNonAliasingAdd():
             the dict of input tensor.
         var_out: dict
             the dict of output tensor.
-        use_locking: bool
-            not used in this compute, default value is "False".
         kernel_name: str
             cce kernel name, default value is "scatter_non_aliasing_add"
         Returns
@@ -719,13 +717,11 @@ class ScatterNonAliasingAdd():
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
 def scatter_non_aliasing_add(var,
                              indices,
                              adds,
                              var_out,
-                             use_locking=False,
                              kernel_name="scatter_non_aliasing_add"):
     """
     scatter_non_aliasing_add interface
@@ -735,12 +731,11 @@ def scatter_non_aliasing_add(var,
     indices: input indices shape, dtype and range
     adds: input adds shape, dtype and range
     var_out: output shape, dtype and range
-    use_locking: bool
     kernel_name: kernel_name of scatter_add op
     Returns
     _______
     compile info
     """
-    obj = ScatterNonAliasingAdd(var, indices, adds, var_out, False,
+    obj = ScatterNonAliasingAdd(var, indices, adds, var_out,
                                 kernel_name)
     return obj.scatter_non_aliasing_add_operator()
