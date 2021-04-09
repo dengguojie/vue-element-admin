@@ -137,7 +137,7 @@ def check_conv_shape(shape_in, shape_w, pad_top, pad_bottom,
         if ConvParam.fusion_para["l1_fusion_type"] in (0, 1):
             pass
         elif int(max_feature_map_l1) > l1_buffer_size:
-            if not dynamic_para["var_map"]:
+            if not dynamic_para:
                 ConvParam.l0a_dma_flag = True
             else:
                 err_man.raise_err_specific("conv2d",
