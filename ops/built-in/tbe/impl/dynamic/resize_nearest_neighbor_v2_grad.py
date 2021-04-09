@@ -419,25 +419,40 @@ class ResizeNearestNeighborV2Grad:
                                                             ubuf_burst_stride, gm_out_burst_stride)
 
                     else:
-                        scalar_in_w_idx = self.tik_instance.Scalar("int32", name="scalar_in_w_idx")
-                        scalar_in_w_idx.set_as(self.width_idx_ub[0])
                         w_align_num = self.tiling_out_width // self.tiling_in_width
-                        with self.tik_instance.for_range(0, self.tiling_in_width) as w_input_idx:
-                            burst_num = do_nc_num
-                            burst_len = self.grads_shape_c0 // self.block_num
-                            nc_ubuf_offset = w_loop_segment * self.grads_shape_c0
-                            ubuf_burst_stride = nc_ubuf_offset // self.block_num - burst_len
-                            gm_out_burst_stride = self.tiling_out_width * self.tiling_out_height * \
-                                                  self.grads_shape_c0 // self.block_num - burst_len
+                        burst_len = self.grads_shape_c0 // self.block_num
 
-                            nc_gm_offset = (_nc_loop_idx * nc_max_segment + self.core_nc_start) \
-                                           * self.tiling_out_width * self.tiling_out_height
-                            output_gm_offset = nc_gm_offset + scalar_in_h_idx * \
-                                               self.tiling_out_width + w_input_idx * w_align_num
-                            self.tik_instance.data_move(self.out_gm[output_gm_offset * self.grads_shape_c0],
-                                                        output_ub[w_input_idx * self.grads_shape_c0],
-                                                        0, burst_num, burst_len,
-                                                        ubuf_burst_stride, gm_out_burst_stride)
+                        with self.tik_instance.if_scope(scalar_is_dst_stride == 0):
+                            with self.tik_instance.for_range(0, self.tiling_in_width) as w_input_idx:
+                                with self.tik_instance.for_range(0, do_nc_num) as _segment_idx:
+                                    burst_num = 1
+                                    nc_ubuf_offset = w_loop_segment * _segment_idx + w_input_idx
+                                    nc_gm_offset = (_nc_loop_idx * nc_max_segment + self.core_nc_start \
+                                                    + _segment_idx) * self.tiling_out_width * self.tiling_out_height
+                                    output_gm_offset = nc_gm_offset + scalar_in_h_idx * \
+                                                       self.tiling_out_width + w_input_idx * w_align_num
+
+                                    self.tik_instance.data_move(self.out_gm[output_gm_offset * self.grads_shape_c0],
+                                                                output_ub[nc_ubuf_offset * self.grads_shape_c0],
+                                                                0, burst_num, burst_len,
+                                                                0, 0)
+
+                        with self.tik_instance.else_scope():
+                            with self.tik_instance.for_range(0, self.tiling_in_width) as w_input_idx:
+                                burst_num = do_nc_num
+                                nc_ubuf_offset = w_loop_segment * self.grads_shape_c0
+                                ubuf_burst_stride = nc_ubuf_offset // self.block_num - burst_len
+                                gm_out_burst_stride = self.tiling_out_width * self.tiling_out_height * \
+                                                      self.grads_shape_c0 // self.block_num - burst_len
+
+                                nc_gm_offset = (_nc_loop_idx * nc_max_segment + self.core_nc_start) \
+                                               * self.tiling_out_width * self.tiling_out_height
+                                output_gm_offset = nc_gm_offset + scalar_in_h_idx * \
+                                                   self.tiling_out_width + w_input_idx * w_align_num
+                                self.tik_instance.data_move(self.out_gm[output_gm_offset * self.grads_shape_c0],
+                                                            output_ub[w_input_idx * self.grads_shape_c0],
+                                                            0, burst_num, burst_len,
+                                                            ubuf_burst_stride, gm_out_burst_stride)
 
                 grad_out_ub_ping = self.tik_instance.Tensor(self.grads_dtype, (self.ub_max_num,),
                                                             name="grad_out_ub_ping", scope=tik.scope_ubuf)
