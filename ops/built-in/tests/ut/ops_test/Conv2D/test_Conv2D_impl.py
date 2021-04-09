@@ -90,6 +90,78 @@ def test_op_check_supported_1(test_arg):
 print("adding conv2d test_op_check_supported_1 testcase")
 ut_case.add_cust_test_func(test_func=test_op_check_supported_1)
 
+def test_conv2d_fuzz_build_generalization(test_arg):
+    from impl.dynamic.conv2d import conv2d_generalization
+    input_list = [
+        {
+            'shape': (16, 1, 16, 16, 16),
+            'ori_shape': (16, 3, 16, 16),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, {
+            'ori_shape': (33, 3, 3, 5),
+            'ori_format': 'NCHW',
+            'format': 'FRACTAL_Z',
+            'dtype': 'float16'
+        }, None, None, {
+            'shape': (16, 3, 14, 12, 16),
+            'ori_shape': (16, 33, 14, 12),
+            'ori_format': 'NCHW',
+            'format': 'NC1HWC0',
+            'dtype': 'float16'
+        }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'conv2d_fuzz_build_generalization']
+    conv2d_generalization(*input_list)
+print("adding conv2d test_conv2d_fuzz_build_generalization testcase")
+ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_generalization)
+
+def test_conv2d_fuzz_build_tilingcase(test_arg):
+    import json
+    from impl.dynamic.conv2d import conv2d
+    from tbe.common.context import get_context
+    from tbe.common.context import op_context
+    with op_context.OpContext("dynamic"):
+        get_context().set_build_type("fuzzily_build")
+        get_context().add_addition("max_kernel_id", -1)
+        missing_info = [{
+                            "inputs": [{
+                                "index": 0,
+                                "tensor": [{
+                                    "range": [
+                                        [16, 32],
+                                        [3, 3],
+                                        [16, 32],
+                                        [16, 32]
+                                    ],
+                                    "shape": [-1, 3, -1, -1]
+                                }]
+                            }]
+                        }]
+        get_context().add_addition("missing_support_info", json.dumps(missing_info))
+        input_list = [
+            {
+                'shape': (-1, 1, -1, -1, 16),
+                'ori_shape': (-1, 3, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16',
+                'range': ((16, 32), (3, 3), (16, 32), (16, 32))
+            }, {
+                'ori_shape': (33, 3, 3, 5),
+                'ori_format': 'NCHW',
+                'format': 'FRACTAL_Z',
+                'dtype': 'float16'
+            }, None, None, {
+                'shape': (-1, 3, -1, -1, 16),
+                'ori_shape': (-1, 33, -1, -1),
+                'ori_format': 'NCHW',
+                'format': 'NC1HWC0',
+                'dtype': 'float16'
+            }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_conv2d_fuzz_build_tilingcase']
+        conv2d(*input_list)
+print("adding conv2d test_conv2d_fuzz_build_tilingcase testcase")
+# ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_tilingcase)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910", "Ascend310"])
     dsl_cpu_test_int8()

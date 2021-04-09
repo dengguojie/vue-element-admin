@@ -179,7 +179,7 @@ int32_t g_wMinDim = 4;
 int32_t g_wMaxDim = 5;
 
 string CubeTilingBatch(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  std::string tilingID("0");
+  std::string tilingID("");
   auto& tilingRange = opInfo.at("tiling_range");
   for (auto it = tilingRange.begin(); it != tilingRange.end(); it++) {
     auto& range = it.value();
@@ -191,7 +191,7 @@ string CubeTilingBatch(const std::vector<int32_t>& curShape, const nlohmann::jso
 }
 
 string CubeTilingCostModel(const std::vector<int32_t>& curShape, const nlohmann::json& opInfo) {
-  std::string tilingID("0");
+  std::string tilingID("");
   auto& costRange = opInfo.at("cost_range");
   for (auto it = costRange.begin(); it != costRange.end(); it++) {
     auto& range = it.value();
@@ -210,7 +210,7 @@ string CubeTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json&
   int32_t seedWDim = 1;
   int32_t minDist = 1000000;
 
-  std::string tilingID("0");
+  std::string tilingID("");
   auto& repoRange = opInfo.at("repo_range");
   auto& tilingSeeds = opInfo.at("repo_seeds");
 
@@ -227,7 +227,7 @@ string CubeTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json&
         }
     }
   }
-  if (tilingID != "0") {
+  if (!tilingID.empty()) {
     return tilingID;
   }
 
@@ -238,8 +238,8 @@ string CubeTilingNHW(const std::vector<int32_t>& curShape, const nlohmann::json&
 
 int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curShape, const nlohmann::json& opInfo,
                    OpRunInfo& runInfo) {
-    std::vector<std::string> varMap = opInfo.at("_vars")["10000"];
-    std::string tilingID("0");
+    std::vector<std::string> varMap = opInfo.at("_vars").begin().value();
+    std::string tilingID("");
 
     if (opInfo["tiling_type"] == "default_tiling") {
         tilingID = opInfo["default_range"].begin().key();
@@ -248,7 +248,7 @@ int32_t CubeTiling(const std::string& opType, const std::vector<int32_t>& curSha
     } else {
         tilingID = CubeTilingBatch(curShape, opInfo);
     }
-    if (tilingID == "0") {
+    if (tilingID.empty()) {
         if (opInfo.contains("correct_range_flag") && opInfo["correct_range_flag"]) {
             CUBE_INNER_ERR_REPORT(opType.c_str(), "The original range does not meet requirements,"
               "new range is generated during op compile, but the shape is not covered by new range");

@@ -3869,6 +3869,96 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
 }
 
 /*!
+  * Simply get value range in grade list.
+  */
+static bool GetSingleRange(ge::Operator& op, const std::vector<int64_t>& grade,
+                          const int64_t& value, int64_t& low, int64_t& high) {
+  size_t min_size = 2;
+  if (grade.size() < min_size) {
+    OP_LOGE(op.GetName().c_str(), "input grade size smaller then %u", min_size);
+    return false;
+  }
+  // grade is in ascending order
+  size_t last = grade.size() - 1;
+  if (value > grade[last]) {
+    OP_LOGE(op.GetName().c_str(), "input value %lld is out the range of %lld", value, grade[last]);
+    return false;
+  }
+  // if it is the right boundary value, use the right closed interval
+  if (value == grade[last]) {
+    low = grade[last - 1];
+    high = grade[last];
+    return true;
+  }
+  for (auto n : grade) {
+    if (value >= n) {
+      low = n;
+    }
+    if (value < n) {
+      high = n;
+      break;
+    }
+  }
+  return true;
+}
+
+/*!
+  * Generate NHW shape range
+  */
+static bool GenConv2dShapeRange(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
+                                std::vector<std::pair<int64_t, int64_t>>& input_range) {
+  auto x_shape = x_tensor->MutableShape().GetDims();
+  // only support 4D shape
+  auto x_format = x_tensor->GetFormat();
+  size_t idx_n = 0;
+  size_t idx_h = 0;
+  size_t idx_w = 0;
+  size_t idx_c = 0;
+  if (x_format == FORMAT_NHWC) {
+    idx_h = 1;
+    idx_w = 2;
+    idx_c = 3;
+  } else {
+    idx_c = 1;
+    idx_h = 2;
+    idx_w = 3;
+  }
+  std::vector<int64_t> grade_n = {1, 2, 4, 8, 16, 32, ((1 << 31) - 1)};
+  std::vector<int64_t> grade_h = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 100000};
+  std::vector<int64_t> grade_w = {1, 4, 16, 32, 64, 128, 192, 256, 512, 768, 1024, 4096};
+  // init empty range
+  // shape -1 without set range call "GetShapeRange" will return [1,-1]
+  input_range = {{}, {}, {}, {}};
+  std::vector<std::pair<int64_t, int64_t>> range_set;
+  x_tensor->GetShapeRange(range_set);
+  std::map<size_t, std::vector<int64_t>> grade_map;
+  grade_map[idx_n] = grade_n;
+  grade_map[idx_h] = grade_h;
+  grade_map[idx_w] = grade_w;
+  for (auto item: grade_map) {
+    // allow shape -1 with range
+    if(x_shape[item.first] == -1) {
+      if (range_set.size() > item.first) {
+        input_range[item.first] = range_set[item.first];
+      } else {
+        OP_LOGE(op.GetName().c_str(), "cant't get input index %zu range", item.first);
+        return false;
+      }
+    } else {
+      int64_t low = 1;
+      int64_t high = 1;
+      if (!GetSingleRange(op, item.second, x_shape[item.first], low, high)) {
+        OP_LOGE(op.GetName().c_str(), "failed to get the %zu range", item.first);
+        return false;
+      }
+      input_range[item.first] = std::make_pair(low, high);
+    }
+  }
+  input_range[idx_c] = (std::make_pair(x_shape[idx_c], x_shape[idx_c]));
+  return true;
+}
+
+/*!
   * @brief Infer output shape and dtype, dtype is same to first input tensor, Output
   *        format is set by ge parser process already.
   * @param Conv2DInfer Conv2D infershape function.
@@ -4127,8 +4217,13 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
     y_tensor->SetDataType(x_dtype);
   }
 
+  // fuzz_build switch
+  bool fuzz_build = false;
+  op.GetAttr(ge::ATTR_NAME_FUZZ_BUILD, fuzz_build);
+
   // set Range
   if (is_dynamic) {
+    OP_LOGD(op.GetName().c_str(), "start accurate build.");
     vector<int32_t> attr_params = {strh, strw,dilh, dilw,
                                    padt, padb, padl, padr,
                                    kn, kh, kw};
@@ -4136,7 +4231,31 @@ IMPLEMT_INFERFUNC(Conv2D, Conv2DInfer) {
       return GRAPH_FAILED;
     }
   }
-
+  // fuzz build allow shape dim -1 with range
+  if ((!unknown_rank) && fuzz_build) {
+    OP_LOGD(op.GetName().c_str(), "start fuzz build.");
+    // generate range
+    std::vector<std::pair<int64_t, int64_t>> input_range;
+    if (!GenConv2dShapeRange(op, x_tensor, input_range)){
+      return GRAPH_FAILED;
+    }
+    // change pad to -1 when padding is SAME
+    std::string pad_str;
+    op.GetAttr("padding", pad_str);
+    if (pad_str == "SAME") {
+      op.SetAttr("pads", {-1, -1, -1, -1});
+      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1} when padding is SAME in fuzzy build");
+    }
+    // only need to set input fuzz build range
+    graphStatus ret = x_tensor->SetShapeRange(input_range);
+    if (ret != GRAPH_SUCCESS) {
+      OP_LOGE(op.GetName().c_str(), "set input range failed");
+      return GRAPH_FAILED;
+    }
+    for (size_t i = 0; i < input_range.size(); i++) {
+      OP_LOGD(op.GetName().c_str(), "input Range[%u] is (%lld, %lld)", i, input_range[i].first, input_range[i].second);
+    }
+  }
   OP_LOGD(op.GetName().c_str(), "Leave Conv2DInfer.");
   return GRAPH_SUCCESS;
 }

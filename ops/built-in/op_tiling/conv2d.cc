@@ -61,12 +61,48 @@ bool Conv2DTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int32_t outH = opParas.outputs[0].tensor[0].shape[hDim];
   int32_t outW = opParas.outputs[0].tensor[0].shape[wDim];
 
-  int32_t tilingID = CubeTiling(opType, {n, h, w}, opCompileInfo, runInfo);
+  if(opCompileInfo.empty()) {
+    GELOGD("op compile info is empty");
+    return false;
+  }
+  // accurate build has only one item
+  // fuzzy build has multiple items
+  std::vector<std::string> varMap;
+  nlohmann::json opInfo;
+  GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
+  if (opCompileInfo.is_array()) {
+    // >>> start: splice compile info
+    opInfo = opCompileInfo[0];
+    varMap = opInfo.at("_vars").begin().value().get<std::vector<std::string>>();
+    nlohmann::json item;
+    for (size_t i = 1; i < opCompileInfo.size(); ++i) {
+      item = opCompileInfo[i];
+      std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
+      for (auto key: key_list) {
+        if (item[key].is_object() && !item[key].empty()) {
+          std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
+          opInfo[key][item[key].begin().key()] = list_value;
+        }
+      }
+      std::vector<std::string> key_int = {"block_dim"};
+      for (auto key: key_int) {
+        if (item[key].is_object() && !item[key].empty()) {
+          int32_t int_value = item[key].begin().value().get<int32_t>();
+          opInfo[key][item[key].begin().key()] = int_value;
+        }
+      }
+    }
+    // <<< end: put together compile info
+    GELOGD("compile info after splice is: %s", opInfo.dump().c_str());
+  } else if (opCompileInfo.is_object()) {
+    varMap = opCompileInfo.at("_vars")["10000"].get<std::vector<std::string>>();
+    opInfo = opCompileInfo;
+  }
+  int32_t tilingID = CubeTiling(opType, {n, h, w}, opInfo, runInfo);
 
   GELOGD("tiling_data is %d, %d, %d, %d, %d, %d", tilingID, n, h, w, outH, outW);
 
   runInfo.tiling_key = tilingID;
-  std::vector<std::string> varMap = opCompileInfo.at("_vars")["10000"];
 
   if (std::find(varMap.begin(), varMap.end(), "batch_n") != varMap.end()) {
     ByteBufferPut(runInfo.tiling_data, n);

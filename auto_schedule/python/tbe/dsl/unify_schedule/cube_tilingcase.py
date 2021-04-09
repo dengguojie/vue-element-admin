@@ -26,6 +26,7 @@ from abc import abstractmethod
 
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.context import op_context
+from tbe.common.context import get_context
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_compile_info
 from tbe.tvm.expr import IntImm
@@ -147,7 +148,7 @@ class CubeTilingOp:
 
 
 class TilingSelection:
-    def __init__(self, tiling_op: CubeTilingOp, cnt=10000):
+    def __init__(self, tiling_op: CubeTilingOp, cnt=None):
         """
         init TilingSelection
         Parameters
@@ -156,6 +157,16 @@ class TilingSelection:
         cnt: initial value of tiling key counter
         """
         self.op = tiling_op
+        if not isinstance(cnt, int):
+            cnt = 10000
+            fuzz_build = get_context().get_build_type() == "fuzzily_build"
+            if fuzz_build:
+                # >>> start: get kernel id
+                kernel_id = get_context().get_addition("max_kernel_id")
+                valid = isinstance(kernel_id, int) and kernel_id > -2
+                if valid:
+                    cnt = kernel_id + 1
+                # <<< end: get kernel id
         self.seed_cnt = itertools.count(cnt)
 
     def calc_tiling(self, target_area, var_names=()):
