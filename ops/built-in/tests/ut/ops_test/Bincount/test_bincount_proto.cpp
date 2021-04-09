@@ -22,6 +22,7 @@
 #include <iostream>
 #include "op_proto_test_util.h"
 #include "math_ops.h"
+#include "array_ops.h"
 
 class BincountTest : public testing::Test {
  protected:
@@ -34,7 +35,7 @@ class BincountTest : public testing::Test {
   }
 };
 
-TEST_F(BincountTest, InferShape) {
+TEST_F(BincountTest, InferShape_01) {
   ge::op::Bincount op;
   op.UpdateInputDesc("array", create_desc({2, 2}, ge::DT_INT32));
   op.UpdateInputDesc("size", create_desc({}, ge::DT_INT32));
@@ -47,4 +48,33 @@ TEST_F(BincountTest, InferShape) {
   EXPECT_EQ(bins_desc.GetDataType(), ge::DT_FLOAT);
   std::vector<int64_t> expected_bins_shape = {-1};
   EXPECT_EQ(bins_desc.GetShape().GetDims(), expected_bins_shape);
+}
+
+//error size rank
+TEST_F(BincountTest, InferShape_02) {
+  ge::op::Bincount op;
+  op.UpdateInputDesc("array", create_desc({2, 2}, ge::DT_INT32));
+  op.UpdateInputDesc("size", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("weights", create_desc({}, ge::DT_FLOAT));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(BincountTest, InferShape_03) {
+  ge::op::Bincount op;
+  op.UpdateInputDesc("array", create_desc({2, 2}, ge::DT_INT32));
+  op.UpdateInputDesc("weights", create_desc({}, ge::DT_FLOAT));
+
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape(), ge::FORMAT_ND, ge::DT_INT32);
+  constDesc.SetSize(1 * sizeof(int32_t));
+  constTensor.SetTensorDesc(constDesc);
+  int32_t constData[1] = {5};
+  constTensor.SetData((uint8_t*)constData, 1 * sizeof(int32_t));
+  auto const0 = ge::op::Constant().set_attr_value(constTensor);
+  op.set_input_size(const0);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

@@ -898,14 +898,14 @@ REG_OP(Reduction)
 *@brief Computes the euclidean norm of elements across dimensions of a tensor . \n
 
 *@par Inputs:
-*@li input_tensor: A Tensor. Must be one of the following types: float16, float32, int32.
+*@li x: A Tensor. Must be one of the following types: float16, float32, int32.
 *@li axes: A Tensor of type int8 or int32. Specifies the dimensions to reduce. Defaults to "None" . \n
 
 *@par Attributes:
 *keep_dims: An optional bool. If "True", reduced dimensions will be retained. Defaults to "False" . \n
 
 *@par Outputs:
-*output_tensor: A Tensor. Must be one of the following types: float16, float32, int32 . \n
+*y: A Tensor. Must be one of the following types: float16, float32, int32 . \n
 
 *@attention Constraints:
 * If "axes = None", all dimensions will be reduced. "axes" must be in the range [-rank(input_shape), rank(input_shape)) . \n

@@ -64,7 +64,10 @@ IMPLEMT_INFERFUNC(AdjustHue, AdjustHueInfer) {
 
   GeShape out;
   if (WithRankAtLeast(images_desc, 3, out) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input images at least 3-D.");
+    std::string err_msg = GetShapeErrMsg(
+        0, DebugString(images_desc->GetShape().GetDims()), "at least 3D");
+    err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -89,7 +92,10 @@ IMPLEMT_INFERFUNC(AdjustSaturation, AdjustSaturationInfer) {
 
   GeShape out;
   if (WithRankAtLeast(images_desc, 3, out) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input images at least 3-D.");
+    std::string err_msg = GetShapeErrMsg(
+        0, DebugString(images_desc->GetShape().GetDims()), "at least 3D");
+    err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

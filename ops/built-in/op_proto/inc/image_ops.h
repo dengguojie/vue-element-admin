@@ -1139,6 +1139,7 @@ REG_OP(DecodeBmp)
 
 *@par Inputs:
 *@li contents: A Tensor of type string. 0-D. The JPEG-encoded image. \n
+*@li crop_window: 1-D. The crop window: [crop_y, crop_x, crop_height, crop_width]. \n
 
 *@par Attributes:
 *@li channels: An optional int. Defaults to 0. Number of color channels for the

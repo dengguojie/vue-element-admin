@@ -23,6 +23,7 @@
 #include "util/common_shape_fns.h"
 #include "util/error_util.h"
 #include "graph/utils/op_desc_utils.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(SparseSoftmax, SparseSoftmaxInfer) {
@@ -386,7 +387,11 @@ IMPLEMT_INFERFUNC(SparseAdd, SparseAddInfer) {
 
   GeShape x1_shape;
   if (WithRank(op_desc->MutableInputDesc(2), 1, x1_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input x1_shape must be 1-D");
+    std::string err_msg = GetShapeErrMsg(
+        2, DebugString(op_desc->MutableInputDesc(2)->GetShape().GetDims()),
+        "1D");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

@@ -117,7 +117,10 @@ IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
   GeShape unused;
   auto size_desc = op_desc->MutableInputDesc(1);
   if (WithRank(size_desc, 0, unused) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input size must be a Scalar.");
+    std::string err_msg = GetShapeErrMsg(
+        1, DebugString(size_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -130,17 +133,16 @@ IMPLEMT_INFERFUNC(Bincount, BincountInfer) {
   if (bins != UNKNOWN_DIM) {
     if (MakeDimForScalarInput(tensor, bins, op.GetName().c_str()) !=
         GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(),
-              "Fail to get dim from tensor of input size.");
-
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+          op.GetName(), string("fail to get dim from tensor of input[size]."));
       return GRAPH_FAILED;
     }
   }
 
   Shape bins_shape;
   if (Vector(bins, bins_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(),
-            "Fail to gen vector shape according dim bins.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to gen vector shape according dim bins."));
     return GRAPH_FAILED;
   }
 
@@ -166,7 +168,13 @@ IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
     } else if (input_shape.GetDimNum() == 0) {
       ++num_scalars;
     } else {
-      if (Merge(output, input_shape, output, op.GetName().c_str()) != GRAPH_SUCCESS) {
+      if (Merge(output, input_shape, output, op.GetName().c_str()) !=
+          GRAPH_SUCCESS) {
+        std::string err_msg =
+            ConcatString("failed to call Merge function to merge", i,
+                         "th input shape", DebugString(input_shape.GetDims()),
+                         " and output[z] shape", DebugString(output.GetDims()));
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       some_non_scalar = output;
@@ -184,7 +192,8 @@ IMPLEMT_INFERFUNC(Betainc, BetaincInfer) {
   z_desc.SetShape(output);
   z_desc.SetDataType(a_type);
   if (op.UpdateOutputDesc("z", z_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update z failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[z] desc."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

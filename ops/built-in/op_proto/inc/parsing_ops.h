@@ -93,7 +93,7 @@ REG_OP(ParseSingleExample)
 /**
 *@brief Decodes raw file into  tensor . \n
 *@par Input:
-*contents: A Tensor of type string.
+*bytes: A Tensor of type string.
 
 *@par Attributes:
 *little_endian: bool ture
@@ -119,10 +119,11 @@ REG_OP(DecodeRaw)
 *TensorProto prototype. \n
 
 *@par Attributes:
-*out_type: The numeric type to interpret each string in string_tensor as . \n
+*out_type: The type of the serialized tensor. The provided type must match the
+*type of the serialized tensor and no implicit conversion will take place. \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as serialized. \n
+*output: A Tensor of type out_type. \n
 
 *@attention Constraints:
 *The implementation for StringToNumber on Ascend uses AICPU,
@@ -146,13 +147,21 @@ REG_OP(ParseTensor)
 
 *@par Inputs:
 *Inputs include:
-*x: A Tensor. Must be one of the following types: string . \n
+*records: Each string is a record/row in the csv and all records should have the
+*same format. \n
+*record_defaults: One tensor per column of the input record, with either a
+*scalar default value for that column or an empty vector if the column is
+*required. \n
 
 *@par Attributes:
-*out_type: The numeric type to interpret each string in string_tensor as . \n
+*OUT_TYPE: The numeric type to interpret each string in string_tensor as . \n
+*field_delim: char delimiter to separate fields in a record. \n
+*use_quote_delim: If false, treats double quotation marks as regular characters
+*inside of the string fields (ignoring RFC 4180, Section 2, Bullet 5). \n
+*na_value: Additional string to recognize as NA/NaN. \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as x . \n
+*output: A Tensor. Has the same type as x . \n
 
 *@attention Constraints:
 *The implementation for StringToNumber on Ascend uses AICPU, with bad
@@ -175,34 +184,40 @@ REG_OP(DecodeCSV)
     .OP_END_FACTORY_REG(DecodeCSV)
 
 /**
-*@brief Converts each string in the input Tensor to the specified numeric type . \n
-
-*@par Inputs:
-*Inputs include:
-*x: A Tensor. Must be one of the following types: string . \n
+*@brief Convert serialized tensorflow.TensorProto prototype to Tensor.
+*@brief Parse an Example prototype.
+*@par Input:
+*serialized: A Tensor of type string. \n
+*name:A Tensor of type string. \n
+*sparse_keys: Dynamic input tensor of string. \n
+*dense_keys: Dynamic input tensor of string \n
+*dense_defaults:  Dynamic input tensor type as string, float, int64. \n
 
 *@par Attributes:
-*out_type: The numeric type to interpret each string in string_tensor as . \n
+*Nsparse: Number of sparse_keys, sparse_indices and sparse_shapes \n
+*Ndense: Number of dense_keys \n
+*sparse_types: types of sparse_values \n
+*Tdense: Type of dense_defaults dense_defaults and dense_values \n
+*dense_shapes: output of dense_defaults shape  \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as x . \n
-
-*@attention Constraints:
-*The implementation for StringToNumber on Ascend uses AICPU, with bad performance. \n
-
-*@par Third-party framework compatibility
-*@li compatible with tensorflow StringToNumber operator.
+*sparse_indices: A Tensor of type string. \n
+*sparse_values:  Has the same type as sparse_types. \n
+*sparse_shapes: A Tensor of type int64 \n
+*dense_values:  Has the same type as dense_defaults. \n
+*@par Third-party framework compatibility \n
+*@li compatible with tensorflow StringToNumber operator. \n
 */
 REG_OP(ParseExample)
-    .INPUT(serialized, TensorType({DT_STRING, DT_RESOURCE}))
-    .INPUT(name, TensorType({DT_STRING, DT_RESOURCE}))
-    .DYNAMIC_INPUT(sparse_keys, TensorType({DT_STRING, DT_RESOURCE}))
-    .DYNAMIC_INPUT(dense_keys, TensorType({DT_STRING, DT_RESOURCE}))
-    .DYNAMIC_INPUT(dense_defaults, TensorType({DT_FLOAT, DT_INT64, DT_STRING, DT_RESOURCE}))
+    .INPUT(serialized, TensorType({DT_STRING}))
+    .INPUT(name, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(sparse_keys, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(dense_keys, TensorType({DT_STRING}))
+    .DYNAMIC_INPUT(dense_defaults, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
     .DYNAMIC_OUTPUT(sparse_indices, TensorType({DT_INT64}))
-    .DYNAMIC_OUTPUT(sparse_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_OUTPUT(sparse_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
     .DYNAMIC_OUTPUT(sparse_shapes, TensorType({DT_INT64}))
-    .DYNAMIC_OUTPUT(dense_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING, DT_RESOURCE}))
+    .DYNAMIC_OUTPUT(dense_values, TensorType({DT_FLOAT, DT_INT64, DT_STRING}))
     .ATTR(Nsparse, Int, 0)
     .ATTR(Ndense, Int, 0)
     .ATTR(sparse_types, ListType, {})
@@ -211,23 +226,41 @@ REG_OP(ParseExample)
     .OP_END_FACTORY_REG(ParseExample)
 
 /**
-*@brief Converts each string in the input Tensor to the specified numeric type . \n
-
-*@par Inputs:
-*Inputs include:
-*x: A Tensor. Must be one of the following types: string . \n
+*@brief Transforms a scalar brain.SequenceExample proto (as strings) into typed
+*tensors.
+*@par Input:
+*serialized: A Tensor of type string. \n
+*feature_list_dense_missing_assumed_empty:A Tensor of type string. \n
+*context_sparse_keys: Dynamic input tensor of string. \n
+*context_dense_keys: Dynamic input tensor of string \n
+*feature_list_sparse_keys:  Dynamic input tensor of string \n
+*feature_list_dense_keys:  Dynamic input tensor of string \n
+*context_dense_defaults:  Dynamic input tensor of string, float, int64 \n
+*debug_name: A Tensor of type string. \n
 
 *@par Attributes:
-*out_type: The numeric type to interpret each string in string_tensor as . \n
+*Ncontext_sparse: Number of context_sparse_keys, context_sparse_indices and context_sparse_shapes \n
+*Ncontext_dense: Number of context_dense_keys \n
+*Nfeature_list_sparse: Number of feature_list_sparse_keys \n
+*Nfeature_list_dense: Number of feature_list_dense_keys \n
+*context_sparse_types: Types of context_sparse_values \n
+*Tcontext_dense: Number of dense_keys \n
+*feature_list_dense_types: Types of feature_list_dense_values \n
+*context_dense_shapes: Shape of context_dense \n
+*feature_list_sparse_types: Type of feature_list_sparse_values \n
+*feature_list_dense_shapes: Shape of feature_list_dense \n
 
 *@par Outputs:
-*y: A Tensor. Has the same type as x . \n
-
-*@attention Constraints:
-*The implementation for StringToNumber on Ascend uses AICPU, with bad performance. \n
-
-*@par Third-party framework compatibility
-*@li compatible with tensorflow StringToNumber operator.
+*context_sparse_indices: Dynamic output tensor of type int64. \n
+*context_sparse_values:  Dynamic output tensor of type string, float, int64. \n
+*context_sparse_shapes: Dynamic output tensor of type int64 \n
+*context_dense_values:  Dynamic output tensor of type string, float, int64. \n
+*feature_list_sparse_indices: Dynamic output tensor of type int64. \n
+*feature_list_sparse_values:  Dynamic output tensor of type string, float, int64. \n
+*feature_list_sparse_shapes: Dynamic output tensor of type int64 \n
+*feature_list_dense_values:  Dynamic output tensor of type string, float, int64. \n
+*@par Third-party framework compatibility \n
+*@li compatible with tensorflow StringToNumber operator. \n
 */
 REG_OP(ParseSingleSequenceExample)
     .INPUT(serialized, TensorType({DT_STRING}))

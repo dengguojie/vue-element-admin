@@ -340,28 +340,26 @@ IMPLEMT_INFERFUNC(ListDiff, ListDiffInfer) {
   auto y_desc = op_desc->MutableInputDesc(1);
 
   Shape unused_shape;
+  std::string err_msg;
   if (WithRank(x_desc, 1, unused_shape) != GRAPH_SUCCESS) {
-    ShapeErrReport(0,
-                   op.GetName(),
-                   DebugString(x_desc->GetShape().GetDims()),
-                   "1D");
-    OP_LOGE(op.GetName().c_str(), "Input x rank must be 1-D.");
+    std::string err_msg =
+        GetShapeErrMsg(0, DebugString(x_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
     return GRAPH_FAILED;
   }
 
   if (WithRank(y_desc, 1, unused_shape) != GRAPH_SUCCESS) {
-    ShapeErrReport(1,
-                   op.GetName(),
-                   DebugString(y_desc->GetShape().GetDims()),
-                   "1D");
-    OP_LOGE(op.GetName().c_str(), "Input y rank must be 1-D.");
+    std::string err_msg =
+        GetShapeErrMsg(1, DebugString(y_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
     return GRAPH_FAILED;
   }
 
   DataType out_type = x_desc->GetDataType();
   DataType idx_type;
   if (op.GetAttr("out_idx", idx_type) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op get attr out_idx failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("failed to get attr[out_idx]."));
     return GRAPH_FAILED;
   }
 

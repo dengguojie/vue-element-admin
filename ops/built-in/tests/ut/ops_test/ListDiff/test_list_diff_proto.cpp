@@ -34,7 +34,7 @@ class ListDiffTest : public testing::Test {
   }
 };
 
-TEST_F(ListDiffTest, InferShape) {
+TEST_F(ListDiffTest, InferShape_01) {
   ge::op::ListDiff op;
   op.UpdateInputDesc("x", create_desc({2}, ge::DT_INT32));
   op.UpdateInputDesc("y", create_desc({2}, ge::DT_INT32));
@@ -53,3 +53,22 @@ TEST_F(ListDiffTest, InferShape) {
   EXPECT_EQ(idx_desc.GetShape().GetDims(), expected_idx_shape);
 }
 
+//error x rank
+TEST_F(ListDiffTest, InferShape_02) {
+  ge::op::ListDiff op;
+  op.UpdateInputDesc("x", create_desc({}, ge::DT_INT32));
+  op.UpdateInputDesc("y", create_desc({2}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+//error y rank
+TEST_F(ListDiffTest, InferShape_03) {
+  ge::op::ListDiff op;
+  op.UpdateInputDesc("x", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("y", create_desc({}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

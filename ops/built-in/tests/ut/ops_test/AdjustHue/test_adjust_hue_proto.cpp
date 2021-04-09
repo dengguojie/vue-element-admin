@@ -34,7 +34,7 @@ class AdjustHueTest : public testing::Test {
   }
 };
 
-TEST_F(AdjustHueTest, InferShape) {
+TEST_F(AdjustHueTest, InferShape_01) {
   ge::op::AdjustHue op;
   op.UpdateInputDesc("images", create_desc({2, 2, 3}, ge::DT_FLOAT));
   op.UpdateInputDesc("delta", create_desc({}, ge::DT_FLOAT));
@@ -48,3 +48,12 @@ TEST_F(AdjustHueTest, InferShape) {
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }
 
+//error image rank
+TEST_F(AdjustHueTest, InferShape_02) {
+  ge::op::AdjustHue op;
+  op.UpdateInputDesc("images", create_desc({2, 2}, ge::DT_FLOAT));
+  op.UpdateInputDesc("delta", create_desc({}, ge::DT_FLOAT));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

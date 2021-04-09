@@ -21,40 +21,41 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "op_proto_test_util.h"
-#include "image_ops.h"
+#include "math_ops.h"
 
-class AdjustSaturationTest : public testing::Test {
+class BetaincTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "AdjustSaturationTest SetUp" << std::endl;
+    std::cout << "BetaincTest SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "AdjustSaturationTest TearDown" << std::endl;
+    std::cout << "BetaincTest TearDown" << std::endl;
   }
 };
 
-TEST_F(AdjustSaturationTest, InferShape_01) {
-  ge::op::AdjustSaturation op;
-  op.UpdateInputDesc("images", create_desc({2, 2, 3}, ge::DT_FLOAT));
-  op.UpdateInputDesc("scale", create_desc({}, ge::DT_FLOAT));
+TEST_F(BetaincTest, InferShape_01) {
+  ge::op::Betainc op;
+  op.UpdateInputDesc("a", create_desc({1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("b", create_desc({1}, ge::DT_FLOAT));
+  op.UpdateInputDesc("x", create_desc({1}, ge::DT_FLOAT));
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
-  auto y_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(y_desc.GetDataType(), ge::DT_FLOAT);
-  std::vector<int64_t> expected_y_shape = {2, 2, 3};
-  EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
+  auto z_desc = op.GetOutputDesc("z");
+  EXPECT_EQ(z_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_z_shape = {1};
+  EXPECT_EQ(z_desc.GetShape().GetDims(), expected_z_shape);
 }
 
-//error image rank
-TEST_F(AdjustSaturationTest, InferShape_02) {
-  ge::op::AdjustSaturation op;
-  op.UpdateInputDesc("images", create_desc({2, 2}, ge::DT_FLOAT));
-  op.UpdateInputDesc("scale", create_desc({}, ge::DT_FLOAT));
+//error size rank
+TEST_F(BetaincTest, InferShape_02) {
+  ge::op::Bincount op;
+  op.UpdateInputDesc("array", create_desc({2, 2}, ge::DT_INT32));
+  op.UpdateInputDesc("size", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("weights", create_desc({}, ge::DT_FLOAT));
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
-

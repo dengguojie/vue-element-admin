@@ -262,9 +262,9 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
   }
 
   int32_t num_dense;
-  if (op.GetAttr("Ndence", num_dense) != GRAPH_SUCCESS) {
+  if (op.GetAttr("Ndense", num_dense) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-                                       string("failed to get attr[Ndence]."));
+                                       string("failed to get attr[Ndense]."));
     return GRAPH_FAILED;
   }
   if (num_dense < 0) {
@@ -379,11 +379,19 @@ IMPLEMT_INFERFUNC(ParseExample, ParseExampleInfer) {
 
   GeShape serialized_shape;
   auto serialized_desc = op_desc->MutableInputDesc(0);
-  if (WithRank(serialized_desc, 0, serialized_shape) != GRAPH_SUCCESS) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
-                                       string("failed to get attr[Nsparse]."));
+  if (WithRank(serialized_desc, 1, serialized_shape) != GRAPH_SUCCESS) {
     err_msg = GetShapeErrMsg(
-        0, DebugString(serialized_desc->GetShape().GetDims()), "scalar");
+        0, DebugString(serialized_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  GeShape unused_shape;
+  auto unused_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(unused_desc, 1, unused_shape) != GRAPH_SUCCESS) {
+    err_msg =
+        GetShapeErrMsg(1, DebugString(unused_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;

@@ -34,7 +34,7 @@ class SparseSegmentSumTest : public testing::Test {
   }
 };
 
-TEST_F(SparseSegmentSumTest, InferShape) {
+TEST_F(SparseSegmentSumTest, InferShape_01) {
   ge::op::SparseSegmentSum op;
   op.UpdateInputDesc("x", create_desc({4, 2}, ge::DT_FLOAT));
   op.UpdateInputDesc("indices", create_desc({4}, ge::DT_INT32));
@@ -49,3 +49,35 @@ TEST_F(SparseSegmentSumTest, InferShape) {
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }
 
+//error x rank
+TEST_F(SparseSegmentSumTest, InferShape_02) {
+  ge::op::SparseSegmentSum op;
+  op.UpdateInputDesc("x", create_desc({}, ge::DT_FLOAT));
+  op.UpdateInputDesc("indices", create_desc({4}, ge::DT_INT32));
+  op.UpdateInputDesc("segment_ids", create_desc({4}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+//error indices rank
+TEST_F(SparseSegmentSumTest, InferShape_03) {
+  ge::op::SparseSegmentSum op;
+  op.UpdateInputDesc("x", create_desc({4, 2}, ge::DT_FLOAT));
+  op.UpdateInputDesc("indices", create_desc({}, ge::DT_INT32));
+  op.UpdateInputDesc("segment_ids", create_desc({4}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+//error segment_ids rank
+TEST_F(SparseSegmentSumTest, InferShape_04) {
+  ge::op::SparseSegmentSum op;
+  op.UpdateInputDesc("x", create_desc({4, 2}, ge::DT_FLOAT));
+  op.UpdateInputDesc("indices", create_desc({4}, ge::DT_INT32));
+  op.UpdateInputDesc("segment_ids", create_desc({}, ge::DT_INT32));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
