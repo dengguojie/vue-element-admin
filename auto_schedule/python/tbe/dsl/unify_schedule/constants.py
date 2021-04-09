@@ -39,6 +39,7 @@ class Pattern:
     BN_UPDATE = "BnTrainingUpdate"
     LayerNorm = "LayerNorm"
     BN_TRAINING_UPDATE_GRAD = "BNTrainingUpdateGrad"
+    LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
 
 
 class CompileInfo:

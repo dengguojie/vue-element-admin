@@ -279,6 +279,7 @@ from .softmax_grad import softmax_grad
 from .bn_training_reduce_grad import bn_training_reduce_grad
 from .log_softmax_v2 import log_softmax_v2
 from .log_softmax_grad import log_softmax_grad
+from .layer_norm_x_backprop import layer_norm_x_backprop
 from .masked_fill import masked_fill
 from .resize_bilinear_v2_grad import resize_bilinear_v2_grad
 from .elu_grad import elu_grad
@@ -295,7 +296,6 @@ from .clip_by_value import clip_by_value
 from .clip_by_norm_no_div_sum import clip_by_norm_no_div_sum
 from .eltwise import eltwise
 from .iou import iou
-from .bn_training_update import bn_training_update
 from .bn_training_update import bn_training_update
 from .resize_nearest_neighbor_v2_grad import resize_nearest_neighbor_v2_grad
 from .layer_norm import layer_norm

@@ -56,6 +56,7 @@ set(_optiling_files
   gather.cc
   gather_nd.cc
   gather_v2.cc
+  layer_norm_x_backprop.cc
   lock.cc
   layer_norm_beta_gamma_backprop.cc
   l1_loss_grad.cc
