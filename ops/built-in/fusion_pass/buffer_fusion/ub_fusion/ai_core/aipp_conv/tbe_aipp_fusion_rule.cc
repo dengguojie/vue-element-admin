@@ -292,7 +292,7 @@ void TbeAippFusionRule::DelSplitInfoByAxis(std::vector<AxisSplitMap> &split_maps
 
 void TbeAippFusionRule::SetSplitInfo(std::vector<ge::NodePtr> &conv_nodes, std::vector<ge::NodePtr> &fusion_nodes,
                                      const bool &is_deal_c_axis) {
-  std::string op_slice_info_str;
+  std::string op_slice_info_str = "";
   if (conv_nodes.empty()) {
     return;
   }

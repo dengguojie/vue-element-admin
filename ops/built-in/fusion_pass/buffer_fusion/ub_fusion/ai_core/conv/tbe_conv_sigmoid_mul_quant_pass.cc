@@ -86,6 +86,9 @@ void ConvSigmoidMulQuantFusionPass::SetSplitInfo(const BufferFusionMapping &mapp
   string slice_info = "";
   ge::AttrUtils::GetStr(conv_nodes[0]->GetOpDesc(), fe::OP_SLICE_INFO, slice_info);
   OP_LOGD(fused_op_type_.c_str(), "origin op slice info: %s", slice_info.c_str());
+  if (slice_info.empty()) {
+    return;
+  }
   OpCalcInfo op_calc_info;
   GetOpSliceInfoFromJson(op_calc_info, slice_info);
   auto split_maps = op_calc_info.GetAxisSplitMapVec();

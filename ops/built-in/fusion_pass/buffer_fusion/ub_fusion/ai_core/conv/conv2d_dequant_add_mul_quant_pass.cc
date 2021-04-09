@@ -106,6 +106,9 @@ void TbeConv2DAddMulQuantPass::SetSplitInfo(const BufferFusionMapping &mapping, 
     ge::AttrUtils::GetStr(conv_node->GetOpDesc(), fe::OP_SLICE_INFO, op_slice_info_str);
   }
   OP_LOGD(fused_op_type_.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+  if (op_slice_info_str.empty()) {
+    return;
+  }
 
   // dequant have one input, add have one input
   inpre += 2;

@@ -142,6 +142,9 @@ void TbeConv2dWrtselStridewrtPass::SetSplitInfo(const BufferFusionMapping &mappi
     inpos = conv_node->GetInDataNodes().size() - 1;
   }
   OP_LOGD(fused_op_type_.c_str(), "ori _op_slice_info is %s", op_slice_info_str.c_str());
+  if (op_slice_info_str.empty()) {
+    return;
+  }
   OpCalcInfo op_calc_info;
   GetOpSliceInfoFromJson(op_calc_info, op_slice_info_str);
   auto split_maps = op_calc_info.GetAxisSplitMapVec();
