@@ -343,7 +343,7 @@ def _pre_build(schedules_list):
     operation.add_compile_info_inner(CompileInfo.ELEWISE_VARS, compile_vars)
 
 
-@register_build_pointcut(pattern=(Pattern.ELEMWISE, Pattern.BROADCAST))
+@register_build_pointcut(pattern=Pattern.BROADCAST)
 def build_pointcut(func, *args, **kwargs):
     """
     build pointcut

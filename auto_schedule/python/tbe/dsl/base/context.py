@@ -246,6 +246,7 @@ class ComputeContext:
         # type: (Optional[OperatorContext]) -> None
         self._operator = operation.get_context() if _operator is None else _operator  # type: Optional[OperatorContext]
 
+        self._pattern = None  # type: Optional[str]
         self._vars = []  # type: List[Var]
         self._attr_vars_desc = []  # type: List[AttrVarDesc]
         self._schedules = []  # type: List[ScheduleContext]
@@ -308,6 +309,21 @@ class ComputeContext:
         :return:
         """
         return self._operator
+
+    def set_pattern(self, pattern):
+        # type: (str) -> None
+        """
+        :param pattern:
+        :return:
+        """
+        self._pattern = pattern
+
+    def get_pattern(self):
+        # type: () -> Optional[str]
+        """
+        :return:
+        """
+        return self._pattern
 
     def add_var(self, var_):
         # type: (Var) -> None

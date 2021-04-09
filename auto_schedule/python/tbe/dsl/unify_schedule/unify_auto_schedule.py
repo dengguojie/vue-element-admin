@@ -48,8 +48,10 @@ def schedule_cce(outs, option=None):
     original_outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     original_outs = reget_tensor_list(original_outs)
     pattern = pattern_parser.get_pattern(outs)
+    # set compute pattern to compile info because const tiling need pattern
     operation.add_compile_info_inner("_pattern", pattern)
-    operation.get_context().set_pattern(pattern)
+    # set compute pattern
+    operation.get_context().get_current_compute().set_pattern(pattern)
 
     if util.get_build_cfg() == "disable":
         # prebuild
@@ -101,7 +103,30 @@ def build(schedules_list, config_map=None):
         # prebuild
         return
 
-    pattern = operation.get_context().get_pattern()
+
+    def get_op_pattern_from_computes():
+        """
+        get pattern from compute contexts, broadcast and eletwise fix pattern
+        use broadcast pattern
+        :return:
+        """
+
+        # get computes
+        op_computes = operation.get_context().get_computes()
+        compute_patterns = set()
+        for compute in op_computes:
+            compute_patterns.add(compute.get_pattern())
+
+        if {Pattern.ELEMWISE, Pattern.BROADCAST} == compute_patterns:
+            return Pattern.BROADCAST
+
+        return list(compute_patterns)[-1]
+
+    pattern = get_op_pattern_from_computes()
+    # update op pattern
+    operation.get_context().set_pattern(pattern)
+    operation.add_compile_info_inner("_pattern", pattern)
+
     pointcut_func = operation.get_build_pointcut(pattern)
     if pointcut_func is not None:
         pointcut_func(_build, schedules_list, config_map)
