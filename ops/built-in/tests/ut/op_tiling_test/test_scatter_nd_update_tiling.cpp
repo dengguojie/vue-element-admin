@@ -95,7 +95,7 @@ TEST_F(ScatterNdUpdateTiling, scatter_nd_update_tiling_1) {
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 16664 33 88888 0 4 177776 2 25400 266664 88888 0 0 0 0 0 2 2 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "2 16672 32 88888 0 4 177776 2 25400 266664 88888 0 0 0 0 0 2 2 ");
 }
 
 TEST_F(ScatterNdUpdateTiling, scatter_nd_update_tiling_2) {

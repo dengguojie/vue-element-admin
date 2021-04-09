@@ -110,7 +110,7 @@ void CalRunningParams(ScatterNdUpdateTilingParams& runParams, int64_t indicesNum
   } else {
     runParams.indiceStep = ceil(float(maxIndice) / coreNum);
     int64_t VarBlockNum = 32 / varSize;
-    runParams.indiceStep = ceil(runParams.indiceStep / VarBlockNum) * VarBlockNum;
+    runParams.indiceStep = ceil(float(runParams.indiceStep) / VarBlockNum) * VarBlockNum;
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
   }
 }
