@@ -18,6 +18,9 @@ cce specific declaration and schedules.
 # pylint: disable=redefined-builtin, wildcard-import
 from __future__ import absolute_import as _abs
 
+import warnings
+warnings.filterwarnings(action="ignore", category=DeprecationWarning)
+
 # tbe base op
 from .abs import abs
 from .l2_loss import l2_loss
