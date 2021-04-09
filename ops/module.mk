@@ -360,6 +360,7 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/gather_nd.cc \
         built-in/op_tiling/gather_v2.cc \
         built-in/op_tiling/gather.cc \
+        built-in/op_tiling/scatter_non_aliasing_add.cc \
         built-in/op_tiling/scatter_nd.cc \
         built-in/op_tiling/scatter_add.cc \
         built-in/op_tiling/scatter_sub.cc \
