@@ -45,7 +45,7 @@ ORI_SHAPE_LEN = 4
 @register_param_generalization("Conv2D")
 def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                           groups=1, data_format='NHWC', offset_x=0, kernel_name="conv2d",
-                          generalize_config={"mode": "keep_rank"}):
+                          generalize_config=None):
     """
     conv2d generalization
 
@@ -67,10 +67,12 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
     list of params list:
         single item under "keep_rank" mode and multiple under "all_shape"
     """
+    if generalize_config is None:
+        generalize_config = {"mode": "keep_rank"}
     support_mode = ["keep_rank"]
-    if generalize_config["mode"] not in support_mode:
+    if generalize_config.get("mode") not in support_mode:
         err_man.raise_err_specific_user("conv2d", "invalid generalize mode {}, only support {}".format(
-            str(generalize_config["mode"]), str(support_mode)))
+            str(generalize_config.get("mode")), str(support_mode)))
     result = []
     if generalize_config["mode"] == "keep_rank": # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
@@ -95,7 +97,7 @@ def conv2d_generalization(inputs, weights, bias, offset_w, outputs, strides, pad
                 err_man.raise_err_specific_user("conv2d", "invalid {} ori_shape {}, only support {}d".format(
                         name, str(tensor.get("shape")), str(SHAPE_LEN)))
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-               if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][1]]
+               if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
             tensor["shape"] = [-1, tensor["shape"][1], -1, -1, tensor["shape"][4]]
         result.append([inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                        groups, data_format, offset_x, kernel_name])
