@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-from te import tvm
-import te.lang.cce as tbe
-import te.lang.dynamic as dynamic
-import te.lang.base.operation_impl as operation
+from tbe import tvm
+import tbe.dsl as tbe
+from tbe.dsl.unify_schedule.unify_auto_schedule import build
+import tbe.dsl.base.operation as operation
 from impl.dynamic import relu
 from op_test_frame.ut import OpUT
 
@@ -55,7 +55,7 @@ def test_conv2d_relu_dynamic(test_arg):
                 "tensor_list": tensor_list,
                 "build_args": {"constant_realize_extent_in_infer_bound": False}}
 
-        dynamic.build(sch, config)
+        build(sch, config)
 
 # ut_case.add_cust_test_func(test_func=test_conv2d_relu_dynamic)
 

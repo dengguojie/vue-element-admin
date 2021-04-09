@@ -34,8 +34,8 @@ from tbe.dsl.base.operation import get_context as op_get_context
 from tbe.dsl.compute.conv_compute import ConvParam
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
 from tbe.dsl.static_schedule.conv_schedule import reget_tensor_list
-from te.lang.base.operation_impl import add_compile_info
-from te.lang.base.operation_impl import get_compile_info
+from tbe.dsl.base.operation import add_compile_info
+from tbe.dsl.base.operation import get_compile_info
 from .conv2d_schedule import get_op_tensor_map
 from .cube_tilingcase import TilingSelection
 from .cube_tilingcase import CubeTilingOp
