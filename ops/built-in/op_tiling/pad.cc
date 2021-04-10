@@ -379,7 +379,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   std::vector<int64_t> merge_paddings_values;
   int64_t merge_input_shape_dim = 1;
   bool pre_dim_pidding_flag = true;
-  for (auto i = 0; i < shape_len; i++) {
+  for (size_t i = 0; i < shape_len; i++) {
     auto cu_idx = shape_len - i - 1;
     auto cu_input_dim = input_shape[cu_idx];
     auto cu_paddings_value_left = paddings_const_values[cu_idx * 2];
@@ -408,7 +408,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   }
 
   shape_len = merge_input_shape_dims.size();
-  for (auto i = 0; i < 6 - shape_len; i++) {
+  for (size_t i = 0; i < 6 - shape_len; i++) {
     merge_input_shape_dims.insert(merge_input_shape_dims.begin(), 1);
     merge_paddings_values.insert(merge_paddings_values.begin(), 0);
     merge_paddings_values.insert(merge_paddings_values.begin(), 0);
