@@ -121,9 +121,12 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx) {
 
   if ((ctx.GetInputsSize() != kInputNum) ||
       (ctx.GetOutputsSize() != kOutputNum)) {
-    KERNEL_LOG_ERROR("[%s] unexpected node, input size [%u], output size [%u]",
-                     ctx.GetOpType().c_str(), ctx.GetInputsSize(),
-                     ctx.GetOutputsSize());
+    KERNEL_LOG_ERROR("[%s] Input size or Output size is unexpected,"
+                     "expected input size [%u], real input size [%u],"
+                     "expected output size [%u], real output size [%u]",
+                     ctx.GetOpType().c_str(),
+                     kInputNum, ctx.GetInputsSize(),
+                     kOutputNum, ctx.GetOutputsSize());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -136,24 +139,16 @@ uint32_t NormalMathCheck(CpuKernelContext &ctx) {
 
   if (input_0->GetDataType() != input_1->GetDataType()) {
     KERNEL_LOG_ERROR(
-        "[%s] dtype of inputs not matched, data_type[0] [%d], "
-        "data_type[1] [%d]",
+        "[%s] dtype of inputs not matched, input[0] data_type is [%d], "
+        "input[1] data_type is [%d]",
         ctx.GetOpType().c_str(), input_0->GetDataType(),
         input_1->GetDataType());
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
-
-  if ((input_0->GetDataSize() == 0) || (input_1->GetDataSize() == 0)) {
-    KERNEL_LOG_ERROR("[%s] data size of input[0] [%llu], input[1] [%llu].",
-                     ctx.GetOpType().c_str(), input_0->GetDataSize(),
-                     input_1->GetDataSize());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
   Tensor *output = ctx.Output(kFirstOutputIndex);
   KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
                        "[%s] get output failed", ctx.GetOpType().c_str());
-
   return KERNEL_STATUS_OK;
 }
 

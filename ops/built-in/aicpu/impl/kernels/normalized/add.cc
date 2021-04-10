@@ -24,7 +24,8 @@ constexpr char *kAdd = "Add";
 #define ADD_COMPUTE_CASE(DTYPE, TYPE, CTX)                \
   case (DTYPE): {                                         \
     if (AddCompute<TYPE>(CTX) != KERNEL_STATUS_OK) {      \
-      KERNEL_LOG_ERROR("Add kernel compute failed.");     \
+      KERNEL_LOG_ERROR("[%s] Compute failed.",            \
+                       CTX.GetOpType().c_str());          \
       return KERNEL_STATUS_PARAM_INVALID;                 \
     }                                                     \
     break;                                                \
@@ -44,9 +45,21 @@ constexpr char *kAdd = "Add";
 namespace aicpu {
 uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
   if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("Add kernel normal check failed.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
+  Tensor *input_0 = ctx.Input(kFirstInputIndex);
+  KERNEL_CHECK_NULLPTR(input_0, KERNEL_STATUS_PARAM_INVALID,
+                       "[%s] Get input[0] failed", ctx.GetOpType().c_str());
+  Tensor *input_1 = ctx.Input(kSecondInputIndex);
+  KERNEL_CHECK_NULLPTR(input_1, KERNEL_STATUS_PARAM_INVALID,
+                       "[%s] Get input[1] failed", ctx.GetOpType().c_str());
+  if ((input_0->GetDataSize() == 0) || (input_1->GetDataSize() == 0)) {
+    KERNEL_LOG_INFO("[%s] Input is empty tensor.",
+                     ctx.GetOpType().c_str(), input_0->GetDataSize(),
+                     input_1->GetDataSize());
+    return KERNEL_STATUS_OK;
+  }
+
   // choose compute function depend on dataType
   auto data_type =
       static_cast<DataType>(ctx.Input(kFirstInputIndex)->GetDataType());
@@ -63,7 +76,8 @@ uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
     ADD_COMPUTE_CASE(DT_FLOAT, float, ctx)
     ADD_COMPUTE_CASE(DT_DOUBLE, double, ctx)
     default:
-      KERNEL_LOG_ERROR("Add kernel data type [%s] not support.", DTypeStr(data_type).c_str());
+      KERNEL_LOG_ERROR("[%s] Data type of input is not support, input data type is [%s].",
+                       ctx.GetOpType().c_str(), DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -77,22 +91,24 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
   calc_info.input_1 = ctx.Input(kSecondInputIndex);
   calc_info.output = ctx.Output(kFirstOutputIndex);
   KERNEL_CHECK_NULLPTR(calc_info.input_0->GetData(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get input[0] data failed")
+                       KERNEL_STATUS_PARAM_INVALID, "[%s] Get input[0] data failed",
+                       ctx.GetOpType().c_str())
   KERNEL_CHECK_NULLPTR(calc_info.input_1->GetData(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get input[1] data failed")
+                       KERNEL_STATUS_PARAM_INVALID, "[%s] Get input[1] data failed",
+                       ctx.GetOpType().c_str())
   KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get output data failed")
+                       "[%s] Get output data failed", ctx.GetOpType().c_str())
 
   KERNEL_LOG_INFO(
-      "Add kernel, input[0]: size is [%llu]; input[1]: size is [%llu]; output: "
-      "size is [%llu].",
-      calc_info.input_0->GetDataSize(), calc_info.input_1->GetDataSize(),
-      calc_info.output->GetDataSize());
+      "[%s] Input[0] data size is [%llu], input[1] data size is [%llu], output "
+      "data size is [%llu].",
+      ctx.GetOpType().c_str(), calc_info.input_0->GetDataSize(),
+      calc_info.input_1->GetDataSize(), calc_info.output->GetDataSize());
   
   // broadcast input
   Bcast bcast;
   if (bcast.GenerateBcastInfo(calc_info) != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("Generate broadcast info failed.");
+    KERNEL_LOG_ERROR("[%s] Generate broadcast info failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   (void)bcast.GetBcastVec(calc_info);
@@ -113,11 +129,10 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
     ADD_CALCULATE_CASE(5, T)
     ADD_CALCULATE_CASE(6, T)
     default:
-      KERNEL_LOG_ERROR("Add kernel not support rank is [%zu].",
-                       calc_info.shape_out.size());
+      KERNEL_LOG_ERROR("[%s] Rank of output should less than 6 but get [%zu].",
+                       ctx.GetOpType().c_str(), calc_info.shape_out.size());
       return KERNEL_STATUS_PARAM_INVALID;
   }
-
   return KERNEL_STATUS_OK;
 }
 

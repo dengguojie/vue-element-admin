@@ -22,10 +22,11 @@
 namespace {
 constexpr char *kMul = "Mul";
 
-#define MUL_COMPUTE_CASE(DTYPE, TYPE)                     \
+#define MUL_COMPUTE_CASE(DTYPE, TYPE, CTX)                \
   case (DTYPE): {                                         \
-    if (MulCompute<TYPE>(ctx) != KERNEL_STATUS_OK) {      \
-      KERNEL_LOG_ERROR("Mul kernel compute failed.");     \
+    if (MulCompute<TYPE>(CTX) != KERNEL_STATUS_OK) {      \
+      KERNEL_LOG_ERROR("[%s] compute failed.",            \
+                       CTX.GetOpType().c_str());          \
       return KERNEL_STATUS_PARAM_INVALID;                 \
     }                                                     \
     break;                                                \
@@ -45,26 +46,38 @@ constexpr char *kMul = "Mul";
 namespace aicpu {
 uint32_t MulCpuKernel::Compute(CpuKernelContext &ctx) {
   if (NormalMathCheck(ctx) != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("Mul kernel normal check failed.");
     return KERNEL_STATUS_PARAM_INVALID;
+  }
+  Tensor *input_0 = ctx.Input(kFirstInputIndex);
+  KERNEL_CHECK_NULLPTR(input_0, KERNEL_STATUS_PARAM_INVALID,
+                       "[%s] Get input[0] failed", ctx.GetOpType().c_str());
+  Tensor *input_1 = ctx.Input(kSecondInputIndex);
+  KERNEL_CHECK_NULLPTR(input_1, KERNEL_STATUS_PARAM_INVALID,
+                       "[%s] Get input[1] failed", ctx.GetOpType().c_str());
+  if ((input_0->GetDataSize() == 0) || (input_1->GetDataSize() == 0)) {
+    KERNEL_LOG_INFO("[%s] Input is empty tensor.",
+                    ctx.GetOpType().c_str(), input_0->GetDataSize(),
+                    input_1->GetDataSize());
+    return KERNEL_STATUS_OK;
   }
   // choose compute function depend on dataType
   auto data_type =
       static_cast<DataType>(ctx.Input(kFirstInputIndex)->GetDataType());
   switch (data_type) {
-    MUL_COMPUTE_CASE(DT_INT8, int8_t)
-    MUL_COMPUTE_CASE(DT_INT16, int16_t)
-    MUL_COMPUTE_CASE(DT_INT32, int32_t)
-    MUL_COMPUTE_CASE(DT_INT64, int64_t)
-    MUL_COMPUTE_CASE(DT_UINT8, uint8_t)
-    MUL_COMPUTE_CASE(DT_UINT16, uint16_t)
-    MUL_COMPUTE_CASE(DT_UINT32, uint32_t)
-    MUL_COMPUTE_CASE(DT_UINT64, uint64_t)
-    MUL_COMPUTE_CASE(DT_FLOAT16, Eigen::half)
-    MUL_COMPUTE_CASE(DT_FLOAT, float)
-    MUL_COMPUTE_CASE(DT_DOUBLE, double)
+    MUL_COMPUTE_CASE(DT_INT8, int8_t, ctx)
+    MUL_COMPUTE_CASE(DT_INT16, int16_t, ctx)
+    MUL_COMPUTE_CASE(DT_INT32, int32_t, ctx)
+    MUL_COMPUTE_CASE(DT_INT64, int64_t, ctx)
+    MUL_COMPUTE_CASE(DT_UINT8, uint8_t, ctx)
+    MUL_COMPUTE_CASE(DT_UINT16, uint16_t, ctx)
+    MUL_COMPUTE_CASE(DT_UINT32, uint32_t, ctx)
+    MUL_COMPUTE_CASE(DT_UINT64, uint64_t, ctx)
+    MUL_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
+    MUL_COMPUTE_CASE(DT_FLOAT, float, ctx)
+    MUL_COMPUTE_CASE(DT_DOUBLE, double, ctx)
     default:
-      KERNEL_LOG_ERROR("Mul kernel data type [%s] not support.", DTypeStr(data_type).c_str());
+      KERNEL_LOG_ERROR("[%s] Data type of input is not support, input data type is [%s].",
+                       ctx.GetOpType().c_str(), DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -78,20 +91,22 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
   calc_info.input_1 = ctx.Input(kSecondInputIndex);
   calc_info.output = ctx.Output(kFirstOutputIndex);
   KERNEL_CHECK_NULLPTR(calc_info.input_0->GetData(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get input 0 data failed")
+                       KERNEL_STATUS_PARAM_INVALID, "[%s] Get input 0 data failed",
+                       ctx.GetOpType().c_str())
   KERNEL_CHECK_NULLPTR(calc_info.input_1->GetData(),
-                       KERNEL_STATUS_PARAM_INVALID, "Get input 1 data failed")
+                       KERNEL_STATUS_PARAM_INVALID, "[%s] Get input 1 data failed",
+                       ctx.GetOpType().c_str())
   KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get output data failed")
+                       "[%s] Get output data failed", ctx.GetOpType().c_str())
   KERNEL_LOG_INFO(
-      "Mul kernel, input[0]: size is [%llu]; input[1]: size is [%llu]; output: "
-      "size is [%llu].",
-      calc_info.input_0->GetDataSize(), calc_info.input_1->GetDataSize(),
-      calc_info.output->GetDataSize());
+      "[%s] Input[0] data size is [%llu], input[1] data size is [%llu], output "
+      "data size is [%llu].",
+      ctx.GetOpType().c_str(), calc_info.input_0->GetDataSize(),
+      calc_info.input_1->GetDataSize(), calc_info.output->GetDataSize());
   // broadcast input
   Bcast bcast;
   if (bcast.GenerateBcastInfo(calc_info) != KERNEL_STATUS_OK) {
-    KERNEL_LOG_ERROR("Generate broadcast info failed.");
+    KERNEL_LOG_ERROR("[%s] Generate broadcast info failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
   (void)bcast.GetBcastVec(calc_info);
@@ -112,8 +127,8 @@ uint32_t MulCpuKernel::MulCompute(CpuKernelContext &ctx) {
     MUL_CALCULATE_CASE(5, T)
     MUL_CALCULATE_CASE(6, T)
     default:
-      KERNEL_LOG_ERROR("Mul kernel not support rank is [%zu].",
-                       calc_info.shape_out.size());
+      KERNEL_LOG_ERROR("[%s] Rank of output should less than 6 but get [%zu].",
+                       ctx.GetOpType().c_str(), calc_info.shape_out.size());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 

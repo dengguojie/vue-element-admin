@@ -62,6 +62,18 @@ vector<vector<int64_t>> shapes_mul1 = {{}, {}, {}};
 vector<int64_t> data_num_mul1 = {1, 1, 1};
 MUL_CASE_WITH_SHAPE(int8_scalar_add_scalar, int8_t, DT_INT8, shapes_mul1, data_num_mul1)
 
+MUL_CASE_WITH_SHAPE(uint8_scalar_add_scalar, uint8_t, DT_UINT8, shapes_mul1, data_num_mul1)
+
+MUL_CASE_WITH_SHAPE(uint16_scalar_add_scalar, uint16_t, DT_UINT16, shapes_mul1, data_num_mul1)
+
+MUL_CASE_WITH_SHAPE(uint32_scalar_add_scalar, uint32_t, DT_UINT32, shapes_mul1, data_num_mul1)
+
+MUL_CASE_WITH_SHAPE(uint64_scalar_add_scalar, uint64_t, DT_UINT64, shapes_mul1, data_num_mul1)
+
+MUL_CASE_WITH_SHAPE(float_scalar_add_scalar, float, DT_FLOAT, shapes_mul1, data_num_mul1)
+
+MUL_CASE_WITH_SHAPE(double_scalar_add_scalar, double, DT_DOUBLE, shapes_mul1, data_num_mul1)
+
 vector<vector<int64_t>> shapes_mul2 = {{}, {2}, {2}};
 vector<int64_t> data_num_mul2 = {1, 2, 2};
 MUL_CASE_WITH_SHAPE(int16_scalar_add_vector, int16_t, DT_INT16, shapes_mul2, data_num_mul2)
@@ -85,6 +97,7 @@ MUL_CASE_WITH_SHAPE(int16_add_vector_broadcast_1, int16_t, DT_INT16, shapes_mul6
 vector<vector<int64_t>> shapes_mul7 = {{1, 2}, {2, 1, 1, 1, 1, 1}, {2, 1, 1, 1, 1, 2}};
 vector<int64_t> data_num_mul7 = {2, 2, 4};
 MUL_CASE_WITH_SHAPE(int32_vector_add_vector_broatcast_both, int32_t, DT_INT32, shapes_mul7, data_num_mul7)
+
 
 MUL_CASE_WITH_TYPE_DISMATCH(bool_unsupport, bool, bool, DT_BOOL, DT_BOOL, shapes_mul1, data_num_mul1)
 
