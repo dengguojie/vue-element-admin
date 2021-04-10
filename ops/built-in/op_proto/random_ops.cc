@@ -225,6 +225,14 @@ IMPLEMT_INFERFUNC(TruncatedNormal, TruncatedNormalInfer) {
 INFER_FUNC_REG(TruncatedNormal, TruncatedNormalInfer);
 
 IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
+  Shape unused;
+  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("call WithRank function failed, ",
+        GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
+            "scalar"));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
   std::vector<std::string> input_infer_depends = {"shape"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
@@ -234,13 +242,12 @@ IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
     output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
     return op.UpdateOutputDesc("y", output_desc);
   }
-  Shape unused;
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
 
   Shape shape;
   if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call MakeShapeFromShapeTensor function failed to make "
+            "shape by input[shape] data"));
     return GRAPH_FAILED;
   }
 
@@ -263,6 +270,14 @@ IMPLEMT_INFERFUNC(DropOutGenMask, DropOutGenMaskInfer) {
 INFER_FUNC_REG(DropOutGenMask, DropOutGenMaskInfer);
 
 IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
+  Shape unused;
+  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = ConcatString("call WithRank function failed, ",
+        GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()),
+            "scalar"));
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
   std::vector<std::string> input_infer_depends = {"shape"};
   OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends(input_infer_depends);
@@ -272,13 +287,12 @@ IMPLEMT_INFERFUNC(DropOutGenMaskV3, DropOutGenMaskV3Infer) {
     output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
     return op.UpdateOutputDesc("y", output_desc);
   }
-  Shape unused;
-  if (WithRank(op.GetInputDesc(1), 0, unused, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
-  }
 
   Shape shape;
   if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+        ConcatString("call MakeShapeFromShapeTensor function failed to make "
+            "shape by input[shape] data"));
     return GRAPH_FAILED;
   }
 
