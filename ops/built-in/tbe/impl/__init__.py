@@ -424,6 +424,7 @@ from .stn_pre import stn_pre
 from .stn_compute import stn_compute
 # caffe it6
 from .prior_box_d_v2 import prior_box_d_v2
+from .deformable_offsets_grad import deformable_offsets_grad
 from .fill import fill
 from .strided_slice_grad import strided_slice_grad
 

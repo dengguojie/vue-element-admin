@@ -136,6 +136,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/decode_bbox_v2_insert_transpose_pass.cc
   graph_fusion/ai_core/deconv_weight_trans_fusion_pass.cc
   graph_fusion/ai_core/deformable_conv2d_fusion_pass.cc
+  graph_fusion/ai_core/deformable_offsets_grad_fusion_pass.cc
   graph_fusion/ai_core/derelu_fusion_pass.cc
   graph_fusion/ai_core/diag_fusion_pass.cc
   graph_fusion/ai_core/diag_part_fusion_pass.cc
