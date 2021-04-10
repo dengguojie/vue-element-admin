@@ -199,7 +199,7 @@ int32_t GetCoreNumMode2(int32_t gtboxes_num, int32_t point_per_core) {
 }
 
 int32_t GetPointPerCoreMode1(int32_t bboxes_num, int32_t full_core_num, int32_t min_point_per_core) {
-  int32_t point_per_core = bboxes_num / full_core_num;
+  int32_t point_per_core = GetCeilInt(bboxes_num, full_core_num);
   if (point_per_core < min_point_per_core) {
     return min_point_per_core;
   } else {
