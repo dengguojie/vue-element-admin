@@ -103,6 +103,7 @@ set(_onnx_plugins
   space_to_depth_plugin.cc
   max_roi_pool_plugin.cc
   selu_plugin.cc
+  if_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
