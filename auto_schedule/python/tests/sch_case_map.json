@@ -104,6 +104,7 @@
         "cast_to"
     ],
     "auto_schedule/python/tbe/dsl/compute/array.py":[
+        "concat",
         "dsl_cpu/test_array_cpu_impl.py"
     ],
     "auto_schedule/python/lang/cce/te_compute/segment_compute.py":[

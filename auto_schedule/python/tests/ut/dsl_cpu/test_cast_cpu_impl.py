@@ -1,12 +1,14 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
 import numpy as np
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
 from tbe.common.testing.testing import debug
 from te.platform.cce_conf import te_set_version
 
+warnings.filterwarnings("ignore")
 ut_case = OpUT("cast_cpu", "dsl_cpu.test_cast_cpu_impl")
 
 
@@ -88,10 +90,10 @@ def test_cast_to_cpu_api_fp322s32_and_not_support_vconv_f322s32z(soc):
     return True
 
 
-def test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f322s32z(soc):
+def test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f162s32z(soc):
     """
     for cast_to api
-    fp16 to int32 && NOT support Intrinsic_vconv|f322s32z
+    fp16 to int32 && NOT support Intrinsic_vconv|f162s32z
     @param soc: soc version
     @return: Ture && false
     """
@@ -118,10 +120,10 @@ def test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f322s32z(soc):
     return True
 
 
-def test_cast_to_cpu_api_fp162s8_and_not_support_vconv_f322s32z(_):
+def test_cast_to_cpu_api_fp162s8_and_f1628_flag_is_false(_):
     """
     for cast_to api
-    fp16 to int8 && NOT support Intrinsic_vconv|f322s32z
+    fp16 to int8 && f1628IntegerFlag is false
     @return: Ture && false
     """
     n = 1024
@@ -174,7 +176,7 @@ def test_cast_to_cpu_api_s322fp16_and_not_support_vconv_deq_and_support_vcbd_s32
     return True
 
 
-def test_cast_to_cpu_api_fp162s16(soc):
+def test_cast_to_cpu_api_fp162s32(soc):
     """
     for cast_to api
     fp16 to int16 for TF trunc
@@ -208,10 +210,10 @@ test_func_list = [
     test_cast_cpu_api,
     test_cast_cpu_api_check_not_support_op_type,
     # test_cast_to_cpu_api_fp322s32_and_not_support_vconv_f322s32z,
-    test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f322s32z,
-    test_cast_to_cpu_api_fp162s8_and_not_support_vconv_f322s32z,
+    test_cast_to_cpu_api_fp162s32_and_not_support_vconv_f162s32z,
+    test_cast_to_cpu_api_fp162s8_and_f1628_flag_is_false,
     test_cast_to_cpu_api_s322fp16_and_not_support_vconv_deq_and_support_vcbd_s322s16,
-    test_cast_to_cpu_api_fp162s16,
+    test_cast_to_cpu_api_fp162s32,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)
