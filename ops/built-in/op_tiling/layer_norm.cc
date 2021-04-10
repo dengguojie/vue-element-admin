@@ -309,11 +309,11 @@ namespace optiling
                  * ub_fuse_factor = 1
                  ***/
 
-                        if (block_inner < input_x[0] && block_inner > 32)
+                        if (block_inner < input_x[0] && block_inner > block)
                         {
-                            for (int32_t n = block_inner; n > 32; n--)
+                            for (int32_t n = block_inner; n > block; n--)
                             {
-                                if (n < max_ub_size && block_inner % n > 32)
+                                if (n < max_ub_size && block_inner % n > block)
                                 {
                                     tilingparams.ub_fuse_factor = n;
                                     break;

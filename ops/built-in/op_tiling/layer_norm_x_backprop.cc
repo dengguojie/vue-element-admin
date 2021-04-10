@@ -28,9 +28,6 @@ namespace optiling {
       OP_LOGE(op_type.c_str(), "op_info is null");
       return false;
     }
-
-    const auto& all_vars = op_info["_vars"];
-
     if (op_info.count("CORE_NUM") == 0 || op_info.count("UB_SIZE") == 0 || op_info.count("MAX_DTYPE") == 0)
     {
       ge::OpsGetCompileParamsErrReport("LayerNormXBackprop", "CORE_NUM_UB_SIZE_MAX_DTYPE");
