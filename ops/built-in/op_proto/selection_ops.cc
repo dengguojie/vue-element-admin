@@ -1664,18 +1664,14 @@ COMMON_INFER_FUNC_REG(StridedSlice, StridedSliceInferShape);
 // ----------------StridedSlice Op End-------------------
 
 // ----------------ReverseV2 Op Begin-----------------
-IMPLEMT_INFERFUNC(ReverseV2, ReverseV2InferShape) {
-  TensorDesc tensordesc_output = op.GetOutputDesc("y");
-  Shape input_shape = op.GetInputDesc("x").GetShape();
-  DataType input_dtype = op.GetInputDesc("x").GetDataType();
-  tensordesc_output.SetShape(input_shape);
-  tensordesc_output.SetDataType(input_dtype);
-
-  (void)op.UpdateOutputDesc("y", tensordesc_output);
-  return GRAPH_SUCCESS;
+IMPLEMT_COMMON_INFERFUNC(ReverseV2InferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
 }
+COMMON_INFER_FUNC_REG(ReverseV2, ReverseV2InferShape);
 
-INFER_FUNC_REG(ReverseV2, ReverseV2InferShape);
 // ----------------ReverseV2 Op End-------------------
 
 // ----------------ReverseV2D Op Begin---------------
