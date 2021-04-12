@@ -104,6 +104,7 @@ set(_onnx_plugins
   max_roi_pool_plugin.cc
   selu_plugin.cc
   if_plugin.cc
+  random_uniform_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
