@@ -21,7 +21,7 @@ from te.tvm import tensor
 from te.tvm import expr
 from te.tvm import api as tvm
 from tbe.dsl.base import operation
-from te.platform.cce_emitinsn_params import cceEmitParamsIns
+from tbe.dsl.instrinsic.cce_emitinsn_params import cceEmitParamsIns
 
 
 def extract_dict(input_x):
