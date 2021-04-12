@@ -150,6 +150,9 @@ def _check_window_rule(ksize, strides, padding, data_format, offset_x):
     if ksize[dim_n] != 1 or ksize[dim_c] != 1:
         error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "(ksize_n, ksize_c)",
                                                  "(1, 1)", str((ksize[dim_n], ksize[dim_c])))
+    if ksize[dim_h] == -1 or ksize[dim_w] == -1:
+        error_manager_cube.raise_err_specific_user("avg_pool",
+                                                   "ksize_h/ksize_w should be const size.")
     if strides[dim_n] != 1 or strides[dim_c] != 1:
         error_manager_cube.raise_err_three_paras("E62305", "avg_pool", "(stride_n, stride_c)",
                                                  "(1, 1)", str((strides[dim_n], strides[dim_c])))

@@ -229,6 +229,17 @@ case19 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
          "expect": "success",
          "support_expect": True}
 
+case20 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,-1,2], [1,1,1,1], "VALID", "NCHW"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
@@ -248,6 +259,7 @@ ut_case.add_case(["Ascend910A"], case16)
 ut_case.add_case(["Ascend910A"], case17)
 ut_case.add_case(["Ascend910A"], case18)
 ut_case.add_case(["Ascend910A"], case19)
+ut_case.add_case(["Ascend910A"], case20)
 
 
 if __name__ == '__main__':

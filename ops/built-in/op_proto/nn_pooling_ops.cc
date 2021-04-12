@@ -1549,11 +1549,6 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ksizeList failed!");
     return GRAPH_FAILED;
   }
-  if ((unknownRank || isDynamic) && std::find(ksizeList.begin(), ksizeList.end(), -1) != ksizeList.end()) {
-    OpsGetAttrErrReport(op.GetName(), "ksize");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ksizeList should not contain -1!");
-    return GRAPH_FAILED;
-  }
 
   if (ksizeList.size() != DIM_SIZE4) {
     OpsAttrValueErrReport(op.GetName(), "length of ksize", ConcatString(DIM_SIZE4),
