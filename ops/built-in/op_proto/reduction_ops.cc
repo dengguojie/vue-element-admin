@@ -35,6 +35,7 @@ namespace ge {
 static bool InferReductionShape(const ge::Operator& operation, const string& input_name, ge::TensorDesc& result_desc) {
   result_desc = operation.GetInputDesc(input_name);
   auto shape = result_desc.GetShape();
+  std::vector<int64_t> x_shape = shape.GetDims();
   int64_t dimNum = shape.GetDimNum();
   int64_t axis = 0;
   int64_t idx = 0;
@@ -58,10 +59,15 @@ static bool InferReductionShape(const ge::Operator& operation, const string& inp
     axis += dimNum;
   }
 
-  for (idx = axis; idx < dimNum; idx++) {
-    shape.SetDim(idx, 1);
+  std::vector<int64_t> y_shape;
+  if (axis == 0) {
+    y_shape.push_back(1);
+  } else {
+    for (idx = 0; idx < axis; idx++) {
+      y_shape.push_back(x_shape[idx]);
+    }
   }
-  result_desc.SetShape(shape);
+  result_desc.SetShape(Shape(y_shape));
 
   return true;
 }
