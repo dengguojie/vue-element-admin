@@ -25,6 +25,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <sstream>
 
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/graph_utils.h"
@@ -44,6 +45,72 @@ static const char PATTERN_FULLYCONNECTION[] = "FullyConnection";
 static const int BIAS_INDEX = 2;
 static const char FUSED_OP_TYPE[] = "FullyConnection";
 static const char CONSTANTOPTAB[] = "Const";
+
+static const std::string FC_POWER_OP_INPUT = "fc_power_input";
+static const std::string FC_POWER_OP_OUTPUT = "fc_power_output";
+static const std::string POWER_SHIFT = "shift";
+static const int FC_BIAS_INDEX = 2;
+static const int FC_POWER_HOST_OP_BIAS_INDEX = 0;
+static const std::string FullyConnectionPowerPassHostOp = "FullyConnectionPowerPassHostOp";
+
+uint64_t GetHostCpuAtomicId() {
+  static std::atomic<uint64_t> globalTransAtomicId(0);
+  return globalTransAtomicId.fetch_add(1, std::memory_order_relaxed);
+}
+
+Status CreateFullyPowerPassHostOp(const string &opType, const ge::NodePtr &fcNode, ge::ComputeGraph &graph,
+                                vector<ge::NodePtr> &newNodes, const float &shift) {
+    OP_LOGI(FUSED_OP_TYPE, "Create new fully power pass host op for dequant node [%s].", fcNode->GetName().c_str());
+    std::stringstream opNameTemp;
+    // the atomic id of trans nodes must be unique.(start from 0)
+    opNameTemp << opType << "_" << GetHostCpuAtomicId();
+    ge::OpDescPtr fcPowerHostOp = std::make_shared<ge::OpDesc>(opNameTemp.str(), opType);
+    FUSION_PASS_CHECK(fcPowerHostOp == nullptr, OP_LOGE(FUSED_OP_TYPE, "create new host op failed"), return FAILED);
+    // add input and output desc of new host op
+    vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(fcNode);
+    FUSION_PASS_CHECK(weights.size() < 2, OP_LOGE(FUSED_OP_TYPE, "fc weights get failed"), return FAILED);
+    ge::GeTensorPtr biasTensorPtr = weights[1];
+    ge::GeTensorDesc biasTensorDesc = biasTensorPtr->GetTensorDesc();
+
+    fcPowerHostOp->AddInputDesc(FC_POWER_OP_INPUT, biasTensorDesc);
+    fcPowerHostOp->MutableInputDesc(0)->SetOriginDataType(biasTensorDesc.GetDataType());
+    fcPowerHostOp->MutableInputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
+    fcPowerHostOp->MutableInputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
+
+    fcPowerHostOp->AddOutputDesc(FC_POWER_OP_OUTPUT, biasTensorDesc);
+    fcPowerHostOp->MutableOutputDesc(0)->SetOriginFormat(static_cast<ge::Format>(ge::GetPrimaryFormat(biasTensorDesc.GetFormat())));
+    fcPowerHostOp->MutableOutputDesc(0)->SetOriginShape(biasTensorDesc.GetShape());
+    fcPowerHostOp->MutableOutputDesc(0)->SetDataType(biasTensorDesc.GetDataType());
+    fcPowerHostOp->MutableOutputDesc(0)->SetShape(biasTensorDesc.GetShape());
+
+    auto fcPowerNode = graph.AddNode(fcPowerHostOp);
+    FUSION_PASS_CHECK(fcPowerNode == nullptr, OP_LOGE(FUSED_OP_TYPE, "add new host op to graph failed"), return FAILED);
+    newNodes.emplace_back(fcPowerNode);
+
+    // Add edges between fc bias <--> new_host_cpu_op:0
+    ge::InDataAnchorPtr fcInputAnchor = fcNode->GetInDataAnchor(FC_BIAS_INDEX);
+    ge::OutDataAnchorPtr fcBiasPeerOutAnchor = fcInputAnchor->GetPeerOutAnchor();
+    FUSION_PASS_CHECK(fcBiasPeerOutAnchor == nullptr, OP_LOGE(FUSED_OP_TYPE, "fc get const failed"), return false);
+    auto fcPowerHostOpInputAnchor = fcPowerNode->GetInDataAnchor(FC_POWER_HOST_OP_BIAS_INDEX);
+    if (ge::GraphUtils::AddEdge(fcBiasPeerOutAnchor, fcPowerHostOpInputAnchor) != ge::GRAPH_SUCCESS) {
+      OP_LOGE(FUSED_OP_TYPE, "Add Edge between const and new host op failed.");
+      return FAILED;
+    }
+    if (ge::GraphUtils::RemoveEdge(fcBiasPeerOutAnchor, fcInputAnchor) != ge::GRAPH_SUCCESS) {
+      OP_LOGE(FUSED_OP_TYPE, "Remove Edge between FC and bias const op failed.");
+      return FAILED;
+    }
+
+    auto fcPowerHostOpOutputAnchor = fcPowerNode->GetOutDataAnchor(0);
+    if (ge::GraphUtils::AddEdge(fcPowerHostOpOutputAnchor, fcInputAnchor) != ge::GRAPH_SUCCESS) {
+      OP_LOGE(FUSED_OP_TYPE, "Add Edge between FC and new host op failed.");
+      return FAILED;
+    }
+
+    (void)ge::AttrUtils::SetFloat(fcPowerNode->GetOpDesc(), POWER_SHIFT, shift);
+    return SUCCESS;
+}
+
 /*
             Data(input)     shift
                 \            \
@@ -139,23 +206,15 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
       OP_LOGI(FUSED_OP_TYPE, "GetInputConstData of bias failed.");
       return NOT_CHANGED;
     }
-    std::vector<float> const_data;
-    float* const_data_ptr = reinterpret_cast<float*>(data.GetData());
-    FUSION_PASS_CHECK(const_data_ptr == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE, "const_data_ptr is null, fusion failed."), return PARAM_INVALID);
-    int64_t size = 0;
-    size = data.GetSize() / sizeof(float);
-    for (int64_t i = 0; i < size; ++i) {
-      const_data.push_back(static_cast<float>((*(const_data_ptr + i))));
+    /* Create Host Cpu Op */
+    OP_LOGI(FUSED_OP_TYPE, "Create host op to calc shift of node:[%s].", fullyConnectionNode->GetName().c_str());
+    vector<ge::NodePtr> fusion_nodes;
+    Status ret = CreateFullyPowerPassHostOp(FullyConnectionPowerPassHostOp, fullyConnectionNode, graph,
+        fusion_nodes, shift);
+    if (ret != SUCCESS || fusionNodes.empty()) {
+      OP_LOGE(FUSED_OP_TYPE, "Create host cpu op for fc node %s failed", fullyConnectionNode->GetName().c_str());
+      return ret;
     }
-    for (int64_t i = 0; i < size; ++i) {
-      const_data[i] = shift + const_data[i];
-    }
-
-    vector<ge::GeTensorPtr> sliceTensorPtr = ge::OpDescUtils::MutableWeights(fullyConnectionNode);
-    FUSION_PASS_CHECK(sliceTensorPtr.size() < 2, OP_LOGW(FUSED_OP_TYPE, "fc weights get failed"), return false);
-    ge::GeTensorPtr offsetsTensorPtr = sliceTensorPtr[1];
-    offsetsTensorPtr->SetData(reinterpret_cast<uint8_t*>(const_data.data()), num_output * sizeof(float));
   }
 
   for (auto inDataAnchor : powerNode->GetOutDataAnchor(0)->GetPeerInDataAnchors()) {
