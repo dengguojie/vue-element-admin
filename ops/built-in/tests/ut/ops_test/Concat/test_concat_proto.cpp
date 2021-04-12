@@ -85,6 +85,29 @@ TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_fp16) {
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
 
+TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_fp1612) {
+  ge::op::ConcatD op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 200}};
+  auto tensor_desc = create_desc({-2,},
+                                 ge::DT_FLOAT16);
+  op.create_dynamic_input_x(3);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 2, tensor_desc);
+  op.SetAttr("N", 3);
+  op.SetAttr("concat_dim", -1);
+  auto ret = op.InferShapeAndType();
+//  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+ // auto output_desc = op.GetOutputDesc("y");
+ // EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+ // std::vector<int64_t> expected_output_shape = {2, 100, 12};
+ //// EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+ // std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+//  EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
+ // std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {};
+ // EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
 TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_mix_fp16) {
   ge::op::ConcatD op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};
@@ -114,7 +137,48 @@ TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_mix_fp16) {
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {{2, 2}, {100, 100}, {12, 16}};
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_mix_fp1446) {
+  ge::op::ConcatD op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};
+  auto tensor_desc = create_desc({2, 100, 4},
+                                 ge::DT_FLOAT16);
+  auto tensor_desc_with_range = create_desc_shape_range({-1, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_ND,
+                                                        {2, 100, 4},
+                                                        ge::FORMAT_ND,
+                                                        shape_range);
 
+  op.create_dynamic_input_x(3);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 2, tensor_desc_with_range);
+  op.SetAttr("N", 3);
+
+  auto ret = op.InferShapeAndType();
+ 
+}
+TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_mix_fp1644) {
+  ge::op::ConcatD op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};
+  auto tensor_desc = create_desc({2, 100, 4},
+                                 ge::DT_FLOAT16);
+  auto tensor_desc_with_range = create_desc_shape_range({-1, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_ND,
+                                                        {2, 100, 4},
+                                                        ge::FORMAT_ND,
+                                                        shape_range);
+
+  op.create_dynamic_input_x(3);
+  op.UpdateDynamicInputDesc("x", 0, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 1, tensor_desc);
+  op.UpdateDynamicInputDesc("x", 2, tensor_desc_with_range);
+
+  op.SetAttr("concat_dim", -1);
+  auto ret = op.InferShapeAndType();
+  
+}
 TEST_F(ConcatD, concat_d_infer_shape_no_shape_range_mix_fp16_fail) {
   ge::op::ConcatV2D op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};

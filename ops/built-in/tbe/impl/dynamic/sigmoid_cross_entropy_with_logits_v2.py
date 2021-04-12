@@ -119,7 +119,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
         weight = tbe.broadcast(weight, shape_predict)
         loss = tbe.vmul(loss, weight)
 
-    if predict_dtype == "float16" and reduction == "none":
+    if predict_dtype == "float16":
         loss = tbe.cast_to(loss, "float16")
 
     return loss

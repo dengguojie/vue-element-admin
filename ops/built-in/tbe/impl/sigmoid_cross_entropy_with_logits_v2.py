@@ -76,10 +76,7 @@ def op_select_format(predict, target, weight, pos_weight, loss, reduction="mean"
     dtype_total = ','.join(dtype)
     format_total = ','.join(format)
 
-    if predict.get("dtype").lower() == "float16" and reduction != "none":
-        dtype_output = ','.join(["float"] * len(dtype))
-    else:
-        dtype_output = dtype_total
+    dtype_output = dtype_total
 
     input0 = gen_param(
         classify="input0", name="predict", datatype=dtype_total,
@@ -181,6 +178,8 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     mul_predict_target = te.lang.cce.vmul(sub_target, predict)
 
     if pos_weight is not None:
+        # info: log_weight=(pos_weight - 1)*target+1
+        # info: loss=(1-target)*predict+(log_weight*(max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))))
         pos_weight = te.lang.cce.broadcast(pos_weight, shape_predict)
         sub_pos_weight = te.lang.cce.vsub(pos_weight, const_one_broadcast)
         mul_pos_weight = te.lang.cce.vmul(sub_pos_weight, target)
@@ -195,7 +194,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
         weight = te.lang.cce.broadcast(weight, shape_predict)
         loss = te.lang.cce.vmul(loss, weight)
 
-    if predict_dtype == "float16" and reduction == "none":
+    if predict_dtype == "float16":
         loss = te.lang.cce.cast_to(loss, "float16")
 
     return loss

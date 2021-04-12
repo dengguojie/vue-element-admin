@@ -37,27 +37,27 @@
 namespace ge {
 // ----------------Split OP Begin-------------------
 static void CalcSplit(const Tensor& data, const DataType& dtype, std::vector<int64_t>& const_vec) {
-  const uint8_t* constData = data.GetData();
+  const uint8_t* const_data = data.GetData();
   size_t size = data.GetSize() / sizeof(int32_t);
-  for (size_t i = 0; i < size; ++i) {
-    const_vec.push_back(*((int32_t*)constData));
+  for (size_t n = 0; n < size; ++n) {
+    const_vec.push_back(*((int32_t*)const_data));
   }
 }
 
 IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
-  const vector<string> depend_names = {"split_dim"};
-  PREPARE_DYNAMIC_SHAPE(depend_names);
+  const vector<string> depend_name = {"split_dim"};
+  PREPARE_DYNAMIC_SHAPE(depend_name);
 
-  OP_LOGD(op.GetName().c_str(), "SplitInferShape");
-  auto x_desc = op.GetInputDesc("x");
-  auto x_shape = x_desc.GetShape();
-  auto x_dtype = x_desc.GetDataType();
+  OP_LOGD(op.GetName().c_str(), "SplitInferShape start");
+  auto x_inputdesc = op.GetInputDesc("x");
+  auto x_shape = x_inputdesc.GetShape();
+  auto x_dtype = x_inputdesc.GetDataType();
   TensorDesc td = op.GetDynamicOutputDesc("y", 0);
 
   std::vector<std::pair<int64_t, int64_t>> x_shape_range;
   std::vector<std::pair<int64_t, int64_t>> out_range;
-  x_desc.GetShapeRange(x_shape_range);
-  OP_LOGD(op.GetName().c_str(), "SplitInferShape x_shape_range is %s", to_string(x_shape_range).c_str());
+  x_inputdesc.GetShapeRange(x_shape_range);
+  OP_LOGD(op.GetName().c_str(), "SplitInferShape x_shape range is %s", to_string(x_shape_range).c_str());
 
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
@@ -283,8 +283,8 @@ static void CalcSplitV(const Tensor& data, const DataType& dtype, std::vector<in
 
 IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
   OP_LOGD(op.GetName().c_str(), "SplitV InferShape start");
-  const vector<string> depend_names = {"size_splits", "split_dim"};
-  PREPARE_DYNAMIC_SHAPE(depend_names);
+  const vector<string> depend_name = {"size_splits", "split_dim"};
+  PREPARE_DYNAMIC_SHAPE(depend_name);
 
   auto x_desc = op.GetInputDesc("x");
   auto x_shape = x_desc.GetShape();
@@ -608,6 +608,9 @@ bool JoinShapes(vector<int64_t>& dst_shape, const vector<int64_t>& src_shape, in
   }
 
   if (!IsUnknownRankShape(src_shape)) {
+    if (dst_shape.size() != src_shape.size()) {
+      return false;
+    }
     auto shape_dims = dst_shape.size();
     for (size_t i = 0; i < shape_dims; i++) {
       if (dst_shape[i] == src_shape[i]) {
