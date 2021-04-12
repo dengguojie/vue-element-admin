@@ -305,7 +305,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
     }
   }
   // split dim base on aicore num
-  if (0 < merged_shape.size() < 7) {
+  if (merged_shape.size() < 7 && merged_shape.size() > 0) {
     int64_t split_dim = 1;
     for (int64_t i = 0; i < compile_params.core_num; i++) {
       int64_t cu_split_core_dim = compile_params.core_num - i;
@@ -314,7 +314,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
         break;
       }
     }
-    if (split_dim != 1) {
+    if (split_dim != 1 && merged_shape[0] / split_dim != 1) {
       merged_shape.insert(merged_shape.begin(), split_dim);
       merged_shape[1] = merged_shape[1] / split_dim;
       auto axis_status = merged_axis[0];
