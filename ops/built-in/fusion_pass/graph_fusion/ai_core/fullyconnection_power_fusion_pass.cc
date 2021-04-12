@@ -211,7 +211,7 @@ Status FullyConnectionPowerPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
     vector<ge::NodePtr> fusion_nodes;
     Status ret = CreateFullyPowerPassHostOp(FullyConnectionPowerPassHostOp, fullyConnectionNode, graph,
         fusion_nodes, shift);
-    if (ret != SUCCESS || fusionNodes.empty()) {
+    if (ret != SUCCESS || fusion_nodes.empty()) {
       OP_LOGE(FUSED_OP_TYPE, "Create host cpu op for fc node %s failed", fullyConnectionNode->GetName().c_str());
       return ret;
     }
