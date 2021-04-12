@@ -15,24 +15,24 @@
  */
 
 /*!
- * \file deformable_offsets_grad_fusion_pass.h
+ * \file deformable_offsets_fusion_pass.h
  * \brief add const node
  */
-#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEFORMABLE_OFFSETS_GRAD_FUSION_PASS_H_
-#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEFORMABLE_OFFSETS_GRAD_FUSION_PASS_H_
+#ifndef OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEFORMABLE_OFFSETS_FUSION_PASS_H_
+#define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEFORMABLE_OFFSETS_FUSION_PASS_H_
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 
 namespace fe {
-class DeformableOffsetsGradFusionPass : public PatternFusionBasePass {
+class DeformableOffsetsFusionPass : public PatternFusionBasePass {
  protected:
   vector<FusionPattern*> DefinePatterns() override;
   Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) override;
 
  private:
-  const string FUSED_OP_TYPE = "DeformableOffsetsGrad";
+  const string FUSED_OP_TYPE = "DeformableOffsets";
 };
 
 }  // namespace fe
 
-#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEFORMABLE_OFFSETS_GRAD_FUSION_PASS_H_
+#endif  // OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_DEFORMABLE_OFFSETS_FUSION_PASS_H_

@@ -15,10 +15,10 @@
  */
 
 /*!
- * \file deformable_offsets_grad_fusion_pass.cpp
+ * \file deformable_offsets_fusion_pass.cpp
  * \brief add const node
  */
-#include "deformable_offsets_grad_fusion_pass.h"
+#include "deformable_offsets_fusion_pass.h"
 
 #include <iostream>
 #include <vector>
@@ -40,13 +40,13 @@
 using namespace ge;
 namespace fe {
 static const std::string CONSTANTOP = "Constant";
-static const char* FUSED_NODE = "DeformableOffsetsGrad";
-static const std::string PATTERN_FUSEDNODE = "DeformableOffsetsGrad";
+static const char* FUSED_NODE = "DeformableOffsets";
+static const std::string PATTERN_FUSEDNODE = "DeformableOffsets";
 
-vector<FusionPattern*> DeformableOffsetsGradFusionPass::DefinePatterns() {
+vector<FusionPattern*> DeformableOffsetsFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
-  FusionPattern* pattern = new (std::nothrow) FusionPattern("DeformableOffsetsGradFusionPass");
+  FusionPattern* pattern = new (std::nothrow) FusionPattern("DeformableOffsetsFusionPass");
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
 
@@ -56,9 +56,9 @@ vector<FusionPattern*> DeformableOffsetsGradFusionPass::DefinePatterns() {
   return patterns;
 }
 
-Status MakeHelperTensor(const vector<int64_t>& offsets_shape, const vector<int64_t>& kernel_sizes,
-                        const vector<int64_t>& strides, const vector<int64_t>& pads, const vector<int64_t>& dilations,
-                        float& grid_base) {
+Status MakeHelperTensorDFM(const vector<int64_t>& offsets_shape, const vector<int64_t>& kernel_sizes,
+                           const vector<int64_t>& strides, const vector<int64_t>& pads,
+                           const vector<int64_t>& dilations, float& grid_base) {
   float* helper_tensor = &grid_base;
 
   int64_t H_OUT = offsets_shape[1];
@@ -98,45 +98,44 @@ Status MakeHelperTensor(const vector<int64_t>& offsets_shape, const vector<int64
   return SUCCESS;
 }
 
-Status DeformableOffsetsGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
-                                               std::vector<NodePtr>& newNodes) {
+Status DeformableOffsetsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, std::vector<NodePtr>& newNodes) {
   // get node
-  ge::NodePtr deformableOffsetsGradNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
-  FUSION_PASS_CHECK(deformableOffsetsGradNode == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get DeformableOffsetsGrad Node Failed, fusion failed."),
+  ge::NodePtr deformableOffsetsNode = GetNodeFromMapping(PATTERN_FUSEDNODE, mapping);
+  FUSION_PASS_CHECK(deformableOffsetsNode == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Get DeformableOffsets Node Failed, fusion failed."),
                     return PARAM_INVALID);
   // get desc
-  ge::OpDescPtr deformableOffsetsGradDesc = deformableOffsetsGradNode->GetOpDesc();
-  FUSION_PASS_CHECK(deformableOffsetsGradDesc == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "DeformableOffsetsGrad's OpDesc is null, fusion failed."),
+  ge::OpDescPtr deformableOffsetsDesc = deformableOffsetsNode->GetOpDesc();
+  FUSION_PASS_CHECK(deformableOffsetsDesc == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "DeformableOffsets's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
   // get op
-  Operator deformableOffsetsGradOp = OpDescUtils::CreateOperatorFromNode(deformableOffsetsGradNode);
+  Operator deformableOffsetsOp = OpDescUtils::CreateOperatorFromNode(deformableOffsetsNode);
 
   // check op  supported
-  FUSION_PASS_CHECK(!CheckOpSupported(deformableOffsetsGradDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
+  FUSION_PASS_CHECK(!CheckOpSupported(deformableOffsetsDesc), OP_LOGI(FUSED_OP_TYPE.c_str(), "Op Not Supported."),
                     return NOT_CHANGED);
   // get input shape
-  auto x_desc = deformableOffsetsGradDesc->GetInputDesc(1);
-  auto offsets_desc = deformableOffsetsGradDesc->GetInputDesc(2);
+  auto x_desc = deformableOffsetsDesc->GetInputDesc(0);
+  auto offsets_desc = deformableOffsetsDesc->GetInputDesc(1);
   vector<int64_t> x_shape = x_desc.GetShape().GetDims();
   vector<int64_t> offsets_shape = offsets_desc.GetShape().GetDims();
   vector<int64_t> helper_shape = offsets_desc.GetShape().GetDims();
   // get attrs
   int64_t dfm_groups;
-  FUSION_PASS_CHECK(!AttrUtils::GetInt(deformableOffsetsGradDesc, "deformable_groups", dfm_groups),
+  FUSION_PASS_CHECK(!AttrUtils::GetInt(deformableOffsetsDesc, "deformable_groups", dfm_groups),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "get deformable_groups attr failed."), return PARAM_INVALID);
   vector<int64_t> ksize;
-  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsGradDesc, "ksize", ksize),
+  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsDesc, "ksize", ksize),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "get ksize attr failed."), return PARAM_INVALID);
   vector<int64_t> strides;
-  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsGradDesc, "strides", strides),
+  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsDesc, "strides", strides),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "get strides attr failed."), return PARAM_INVALID);
   vector<int64_t> pads;
-  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsGradDesc, "pads", pads),
+  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsDesc, "pads", pads),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "get pads attr failed."), return PARAM_INVALID);
   vector<int64_t> dilations;
-  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsGradDesc, "dilations", dilations),
+  FUSION_PASS_CHECK(!AttrUtils::GetListInt(deformableOffsetsDesc, "dilations", dilations),
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "get dilations attr failed."), return PARAM_INVALID);
 
   Format helperMatrixFormat = x_desc.GetFormat();
@@ -151,8 +150,8 @@ Status DeformableOffsetsGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   unique_ptr<float[]> inputAssit(new (std::nothrow) float[matrixSize]());
   auto retMem = memset_s(inputAssit.get(), matrixSize, 0, matrixSize);
   FUSION_PASS_CHECK(retMem != EOK, OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to operate memset_s."), return NOT_CHANGED);
-  Status ret = MakeHelperTensor(offsets_shape, ksize, strides, pads, dilations, *inputAssit.get());
-  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGI(FUSED_OP_TYPE.c_str(), "MakeHelperTensor failed."), return NOT_CHANGED);
+  Status ret = MakeHelperTensorDFM(offsets_shape, ksize, strides, pads, dilations, *inputAssit.get());
+  FUSION_PASS_CHECK(ret != SUCCESS, OP_LOGI(FUSED_OP_TYPE.c_str(), "MakeHelperTensorDFM failed."), return NOT_CHANGED);
 
   // define the shape of auxiliary matrix
   ge::GeTensorDesc tensorDesc;
@@ -172,10 +171,10 @@ Status DeformableOffsetsGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   ge::NodePtr const_node = graph.AddNode(const_ptr);
   FUSION_PASS_CHECK(const_node == nullptr, OP_LOGI(FUSED_OP_TYPE.c_str(), "Fail to add const node."),
                     return NOT_CHANGED);
-  FUSION_PASS_CHECK(deformableOffsetsGradNode->AddLinkFrom(3, const_node) != ge::GRAPH_SUCCESS,
-                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Fail to link const node with DeformableOffsetsGrad node."),
+  FUSION_PASS_CHECK(deformableOffsetsNode->AddLinkFrom(2, const_node) != ge::GRAPH_SUCCESS,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "Fail to link const node with DeformableOffsets node."),
                     return NOT_CHANGED);
-  auto constInputNodes = OpDescUtils::GetConstInputs(deformableOffsetsGradNode);
+  auto constInputNodes = OpDescUtils::GetConstInputs(deformableOffsetsNode);
   NodePtr constInput = nullptr;
   if (constInputNodes.size() != 0) {
     constInput = constInputNodes[0];
@@ -188,5 +187,5 @@ Status DeformableOffsetsGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping&
   return SUCCESS;
 }
 
-REGISTER_PASS("DeformableOffsetsGradFusionPass", BUILT_IN_GRAPH_PASS, DeformableOffsetsGradFusionPass);
+REGISTER_PASS("DeformableOffsetsFusionPass", BUILT_IN_GRAPH_PASS, DeformableOffsetsFusionPass);
 }  // namespace fe
