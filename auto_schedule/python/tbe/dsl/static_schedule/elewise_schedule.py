@@ -4007,18 +4007,6 @@ class CceOp:
             self._schedule[lop["cache_buffer"]].emit_insn(
                 lop["tensorize_axis"], "vector_" + lop["op"])
 
-    def _get_backend_reduce_last_insn(self):
-        # v100 not support fp32 vcmax/vcmin,
-        #     front-end reduce_max/min using vmax/vmin.
-        # ng1 v200 support fp32 vcmax/vcmin, using backend emit_insn.
-        vc_intr_support_fp32 = intrinsic_check_support("Intrinsic_vcmax",
-                                                       "float32")
-        backend_reduce_insn = ["reduce_sum"]
-        if vc_intr_support_fp32:
-            backend_reduce_insn = ["reduce_sum", "reduce_min", "reduce_max"]
-
-        return backend_reduce_insn
-
     # pylint: disable=too-many-branches, too-many-statements
     def tensorize_for_op(self, lop):
         """
@@ -4055,22 +4043,8 @@ class CceOp:
                 # ====== reduction tensorize ============
                 self._is_last_reduce = lop["self._is_last_reduce"]
                 if self._is_last_reduce:
-                    if self._need_enable_muticore:
-                        self._schedule[cache_buffer].emit_insn(
-                            tensorize_axis, "vector_" + lop["op"])
-                    else:
-                        if lop["op"] == "reduce_max" and cache_buffer.dtype == "float32":
-                            self._schedule[cache_buffer].emit_insn(
-                                tensorize_axis, "reduce_last_axis_" + lop["op"])
-                        elif lop["op"] in ["reduce_max", "reduce_min"] and cache_buffer.dtype == "int32":
-                            self._schedule[cache_buffer].emit_insn(
-                                tensorize_axis, "vector_" + lop["op"])
-                        elif lop["op"] == "reduce_prod":
-                            self._schedule[cache_buffer].emit_insn(
-                                tensorize_axis, "vector_" + lop["op"])
-                        else:
-                            self._schedule[cache_buffer].emit_insn(
-                                tensorize_axis, "vector_" + lop["op"])
+                    self._schedule[cache_buffer].emit_insn(
+                        tensorize_axis, "vector_" + lop["op"])
                 else:
                     self.tensorize_for_op_reduce_nlast(lop, vec_intrin)
 
