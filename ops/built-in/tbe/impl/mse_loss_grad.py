@@ -49,6 +49,11 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     -------
     output tensor
     """
+    dtype = predict.dtype.lower()
+    if dtype == "float16":
+        predict = tbe.cast_to(predict, "float32")
+        label = tbe.cast_to(predict, "float32")
+        
     predict_shape = tbe.util.shape_to_list(predict.shape)
     dout_shape = tbe.util.shape_to_list(dout.shape)
 
@@ -61,6 +66,8 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     sub_res = tbe.vsub(predict, label)
     norm_grad = tbe.vmuls(sub_res, norm)
     grad_res = tbe.vmul(norm_grad, dout)
+    if dtype == "float16":
+        grad_res = tbe.cast_to(grad_res, dtype)
 
     return grad_res
 
