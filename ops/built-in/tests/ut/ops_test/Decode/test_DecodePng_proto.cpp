@@ -27,3 +27,12 @@ TEST_F(decodepng, decodepng_infershape_diff_test){
   std::vector<int64_t> expected_output_shape = {-1,-1,1};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(decodepng, decodepng_infershape_channel_err_test){
+  ge::op::DecodePng op;
+  op.UpdateInputDesc("contents", create_desc({1}, ge::DT_STRING));
+  op.SetAttr("dtype", ge::DT_UINT8);
+  op.SetAttr("channels", 6);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

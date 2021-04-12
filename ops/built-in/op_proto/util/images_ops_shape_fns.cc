@@ -27,14 +27,16 @@ graphStatus ColorspaceShapeFn(Operator& op, const std::string output_name) {
   Shape shape;
   graphStatus status = WithRankAtLeast(op.GetInputDesc(0), 1, shape, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":input images must 1-D or higher rank.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    AscendString op_name;
+    op.GetName(op_name);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input[images] must 1-D or higher rank.");
     return GRAPH_PARAM_INVALID;
   }
   int64_t dim = op.GetInputDesc(0).GetShape().GetDims().back();
   if (dim != 3) {
-    std::string info = ":input images last dimension must be size 3.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    AscendString op_name;
+    op.GetName(op_name);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input[images] last dimension must be size 3.");
     return GRAPH_PARAM_INVALID;
   }
   TensorDesc desc = op.GetOutputDesc(output_name);
@@ -47,8 +49,9 @@ graphStatus ResizeShapeFn(Operator& op, const std::string input_name, const std:
   Shape shape;
   graphStatus status = WithRank(op.GetInputDesc(0), 4, shape, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":input images must 4-D.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    AscendString op_name;
+    op.GetName(op_name);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input[images] must 4-D.");
     return GRAPH_PARAM_INVALID;
   }
   auto dims = op.GetInputDesc(0).GetShape().GetDims();
@@ -65,21 +68,22 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
   Shape size_shape;
   graphStatus status = WithRank(op.GetInputDesc(size_input_name), 1, size_shape, op.GetName().c_str());
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":input size must be 1-D.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    AscendString op_name;
+    op.GetName(op_name);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input size must be 1-D.");
     return GRAPH_PARAM_INVALID;
   }
   auto size_dims = op.GetInputDesc(size_input_name).GetShape().GetDims();
   if (size_dims[0] != 2) {
-    std::string info = ":input size must be 1-D tensor of 2 elements.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    AscendString op_name;
+    op.GetName(op_name);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input size must be 1-D tensor of 2 elements.");
     return GRAPH_PARAM_INVALID;
   }
   Tensor size_tensor;
   status = op.GetInputConstData(size_input_name, size_tensor);
   if (status != GRAPH_SUCCESS) {
-    std::string info = ":get size tensor failed.";
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), info.c_str());
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "get size tensor failed.");
     return GRAPH_FAILED;
   }
 
@@ -111,7 +115,9 @@ graphStatus SetOutputToSizedImage(Operator& op, const int64_t batch_dim, const s
 graphStatus EncodeImageShapeFn(Operator& op) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 3, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "input rank must be 3 .");
+    AscendString op_name;
+    op.GetName(op_name);
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "input rank must be 3 .");
     return GRAPH_FAILED;
   }
 
@@ -126,17 +132,17 @@ graphStatus EncodeImageShapeFn(Operator& op) {
 graphStatus DecodeImageShapeFn(Operator& op) {
   int channels;
   if (op.GetAttr("channels", channels) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get attr chanels failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Get attr[chanels] failed"));
     return GRAPH_FAILED;
   }
   if (channels != 0 && channels != 1 && channels != 3 && channels != 4) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Channels must be 0,1,3,or 4, got [%d]", channels);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("attr[Channels] must be 0,1,3,or 4"));
     return GRAPH_FAILED;
   }
 
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Get attr dtype failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Get attr[dtype] failed"));
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dims;
@@ -151,7 +157,7 @@ graphStatus DecodeImageShapeFn(Operator& op) {
   output_tensor.SetDataType(dtype);
   output_tensor.SetShape(output_shape);
   if (op.UpdateOutputDesc("image", output_tensor) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Update image failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("Update OutputDesc[image] failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
