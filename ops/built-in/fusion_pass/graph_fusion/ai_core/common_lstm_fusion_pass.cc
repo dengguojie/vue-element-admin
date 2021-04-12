@@ -54,6 +54,49 @@ vector<FusionPattern *> CommonLSTMFusionPass::DefinePatterns()
   return patterns;
 }
 
+template <class T>
+static Status SetWeightTensorData(ge::GeTensorPtr wTensorPtr, ge::GeTensorPtr rTensorPtr,
+                                  std::vector<int32_t> &inputDims) {
+  int32_t wRow = inputDims[0];
+  int32_t wCol = inputDims[1];
+  int32_t rRow = inputDims[2];
+  int32_t rCol = inputDims[3];
+  int32_t targetCol = wCol + rCol;
+  // the wx + wh matrix
+  unique_ptr<T[]> wxhMergeData(new (std::nothrow) T[targetCol * wRow]());
+  FUSION_PASS_CHECK(wxhMergeData.get() == nullptr, OP_LOGE("CommonLSTM", "wxhMergeData is NULL"),
+                    return PARAM_INVALID);
+  T *wxData = (T *)wTensorPtr->GetData().data();
+  T *whData = (T *)rTensorPtr->GetData().data();
+
+  auto retMem = memset_s(wxhMergeData.get(), targetCol * wRow, 0, targetCol * wRow);
+  FUSION_PASS_CHECK(retMem != EOK, OP_LOGE("CommonLSTM", "Failed to operate memset_s function!"),
+                    return PARAM_INVALID);
+
+  // wx transpose, assign to merge data
+  T *dstWeight = wxhMergeData.get();
+  for (int32_t i = 0; i < wRow * wCol; ++i) {
+    *(dstWeight + i / wCol + wRow * (i % wCol)) = *(wxData + i);
+  }
+
+  // wh transpose, assign to merge data
+  for (int32_t i = 0; i < rRow * rCol; ++i) {
+    *(dstWeight + wRow * wCol + i / rCol + rRow * (i % rCol)) = *(whData + i);
+  }
+
+  // swap 1, 3
+  int32_t beginSize = wRow / 4;
+  for (int32_t col = 0; col < targetCol; ++col) {
+    for (int32_t row = 0; row < beginSize; ++row) {
+      T tmp = *(dstWeight + col * wRow + beginSize * 1 + row);
+      dstWeight[col * wRow + beginSize * 1 + row] = dstWeight[col * wRow + beginSize * 3 + row];
+      dstWeight[col * wRow + beginSize * 3 + row] = tmp;
+    }
+  }
+  wTensorPtr->SetData(reinterpret_cast<uint8_t *>(wxhMergeData.get()), (targetCol * wRow) * sizeof(T));
+  return SUCCESS;
+}
+
 ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, bool &failStatus,
                                                      const InputIndexInfo &inputIndexInfo, int32_t &hiddenSize)
 {
@@ -113,41 +156,11 @@ ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMWxh(ge::NodePtr fusedNode, bool
       ->UpdateOutputDesc(0, wrhTensorDesc);
   wTensorPtr->SetTensorDesc(wrhTensorDesc);
 
-  if (dataType == ge::DT_FLOAT16 || dataType == ge::DT_FLOAT) {
-    // the wx + wh matrix
-    unique_ptr<float[]> wxhMergeData(new (std::nothrow) float[targetCol * wRow]());
-    FUSION_PASS_CHECK(wxhMergeData.get() == nullptr,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "wxhMergeData is NULL"),
-    return nullptr);
-    float *wxData = (float *)wTensorPtr->GetData().data();
-    float *whData = (float *)rTensorPtr->GetData().data();
-
-    auto retMem = memset_s(wxhMergeData.get(), targetCol * wRow, 0, targetCol * wRow);
-    FUSION_PASS_CHECK(retMem != EOK,
-                      OP_LOGE(FUSED_OP_TYPE.c_str(), "Failed to operate memset_s function!"),
-    return nullptr);
-
-    // wx transpose, assign to merge data
-    float *dstWeight = wxhMergeData.get();
-    for (int32_t i = 0; i < wRow * wCol; ++i) {
-      *(dstWeight + i / wCol + wRow * (i % wCol)) = *(wxData + i);
-    }
-
-    // wh transpose, assign to merge data
-    for (int32_t i = 0; i < rRow * rCol; ++i) {
-      *(dstWeight + wRow * wCol + i / rCol + rRow * (i % rCol)) = *(whData + i);
-    }
-
-    // swap 1, 3
-    int32_t beginSize = wRow / 4;
-    for (int32_t col = 0; col < targetCol; ++col) {
-      for (int32_t row = 0; row < beginSize; ++row) {
-        float tmp = *(dstWeight + col * wRow + beginSize * 1 + row);
-        dstWeight[col * wRow + beginSize * 1 + row] = dstWeight[col * wRow + beginSize * 3 + row];
-        dstWeight[col * wRow + beginSize * 3 + row] = tmp;
-      }
-    }
-    wTensorPtr->SetData(reinterpret_cast<uint8_t *>(wxhMergeData.get()), (targetCol * wRow) * sizeof(float));
+  std::vector<int32_t> inputDims{wRow, wCol, rRow, rCol};
+  if (dataType == ge::DT_FLOAT16){
+    SetWeightTensorData<uint16_t>(wTensorPtr, rTensorPtr, inputDims);
+  } else if ( dataType == ge::DT_FLOAT) {
+    SetWeightTensorData<float>(wTensorPtr, rTensorPtr, inputDims);
   } else {
     OP_LOGE(FUSED_OP_TYPE.c_str(), "Node:%s's dtype is not in (float16, float32), fusion failed.");
     failStatus = true;
