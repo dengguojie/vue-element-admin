@@ -113,8 +113,8 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidCrossEntropyWithLogitsV2InferShape) {
 
   std::string reduction = "mean";
   if (op.GetAttr("reduction", reduction) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "reduction");
-    OP_LOGE(op.GetName().c_str(), "get attr reduction failed");
+    std::string err_msg = GetInputInvalidErrMsg("reduction");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

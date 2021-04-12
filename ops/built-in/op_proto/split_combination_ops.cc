@@ -181,15 +181,15 @@ IMPLEMT_COMMON_INFERFUNC(SplitDInferShape) {
 
   int64_t split_dim;
   if (op.GetAttr("split_dim", split_dim) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "get attr split dim failed");
-    OpsGetAttrErrReport(op.GetName(), "split_dim");
+    std::string err_msg = GetInputInvalidErrMsg("split_dim");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
-    OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
-    OpsGetAttrErrReport(op.GetName(), "num_split");
+    std::string err_msg = GetInputInvalidErrMsg("num_split");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -207,15 +207,13 @@ IMPLEMT_COMMON_INFERFUNC(SplitDInferShape) {
   // check attr
   int64_t dim_num = x_shape.GetDimNum();
   if ((split_dim < -dim_num) || (split_dim >= dim_num)) {
-    OP_LOGE(op.GetName().c_str(), "Axis value out of range");
-    OpsInputShapeDimErrReport(op.GetName(), "Axis", ConcatString(dim_num), ConcatString(-dim_num),
-                              ConcatString(split_dim));
+    std::string err_msg = GetParamOutRangeErrMsg("split_dim", ConcatString("[", -dim_num, ", ", dim_num, ")"), ConcatString(split_dim));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (num_split < 1) {
-    string excepted_value = ConcatString("in range[1,]");
-    OP_LOGE(op.GetName().c_str(), "num_split need greater than or equals to 1");
-    OpsAttrValueErrReport(op.GetName(), "num_split", excepted_value, ConcatString(num_split));
+    std::string err_msg = GetParamOutRangeErrMsg("num_split", ConcatString("[1,]"), ConcatString(num_split));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (split_dim < 0) {
@@ -450,30 +448,31 @@ IMPLEMT_INFERFUNC(SplitVD, SplitVDInferShape) {
 
   int64_t split_dim;
   if (op.GetAttr("split_dim", split_dim) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "split_dim");
-    OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+    std::string err_msg = GetInputInvalidErrMsg("split_dim");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
   vector<int64_t> size_splits;
   if (op.GetAttr("size_splits", size_splits) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "size_splits");
-    OP_LOGE(op.GetName().c_str(), "get attr size_splits failed");
+    std::string err_msg = GetInputInvalidErrMsg("size_splits");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
   int64_t num_split;
   if (op.GetAttr("num_split", num_split) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "num_split");
-    OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+    std::string err_msg = GetInputInvalidErrMsg("num_split");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
   int64_t dim_num = shape.GetDimNum();
   if ((split_dim < -dim_num) || (split_dim >= dim_num)) {
-    OpsInputShapeDimErrReport(op.GetName(), "Axis", ConcatString(dim_num), ConcatString(-dim_num),
-                              ConcatString(split_dim));
-    OP_LOGE(op.GetName().c_str(), "Axis value out of range");
+    std::string err_msg = GetParamOutRangeErrMsg("split_dim", ConcatString("[", -dim_num, ", ", dim_num, ")"), ConcatString(split_dim));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (num_split < 1) {
-    string excepted_value = ConcatString("in range[1,]");
-    OpsAttrValueErrReport(op.GetName(), "num_split", excepted_value, ConcatString(num_split));
-    OP_LOGE(op.GetName().c_str(), "num_split need greater than or equals to 1");
+    std::string err_msg = GetParamOutRangeErrMsg("num_split", ConcatString("[1,]"), ConcatString(num_split));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (split_dim < 0) {
@@ -484,9 +483,8 @@ IMPLEMT_INFERFUNC(SplitVD, SplitVDInferShape) {
     int64_t dim = shape.GetDim(split_dim);
     int64_t batch = dim / num_split;
     if (dim % num_split != 0) {
-      OP_LOGE(op.GetName().c_str(), "dimvalue should be divisible by num_split");
-      OpsInputShapeErrReport(op.GetName(), "dim_value should be divisible by num_split",
-                             "dim % num_split", ConcatString(dim % num_split));
+      std::string err_msg = OtherErrMsg("dimvalue should be divisible by num_split");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     for (auto i = 0; i < num_split; ++i) {

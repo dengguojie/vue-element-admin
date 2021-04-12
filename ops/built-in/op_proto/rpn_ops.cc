@@ -23,6 +23,7 @@
 #include <vector>
 #include <map>
 #include "util/util.h"
+#include "util/error_util.h"
 #include "op_log.h"
 
 namespace ge {
@@ -32,7 +33,8 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
   float iou_threshold;
   if (op.GetAttr("iou_threshold", iou_threshold) == GRAPH_SUCCESS) {
     if (iou_threshold <= 0) {
-      OP_LOGE(op.GetName().c_str(), "Attr iou_threshold(%f) must > 0", iou_threshold);
+      std::string err_msg = GetAttrValueErrMsg("iou_threshold", ConcatString(iou_threshold), ConcatString("more than 0"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -63,15 +65,18 @@ IMPLEMT_COMMON_INFERFUNC(NMSWithMaskShapeAndType) {
   }
 
   if (op.UpdateOutputDesc("selected_boxes", out_box_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("selected_boxes");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.UpdateOutputDesc("selected_idx", out_idx_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("selected_idx");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.UpdateOutputDesc("selected_mask", out_mask_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("selected_mask");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

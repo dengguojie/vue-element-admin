@@ -369,7 +369,9 @@ IMPLEMT_COMMON_INFERFUNC(SigmoidGradInferShape) {
   tensordesc_output.SetDataType(input_dtype);
   tensordesc_output.SetShapeRange(shape_range_y);
   if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("z");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }

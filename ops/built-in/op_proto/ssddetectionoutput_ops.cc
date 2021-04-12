@@ -40,8 +40,8 @@ IMPLEMT_INFERFUNC(SSDDetectionOutput, SSDDetectionOutputInferShape) {
 
   auto loc_shape = op.get_input_desc_bbox_delta().GetShape().GetDims();
   if (loc_shape.empty()) {
-    OP_LOGE(op.GetName().c_str(), "get mbox loc failed.");
-    OpsMissInputErrReport(op.GetName(), "loc_shape");
+    std::string err_msg = GetInputInvalidErrMsg("loc_shape");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   auto batch = loc_shape[0];

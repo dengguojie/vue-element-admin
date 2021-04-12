@@ -39,8 +39,10 @@ IMPLEMT_COMMON_INFERFUNC(YoloInferShape) {
   // get input depth
   OP_LOGI("yolo", "infer shape begin---");
   auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
-  CHECK(inputShape.size() < 4, InferShapeOtherErrReport(op.GetName(), "input shape dims less then 4!");
-        OP_LOGE(op.GetName().c_str(), "input shape dims less then 4!"), return GRAPH_FAILED);
+  CHECK(inputShape.size() < 4,
+        std::string err_msg = GetAttrSizeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 4"));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
+        return GRAPH_FAILED);
   int64_t batchNum = (int64_t)inputShape[0];
   int64_t hwSize = (int64_t)(inputShape[2] * inputShape[3]);
   DataType inputType = op.GetInputDesc("x").GetDataType();
@@ -90,8 +92,10 @@ IMPLEMT_VERIFIER(Yolo, YoloVerify) {
   int64_t coordNum = 0;
   int64_t classNum = 0;
   auto inputShape = op.GetInputDesc("x").GetShape().GetDims();
-  CHECK(inputShape.size() < 2, InferShapeOtherErrReport(op.GetName(), "input shape dims less then 2!");
-        OP_LOGE(op.GetName().c_str(), "input shape dims less then 2!"), return GRAPH_FAILED);
+  CHECK(inputShape.size() < 2,
+        std::string err_msg = GetAttrSizeErrMsg(0, ConcatString(inputShape.size()), ConcatString("more than or equal to 2"));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
+        return GRAPH_FAILED);
   int64_t channelNum = (int64_t)inputShape[1];
 
   if (ge::GRAPH_SUCCESS != op.GetAttr("boxes", boxNum)) {
@@ -104,29 +108,24 @@ IMPLEMT_VERIFIER(Yolo, YoloVerify) {
     classNum = 80;
   }
   if (boxNum < 1) {
-    OP_LOGE(op.GetName().c_str(), "box num %d should be greater than 0", boxNum);
-    string realvalue = ConcatString(boxNum);
-    OpsAttrValueErrReport(op.GetName().c_str(), "boxNum", "greater than 0", realvalue);
+    std::string err_msg = GetAttrValueErrMsg("boxNum", ConcatString(boxNum), ConcatString("greater than 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (coordNum != 4) {
-    OP_LOGE(op.GetName().c_str(), "coord num %d should be eq 4", coordNum);
-    string realvalue = ConcatString(coordNum);
-    OpsAttrValueErrReport(op.GetName().c_str(), "coordNum", "4", realvalue);
+    std::string err_msg = GetAttrValueErrMsg("coordNum", ConcatString(coordNum), ConcatString("equal to 4"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (classNum < 1 || classNum > 1024) {
-    OP_LOGE(op.GetName().c_str(), "class num %d should be in range [1, 1024]", classNum);
-    string realvalue = ConcatString(classNum);
-    OpsAttrValueErrReport(op.GetName().c_str(), "classNum", "range [1, 1024]", realvalue);
+    std::string err_msg = GetParamOutRangeErrMsg("", ConcatString("[1, 1024]"), ConcatString(classNum));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (boxNum * (1 + coordNum + classNum) != channelNum) {
-    OP_LOGE(op.GetName().c_str(), "channels(%d) should be (boxes(%d) * (1 + coords(%d) + classes(%d)))", channelNum,
-            boxNum, coordNum, classNum);
-    string realvalue = ConcatString(channelNum);
-    OpsAttrValueErrReport(op.GetName().c_str(), "channels", "must equal with boxes*(1+coords+classes)", realvalue);
+    std::string err_msg = GetAttrValueErrMsg("channels", ConcatString(channelNum), ConcatString("equal with boxes*(1+coords+classes)"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -182,14 +181,16 @@ IMPLEMT_VERIFIER(YoloV2DetectionOutputD, YoloV2DetectionOutputDVerify) {
 IMPLEMT_COMMON_INFERFUNC(YoloV2DetectionOutputDInferShape) {
   OP_LOGI(op.GetName().c_str(), "infer shape begin---");
   auto coord_shape = op.GetInputDesc("coord_data").GetShape().GetDims();
-  CHECK(coord_shape.empty(), InferShapeOtherErrReport(op.GetName(), "input shape is NULL!");
-        OP_LOGE(op.GetName().c_str(), "input shape is NULL!"), return GRAPH_FAILED);
+  CHECK(coord_shape.empty(),
+        std::string err_msg = OtherErrMsg("input shape is NULL!");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
+        return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
   DataType input_dtype = op.GetInputDesc("coord_data").GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
-    OP_LOGE(op.GetName().c_str(), "get attr failed");
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
+    std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dim_vector;
@@ -219,14 +220,16 @@ IMPLEMT_VERIFIER(YoloV3DetectionOutput, YoloV3DetectionOutputVerify) {
 IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputInferShape) {
   OP_LOGI("yolov3 detection output", "infer shape begin---");
   auto coord_shape = op.GetInputDesc("coord_data_low").GetShape().GetDims();
-  CHECK(coord_shape.empty(), InferShapeOtherErrReport(op.GetName(), "input shape is NULL!");
-        OP_LOGE(op.GetName().c_str(), "input shape is NULL!"), return GRAPH_FAILED);
+  CHECK(coord_shape.empty(),
+        std::string err_msg = OtherErrMsg("input shape is NULL!");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg),
+        return GRAPH_FAILED);
   int64_t batch = coord_shape[0];
   DataType input_dtype = op.GetInputDesc("coord_data_low").GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
-    OP_LOGE(op.GetName().c_str(), "get attr failed");
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
+    std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dim_vector;
@@ -345,24 +348,24 @@ IMPLEMT_COMMON_INFERFUNC(YoloV3DetectionOutputV2DInferShape) {
   OP_LOGI(op.GetName().c_str(), "infer shape begin---");
   auto coord_shape = op.GetDynamicInputDesc("x", 0).GetShape().GetDims();
   if (coord_shape.empty()) {
-    InferShapeOtherErrReport(op.GetName(), "input shape is NULL!");
-    OP_LOGE(op.GetName().c_str(), "input shape is NULL!");
+    std::string err_msg = OtherErrMsg("input shape is NULL!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t batch = coord_shape[0];
   DataType input_dtype = op.GetDynamicInputDesc("x", 0).GetDataType();
   std::int64_t maxNum = 0;
   if (ge::GRAPH_SUCCESS != op.GetAttr("post_nms_topn", maxNum)) {
-    OP_LOGE(op.GetName().c_str(), "get attr failed");
-    OpsGetAttrErrReport(op.GetName(), "post_nms_topn");
+    std::string err_msg = GetInputInvalidErrMsg("post_nms_topn");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dim_vector;
   dim_vector.push_back(batch);
   std::int64_t outBoxDim = 3;
   if (ge::GRAPH_SUCCESS != op.GetAttr("out_box_dim", outBoxDim)) {
-    OP_LOGE(op.GetName().c_str(), "get attr failed");
-    OpsGetAttrErrReport(op.GetName(), "out_box_dim");
+    std::string err_msg = GetInputInvalidErrMsg("out_box_dim");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (outBoxDim == 2) {

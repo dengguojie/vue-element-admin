@@ -173,7 +173,8 @@ IMPLEMT_COMMON_INFERFUNC(SparseApplyAdagradDInferShape) {
   out_accum_desc.SetDataType(input_dtype);
   if (op.UpdateOutputDesc("var", out_var_desc) != GRAPH_SUCCESS ||
       op.UpdateOutputDesc("accum", out_accum_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("accum");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -183,8 +184,8 @@ IMPLEMT_VERIFIER(SparseApplyAdagradD, SparseApplyAdagradDVerify) {
   DataType var_dtype = op.GetInputDesc("var").GetDataType();
   DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
   if (var_dtype != accum_dtype) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "var", "accum", ConcatString(var_dtype), ConcatString(accum_dtype));
-    OP_LOGE(op.GetName().c_str(), "The sparse_apply_adagrad op inputs should have the same dtype!");
+    std::string err_msg = OtherErrMsg("The sparse_apply_adagrad op inputs should have the same dtype!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1403,7 +1404,9 @@ IMPLEMT_VERIFIER(SparseApplyRMSPropD, SparseApplyRMSPropDVerify) {
   // check input const attr for rho, momentum, epsilon
   std::vector<float> constAttr;
   if (!GetConstAttr(op, {"rho", "momentum", "epsilon"}, constAttr)) {
-    OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
+    std::string err_msg = GetInputInvalidErrMsg("rho, momentum or epsilon");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
 
   const std::vector<std::string> kInputTensorList{"var", "ms", "mom"};
@@ -1414,7 +1417,8 @@ IMPLEMT_VERIFIER(SparseApplyRMSPropD, SparseApplyRMSPropDVerify) {
 
   auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
-    OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
+    std::string err_msg = GetShapeSizeErrMsg(5, ConcatString(vector_dims.size()), ConcatString("one-dimensional"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1423,7 +1427,8 @@ IMPLEMT_VERIFIER(SparseApplyRMSPropD, SparseApplyRMSPropDVerify) {
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
-      OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
+      std::string err_msg = OtherErrMsg(ConcatString("Input var and grad must match in dimension ", dim_index));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1482,7 +1487,8 @@ IMPLEMT_VERIFIER(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify) {
   // check input const attr for rho, epsilon
   std::vector<float> const_attr;
   if (!GetConstAttr(op, {"epsilon"}, const_attr)) {
-    OP_LOGE(op.GetName().c_str(), "The GetOpAttr ConstValue failed!");
+    std::string err_msg = GetInputInvalidErrMsg("epsilon");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1494,8 +1500,8 @@ IMPLEMT_VERIFIER(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify) {
 
   auto vector_dims = op.GetInputDesc("indices").GetShape().GetDims();
   if (vector_dims.size() != 1) {
-    OpsAttrValueErrReport(op.GetName(), "indices", ConcatString(1), ConcatString(vector_dims.size()));
-    OP_LOGE(op.GetName().c_str(), "Input indices must be one-dimensional");
+    std::string err_msg = GetShapeSizeErrMsg(6, ConcatString(vector_dims.size()), ConcatString(1));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1504,7 +1510,8 @@ IMPLEMT_VERIFIER(SparseApplyAdadeltaD, SparseApplyAdadeltaDVerify) {
 
   for (unsigned int dim_index = 1; dim_index < var_dims.size(); dim_index++) {
     if (var_dims[dim_index] != grad_dims[dim_index]) {
-      OP_LOGE(op.GetName().c_str(), "Input var and grad must match in dimension (%u)", dim_index);
+      std::string err_msg = OtherErrMsg(ConcatString("Input var and grad must match in dimension ", dim_index));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1534,7 +1541,8 @@ bool CheckSgdDimension(const Operator& op) {
   // input tensor dim check
   auto var_dims = op.GetInputDesc("parameters").GetShape().GetDims();
   if (var_dims.size() > 8 || var_dims.size() <= 0) {
-    OP_LOGE(op.GetName().c_str(), "Only support 1 ~ 8 dims!");
+    std::string err_msg = GetShapeSizeErrMsg(0, ConcatString(var_dims.size()), ConcatString("1 ~ 8 dims!"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return false;
   }
   return true;
@@ -1556,7 +1564,8 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
   if (op.GetAttr("dampening", dampening) == GRAPH_SUCCESS && op.GetAttr("nesterov", nesterov) == GRAPH_SUCCESS) {
     if (nesterov) {
       if (dampening != 0.0) {
-        OP_LOGE(op.GetName().c_str(), "Attr dampening(%f) must == 0 when nesterov == true", dampening);
+        std::string err_msg = OtherErrMsg(ConcatString("Attr dampening(", dampening, ") must == 0 when nesterov == true"));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
@@ -1564,7 +1573,8 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
 
   if (op.GetAttr("weight_decay", weight_decay) == GRAPH_SUCCESS) {
     if (weight_decay < 0) {
-      OP_LOGE(op.GetName().c_str(), "Attr weight_decay(%f) must >= 0", weight_decay);
+      std::string err_msg = GetAttrValueErrMsg("weight_decay", ConcatString(weight_decay), ConcatString("more than or equal to 0"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1576,7 +1586,8 @@ IMPLEMT_COMMON_INFERFUNC(SGDInferShape) {
   variable_update_desc.SetShape(Shape(variabl_shape));
   variable_update_desc.SetDataType(variabl_dtype);
   if (op.UpdateOutputDesc("parameters", variable_update_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("parameters");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1725,40 +1736,49 @@ IMPLEMT_VERIFIER(SparseApplyFtrlD, SparseApplyFtrlDVerify) {
   DataType var_dtype = op.GetInputDesc(0).GetDataType();
   DataType accum_dtype = op.GetInputDesc(1).GetDataType();
   if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(), "The sparse_apply_ftrl op inputs should have the same dtype!");
+    std::string err_msg = OtherErrMsg("The sparse_apply_ftrl op inputs should have the same dtype!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   float lr, l1, l2, lr_power;
   if (op.GetAttr("lr", lr) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr lr failed!");
+    std::string err_msg = GetInputInvalidErrMsg("lr");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (lr <= 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr lr(%f) must > 0", lr);
+    std::string err_msg = GetAttrValueErrMsg("lr", ConcatString(lr), ConcatString("more than 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("l1", l1) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr l1 failed!");
+    std::string err_msg = GetInputInvalidErrMsg("l1");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (l1 < 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr l1(%f) must >= 0", l1);
+    std::string err_msg = GetAttrValueErrMsg("l1", ConcatString(l1), ConcatString("more than or equal to 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("l2", l2) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr l2 failed!");
+    std::string err_msg = GetInputInvalidErrMsg("l2");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (l2 < 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr l2(%f) must >= 0", l2);
+    std::string err_msg = GetAttrValueErrMsg("l2", ConcatString(l2), ConcatString("more than or equal to 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("lr_power", lr_power) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr lr_power failed!");
+    std::string err_msg = GetInputInvalidErrMsg("lr_power");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (lr_power > 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr lr_power(%f) must <= 0", lr_power);
+    std::string err_msg = GetAttrValueErrMsg("lr_power", ConcatString(lr_power), ConcatString("less than or equal to 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1808,48 +1828,59 @@ IMPLEMT_VERIFIER(SparseApplyFtrlV2D, SparseApplyFtrlV2DVerify) {
   DataType var_dtype = op.GetInputDesc("var").GetDataType();
   DataType accum_dtype = op.GetInputDesc("accum").GetDataType();
   if (var_dtype != accum_dtype) {
-    OP_LOGE(op.GetName().c_str(), "The sparse_apply_ftrl op inputs should have the same dtype!");
+    std::string err_msg = OtherErrMsg("The sparse_apply_ftrl op inputs should have the same dtype!");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   float lr, l1, l2, l2_shrinkage, lr_power;
   if (op.GetAttr("lr", lr) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr lr failed!");
+    std::string err_msg = GetInputInvalidErrMsg("lr");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (lr <= 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr lr(%f) must > 0", lr);
+    std::string err_msg = GetAttrValueErrMsg("lr", ConcatString(lr), ConcatString("more than 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("l1", l1) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr l1 failed!");
+    std::string err_msg = GetInputInvalidErrMsg("l1");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (l1 < 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr l1(%f) must >= 0", l1);
+    std::string err_msg = GetAttrValueErrMsg("l1", ConcatString(l1), ConcatString("more than or equal to 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("l2", l2) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr l2 failed!");
+    std::string err_msg = GetInputInvalidErrMsg("l2");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (l2 < 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr l2(%f) must >= 0", l2);
+    std::string err_msg = GetAttrValueErrMsg("l2", ConcatString(l2), ConcatString("more than or equal to 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("l2_shrinkage", l2_shrinkage) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr l2_shrinkage failed!");
+    std::string err_msg = GetInputInvalidErrMsg("l2_shrinkage");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (l2_shrinkage < 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr l2_shrinkage(%f) must >= 0", l2_shrinkage);
+    std::string err_msg = GetAttrValueErrMsg("l2_shrinkage", ConcatString(l2_shrinkage), ConcatString("more than or equal to 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("lr_power", lr_power) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr lr_power failed!");
+    std::string err_msg = GetInputInvalidErrMsg("lr_power");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (lr_power < 0) {
-    OP_LOGE(op.GetName().c_str(), "Attr lr_power(%f) must >= 0", lr_power);
+    std::string err_msg = GetAttrValueErrMsg("lr_power", ConcatString(lr_power), ConcatString("more than or equal to 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

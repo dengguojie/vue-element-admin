@@ -952,7 +952,9 @@ IMPLEMT_COMMON_INFERFUNC(SqrtGradInferShape) {
   tensordesc_output.SetDataType(input_dtype);
   tensordesc_output.SetShapeRange(shape_range_x);
   if (op.UpdateOutputDesc("z", tensordesc_output) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("z");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
    return GRAPH_SUCCESS;
 }
@@ -3026,17 +3028,15 @@ IMPLEMT_COMMON_INFERFUNC(SquareSumV2InferShape) {
   int64_t dimNum = shape.GetDimNum();
   std::vector<int64_t> axis;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
-    OpsGetAttrErrReport(op.GetName(), "axis");
-    OP_LOGE(op.GetName().c_str(),
-            "The input_size op GetOpAttr"
-            "ConstValue failed!");
+    std::string err_msg = GetInputInvalidErrMsg("axis");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   bool keep_dims;
   if (ge::GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
-    OpsGetAttrErrReport(op.GetName(), "keep_dims");
-    OP_LOGE(op.GetName().c_str(), "get keep_dims op GetOpAttr failed!");
+    std::string err_msg = GetInputInvalidErrMsg("keep_dims");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3175,17 +3175,15 @@ IMPLEMT_COMMON_INFERFUNC(SquareSumV1InferShape) {
 
   std::vector<int64_t> axis;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
-    OpsGetAttrErrReport(op.GetName(), "axis");
-    OP_LOGE(op.GetName().c_str(),
-            "The input_size op GetOpAttr"
-            "ConstValue failed!");
+    std::string err_msg = GetInputInvalidErrMsg("axis");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   bool keep_dims;
   if (ge::GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
-    OpsGetAttrErrReport(op.GetName(), "keep_dims");
-    OP_LOGE(op.GetName().c_str(), "get keep_dims op GetOpAttr failed!");
+    std::string err_msg = GetInputInvalidErrMsg("keep_dims");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3267,7 +3265,8 @@ IMPLEMT_COMMON_INFERFUNC(SquareSumALlInferShape) {
   tensor_desc_y2.SetDataType(input_x2_dtype);
   if (op.UpdateOutputDesc("y1", tensor_desc_y1) != GRAPH_SUCCESS ||
       op.UpdateOutputDesc("y2", tensor_desc_y2) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
+    std::string err_msg = UpdateParamErrMsg("y1 or y2");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
