@@ -520,31 +520,30 @@ class PSROIPoolingGradV2DClass(object):
                                                         scope=tbe_platform.scope_ubuf)
             diff_value.set_as(ub_output_dim[out_dim])
             output_dim_index = out_dim * self.k2 + params["bin_i_offset"]
-            with self.tik_instance.if_scope(output_dim_index < (self.fm_c - C0)):
-                bin_i_offset_c1 = output_dim_index // C0
-                bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
+            self.tik_instance.vector_dup(self.mask, ub_bin_input_buf, 0.,
+                                         _ceil_value(params["h_width"] * params["w_width"] * C0, self.mask),
+                                         STRIDE_ONE, REP_STRIDE_EIGHT)
+            bin_i_offset_c1 = output_dim_index // C0
+            bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
+            if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                    (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
+                self.tik_instance.set_atomic_add(1)
+                # add diff_val
+                self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,
+                                        params["h_width"] * params["w_width"], STRIDE_ONE, STRIDE_ONE,
+                                        burst_one_s, burst_one_s)
+                self.tik_instance.data_move(y_dst[params["scalar_roi_batch_id"], bin_i_offset_c1,
+                                                  params["h_start"], params["w_start"], bin_i_offset_c0],
+                                            ub_bin_input_buf,
+                                            SID, bursts_s, burst_len_s, STRIDE_ZERO, src_stride_s)
+                self.tik_instance.set_atomic_add(0)
+            else:
                 self.tik_instance.data_move(ub_bin_input_buf,
                                             y_dst[params["scalar_roi_batch_id"], bin_i_offset_c1,
                                                   params["h_start"], params["w_start"], bin_i_offset_c0],
                                             SID, bursts_s, burst_len_s, src_stride_s, STRIDE_ZERO)
                 # add diff_val
                 self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,
-                                        params["h_width"] * params["w_width"], STRIDE_ONE, STRIDE_ONE,
-                                        burst_one_s, burst_one_s)
-
-                self.tik_instance.data_move(y_dst[params["scalar_roi_batch_id"], bin_i_offset_c1,
-                                                  params["h_start"], params["w_start"], bin_i_offset_c0],
-                                            ub_bin_input_buf,
-                                            SID, bursts_s, burst_len_s, STRIDE_ZERO, src_stride_s)
-            with self.tik_instance.else_scope():
-                bin_i_offset_c1 = (output_dim_index - C0) // C0
-                bin_i_offset_c0 = (output_dim_index - C0) - bin_i_offset_c1 * C0
-                self.tik_instance.data_move(ub_bin_input_buf,
-                                            y_dst[params["scalar_roi_batch_id"], bin_i_offset_c1,
-                                                  params["h_start"], params["w_start"], bin_i_offset_c0],
-                                            SID, bursts_s, burst_len_s, src_stride_s, STRIDE_ZERO)
-                # high 16 bit
-                self.tik_instance.vadds([0, 0x8000], ub_bin_input_buf, ub_bin_input_buf, diff_value,
                                         params["h_width"] * params["w_width"], STRIDE_ONE, STRIDE_ONE,
                                         burst_one_s, burst_one_s)
 
@@ -571,14 +570,15 @@ class PSROIPoolingGradV2DClass(object):
                                                         scope=tbe_platform.scope_ubuf)
             diff_value.set_as(ub_output_dim[out_dim])
             output_dim_index = out_dim * self.k2 + params["bin_i_offset"]
-            with self.tik_instance.if_scope(output_dim_index < (self.fm_c - C0)):
-                bin_i_offset_c1 = output_dim_index // C0
-                bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
-                with self.tik_instance.for_range(params["h_start"], params["h_end"]) as height:
-                    self.tik_instance.data_move(ub_bin_input_buf,
-                                                y_dst[params["scalar_roi_batch_id"], bin_i_offset_c1,
-                                                      height, params["w_start"], bin_i_offset_c0],
-                                                SID, bursts_s, burst_len_s, src_stride_s, STRIDE_ZERO)
+            bin_i_offset_c1 = output_dim_index // C0
+            bin_i_offset_c0 = output_dim_index - bin_i_offset_c1 * C0
+            self.tik_instance.vector_dup(self.mask, ub_bin_input_buf, 0.,
+                                         _ceil_value(params["h_width"] * params["w_width"] * C0, self.mask),
+                                         STRIDE_ONE, REP_STRIDE_EIGHT)
+            with self.tik_instance.for_range(params["h_start"], params["h_end"]) as height:
+                if tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) in \
+                        (tbe_platform.ASCEND_910, tbe_platform.ASCEND_710, tbe_platform.ASCEND_610):
+                    self.tik_instance.set_atomic_add(1)
                     # add diff_val
                     self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,
                                             params["h_width"] * params["w_width"], STRIDE_ONE, STRIDE_ONE,
@@ -587,16 +587,14 @@ class PSROIPoolingGradV2DClass(object):
                                                       height, params["w_start"], bin_i_offset_c0],
                                                 ub_bin_input_buf,
                                                 SID, bursts_s, burst_len_s, STRIDE_ZERO, src_stride_s)
-            with self.tik_instance.else_scope():
-                bin_i_offset_c1 = (output_dim_index - C0) // C0
-                bin_i_offset_c0 = (output_dim_index - C0) - bin_i_offset_c1 * C0
-                with self.tik_instance.for_range(params["h_start"], params["h_end"]) as height:
+                    self.tik_instance.set_atomic_add(0)
+                else:
                     self.tik_instance.data_move(ub_bin_input_buf,
                                                 y_dst[params["scalar_roi_batch_id"], bin_i_offset_c1,
                                                       height, params["w_start"], bin_i_offset_c0],
                                                 SID, bursts_s, burst_len_s, src_stride_s, STRIDE_ZERO)
                     # add diff_val
-                    self.tik_instance.vadds([0, 0x8000], ub_bin_input_buf, ub_bin_input_buf, diff_value,
+                    self.tik_instance.vadds([0, 0x1], ub_bin_input_buf, ub_bin_input_buf, diff_value,
                                             params["h_width"] * params["w_width"], STRIDE_ONE, STRIDE_ONE,
                                             burst_one_s, burst_one_s)
                     self.tik_instance.data_move(y_dst[params["scalar_roi_batch_id"], bin_i_offset_c1,
@@ -707,12 +705,12 @@ class PSROIPoolingGradV2DClass(object):
                                                           0, params["ph"], params["pw"], 0], SID, repeat_time,
                                     burst_len, (self.k2 - 1) * burst_len, STRIDE_ZERO)
         with self.tik_instance.if_scope(params["bin_area"] == 0):
-            self.tik_instance.vmuls(C0, ub_output_dim, ub_output_dim, 0., repeat_time, burst_len,
-                                    burst_len, STRIDE_ONE, STRIDE_ONE)
+            self.tik_instance.vmuls(C0, ub_output_dim, ub_output_dim, 0., repeat_time,
+                                    STRIDE_ONE, STRIDE_ONE, burst_len, burst_len)
         with self.tik_instance.else_scope():
             bin_area_inv = self._get_bin_area_inv(params)
-            self.tik_instance.vmuls(C0, ub_output_dim, ub_output_dim, bin_area_inv, repeat_time, burst_len,
-                                    burst_len, STRIDE_ONE, STRIDE_ONE)
+            self.tik_instance.vmuls(C0, ub_output_dim, ub_output_dim, bin_area_inv, repeat_time,
+                                    STRIDE_ONE, STRIDE_ONE, burst_len, burst_len)
         params["ub_output_dim"] = ub_output_dim
 
         self._process_one_bin_2(params)
