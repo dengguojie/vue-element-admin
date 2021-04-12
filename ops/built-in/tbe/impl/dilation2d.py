@@ -25,15 +25,22 @@ from impl import common_util
 MIN_VAL = -65534.0
 
 
-# pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-statements,too-many-lines,redefined-builtin
-# pylint: disable=super-with-arguments
+# pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,too-many-branches
+# pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-def dilation2d(x, filter, y, strides, rates, padding_mode="SAME", pads=(0, 0, 0, 0), ceil_mode=False,
-               data_format="NHWC", kernel_name="dilation2d"):
+def dilation2d(x,
+               filter,
+               y,
+               strides,
+               rates,
+               padding_mode="SAME",
+               pads=(0, 0, 0, 0),
+               ceil_mode=False,
+               data_format="NHWC",
+               kernel_name="dilation2d"):
     """
     Returns the grayscale dilation of x and filter tensors
 
@@ -68,18 +75,15 @@ def dilation2d(x, filter, y, strides, rates, padding_mode="SAME", pads=(0, 0, 0,
     para_check.check_format(filter_format, "NC1HWC0", param_name="filter")
     para_check.check_shape(filter_shape, min_rank=5, max_rank=5, param_name="filter")
     if padding_mode not in ("SAME", "VALID", "CALCULATED"):
-        error_manager_vector.raise_err_pad_mode_invalid(kernel_name,
-                                                        "SAME,VALID,CALCULATED",
-                                                        padding_mode)
+        error_manager_vector.raise_err_pad_mode_invalid(kernel_name, "SAME,VALID,CALCULATED", padding_mode)
     if len(strides) != 4:
-        error_manager_vector.raise_err_check_params_rules(kernel_name, "the length of strides should be 4",
-                                                          "strides", strides)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, "the length of strides should be 4", "strides",
+                                                          strides)
     if len(rates) != 4:
-        error_manager_vector.raise_err_check_params_rules(kernel_name, "the length of rates should be 4",
-                                                          "rates", rates)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, "the length of rates should be 4", "rates",
+                                                          rates)
     if len(pads) != 4:
-        error_manager_vector.raise_err_check_params_rules(kernel_name, "the length of pads should be 4",
-                                                          "pads", pads)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, "the length of pads should be 4", "pads", pads)
     input_h = x_shape[2]
     input_w = x_shape[3]
     filter_h = filter_shape[2]
@@ -94,11 +98,9 @@ def dilation2d(x, filter, y, strides, rates, padding_mode="SAME", pads=(0, 0, 0,
     window_w = (filter_w - 1) * rate_w + 1
 
     if stride_n != 1 or stride_c != 1:
-        error_manager_vector.raise_err_check_params_rules(kernel_name, "n,c of strides should be 1",
-                                                          "strides", strides)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, "n,c of strides should be 1", "strides", strides)
     if rate_n != 1 or rate_c != 1:
-        error_manager_vector.raise_err_check_params_rules(kernel_name, "n,c of rates should be 1",
-                                                          "rates", rates)
+        error_manager_vector.raise_err_check_params_rules(kernel_name, "n,c of rates should be 1", "rates", rates)
 
     if list(pads) == [0, 0, 0, 0] and window_h == input_h and window_w == input_w:
         if padding_mode == "CALCULATED":
@@ -135,8 +137,16 @@ def dilation2d(x, filter, y, strides, rates, padding_mode="SAME", pads=(0, 0, 0,
     return dilation.instance
 
 
-def check_supported(x, filter, y, strides, rates, padding_mode="SAME", pads=(0, 0, 0, 0), ceil_mode=False,
-                    data_format="NHWC", kernel_name="dilation2d"):
+def check_supported(x,
+                    filter,
+                    y,
+                    strides,
+                    rates,
+                    padding_mode="SAME",
+                    pads=(0, 0, 0, 0),
+                    ceil_mode=False,
+                    data_format="NHWC",
+                    kernel_name="dilation2d"):
     """
     verify the types and params of dilation2d supported by tbe
     """
@@ -467,15 +477,13 @@ class Dilation2DBase:
                     l_dst_start = dst_start + l_i * 255 * dst_rep_stride * self.c0
                     l_src0_start = src0_start + l_i * 255 * src0_rep_stride * self.c0
                     l_src1_start = src1_start + l_i * 255 * src1_rep_stride * self.c0
-                    self.mask_add([mask_loop, mask_tail, mask_max], ub_list,
-                                  [l_dst_start, l_src0_start, l_src1_start],
+                    self.mask_add([mask_loop, mask_tail, mask_max], ub_list, [l_dst_start, l_src0_start, l_src1_start],
                                   255, rep_stride_list, blk_stride_list)
             if repeat_tail > 0:
                 t_dst_start = dst_start + repeat_loop * 255 * dst_rep_stride * self.c0
                 t_src0_start = src0_start + repeat_loop * 255 * src0_rep_stride * self.c0
                 t_src1_start = src1_start + repeat_loop * 255 * src1_rep_stride * self.c0
-                self.mask_add([mask_loop, mask_tail, mask_max], ub_list,
-                              [t_dst_start, t_src0_start, t_src1_start],
+                self.mask_add([mask_loop, mask_tail, mask_max], ub_list, [t_dst_start, t_src0_start, t_src1_start],
                               repeat_tail, rep_stride_list, blk_stride_list)
         else:
             repeat_tail_s = self.instance.Scalar("uint32", name="add_repeat_tail")
@@ -484,15 +492,13 @@ class Dilation2DBase:
                 l_dst_start = dst_start + l_i * 255 * dst_rep_stride * self.c0
                 l_src0_start = src0_start + l_i * 255 * src0_rep_stride * self.c0
                 l_src1_start = src1_start + l_i * 255 * src1_rep_stride * self.c0
-                self.mask_add([mask_loop, mask_tail, mask_max], ub_list,
-                              [l_dst_start, l_src0_start, l_src1_start],
+                self.mask_add([mask_loop, mask_tail, mask_max], ub_list, [l_dst_start, l_src0_start, l_src1_start],
                               self.repeat_max, rep_stride_list, blk_stride_list)
             with self.instance.if_scope(repeat_tail > 0):
                 t_dst_start = dst_start + repeat_loop * 255 * dst_rep_stride * self.c0
                 t_src0_start = src0_start + repeat_loop * 255 * src0_rep_stride * self.c0
                 t_src1_start = src1_start + repeat_loop * 255 * src1_rep_stride * self.c0
-                self.mask_add([mask_loop, mask_tail, mask_max], ub_list,
-                              [t_dst_start, t_src0_start, t_src1_start],
+                self.mask_add([mask_loop, mask_tail, mask_max], ub_list, [t_dst_start, t_src0_start, t_src1_start],
                               repeat_tail_s, rep_stride_list, blk_stride_list)
 
     def mask_add(self, mask_list, ub_list, start_list, repeat, rep_stride_list, blk_stride_list):
@@ -510,39 +516,31 @@ class Dilation2DBase:
                     dst_index = dst_start + l_i * mask * dst_blk_stride
                     src0_index = src0_start + l_i * mask * src0_blk_stride
                     src1_index = src1_start + l_i * mask * src1_blk_stride
-                    self.instance.vadd(mask,
-                                       dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                       repeat,
-                                       dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                       dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                    self.instance.vadd(mask, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], repeat,
+                                       dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride,
+                                       src0_rep_stride, src1_rep_stride)
             if mask_tail > 0:
                 dst_index = dst_start + mask_loop * mask * dst_blk_stride
                 src0_index = src0_start + mask_loop * mask * src0_blk_stride
                 src1_index = src1_start + mask_loop * mask * src1_blk_stride
-                self.instance.vadd(mask_tail,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   repeat,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vadd(mask_tail, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], repeat,
+                                   dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride, src0_rep_stride,
+                                   src1_rep_stride)
         else:
             with self.instance.for_range(0, mask_loop) as l_i:
                 dst_index = dst_start + l_i * mask * dst_blk_stride
                 src0_index = src0_start + l_i * mask * src0_blk_stride
                 src1_index = src1_start + l_i * mask * src1_blk_stride
-                self.instance.vadd(mask,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   repeat,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vadd(mask, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], repeat,
+                                   dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride, src0_rep_stride,
+                                   src1_rep_stride)
             with self.instance.if_scope(mask_tail > 0):
                 dst_index = dst_start + mask_loop * mask * dst_blk_stride
                 src0_index = src0_start + mask_loop * mask * src0_blk_stride
                 src1_index = src1_start + mask_loop * mask * src1_blk_stride
-                self.instance.vadd(mask_tail,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   repeat,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vadd(mask_tail, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], repeat,
+                                   dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride, src0_rep_stride,
+                                   src1_rep_stride)
 
     def vector_max(self, size, mask_num, ub_list, start_list, rep_stride_list, blk_stride_list):
         """
@@ -563,29 +561,23 @@ class Dilation2DBase:
                     dst_index = dst_start + l_i * 255 * dst_rep_stride * self.c0
                     src0_index = src0_start + l_i * 255 * src0_rep_stride * self.c0
                     src1_index = src1_start + l_i * 255 * src1_rep_stride * self.c0
-                    self.instance.vmax(one_cnt,
-                                       dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                       255,
-                                       dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                       dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                    self.instance.vmax(one_cnt, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], 255,
+                                       dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride,
+                                       src0_rep_stride, src1_rep_stride)
             if loop_remainder > 0:
                 dst_index = dst_start + loop_repeat * 255 * dst_rep_stride * self.c0
                 src0_index = src0_start + loop_repeat * 255 * src0_rep_stride * self.c0
                 src1_index = src1_start + loop_repeat * 255 * src1_rep_stride * self.c0
-                self.instance.vmax(one_cnt,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   loop_remainder,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vmax(one_cnt, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], loop_remainder,
+                                   dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride, src0_rep_stride,
+                                   src1_rep_stride)
             if remainder > 0:
                 dst_index = dst_start + repeat * dst_rep_stride * self.c0
                 src0_index = src0_start + repeat * src0_rep_stride * self.c0
                 src1_index = src1_start + repeat * src1_rep_stride * self.c0
-                self.instance.vmax(remainder,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   1,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vmax(remainder, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], 1,
+                                   dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride, src0_rep_stride,
+                                   src1_rep_stride)
         else:
             loop_remainder_s = self.instance.Scalar("uint32", name="max_loop_remainder")
             mask = self.instance.Scalar("uint32", name="max_mask")
@@ -595,29 +587,22 @@ class Dilation2DBase:
                 dst_index = dst_start + l_i * 255 * dst_rep_stride * self.c0
                 src0_index = src0_start + l_i * 255 * src0_rep_stride * self.c0
                 src1_index = src1_start + l_i * 255 * src1_rep_stride * self.c0
-                self.instance.vmax(one_cnt,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   self.repeat_max,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vmax(one_cnt, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
+                                   self.repeat_max, dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride,
+                                   src0_rep_stride, src1_rep_stride)
             with self.instance.if_scope(loop_remainder > 0):
                 dst_index = dst_start + loop_repeat * 255 * dst_rep_stride * self.c0
                 src0_index = src0_start + loop_repeat * 255 * src0_rep_stride * self.c0
                 src1_index = src1_start + loop_repeat * 255 * src1_rep_stride * self.c0
-                self.instance.vmax(one_cnt,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   loop_remainder_s,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vmax(one_cnt, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
+                                   loop_remainder_s, dst_blk_stride, src0_blk_stride, src1_blk_stride, dst_rep_stride,
+                                   src0_rep_stride, src1_rep_stride)
             with self.instance.if_scope(remainder > 0):
                 dst_index = dst_start + repeat * dst_rep_stride * self.c0
                 src0_index = src0_start + repeat * src0_rep_stride * self.c0
                 src1_index = src1_start + repeat * src1_rep_stride * self.c0
-                self.instance.vmax(mask,
-                                   dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index],
-                                   1,
-                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
-                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
+                self.instance.vmax(mask, dst_ub[dst_index], src0_ub[src0_index], src1_ub[src1_index], 1, dst_blk_stride,
+                                   src0_blk_stride, src1_blk_stride, dst_rep_stride, src0_rep_stride, src1_rep_stride)
 
 
 class Dilation2D(Dilation2DBase):
@@ -672,9 +657,11 @@ class Dilation2D(Dilation2DBase):
         is_all = False
         ub_factor = 1
         ub_index = len(tiling_shape) - 2
-        ub_size_info = {"input": self.window_h * self.window_w * self.c0,
-                        "filter": self.filter_h * self.filter_w * self.c0,
-                        "expand": self.filter_h * self.filter_w * self.c0}
+        ub_size_info = {
+            "input": self.window_h * self.window_w * self.c0,
+            "filter": self.filter_h * self.filter_w * self.c0,
+            "expand": self.filter_h * self.filter_w * self.c0
+        }
         for i, elem in enumerate(ub_tiling_shape):
             find, t_factor, size_info, is_all = self.try_tiling(i, elem, block_index, tiling_shape, ub_size)
             if find:
@@ -781,7 +768,8 @@ class Dilation2D(Dilation2DBase):
         """
         filter_size = _get_shape_size(self.filter_shape)
         if self.tiling_params["is_filter_all"]:
-            filter_ub = self.instance.Tensor(self.dtype, (filter_size,), name="filter_ub",
+            filter_ub = self.instance.Tensor(self.dtype, (filter_size,),
+                                             name="filter_ub",
                                              scope=tbe_platform.scope_ubuf)
             self.instance.data_move(filter_ub, self.filter_gm, 0, 1, filter_size // self.block_size, 0, 0)
             return filter_ub
@@ -794,7 +782,8 @@ class Dilation2D(Dilation2DBase):
         ub_index = self.tiling_params["ub_index"]
         if filter_ub is None:
             filter_size = self.tiling_params["ub_size_info"].get("filter")
-            filter_ub = self.instance.Tensor(self.dtype, (filter_size,), name="filter_ub",
+            filter_ub = self.instance.Tensor(self.dtype, (filter_size,),
+                                             name="filter_ub",
                                              scope=tbe_platform.scope_ubuf)
         x_size = self.tiling_params["ub_size_info"].get("input")
         x_ub = self.instance.Tensor(self.dtype, (x_size,), name="x_ub", scope=tbe_platform.scope_ubuf)
@@ -833,8 +822,7 @@ class Dilation2D(Dilation2DBase):
             with self.instance.if_scope(tik.any(n_burst > 4095, self.w_in > 65535)):
                 with self.instance.for_range(0, n_burst) as h_i:
                     self.instance.data_move(x_ub[ub_offset + h_i * self.pad_w * self.c0],
-                                            self.x_gm[x_index + h_i * self.w_in * self.c0], 0, 1,
-                                            self.w_in, 0, 0)
+                                            self.x_gm[x_index + h_i * self.w_in * self.c0], 0, 1, self.w_in, 0, 0)
             with self.instance.else_scope():
                 self.instance.data_move(x_ub[ub_offset], self.x_gm[x_index], 0, n_burst, self.w_in, 0,
                                         self.pad_w - self.w_in)
@@ -856,8 +844,8 @@ class Dilation2D(Dilation2DBase):
 
         with self.instance.if_scope(tik.all(h_in >= 0, h_in < self.h_in)):
             if self.move_by_row:
-                self.vector_add(start_list, ub_list, self.w_out,
-                                rep_stride_list, blk_stride_list, self.filter_w * self.c0)
+                self.vector_add(start_list, ub_list, self.w_out, rep_stride_list, blk_stride_list,
+                                self.filter_w * self.c0)
                 if self.wo_start > 0:
                     for wo_i in range(0, self.wo_start):
                         fw_i = (self.pad_left - wo_i * self.stride_w + self.rate_w - 1) // self.rate_w
@@ -887,8 +875,8 @@ class Dilation2D(Dilation2DBase):
                         l_x = x_start + (w_beg + fw_i * self.rate_w) * self.c0
                         l_expand = expand_start + wo_i * w_size + fw_i * self.c0
                         l_filter = filter_start + fw_i * self.c0
-                        self.vector_add([l_expand, l_x, l_filter], ub_list, 1,
-                                        rep_stride_list, blk_stride_list, num * self.c0)
+                        self.vector_add([l_expand, l_x, l_filter], ub_list, 1, rep_stride_list, blk_stride_list,
+                                        num * self.c0)
                 if self.wo_end - self.wo_start > 0:
                     mid_x = x_start + (self.wo_start * self.stride_w - self.pad_left) * self.c0
                     mid_expand = expand_start + self.wo_start * w_size
@@ -902,8 +890,8 @@ class Dilation2D(Dilation2DBase):
                         r_x = x_start + w_beg * self.c0
                         r_expand = expand_start + wo_i * w_size
                         r_filter = filter_start
-                        self.vector_add([r_expand, r_x, r_filter], ub_list, 1,
-                                        rep_stride_list, blk_stride_list, end * self.c0)
+                        self.vector_add([r_expand, r_x, r_filter], ub_list, 1, rep_stride_list, blk_stride_list,
+                                        end * self.c0)
         with self.instance.else_scope():
             self.vector_dup(expand_start, expand_ub, h_size, MIN_VAL)
 
@@ -916,8 +904,8 @@ class Dilation2D(Dilation2DBase):
             blk_stride_list = [1, 1, 1]
             ub_list = [expand_ub, expand_ub, expand_ub]
             with self.instance.if_scope(fh_index > 0):
-                self.vector_max(fh_size, 8, ub_list, [(fh_index % 2) * fh_size, 0, fh_size],
-                                rep_stride_list, blk_stride_list)
+                self.vector_max(fh_size, 8, ub_list, [(fh_index % 2) * fh_size, 0, fh_size], rep_stride_list,
+                                blk_stride_list)
 
     def reduce_w(self, fh_size, fw_size, expand_ub):
         """
@@ -932,8 +920,8 @@ class Dilation2D(Dilation2DBase):
             ub_list = [expand_ub, expand_ub, expand_ub]
             max_start = (self.filter_h % 2) * fh_size
             index_list = [max_start, max_start + fw_size, start]
-            self.vector_max(fw_size, num, ub_list,
-                            [index_list[0], start, start + self.c0], rep_stride_list, blk_stride_list)
+            self.vector_max(fw_size, num, ub_list, [index_list[0], start, start + self.c0], rep_stride_list,
+                            blk_stride_list)
             rep_stride_list_2 = [num, num, num * self.filter_w]
             blk_stride_list_2 = [1, 1, self.filter_w]
             with self.instance.for_range(2, self.filter_w) as fw:
@@ -975,16 +963,15 @@ class Dilation2D(Dilation2DBase):
                           h_in * w_in * self.c0
                 if not self.tiling_params["is_filter_all"]:
                     gm_index = c1_i * self.filter_offset_list[1] + fh_i * self.filter_offset_list[2]
-                    self.instance.data_move(filter_ub, self.filter_gm[gm_index],
-                                            0, 1, self.filter_offset_list[2] // self.block_size, 0, 0)
+                    self.instance.data_move(filter_ub, self.filter_gm[gm_index], 0, 1,
+                                            self.filter_offset_list[2] // self.block_size, 0, 0)
                     filter_start = 0
                 else:
                     filter_start = c1_i * self.filter_offset_list[1] + fh_i * self.filter_offset_list[2]
                 self.expand_row(ub_list, h_in, [expand_start, x_start, filter_start])
             self.reduce_h(fh_i, fh_size, expand_ub)
         reduce_index = self.reduce_w(fh_size, fw_size, expand_ub)
-        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1,
-                                fw_size // self.block_size, 0, 0)
+        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1, fw_size // self.block_size, 0, 0)
 
     def cut_c1(self, ub_list, offset_list, c1_num, out_offset):
         """
@@ -1013,8 +1000,8 @@ class Dilation2D(Dilation2DBase):
                 if not self.tiling_params["is_filter_all"]:
                     gm_index = ((c1_offset + c1_i) % self.c1) * self.filter_offset_list[1] + fh_i * \
                                self.filter_offset_list[2]
-                    self.instance.data_move(filter_ub, self.filter_gm[gm_index],
-                                            0, 1, self.filter_offset_list[2] // self.block_size, 0, 0)
+                    self.instance.data_move(filter_ub, self.filter_gm[gm_index], 0, 1,
+                                            self.filter_offset_list[2] // self.block_size, 0, 0)
                     filter_start = 0
                 else:
                     filter_start = ((c1_offset + c1_i) % self.c1) * self.filter_offset_list[1] + fh_i * \
@@ -1023,8 +1010,7 @@ class Dilation2D(Dilation2DBase):
             self.reduce_h(fh_i, fh_size, expand_ub)
         reduce_index = self.reduce_w(fh_size, fw_size, expand_ub)
 
-        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1,
-                                fw_size // self.block_size, 0, 0)
+        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1, fw_size // self.block_size, 0, 0)
 
     def cut_h(self, ub_list, offset_list, h_num, out_offset):
         """
@@ -1054,8 +1040,8 @@ class Dilation2D(Dilation2DBase):
         ub_offset = x_h_offset * w_in * self.c0 + self.pad_left * self.c0
         self.move_data(x_ub, ub_offset, x_index, h_len)
         if not self.tiling_params["is_filter_all"]:
-            self.instance.data_move(filter_ub, self.filter_gm[c1_offset * self.filter_offset_list[1]],
-                                    0, 1, self.filter_offset_list[1] // self.block_size, 0, 0)
+            self.instance.data_move(filter_ub, self.filter_gm[c1_offset * self.filter_offset_list[1]], 0, 1,
+                                    self.filter_offset_list[1] // self.block_size, 0, 0)
 
         with self.instance.for_range(0, self.filter_h) as fh_i:
             with self.instance.for_range(0, h_num) as h_i:
@@ -1071,8 +1057,7 @@ class Dilation2D(Dilation2DBase):
             self.reduce_h(fh_i, fh_size, expand_ub)
         reduce_index = self.reduce_w(fh_size, fw_size, expand_ub)
 
-        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1,
-                                fw_size // self.block_size, 0, 0)
+        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1, fw_size // self.block_size, 0, 0)
 
     def cut_w(self, ub_list, offset_list, w_num, out_offset):
         """
@@ -1122,14 +1107,13 @@ class Dilation2D(Dilation2DBase):
         if self.w_in >= 65535:
             with self.instance.for_range(0, h_len) as h_i:
                 self.instance.data_move(x_ub[x_ub_index + h_i * w_all * self.c0],
-                                        self.x_gm[x_index + h_i * self.w_in * self.c0],
-                                        0, 1, w_len, 0, 0)
+                                        self.x_gm[x_index + h_i * self.w_in * self.c0], 0, 1, w_len, 0, 0)
         else:
-            self.instance.data_move(x_ub[x_ub_index], self.x_gm[x_index],
-                                    0, h_len, w_len, self.w_in - w_len, w_all - w_len)
+            self.instance.data_move(x_ub[x_ub_index], self.x_gm[x_index], 0, h_len, w_len, self.w_in - w_len,
+                                    w_all - w_len)
         if not self.tiling_params["is_filter_all"]:
-            self.instance.data_move(filter_ub, self.filter_gm[c1_offset * self.filter_offset_list[1]],
-                                    0, 1, self.filter_offset_list[1] // self.block_size, 0, 0)
+            self.instance.data_move(filter_ub, self.filter_gm[c1_offset * self.filter_offset_list[1]], 0, 1,
+                                    self.filter_offset_list[1] // self.block_size, 0, 0)
 
         left_start = self.instance.Scalar("int32", name="left_start")
         left_end = self.instance.Scalar("int32", name="left_end")
@@ -1170,8 +1154,8 @@ class Dilation2D(Dilation2DBase):
                 filter_start = fh_i * self.filter_offset_list[2]
 
             with self.instance.if_scope(tik.all(h_in >= 0, h_in < self.h_in)):
-                self.vector_add([expand_start, x_start, filter_start], ub_list, w_num,
-                                rep_stride_list, blk_stride_list, self.filter_w * self.c0)
+                self.vector_add([expand_start, x_start, filter_start], ub_list, w_num, rep_stride_list, blk_stride_list,
+                                self.filter_w * self.c0)
                 if self.pad_left > 0:
                     with self.instance.if_scope(left_end > left_start):
                         with self.instance.for_range(left_start, left_end) as wo_i:
@@ -1189,5 +1173,4 @@ class Dilation2D(Dilation2DBase):
                 self.vector_dup(expand_start, expand_ub, w_num * w_size, MIN_VAL)
             self.reduce_h(fh_i, fh_size, expand_ub)
         reduce_index = self.reduce_w(fh_size, fw_size, expand_ub)
-        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1,
-                                fw_size // self.block_size, 0, 0)
+        self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1, fw_size // self.block_size, 0, 0)

@@ -25,8 +25,8 @@ from impl.util.platform_adapter import error_manager_vector
 MIN_VAL = -3402823424.0
 
 
-# pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes,too-many-statements
-# pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,unused-variable,too-many-public-methods
+# pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,unused-variable
+# pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes,too-many-statements,too-many-public-methods
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
@@ -147,8 +147,17 @@ def dilation2d_backprop_input(x,
     return obj.instance
 
 
-def check_supported(x, filter, out_backprop, y, strides, rates, padding_mode="SAME", pads=(0, 0, 0, 0), ceil_mode=False,
-                    data_format="NHWC", kernel_name="dilation2d_backprop_input"):
+def check_supported(x,
+                    filter,
+                    out_backprop,
+                    y,
+                    strides,
+                    rates,
+                    padding_mode="SAME",
+                    pads=(0, 0, 0, 0),
+                    ceil_mode=False,
+                    data_format="NHWC",
+                    kernel_name="dilation2d_backprop_input"):
     """
     verify the types and params of dilation2d_backprop_input supported by tbe
     """
@@ -638,7 +647,7 @@ class Dilation2D(Dilation2DBase):
         self.out_backprop_gm = self.instance.Tensor(self.x_dtype, (out_backprop_size,),
                                                     name="out_backprop_gm",
                                                     scope=tik.scope_gm)
-        self.y_gm = self.instance.Tensor(self.x_dtype, (self.h_in, x_size // self.h_in // 16, 16),
+        self.y_gm = self.instance.Tensor(self.x_dtype, (self.h_in, y_size // self.h_in // 16, 16),
                                          name="y_gm",
                                          scope=tik.scope_gm,
                                          is_atomic_add=True)
@@ -3205,8 +3214,9 @@ class Dilation2D(Dilation2DBase):
                     w_start_offset = w_step_i * self.stride_w % self.rate_w
                     gm_update_idx = (h_pos - self.pad_top +
                                      fh_i * self.rate_h) * self.w_in + w_start_offset + fw_j * self.rate_w
-                    ub_update_idx = ((h_left_elem_start_offset + fh_i) * self.filter_w + w_left_elem_start_offset +
-                                     fw_j - (w_step_i * self.stride_w) // self.rate_w) * cut_size + w_step_i * self.c0
+                    ub_update_idx = (
+                        (h_left_elem_start_offset + fh_i) * self.filter_w + w_left_elem_start_offset + fw_j -
+                        (w_step_i * self.stride_w) // self.rate_w) * cut_size + w_step_i * self.c0
                     self.instance.data_move(self.y_gm[gm_n_offset + gm_c1_offset + gm_update_idx * self.c0],
                                             update_matrix_ub[ub_update_idx], 0, 1, 2, 0, 0)
 
