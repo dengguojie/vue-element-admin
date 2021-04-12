@@ -373,6 +373,7 @@ IMPLEMT_INFERFUNC(StringNGrams, StringNGramsInfer) {
   TensorDesc ngrams_desc = op.GetOutputDesc(0);
   ngrams_desc.SetShape(ngrams_shape);
   ngrams_desc.SetDataType(DT_STRING);
+  ngrams_desc.SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
   if (op.UpdateOutputDesc("ngrams", ngrams_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[ngrams] desc failed."));
@@ -382,6 +383,9 @@ IMPLEMT_INFERFUNC(StringNGrams, StringNGramsInfer) {
   TensorDesc ngrams_splits_desc = op.GetOutputDesc(0);
   ngrams_splits_desc.SetShape(data_splits);
   ngrams_splits_desc.SetDataType(op.GetInputDesc(1).GetDataType());
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  (void) op.GetInputDesc(1).GetShapeRange(shape_range);
+  ngrams_splits_desc.SetShapeRange(shape_range);
   if (op.UpdateOutputDesc("ngrams_splits", ngrams_splits_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[ngrams_splits] desc failed."));
@@ -393,7 +397,10 @@ IMPLEMT_INFERFUNC(StringNGrams, StringNGramsInfer) {
 INFER_FUNC_REG(StringNGrams, StringNGramsInfer);
 
 IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
-  int64_t input_size = op.GetInputDesc(0).GetShape().GetDim(0);
+  int64_t input_size = op.GetInputDesc(0).GetShape().GetShapeSize();
+  if (input_size == 0) {
+    input_size = 1;
+  }
   int64_t num_row_splits;
   if (Add(input_size, 1, num_row_splits) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call Add function to add dim0[",
@@ -406,6 +413,10 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
   Shape row_splits_shape({num_row_splits});
   row_splits_desc.SetDataType(DT_INT64);
   row_splits_desc.SetShape(row_splits_shape);
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  (void) op.GetInputDesc(0).GetShapeRange(shape_range);
+  row_splits_desc.SetShapeRange(shape_range);
+
   if (op.UpdateOutputDesc("row_splits", row_splits_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[row_splits] desc failed."));
@@ -415,6 +426,7 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
   TensorDesc char_values_desc = op.GetOutputDesc("char_values");
   char_values_desc.SetDataType(DT_INT32);
   char_values_desc.SetShape(Shape({UNKNOWN_DIM}));
+  char_values_desc.SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
   if (op.UpdateOutputDesc("char_values", char_values_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[char_values] desc failed."));
@@ -424,6 +436,7 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
   TensorDesc char_to_byte_starts_desc = op.GetOutputDesc("char_to_byte_starts");
   char_to_byte_starts_desc.SetDataType(DT_INT64);
   char_to_byte_starts_desc.SetShape(Shape({UNKNOWN_DIM}));
+  char_to_byte_starts_desc.SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
   if (op.UpdateOutputDesc("char_to_byte_starts", char_to_byte_starts_desc) 
         != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
@@ -436,7 +449,10 @@ IMPLEMT_INFERFUNC(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer) {
 INFER_FUNC_REG(UnicodeDecodeWithOffsets, UnicodeDecodeWithOffsetsInfer);
 
 IMPLEMT_INFERFUNC(UnicodeDecode, UnicodeDecodeInfer) {
-  int64_t input_size = op.GetInputDesc(0).GetShape().GetDim(0);
+  int64_t input_size = op.GetInputDesc(0).GetShape().GetShapeSize();
+  if (input_size == 0) {
+    input_size = 1;
+  }
   int64_t num_row_splits;
   if (Add(input_size, 1, num_row_splits) != GRAPH_SUCCESS) {
     std::string err_msg = ConcatString("failed to call Add function to add dim0[",
@@ -449,6 +465,9 @@ IMPLEMT_INFERFUNC(UnicodeDecode, UnicodeDecodeInfer) {
   Shape row_splits_shape({num_row_splits});
   row_splits_desc.SetDataType(DT_INT64);
   row_splits_desc.SetShape(row_splits_shape);
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  (void) op.GetInputDesc(0).GetShapeRange(shape_range);
+  row_splits_desc.SetShapeRange(shape_range);
   if (op.UpdateOutputDesc("row_splits", row_splits_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[row_splits] desc failed."));
@@ -458,6 +477,7 @@ IMPLEMT_INFERFUNC(UnicodeDecode, UnicodeDecodeInfer) {
   TensorDesc char_values_desc = op.GetOutputDesc("char_values");
   char_values_desc.SetDataType(DT_INT32);
   char_values_desc.SetShape(Shape({UNKNOWN_DIM}));
+  char_values_desc.SetShapeRange({std::pair<int64_t, int64_t>(1, -1)});
   if (op.UpdateOutputDesc("char_values", char_values_desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
         op.GetName(), string("update output[char_values] desc failed."));
@@ -473,6 +493,9 @@ IMPLEMT_INFERFUNC(UnicodeTranscode, UnicodeTranscodeInfer) {
   TensorDesc desc = op.GetOutputDesc("output");
   desc.SetShape(op.GetInputDesc(0).GetShape());
   desc.SetDataType(y_type);
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  (void) op.GetInputDesc(0).GetShapeRange(shape_range);
+  desc.SetShapeRange(shape_range);
 
   if (op.UpdateOutputDesc("output", desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(
@@ -521,6 +544,9 @@ IMPLEMT_INFERFUNC(UnicodeEncode, UnicodeEncodeInfer) {
   TensorDesc desc = op.GetOutputDesc("output");
   desc.SetShape(Shape(output_dims));
   desc.SetDataType(DT_STRING);
+  std::vector<std::pair<int64_t, int64_t>> shape_range;
+  (void) op.GetInputDesc(1).GetShapeRange(shape_range);
+  desc.SetShapeRange(shape_range);
 
   if (op.UpdateOutputDesc("output", desc) != GRAPH_SUCCESS) {
     AICPU_INFER_SHAPE_INNER_ERR_REPORT(

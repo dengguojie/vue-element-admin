@@ -147,9 +147,31 @@ TEST_F(StringOp, unicode_decode_with_offsets_infer_shape) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(StringOp, unicode_decode_with_offsets_infer_shape_scalar) {
+  ge::op::UnicodeDecodeWithOffsets op;
+  op.UpdateInputDesc("input", create_desc({}, ge::DT_STRING));
+  op.SetAttr("input_encoding", "UTF-8");
+  op.SetAttr("errors", "replace");
+  op.SetAttr("replacement_char", 65533);
+  op.SetAttr("replace_control_characters", false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 TEST_F(StringOp, unicode_decode_infer_shape) {
   ge::op::UnicodeDecode op;
   op.UpdateInputDesc("input", create_desc({2}, ge::DT_STRING));
+  op.SetAttr("input_encoding", "UTF-8");
+  op.SetAttr("errors", "replace");
+  op.SetAttr("replacement_char", 65533);
+  op.SetAttr("replace_control_characters", false);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(StringOp, unicode_decode_infer_shape_scalar) {
+  ge::op::UnicodeDecode op;
+  op.UpdateInputDesc("input", create_desc({}, ge::DT_STRING));
   op.SetAttr("input_encoding", "UTF-8");
   op.SetAttr("errors", "replace");
   op.SetAttr("replacement_char", 65533);

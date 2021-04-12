@@ -92,8 +92,8 @@ be used. The default value is the default unicode replacement character is
 `replacement_char`. Default is false. \n
 
 *@par Outputs:
-*@li row_splits:A 1D int32 tensor containing the row splits.
-*@li char_values:A 1D int32 Tensor containing the decoded codepoints.
+*@li row_splits:A 1D tensor containing the row splits.
+*@li char_values:A 1D tensor containing the decoded codepoints.
 *@li char_to_byte_starts:A 1D int32 Tensor containing the byte index in the input string where each
 character in `char_values` starts. \n
 
@@ -107,7 +107,7 @@ character in `char_values` starts. \n
 */
 REG_OP(UnicodeDecodeWithOffsets)
     .INPUT(input, TensorType({DT_STRING}))
-    .OUTPUT(row_splits, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(row_splits, TensorType({DT_INT64}))
     .OUTPUT(char_values, TensorType({DT_INT32}))
     .OUTPUT(char_to_byte_starts, TensorType({DT_INT64}))
     .REQUIRED_ATTR(input_encoding, String)
@@ -142,8 +142,8 @@ be used. The default value is the default unicode replacement character is
 `replacement_char`. Default is false. \n
 
 *@par Outputs:
-*@li row_splits:A 1D int32 tensor containing the row splits.
-*@li char_values:A 1D int32 Tensor containing the decoded codepoints. \n
+*@li row_splits:A 1D tensor containing the row splits.
+*@li char_values:A 1D tensor containing the decoded codepoints. \n
 
 *@see UnicodeDecode()
 
@@ -155,7 +155,7 @@ be used. The default value is the default unicode replacement character is
 */
 REG_OP(UnicodeDecode)
     .INPUT(input, TensorType({DT_STRING}))
-    .OUTPUT(row_splits, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(row_splits, TensorType({DT_INT64}))
     .OUTPUT(char_values, TensorType({DT_INT32}))
     .REQUIRED_ATTR(input_encoding, String)
     .ATTR(errors, String, "replace")
