@@ -23,6 +23,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from tbe.dsl.instrinsic import cce_emitinsn_params
 from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
@@ -346,8 +347,7 @@ def binary_reduce_output(stmt_op):
     _ = tvm.ir_pass.IRTransform(stmt_op, None, _post_order_for, ["For"])
     ins, outs = tbe_platform.cce_util.get_buffer(stmt_op)
     # Alloc second buffer for binary collection
-    out_buffer_sec = \
-        tbe_platform.cce_emitinsn_params.cceEmitParamsIns.get_param("binary_reduce"
+    out_buffer_sec = cce_emitinsn_params.cceEmitParamsIns.get_param("binary_reduce"
                                                                     "_output_buffer")
     in_buffer = ins[0], ins[1]
     out_buffer = outs[0], out_buffer_sec
@@ -425,7 +425,7 @@ def binary_reduce_output(stmt_op):
 # pylint: disable=locally-disabled,too-many-branches
 def bn_training_reduce_schedule_nd(res, core_num=None):
     """bn_training_reduce schedule method"""
-    tbe_platform.cce_emitinsn_params.cceEmitParamsIns.clear_param()
+    cce_emitinsn_params.cceEmitParamsIns.clear_param()
     # Prepare extra tensors
     # Step 1: Get two output tensors
     # Step 2: Merge two output tensors into Dummy
@@ -439,7 +439,10 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
     if "cast" in output_second.op.input_tensors[0].name:
         is_cast = True
     # Calculate block split factor by axis_n_size and core_num
-    axis_n_size = int(res[0].shape[1])
+    c_dim_index = 1
+    if len(res[0].shape) < 2:
+        c_dim_index = 0
+    axis_n_size = int(res[0].shape[c_dim_index])
     if not core_num:
         core_num = int(tbe_platform.get_soc_spec("CORE_NUM"))
     # Multi core kernel requires aligned output
@@ -500,7 +503,7 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
 
     #  Split axis Control
     outer, inner = \
-        sch[final_output].split(sch[final_output].op.axis[1],
+        sch[final_output].split(sch[final_output].op.axis[c_dim_index],
                                 factor=block_split_factor)
     ub_outer, ub_inner = sch[final_output].split(inner, factor=actual_loop)
     sch[final_output].bind(outer, tvm.thread_axis("blockIdx.x"))
@@ -525,8 +528,8 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
         emit_on_self(cast_tensor, 0, cast_tensor.op.tag.split('|')[0])
     emit_on_self(mul_tensor, 0, mul_tensor.op.tag)
 
-    sch[output_first].pragma(sch[output_first].op.axis[1], "emit_insn", "bn_reduce_sum")
-    sch[output_second].pragma(sch[output_second].op.axis[1], "emit_insn", "bn_reduce_sum")
+    sch[output_first].pragma(sch[output_first].op.axis[c_dim_index], "emit_insn", "bn_reduce_sum")
+    sch[output_second].pragma(sch[output_second].op.axis[c_dim_index], "emit_insn", "bn_reduce_sum")
     sch[output_first].double_buffer()
     sch[output_second].double_buffer()
 
@@ -541,7 +544,7 @@ def bn_training_reduce_schedule_nd(res, core_num=None):
     out_buffer_sec = new_alloc(final_output.dtype,
                                (block_split_factor,),
                                "reduce_sec_output_gm")
-    tbe_platform.cce_emitinsn_params.cceEmitParamsIns.insert_param(
+    cce_emitinsn_params.cceEmitParamsIns.insert_param(
         "binary_reduce_output_buffer", out_buffer_sec)
     tensor_list = [res_input,
                    final_output,
