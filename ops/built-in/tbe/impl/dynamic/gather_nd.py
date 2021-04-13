@@ -59,6 +59,8 @@ TILING_MODE_6 = 6
 TILING_MODE_7 = 7
 # complete params data needs to be moved for one indice
 TILING_MODE_8 = 8
+# one paramsRow of data can not store in half UB and indices.shape = [1]
+TILING_MODE_9 = 9
 
 
 TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
@@ -706,6 +708,113 @@ class GatherNd():
             with tik_instance.else_scope():
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_last, 0, 0)
 
+    def compute_mode_9(self, block_id):
+        """
+        compute for tiling mode 9
+
+        Parameters
+        ----------
+        block_id: id of ai core
+
+        Returns
+        -------
+        None
+        """
+        params_elem_per_loop = (self.ub_size - UB_2K_SIZE) // self.params_dsize
+        ub_size = self.ub_size - UB_1K_SIZE
+        tik_instance = self.tik_instance
+        res_ub = tik_instance.Tensor(self.params_dtype, (ub_size // self.params_dsize,),
+                                     name="res_ub", scope=tik.scope_ubuf)
+        indices_ub = tik_instance.Tensor(self.indices_dtype, (64,),
+                                         name="indices_ub", scope=tik.scope_ubuf)
+
+        # move indices data from gm to ub
+        tik_instance.data_move(indices_ub, self.indices[0], 0, 1, 1, 0, 0)
+        index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
+        index_value.set_as(indices_ub[0])
+
+        # when indices_shape=[1], params_offset is accumulation of params_shape[1:]
+        params_offset = self.params_row
+        gm_offset = index_value * params_offset
+        self.process_one_indice_mode_9(params_elem_per_loop, gm_offset, res_ub, block_id)
+
+        # deal with the tail block
+        with tik_instance.if_scope(self.row_num_last_tail_ub > 0):
+            self.process_remaining_tail_mode_9(gm_offset, params_elem_per_loop, res_ub, block_id)
+
+    def process_one_indice_mode_9(self, params_elem_per_loop, gm_offset, res_ub, block_id):
+        """
+        process one indice for tiling mode 9
+
+        Parameters
+        ----------
+        params_elem_per_loop: number of param elements that can be stored in UB space
+        res_ub: cache result data in UB
+
+        Returns
+        -------
+        None
+        """
+        tik_instance = self.tik_instance
+        burst_len = ceil_value(params_elem_per_loop, self.block_elem)
+
+        # params total: inner_loop_num*params_elem_per_loop + row_num_last_tail_ub
+        with tik_instance.for_range(0, self.inner_loop_num) as inner_loop_i:
+            offset_per_core = (self.inner_loop_num * params_elem_per_loop) * block_id
+            gm_offset_per_core = gm_offset + offset_per_core
+            # move params_elem_per_loop data to res_ub from gm
+            tik_instance.data_move(res_ub, self.x[gm_offset_per_core + inner_loop_i * params_elem_per_loop], 0,
+                                   1, burst_len, 0, 0)
+            # move result data to gm from ub
+            tik_instance.data_move(self.y[offset_per_core + inner_loop_i * params_elem_per_loop], res_ub, 0,
+                                   1, burst_len, 0, 0)
+
+    def process_remaining_tail_mode_9(self, gm_offset, params_elem_per_loop, res_ub, block_id):
+        """
+        process tail indices in previous indices_num_remaining core for tiling mode 9
+
+        Parameters
+        ----------
+        data_offset: params num offset
+        res_ub: cache result data in UB
+
+        Returns
+        -------
+        None
+        """
+        burst_len = ceil_value(params_elem_per_loop, self.block_elem)
+        burst_len_last = ceil_value(self.row_num_last_tail_ub, self.block_elem)
+
+        tik_instance = self.tik_instance
+        param_num_offset = gm_offset + self.inner_loop_num * self.need_core_num * params_elem_per_loop
+        data_offset = param_num_offset + block_id * params_elem_per_loop
+
+        with tik_instance.if_scope(block_id < self.inner_loop_num_last):
+            # move params_elem_per_loop data to res_ub from gm
+            tik_instance.data_move(res_ub, self.x[data_offset], 0, 1, burst_len, 0, 0)
+            # move result data to gm from ub
+            tik_instance.data_move(self.y[data_offset - gm_offset], res_ub, 0, 1, burst_len, 0, 0)
+
+        with tik_instance.if_scope(block_id == 0):
+            last_offset = (self.inner_loop_num * self.need_core_num + self.inner_loop_num_last) * params_elem_per_loop
+
+            # move params_last_tail data to res_ub from gm
+            tik_instance.data_move(res_ub, self.x[last_offset + gm_offset], 0, 1, burst_len_last, 0, 0)
+
+            # move result data to gm from ub
+            with tik_instance.if_scope(self.row_num_last_tail_ub % self.block_elem > 0):
+                # set tail 32B of result to block_ub
+                block_ub = tik_instance.Tensor(self.params_dtype, (self.block_elem,), name="block_ub",
+                                               scope=tik.scope_ubuf)
+                with tik_instance.for_range(0, self.block_elem) as num_i:
+                    block_ub[num_i].set_as(res_ub[self.row_num_last_tail_ub - self.block_elem + num_i])
+
+                tik_instance.data_move(self.y[last_offset], res_ub, 0, 1, burst_len_last - 1, 0, 0)
+                tik_instance.data_move(self.y[self.params_row - self.block_elem], block_ub, 0,
+                                       1, 1, 0, 0)
+            with tik_instance.else_scope():
+                tik_instance.data_move(self.y[last_offset], res_ub, 0, 1, burst_len_last, 0, 0)
+
     def compute_mode_7(self, half_ub_size, block_id):
         """
         compute for tiling mode 7
@@ -1351,9 +1460,15 @@ class GatherNd():
                                     # one params_row can not store in half UB
                                     self.compute_mode_7(half_ub_size, block_id)
                             with tik_instance.else_scope():
-                                with tik_instance.new_stmt_scope():
-                                    # TILING_MODE_8, complete params data needs to be moved for one indice
-                                    self.compute_mode_8(block_id)
+                                with tik_instance.if_scope(tiling_mode == TILING_MODE_9):
+                                    with tik_instance.new_stmt_scope():
+                                        # TILING_MODE_9, one params_row can not store in half UB and indices.shape = [1]
+                                        self.compute_mode_9(block_id)
+                                with tik_instance.else_scope():
+                                    with tik_instance.new_stmt_scope():
+                                        # TILING_MODE_8, complete params data needs to be moved for one indice
+                                        self.compute_mode_8(block_id)
+
 
     def gather_nd_compute(self):
         """

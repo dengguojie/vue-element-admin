@@ -55,6 +55,8 @@ const int32_t TILING_MODE_6 = 6;
 const int32_t TILING_MODE_7 = 7;
 // special indices shape: complete params data needs to be moved for one indice
 const int32_t TILING_MODE_8 = 8;
+// the data of one params row can not store in half UB, need tiling and special indices shape: [1]
+const int32_t TILING_MODE_9 = 9;
 
 struct GatherNdParam {
   int32_t tilingMode;
@@ -104,6 +106,11 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
   for (int32_t i = indicesLastDim; i < paramsDims; i++) {
     outputShape.push_back(paramsShape[i]);
   }
+
+  if (indicesDims == 1 && (paramsDims == 1 || indicesLastDim == paramsDims)){
+    outputShape.push_back(1);
+  }
+
   calcOutputDims = outputShape.size();
 
   if (yDims != calcOutputDims) {
@@ -163,7 +170,8 @@ bool GetCompileParams(const std::string& opType, const nlohmann::json& opCompile
   }
   indicesDSize = allVars["indices_dsize"].get<std::int32_t>();
 
-  GELOGD("op [GatherNdTiling] : GetCompileParams, coreNum[%d], ubSize[%d], l1Size[%d].", coreNum, ubSize, l1Size);
+  OP_LOGD("gathernd", "op [GatherNdTiling]: GetCompileParams, coreNum[%d], ubSize[%d], l1Size[%d].",
+          coreNum, ubSize, l1Size);
   return true;
 }
 
@@ -191,7 +199,6 @@ void InitRunningParams(GatherNdParam& params) {
 
 void SetRunningParams(const GatherNdParam& runParams, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, runParams.tilingMode);
-
   ByteBufferPut(runInfo.tiling_data, runParams.needCoreNum);
   ByteBufferPut(runInfo.tiling_data, runParams.tailProcessCore);
   ByteBufferPut(runInfo.tiling_data, runParams.indicesNumEachCore);
@@ -204,12 +211,32 @@ void SetRunningParams(const GatherNdParam& runParams, OpRunInfo& runInfo) {
   ByteBufferPut(runInfo.tiling_data, runParams.innerLoopNum);
   ByteBufferPut(runInfo.tiling_data, runParams.rowNumLastTailUb);
   ByteBufferPut(runInfo.tiling_data, runParams.innerLoopNumLast);
-
   ByteBufferPut(runInfo.tiling_data, runParams.paramsRow);
   ByteBufferPut(runInfo.tiling_data, runParams.indicesLastDim);
   ByteBufferPut(runInfo.tiling_data, runParams.paramsTotal);
   ByteBufferPut(runInfo.tiling_data, runParams.oneRowLoop);
   ByteBufferPut(runInfo.tiling_data, runParams.oneRowTail);
+}
+
+void PrintGatherNdrunParams(const GatherNdParam& runParams) {
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : tilingMode=%d.", runParams.tilingMode);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : needCoreNum=%d.", runParams.needCoreNum);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : tailProcessCore=%d.", runParams.tailProcessCore);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesNumEachCore=%d.", runParams.indicesNumEachCore);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesNumRemaining=%d.", runParams.indicesNumRemaining);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesLoopNum=%d.", runParams.indicesLoopNum);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesRowNumOnce=%d.", runParams.indicesRowNumOnce);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesRowNumLast=%d.", runParams.indicesRowNumLast);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : rowNumOnceUb=%d.", runParams.rowNumOnceUb);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : rowNumOnceTailUb=%d.", runParams.rowNumOnceTailUb);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : innerLoopNum=%d.", runParams.innerLoopNum);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : rowNumLastTailUb=%d.", runParams.rowNumLastTailUb);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : innerLoopNumLast=%d.", runParams.innerLoopNumLast);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : paramsRow=%d.", runParams.paramsRow);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesLastDim=%d.", runParams.indicesLastDim);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : paramsTotal=%d.", runParams.paramsTotal);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : oneRowLoop=%d.", runParams.oneRowLoop);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : oneRowTail=%d.", runParams.oneRowTail);
 }
 
 /*
@@ -222,7 +249,7 @@ void SetRunningParams(const GatherNdParam& runParams, OpRunInfo& runInfo) {
  */
 bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
                     OpRunInfo& runInfo) {
-  GELOGI("op[%s] tiling running.", opType.c_str());
+  OP_LOGD(opType.c_str(), "op[GatherNdTiling] tiling running.");
   if (op_info == nullptr) {
     OP_LOGE(opType.c_str(), "op GatherNdTiling: op_info json error.");
     return false;
@@ -284,6 +311,7 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
   int32_t halfUbSize = availableUbSize / 2;
 
   int32_t paramsTotal = std::accumulate(paramsShape.begin(), paramsShape.end(), 1, std::multiplies<int64_t>());
+  int32_t indicesTotal = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int64_t>());
   int32_t paramsTotalTmp = paramsTotal;
   // e.g. paramsShape:(2, 100, 4, 3) => paramsSuffixList:[100*4*3, 4*3, 3, 1]
   std::vector<int32_t> paramsSuffixList;
@@ -302,8 +330,8 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
   for (int i = indicesLastDim; i < paramsDims; i++) {
     runParams.paramsRow *= paramsShape[i];
   }
-  GELOGD("op [GatherNdTiling] : paramsDims=%d, indicesDims=%d, indicesLastDim=%d, paramsRow=%d", paramsDims,
-         indicesDims, indicesLastDim, runParams.paramsRow);
+  OP_LOGD("GatherNd", "op [GatherNdTiling] : paramsDims=%d, indicesDims=%d, indicesLastDim=%d, paramsRow=%d",
+         paramsDims, indicesDims, indicesLastDim, runParams.paramsRow);
   int64_t indicesPrefix = std::accumulate(indicesShape.begin(), indicesShape.end() - 1, 1,
                                           std::multiplies<int64_t>());  // the number of indices
 
@@ -367,7 +395,8 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
       if (tilingMode == TILING_MODE_2) {
         indicesNumPerLoop = halfRemainIndicesElem / indicesLastDim;
         paramsElemPerUb = halfRemainParamsElem;
-        GELOGD("op [GatherNdTiling] : indicesNumPerLoop=%d, paramsElemPerUb=%d.", indicesNumPerLoop, paramsElemPerUb);
+        OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesNumPerLoop=%d, paramsElemPerUb=%d.",
+                indicesNumPerLoop, paramsElemPerUb);
       }
 
       runParams.indicesLoopNum = runParams.indicesNumEachCore / indicesNumPerLoop;
@@ -418,7 +447,8 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
         if (tilingMode == TILING_MODE_5) {
           indicesNumPerLoop = halfRemainIndicesElem / indicesLastDim;
           paramsElemPerUb = halfRemainParamsElem;
-          GELOGD("op [GatherNdTiling] : indicesNumPerLoop=%d, paramsElemPerUb=%d.", indicesNumPerLoop, paramsElemPerUb);
+          OP_LOGD("GatherNd", "op [GatherNdTiling] : indicesNumPerLoop=%d, paramsElemPerUb=%d.",
+                  indicesNumPerLoop, paramsElemPerUb);
         }
 
         runParams.indicesLoopNum = runParams.indicesNumEachCore / indicesNumPerLoop;
@@ -440,26 +470,45 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
           runParams.rowNumLastTailUb = runParams.indicesRowNumLast % runParams.rowNumOnceUb;
         }
       } else {
-        tilingMode = TILING_MODE_7;  // one params row need tiling
+          if (indicesTotal != 1) {
+            tilingMode = TILING_MODE_7;  // one params row need tiling
 
-        runParams.indicesLoopNum = runParams.indicesNumEachCore / halfUbIndicesNum;
-        runParams.indicesRowNumOnce = halfUbIndicesNum;
-        if (runParams.indicesNumEachCore % runParams.indicesRowNumOnce != 0) {
-          runParams.indicesRowNumLast = runParams.indicesNumEachCore % runParams.indicesRowNumOnce;
+            runParams.indicesLoopNum = runParams.indicesNumEachCore / halfUbIndicesNum;
+            runParams.indicesRowNumOnce = halfUbIndicesNum;
+            if (runParams.indicesNumEachCore % runParams.indicesRowNumOnce != 0) {
+              runParams.indicesRowNumLast = runParams.indicesNumEachCore % runParams.indicesRowNumOnce;
+            }
+
+            runParams.oneRowLoop = runParams.paramsRow / halfUbParamsElem;
+            runParams.oneRowTail = runParams.paramsRow % halfUbParamsElem;
+            if (runParams.oneRowLoop > 0 && runParams.oneRowTail > 0 && runParams.oneRowTail < blockNum) {
+              runParams.oneRowLoop = runParams.oneRowLoop - 1;
+              runParams.oneRowTail = halfUbParamsElem + runParams.oneRowTail;
+            }
+          }
+          else {
+            tilingMode = TILING_MODE_9;  // indices shape = [1]
+
+            int32_t ubParamsElem = (ubSize - UB_2K_SIZE) / paramsDSize;
+            runParams.needCoreNum = coreNum;
+
+            runParams.innerLoopNum = paramsSuffixList[0] / (ubParamsElem*runParams.needCoreNum);
+            int32_t paramsTail = paramsSuffixList[0] % (ubParamsElem*runParams.needCoreNum);
+            runParams.innerLoopNumLast =  paramsTail / ubParamsElem;
+            runParams.rowNumLastTailUb = paramsTail % ubParamsElem;
+
+            if (runParams.innerLoopNum >= 1 && runParams.rowNumLastTailUb <= blockNum) {
+              runParams.innerLoopNum = runParams.innerLoopNum - 1;
+              runParams.rowNumLastTailUb = ubParamsElem + runParams.rowNumLastTailUb;
+            }
+
+          }
         }
 
-        runParams.oneRowLoop = runParams.paramsRow / halfUbParamsElem;
-        runParams.oneRowTail = runParams.paramsRow % halfUbParamsElem;
-        if (runParams.oneRowLoop > 0 && runParams.oneRowTail > 0 && runParams.oneRowTail < blockNum) {
-          runParams.oneRowLoop = runParams.oneRowLoop - 1;
-          runParams.oneRowTail = halfUbParamsElem + runParams.oneRowTail;
-        }
-      }
     }
   }
 
   // set run tiling data
-  GELOGD("op [GatherNdTiling] : tilingMode=%d.", tilingMode);
   runParams.tilingMode = tilingMode;
   SetRunningParams(runParams, runInfo);
   ByteBufferPut(runInfo.tiling_data, PARAMS_SUFFIX_INDEX);  // start index of the paramsSuffixList: 19
@@ -471,13 +520,14 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
     }
   }
 
+  PrintGatherNdrunParams(runParams);
   // block_dim, core num used in tik op
   runInfo.block_dim = runParams.needCoreNum;
   // workspace, null for tik op
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
 
-  GELOGI("op[%s] tiling run success.", opType.c_str());
+  OP_LOGD(opType.c_str(), "op[GatherNdTiling] tiling run success.");
 
   return true;
 }
