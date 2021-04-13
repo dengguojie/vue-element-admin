@@ -343,6 +343,7 @@ from .basic_lstm_cell import basic_lstm_cell
 from .basic_lstm_cell_c_state_grad_v2 import basic_lstm_cell_c_state_grad_v2
 from .dynamic_lstm import dynamic_lstm
 from .dynamic_rnn import dynamic_rnn
+from .dynamic_rnn_v3 import dynamic_rnn_v3
 from .dynamic_lstm_v2 import dynamic_lstm_v2
 from .dynamic_gru import dynamic_gru
 from .dynamic_gru_v2 import dynamic_gru_v2

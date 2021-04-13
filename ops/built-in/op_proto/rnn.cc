@@ -103,6 +103,90 @@ IMPLEMT_INFERFUNC(DynamicRNN, DynamicRNNInferShape) {
 INFER_FUNC_REG(DynamicRNN, DynamicRNNInferShape);
 VERIFY_FUNC_REG(DynamicRNN, DynamicRNNVerify);
 
+IMPLEMT_VERIFIER(DynamicRNNV3, DynamicRNNV3Verify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(DynamicRNNV3, DynamicRNNV3InferShape) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_desc == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "GetOpDescFromOperator return nullptr!");
+    return GRAPH_FAILED;
+  }
+  auto inputProjectTensorDesc = op_desc->MutableInputDesc("project");
+  ge::TensorDesc inputXTensorDesc = op.GetInputDesc("x");
+  ge::TensorDesc inputWTensorDesc = op.GetInputDesc("w");
+  ge::TensorDesc inputBTensorDesc = op.GetInputDesc("b");
+  ge::Shape shapeX = inputXTensorDesc.GetShape();
+  ge::Shape shapeW = inputWTensorDesc.GetShape();
+  DataType inputXDtype = inputXTensorDesc.GetDataType();
+  DataType inputBDtype = inputBTensorDesc.GetDataType();
+  TensorDesc outputYTensorDesc = op.GetOutputDesc("y");
+  TensorDesc outputHTensorDesc = op.GetOutputDesc("output_h");
+  TensorDesc outputCTensorDesc = op.GetOutputDesc("output_c");
+  TensorDesc outputITensorDesc = op.GetOutputDesc("i");
+  TensorDesc outputJTensorDesc = op.GetOutputDesc("j");
+  TensorDesc outputFTensorDesc = op.GetOutputDesc("f");
+  TensorDesc outputOTensorDesc = op.GetOutputDesc("o");
+  TensorDesc outputTanhcTensorDesc = op.GetOutputDesc("tanhc");
+
+  int64_t dim_num = shapeX.GetDimNum();
+  int64_t batchSize = 0;
+  int64_t hiddenSize = 0;
+  int64_t num_step = 0;
+  int64_t stateSize = hiddenSize;
+  if (inputProjectTensorDesc != nullptr) {
+    stateSize = inputProjectTensorDesc->GetShape().GetDims().at(1);
+  }
+  if (dim_num == 3) {
+    num_step = shapeX.GetDims().at(0);
+    batchSize = shapeX.GetDims().at(1);
+    hiddenSize = shapeW.GetDims().at(1) / 4;
+  } else {
+    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X not equal 3!");
+    OP_LOGE(op.GetName().c_str(), "The input shape of X not equal 3, please check!");
+    return GRAPH_FAILED;
+  }
+
+  vector<int64_t> outputHDims = {num_step, batchSize, hiddenSize};
+  vector<int64_t> outputHStateDims = {num_step, batchSize, stateSize};
+  outputYTensorDesc.SetShape(ge::Shape(outputHStateDims));
+  outputHTensorDesc.SetShape(ge::Shape(outputHStateDims));
+  outputCTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputITensorDesc.SetShape(ge::Shape(outputHDims));
+  outputJTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputFTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputOTensorDesc.SetShape(ge::Shape(outputHDims));
+  outputTanhcTensorDesc.SetShape(ge::Shape(outputHDims));
+
+  outputYTensorDesc.SetDataType(inputBDtype);
+  outputHTensorDesc.SetDataType(inputXDtype);
+  outputCTensorDesc.SetDataType(inputBDtype);
+  outputITensorDesc.SetDataType(inputBDtype);
+  outputJTensorDesc.SetDataType(inputBDtype);
+  outputFTensorDesc.SetDataType(inputBDtype);
+  outputOTensorDesc.SetDataType(inputBDtype);
+  outputTanhcTensorDesc.SetDataType(inputBDtype);
+
+  (void)op.UpdateOutputDesc("y", outputYTensorDesc);
+  (void)op.UpdateOutputDesc("output_h", outputHTensorDesc);
+  (void)op.UpdateOutputDesc("output_c", outputCTensorDesc);
+  (void)op.UpdateOutputDesc("i", outputITensorDesc);
+  (void)op.UpdateOutputDesc("j", outputJTensorDesc);
+  (void)op.UpdateOutputDesc("f", outputFTensorDesc);
+  (void)op.UpdateOutputDesc("o", outputOTensorDesc);
+  (void)op.UpdateOutputDesc("tanhc", outputTanhcTensorDesc);
+
+  inputWTensorDesc.SetFormat(ge::FORMAT_HWCN);
+  (void)op.UpdateInputDesc("w", inputWTensorDesc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(DynamicRNNV3, DynamicRNNV3InferShape);
+VERIFY_FUNC_REG(DynamicRNNV3, DynamicRNNV3Verify);
+
+
 IMPLEMT_VERIFIER(DynamicRNNGrad, DynamicRNNGradVerify) {
   return GRAPH_SUCCESS;
 }
