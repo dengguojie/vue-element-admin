@@ -36,7 +36,7 @@ class Pattern:
     CONV3D = "conv3d"
     CONV3D_BACKPROP_INPUT = "Conv3d_backprop_input"
     CONV3D_BACKPROP_FILTER = "Conv3d_backprop_filter"
-    BN_UPDATE = "BnTrainingUpdate"
+    BN_UPDATE = "BNTrainingUpdate"
     LayerNorm = "LayerNorm"
     BN_TRAINING_UPDATE_GRAD = "BNTrainingUpdateGrad"
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"

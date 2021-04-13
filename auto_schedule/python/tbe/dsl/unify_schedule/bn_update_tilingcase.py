@@ -25,6 +25,7 @@ from . import util
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
 from tbe.dsl.base.operation import register_tiling_case
+import tbe.common.platform as tbe_platform
 
 COMMON = "common"
 BROADCAST = "broadcast"
@@ -62,21 +63,10 @@ def calc(outs, option=None):
     base_key = 0
     if mode == CONST or operation.get_context().get_mode() == STATIC:
         return _const_tiling(base_key)
-    
-    enable_db_func = _default_db_func
+
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    out = outs[0]
-    shape = util.shape_to_list(out.shape)
-    dim_len = len(shape)
 
-    if dim_len == 1:
-        return _calc_one_dim(outs, base_key, enable_db_func)
-    
-    return _calc_general(outs, base_key, enable_db_func)
-
-
-def _default_db_func(db_params=None):
-    return False
+    return _calc_general(outs, base_key)
 
 
 def _const_tiling(base_key):
@@ -84,79 +74,75 @@ def _const_tiling(base_key):
     return cases
 
 
-def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    out = outs[0]
-    dtype = out.dtype
+def _calc_storage_bound(_is_db):
+    _ub_size = util.get_ub_size()
+    _coexisting_quantity = 7
 
-    c_bounds = {
-        0.125: (1, 32767),
-        1: (1, 32767),
-        2: (1, 32767),
-        4: (1, 16383),
-        8: (1, 8191)
-    }
+    tensor_space = _ub_size // _coexisting_quantity
+    if _is_db:
+        tensor_space = tensor_space // 2
+    _tensor_space = tensor_space // tbe_platform.BLOCK_REDUCE_INT8 * tbe_platform.BLOCK_REDUCE_INT8
 
-    cases = [{"key": base_key,
-                "block_tiling_axis": 0,
-                "ub_tiling_axis": 0,
-                "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
-                "tiling_strategy": TilingStrategy.ONE_CUT,
-                "is_need_db": False,
-                "is_pure_eletwise": True
-                }]
-    
-    if enable_db_func():
-        cases.append({"key": base_key + DB_KEY,
-                "block_tiling_axis": 0,
-                "ub_tiling_axis": 0,
-                "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
-                "tiling_strategy": TilingStrategy.ONE_CUT,
-                "is_need_db": True,
-                "is_pure_eletwise": True
-                })
-    
-    return cases
+    return _coexisting_quantity, _tensor_space
 
-def _calc_general(outs, base_key, enable_db_func=_default_db_func):
+
+def _calc_general(outs, base_key):
     outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     cases = []
-    out = outs[0]
-    shape = util.shape_to_list(out.shape)
-    dim_len = len(shape)
+    dim_len = 4
     base = base_key + 1
-    for i in range(dim_len):
-        for j in range(i, dim_len):
-            if i==j or j==dim_len-1:
-                continue
-            cases.append({
-                "key": base+i*dim_len+j,
-                "block_tiling_axis": i,
-                "ub_tiling_axis": j,
-                "tiling_strategy": TilingStrategy.ONE_CUT,
-            })
 
-            db_params = {"ub_tiling_axis": j, "dim_len": dim_len}
-            if enable_db_func(db_params):
-                cases.append({
-                    "key": base+i*dim_len+j+DB_KEY,
-                    "block_tiling_axis": i,
-                    "ub_tiling_axis": j,
-                    "tiling_strategy": TilingStrategy.ONE_CUT,
-                    "is_need_db": True,
-                    "is_pure_eletwise": False
-                })
-    
+    _dtypes = set()
+    visited_tensors = set()
+
+    def _dfs_sub_graph(out):
+        _dtypes.add(out.dtype)
+        for tensor_i in out.op.input_tensors:
+            if tensor_i in visited_tensors:
+                continue
+            visited_tensors.add(tensor_i)
+            _dfs_sub_graph(tensor_i)
+
+    for out in outs:
+        _dfs_sub_graph(out)
+
+    max_dtype_bytes = max([DTYPE_BYTE_MAPPING[dtype] for dtype in _dtypes])
+    coexisting_quantity, tensor_space = _calc_storage_bound(True)
+    max_ub_count = tensor_space // max_dtype_bytes
+
+    def add_case(block_tiling_axis, ub_tiling_axis, h_range, w_range, sub_key):
+        cases.append({
+            "key": (base + block_tiling_axis * dim_len + ub_tiling_axis) * 10 + sub_key,
+            "block_tiling_axis": block_tiling_axis,
+            "ub_tiling_axis": ub_tiling_axis,
+            "tiling_strategy": TilingStrategy.ONE_CUT,
+            "is_need_db": True,
+            "coexisting_quantity": coexisting_quantity,
+            "tensor_space": tensor_space,
+            "max_dtype_bytes": max_dtype_bytes,
+            "h_range": h_range,
+            "w_range": w_range,
+        })
+
+    max_hw_count = max_ub_count // tbe_platform.C0_SIZE
+
+    add_case(0, 1, h_range=[1, max_hw_count], w_range=[1, max_hw_count], sub_key=0)
+    add_case(0, 2, h_range=[1, max_hw_count], w_range=[1, max_hw_count], sub_key=0)
+    add_case(0, 2, h_range=[max_hw_count, None], w_range=[1, max_hw_count], sub_key=1)
+    add_case(0, 3, h_range=[1, max_hw_count], w_range=[max_hw_count, None], sub_key=0)
+    add_case(0, 3, h_range=[max_hw_count, None], w_range=[max_hw_count, None], sub_key=1)
+
     return cases
 
+
 def _pre_build(schedules_list):
-    def _flatten_sch(_schedules: list):
+    def _flatten_sch(_schedules):
         for sub_schs in schedules_list:
             if isinstance(sub_schs, list):
                 _schedules.extend(sub_schs)
             else:
                 _schedules.append(sub_schs)
-    
+
     def _name_to_int(_var_names):
         for index, name in enumerate(_var_names):
             names = name.split("_")
@@ -167,21 +153,21 @@ def _pre_build(schedules_list):
             elif names[0] == "ub":
                 _var_names[index] = 30000 + int(names[2])
         return _var_names
-    
+
     def _get_pattern_key(_mode, _pattern):
         _pattern_key = 0
         if _mode == SPECIAL or _mode == SPECIAL_SCALAR:
-            base = 1 
+            base = 1
             for axis in _pattern:
                 _pattern_key *= 10
                 if axis == COMMON:
                     _pattern_key += base
                 elif axis == BROADCAST:
-                    _pattern_key += (base*2)
+                    _pattern_key += (base * 2)
                 else:
-                    _pattern_key += (base*3)
+                    _pattern_key += (base * 3)
         return str(_pattern_key).ljust(3, '0')
-    
+
     only_const_tiling = False
     support_broadcast = operation.get_context().get("support_broadcast")
     cpt_computes = operation.get_context().get_computes()
@@ -207,7 +193,7 @@ def _pre_build(schedules_list):
     else:
         is_const_shapes = False
     flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
-                use_special_pattern, support_absorbable_broadcast]
+                 use_special_pattern, support_absorbable_broadcast]
     operation.add_compile_info("flag_info", flag_info)
 
     schedules = []

@@ -24,6 +24,7 @@ from tbe.dsl.base.operation import register_operator, get_context, add_compile_i
 from impl.util.platform_adapter import register_operator_compute
 from tbe.dsl.base.operation import var
 
+
 def get_op_support_info(x,
                         sum,
                         square_sum,
@@ -45,8 +46,8 @@ def get_op_support_info(x,
     format_x = x.get("format").upper()
     if format_x == "NC1HWC0":
         axis_split_matrix = [[SplitInput([0, [1], [-1], [-1]], [1, [1], [-1], [-1]], [2, [1], [-1], [-1]], \
-                                          [3, [1], [-1], [-1]], [4, [1], [-1], [-1]], [5, [1], [-1], [-1]], \
-                                          [6, [1], [-1], [-1]]), \
+                                         [3, [1], [-1], [-1]], [4, [1], [-1], [-1]], [5, [1], [-1], [-1]], \
+                                         [6, [1], [-1], [-1]]), \
                               SplitOutput([0, [1]], [1, [1]], [2, [1]], [3, [1]], [4, [1]])]]
     else:
         axis_split_matrix = None
@@ -87,7 +88,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
     para_check.check_shape(shape_offset, param_name="offset")
     para_check.check_shape(shape_mean, param_name="mean")
     para_check.check_shape(shape_variance, param_name="variance")
-    
+
     if len(shape_x) != 5 or len(shape_sum) != 5 or len(shape_square_sum) != 5 or \
             len(shape_scale) != 5:
         error_reson = "This operator can only support 5D, but some input's shape length is not 5"
@@ -109,7 +110,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and sum must be equal")
     if shape_square_sum[i] != dim_c1 or shape_square_sum[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", \
-        "Dimension C of x and square_sum must be equal")
+                                                      "Dimension C of x and square_sum must be equal")
     if shape_scale[i] != dim_c1 or shape_scale[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and scale must be equal")
     if shape_offset[i] != dim_c1 or shape_offset[j] != dim_c0:
@@ -118,7 +119,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset
         error_manager_vector.raise_err_specific_reson("bn_training_update", "Dimension C of x and mean must be equal")
     if shape_variance[i] != dim_c1 or shape_variance[j] != dim_c0:
         error_manager_vector.raise_err_specific_reson("bn_training_update", \
-        "Dimension C of x and variance must be equal")
+                                                      "Dimension C of x and variance must be equal")
 
 
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance):
@@ -170,7 +171,7 @@ def bn_training_update_compute(x,
                                batch_variance,
                                factor,
                                epsilon,
-                               kernel_name="bn_training_update"):  
+                               kernel_name="bn_training_update"):
     """
     algorithm: fused_batch_norm_v2
     Batch normalization
@@ -216,7 +217,7 @@ def bn_training_update_compute(x,
         the result of bn_training_update_compute
     """
     shape_x = shape_util.shape_to_list(x.shape)
-    num = shape_x[0]*shape_x[2]*shape_x[3]
+    num = shape_x[0] * shape_x[2] * shape_x[3]
 
     if isinstance(num, int):
         num_rec = num ** (-1)
@@ -230,7 +231,7 @@ def bn_training_update_compute(x,
         batch_var_scaler = var("batch_var_scaler", dtype="float32")
         add_compile_info("bn_update_num_rec_dtype", "float32")
         add_compile_info("bn_update_batch_var_scaler_dtype", "float32")
-    
+
     save_mean_reduce = tbe.vmuls(sum, num_rec)
     variance_div = tbe.vmuls(square_sum, num_rec)
     variance_square = tbe.vmul(save_mean_reduce, save_mean_reduce)
@@ -249,7 +250,7 @@ def bn_training_update_compute(x,
     if x.dtype == "float16":
         is_cast = True
         x = tbe.cast_to(x, "float32")
-    
+
     res_y = tbe.vadd(tbe.vmul(multiplier, x), addend)
 
     if is_cast:
@@ -269,11 +270,11 @@ def bn_training_update_compute(x,
     return res
 
 
-@register_operator("BNTrainingUpdate", "BnTrainingUpdate")
+@register_operator("BNTrainingUpdate", "BNTrainingUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, 
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, 
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def bn_training_update(x,
                        sum,
@@ -289,7 +290,7 @@ def bn_training_update(x,
                        batch_variance,
                        factor,
                        epsilon,
-                       kernel_name="bn_training_update"):  
+                       kernel_name="bn_training_update"):
     """
     algorithm: fused_batch_norm_v2
     Batch normalization.
@@ -379,9 +380,8 @@ def bn_training_update(x,
             dim0_1 = var("dim0_1")
             dim0_2 = var("dim0_2")
             dim0_3 = var("dim0_3")
-            dim0_4 = var("dim0_4")
 
-            shape_x = [dim0_0, dim0_1, dim0_2, dim0_3, dim0_4]
+            shape_x = [dim0_0, dim0_1, dim0_2, dim0_3, 16]
             shape_sum = [1, dim0_1, 1, 1, 16]
 
             x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x)
@@ -407,11 +407,11 @@ def bn_training_update(x,
                                              factor,
                                              epsilon,
                                              kernel_name=kernel_name)
-            tensor_list.append([x_input, sum_input, square_sum_input, scale_input, 
+            tensor_list.append([x_input, sum_input, square_sum_input, scale_input,
                                 offset_input, mean_input, variance_input] + list(res))
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedule_list.append(sch)
-    
+
     config = {"name": kernel_name, "tensor_list": tensor_list}
     tbe.build(sch, config)

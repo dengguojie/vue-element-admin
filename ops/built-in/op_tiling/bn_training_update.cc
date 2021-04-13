@@ -92,49 +92,44 @@ namespace optiling{
         int32_t block_split_axis = 0;
         int32_t block_split_inner_size = 1;
         int32_t ub_split_axis = 0;
-        int32_t ub_split_inner = 1;
-        int32_t block_factor = core_num;
+        int32_t ub_factor = 1;
         if(shape_x[0] >= core_num){
-            block_split_inner_size = floor(shape_x[block_split_axis] / core_num);
+            block_split_inner_size = (shape_x[block_split_axis] + core_num - 1) / core_num;
         }
 
-        get_ub_tiling(shape_x, block_split_axis, block_split_inner_size, max_ub_count, ub_split_axis, ub_split_inner);
+        get_ub_tiling(shape_x, block_split_axis, block_split_inner_size, max_ub_count, ub_split_axis, ub_factor);
 
-        int32_t ub_factor = ub_split_inner;
         if(ub_split_axis == block_split_axis){
-            if(block_split_inner_size % ub_factor != 0){
-                while(block_split_inner_size % ub_factor != 0){
-                    ub_factor--;
-                }
-            }
+            ub_split_axis = ub_split_axis + 1;
+            ub_factor = shape_x[ub_split_axis];
+        }
 
-            if(ub_split_axis == 1 && ub_factor > 1){
-                ub_split_axis = 2;
-                ub_factor = shape_x[2];
-            }
-            else if(ub_split_axis == 0){
-                ub_split_axis = 1;
-                ub_factor = shape_x[1];
+        int32_t H = shape_x[2];
+        int32_t sub_key = 0;
+        int32_t C0 =16;
+        if(ub_split_axis == 2 or ub_split_axis == 3){
+            if(H <= max_ub_count / C0){
+                sub_key=0;
+            }else {
+                sub_key=1;
             }
         }
 
-        key = block_split_axis * 4 + ub_split_axis + 1;
-        tiling_data.push_back(block_factor);
+        key = (block_split_axis * 4 + ub_split_axis + 1) * 10 + sub_key;
         tiling_data.push_back(ub_factor);
         return tiling_data;
     }
 
-    bool BnTrainingUpdateTiling(const std::string& op_type, const TeOpParas& op_paras, 
+    bool BNTrainingUpdateTiling(const std::string& op_type, const TeOpParas& op_paras,
                                 const nlohmann::json& op_compile_info_json, OpRunInfo& run_info){
-        GELOGI("BnTrainingUpdateTiling running.");
+        GELOGI("BNTrainingUpdateTiling running.");
         std::vector<int64_t> shape_x = op_paras.inputs[0].tensor[0].shape;
         std::vector<int64_t> input_mean_shape = op_paras.inputs[1].tensor[0].shape;
         int32_t N = shape_x[0];
         int32_t C1 = shape_x[1];
         int32_t H = shape_x[2];
         int32_t W = shape_x[3];
-        int32_t C0 = shape_x[4];
-        
+
         int32_t key{0};
         int32_t core_num = op_compile_info_json["base_info"]["000"][3];
         int32_t max_ub_count = op_compile_info_json["max_ub_count"];
@@ -159,16 +154,15 @@ namespace optiling{
         ByteBufferPut(run_info.tiling_data, C1);
         ByteBufferPut(run_info.tiling_data, H);
         ByteBufferPut(run_info.tiling_data, W);
-        ByteBufferPut(run_info.tiling_data, C0);
         ByteBufferPut(run_info.tiling_data, (float)num_rec);
         ByteBufferPut(run_info.tiling_data, (float)batch_var_scalar);
 
         for(size_t i = 0; i < tiling_data.size(); i++){
             ByteBufferPut(run_info.tiling_data, tiling_data[i]);
         }
-        GELOGI("BnTrainingUpdateTiling end.");
+        GELOGI("BNTrainingUpdateTiling end.");
         return true;
     }
 
-    REGISTER_OP_TILING_FUNC_BUFFERED(BnTrainingUpdate, BnTrainingUpdateTiling);
+    REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingUpdate, BNTrainingUpdateTiling);
 }   //namespace optiling

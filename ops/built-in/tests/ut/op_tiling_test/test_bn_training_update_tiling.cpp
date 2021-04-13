@@ -7,17 +7,17 @@
 
 using namespace std;
 
-class BnTrainingUpdateTiling : public testing::Test
+class BNTrainingUpdateTiling : public testing::Test
 {
 protected:
     static void SetUpTestCase()
     {
-        std::cout << "BnTrainingUpdateTiling SetUp" << std::endl;
+        std::cout << "BNTrainingUpdateTiling SetUp" << std::endl;
     }
 
     static void TearDownTestCase()
     {
-        std::cout << "BnTrainingUpdateTiling TearDown" << std::endl;
+        std::cout << "BNTrainingUpdateTiling TearDown" << std::endl;
     }
 };
 
@@ -36,16 +36,16 @@ static string to_string(const std::stringstream &tiling_data)
     return result;
 }
 
-TEST_F(BnTrainingUpdateTiling, BnTrainingUpdate_tiling_test_1)
+TEST_F(BNTrainingUpdateTiling, BNTrainingUpdate_tiling_test_1)
 {
     using namespace optiling;
-    std::string op_name = "BnTrainingUpdate";
+    std::string op_name = "BNTrainingUpdate";
     auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
     ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
     std::string compileInfo = R"({
                         "bn_update_num_rec_dtype": "float32", 
                         "bn_update_batch_var_scaler_dtype": "float32", 
-                        "_pattern": "BnTrainingUpdate", 
+                        "_pattern": "BNTrainingUpdate", 
                         "max_ub_count": 10920, 
                         "block_dim": 32, 
                         "flag_info": [false, false, null, true, false], 
@@ -120,11 +120,11 @@ TEST_F(BnTrainingUpdateTiling, BnTrainingUpdate_tiling_test_1)
 
     OpCompileInfo op_compile_info;
     op_compile_info.str = compileInfo;
-    op_compile_info.key = "BnTrainingUpdate_tiling_test_1";
+    op_compile_info.key = "BNTrainingUpdate_tiling_test_1";
 
     OpRunInfo runInfo;
     ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 32);
-    EXPECT_EQ(runInfo.tiling_key, 3);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "128 6 73 73 16 902087827 1065353228 32 9 ");
+    EXPECT_EQ(runInfo.tiling_key, 30);
+    EXPECT_EQ(to_string(runInfo.tiling_data), "128 6 73 73 902087827 1065353228 9 ");
 }
