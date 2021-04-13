@@ -29,7 +29,7 @@
 #include "op_log.h"
 #include "graph/utils/node_utils.h"
 #include "axis_util.h"
-
+#include "inc/graph/utils/type_utils.h"
 namespace ge {
 IMPLEMT_INFERFUNC(DecodeGif, DecodeGifInfer) {
   const char *op_name = op.GetName().c_str();
@@ -157,30 +157,39 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
   const char* op_name = op.GetName().c_str();
   GeShape x_shape;
   if (WithRank(x_desc, 4, x_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input x must be 4-D, real rank is %lld", x_desc->GetShape().GetDimNum());
-    return GRAPH_FAILED;
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(x_desc->GetShape().GetDims()), "4D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
   }
 
   auto boxes_desc = op_desc->MutableInputDesc(1);
   GeShape boxes_shape;
   if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input boxes must be 2-D, real rank is %lld", boxes_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(boxes_desc->GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto box_index_desc = op_desc->MutableInputDesc(2);
   GeShape box_index_shape;
   if (WithRank(box_index_desc, 1, box_index_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input box_index must be 1-D, real rank is %lld",
-            box_index_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(box_index_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto crop_size_desc = op_desc->MutableInputDesc(3);
   GeShape crop_size_shape;
   if (WithRank(crop_size_desc, 1, crop_size_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input crop_size must be 1-D, real rank is %lld",
-            crop_size_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(3,
+        DebugString(crop_size_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -190,21 +199,22 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
   auto crop_size_dims = crop_size_shape.GetDims();
 
   CHECK(boxes_dims.empty() || box_index_dims.empty(),
-        OP_LOGE(op.GetName().c_str(), "boxes_dims and box_index_dims should not be empty."), return GRAPH_FAILED);
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("the 0th input[x]'s shape and 1st input[boxes]'s shape"
+                                           " should not be empty.")),
+                                           return GRAPH_FAILED);
   if (boxes_dims[0] != UNKNOWN_DIM &&
       box_index_dims[0] != UNKNOWN_DIM &&
       boxes_dims[0] != box_index_dims[0]) {
-    OP_LOGE(op.GetName().c_str(),
-            "the 0th dimension of boxes and box_index must be equal"
-            "the real dims are: boxes[0]=%lld, box_index[0]=%lld",
-            boxes_dims[0], box_index_dims[0]);
+      std::string err_msg = ConcatString(
+          "the 0th dimension of the 1th input[boxes] and the 2nd input[box_index] must be equal. "
+          , boxes_dims[0], " and " , box_index_dims[0]);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  CHECK(crop_size_dims.empty(), OP_LOGE(op.GetName().c_str(), "empty crop_size dim."), return GRAPH_FAILED);
+  CHECK(crop_size_dims.empty(), AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("empty crop_size dim.")), return GRAPH_FAILED);
   if (crop_size_dims[0] != 2 && crop_size_dims[0] != UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(),
-            "crop_size must be a 1-D tensor containing 2 elements, real dim is %lld",
-            crop_size_dims[0]);
+      std::string err_msg = ConcatString(
+          "the 3rd input[crop_size] must be a 1-D tensor containing 2 elements, current shape is ", DebugString(crop_size_dims));
     return GRAPH_FAILED;
   }
 
@@ -230,7 +240,11 @@ IMPLEMT_INFERFUNC(CropAndResize, CropAndResizeInfer) {
     y_dims.push_back(crop_height);
     y_dims.push_back(crop_width);
   } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format");
+    std::string str_input_format = ge::TypeUtils::FormatToSerialString(input_format);
+    std::string err_msg = ConcatString(
+          "only supporting NCHW and NHWC, current format is [", str_input_format, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
 
   auto y_desc = op_desc->MutableOutputDesc(0);
@@ -255,19 +269,31 @@ INFER_FUNC_REG(CropAndResize, CropAndResizeInfer);
 IMPLEMT_INFERFUNC(CropAndResizeGradBoxes, CropAndResizeGradBoxesInfer) {
   Shape shape;
   if (WithRank(op.GetInputDesc(0), 4, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input grads must be 4-D");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "4D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(1), 4, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input iamges must be 4-D");
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(op.GetInputDesc(1).GetShape().GetDims()), "4D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(2), 2, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input boxes must be 2-D");
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(op.GetInputDesc(2).GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithRank(op.GetInputDesc(3), 1, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input box_index must be 1-D");
+    std::string err_msg = GetShapeErrMsg(3,
+        DebugString(op.GetInputDesc(3).GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -276,7 +302,10 @@ IMPLEMT_INFERFUNC(CropAndResizeGradBoxes, CropAndResizeGradBoxesInfer) {
   auto box_index_shape = op.GetInputDesc(3).GetShape().GetDims();
 
   if (grads_shape[0] != boxes_shape[0] && boxes_shape[0] != box_index_shape[0]) {
-    OP_LOGE(op.GetName().c_str(), "the 0th dimension of boxes, grads and box_index must be equal");
+      std::string err_msg = ConcatString(
+          "the 0th dimension of the 2th input[boxes], 0th input[grads] and the 3rd"
+          " input [box_index] must be equal. ", grads_shape[0], ", " , boxes_shape[0] , " and " ,box_index_shape[0]);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -303,30 +332,40 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   GeShape grads_shape;
   const char* op_name = op.GetName().c_str();
   if (WithRank(grads_desc, 4, grads_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input grads must be 4-D, real rank is %lld", grads_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(grads_desc->GetShape().GetDims()), "4D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto boxes_desc = op_desc->MutableInputDesc(1);
   GeShape boxes_shape;
   if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input boxes must be 2-D, real rank is %lld", boxes_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(boxes_desc->GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto box_index_desc = op_desc->MutableInputDesc(2);
   GeShape box_index_shape;
   if (WithRank(box_index_desc, 1, box_index_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input box_index must be 1-D, real rank is %lld",
-            box_index_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(2,
+        DebugString(box_index_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   auto image_size_desc = op_desc->MutableInputDesc(3);
   GeShape image_size_shape;
   if (WithRank(image_size_desc, 1, image_size_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input image_size must be 1-D, real rank is %lld",
-            image_size_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(3,
+        DebugString(image_size_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -334,27 +373,31 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   auto boxes_dims = boxes_shape.GetDims();
   auto box_index_dims = box_index_shape.GetDims();
   CHECK(grads_dims.empty() || boxes_dims.empty() || box_index_dims.empty(),
-        OP_LOGE(op.GetName().c_str(), "input dims should not be empty."), return GRAPH_FAILED);
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string(
+        "the 0th input[grads] , the 1st input[boxes] dims and the 2nd input[box_index], "
+        "must not be empty.")),
+        return GRAPH_FAILED);
   if (!DimsAllEqualOrUnknown({grads_dims[0], boxes_dims[0], box_index_dims[0]})) {
-    OP_LOGE(op.GetName().c_str(),
-            "the 0th dimension of grads, boxes and box_index must be equal"
-            "real dims are: grads[0]=%lld, boxes[0]=%lld, box_index[0]=%lld",
-            grads_dims[0], boxes_dims[0], box_index_dims[0]);
-    return GRAPH_FAILED;
+      std::string err_msg = ConcatString(
+                                         "the 0th dimension of the 0th input[grads], the 1st input[boxes]"
+                                         " and the 2nd input[box_index] must be equal. "
+                                         , grads_dims[0], ", " , boxes_dims[0], " and ", box_index_dims[0]);
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
   }
 
   auto image_size_dims = image_size_shape.GetDims();
-  CHECK(image_size_dims.empty(), OP_LOGE(op.GetName().c_str(), "image_size dims must not be empty."),
+  CHECK(image_size_dims.empty(), AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("the 3rd input[image_size] dims must not be empty.")),
         return GRAPH_FAILED);
   if (image_size_dims[0] != 4 && image_size_dims[0] != UNKNOWN_DIM) {
-    OP_LOGE(op.GetName().c_str(), "image_size must be a 1-D tensor with 4 elements, real dim size is %lld",
-            image_size_dims[0]);
+      std::string err_msg = ConcatString(
+          "the 3rd input[image_size] must be a 1-D tensor with 4 elements, current image_size is ", DebugString(image_size_dims));
     return GRAPH_FAILED;
   }
 
   DataType type;
   if (op.GetAttr("T", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op get attr T failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[T] failed"));
     return GRAPH_FAILED;
   }
 
@@ -366,7 +409,9 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
   if (op.GetInputConstData("image_size", image_size_tensor) == GRAPH_SUCCESS) {
     const int32_t* size_data = reinterpret_cast<const int32_t*>(image_size_tensor.GetData());
     CHECK(image_size_tensor.GetSize() / sizeof(int32_t) < 4,
-          OP_LOGE(op.GetName().c_str(), "image_size data num less then 4."), return GRAPH_FAILED);
+          AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("the 3rd input[image_size]'s data nums less then 4, curent data num is ",
+                                                                 image_size_tensor.GetSize() / sizeof(int32_t))),
+          return GRAPH_FAILED);
     batch = static_cast<int64_t>(size_data[0]);
     image_height = static_cast<int64_t>(size_data[1]);
     image_width = static_cast<int64_t>(size_data[2]);
@@ -386,7 +431,12 @@ IMPLEMT_INFERFUNC(CropAndResizeGradImage, CropAndResizeGradImageInfer) {
     y_dims.push_back(image_height);
     y_dims.push_back(image_width);
   } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format");
+    std::string str_input_format = ge::TypeUtils::FormatToSerialString(input_format);
+    std::string err_msg = ConcatString(
+          "only supporting NCHW and NHWC, current format is [", str_input_format, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
 
   auto y_desc = op_desc->MutableOutputDesc(0);
