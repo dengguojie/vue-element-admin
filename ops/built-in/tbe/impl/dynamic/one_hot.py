@@ -16,11 +16,11 @@
 one_hot
 """
 # pylint: disable=too-many-lines
-from te import platform as cce
+from impl.util.platform_adapter import tbe_platform as cce
 from impl.util.platform_adapter import tik
-import te.lang.dynamic
 from impl.util.platform_adapter import para_check
-
+from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import register_operator
 
 # 16k UB buffer is a reserved space
 RESERVE_SIZE = 16 * 1024
@@ -95,30 +95,28 @@ class OneHot():
         block_bite_size = 32
         self.max_repeat_time = 255
         self.tik_instance = tik.Tik(tik.Dprofile())
-        self.ub_size_bytes = cce.CceProductParams().getParams('Unified_Buffer')
-        self.dtype_bytes_size_x = cce.cce_intrin.get_bit_len(self.dtype_x) // 8
+        self.ub_size_bytes =cce.get_soc_spec(cce.UB_SIZE)
+        self.dtype_bytes_size_x = cce.get_bit_len(self.dtype_x) // 8
         self.x_each_block = block_bite_size // self.dtype_bytes_size_x
-        self.dtype_bytes_size_depth = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_depth = cce.get_bit_len(
             self.dtype_depth) // 8
         self.depth_each_block = block_bite_size // self.dtype_bytes_size_depth
-        self.dtype_bytes_size_on_value = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_on_value = cce.get_bit_len(
             self.dtype_on_value) // 8
         self.on_value_each_block = block_bite_size // self.dtype_bytes_size_on_value
-        self.dtype_bytes_size_off_value = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_off_value = cce.get_bit_len(
             self.dtype_off_value) // 8
         self.off_value_each_block = block_bite_size // self.dtype_bytes_size_off_value
         self.vector_mask_max_x = 8 * self.x_each_block
         self.dump_mask_max_off_value = 8 * self.off_value_each_block
-        self.dtype_bytes_size_tiling = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_tiling = cce.get_bit_len(
             self.tiling_dtype) // 8
         self.tiling_each_block = block_bite_size // self.dtype_bytes_size_tiling
         self.index_scalar = self.tik_instance.Scalar(
             self.dtype_x, name='index_scalar')
         self.tiling_gm = self.tik_instance.Tensor(
             self.tiling_dtype, (TILING_ARG_NUM,), name='tiling_gm', scope=tik.scope_gm)
-        self.total_core_number = cce.cce_conf.get_soc_spec(
-            cce.cce_conf.CORE_NUM)
-
+        self.total_core_number = cce.get_soc_spec(cce.CORE_NUM)
         self.numel_shape_x = None
         self.x_gm = None
         self.off_value_ub = None
@@ -283,8 +281,7 @@ class OneHot():
                     self.one_hot_middle_axis_third_mode(block_id)
                 with self.tik_instance.if_scope(mode_of_cal_with_axis == TILING_MODE_13):
                     self.one_hot_middle_axis_fourth_mode(block_id)
-        te.op.add_compile_info('vars', {'core_num': self.total_core_number,
-                                        'axis': self.axis})
+        tbe_context.get_context().add_compile_info('vars', {'core_num': self.total_core_number, 'axis': self.axis})
         self.tik_instance.BuildCCE(
             kernel_name=self.kernel_name, inputs=[
                 self.x_gm, self.depth_gm, self.on_value_gm, self.off_value_gm], outputs=[
@@ -2485,7 +2482,7 @@ def _check_param(x, depth, on_value, off_value, axis):
 
 
 # the register of OneHot op
-@te.op.register_operator('OneHot')
+@register_operator('OneHot')
 # pylint: disable=unused-argument
 def one_hot(x,
             depth,

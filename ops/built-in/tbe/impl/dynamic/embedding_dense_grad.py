@@ -14,11 +14,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 embedding_dense_grad
 """
 
-from te import tik
-import math
-from te import platform as cce
-from te.utils import op_utils
-import te.lang.dynamic
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tbe_platform as cce
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import register_operator
 
 RESERVE_SIZE = 16 * 1024
 MAX_INT32 = 2 ** 31 - 1
@@ -71,25 +71,25 @@ class EmbeddingDenseGrad():
         to calculate tensor division and data handling instruction parameters'''
         block_bite_size = 32
         # Get the size of UB space in Bytes
-        self.ub_size_bytes = cce.CceProductParams().getParams("Unified_Buffer")
+        self.ub_size_bytes = cce.get_soc_spec(cce.UB_SIZE)
         self.aicore_num = 32
 
         '''Calculate how many grad elements can be stored in a block according to
         the input data type'''
-        self.dtype_bytes_size_grad = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_grad = cce.get_bit_len(
             self.dtype_grad) // 8
         self.grad_each_block = block_bite_size // self.dtype_bytes_size_grad
         # Calculate how many indicators elements can be stored in a block
         # according to the input data type
-        self.dtype_bytes_size_indices = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_indices = cce.get_bit_len(
             self.dtype_indices) // 8
         self.indices_each_block = block_bite_size // self.dtype_bytes_size_indices
         # Calculate how many counts elements can be stored in a block according
         # to the input data type
-        self.dtype_bytes_size_counts = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_counts = cce.get_bit_len(
             self.dtype_indices) // 8
         self.counts_each_block = block_bite_size // self.dtype_bytes_size_counts
-        self.dtype_bytes_size_tiling = cce.cce_intrin.get_bit_len(
+        self.dtype_bytes_size_tiling = cce.get_bit_len(
             self.tiling_dtype) // 8
         self.tiling_each_block = block_bite_size // self.dtype_bytes_size_tiling
 
@@ -121,6 +121,23 @@ class EmbeddingDenseGrad():
         self.vec_max_grad_element = self.vector_max_repeat * self.vector_mask_max_grad
         self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name='tiling_gm',
                                                   scope=tik.scope_gm)
+        self.end = None
+        self.scale_int = None
+        self.grad_ub = None
+        self.new_numel_indices = None
+        self.indices_ub = None
+        self.grad = None
+        self.k = None
+        self.begin = None
+        self.indices = None
+        self.scale_float = None
+        self.grad_weight = None
+        self.counts_ub = None
+        self.numel_grad = None
+        self.numel_indices = None
+        self.index = None
+        self.add_tensor = None
+        self.embedding_dim = None
 
     def get_tiling_args(self, tiling_ub):
         """
@@ -177,7 +194,7 @@ class EmbeddingDenseGrad():
             kernel_name=self.kernel_name, inputs=[
                 self.grad, self.indices], outputs=[
                 self.grad_weight], flowtable=[self.tiling_gm])
-        te.op.add_compile_info('vars', {'core_num': self.aicore_num,
+        tbe_context.get_context().add_compile_info('vars', {'core_num': self.aicore_num,
                                         'num_weights': self.num_weights,
                                         'padding_idx': self.padding_idx,
                                         'scale_grad_by_freq': self.scale_grad_by_freq})
@@ -359,9 +376,6 @@ class EmbeddingDenseGrad():
                                         line_num // self.indices_each_block, 0, 0)
             self.tik_instance.data_move(self.grad_ub, self.grad[i1 * line_num * self.embedding_dim],
                                         0, 1, line_num * self.embedding_dim // self.grad_each_block, 0, 0)
-            '''Move grad from self.grad_ub to the corresponding position of
-            grad_weight according to the index value in indicators
-            '''
             self.add_same_word_grad(line_num)
         self.remaining_compute_grad_weight(line_num)
 
@@ -466,15 +480,15 @@ class EmbeddingDenseGrad():
                                     self.embedding_dim // self.grad_each_block, 0, 0)
 
 
-@te.op.register_operator('EmbeddingDenseGrad')
-@op_utils.check_op_params(
-    op_utils.REQUIRED_INPUT,
-    op_utils.REQUIRED_INPUT,
-    op_utils.REQUIRED_OUTPUT,
-    op_utils.OPTION_ATTR_INT,
-    op_utils.OPTION_ATTR_INT,
-    op_utils.OPTION_ATTR_BOOL,
-    op_utils.KERNEL_NAME)
+@register_operator('EmbeddingDenseGrad')
+@para_check.check_op_params(
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_INPUT,
+    para_check.REQUIRED_OUTPUT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_INT,
+    para_check.OPTION_ATTR_BOOL,
+    para_check.KERNEL_NAME)
 def embedding_dense_grad(
         grad,
         indices,
@@ -503,6 +517,8 @@ def embedding_dense_grad(
     tik_instance: tik_instance
     """
     check_attr_param(num_weights)
+    check_grad_param(grad)
+    check_indices_param(indices)
     embedding_dense_grad_instance = EmbeddingDenseGrad(
         grad, indices, y, num_weights, padding_idx, scale_grad_by_freq, kernel_name)
     tik_instance = embedding_dense_grad_instance.embedding_dense_grad_compute_tiling()
@@ -521,9 +537,7 @@ def check_grad_param(grad_dic):
     None
     """
     grad_dtype = grad_dic.get("dtype").lower()
-    grad_shape = grad_dic.get("shape")
-    op_utils.check_shape(grad_shape)
-    op_utils.check_dtype(grad_dtype, ["float32"])
+    para_check.check_dtype(grad_dtype, ["float32"], param_name="grad")
 
 
 def check_indices_param(indices_dic):
@@ -538,9 +552,7 @@ def check_indices_param(indices_dic):
     None
     """
     indices_dtype = indices_dic.get("dtype").lower()
-    indices_shape = indices_dic.get("shape")
-    op_utils.check_shape(indices_shape)
-    op_utils.check_dtype(indices_dtype, ["int32"])
+    para_check.check_dtype(indices_dtype, ["int32"], param_name="indices")
 
 
 def check_attr_param(n_w):
