@@ -68,13 +68,13 @@ void SetROIAlignGradParams(ROIAlignGradTilingParams& Params, OpRunInfo& runInfo)
 }
 
 void PrintROIAlignGradParams(const ROIAlignGradTilingParams& params) {
-  OP_LOGD("op [ROIAlignGradTiling] : tilingMode=%d.", params.tilingMode);
-  OP_LOGD("op [ROIAlignGradTiling] : tilingMode=%d.", params.real_core_num);
-  OP_LOGD("op [ROIAlignGradTiling] : tilingMode=%d.", params.rois_n);
-  OP_LOGD("op [ROIAlignGradTiling] : tilingMode=%d.", params.rois_row_lenth);
-  OP_LOGD("op [ROIAlignGradTiling] : tilingMode=%d.", params.c1_num);
-  OP_LOGD("op [ROIAlignGradTiling] : tilingMode=%d.", params.x_height);
-  OP_LOGD("op [ROIAlignGradTiling] : tilingMode=%d.", params.x_width);
+  OP_LOGD("[ROIAlignGradTiling]", "tilingMode=%d.", params.tilingMode);
+  OP_LOGD("[ROIAlignGradTiling]", "real_core_num=%d.", params.real_core_num);
+  OP_LOGD("[ROIAlignGradTiling]", "rois_n=%d.", params.rois_n);
+  OP_LOGD("[ROIAlignGradTiling]", "rois_row_lenth=%d.", params.rois_row_lenth);
+  OP_LOGD("[ROIAlignGradTiling]", "c1_num=%d.", params.c1_num);
+  OP_LOGD("[ROIAlignGradTiling]", "x_height=%d.", params.x_height);
+  OP_LOGD("[ROIAlignGradTiling]", "x_width=%d.", params.x_width);
 }
 
 static bool CheckTensorShape(const std::string& opType, std::vector<int64_t> y_diff_shape,
@@ -176,12 +176,8 @@ bool ROIAlignGradTiling(const std::string& opType, const TeOpParas& opParas, con
   runParams.rois_row_lenth = rois_shape[1];
   runParams.x_width = x_width;
   runParams.x_height = x_diff_shape[2];
-  flag = false;
-  if (rois_n % BLOCK_SIZE == 0) {
-    flag = true;
-  }
 
-  if (flag == true && c1_num == 16) {
+  if (c1_num == 16) {
     if (x_width <= 80) {
       runParams.tilingMode = 2;
     } else {

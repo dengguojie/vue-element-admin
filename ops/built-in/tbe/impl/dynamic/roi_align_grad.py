@@ -872,31 +872,27 @@ class RoiAlignGrad():
 
         return rois_data_ub
 
-    def _compute_mode_1(self, block_id, core_rois_n, sum_in_ub_flag):
+    def _compute_mode_1(self, core_bias, core_rois_n, sum_in_ub_flag):
         """
         compute mode 1
         """
         tik_instance = self.tik_instance
-        block_rois_n = core_rois_n
-        core_bias = core_rois_n * block_id
 
         grid_w_s = tik_instance.Scalar(dtype="float32")
         grid_h_s = tik_instance.Scalar(dtype="float32")
         rois_start_w_s = tik_instance.Scalar(dtype="float32")
         rois_start_h_s = tik_instance.Scalar(dtype="float32")
-        start_batch = core_bias // self.c1_num
 
         const_value_0_127 = tik_instance.Tensor(
             "float32", (BATCH_SIZE,), name="const_value_0_127", scope=tbe_platform.scope_ubuf)
         with tik_instance.for_range(0, BATCH_SIZE) as i:
             const_value_0_127[i] = i
 
-        rois_n_num = block_rois_n // self.c1_num
-        rois_batch_num = (rois_n_num + 127) // BATCH_SIZE
+        rois_batch_num = (core_rois_n + 127) // BATCH_SIZE
 
         with tik_instance.for_range(0, rois_batch_num) as i:
             # move rois data from DDR to UB
-            rois_data_ub = self._convert_rois_data_to5n(start_batch + BATCH_SIZE * i, rois_n_num)
+            rois_data_ub = self._convert_rois_data_to5n(core_bias + BATCH_SIZE * i, core_rois_n)
 
             # calc spatial_scale
             rois_bin_w, rois_bin_h, sample_num_w, sample_num_h, rois_start_w, rois_start_h, rois_index = \
@@ -904,7 +900,7 @@ class RoiAlignGrad():
             tik_instance.vmuls(64, rois_bin_w, rois_bin_w, 1 / float(self.sample_num), 2, 1, 1, 8, 8)
             tik_instance.vmuls(64, rois_bin_h, rois_bin_h, 1 / float(self.sample_num), 2, 1, 1, 8, 8)
 
-            with tik_instance.for_range(0, rois_n_num) as j:
+            with tik_instance.for_range(0, core_rois_n) as j:
                 image_index = tik_instance.Scalar(dtype="int32")
                 image_index.set_as(rois_index[j])
                 grid_w_s.set_as(rois_bin_w[j])
@@ -929,10 +925,10 @@ class RoiAlignGrad():
                         self._roi_align_calc_grad_block_align(line_num, row_num,
                                                               x_lo_w, x_hi_w, y_lo_w, y_hi_w,
                                                               x_lo, x_hi, y_lo, y_hi,
-                                                              start_batch + (i * 128) + j, x_ind, y_ind,
+                                                              core_bias + (i * 128) + j, x_ind, y_ind,
                                                               image_index, sum_in_ub_flag)
 
-    def _compute_mode_2(self, block_id):
+    def _compute_mode_2(self, core_bias):
         """
         compute mode 2
         """
@@ -953,19 +949,30 @@ class RoiAlignGrad():
             # get run info
             self._get_tiling_args(tiling_ub)
 
-            core_rois_n = (self.rois_n * self.c1_num) // self.real_core_num
-            core_tail = (self.rois_n * self.c1_num) % self.real_core_num
-
             with self.tik_instance.if_scope(block_id < self.real_core_num):
+                core_rois_n = self.tik_instance.Scalar(init_value=self.rois_n // self.real_core_num,
+                                                       dtype="int32", name="core_rois_n")
+                core_tail = self.tik_instance.Scalar(init_value=self.rois_n % self.real_core_num,
+                                                     dtype="int32", name="core_tail")
+                core_bias = self.tik_instance.Scalar(init_value=core_rois_n * block_id,
+                                                     dtype="int32", name="core_bias")
+
+                with self.tik_instance.if_scope(core_tail != 0):
+                    with self.tik_instance.if_scope(block_id < core_tail):
+                        core_rois_n.set_as(core_rois_n + 1)
+                        core_bias.set_as(core_rois_n * block_id)
+                    with self.tik_instance.else_scope():
+                        core_bias.set_as(core_rois_n * block_id + core_tail)
+
                 with tik_instance.if_scope(self.tiling_mode == TILING_MODE_1):
                     with tik_instance.new_stmt_scope():
-                        self._compute_mode_1(block_id, core_rois_n, False)
+                        self._compute_mode_1(core_bias, core_rois_n, False)
                 with tik_instance.if_scope(self.tiling_mode == TILING_MODE_2):
                     with tik_instance.new_stmt_scope():
-                        self._compute_mode_1(block_id, core_rois_n, True)
+                        self._compute_mode_1(core_bias, core_rois_n, True)
                 with tik_instance.if_scope(self.tiling_mode == TILING_MODE_3):
                     with tik_instance.new_stmt_scope():
-                        self._compute_mode_2(block_id)
+                        self._compute_mode_2(core_bias)
 
     def roi_align_grad_compute(self):
         """calc one block gradient

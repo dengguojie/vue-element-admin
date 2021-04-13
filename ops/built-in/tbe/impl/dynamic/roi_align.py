@@ -65,6 +65,7 @@ class RoiAlign():
     """
     define roi_align object
     """
+
     def __init__(self):
         profile = tik.Dprofile()
         self.tik_instance = tik.Tik(profile, disable_debug=True)
@@ -236,11 +237,11 @@ class RoiAlign():
                 tik_instance.data_move(fm_grid[c_iter_i, 1, 0, 0], feature_map[feature_map_offset], 0,
                                        1, n_bust, 1, 1)
 
-    def _load_ret_to_gm(self, n_bust, block_id, core_rois_n, roi_128_number, curr_roi, grid_num_h, val):
+    def _load_ret_to_gm(self, n_bust, core_bias, roi_128_number, curr_roi, grid_num_h, val):
         tik_instance = self.tik_instance
         with tik_instance.if_scope(
                 (self.pooled_width * self.pooled_height - self.pooled_width) * n_bust <= 65535):
-            output_offset = self._get_output_offset(block_id * core_rois_n + 128 * roi_128_number + curr_roi,
+            output_offset = self._get_output_offset(core_bias + 128 * roi_128_number + curr_roi,
                                                     0, grid_num_h // self.sample_num, 0)
             tik_instance.data_move(
                 self.output[output_offset], val[0], 0,
@@ -250,7 +251,7 @@ class RoiAlign():
 
         with tik_instance.else_scope():
             with tik_instance.for_range(0, self.c1_num) as c_iter_i:
-                output_offset = self._get_output_offset(block_id * core_rois_n + \
+                output_offset = self._get_output_offset(core_bias + \
                                                         128 * roi_128_number + curr_roi,
                                                         c_iter_i, grid_num_h // self.sample_num, 0)
                 tik_instance.data_move(
@@ -527,7 +528,7 @@ class RoiAlign():
         return x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi, raw_x, raw_y
 
     def _bilinear_interpolate_all_in_ub(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
-                                        raw_x, raw_y, n_bust, block_id, core_rois_n,
+                                        raw_x, raw_y, n_bust, core_bias,
                                         index, curr_roi, roi_128_number, cache_index):
         """
         _bilinear_interpolate
@@ -604,12 +605,12 @@ class RoiAlign():
             with tik_instance.if_scope((grid_num_h + 1) % self.sample_num == 0):
                 self._get_average(val, self.c1_num, n_bust)
 
-                self._load_ret_to_gm(n_bust, block_id, core_rois_n, roi_128_number, curr_roi, grid_num_h, val)
+                self._load_ret_to_gm(n_bust, core_bias, roi_128_number, curr_roi, grid_num_h, val)
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
     def _bilinear_interpolate_all_in_l1(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
-                                        raw_x, raw_y, n_bust, block_id, core_rois_n,
+                                        raw_x, raw_y, n_bust, core_bias,
                                         index, curr_roi, roi_128_number, cache_index):
         """
         _bilinear_interpolate
@@ -684,12 +685,12 @@ class RoiAlign():
             with tik_instance.if_scope((grid_num_h + 1) % self.sample_num == 0):
                 self._get_average(val, self.c1_num, n_bust)
 
-                self._load_ret_to_gm(n_bust, block_id, core_rois_n, roi_128_number, curr_roi, grid_num_h, val)
+                self._load_ret_to_gm(n_bust, core_bias, roi_128_number, curr_roi, grid_num_h, val)
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
     def _bilinear_interpolate_w_in_ub(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
-                                      raw_x, raw_y, n_bust, block_id, core_rois_n,
+                                      raw_x, raw_y, n_bust, core_bias,
                                       index, curr_roi, roi_128_number, cache_index):
         """
         _bilinear_interpolate
@@ -770,12 +771,12 @@ class RoiAlign():
             with tik_instance.if_scope((grid_num_h + 1) % self.sample_num == 0):
                 self._get_average(val, self.c1_num, n_bust)
 
-                self._load_ret_to_gm(n_bust, block_id, core_rois_n, roi_128_number, curr_roi, grid_num_h, val)
+                self._load_ret_to_gm(n_bust, core_bias, roi_128_number, curr_roi, grid_num_h, val)
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
     def _bilinear_interpolate_w_in_l1(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
-                                      raw_x, raw_y, n_bust, block_id, core_rois_n,
+                                      raw_x, raw_y, n_bust, core_bias,
                                       index, curr_roi, roi_128_number, cache_index):
         """
         _bilinear_interpolate
@@ -852,12 +853,12 @@ class RoiAlign():
             with tik_instance.if_scope((grid_num_h + 1) % self.sample_num == 0):
                 self._get_average(val, self.c1_num, n_bust)
 
-                self._load_ret_to_gm(n_bust, block_id, core_rois_n, roi_128_number, curr_roi, grid_num_h, val)
+                self._load_ret_to_gm(n_bust, core_bias, roi_128_number, curr_roi, grid_num_h, val)
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
     def _bilinear_interpolate_without_cache(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
-                                            raw_x, raw_y, n_bust, block_id, core_rois_n,
+                                            raw_x, raw_y, n_bust, core_bias,
                                             index, curr_roi, roi_128_number, cache_index):
         """
         _bilinear_interpolate
@@ -922,14 +923,14 @@ class RoiAlign():
             with tik_instance.if_scope((grid_num_h + 1) % self.sample_num == 0):
                 self._get_average(val, self.c1_num, n_bust)
 
-                self._load_ret_to_gm(n_bust, block_id, core_rois_n, roi_128_number, curr_roi, grid_num_h, val)
+                self._load_ret_to_gm(n_bust, core_bias, roi_128_number, curr_roi, grid_num_h, val)
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
     def _common_compute(self, proposals_ub_x0, proposals_ub_y0,
                         roi_128_number, rois_valid_in_block,
                         n_bust, roi_int32_fm_index,
-                        grid_h, grid_w, block_id, core_rois_n):
+                        grid_h, grid_w, core_bias):
         """
         get ret without L1
         """
@@ -963,34 +964,34 @@ class RoiAlign():
                     with tik_instance.new_stmt_scope():
                         self._bilinear_interpolate_all_in_ub(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
                                                              x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                             n_bust, block_id, core_rois_n, index,
+                                                             n_bust, core_bias, index,
                                                              curr_roi, roi_128_number, cache_index)
                 with tik_instance.else_scope():
                     with tik_instance.if_scope(self.feature_map_to_l1_verify >= 1):
                         with tik_instance.new_stmt_scope():
                             self._bilinear_interpolate_all_in_l1(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
                                                                  x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                 n_bust, block_id, core_rois_n, index,
+                                                                 n_bust, core_bias, index,
                                                                  curr_roi, roi_128_number, cache_index)
                     with tik_instance.else_scope():
                         with tik_instance.if_scope(self.w_number_ub >= 2):
                             with tik_instance.new_stmt_scope():
                                 self._bilinear_interpolate_w_in_ub(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
                                                                    x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                   n_bust, block_id, core_rois_n, index,
+                                                                   n_bust, core_bias, index,
                                                                    curr_roi, roi_128_number, cache_index)
                         with tik_instance.else_scope():
                             with tik_instance.if_scope(self.w_number_l1 >= 2):
                                 with tik_instance.new_stmt_scope():
                                     self._bilinear_interpolate_w_in_l1(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
                                                                        x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                       n_bust, block_id, core_rois_n, index,
+                                                                       n_bust, core_bias, index,
                                                                        curr_roi, roi_128_number, cache_index)
                             with tik_instance.else_scope():
                                 with tik_instance.new_stmt_scope():
                                     self._bilinear_interpolate_without_cache(x_lo_w, x_hi_w, y_lo_w, y_hi_w,
                                                                              x_lo, x_hi, y_lo, y_hi, raw_x, raw_y,
-                                                                             n_bust, block_id, core_rois_n, index,
+                                                                             n_bust, core_bias, index,
                                                                              curr_roi, roi_128_number, cache_index)
 
     def _get_roi_align_perf_scale_for_zero(self, proposals_ub_x0,
@@ -1061,7 +1062,7 @@ class RoiAlign():
 
         return roi_bin_h_fp32_value, roi_bin_w_fp32_value, proposals_ub_x0, proposals_ub_y0, grid_h, grid_w
 
-    def _compute_mode_1(self, block_id, core_rois_n):
+    def _compute_mode_1(self, core_rois_n, core_bias):
         """
         roi_align_tik
         """
@@ -1107,13 +1108,13 @@ class RoiAlign():
                         self.dtype, [BATCH_SIZE, 5], name="rois_ub_n5", scope=tbe_platform.scope_ubuf)
                     burst_num = (rois_valid_in_block * 5 * n_bust + 15) // 16
                     tik_instance.data_move(rois_ub_n5[0, 0],
-                                           self.rois[(block_id * core_rois_n + roi_128_number * BATCH_SIZE) * 5],
+                                           self.rois[(core_bias + roi_128_number * BATCH_SIZE) * 5],
                                            0, 1, burst_num, 0, 0)
                     self._tf_n52n8(rois_ub, rois_ub_n5, rois_valid_in_block)
                 with tik_instance.else_scope():
                     burst_num = (rois_valid_in_block * 8 * n_bust + 15) // 16
                     tik_instance.data_move(rois_ub[0, 0],
-                                           self.rois[(block_id * core_rois_n + roi_128_number * BATCH_SIZE) * 8],
+                                           self.rois[(core_bias + roi_128_number * BATCH_SIZE) * 8],
                                            0, 1, burst_num, 0, 0)
 
                 support_vextract = tbe_platform.api_check_support("tik.vextract", "float32")
@@ -1142,8 +1143,7 @@ class RoiAlign():
 
                 self._common_compute(proposals_ub_x0, proposals_ub_y0, roi_128_number,
                                      rois_valid_in_block, n_bust,
-                                     roi_int32_fm_index, grid_h, grid_w,
-                                     block_id, core_rois_n)
+                                     roi_int32_fm_index, grid_h, grid_w, core_bias)
 
     def _roi_align_compute_tiling(self):
         """
@@ -1161,13 +1161,24 @@ class RoiAlign():
             # get run info
             self._get_tiling_args(tiling_ub)
 
-            core_rois_n = self.rois_n // self.real_core_num
-            core_tail = self.rois_n % self.real_core_num
-
             with self.tik_instance.if_scope(block_id < self.real_core_num):
+                core_rois_n = self.tik_instance.Scalar(init_value=self.rois_n // self.real_core_num,
+                                                       dtype="int32", name="core_rois_n")
+                core_tail = self.tik_instance.Scalar(init_value=self.rois_n % self.real_core_num,
+                                                     dtype="int32", name="core_tail")
+                core_bias = self.tik_instance.Scalar(init_value=core_rois_n * block_id,
+                                                     dtype="int32", name="core_bias")
+
+                with self.tik_instance.if_scope(core_tail != 0):
+                    with self.tik_instance.if_scope(block_id < core_tail):
+                        core_rois_n.set_as(core_rois_n + 1)
+                        core_bias.set_as(core_rois_n * block_id)
+                    with self.tik_instance.else_scope():
+                        core_bias.set_as(core_rois_n * block_id + core_tail)
+
                 with tik_instance.if_scope(self.tiling_mode == TILING_MODE_1):
                     with tik_instance.new_stmt_scope():
-                        self._compute_mode_1(block_id, core_rois_n)
+                        self._compute_mode_1(core_rois_n, core_bias)
                 with tik_instance.if_scope(self.tiling_mode == TILING_MODE_2):
                     with tik_instance.new_stmt_scope():
                         pass
