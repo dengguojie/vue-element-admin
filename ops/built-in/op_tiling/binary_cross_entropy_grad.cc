@@ -17,12 +17,14 @@
 namespace optiling {
 bool BinaryCrossEntropyGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                       OpRunInfo& run_info) {
+  TeOpParas op_paras_tmp = op_paras;
+  op_paras_tmp.inputs.clear();
+  op_paras_tmp.inputs.push_back(op_paras.inputs[0]);
+  op_paras_tmp.inputs.push_back(op_paras.inputs[1]);
+  
   bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
   // reduce_mean_cof is not required when handling pure dma_copy case
-  if (input_shape[0] == 1) {
-    return ret;
-  }
 
   float reduce_mean_cof = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
