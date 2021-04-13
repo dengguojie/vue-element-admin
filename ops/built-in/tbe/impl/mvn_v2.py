@@ -160,7 +160,7 @@ def mvn_v2_compute(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
         res = tbe.vdiv(mean_sub, y_add)
     elif tbe_platform.get_soc_spec("SOC_VERSION") in (
             "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-        y_sqrt = tbe.vsqrt(var, priority_flag=1)
+        y_sqrt = tbe.vsqrt(var, impl_mode="high_precision")
         y_add = tbe.vadds(y_sqrt, eps)
         res = tbe.vdiv(mean_sub, y_add)
     else:
