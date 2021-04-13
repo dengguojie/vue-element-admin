@@ -1841,28 +1841,37 @@ IMPLEMT_INFERFUNC(ResourceAccumulatorSetGlobalStep, ResourceAccumulatorSetGlobal
 
 INFER_FUNC_REG(ResourceAccumulatorSetGlobalStep, ResourceAccumulatorSetGlobalStepInfer);
 
-IMPLEMT_INFERFUNC(ResourceAccumulatorTakeGradient, ResourceAccumulatorTakeGradientInfer) {
+IMPLEMT_INFERFUNC(ResourceAccumulatorTakeGradient,
+                  ResourceAccumulatorTakeGradientInfer) {
   Shape unused_shape;
-  if (WithRank(op.GetInputDesc("num_required"), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input num_required must be 0-D");
+  if (WithRank(op.GetInputDesc("num_required"), 0, unused_shape,
+               op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(
+        2, DebugString(op.GetInputDesc("num_required").GetShape().GetDims()),
+        "scalar");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   DataType dtype;
   if (op.GetAttr("dtype", dtype) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr dtype failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("failed to get attr[dtype]."));
     return GRAPH_FAILED;
   }
   auto average_desc = op.GetOutputDesc("average");
   average_desc.SetShape(Shape(ge::UNKNOWN_SHAPE));
   average_desc.SetDataType(dtype);
   if (op.UpdateOutputDesc("average", average_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update average desc failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("fail to update output[average]."));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
 }
 
-INFER_FUNC_REG(ResourceAccumulatorTakeGradient, ResourceAccumulatorTakeGradientInfer);
+INFER_FUNC_REG(ResourceAccumulatorTakeGradient,
+               ResourceAccumulatorTakeGradientInfer);
 
 IMPLEMT_INFERFUNC(OutfeedEnqueueOp, OutfeedEnqueueInfer) {
   return GRAPH_SUCCESS;

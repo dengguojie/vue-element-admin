@@ -231,11 +231,12 @@ IMPLEMT_INFERFUNC(DecodeCSV, DecodeCSVInfer) {
   }
 
   size_t outputs_size = op_desc->GetOutputsSize();
+  auto temp_records_desc = op.GetInputDesc("records");
   for (int i = 0; i < outputs_size; ++i) {
     auto temp_record_default_desc =
         op.GetDynamicInputDesc("record_defaults", i);
     auto temp_output_desc = op.GetDynamicOutputDesc("output", i);
-    (void)FillOpDesc(temp_output_desc, temp_record_default_desc.GetShape(),
+    (void)FillOpDesc(temp_output_desc, temp_records_desc.GetShape(),
                      temp_record_default_desc.GetDataType());
     op.UpdateDynamicOutputDesc("output", i, temp_output_desc);
   }

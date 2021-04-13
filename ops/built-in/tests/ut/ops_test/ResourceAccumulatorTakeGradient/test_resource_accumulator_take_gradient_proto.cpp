@@ -21,37 +21,40 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "op_proto_test_util.h"
-#include "state_ops.h"
+#include "data_flow_ops.h"
 
-class CountUpToTest : public testing::Test {
+class ResourceAccumulatorTakeGradientTest : public testing::Test {
  protected:
   static void SetUpTestCase() {
-    std::cout << "CountUpToTest SetUp" << std::endl;
+    std::cout << "ResourceAccumulatorTakeGradientTest SetUp" << std::endl;
   }
 
   static void TearDownTestCase() {
-    std::cout << "CountUpToTest TearDown" << std::endl;
+    std::cout << "ResourceAccumulatorTakeGradientTest TearDown" << std::endl;
   }
 };
 
-TEST_F(CountUpToTest, InferShape_01) {
-  ge::op::CountUpTo op;
-  op.UpdateInputDesc("ref", create_desc({}, ge::DT_INT32));
-  op.SetAttr("limit", 50);
+TEST_F(ResourceAccumulatorTakeGradientTest, InferShape_01) {
+  ge::op::ResourceAccumulatorTakeGradient op;
+  op.UpdateInputDesc("num_required", create_desc({}, ge::DT_INT32));
+  op.SetAttr("dtype", ge::DT_DOUBLE);
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
-
-  auto y_desc = op.GetOutputDesc("y");
-  EXPECT_EQ(y_desc.GetDataType(), ge::DT_INT32);
-  std::vector<int64_t> expected_y_shape = {};
-  EXPECT_EQ(y_desc.GetShape().GetDims(), expected_y_shape);
 }
 
-TEST_F(CountUpToTest, InferShape_02) {
-  ge::op::CountUpTo op;
-  op.UpdateInputDesc("ref", create_desc({2}, ge::DT_INT32));
-  op.SetAttr("limit", 50);
+TEST_F(ResourceAccumulatorTakeGradientTest, InferShape_02) {
+  ge::op::ResourceAccumulatorTakeGradient op;
+  op.UpdateInputDesc("num_required", create_desc({2}, ge::DT_INT32));
+  op.SetAttr("dtype", ge::DT_DOUBLE);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(ResourceAccumulatorTakeGradientTest, InferShape_03) {
+  ge::op::ResourceAccumulatorTakeGradient op;
+  op.UpdateInputDesc("num_required", create_desc({}, ge::DT_INT32));
 
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_FAILED);

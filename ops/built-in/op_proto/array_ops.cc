@@ -341,14 +341,16 @@ IMPLEMT_INFERFUNC(ListDiff, ListDiffInfer) {
 
   Shape unused_shape;
   std::string err_msg;
-  if (WithRank(x_desc, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(x_desc, 1, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
     std::string err_msg =
         GetShapeErrMsg(0, DebugString(x_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;
     return GRAPH_FAILED;
   }
 
-  if (WithRank(y_desc, 1, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(y_desc, 1, unused_shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
     std::string err_msg =
         GetShapeErrMsg(1, DebugString(y_desc->GetShape().GetDims()), "1D");
     err_msg = string("failed to call WithRank function, ") + err_msg;

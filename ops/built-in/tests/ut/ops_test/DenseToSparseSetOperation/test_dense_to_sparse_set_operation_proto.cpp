@@ -34,7 +34,7 @@ class DenseToSparseSetOperationTest : public testing::Test {
   }
 };
 
-TEST_F(DenseToSparseSetOperationTest, InferShape) {
+TEST_F(DenseToSparseSetOperationTest, InferShape_01) {
   ge::op::DenseToSparseSetOperation op;
   op.UpdateInputDesc("x1", create_desc({3, 2}, ge::DT_INT64));
   op.UpdateInputDesc("x2_indices", create_desc({3, 2}, ge::DT_INT64));
@@ -60,3 +60,46 @@ TEST_F(DenseToSparseSetOperationTest, InferShape) {
   EXPECT_EQ(shape_desc.GetShape().GetDims(), expected_shape);
 }
 
+//error input num
+TEST_F(DenseToSparseSetOperationTest, InferShape_02) {
+  ge::op::DenseToSparseSetOperation op;
+  op.UpdateInputDesc("x1", create_desc({3, 2}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+//error x1 rank
+TEST_F(DenseToSparseSetOperationTest, InferShape_03) {
+  ge::op::DenseToSparseSetOperation op;
+  op.UpdateInputDesc("x1", create_desc({3}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_indices", create_desc({3, 2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_values", create_desc({3}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_shape", create_desc({2}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+//error x2 shape dim[0]
+TEST_F(DenseToSparseSetOperationTest, InferShape_04) {
+  ge::op::DenseToSparseSetOperation op;
+  op.UpdateInputDesc("x1", create_desc({3, 2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_indices", create_desc({3, 2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_values", create_desc({3}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_shape", create_desc({3}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(DenseToSparseSetOperationTest, InferShape_05) {
+  ge::op::DenseToSparseSetOperation op;
+  op.UpdateInputDesc("x1", create_desc({-2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_indices", create_desc({3, 2}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_values", create_desc({3}, ge::DT_INT64));
+  op.UpdateInputDesc("x2_shape", create_desc({2}, ge::DT_INT64));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

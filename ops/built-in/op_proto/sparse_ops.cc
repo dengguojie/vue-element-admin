@@ -386,7 +386,8 @@ IMPLEMT_INFERFUNC(SparseAdd, SparseAddInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
 
   GeShape x1_shape;
-  if (WithRank(op_desc->MutableInputDesc(2), 1, x1_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
+  if (WithRank(op_desc->MutableInputDesc(2), 1, x1_shape,
+               op.GetName().c_str()) != GRAPH_SUCCESS) {
     std::string err_msg = GetShapeErrMsg(
         2, DebugString(op_desc->MutableInputDesc(2)->GetShape().GetDims()),
         "1D");
@@ -756,7 +757,7 @@ IMPLEMT_INFERFUNC(SparseReduceSum, SparseReduceSumInfer) {
   DataType y_type = op.GetInputDesc("x_values").GetDataType();
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto y_desc = op_desc->MutableOutputDesc(0); 
+  auto y_desc = op_desc->MutableOutputDesc(0);
   y_desc->SetShape(unknown_shape);
   y_desc->SetDataType(y_type);
 

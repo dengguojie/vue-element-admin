@@ -115,21 +115,34 @@ IMPLEMT_INFERFUNC(AdjustSaturation, AdjustSaturationInfer) {
 INFER_FUNC_REG(AdjustSaturation, AdjustSaturationInfer);
 
 IMPLEMT_INFERFUNC(AdjustContrast, AdjustContrastInfer) {
-  Shape shape;
-  if (WithRank(op.GetInputDesc(1), 0, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input contrast_factor rank must be 0");
-    return GRAPH_PARAM_INVALID;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+
+  GeShape shape;
+  std::string err_msg;
+  auto contrast_factor_desc = op_desc->MutableInputDesc(1);
+  if (WithRank(contrast_factor_desc, 0, shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(
+        1, DebugString(contrast_factor_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
-  if (WithRankAtLeast(op.GetInputDesc(0), 3, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input images at least 3-D");
+  auto images_desc = op_desc->MutableInputDesc(0);
+  if (WithRankAtLeast(images_desc, 3, shape, op.GetName().c_str()) !=
+      GRAPH_SUCCESS) {
+    err_msg = GetShapeErrMsg(0, DebugString(images_desc->GetShape().GetDims()),
+                             "at least 3D");
+    err_msg = string("failed to call WithRankAtLeast function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
-  TensorDesc desc = op.GetOutputDesc("y");
-  desc.SetShape(Shape(shape));
-  auto data_type = op.GetInputDesc("images").GetDataType();
-  desc.SetDataType(data_type);
-  return op.UpdateOutputDesc("y", desc);
+  auto y_desc = op_desc->MutableOutputDesc(0);
+  y_desc->SetShape(shape);
+  y_desc->SetDataType(images_desc->GetDataType());
+
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(AdjustContrast, AdjustContrastInfer);

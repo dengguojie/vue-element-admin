@@ -22,6 +22,7 @@
 #include "common/inc/op_log.h"
 #include "common_shape_fns.h"
 #include "util/util.h"
+#include "util/error_util.h"
 
 namespace ge {
 
@@ -81,6 +82,10 @@ IMPLEMT_INFERFUNC(CountUpTo, CountUpToInfer) {
 
   GeShape out;
   if (WithRank(ref_desc, 0, out, op.GetName().c_str()) != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(
+        0, DebugString(ref_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank function, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
