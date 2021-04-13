@@ -213,6 +213,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/reshape_transpose_fusion_pass.cc
   graph_fusion/ai_core/resize_nearest_neighbor_grad_d_fusion_pass.cc
   graph_fusion/ai_core/rnn_fusion_pass.cc
+  graph_fusion/ai_core/roialign_fusion_pass.cc
   graph_fusion/ai_core/rpn_proposals_fusion_pass.cc
   graph_fusion/ai_core/scatter_nd_fusion_pass.cc
   graph_fusion/ai_core/single_batch_norm_fusion_pass.cc
