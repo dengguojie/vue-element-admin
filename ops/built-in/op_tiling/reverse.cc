@@ -357,7 +357,6 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
 
   int64_t count = 0;
   int64_t inner_real_count = 0;
-  int64_t sub_tensor_num = 0;
   int64_t inner_first_dim = 0;
   for (int64_t i = static_cast<int64_t>(merged_shape.size()) - 1; i >= 0; --i) {
     if (count == 0) {
