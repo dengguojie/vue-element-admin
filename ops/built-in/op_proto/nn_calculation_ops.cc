@@ -2086,25 +2086,28 @@ static bool SetPadListByPaddingConv2dbp(ge::Operator& op, std::vector<T1>& input
 }
 
 template <typename T1, typename T2>
-static bool SetGroupsConv2dbp(ge::Operator& op, std::vector<T1>& input_sizes, Format input_format,
+static bool SetGroupsConv(ge::Operator& op, std::vector<T1>& input_sizes, Format input_format,
                               std::vector<T2>& filter_sizes, Format filter_format) {
   OP_LOGI(op.GetName().c_str(), "Setgroups begin.");
-  if (filter_sizes.size() < 4 || input_sizes.size() < 4) {
-    OP_LOGE(op.GetName().c_str(), "filter_sizes or input_sizes is illegal");
-    map<string, string> err_map;
-    err_map["op_name"] = op.GetName().c_str();
-    err_map["param_name"] = "filter_sizes and input_sizes";
-    err_map["expected_length"] = "4";
-    err_map["length"] = std::to_string(filter_sizes.size()) + " and " + std::to_string(input_sizes.size());
-    std::string report_error_code = "E50035";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return false;
-  }
+
   CHECK_FORMAT(input_format);
   CHECK_FORMAT(filter_format);
 
   std::string input_format_str = format2str[input_format];
   std::string filter_format_str = format2str[filter_format];
+
+  size_t format_len = input_format_str.length();
+  if (filter_sizes.size() < format_len || input_sizes.size() < format_len) {
+    OP_LOGE(op.GetName().c_str(), "filter_sizes or input_sizes is illegal");
+    map<string, string> err_map;
+    err_map["op_name"] = op.GetName().c_str();
+    err_map["param_name"] = "filter_sizes and input_sizes";
+    err_map["expected_length"] = std::to_string(format_len);
+    err_map["length"] = std::to_string(filter_sizes.size()) + " and " + std::to_string(input_sizes.size());
+    std::string report_error_code = "E50035";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return false;
+  }
 
   int32_t x_position = input_format_str.find("C");
   int32_t w_position = filter_format_str.find("C");
@@ -2729,7 +2732,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   }
 
   auto dx_shape = y_desc->MutableShape().GetDims();
-  if (false == SetGroupsConv2dbp(op, dx_shape, input_format, filter_sizes, filter_format)) {
+  if (false == SetGroupsConv(op, dx_shape, input_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropInput failed.");
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
@@ -3037,7 +3040,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInputD, Conv2DBackpropInputDInfer) {
   Format input_format = y_desc.GetFormat();
   CHECK_FORMAT(filter_format);
   CHECK_FORMAT(input_format);
-  if (false == SetGroupsConv2dbp(op, input_sizes, input_format, filter_sizes, filter_format)) {
+  if (false == SetGroupsConv(op, input_sizes, input_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropInputD failed.");
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
@@ -3307,7 +3310,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   }
   if (unknown_rank || filter_sizes[filter_ci_position] < 1 || x_c < 1){
     OP_LOGD(op.GetName().c_str(), "ignore set groups.");
-  } else if (false == SetGroupsConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
+  } else if (false == SetGroupsConv(op, x_sizes, x_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropFilter failed.");
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
@@ -3455,7 +3458,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilterD, Conv2DBackpropFilterDInfer) {
   Format filter_format = y_desc.GetFormat();
   CHECK_FORMAT(x_format);
   CHECK_FORMAT(filter_format);
-  if (false == SetGroupsConv2dbp(op, x_sizes, x_format, filter_sizes, filter_format)) {
+  if (false == SetGroupsConv(op, x_sizes, x_format, filter_sizes, filter_format)) {
     OP_LOGE(op.GetName().c_str(), "Set groups for Conv2DBackpropFilterD failed.");
     map<string, string> err_map;
     err_map["op_name"] = op.GetName().c_str();
@@ -7343,7 +7346,7 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
 
   // check input tensor shape
   auto x_shape = x_desc.GetShape().GetDims();
-  if (x_shape.size() != kConv3dDimSizeLimit) {
+  if (!IsUnknownRankShape(x_shape) && x_shape.size() != kConv3dDimSizeLimit) {
     OP_LOGE(op.GetName().c_str(), "x's shape should be 5d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "x_shape";
@@ -7356,7 +7359,7 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
   }
 
   auto out_backprop_shape = out_backprop_desc.GetShape().GetDims();
-  if (out_backprop_shape.size() != kConv3dDimSizeLimit) {
+  if (!IsUnknownRankShape(out_backprop_shape) && out_backprop_shape.size() != kConv3dDimSizeLimit) {
     OP_LOGE(op.GetName().c_str(), "out_backprop's shape should be 5d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "out_backprop_shape_size";
@@ -7403,29 +7406,58 @@ static graphStatus VerifyConv3dbpFilterCommon(const ge::Operator& op) {
 IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   OP_LOGI(op.GetName().c_str(), "Enter Conv3DBackpropFilter Infer Function!");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  std::vector<std::string> input_infer_depends = {"filter_size"};
+  op_desc->SetOpInferDepends(input_infer_depends);
 
+  auto y_desc = op_desc->MutableOutputDesc("y");
+  Format filter_format = y_desc->GetFormat();
+  CHECK_FORMAT_V2(filter_format);
+
+  auto x_desc = op_desc->MutableInputDesc("x");
+  Format x_format = x_desc->GetFormat();
+  CHECK_FORMAT_V2(x_format);
+  int32_t x_c = -1;
+  std::vector<int64_t> x_sizes = x_desc->MutableShape().GetDims();
+  bool x_unknown_rank = IsUnknownRankShape(x_sizes);
+  if (!x_unknown_rank) {
+    std::string x_format_str = format2str[x_format];
+    int32_t c_position = x_format_str.find('C');
+    x_c = x_sizes[c_position];
+  }
+
+  std::vector<int64_t> filter_sizes;
+  auto filter_size_desc = op_desc->MutableInputDesc("filter_size");
+  std::string filter_format_str = format2str[filter_format];
+  int32_t filter_co_position = filter_format_str.find('N');
+  int32_t filter_ci_position = filter_format_str.find('C');
+  auto out_backprop_desc = op_desc->MutableInputDesc("out_backprop");
+  bool is_filter_size_const = true;
   Tensor filter_sizes_tensor;
   if (GRAPH_SUCCESS != op.GetInputConstData("filter_size", filter_sizes_tensor)) {
-    OP_LOGE(op.GetName().c_str(), "get filter_size tensor failed.");
-    map<std::string, std::string> err_map;
-    err_map["op_name"] = "Conv3dbpFilter";
-    err_map["param_name"] = "filter_tensor";
-    std::string report_error_code = "E50030";
-    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
-    return GRAPH_FAILED;
+    filter_sizes.assign(kConv3dInputSizeLimit, -1);
+    is_filter_size_const = false;
+    std::vector<int64_t> out_backprop_sizes = out_backprop_desc->MutableShape().GetDims();
+    if (!IsUnknownRankShape(out_backprop_sizes)) {
+      Format out_backprop_format = out_backprop_desc->GetFormat();
+      CHECK_FORMAT_V2(out_backprop_format);
+      std::string format_str = format2str[out_backprop_format];
+      int32_t out_c_position = format_str.find('C');
+      filter_sizes[filter_co_position] = out_backprop_sizes[out_c_position];
+    }
+    int32_t groups_ori = 1;
+    op.GetAttr("groups", groups_ori);
+    filter_sizes[filter_ci_position] = (x_c >= 1 ? x_c / groups_ori : x_c);
+  } else {
+    // get shape for output from filter_size
+    DataType dtype = filter_size_desc->GetDataType();
+    GetConstValue(filter_sizes_tensor, dtype, filter_sizes);
   }
-  // get shape for output from filter_size
-  auto filter_sizes_desc = op_desc->MutableInputDesc("filter_size");
-  DataType dtype = filter_sizes_desc->GetDataType();
-  std::vector<int64_t> filter_sizes;
-  GetConstValue(filter_sizes_tensor, dtype, filter_sizes);
-
   if (filter_sizes.size() != kConv3dInputSizeLimit) {
     OP_LOGE(op.GetName().c_str(), "filter_sizes's shape should be 5d.");
     map<std::string, std::string> err_map;
     err_map["param_name"] = "filter_sizes";
     err_map["op_name"] = "Conv3dbpFilter";
-    err_map["excepted_value"] = std::to_string(5);
+    err_map["excepted_value"] = std::to_string(kConv3dInputSizeLimit);
     err_map["input_value"] = std::to_string(filter_sizes.size());
     std::string report_error_code = "E50029";
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
@@ -7433,8 +7465,6 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   }
 
   // set dtype of output desc
-  auto y_desc = op_desc->MutableOutputDesc("y");
-  auto out_backprop_desc = op_desc->MutableInputDesc("out_backprop");
   auto out_backprop_dtype = out_backprop_desc->GetDataType();
   y_desc->SetDataType(out_backprop_dtype);
   // set shape of output desc, filter_size should match the format of y
@@ -7446,20 +7476,19 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
   y_shape.push_back(filter_sizes[4]);
   y_desc->SetShape(ge::GeShape(y_shape));
 
-  auto x_desc = op_desc->MutableInputDesc("x");
-  std::vector<int64_t> x_sizes = x_desc->MutableShape().GetDims();
-  Format x_format = x_desc->GetFormat();
-  Format filter_format = y_desc->GetFormat();
-  std::vector<int64_t> out_backprop_sizes = out_backprop_desc->MutableShape().GetDims();
-
-  bool is_dynamic = false;
-  if (std::find(x_sizes.begin(), x_sizes.end(), -1) != x_sizes.end() ||
-      std::find(x_sizes.begin(), x_sizes.end(), -2) != x_sizes.end()) {
-      is_dynamic = true;
+  bool is_dynamic = (!is_filter_size_const || IsUnKnownShape(x_sizes) || x_unknown_rank);
+  bool unset_group = (x_unknown_rank || filter_sizes[filter_ci_position] < 1 || x_c < 1);
+  if (unset_group) {
+    OP_LOGD(op.GetName().c_str(), "ignore set groups.");
+  } else if (!SetGroupsConv(op, x_sizes, x_format, filter_sizes, filter_format)) {
+    OP_LOGD(op.GetName().c_str(), "Set groups for Conv3DBackpropFilter failed.");
+    map<std::string, std::string> err_map;
+    err_map["op_name"] = op.GetName();
+    err_map["description"] = "Set groups for Conv3DBackpropFilter failed.";
+    std::string report_error_code = "E50060";
+    ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
+    return GRAPH_FAILED;
   }
-
-  // to check whether channel is -1 here
-  (void)IsDHWUnknown(op.GetName(), "x", x_sizes, x_format);
 
   if (!is_dynamic) {
     // update pads list by padding[SAME,VALID]
@@ -7467,14 +7496,16 @@ IMPLEMT_INFERFUNC(Conv3DBackpropFilter, Conv3DBackpropFilterInfer) {
       CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "update pads list by padding failed.");
       return GRAPH_FAILED;
     }
-  } else {
+  } else if (IsUnKnownShape(x_sizes) || x_unknown_rank) {
     std::string pad_str;
-    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "SAME") {
-      op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
-      OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
-    } else if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str) && pad_str == "VALID") {
-      op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
-      OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0, 0, 0} when padding is VALID in dynamic_shape");
+    if (GRAPH_SUCCESS == op.GetAttr("padding", pad_str)) {
+      if (pad_str == "SAME") {
+        op.SetAttr("pads", {-1, -1, -1, -1, -1, -1});
+        OP_LOGD(op.GetName().c_str(), "set pads to {-1, -1, -1, -1, -1, -1} when padding is SAME in dynamic_shape");
+      } else if (pad_str == "VALID") {
+        op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+        OP_LOGD(op.GetName().c_str(), "set pads to {0, 0, 0, 0, 0, 0} when padding is VALID in dynamic_shape");
+      }
     }
   }
   OP_LOGI(op.GetName().c_str(), "Leaving Conv3DBackpropFilter infer function!");
