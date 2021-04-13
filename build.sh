@@ -116,7 +116,6 @@ build_cann() {
     cd "${CMAKE_DEVICE_PATH}" && cmake ${CMAKE_ARGS} ../..
     make ${VERBOSE} -j${THREAD_NUM}
   fi
-
   logging "CANN build success!"
 }
 
@@ -153,4 +152,4 @@ main() {
   logging "---------------- CANN build finished ----------------"
 }
 
-main "$@"
+main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'

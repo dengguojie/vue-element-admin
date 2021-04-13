@@ -28,6 +28,7 @@ set(ENABLE_TEST "")
 
 # whether building open project
 if(BUILD_OPEN_PROJECT)
+  add_definitions(-w)
   if(CANN_GCC_PREFIX)
     set(CMAKE_C_COMPILER ${CANN_GCC_PREFIX}gcc)
     set(CMAKE_CXX_COMPILER ${CANN_GCC_PREFIX}g++)
