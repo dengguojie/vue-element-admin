@@ -62,19 +62,19 @@ void RunLessKernel(vector<string> data_files,
   // read data from file for input1
   string data_path = ktestcaseFilePath + data_files[0];
   uint64_t input1_size = CalTotalElements(shapes, 0);
-  T1 input1[input1_size];
+  T1 *input1 = new T1[input1_size];
   bool status = ReadFile(data_path, input1, input1_size);
   EXPECT_EQ(status, true);
 
   // read data from file for input2
   data_path = ktestcaseFilePath + data_files[1];
   uint64_t input2_size = CalTotalElements(shapes, 1);
-  T2 input2[input2_size];
+  T2 *input2 = new T2[input2_size];
   status = ReadFile(data_path, input2, input2_size);
   EXPECT_EQ(status, true);
 
   uint64_t output_size = CalTotalElements(shapes, 2);
-  T3 output[output_size];
+  T3 *output = new T3[output_size];
   vector<void *> datas = {(void *)input1,
                           (void *)input2,
                           (void *)output};
@@ -84,12 +84,16 @@ void RunLessKernel(vector<string> data_files,
 
   // read data from file for expect ouput
   data_path = ktestcaseFilePath + data_files[2];
-  T3 output_exp[output_size];
+  T3 *output_exp = new T3[output_size];
   status = ReadFile(data_path, output_exp, output_size);
   EXPECT_EQ(status, true);
 
   bool compare = CompareResult(output, output_exp, output_size);
   EXPECT_EQ(compare, true);
+  delete [] input1;
+  delete [] input2;
+  delete [] output;
+  delete [] output_exp;
 }
 
 // only generate input data by SetRandomValue,
@@ -99,16 +103,16 @@ void RunLessKernel2(vector<DataType> data_types,
                     vector<vector<int64_t>> &shapes) {
   // gen data use SetRandomValue for input1
   uint64_t input1_size = CalTotalElements(shapes, 0);
-  T1 input1[input1_size];
+  T1 *input1 = new T1[input1_size];
   SetRandomValue<T1>(input1, input1_size);
 
   // gen data use SetRandomValue for input2
   uint64_t input2_size = CalTotalElements(shapes, 1);
-  T2 input2[input2_size];
+  T2 *input2 = new T2[input2_size];
   SetRandomValue<T2>(input2, input2_size);
 
   uint64_t output_size = CalTotalElements(shapes, 2);
-  T3 output[output_size];
+  T3 *output = new T3[output_size];
   vector<void *> datas = {(void *)input1,
                           (void *)input2,
                           (void *)output};
@@ -117,7 +121,7 @@ void RunLessKernel2(vector<DataType> data_types,
   RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
 
   // calculate output_exp
-  T3 output_exp[output_size];
+  T3 *output_exp = new T3[output_size];
   if(input1_size == input2_size) {
     CalcExpectWithSameShape<T1>(*node_def.get(), output_exp);
   } else {
@@ -126,6 +130,10 @@ void RunLessKernel2(vector<DataType> data_types,
 
   bool compare = CompareResult(output, output_exp, output_size);
   EXPECT_EQ(compare, true);
+  delete [] input1;
+  delete [] input2;
+  delete [] output;
+  delete [] output_exp;
 }
 
 TEST_F(TEST_LESS_UT, DATA_TYPE_INT32_SUCC) {
