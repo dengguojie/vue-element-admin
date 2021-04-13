@@ -399,3 +399,39 @@ TEST_F(MaxPoolProto, maxpool_proto_12) {
   EXPECT_EQ(output_desc.GetShapeRange(output_range), ge::GRAPH_SUCCESS);
   EXPECT_EQ(output_range, expected_range);
 }
+
+TEST_F(MaxPoolProto, maxpool_proto_13) {
+  // set input info
+  auto shape_x1 = vector<int64_t>({3, 5, 10, 10});
+  std::vector<std::pair<int64_t,int64_t>> range_x1 = {{3, 3}, {5, 5}, {10, 10}, {10, 10}};
+
+  auto ksize_list = vector<int64_t>({1, 1, -1, -1});
+  auto stride_list = vector<int64_t>({1, 1, 1, 1});
+  auto test_format = ge::FORMAT_NCHW;
+  auto pad_mode = "VALID";
+  auto data_format = "NCHW";
+
+  // expect result
+  std::vector<int64_t> expected_shape = {3, 5, 1, 1};
+
+  // create desc
+  auto tensor_desc_x1 = create_desc_shape_range(shape_x1, ge::DT_FLOAT16, test_format, shape_x1, test_format, range_x1);
+
+  // new op and do infershape
+  ge::op::MaxPool op;
+  op.UpdateInputDesc("x", tensor_desc_x1);
+  op.set_attr_ksize(ksize_list);
+  op.set_attr_strides(stride_list);
+  op.set_attr_padding(pad_mode);
+  op.set_attr_data_format(data_format);
+  auto ret = op.InferShapeAndType();
+
+  // check result
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  std::vector<int32_t> process_ksize;
+  EXPECT_EQ(op.GetAttr("ksize", process_ksize), ge::GRAPH_SUCCESS);
+  EXPECT_EQ(process_ksize[2], 10);
+  EXPECT_EQ(process_ksize[3], 10);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
+}

@@ -2881,6 +2881,16 @@ IMPLEMT_INFERFUNC(MaxPool, MaxPoolInferShape) {
     ksize[strides_w_dim] = 1;
   }
 
+  // set ksize for global max pool
+  bool unknowRank = IsUnknownRankShape(input_dims);
+  if (!unknowRank) {
+    if (ksize[input_h_dim] == -1 && ksize[input_w_dim] == -1) {
+      ksize[input_h_dim] = input_dims[input_h_dim];
+      ksize[input_w_dim] = input_dims[input_w_dim];
+      op.SetAttr("ksize", ksize);
+    }
+  }
+
   for (size_t i = 0; i < input_dims.size(); i++) {
     int64_t dim_size = input_dims[i];
     auto dim_range = input_range[i];
