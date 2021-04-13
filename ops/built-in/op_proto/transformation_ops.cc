@@ -2797,104 +2797,96 @@ VERIFY_FUNC_REG(FlattenV2, FlattenV2Verify);
 // -----------------FlattenV2 END-------------------------
 // -----------------Col2im Op-------------------------
 IMPLEMT_VERIFIER(Col2im, Col2imVerify) {
-    vector<int32_t> kernel_size;
-    if (GRAPH_SUCCESS != op.GetAttr("kernel_size", kernel_size)) {
-        OP_LOGE(op.GetName().c_str(), "Attr[kernel_size], get failed.");
-        return GRAPH_FAILED;
-    }
-    if (kernel_size.size() != 2) {
-        OP_LOGE(op.GetName().c_str(), "Attr[kernel_size], size of kernel_size must be 2.");
-        return GRAPH_FAILED;
-    }
+  vector<int32_t> kernel_size;
+  if (GRAPH_SUCCESS != op.GetAttr("kernel_size", kernel_size)) {
+    OP_LOGE(op.GetName().c_str(), "Attr[kernel_size], get failed.");
+    return GRAPH_FAILED;
+  }
+  if (kernel_size.size() != 2) {
+    OP_LOGE(op.GetName().c_str(), "Attr[kernel_size], size of kernel_size must be 2.");
+    return GRAPH_FAILED;
+  }
 
-    vector<int32_t> dilation;
-    if (GRAPH_SUCCESS != op.GetAttr("dilation", dilation)) {
-        OP_LOGE(op.GetName().c_str(), "Attr[dilation], get failed.");
-        return GRAPH_FAILED;
-    }
-    if (dilation.size() != 2) {
-        OP_LOGE(op.GetName().c_str(), "Attr[dilation], size of dilation must be 2.");
-        return GRAPH_FAILED;
-    }
+  vector<int32_t> dilation;
+  if (GRAPH_SUCCESS != op.GetAttr("dilation", dilation)) {
+    OP_LOGE(op.GetName().c_str(), "Attr[dilation], get failed.");
+    return GRAPH_FAILED;
+  }
+  if (dilation.size() != 2) {
+    OP_LOGE(op.GetName().c_str(), "Attr[dilation], size of dilation must be 2.");
+    return GRAPH_FAILED;
+  }
 
-    vector<int32_t> padding;
-    if (GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
-        OP_LOGE(op.GetName().c_str(), "Attr[padding], get failed.");
-        return GRAPH_FAILED;
-    }
-    if (padding.size() != 2) {
-        OP_LOGE(op.GetName().c_str(), "Attr[padding], size of padding must be 2.");
-        return GRAPH_FAILED;
-    }
+  vector<int32_t> padding;
+  if (GRAPH_SUCCESS != op.GetAttr("padding", padding)) {
+    OP_LOGE(op.GetName().c_str(), "Attr[padding], get failed.");
+    return GRAPH_FAILED;
+  }
+  if (padding.size() != 2) {
+    OP_LOGE(op.GetName().c_str(), "Attr[padding], size of padding must be 2.");
+    return GRAPH_FAILED;
+  }
 
-    vector<int32_t> stride;
-    if (GRAPH_SUCCESS != op.GetAttr("stride", stride)) {
-        OP_LOGE(op.GetName().c_str(), "Attr[stride], get failed.");
-        return GRAPH_FAILED;
-    }
-    if (stride.size() != 2) {
-        OP_LOGE(op.GetName().c_str(), "Attr[stride], size of stride must be 2.");
-        return GRAPH_FAILED;
-    }
+  vector<int32_t> stride;
+  if (GRAPH_SUCCESS != op.GetAttr("stride", stride)) {
+    OP_LOGE(op.GetName().c_str(), "Attr[stride], get failed.");
+    return GRAPH_FAILED;
+  }
+  if (stride.size() != 2) {
+    OP_LOGE(op.GetName().c_str(), "Attr[stride], size of stride must be 2.");
+    return GRAPH_FAILED;
+  }
 
-    return GRAPH_SUCCESS;
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_INFERFUNC(Col2im, Col2imInferShape) {
-    TensorDesc input_desc = op.GetInputDesc("x");
-    TensorDesc output_desc = op.GetOutputDesc("y");
-    DataType input_dtype = input_desc.GetDataType();
-    output_desc.SetDataType(input_dtype);
+  TensorDesc input_desc = op.GetInputDesc("x");
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  DataType input_dtype = input_desc.GetDataType();
+  output_desc.SetDataType(input_dtype);
 
-    Format input_format = input_desc.GetFormat();
-    if (input_format != FORMAT_NC1HWC0) {
-        OP_LOGE(op.GetName().c_str(), "Input[x], format of x must be NC1HWC0.");
-        return GRAPH_FAILED;
-    }
-    output_desc.SetFormat(input_format);
+  Format input_format = input_desc.GetFormat();
+  output_desc.SetFormat(input_format);
 
-    Shape input_shape = input_desc.GetShape();  
-    if (input_shape.GetDimNum() != 5) {
-        OP_LOGE(op.GetName().c_str(), "Input[x], dim of x must be 5.");
-        return GRAPH_FAILED;
-    }
-    vector<int64_t> input_size = input_shape.GetDims();
-    
-    Tensor output_size_tensor;
-    if (op.GetInputConstData("output_size", output_size_tensor) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "Input[output_size], get failed.");
-        return GRAPH_FAILED;
-    }
+  Shape input_shape = input_desc.GetShape();  
+  vector<int64_t> input_size = input_shape.GetDims();
+  
+  Tensor output_size_tensor;
+  if (op.GetInputConstData("output_size", output_size_tensor) != GRAPH_SUCCESS) {
+    OP_LOGE(op.GetName().c_str(), "Input[output_size], get failed.");
+    return GRAPH_FAILED;
+  }
 
-    vector<int64_t> output_size_value;
-    if (!GetConstValue(op, output_size_tensor, DT_INT32, output_size_value)) {
-        OP_LOGE(op.GetName().c_str(), "Input[output_size], get failed.");
-        return GRAPH_FAILED;
-    }
-    if (output_size_value.size()!=2) {
-        OP_LOGE(op.GetName().c_str(), "Input[output_size], size of output_size must be 2.");
-        return GRAPH_FAILED;
-    }
-    int64_t dtype_repeat_num;
-    if (input_dtype ==DT_FLOAT) {
-      dtype_repeat_num = 64;
-    } else {
-      dtype_repeat_num = 128;
-    }
-    int64_t repeat_times_max = 255;
-    if ((output_size_value[1] * input_size[4]) / dtype_repeat_num  > repeat_times_max) {
-        OP_LOGE(op.GetName().c_str(), "InferShape[Col2im], width of output too large, not support.");
-        return GRAPH_FAILED;
-    }
+  vector<int64_t> output_size_value;
+  if (!GetConstValue(op, output_size_tensor, DT_INT32, output_size_value)) {
+    OP_LOGE(op.GetName().c_str(), "Input[output_size], get failed.");
+    return GRAPH_FAILED;
+  }
+  if (output_size_value.size()!=2) {
+    OP_LOGE(op.GetName().c_str(), "Input[output_size], size of output_size must be 2.");
+    return GRAPH_FAILED;
+  }
+  int64_t dtype_repeat_num;
+  if (input_dtype ==DT_FLOAT) {
+    dtype_repeat_num = 64;
+  } else {
+    dtype_repeat_num = 128;
+  }
+  int64_t repeat_times_max = 255;
+  if ((output_size_value[1] * input_size[4]) / dtype_repeat_num  > repeat_times_max) {
+    OP_LOGE(op.GetName().c_str(), "InferShape[Col2im], width of output too large, not support.");
+    return GRAPH_FAILED;
+  }
 
-    vector<int64_t> output_shape(
-        {input_size[0], input_size[1], output_size_value[0], output_size_value[1], input_size[4]}
-    );
-    
-    output_desc.SetShape(Shape(output_shape));
+  vector<int64_t> output_shape(
+    {input_size[0], input_size[1], output_size_value[0], output_size_value[1]}
+  );
+  
+  output_desc.SetShape(Shape(output_shape));
 
-    (void)op.UpdateOutputDesc("y", output_desc);
-    return GRAPH_SUCCESS;
+  (void)op.UpdateOutputDesc("y", output_desc);
+  return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(Col2im, Col2imInferShape);

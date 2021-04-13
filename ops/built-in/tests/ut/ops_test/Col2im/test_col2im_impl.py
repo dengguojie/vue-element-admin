@@ -31,7 +31,7 @@ def calc_expect_func(x, output_size,  y, kernel_size, dilation, padding, stride)
     img_5hd = img_nchw.reshape(img_n, img_c1, img_c0, img_h, img_w).permute(0,1,3,4,2)
     return img_5hd.numpy()
 
-ut_case.add_precision_case("Ascend910A", {
+ut_case.add_precision_case("all", {
     "params": [
         {"dtype": "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0", "ori_shape": (3,2,9,64,16), "shape": (3,2,9,64,16),
                 "param_type": "input","range_value":[0.1,2.0]},
@@ -45,7 +45,7 @@ ut_case.add_precision_case("Ascend910A", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("Ascend910A", {
+ut_case.add_precision_case("all", {
     "params": [
         {"dtype": "float32", "format": "NC1HWC0", "ori_format": "NC1HWC0", "ori_shape": (1,1,9,256,16), "shape": (1,1,9,256,16),
                 "param_type": "input","range_value":[0.1,2.0]},
@@ -59,7 +59,7 @@ ut_case.add_precision_case("Ascend910A", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("Ascend910A", {
+ut_case.add_precision_case("all", {
     "params": [
         {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0", "ori_shape": (3,2,9,64,16), "shape": (3,2,9,64,16),
                 "param_type": "input","range_value":[0.1,2.0]},
@@ -73,7 +73,7 @@ ut_case.add_precision_case("Ascend910A", {
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
-ut_case.add_precision_case("Ascend910A", {
+ut_case.add_precision_case("all", {
     "params": [
         {"dtype": "float16", "format": "NC1HWC0", "ori_format": "NC1HWC0", "ori_shape": (1,1,9,256,16), "shape": (1,1,9,256,16),
                 "param_type": "input","range_value":[0.1,2.0]},
