@@ -88,7 +88,7 @@ def _pre_broadcast(x1, x2, y, kernel_name):
         x1["shape"] = pre_shape
         x1["range"] = pre_range
     elif len(shape_x) > len(shape_y):
-        pre_shape = tuple([1]* (len(shape_x) - len(shape_y))) + tuple(shape_x)
+        pre_shape = tuple([1]* (len(shape_x) - len(shape_y))) + tuple(shape_y)
         pre_range = [[1, 1]] * (len(shape_x) - len(shape_y)) + range_y
         x2["shape"] = pre_shape
         x2["range"] = pre_range

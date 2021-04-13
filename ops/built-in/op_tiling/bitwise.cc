@@ -60,10 +60,10 @@ OpRunInfo& run_info) {
 
     TeOpParas op_paras_tmp = op_paras;
     //update new shape
-    op_paras_tmp.inputs[1].tensor[0].shape = std::move(x1_broadcast_shape);
-    op_paras_tmp.inputs[1].tensor[0].dtype = "int16";
-    op_paras_tmp.inputs[0].tensor[0].shape = std::move(x2_broadcast_shape);
+    op_paras_tmp.inputs[0].tensor[0].shape = std::move(x1_broadcast_shape);
     op_paras_tmp.inputs[0].tensor[0].dtype = "int16";
+    op_paras_tmp.inputs[1].tensor[0].shape = std::move(x2_broadcast_shape);
+    op_paras_tmp.inputs[1].tensor[0].dtype = "int16";
 
     bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
     return ret;
