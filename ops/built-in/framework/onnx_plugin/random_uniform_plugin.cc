@@ -78,7 +78,7 @@ Status ParseParamsRandomuniform(const Message* op_src, ge::Operator& op_dest) {
 }
 
 Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
-  int temp_num = 1000;
+  float temp_num = 1000.;
   ge::Tensor shape;
   if (op.GetAttr("shape", shape) != SUCCESS) {
     OP_LOGE("Randomuniform", "get shape from op failed");
@@ -119,10 +119,12 @@ Status ParseOpToGraphRandomuniform(const ge::Operator &op, ge::Graph &graph) {
                     .set_attr_seed(seed)
                     .set_attr_seed2(seed);
 
-  ge::TensorDesc tensorDesc3(ge::Shape({1}), FORMAT_ND, ge::DT_INT32);
-  ge::Tensor temp_tensor(tensorDesc3, reinterpret_cast<uint8_t*>(&temp_num), sizeof(ge::DT_INT32));
+  auto random_fp32 = op::Cast().set_input_x(random).set_attr_dst_type(0);
+
+  ge::TensorDesc tensorDesc3(ge::Shape({1}), FORMAT_ND, ge::DT_FLOAT);
+  ge::Tensor temp_tensor(tensorDesc3, reinterpret_cast<uint8_t*>(&temp_num), sizeof(ge::DT_FLOAT));
   auto data3 = op::Const("data3").set_attr_value(temp_tensor);
-  auto div = op::Div().set_input_x1(random).set_input_x2(data3);
+  auto div = op::Div().set_input_x1(random_fp32).set_input_x2(data3);
 
   int dtype = 1;
   if (op.GetAttr("dtype", dtype) != SUCCESS) {
