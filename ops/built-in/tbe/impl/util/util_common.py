@@ -366,7 +366,7 @@ def is_dynamic_input(_inputs):
         _inputs = [_inputs]
 
     for _, _input in enumerate(_inputs):
-        if -1 in _input.get("shape"):
+        if -1 in _input.get("shape") or -1 in _input.get("ori_shape"):
             return True
 
     return False
@@ -391,6 +391,28 @@ def is_unknown_rank_input(input_list):
     for _, _input in enumerate(input_list):
         if -2 in _input.get("shape") or -2 in _input.get("ori_shape"):
             return True
+
+    return False
+
+
+def is_unknown(_inputs):
+    """
+    is_unknown: check whether the shape contain -1 or -2
+        contain -1 or -2 return True else False
+
+    Parameters
+    ----------
+    input_list: list of dict/tuple of dict/dict
+
+    Returns
+    -------
+    bool
+    """
+    if is_dynamic_input(_inputs):
+        return True
+
+    if is_unknown_rank_input(_inputs):
+        return True
 
     return False
 
