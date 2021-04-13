@@ -1838,6 +1838,7 @@ def bn_update_schedule(res, input_tensors):
 
         is_input_num_match = \
             len(input_tensors) == 5 or \
+            len(input_tensors) == 6 or \
             len(input_tensors) == 7 or \
             len(input_tensors) == 8
 
