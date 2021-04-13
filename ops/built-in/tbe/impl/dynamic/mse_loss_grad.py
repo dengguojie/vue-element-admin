@@ -19,6 +19,7 @@ import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
@@ -54,7 +55,15 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     -------
     output tensor
     """
-    calc_dtype = predict.dtype
+    ori_dtype = predict.dtype
+    trans_dtype = ori_dtype
+    if ori_dtype == "float16" and tbe_platform.api_check_support(
+            "te.lang.cce.vmul", "float32"):
+        predict = tbe.cast_to(predict, "float32")
+        label = tbe.cast_to(label, "float32")
+        dout = tbe.cast_to(dout, "float32")
+        trans_dtype = "float32"
+
     predict_shape = shape_util.shape_to_list(predict.shape)
     label_shape = shape_util.shape_to_list(label.shape)
     dout_shape = shape_util.shape_to_list(dout.shape)
@@ -66,6 +75,7 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     label = tbe.broadcast(label, max_shape)
     dout = tbe.broadcast(dout, max_shape)
 
+    calc_dtype = trans_dtype
     if reduction == "mean":
         reduce_elts = 1.0
         for i in predict_shape:
@@ -84,6 +94,9 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     sub_res = tbe.vsub(predict, label)
     norm_grad = tbe.vmuls(sub_res, cof)
     grad_res = tbe.vmul(norm_grad, dout)
+
+    if ori_dtype == "float16":
+        grad_res = tbe.cast_to(grad_res, "float16")
 
     return grad_res
 
