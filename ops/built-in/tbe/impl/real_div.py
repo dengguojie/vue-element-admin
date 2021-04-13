@@ -170,14 +170,16 @@ def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
             format_list_input1.append("FRACTAL_NZ")
             format_list_output.append("FRACTAL_NZ")
 
-    #ND/NZ
-    if len(shape_x) == 1 and len(shape_y) >= 2 and shape_x[-1] == shape_y[-1]:
-        if shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0:
+    #ND/NZ & scalar/NZ
+    if len(shape_x) == 1 and len(shape_y) >= 2 and (shape_x[-1] == shape_y[-1] or \
+        shape_x[-1] == 1):
+        if _can_division_sixteen(shape_y):
             format_list_input0.append("ND")
             format_list_input1.append("FRACTAL_NZ")
             format_list_output.append("FRACTAL_NZ")
-    #NZ/ND
-    if len(shape_y) == 1 and len(shape_x) >= 2 and shape_x[-1] == shape_y[-1]:
+    #NZ/ND & NZ/scalar
+    if len(shape_y) == 1 and len(shape_x) >= 2 and (shape_x[-1] == shape_y[-1] or \
+        shape_y[-1] == 1):
         format_list_input0.append("FRACTAL_NZ")
         format_list_input1.append("ND")
         format_list_output.append("FRACTAL_NZ")
@@ -189,19 +191,27 @@ def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
         if shape_x[0] % 16 == 0 and y_cdim % 16 == 0:
             _all_append_format_list("NC1HWC0")
 
-    # 5HD/scalar,FZ/scalar
-    if len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
-        if len(shape_x) == 4 and len(shape_y) == 1 and format_x in format_4d_list:
-            _all_append_format_list("NC1HWC0")
-            _all_append_format_list("FRACTAL_Z")
+    # 4D/scalar --> FZ/ND & 5HD/ND
+    if len(shape_x) == 4 and len(shape_y) == 1 and shape_y[0] == 1 \
+       and format_x in format_4d_list:
+        format_list_input0.append("NC1HWC0")
+        format_list_input1.append("ND")
+        format_list_output.append("NC1HWC0")
+        format_list_input0.append("FRACTAL_Z")
+        format_list_input1.append("ND")
+        format_list_output.append("FRACTAL_Z")
 
-    #scalar/5HD,scalar/FZ
-    if len(shape_y) >= 2 and len(shape_x) == 1 and shape_x[0] == 1:
-        if len(shape_x) == 1 and len(shape_y) == 4 and format_y in format_4d_list:
-            if y_cdim % 16 == 0:
-                _all_append_format_list("NC1HWC0")
-            if y_cdim % 16 == 0 and y_ndim % 16 == 0:
-                _all_append_format_list("FRACTAL_Z")
+    # scalar/4D --> ND/FZ & ND/5HD
+    if len(shape_y) == 4 and len(shape_x) == 1 and shape_x[0] == 1 \
+       and format_y in format_4d_list:
+        if y_cdim % 16 == 0:
+            format_list_input0.append("ND")
+            format_list_input1.append("NC1HWC0")
+            format_list_output.append("NC1HWC0")
+        if y_cdim % 16 == 0 and y_ndim % 16 == 0:
+            format_list_input0.append("ND")
+            format_list_input1.append("FRACTAL_Z")
+            format_list_output.append("FRACTAL_Z")
 
     # ND/ND,5HD/5HD
     if len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:

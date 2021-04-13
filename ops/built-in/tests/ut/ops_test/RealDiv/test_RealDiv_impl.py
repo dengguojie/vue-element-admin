@@ -192,4 +192,30 @@ def test_op_select_format(test_arg):
                      {"shape": (1, 1, 32, 1), "dtype": "int8", "format": "HWCN", "ori_shape": (1, 1, 32, 1),
                       "ori_format": "HWCN"},
                      "test_real_div_op_select_format_12")
+    op_select_format({"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
+                      "ori_format": "ND"},
+                     {"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1,),
+                      "ori_format": "ND"},
+                     {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
+                      "ori_format": "ND"},
+                     "test_real_div_op_select_format_13")
+    op_select_format({"shape": (1, ), "dtype": "float16", "format": "ND", "ori_shape": (1,),
+                      "ori_format": "ND"},
+                      {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
+                      "ori_format": "ND"},
+                     {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
+                      "ori_format": "ND"},
+                     "test_real_div_op_select_format_14")
+    op_select_format({"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     "test_real_div_op_select_format_15")
+    op_select_format({"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     "test_real_div_op_select_format_16")
 ut_case.add_cust_test_func(test_func=test_op_select_format)

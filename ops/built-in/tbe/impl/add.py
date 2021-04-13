@@ -375,18 +375,13 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         unknownshape_format_list = ["ND"] * len(dtype_total)
 
     if _can_broadcast(shape_x, shape_y) and len(shape_x) != len(shape_y):
-        product_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
         y_format = input_y.get("ori_format")
         x_format = input_x.get("ori_format")
         if x_format == "NHWC" or y_format == "NHWC":
             if len(shape_x) > 4 or len(shape_y) > 4:
                 formats = ["ND"]
             else:
-                if (set(shape_x) == {1} or set(shape_y) == {1}) and shape_x[-1] % 16 != 0 and \
-                    shape_y[-1] % 16 != 0 and product_version in ["Ascend910"]:
-                    formats = ["ND"]
-                else:
-                    formats = format_5hd
+                formats = format_5hd
             for item in formats:
                 dtype_total = dtype_total + dtype_list
                 format_list_input0 = format_list_input0 + [item] * len(dtype_list)
