@@ -279,6 +279,7 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
 
         compress_index_shape = tvm.var("compress_index_shape", dtype="int32")
         compress_index = tvm.placeholder((compress_index_shape,), name='compress_index', dtype=index_dtype)
+        tensor_list.append(compress_index)
         bias_tensor = None
         offset_w_tensor = None
         if bias:
@@ -295,7 +296,6 @@ def _conv_layer_compress_cce(shape_in, shape_w, shape_index, in_dtype,
              "kernel_name": kernel_name},
             optim_dict=optim_dict, dsl_flag=False)
         sch = tbe.auto_schedule(conv_res)
-        tensor_list.append(compress_index)
         tensor_list.append(conv_res)
 
     config = {
