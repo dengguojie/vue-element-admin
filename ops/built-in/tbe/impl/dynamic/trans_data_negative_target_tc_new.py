@@ -18,9 +18,8 @@ trans_data_negative_target_tc
 
 from __future__ import absolute_import
 from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import para_check
-from .. import trans_data_common_func as tdc
 from impl.util.platform_adapter import tbe_context
+from .. import trans_data_common_func as tdc
 
 
 # frame up levels
@@ -41,14 +40,15 @@ def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dty
     for reg_idx in range(TILING_CTRL_PARAM[1]):
         tiling_params[reg_idx].set_as(tiling_ub[reg_idx])
 
-# pylint: disable=too-many-locals
+
+# pylint: disable=too-many-locals, too-many-statements
 def _twice_vnchwconv_no_invert(args):
     """
     do ncht to nhct transform by twice vnchwconv
     """
 
     (tik_inst, src_ub, ub_offset, left_pl_size, c1_pl_size, r2nd_pl_size,
-     c0_len, ele_per_block, in_dtype, tiling_mode, all_c_in, sub_c_size, c_mod_c0) = args
+     c0_len, ele_per_block, in_dtype, tiling_mode, all_c_in, sub_c_size) = args
     dtype_factor = tdc.get_dtype_factor(in_dtype)
 
     with tik_inst.new_stmt_scope():
@@ -278,7 +278,7 @@ def _copy_data_in_1(args):
                         r2nd_ub_offset = r2nd_idx * left_pl_size * c0_len
                         r2nd_gm_offset = r2nd_idx * dst_r2nd_in_0_src_asize
                         tik_inst.data_move(src_ub[r2nd_ub_offset + ub_args + ub_offset],
-                                           src_in_gm[r2nd_gm_offset + gm_args],
+                                           src_in_gm[r2nd_gm_offset + gm_args + in_gm_offset],
                                            0, 1, left_pl_size * c0_len // ele_per_block, 0, 0)
                 with tik_inst.else_scope():
                     tik_inst.data_move(src_ub[ub_args + ub_offset], src_in_gm[gm_args + in_gm_offset],
@@ -505,7 +505,7 @@ def _func_transform_201(tensor_args, tp_args):
                                                    tik.all(mc_pos == 2, block_idx == used_core_cnt - 1,
                                                            r2nd_lp_idx == dst_r2nd_lp_cnt - 2, lc_dst_r2nd_left > 0,
                                                            lc_dst_r2nd_left * sub_c_size < ele_per_block),
-                                                   tik.all(mc_pos != 2, r2nd_lp_idx == src_left_lp_cnt - 2,
+                                                   tik.all(mc_pos != 2, r2nd_lp_idx == dst_r2nd_lp_cnt - 2,
                                                            lc_dst_r2nd_left > 0,
                                                            lc_dst_r2nd_left * sub_c_size < ele_per_block))):
                         r2nd_pl_size.set_as(dst_r2nd_lp_unit - ele_per_block)
@@ -521,7 +521,7 @@ def _func_transform_201(tensor_args, tp_args):
                         is_r2nd_back.set_as(0)
                 r2nd_backend = is_r2nd_back * ele_per_block
                 with tik_inst.if_scope(mc_pos == 2):
-                    r2nd_beg.set_as((r2nd_lp_idx + block_idx) * dst_r2nd_lp_unit - r2nd_backend)
+                    r2nd_beg.set_as((r2nd_lp_idx + block_idx * nlc_dst_r2nd_lp_cnt) * dst_r2nd_lp_unit - r2nd_backend)
                 with tik_inst.else_scope():
                     r2nd_beg.set_as(r2nd_lp_idx * dst_r2nd_lp_unit - r2nd_backend)
 
@@ -580,7 +580,7 @@ def _func_transform_201(tensor_args, tp_args):
                         _ubuf_2_ubuf_convert(ubuf_args)
                     with tik_inst.else_scope():  # use twice vnchwconv
                         vnc_args = (tik_inst, src_ub, ub_offset, left_pl_size, c1_pl_size, r2nd_pl_size, c0_len,
-                                    ele_per_block, in_dtype, tiling_mode, all_c_in, sub_c_size, c_mod_c0)
+                                    ele_per_block, in_dtype, tiling_mode, all_c_in, sub_c_size)
                         _twice_vnchwconv_no_invert(vnc_args)
                     out_gm_args = (r2nd_lp_idx, dst_r2nd_lp_step_out, r2nd_backend, dst_r2nd_step_out,
                                    c1_lp_idx, src_c1_lp_step_out, c1_backend * c0_len, left_lp_idx,
@@ -601,7 +601,9 @@ def _func_transform_201(tensor_args, tp_args):
         _inner_func(lc_args)
 
 
-def trans_data_negative_target_tc_new(src, dst, src_format, dst_format, kernel_name="trans_data_negative_target_tc_new"):
+# pylint: disable=unused-argument
+def trans_data_negative_target_tc_new(src, dst, src_format, dst_format,
+                                      kernel_name="trans_data_negative_target_tc_new"):
     """
     negative transform for last dimension of target format is c
 

@@ -444,6 +444,25 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
     outShapeNew = {axisN, axisHW, axisC};
   }
 
+  if (srcFormat == "NDC1HWC0" && dstFormat == "NDHWC") {
+    if (inShape.size() != 6 || outShape.size() != 5) {
+      OP_LOGE("trans_data", "The input shape dimension size should be 6 and output's should be 5!");
+      return false;
+    }
+    realSrcFormat = "NCHT";
+    realDstFormat = "NHC";
+    int64_t axisN = inShape[0];
+    int64_t axisD = inShape[1];
+    int64_t axisC1 = inShape[2];
+    int64_t axisH = inShape[3];
+    int64_t axisW = inShape[4];
+    int64_t axisC0 = inShape[5];
+    int64_t axisC = outShape[outShape.size() - 1];
+    int64_t axisHW = axisH * axisW;
+    inShapeNew = {axisN * axisD, axisC1, axisHW, axisC0};
+    outShapeNew = {axisN * axisD, axisHW, axisC};
+  }
+
   if ((srcFormat == "FRACTAL_NZ") && (dstFormat == "ND" || dstFormat == "NCHW" || dstFormat == "NHWC")) {
     if (outShape.size() == 0) {
       OP_LOGE("trans_data", "The output shape dimension size cannot be 0!");
@@ -498,6 +517,28 @@ bool GetRenew2Shape(std::vector<int64_t> inShape, std::vector<int64_t> outShape,
 
     inShapeNew = {axisD, axisC1, axisH * axisW, axisNo * axisNi, axisC0};
     outShapeNew = {axisN, axisD, axisH * axisW, axisC};
+  }
+
+  if (srcFormat == "FRACTAL_NZ" && dstFormat == "NC1HWC0") {
+    if (outShape.size() != 5) {
+      OP_LOGE("op [TransDataTiling] : GetRenew2Shape error, shape size incorrect");
+      return false;
+    }
+    realSrcFormat = "DCHNT";
+    realDstFormat = "NDHC";
+
+    int64_t axisD = 1;
+    int64_t axisC = 1;
+    int64_t axisN = outShape[0];
+    int64_t axisC1 = outShape[1];
+    int64_t axisH = outShape[2];
+    int64_t axisW = outShape[3];
+    int64_t axisC0 = outShape[4];
+    int64_t axisNo = GetCeilDiv(axisN, NI_16);
+    int64_t axisNi = NI_16;
+
+    inShapeNew = {axisD, axisC, axisC1 * axisH * axisW, axisNo * axisNi, axisC0};
+    outShapeNew = {axisN, axisD, axisC1 * axisH * axisW, axisC0};
   }
 
   if ((srcFormat == "FRACTAL_Z" || srcFormat == "FRACTAL_ZN") && (dstFormat == "HWCN")) {
@@ -795,7 +836,9 @@ bool TransDataTiling(const std::string& opType, const TeOpParas& opParas, const 
     }
 
   } else if ((srcFormat == "NC1HWC0" && dstFormat == "NHWC") || (srcFormat == "FRACTAL_NZ" && dstFormat == "ND") ||
-              (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC")) {
+              (srcFormat == "FRACTAL_Z_3D" && dstFormat == "NDHWC") ||
+              (srcFormat == "FRACTAL_NZ" && (dstFormat == "NCHW" || dstFormat == "NHWC" || dstFormat == "NC1HWC0")) ||
+              (srcFormat == "NDC1HWC0" && dstFormat == "NDHWC")) {
     TransDataTc201Param runParams201;
     flag = TilingNegativeTc201(inShapeNew, outShapeNew, realSrcFormat, realDstFormat, blockDim, blockElemCnt, dType,
                                ubSize, runParams201);

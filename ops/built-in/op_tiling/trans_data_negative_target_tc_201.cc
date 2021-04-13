@@ -180,14 +180,14 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
     params.tilingMode = 2010;
     tmpSrcClLpUnit = params.ubOffset / c0Len / blockElemCnt * blockElemCnt;
   } else if (dtype != "int8" && dtype != "uint8") {
-    if (axisSrcC1Size * c0Len * axisDstR2ndSize >= vncColSize / VNC_LINES) {
+    if (axisDstCSize * axisDstR2ndSize >= vncColSize / VNC_LINES) {
       params.tilingMode = 2011;
     } else {
       params.tilingMode = 2012;
     }
     tmpSrcClLpUnit = vncColSize / c0Len / blockElemCnt * blockElemCnt;
   } else {
-    if (axisSrcC1Size * c0Len * axisDstR2ndSize >= vncColSize / 2 / VNC_LINES) {
+    if (axisDstCSize * axisDstR2ndSize >= vncColSize / 2 / VNC_LINES) {
       params.tilingMode = 2011;
     } else {
       params.tilingMode = 2012;
@@ -270,7 +270,7 @@ bool TilingNegativeTc201(vector<int64_t>& inShape, vector<int64_t>& outShape, st
   } else {
     tmpSrcLeftLpUnit = vncColSize / 2 / (params.srcClLpUnit * params.dstR2ndLpUnit * c0Len);
   }
-  if (params.tilingMode == 2011 && tmpSrcLeftLpUnit > NI_16) {
+  if (params.tilingMode == 2011) {
     tmpSrcLeftLpUnit = NI_16;
   }
   params.srcLeftLpUnit = axisSrcLeftSize > tmpSrcLeftLpUnit ? tmpSrcLeftLpUnit : axisSrcLeftSize;

@@ -19,10 +19,7 @@ from __future__ import absolute_import
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-from impl.dynamic.trans_data_rnn import trans_data_rnn
 from impl.dynamic.transpose import Transpose
-from . import trans_data_negative_target_tc
-from . import trans_data_negative_target_ch
 from . import trans_data_positive_source_tc
 from . import trans_data_negative_target_ntc
 from . import trans_data_positive_source_ntc
@@ -39,27 +36,25 @@ def is_do_with_transpose_formats(src_format, dst_format):
     format_list = ["NCHW", "NHWC", "HWCN", "CHWN"]
     if src_format in format_list and dst_format in format_list and src_format != dst_format:
         return True
-    else:
-        return False
+    return False
 
 
 def is_do_with_positive_source_ntc_100(src_format, dst_format):
     """
-    judge src_format and dst_format in the dict: 
-    {"NCDHW":"NDC1HWC0", "NCHW":"NC1HWC0", "HWCN":"FRACTAL_Z", "HWCN":"FRACTAL_ZN", "DHWCN":"FRACTAL_Z_3D", 
-    "ND":"FRACTAL_Z", "ND":"FRACTAL_ZN", "NCHW":"FRACTAL_Z", "NCHW":"FRACTAL_ZN", "NCDHW":"FRACTAL_Z_3D"}       
+    judge src_format and dst_format in the dict:
+    {"NCDHW":"NDC1HWC0", "NCHW":"NC1HWC0", "HWCN":"FRACTAL_Z", "HWCN":"FRACTAL_ZN", "DHWCN":"FRACTAL_Z_3D",
+    "ND":"FRACTAL_Z", "ND":"FRACTAL_ZN", "NCHW":"FRACTAL_Z", "NCHW":"FRACTAL_ZN", "NCDHW":"FRACTAL_Z_3D"}
     """
-    support_src_dst_formats = {"NCDHW":["NDC1HWC0", "FRACTAL_Z_3D"], "HWCN":["FRACTAL_Z", "FRACTAL_ZN"], 
-                               "DHWCN":["FRACTAL_Z_3D"], "ND":["FRACTAL_Z", "FRACTAL_ZN"], 
-                               "NCHW":["FRACTAL_Z", "FRACTAL_ZN", "NC1HWC0"]}
+    support_src_dst_formats = {"NCDHW": ["NDC1HWC0", "FRACTAL_Z_3D"], "HWCN": ["FRACTAL_Z", "FRACTAL_ZN"],
+                               "DHWCN": ["FRACTAL_Z_3D"], "ND": ["FRACTAL_Z", "FRACTAL_ZN"],
+                               "NCHW": ["FRACTAL_Z", "FRACTAL_ZN", "NC1HWC0"]}
     if src_format in support_src_dst_formats and dst_format in support_src_dst_formats.get(src_format):
         return True
-    else:
-        return False
-
-# pylint: disable=unused-argument
+    return False
 
 
+# pylint: disable=unused-argument, too-many-arguments, too-many-locals, too-many-boolean-expressions
+# pylint: disable=inconsistent-return-statements
 @register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
@@ -70,16 +65,19 @@ def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_dat
     src_format = src_format.upper()
     dst_format = dst_format.upper()
 
-    if (src_format == "NC1HWC0" and dst_format == "NHWC") or (src_format == "FRACTAL_NZ" and dst_format == "ND") \
-        or (src_format == "FRACTAL_Z_3D" and dst_format == "NDHWC"):
-        trans_data_negative_target_tc_new.trans_data_negative_target_tc_new(src, dst, src_format, dst_format, kernel_name)
-    elif ((src_format == "NC1HWC0" and dst_format == "NCHW") \
-          or (src_format == "FRACTAL_Z_3D" and dst_format == "NCDHW") \
-          or (src_format == "NDC1HWC0" and dst_format == "NCDHW") \
-          or ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "HWCN")) \
-          or ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "NCHW")) \
-          or ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "ND")) \
-          or (src_format == "FRACTAL_Z_3D" and dst_format == "DHWCN")):
+    if ((src_format == "NC1HWC0" and dst_format == "NHWC") or
+        (src_format == "FRACTAL_NZ" and dst_format in ("ND", "NHWC", "NCHW", "NC1HWC0")) or
+        (src_format == "FRACTAL_Z_3D" and dst_format == "NDHWC") or
+        (src_format == "NDC1HWC0" and dst_format == "NDHWC")):
+        trans_data_negative_target_tc_new.trans_data_negative_target_tc_new(src, dst,
+                                                                            src_format, dst_format, kernel_name)
+    elif (((src_format == "NC1HWC0" and dst_format == "NCHW") or
+           (src_format == "FRACTAL_Z_3D" and dst_format == "NCDHW") or
+           (src_format == "NDC1HWC0" and dst_format == "NCDHW") or
+           ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "HWCN")) or
+           ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "NCHW")) or
+           ((src_format in ("FRACTAL_Z", "FRACTAL_ZN")) and (dst_format == "ND")) or
+           (src_format == "FRACTAL_Z_3D" and dst_format == "DHWCN"))):
         trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name)
     elif is_do_with_transpose_formats(src_format, dst_format):
         x_dtype = src.get("dtype").lower()

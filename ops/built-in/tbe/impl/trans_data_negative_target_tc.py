@@ -21,9 +21,12 @@ from impl import trans_data_common_func as tdc
 
 
 # used for scalar
-PAD_IDX_LIST = (0, 1, 2)
+PAD_IDX_LIST = (0, 1)
 # frame up levels
-FRAME_LEVEL = 3
+FRAME_LEVEL = 2
+INT8_DTYPES = ("int8", "uint8")
+NEED_CAST_DTYPES = ("float32", "int32")
+VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
 
 
 # pylint: disable=too-many-locals
@@ -34,18 +37,23 @@ def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format)
 
     in_format_upper = in_format.upper()
     out_format_upper = out_format.upper()
-
-    if in_format_upper == "NC1HWC0" and out_format_upper == "NHWC":
+    if in_format_upper in ("NC1HWC0", "NDC1HWC0") and out_format_upper in ("NHWC", "NDHWC"):
         in_format_new = "NCHT"
         out_format_new = "NHC"
-        axis_n, axis_c1, axis_h, axis_w, axis_c0 = in_shape
-        axis_c = out_shape[-1]
-        in_shape_new = [axis_n] + [axis_c1] + [axis_h * axis_w] + [axis_c0]
-        out_shape_new = [axis_n] + [axis_h * axis_w] + [axis_c]
+        axis_d = 1
+        if len(out_shape) == 4:
+            axis_n, axis_h, axis_w, axis_c = out_shape
+        else:
+            axis_n, axis_d, axis_h, axis_w, axis_c = out_shape
+        axis_c0 = in_shape[-1]
+        axis_c1 = tdc.ceil_div(axis_c, axis_c0)
+        in_shape_new = [axis_n * axis_d] + [axis_c1] + [axis_h * axis_w] + [axis_c0]
+        out_shape_new = [axis_n * axis_d] + [axis_h * axis_w] + [axis_c]
+        new_params_nhwc = [in_shape_new, out_shape_new] + [in_format_new, out_format_new]
 
-        return [in_shape_new, out_shape_new] + [in_format_new, out_format_new]
+        return new_params_nhwc
 
-    if in_format_upper == "FRACTAL_NZ" and out_format_upper == "ND":
+    if in_format_upper == "FRACTAL_NZ" and out_format_upper in ("ND", "NCHW", "NHWC"):
         in_format_new = "HCNT"
         out_format_new = "HNC"
         if len(out_shape) == 1:
@@ -58,8 +66,9 @@ def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format)
         axis_c1, axis_no, axis_ni = tdc.ceil_div(axis_c, axis_c0), tdc.ceil_div(axis_n, tdc.NI_16), tdc.NI_16
         in_shape_new = [axis_h] + [axis_c1] + [axis_no * axis_ni] + [axis_c0]
         out_shape_new = [axis_h] + [axis_n] + [axis_c]
+        new_params_nd = [in_shape_new, out_shape_new] + [in_format_new, out_format_new]
 
-        return [in_shape_new, out_shape_new] + [in_format_new, out_format_new]
+        return new_params_nd
 
     if in_format_upper == "FRACTAL_Z_3D" and out_format_upper == "NDHWC":
         in_format_new = "DCHNT"
@@ -69,8 +78,22 @@ def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format)
         axis_c1 = axis_dc1hw // (axis_d * axis_h * axis_w)
         in_shape_new = [axis_d] + [axis_c1] + [axis_h * axis_w] + [axis_no * axis_ni] + [axis_c0]
         out_shape_new = [axis_n] + [axis_d] + [axis_h * axis_w] + [axis_c]
+        new_params_ndhwc = [in_shape_new, out_shape_new] + [in_format_new, out_format_new]
 
-        return [in_shape_new, out_shape_new] + [in_format_new, out_format_new]
+        return new_params_ndhwc
+
+    if in_format_upper == "FRACTAL_NZ" and out_format_upper == "NC1HWC0":
+        in_format_new = "DCHNT"
+        out_format_new = "NDHC"
+        axis_d, axis_c = 1, 1
+        axis_n, axis_c1, axis_h, axis_w, axis_c0 = out_shape
+        axis_no = tdc.ceil_div(axis_n, tdc.NI_16)
+        axis_ni = tdc.NI_16
+        in_shape_new = [axis_d] + [axis_c] + [axis_c1 * axis_h * axis_w] + [axis_no * axis_ni] + [axis_c0]
+        out_shape_new = [axis_n] + [axis_d] + [axis_c1 * axis_h * axis_w] + [axis_c0]
+        new_params_nc1hwc0 = [in_shape_new, out_shape_new] + [in_format_new, out_format_new]
+
+        return new_params_nc1hwc0
 
     return [in_shape, out_shape] + [in_format, out_format]
 
@@ -81,187 +104,226 @@ def _get_mc_info_negative(r2nd_args, c1_args, left_args):
     get multiple core axis position for negative transform
     """
 
-    r2nd_lp_cnt, r2nd_lp_step_in, r2nd_lp_step_out, r2nd_size, r2nd_lp_unit = r2nd_args
-    c1_lp_cnt, c1_lp_step_in, c1_lp_step_out, c1_size, c1_lp_unit = c1_args
-    left_lp_cnt = left_args
+    dst_r2nd_lp_cnt, dst_r2nd_left, tp_201_dst_r2nd_lp_step_in, tp_201_dst_r2nd_lp_step_out = r2nd_args
+    src_c1_lp_cnt, src_c1_left, tp_201_src_c1_lp_step_in, tp_201_src_c1_lp_step_out = c1_args
+    src_left_lp_cnt, src_left_left, tp_201_src_left_lp_step_in, tp_201_src_left_lp_step_out = left_args
 
-    tmp_full_lp_cnt_r2nd = tdc.CORE_DIM_NUM if tdc.floor_div(r2nd_lp_cnt, tdc.CORE_DIM_NUM) > 0 else 0
-    reminder_lp_cnt_r2nd = r2nd_lp_cnt % tdc.CORE_DIM_NUM
+    tmp_full_lp_cnt_r2nd = tdc.CORE_DIM_NUM if tdc.floor_div(dst_r2nd_lp_cnt, tdc.CORE_DIM_NUM) > 0 else 0
+    reminder_lp_cnt_r2nd = dst_r2nd_lp_cnt % tdc.CORE_DIM_NUM
     if reminder_lp_cnt_r2nd == 0:
         tmp_full_lp_cnt_r2nd += tdc.CORE_DIM_NUM
     full_lp_cnt_r2nd = tmp_full_lp_cnt_r2nd + reminder_lp_cnt_r2nd
 
-    tmp_full_lp_cnt_c1 = tdc.CORE_DIM_NUM if tdc.floor_div(c1_lp_cnt, tdc.CORE_DIM_NUM) > 0 else 0
-    reminder_lp_cnt_c1 = c1_lp_cnt % tdc.CORE_DIM_NUM
+    tmp_full_lp_cnt_c1 = tdc.CORE_DIM_NUM if tdc.floor_div(src_c1_lp_cnt, tdc.CORE_DIM_NUM) > 0 else 0
+    reminder_lp_cnt_c1 = src_c1_lp_cnt % tdc.CORE_DIM_NUM
     if reminder_lp_cnt_c1 == 0:
         tmp_full_lp_cnt_c1 += tdc.CORE_DIM_NUM
     full_lp_cnt_c1 = tmp_full_lp_cnt_c1 + reminder_lp_cnt_c1
 
-    tmp_full_lp_cnt_left = tdc.CORE_DIM_NUM if tdc.floor_div(left_lp_cnt, tdc.CORE_DIM_NUM) > 0 else 0
-    reminder_lp_cnt_left = left_lp_cnt % tdc.CORE_DIM_NUM
+    tmp_full_lp_cnt_left = tdc.CORE_DIM_NUM if tdc.floor_div(src_left_lp_cnt, tdc.CORE_DIM_NUM) > 0 else 0
+    reminder_lp_cnt_left = src_left_lp_cnt % tdc.CORE_DIM_NUM
     if reminder_lp_cnt_left == 0:
         tmp_full_lp_cnt_left += tdc.CORE_DIM_NUM
     full_lp_cnt_left = tmp_full_lp_cnt_left + reminder_lp_cnt_left
 
     lp_cnt_list = (full_lp_cnt_left, full_lp_cnt_c1, full_lp_cnt_r2nd)
     if lp_cnt_list.index(max(lp_cnt_list)) == 0:
-        tp_201_mc_flag = 1
-        tp_201_used_core_cnt = tdc.ceil_div(left_lp_cnt, tdc.ceil_div(left_lp_cnt, tdc.CORE_DIM_NUM))
-        tp_201_nlc_left_lp_cnt = tdc.ceil_div(left_lp_cnt, tp_201_used_core_cnt)
-        tp_201_lc_left_lp_cnt = left_lp_cnt - tp_201_nlc_left_lp_cnt * (tp_201_used_core_cnt - 1)
-        tp_201_core_step_in = 0
-        tp_201_core_step_out = 0
-        tp_201_nlc_c1_lp_cnt = c1_lp_cnt
-        tp_201_lc_c1_lp_cnt = c1_lp_cnt
-        tp_201_nlc_c1_left = c1_size % c1_lp_unit
-        tp_201_lc_c1_left = c1_size % c1_lp_unit
-        tp_201_nlc_r2nd_lp_cnt = r2nd_lp_cnt
-        tp_201_lc_r2nd_lp_cnt = r2nd_lp_cnt
-        tp_201_nlc_r2nd_left = r2nd_size % r2nd_lp_unit
-        tp_201_lc_r2nd_left = r2nd_size % r2nd_lp_unit
+        tp_201_mc_pos = 0
+        tp_201_used_core_cnt = tdc.ceil_div(src_left_lp_cnt, tdc.ceil_div(src_left_lp_cnt, tdc.CORE_DIM_NUM))
+        tp_201_nlc_left_lp_cnt = tdc.ceil_div(src_left_lp_cnt, tp_201_used_core_cnt)
+        tp_201_lc_left_lp_cnt = src_left_lp_cnt - tp_201_nlc_left_lp_cnt * (tp_201_used_core_cnt - 1)
+        tp_201_nlc_left_left = 0
+        tp_201_lc_left_left = src_left_left
+        tp_201_core_step_in = tp_201_nlc_left_lp_cnt * tp_201_src_left_lp_step_in
+        tp_201_core_step_out = tp_201_nlc_left_lp_cnt * tp_201_src_left_lp_step_out
+        tp_201_nlc_c1_lp_cnt = src_c1_lp_cnt
+        tp_201_lc_c1_lp_cnt = src_c1_lp_cnt
+        tp_201_nlc_c1_left = src_c1_left
+        tp_201_lc_c1_left = src_c1_left
+        tp_201_nlc_r2nd_lp_cnt = dst_r2nd_lp_cnt
+        tp_201_lc_r2nd_lp_cnt = dst_r2nd_lp_cnt
+        tp_201_nlc_r2nd_left = dst_r2nd_left
+        tp_201_lc_r2nd_left = dst_r2nd_left
+    elif lp_cnt_list.index(max(lp_cnt_list)) == 1:
+        tp_201_mc_pos = 1
+        tp_201_used_core_cnt = tdc.ceil_div(src_c1_lp_cnt, tdc.ceil_div(src_c1_lp_cnt, tdc.CORE_DIM_NUM))
+        tp_201_nlc_c1_lp_cnt = tdc.ceil_div(src_c1_lp_cnt, tp_201_used_core_cnt)
+        tp_201_lc_c1_lp_cnt = src_c1_lp_cnt - tp_201_nlc_c1_lp_cnt * (tp_201_used_core_cnt - 1)
+        tp_201_nlc_c1_left = 0
+        tp_201_lc_c1_left = src_c1_left
+        tp_201_core_step_in = tp_201_nlc_c1_lp_cnt * tp_201_src_c1_lp_step_in
+        tp_201_core_step_out = tp_201_nlc_c1_lp_cnt * tp_201_src_c1_lp_step_out
+        tp_201_nlc_r2nd_lp_cnt = dst_r2nd_lp_cnt
+        tp_201_lc_r2nd_lp_cnt = dst_r2nd_lp_cnt
+        tp_201_nlc_r2nd_left = dst_r2nd_left
+        tp_201_lc_r2nd_left = dst_r2nd_left
+        tp_201_nlc_left_lp_cnt = src_left_lp_cnt
+        tp_201_lc_left_lp_cnt = src_left_lp_cnt
+        tp_201_nlc_left_left = src_left_left
+        tp_201_lc_left_left = src_left_left
     else:
-        tp_201_mc_flag = 0
-        tp_201_nlc_left_lp_cnt = left_lp_cnt
-        tp_201_lc_left_lp_cnt = left_lp_cnt
-        if lp_cnt_list.index(max(lp_cnt_list)) == 1:
-            tp_201_used_core_cnt = tdc.ceil_div(c1_lp_cnt, tdc.ceil_div(c1_lp_cnt, tdc.CORE_DIM_NUM))
-            tp_201_nlc_c1_lp_cnt = tdc.ceil_div(c1_lp_cnt, tp_201_used_core_cnt)
-            tp_201_lc_c1_lp_cnt = c1_lp_cnt - (tp_201_used_core_cnt - 1) * tp_201_nlc_c1_lp_cnt
-            tp_201_nlc_c1_left = 0
-            tp_201_lc_c1_left = c1_size % c1_lp_unit
-            tp_201_core_step_in = tp_201_nlc_c1_lp_cnt * c1_lp_step_in
-            tp_201_core_step_out = tp_201_nlc_c1_lp_cnt * c1_lp_step_out
-            tp_201_nlc_r2nd_lp_cnt = r2nd_lp_cnt
-            tp_201_lc_r2nd_lp_cnt = r2nd_lp_cnt
-            tp_201_nlc_r2nd_left = r2nd_size % r2nd_lp_unit
-            tp_201_lc_r2nd_left = r2nd_size % r2nd_lp_unit
-        else:
-            tp_201_used_core_cnt = tdc.ceil_div(r2nd_lp_cnt, tdc.ceil_div(r2nd_lp_cnt, tdc.CORE_DIM_NUM))
-            tp_201_nlc_r2nd_lp_cnt = tdc.ceil_div(r2nd_lp_cnt, tp_201_used_core_cnt)
-            tp_201_lc_r2nd_lp_cnt = r2nd_lp_cnt - (tp_201_used_core_cnt - 1) * tp_201_nlc_r2nd_lp_cnt
-            tp_201_nlc_r2nd_left = 0
-            tp_201_lc_r2nd_left = r2nd_size % r2nd_lp_unit
-            tp_201_core_step_in = tp_201_nlc_r2nd_lp_cnt * r2nd_lp_step_in
-            tp_201_core_step_out = tp_201_nlc_r2nd_lp_cnt * r2nd_lp_step_out
-            tp_201_nlc_c1_lp_cnt = c1_lp_cnt
-            tp_201_lc_c1_lp_cnt = c1_lp_cnt
-            tp_201_nlc_c1_left = c1_size % c1_lp_unit
-            tp_201_lc_c1_left = c1_size % c1_lp_unit
+        tp_201_mc_pos = 2
+        tp_201_used_core_cnt = tdc.ceil_div(dst_r2nd_lp_cnt, tdc.ceil_div(dst_r2nd_lp_cnt, tdc.CORE_DIM_NUM))
+        tp_201_nlc_r2nd_lp_cnt = tdc.ceil_div(dst_r2nd_lp_cnt, tp_201_used_core_cnt)
+        tp_201_lc_r2nd_lp_cnt = dst_r2nd_lp_cnt - tp_201_nlc_r2nd_lp_cnt * (tp_201_used_core_cnt - 1)
+        tp_201_nlc_r2nd_left = 0
+        tp_201_lc_r2nd_left = dst_r2nd_left
+        tp_201_core_step_in = tp_201_nlc_r2nd_lp_cnt * tp_201_dst_r2nd_lp_step_in
+        tp_201_core_step_out = tp_201_nlc_r2nd_lp_cnt * tp_201_dst_r2nd_lp_step_out
+        tp_201_nlc_left_lp_cnt = src_left_lp_cnt
+        tp_201_lc_left_lp_cnt = src_left_lp_cnt
+        tp_201_nlc_left_left = src_left_left
+        tp_201_lc_left_left = src_left_left
+        tp_201_nlc_c1_lp_cnt = src_c1_lp_cnt
+        tp_201_lc_c1_lp_cnt = src_c1_lp_cnt
+        tp_201_nlc_c1_left = src_c1_left
+        tp_201_lc_c1_left = src_c1_left
 
-    return [tp_201_mc_flag, tp_201_used_core_cnt] + \
-           [tp_201_nlc_r2nd_lp_cnt, tp_201_nlc_c1_lp_cnt,
-            tp_201_nlc_left_lp_cnt, tp_201_nlc_r2nd_left, tp_201_nlc_c1_left] + \
+    return [tp_201_mc_pos, tp_201_used_core_cnt, tp_201_core_step_in, tp_201_core_step_out] + \
+           [tp_201_nlc_r2nd_lp_cnt, tp_201_nlc_c1_lp_cnt, tp_201_nlc_left_lp_cnt,
+            tp_201_nlc_r2nd_left, tp_201_nlc_c1_left, tp_201_nlc_left_left] + \
            [tp_201_lc_r2nd_lp_cnt, tp_201_lc_c1_lp_cnt, tp_201_lc_left_lp_cnt,
-            tp_201_lc_r2nd_left, tp_201_lc_c1_left] + [tp_201_core_step_in, tp_201_core_step_out]
+            tp_201_lc_r2nd_left, tp_201_lc_c1_left, tp_201_lc_left_left]
 
 
-# pylint: disable=redefined-builtin, unbalanced-tuple-unpacking
+# pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
 def _tiling_params_negative(args):
     """
     calculate real tiling params for negative transform and last axis of target format is c
     """
 
-    in_shape, out_shape, src_format, dst_format, block_elem_cnt, ub_size = args
+    in_shape, out_shape, src_format, dst_format, block_elem_cnt, ub_size, in_dtype = args
+    tp_names = locals()
     c0_len = in_shape[-1]  # axis c0
+    tp_201_c0_len = c0_len
+    axis_dst_c_size = out_shape[dst_format.index("C")]
     axis_src_c1_size = in_shape[src_format.index("C")]
+    dst_r2nd_shape = []
+    if src_format[-2] == dst_format[-2]:  # such as NC1HWC0 -> NHWC
+        tp_201_srcr2nd_dstr2nd_same = 1
+        dst_r2nd_format = dst_format[-2]
+        dst_r2nd_shape.append(out_shape[-2])
+        axis_dst_r2nd_size = out_shape[-2]
+        src_left_format = src_format[0]
+        axis_src_left_size = out_shape[dst_format.index(src_format[0])]
 
-    # get tiling params for using vnchwconv
-    half_ub_size = ub_size // 2
-    tp_201_tiling_mode = 201
-    tp_201_ub_offset = half_ub_size // block_elem_cnt * block_elem_cnt
+    else:  # such as DC1HWNoNiC0 -> NDHWC, DHW is target reverse second dimension
+        tp_201_srcr2nd_dstr2nd_same = 0
+        src_left_format = src_format[-2]
+        axis_src_left_size = out_shape[dst_format.index(src_format[-2])]
+        dst_r2nd_format = src_format.replace(src_format[-2:], "").replace("C", "")
+        axis_dst_r2nd_size = 1
+        for idx, char in enumerate(dst_r2nd_format):
+            axis_dst_r2nd_size *= in_shape[src_format.index(char)]
+            dst_r2nd_shape.append(in_shape[src_format.index(char)])
+    dst_r2nd_shape.append(1)  # for count offset easily
 
-    # axis -2 tiling parameters
-    axis_src_r2nd_size = out_shape[dst_format.index(src_format[-2])]
-    tp_201_src_r2nd_lp_unit = tdc.NI_16
-    vnc_line_size = tp_201_ub_offset // tdc.VNC_LINES
-    if axis_src_c1_size < 8:  # c size is small, move in more r2nd per time
-        tp_201_src_r2nd_lp_unit = vnc_line_size // c0_len // axis_src_c1_size // block_elem_cnt * block_elem_cnt
-    src_r2nd_lp_cnt = tdc.ceil_div(axis_src_r2nd_size, tp_201_src_r2nd_lp_unit)
-    tp_201_src_r2nd_lp_step_in = tdc.get_shape_size([tp_201_src_r2nd_lp_unit, c0_len])
-    tp_201_src_r2nd_lp_step_out = tdc.get_shape_size(out_shape[dst_format.index(src_format[-2]) + 1:])
+    # output ub offset
+    tp_201_ub_offset = ub_size // 2 // block_elem_cnt * block_elem_cnt
 
     # axis c1 tiling parameters
-    tp_201_src_c1_lp_unit = axis_src_c1_size if axis_src_c1_size < 8 else 8  # in order to output 8 block per time
+    vnc_col_size = tp_201_ub_offset // tdc.VNC_LINES // block_elem_cnt * block_elem_cnt
+    if axis_src_c1_size * c0_len >= 16 * block_elem_cnt:  # use ubuf_2_ubuf
+        tp_201_tiling_mode = 2010
+        tmp_src_c1_lp_unit = tp_201_ub_offset // c0_len // block_elem_cnt * block_elem_cnt
+    elif in_dtype not in INT8_DTYPES:
+        if axis_dst_c_size * axis_dst_r2nd_size >= vnc_col_size // tdc.VNC_LINES:  # use full vnchwconv
+            tp_201_tiling_mode = 2011
+        else:
+            tp_201_tiling_mode = 2012  # use part vnchwconv
+        tmp_src_c1_lp_unit = vnc_col_size // c0_len // block_elem_cnt * block_elem_cnt
+    else:
+        if axis_dst_c_size * axis_dst_r2nd_size >= vnc_col_size // 2 // tdc.VNC_LINES:
+            tp_201_tiling_mode = 2011
+        else:
+            tp_201_tiling_mode = 2012
+        tmp_src_c1_lp_unit = vnc_col_size // 2 // c0_len // block_elem_cnt * block_elem_cnt
+    tp_201_src_c1_lp_unit = tmp_src_c1_lp_unit if axis_src_c1_size > tmp_src_c1_lp_unit else axis_src_c1_size
     src_c1_lp_cnt = tdc.ceil_div(axis_src_c1_size, tp_201_src_c1_lp_unit)
     src_c1_left = axis_src_c1_size % tp_201_src_c1_lp_unit
     tp_201_src_c1_lp_step_in = tdc.get_shape_size([tp_201_src_c1_lp_unit] + in_shape[src_format.index("C") + 1:])
     tp_201_src_c1_lp_step_out = tdc.get_shape_size([tp_201_src_c1_lp_unit, c0_len])
     tp_201_src_c1_step_in = tdc.get_shape_size(in_shape[src_format.index("C") + 1:])
-    if axis_src_c1_size < tp_201_src_c1_lp_unit:
-        tp_201_pl_dst_c_cnt = tp_201_src_c1_lp_unit // src_c1_left  # c count in one vnc line
+    tp_201_src_c1_step_out = 1
+    tp_201_c_mod_c0 = axis_dst_c_size % c0_len
+    if src_c1_lp_cnt == 1:
+        tp_201_all_c_in = 1
     else:
-        tp_201_pl_dst_c_cnt = 1
-    tp_201_c_mod_c0 = out_shape[dst_format.index("C")] % c0_len
+        tp_201_all_c_in = 0
 
-    # left axises
-    tmp_left_src_format = src_format.replace(src_format[-2:], "").replace("C", "")
-    tmp_left_in_shape = []
-    axis_src_left_axis_size = 1
-    for idx, chr in enumerate(tmp_left_src_format):
-        axis_src_left_axis_size *= in_shape[src_format.index(chr)]
-        tmp_left_in_shape.append(in_shape[src_format.index(chr)])
-
-    # mulitple core parameters
-    r2nd_args = src_r2nd_lp_cnt, tp_201_src_r2nd_lp_step_in, \
-                tp_201_src_r2nd_lp_step_out * tp_201_src_r2nd_lp_unit, axis_src_r2nd_size, tp_201_src_r2nd_lp_unit
-    c1_args = src_c1_lp_cnt, tp_201_src_c1_lp_step_in, \
-              tp_201_src_c1_lp_step_out, axis_src_c1_size, tp_201_src_c1_lp_unit
-    left_args = axis_src_left_axis_size
-    tp_201_mc_flag, tp_201_used_core_cnt, tp_201_nlc_r2nd_lp_cnt, tp_201_nlc_c1_lp_cnt, tp_201_nlc_left_lp_cnt, \
-    tp_201_nlc_r2nd_left, tp_201_nlc_c1_left, tp_201_lc_r2nd_lp_cnt, tp_201_lc_c1_lp_cnt, tp_201_lc_left_lp_cnt, \
-    tp_201_lc_r2nd_left, tp_201_lc_c1_left, tp_201_core_step_in, \
-    tp_201_core_step_out = _get_mc_info_negative(r2nd_args, c1_args, left_args)
+    # axis -2 tiling parameters
+    tp_201_dst_r2nd_dims = 2
+    if tp_201_tiling_mode == 2010:
+        tmp_dst_r2nd_lp_unit = tp_201_ub_offset // (tp_201_src_c1_lp_unit * c0_len)
+    elif in_dtype not in INT8_DTYPES:
+        tmp_dst_r2nd_lp_unit = vnc_col_size // (tp_201_src_c1_lp_unit * c0_len)
+    else:
+        tmp_dst_r2nd_lp_unit = vnc_col_size // 2 // (tp_201_src_c1_lp_unit * c0_len)
+    tp_201_dst_r2nd_lp_unit = tmp_dst_r2nd_lp_unit if axis_dst_r2nd_size > tmp_dst_r2nd_lp_unit else axis_dst_r2nd_size
+    dst_r2nd_lp_cnt = tdc.ceil_div(axis_dst_r2nd_size, tp_201_dst_r2nd_lp_unit)
+    dst_r2nd_left = axis_dst_r2nd_size % tp_201_dst_r2nd_lp_unit
+    for idx, char in enumerate(reversed(dst_r2nd_format)):
+        chr_idx = src_format.index(char)
+        tp_names["tp_201_dst_r2nd_in_" + str(idx) + "_size"] = in_shape[chr_idx]
+        tp_names["tp_201_dst_r2nd_in_" + str(idx) + "_src_rsize"] = tdc.get_shape_size(dst_r2nd_shape[-1 - idx:])
+        tp_names["tp_201_dst_r2nd_in_" + str(idx) + "_src_asize"] = tdc.get_shape_size(in_shape[chr_idx + 1:])
+    pad_axis_cnt = FRAME_LEVEL - len(dst_r2nd_format)
+    if pad_axis_cnt:
+        tp_201_dst_r2nd_dims = 1
+        for _, idx in enumerate(PAD_IDX_LIST[len(dst_r2nd_format):]):
+            tp_names["tp_201_dst_r2nd_in_" + str(idx) + "_size"] = 1
+            tp_names["tp_201_dst_r2nd_in_" + str(idx) + "_src_rsize"] = 1
+            tp_names["tp_201_dst_r2nd_in_" + str(idx) + "_src_asize"] = 0
+    if tp_201_dst_r2nd_dims == 2:
+        tp_201_dst_r2nd_step_in = 0
+    else:
+        tp_201_dst_r2nd_step_in = c0_len
+    tp_201_dst_r2nd_lp_step_in = tdc.get_shape_size([tp_201_dst_r2nd_lp_unit, tp_201_dst_r2nd_step_in])
+    tp_201_dst_r2nd_step_out = axis_dst_c_size
+    tp_201_dst_r2nd_lp_step_out = tdc.get_shape_size([tp_201_dst_r2nd_lp_unit, tp_201_dst_r2nd_step_out])
 
     # axis left parameters
-    tp_names = locals()
-    tmp_left_dst_format = dst_format.replace(src_format[-2], "").replace("C", "")
-    tmp_left_out_shape = []
-    for idx, chr in enumerate(tmp_left_dst_format):
-        tmp_left_out_shape.append(out_shape[dst_format.index(chr)])
-    tmp_left_out_shape.append(1)
-    # count method: left_axis_size/dst_rsize%size*asize
-    for idx, chr in enumerate(reversed(tmp_left_dst_format)):
-        tp_names["tp_201_in_idx_" + str(idx) + "_size"] = in_shape[src_format.index(chr)]
-        tp_names["tp_201_in_idx_" + str(idx) + "_dst_rsize"] = tdc.get_shape_size(tmp_left_out_shape[-1 - idx:])
-        tp_names["tp_201_in_idx_" + str(idx) + "_src_asize"] = tdc.get_shape_size(in_shape[src_format.index(chr) + 1:])
-        tp_names["tp_201_out_idx_" + str(idx) + "_size"] = out_shape[dst_format.index(chr)]
-        tp_names["tp_201_out_idx_" + str(idx) + "_dst_rsize"] = tdc.get_shape_size(tmp_left_out_shape[-1 - idx:])
-        tp_names["tp_201_out_idx_" + str(idx) + "_dst_asize"] = tdc.get_shape_size(
-            out_shape[dst_format.index(chr) + 1:])
-    # suppose there are 3 axises
-    pad_axis_cnt = FRAME_LEVEL - len(tmp_left_dst_format)
-    if pad_axis_cnt:
-        for _, idx in enumerate(PAD_IDX_LIST[len(tmp_left_dst_format):]):
-            tp_names["tp_201_in_idx_" + str(idx) + "_size"] = 1
-            tp_names["tp_201_in_idx_" + str(idx) + "_dst_rsize"] = 1
-            tp_names["tp_201_in_idx_" + str(idx) + "_src_asize"] = 0
-            tp_names["tp_201_out_idx_" + str(idx) + "_size"] = 1
-            tp_names["tp_201_out_idx_" + str(idx) + "_dst_rsize"] = 1
-            tp_names["tp_201_out_idx_" + str(idx) + "_dst_asize"] = 0
+    if tp_201_tiling_mode == 2010:
+        tmp_src_left_lp_unit = tp_201_ub_offset // (tp_201_src_c1_lp_unit * tp_201_dst_r2nd_lp_unit * c0_len)
+    elif in_dtype not in INT8_DTYPES:
+        tmp_src_left_lp_unit = vnc_col_size // (tp_201_src_c1_lp_unit * tp_201_dst_r2nd_lp_unit * c0_len)
+    else:
+        tmp_src_left_lp_unit = vnc_col_size // 2 // (tp_201_src_c1_lp_unit * tp_201_dst_r2nd_lp_unit * c0_len)
+    if tp_201_tiling_mode == 2011:
+        tmp_src_left_lp_unit = tdc.NI_16
+    tp_201_src_left_lp_unit = tmp_src_left_lp_unit if axis_src_left_size > tmp_src_left_lp_unit else axis_src_left_size
+    src_left_lp_cnt = tdc.ceil_div(axis_src_left_size, tp_201_src_left_lp_unit)
+    src_left_left = axis_src_left_size % tp_201_src_left_lp_unit
+    tp_201_src_left_step_in = tdc.get_shape_size(in_shape[src_format.index(src_left_format) + 1:])
+    tp_201_src_left_lp_step_in = tdc.get_shape_size([tp_201_src_left_lp_unit, tp_201_src_left_step_in])
+    tp_201_src_left_step_out = tdc.get_shape_size(out_shape[dst_format.index(src_left_format) + 1:])
+    tp_201_src_left_lp_step_out = tdc.get_shape_size([tp_201_src_left_lp_unit, tp_201_src_left_step_out])
 
-    # vnchwconv tiling parameters
-    if src_format[-2] == dst_format[-2]:  # such as NC1HWC0 -> NHWC
-        tp_201_src_2_dst_flag = 0
-    else:  # such as DC1HWNoNiC0 -> NDHWC
-        tp_201_src_2_dst_flag = 1
+    # mulitple core parameters
+    r2nd_args = dst_r2nd_lp_cnt, dst_r2nd_left, tp_201_dst_r2nd_lp_step_in, tp_201_dst_r2nd_lp_step_out
+    c1_args = src_c1_lp_cnt, src_c1_left, tp_201_src_c1_lp_step_in, tp_201_src_c1_lp_step_out
+    left_args = src_left_lp_cnt, src_left_left, tp_201_src_left_lp_step_in, tp_201_src_left_lp_step_out
+    (tp_201_mc_pos, tp_201_used_core_cnt, tp_201_core_step_in, tp_201_core_step_out,
+     tp_201_nlc_dst_r2nd_lp_cnt, tp_201_nlc_src_c1_lp_cnt, tp_201_nlc_src_left_lp_cnt, tp_201_nlc_dst_r2nd_left,
+     tp_201_nlc_src_c1_left, tp_201_nlc_src_left_left, tp_201_lc_dst_r2nd_lp_cnt, tp_201_lc_src_c1_lp_cnt,
+     tp_201_lc_src_left_lp_cnt, tp_201_lc_dst_r2nd_left, tp_201_lc_src_c1_left,
+     tp_201_lc_src_left_left) = _get_mc_info_negative(r2nd_args, c1_args, left_args)
 
-    sub_tiling_params = [tp_201_tiling_mode, tp_201_ub_offset, tp_201_mc_flag, tp_201_used_core_cnt,
-                         tp_201_core_step_in, tp_201_core_step_out, tp_201_nlc_r2nd_lp_cnt, tp_201_nlc_c1_lp_cnt,
-                         tp_201_nlc_left_lp_cnt, tp_201_nlc_r2nd_left, tp_201_nlc_c1_left, tp_201_lc_r2nd_lp_cnt,
-                         tp_201_lc_c1_lp_cnt, tp_201_lc_left_lp_cnt, tp_201_lc_r2nd_left, tp_201_lc_c1_left,
-                         tp_201_src_r2nd_lp_unit, tp_201_src_r2nd_lp_step_in, tp_201_src_r2nd_lp_step_out,
-                         tp_201_src_c1_step_in, tp_201_src_c1_lp_unit, tp_201_src_c1_lp_step_in,
-                         tp_201_src_c1_lp_step_out, tp_201_pl_dst_c_cnt, tp_201_c_mod_c0,
-                         tp_names["tp_201_in_idx_0_size"], tp_names["tp_201_in_idx_0_dst_rsize"],
-                         tp_names["tp_201_in_idx_0_src_asize"], tp_names["tp_201_in_idx_1_size"],
-                         tp_names["tp_201_in_idx_1_dst_rsize"], tp_names["tp_201_in_idx_1_src_asize"],
-                         tp_names["tp_201_in_idx_2_size"], tp_names["tp_201_in_idx_2_dst_rsize"],
-                         tp_names["tp_201_in_idx_2_src_asize"], tp_names["tp_201_out_idx_0_size"],
-                         tp_names["tp_201_out_idx_0_dst_rsize"], tp_names["tp_201_out_idx_0_dst_asize"],
-                         tp_names["tp_201_out_idx_1_size"], tp_names["tp_201_out_idx_1_dst_rsize"],
-                         tp_names["tp_201_out_idx_1_dst_asize"], tp_names["tp_201_out_idx_2_size"],
-                         tp_names["tp_201_out_idx_2_dst_rsize"], tp_names["tp_201_out_idx_2_dst_asize"],
-                         tp_201_src_2_dst_flag]
+    sub_tiling_params = [tp_201_tiling_mode, tp_201_ub_offset, tp_201_mc_pos, tp_201_used_core_cnt,
+                         tp_201_srcr2nd_dstr2nd_same, tp_201_c0_len, tp_201_core_step_in, tp_201_core_step_out,
+                         tp_201_nlc_dst_r2nd_lp_cnt, tp_201_nlc_src_c1_lp_cnt, tp_201_nlc_src_left_lp_cnt,
+                         tp_201_nlc_dst_r2nd_left, tp_201_nlc_src_c1_left, tp_201_nlc_src_left_left,
+                         tp_201_lc_dst_r2nd_lp_cnt, tp_201_lc_src_c1_lp_cnt, tp_201_lc_src_left_lp_cnt,
+                         tp_201_lc_dst_r2nd_left, tp_201_lc_src_c1_left, tp_201_lc_src_left_left,
+                         tp_201_dst_r2nd_lp_unit, tp_201_dst_r2nd_step_in, tp_201_dst_r2nd_step_out,
+                         tp_201_dst_r2nd_lp_step_in, tp_201_dst_r2nd_lp_step_out, tp_201_src_c1_lp_unit,
+                         tp_201_all_c_in, tp_201_src_c1_step_in, tp_201_src_c1_step_out, tp_201_src_c1_lp_step_in,
+                         tp_201_src_c1_lp_step_out, tp_201_c_mod_c0, tp_201_src_left_lp_unit, tp_201_src_left_step_in,
+                         tp_201_src_left_step_out, tp_201_src_left_lp_step_in, tp_201_src_left_lp_step_out,
+                         tp_names["tp_201_dst_r2nd_in_0_size"], tp_names["tp_201_dst_r2nd_in_0_src_rsize"],
+                         tp_names["tp_201_dst_r2nd_in_0_src_asize"], tp_names["tp_201_dst_r2nd_in_1_size"],
+                         tp_names["tp_201_dst_r2nd_in_1_src_rsize"], tp_names["tp_201_dst_r2nd_in_1_src_asize"],
+                         tp_201_dst_r2nd_dims]
 
     return sub_tiling_params
 
@@ -271,11 +333,11 @@ def _get_tiling_params_func(args):
     get tiling parameters function
     """
 
-    in_shape, out_shape, src_format, dst_format, block_elem_cnt, ub_size = args
+    in_shape, out_shape, src_format, dst_format, block_elem_cnt, ub_size, in_dtype = args
 
     (in_shape_new, out_shape_new,
      in_format_new, out_format_new) = _renew_input_output_shape_format(in_shape, out_shape, src_format, dst_format)
-    args_get_tp = in_shape_new, out_shape_new, in_format_new, out_format_new, block_elem_cnt, ub_size
+    args_get_tp = in_shape_new, out_shape_new, in_format_new, out_format_new, block_elem_cnt, ub_size, in_dtype
     tiling_params = _tiling_params_negative(args_get_tp)
 
     return tiling_params
@@ -286,192 +348,391 @@ def _twice_vnchwconv_no_invert(args):
     do ncht to nhct transform by twice vnchwconv
     """
 
-    (tik_inst, src_ub, ub_offset, c1_lp_cnt, c1_pl_size,
-     r2nd_pl_size, pln_dst_c_cnt, src_2_dst_flag, c_mod_c0, dtype_factor) = args
+    (tik_inst, src_ub, ub_offset, left_pl_size, c1_pl_size, r2nd_pl_size,
+     c0_len, ele_per_block, in_dtype, tiling_mode, all_c_in, sub_c_size) = args
+    dtype_factor = tdc.get_dtype_factor(in_dtype)
 
-    src_ub_fp16 = src_ub.reinterpret_cast_to("float16")
-    ub_offset = ub_offset * dtype_factor
-    vnc_col_len = pln_dst_c_cnt * c1_pl_size * r2nd_pl_size * tdc.C0_16 * dtype_factor
-    # do hcnt -> cnth
-    src_addr_list = [src_ub_fp16[vnc_col_len * i] for i in tdc.ADDR_IDX_LIST]
-    dst_addr_list = [src_ub_fp16[ub_offset + tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
-    repeat_cnt = pln_dst_c_cnt * c1_pl_size * r2nd_pl_size * dtype_factor
     with tik_inst.new_stmt_scope():
+        vnc_col_len = tik_inst.Scalar(name="vnc_col_len")
         src_stride = tik_inst.Scalar()
         dst_stride = tik_inst.Scalar()
-        with tik_inst.if_scope(repeat_cnt == 1):
-            src_stride.set_as(0)
-            dst_stride.set_as(0)
+        with tik_inst.if_scope(tiling_mode == 2011):
+            vnc_col_len.set_as(c1_pl_size * r2nd_pl_size * c0_len)
         with tik_inst.else_scope():
-            src_stride.set_as(1)
-            dst_stride.set_as(16)
-        tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+            vnc_col_len.set_as(left_pl_size * r2nd_pl_size * c1_pl_size * c0_len)
 
-    # do cnth -> ncth
-    with tik_inst.if_scope(src_2_dst_flag == 0):  # such as NC1HWC0 -> NHWC
-        with tik_inst.for_range(0, pln_dst_c_cnt) as c_idx:
-            dst_ub_offset = c_idx * c1_pl_size * r2nd_pl_size * tdc.C0_16 * tdc.VNC_LINES
-            src_ub_offset = dst_ub_offset
-            with tik_inst.for_range(0, c1_pl_size) as c1_idx:
-                dst_ub_offset += c1_idx * tdc.C0_16 * dtype_factor * tdc.VNC_LINES
-                src_ub_offset += c1_idx * r2nd_pl_size * tdc.C0_16 * dtype_factor * tdc.VNC_LINES
-                tik_inst.data_move(src_ub_fp16[dst_ub_offset], src_ub_fp16[ub_offset + src_ub_offset], 0, r2nd_pl_size,
-                                   tdc.C0_16 * dtype_factor, 0, (c1_pl_size - 1) * tdc.C0_16 * dtype_factor)
-    with tik_inst.else_scope():  # such as DC1HWNoNic0 -> NDHWC
-        with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
-            dst_ub_offset = r2nd_idx * pln_dst_c_cnt * c1_pl_size * tdc.C0_16 * dtype_factor * tdc.VNC_LINES
-            src_ub_offset = r2nd_idx * tdc.C0_16 * dtype_factor * tdc.VNC_LINES
-            tik_inst.data_move(src_ub_fp16[dst_ub_offset], src_ub_fp16[ub_offset + src_ub_offset],
-                               0, pln_dst_c_cnt * c1_pl_size, tdc.C0_16 * dtype_factor,
-                               (r2nd_pl_size - 1) * tdc.C0_16 * dtype_factor, 0)
+        if in_dtype not in INT8_DTYPES:
+            src_ub_casted = src_ub.reinterpret_cast_to("float16")
+            ub_offset_casted = ub_offset * dtype_factor
+            # do ncht -> chtn
+            src_addr_list = [src_ub_casted[vnc_col_len * dtype_factor * i] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [src_ub_casted[ub_offset_casted + tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
+            repeat_cnt = vnc_col_len * dtype_factor // tdc.C0_16
+            with tik_inst.if_scope(repeat_cnt == 1):
+                src_stride.set_as(0)
+                dst_stride.set_as(0)
+            with tik_inst.else_scope():
+                src_stride.set_as(1)
+                dst_stride.set_as(16)
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+        else:
+            repeat_cnt = vnc_col_len // tdc.C0_32
+            with tik_inst.if_scope(repeat_cnt == 1):
+                src_stride.set_as(0)
+                dst_stride.set_as(0)
+            with tik_inst.else_scope():
+                src_stride.set_as(1)
+                dst_stride.set_as(32)
+            src_addr_list = [src_ub[vnc_col_len * i] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [src_ub[ub_offset + tdc.C0_32 * i] for i in tdc.ADDR_IDX_LIST]
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+            dst_addr_list = [src_ub[ub_offset + tdc.C0_32 * (i + tdc.NI_16)] for i in tdc.ADDR_IDX_LIST]
+            tik_inst.vnchwconv(False, True, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
-    # remove padded elements
-    c_block_align_size = c1_pl_size * tdc.C0_16 * dtype_factor
-    with tik_inst.if_scope(tik.all(c1_lp_cnt == 1, c_mod_c0 > 0)):
-        left_c_size = ((c1_pl_size - 1) * tdc.C0_16 + c_mod_c0) * dtype_factor
-        tik_inst.data_move(src_ub_fp16[left_c_size * tdc.VNC_LINES], src_ub_fp16[c_block_align_size * tdc.VNC_LINES],
-                           0, pln_dst_c_cnt * r2nd_pl_size, left_c_size, c_block_align_size - left_c_size, 0)
+        # do chtn -> hctn
+        def _chtn_2_hctn_process(left_src_offset, left_dst_offset):
+            with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
+                r2nd_src_ub_offset = (r2nd_idx + left_src_offset) * c0_len * dtype_factor * ele_per_block
+                with tik_inst.if_scope(all_c_in == 1):  # all c is moved in
+                    r2nd_dst_ub_offset = (r2nd_idx + left_dst_offset) * sub_c_size * dtype_factor * ele_per_block
+                    tik_inst.data_move(src_ub[r2nd_dst_ub_offset],
+                                       src_ub[r2nd_src_ub_offset + ub_offset], 0, c1_pl_size,
+                                       c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+                with tik_inst.else_scope():
+                    r2nd_dst_ub_offset = (r2nd_idx +
+                                          left_dst_offset) * c1_pl_size * c0_len * dtype_factor * ele_per_block
+                    tik_inst.data_move(src_ub[r2nd_dst_ub_offset],
+                                       src_ub[r2nd_src_ub_offset + ub_offset], 0, c1_pl_size,
+                                       c0_len * dtype_factor, (r2nd_pl_size - 1) * c0_len * dtype_factor, 0)
+        with tik_inst.new_stmt_scope(disable_sync=True):
+            with tik_inst.if_scope(tiling_mode == 2011):
+                _chtn_2_hctn_process(0, 0)
+            with tik_inst.else_scope():
+                with tik_inst.for_range(0, left_pl_size) as left_idx:
+                    _chtn_2_hctn_process(left_idx * r2nd_pl_size * c1_pl_size, left_idx * r2nd_pl_size)
 
-    # do hctn -> nhct
-    src_addr_list = [src_ub_fp16[tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
-    dst_addr_list = [src_ub_fp16[ub_offset + vnc_col_len * i] for i in tdc.ADDR_IDX_LIST]
-    with tik_inst.new_stmt_scope():
-        src_stride = tik_inst.Scalar()
-        dst_stride = tik_inst.Scalar()
-        with tik_inst.if_scope(repeat_cnt == 1):
-            src_stride.set_as(0)
-            dst_stride.set_as(0)
-        with tik_inst.else_scope():
-            src_stride.set_as(16)
-            dst_stride.set_as(1)
-        tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+        # do hctn -> nhct
+        if in_dtype not in INT8_DTYPES:
+            src_ub_casted = src_ub.reinterpret_cast_to("float16")
+            ub_offset_casted = ub_offset * dtype_factor
+            # do ncht -> chtn
+            src_addr_list = [src_ub_casted[tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [src_ub_casted[ub_offset_casted + vnc_col_len * dtype_factor * i]
+                             for i in tdc.ADDR_IDX_LIST]
+            repeat_cnt = vnc_col_len * dtype_factor // tdc.C0_16
+            with tik_inst.if_scope(repeat_cnt == 1):
+                src_stride.set_as(0)
+                dst_stride.set_as(0)
+            with tik_inst.else_scope():
+                src_stride.set_as(16)
+                dst_stride.set_as(1)
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+        else:
+            repeat_cnt = vnc_col_len // tdc.C0_32
+            with tik_inst.if_scope(repeat_cnt == 1):
+                src_stride.set_as(0)
+                dst_stride.set_as(0)
+            with tik_inst.else_scope():
+                src_stride.set_as(32)
+                dst_stride.set_as(1)
+            src_addr_list = [src_ub[tdc.C0_32 * i] for i in tdc.ADDR_IDX_LIST]
+            dst_addr_list = [src_ub[ub_offset + vnc_col_len * i] for i in tdc.ADDR_IDX_LIST]
+            tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
+            src_addr_list = [src_ub[tdc.C0_32 * (i + tdc.NI_16)] for i in tdc.ADDR_IDX_LIST]
+            tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
-def _update_input_offset(args):
+def _ubuf_2_ubuf_convert(args):
     """
-    count input gm offset
+    do ncht to nhct transform by data_move
     """
 
-    r2nd_lp_idx, src_r2nd_lp_step_in, c1_lp_idx, src_c1_lp_step_in, \
-    in_idx_0_size, in_idx_0_dst_rsize, in_idx_0_src_asize, \
-    in_idx_1_size, in_idx_1_dst_rsize, in_idx_1_src_asize, \
-    in_idx_2_size, in_idx_2_dst_rsize, in_idx_2_src_asize, ele_idx, core_step_in = args
+    (tik_inst, src_ub, ub_offset, left_pl_size, c1_pl_size, r2nd_pl_size, c0_len, ele_per_block) = args
 
-    in_offset = (r2nd_lp_idx * src_r2nd_lp_step_in + c1_lp_idx * src_c1_lp_step_in +
-                 ele_idx // in_idx_0_dst_rsize % in_idx_0_size * in_idx_0_src_asize +
-                 ele_idx // in_idx_1_dst_rsize % in_idx_1_size * in_idx_1_src_asize +
-                 ele_idx // in_idx_2_dst_rsize % in_idx_2_size * in_idx_2_src_asize + core_step_in)
+    with tik_inst.new_stmt_scope(disable_sync=True):
+        with tik_inst.for_range(0, left_pl_size) as left_idx:
+            left_src_ub_offset = left_idx * r2nd_pl_size * c1_pl_size * c0_len
+            left_dst_ub_offset = left_src_ub_offset
+            with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
+                r2nd_src_ub_offset = r2nd_idx * c0_len
+                r2nd_dst_ub_offset = r2nd_idx * c1_pl_size * c0_len
+                tik_inst.data_move(src_ub[r2nd_dst_ub_offset + left_dst_ub_offset + ub_offset],
+                                   src_ub[r2nd_src_ub_offset + left_src_ub_offset], 0,
+                                   c1_pl_size, c0_len // ele_per_block, (r2nd_pl_size - 1) * c0_len // ele_per_block, 0)
+
+
+def _update_input_offset_0(args):
+    """
+    count input gm offset for such as NC1HWC0 -> NHWC
+    """
+
+    (left_lp_idx, src_left_lp_step_in, left_backend, src_left_step_in, c1_lp_idx, src_c1_lp_step_in, c1_backend,
+     src_c1_step_in, r2nd_lp_idx, dst_r2nd_lp_step_in, r2nd_backend, dst_r2nd_step_in, core_step_in) = args
+
+    in_offset = (r2nd_lp_idx * dst_r2nd_lp_step_in - r2nd_backend * dst_r2nd_step_in +
+                 c1_lp_idx * src_c1_lp_step_in - c1_backend * src_c1_step_in +
+                 left_lp_idx * src_left_lp_step_in - left_backend * src_left_step_in + core_step_in)
 
     return in_offset
 
 
-def _update_output_offset(args, ele_idx):
+def _update_input_offset_1(args):
+    """
+    count input gm offset for such as DC1HWNoNiC0 -> NDHWC
+    """
+
+    (left_lp_idx, src_left_lp_step_in, left_backend, src_left_step_in, c1_lp_idx,
+     src_c1_lp_step_in, c1_backend, src_c1_step_in, r2nd_beg, core_step_in,
+     dst_r2nd_in_0_size, dst_r2nd_in_0_src_rsize, dst_r2nd_in_0_src_asize,
+     dst_r2nd_in_1_size, dst_r2nd_in_1_src_rsize, dst_r2nd_in_1_src_asize) = args
+
+    in_offset = (left_lp_idx * src_left_lp_step_in - left_backend * src_left_step_in +
+                 c1_lp_idx * src_c1_lp_step_in - c1_backend * src_c1_step_in + core_step_in +
+                 r2nd_beg // dst_r2nd_in_0_src_rsize % dst_r2nd_in_0_size * dst_r2nd_in_0_src_asize +
+                 r2nd_beg // dst_r2nd_in_1_src_rsize % dst_r2nd_in_1_size * dst_r2nd_in_1_src_asize)
+
+    return in_offset
+
+
+def _update_output_offset(args):
     """
     count output gm offset
     """
 
-    r2nd_lp_idx, src_r2nd_lp_unit, src_r2nd_lp_step_out, c1_lp_idx, src_c1_lp_step_out, \
-    out_idx_0_size, out_idx_0_dst_rsize, out_idx_0_dst_asize, \
-    out_idx_1_size, out_idx_1_dst_rsize, out_idx_1_dst_asize, \
-    out_idx_2_size, out_idx_2_dst_rsize, out_idx_2_dst_asize, core_step_out = args
+    (r2nd_lp_idx, dst_r2nd_lp_step_out, r2nd_backend, dst_r2nd_step_out,
+     c1_lp_idx, src_c1_lp_step_out, c1_backend, left_lp_idx,
+     src_left_lp_step_out, left_backend, src_left_step_out, core_step_out) = args
 
-    out_offset = (r2nd_lp_idx * src_r2nd_lp_unit * src_r2nd_lp_step_out + c1_lp_idx * src_c1_lp_step_out +
-                  ele_idx // out_idx_0_dst_rsize % out_idx_0_size * out_idx_0_dst_asize +
-                  ele_idx // out_idx_1_dst_rsize % out_idx_1_size * out_idx_1_dst_asize +
-                  ele_idx // out_idx_2_dst_rsize % out_idx_2_size * out_idx_2_dst_asize + core_step_out)
+    out_offset = (left_lp_idx * src_left_lp_step_out - left_backend * src_left_step_out +
+                  c1_lp_idx * src_c1_lp_step_out - c1_backend +
+                  r2nd_lp_idx * dst_r2nd_lp_step_out - r2nd_backend * dst_r2nd_step_out + core_step_out)
 
     return out_offset
 
 
-def _copy_data_in(args):
+def _copy_data_in_0(args):
     """
-    copy data from gm to ub
+    copy data from gm to ub for such as NC1HWC0 -> NHWC
     """
 
-    tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset, c1_step_in, c1_pl_size, r2nd_pl_size, dtype_factor = args
+    (tik_inst, src_in_gm, src_ub, in_gm_offset, left_pl_size, src_left_step_in,
+     c1_pl_size, src_c1_step_in, r2nd_pl_size, c0_len, ele_per_block) = args
 
-    with tik_inst.for_range(0, c1_pl_size) as c1_idx:
-        tik_inst.data_move(src_ub[in_ub_offset + c1_idx * r2nd_pl_size * tdc.C0_16],
-                           src_in_gm[in_gm_offset + c1_idx * c1_step_in], 0, 1, r2nd_pl_size * dtype_factor, 0, 0)
+    with tik_inst.new_stmt_scope(disable_sync=True):
+        c1_r2nd_gap = (src_c1_step_in - r2nd_pl_size * c0_len) // ele_per_block
+        with tik_inst.for_range(0, left_pl_size) as left_idx:
+            left_ub_offset = left_idx * c1_pl_size * r2nd_pl_size * c0_len
+            left_gm_offset = left_idx * src_left_step_in
+            with tik_inst.if_scope(c1_r2nd_gap > tdc.STRIDE_LIMIT_MTE):
+                with tik_inst.for_range(0, c1_pl_size) as c1_idx:
+                    c1_ub_offset = c1_idx * r2nd_pl_size * c0_len
+                    c1_gm_offset = c1_idx * src_c1_step_in
+                    tik_inst.data_move(src_ub[c1_ub_offset + left_ub_offset],
+                                       src_in_gm[c1_gm_offset + left_gm_offset + in_gm_offset],
+                                       0, 1, r2nd_pl_size * c0_len // ele_per_block, 0, 0)
+            with tik_inst.else_scope():
+                tik_inst.data_move(src_ub[left_ub_offset], src_in_gm[left_gm_offset + in_gm_offset],
+                                   0, c1_pl_size, r2nd_pl_size * c0_len // ele_per_block, c1_r2nd_gap, 0)
+
+
+def _split_r2nd(args):
+    """
+    split reverse second dimensions into three parts when it has two dimensions
+    """
+
+    tik_inst, dst_r2nd_in_0_size, left_r2nd_size, mid_lp_cnt, right_r2nd_size, r2nd_beg, r2nd_pl_size = args
+    next_r2nd_gap = dst_r2nd_in_0_size - r2nd_beg % dst_r2nd_in_0_size
+    with tik_inst.if_scope(next_r2nd_gap == dst_r2nd_in_0_size):
+        left_r2nd_size.set_as(0)
+    with tik_inst.else_scope():
+        with tik_inst.if_scope(next_r2nd_gap <= r2nd_pl_size):
+            left_r2nd_size.set_as(next_r2nd_gap)
+        with tik_inst.else_scope():
+            left_r2nd_size.set_as(r2nd_pl_size)
+    mid_lp_cnt.set_as((r2nd_pl_size - left_r2nd_size) // dst_r2nd_in_0_size)
+    right_r2nd_size.set_as(r2nd_pl_size - left_r2nd_size - mid_lp_cnt * dst_r2nd_in_0_size)
+
+
+def _copy_data_in_1(args):
+    """
+    copy data from gm to ub for such as DC1HWNoNiC0 -> NDHWC
+    """
+
+    (tik_inst, src_in_gm, src_ub, in_gm_offset, ub_offset, left_pl_size, c1_pl_size,
+     src_c1_step_in, r2nd_beg, r2nd_pl_size, dst_r2nd_in_0_size, dst_r2nd_in_0_src_asize,
+     dst_r2nd_in_1_src_asize, c0_len, ele_per_block) = args
+
+    with tik_inst.new_stmt_scope():
+        left_r2nd_size = tik_inst.Scalar(name="left_r2nd_size")
+        mid_lp_cnt = tik_inst.Scalar(name="mid_lp_cnt")
+        right_r2nd_size = tik_inst.Scalar(name="right_r2nd_size")
+        is_left_r2nd_nz = tik_inst.Scalar(name="is_left_r2nd_nz")
+        renew_r2nd_size = tik_inst.Scalar(name="renew_r2nd_size")
+        split_args = (tik_inst, dst_r2nd_in_0_size, left_r2nd_size, mid_lp_cnt, right_r2nd_size, r2nd_beg, r2nd_pl_size)
+        _split_r2nd(split_args)
+        r2nd_left_gap = (dst_r2nd_in_0_src_asize - left_pl_size * c0_len) // ele_per_block
+
+        def _inner_copy(ub_args, gm_args, r2nd_size):
+            with tik_inst.new_stmt_scope(disable_sync=True):
+                with tik_inst.if_scope(r2nd_left_gap > tdc.STRIDE_LIMIT_MTE):
+                    with tik_inst.for_range(0, r2nd_size) as r2nd_idx:
+                        r2nd_ub_offset = r2nd_idx * left_pl_size * c0_len
+                        r2nd_gm_offset = r2nd_idx * dst_r2nd_in_0_src_asize
+                        tik_inst.data_move(src_ub[r2nd_ub_offset + ub_args + ub_offset],
+                                           src_in_gm[r2nd_gm_offset + gm_args + in_gm_offset],
+                                           0, 1, left_pl_size * c0_len // ele_per_block, 0, 0)
+                with tik_inst.else_scope():
+                    tik_inst.data_move(src_ub[ub_args + ub_offset], src_in_gm[gm_args + in_gm_offset],
+                                       0, r2nd_size, left_pl_size * c0_len // ele_per_block, r2nd_left_gap, 0)
+
+        with tik_inst.if_scope(left_r2nd_size > 0):
+            is_left_r2nd_nz.set_as(1)
+            with tik_inst.for_range(0, c1_pl_size) as c1_idx:
+                c1_ub_offset = c1_idx * r2nd_pl_size * left_pl_size * c0_len
+                c1_gm_offset = c1_idx * src_c1_step_in
+                ub_arg = c1_ub_offset
+                gm_arg = c1_gm_offset
+                _inner_copy(ub_arg, gm_arg, left_r2nd_size)
+        with tik_inst.else_scope():
+            is_left_r2nd_nz.set_as(0)
+        left_gm_offset = is_left_r2nd_nz * ((left_r2nd_size - dst_r2nd_in_0_size) * dst_r2nd_in_0_src_asize +
+                                            dst_r2nd_in_1_src_asize)
+        left_ub_offset = left_r2nd_size * left_pl_size * c0_len
+
+        with tik_inst.if_scope(mid_lp_cnt > 0):
+            with tik_inst.for_range(0, c1_pl_size) as c1_idx:
+                c1_ub_offset = c1_idx * r2nd_pl_size * left_pl_size * c0_len
+                c1_gm_offset = c1_idx * src_c1_step_in
+                with tik_inst.for_range(0, mid_lp_cnt) as mid_lp_idx:
+                    r2nd1_ub_offset = mid_lp_idx * dst_r2nd_in_0_size * left_pl_size * c0_len
+                    r2nd1_gm_offset = mid_lp_idx * dst_r2nd_in_1_src_asize
+                    ub_arg = r2nd1_ub_offset + left_ub_offset + c1_ub_offset
+                    gm_arg = r2nd1_gm_offset + left_gm_offset + c1_gm_offset
+                    with tik_inst.if_scope(dst_r2nd_in_0_size <= tdc.REPEAT_LIMIT_MTE):
+                        renew_r2nd_size.set_as(dst_r2nd_in_0_size)
+                    with tik_inst.else_scope():
+                        renew_r2nd_size.set_as(1)
+                    _inner_copy(ub_arg, gm_arg, renew_r2nd_size)
+
+        mid_ub_offset = mid_lp_cnt * dst_r2nd_in_0_size * left_pl_size * c0_len
+        mid_gm_offset = mid_lp_cnt * dst_r2nd_in_1_src_asize
+        with tik_inst.if_scope(right_r2nd_size > 0):
+            with tik_inst.for_range(0, c1_pl_size) as c1_idx:
+                c1_ub_offset = c1_idx * r2nd_pl_size * left_pl_size * c0_len
+                c1_gm_offset = c1_idx * src_c1_step_in
+                ub_arg = mid_ub_offset + left_ub_offset + c1_ub_offset
+                gm_arg = mid_gm_offset + left_gm_offset + c1_gm_offset
+                _inner_copy(ub_arg, gm_arg, right_r2nd_size)
+
+        # do c1hnt -> nc1ht
+        with tik_inst.for_range(0, left_pl_size) as left_idx:
+            tik_inst.data_move(src_ub[left_idx * r2nd_pl_size * c1_pl_size * c0_len],
+                               src_ub[left_idx * c0_len + ub_offset],
+                               0, r2nd_pl_size * c1_pl_size, c0_len // ele_per_block,
+                               (left_pl_size - 1) * c0_len // ele_per_block, 0)
 
 
 # pylint: disable=unused-variable
-def _copy_data_out(out_offset_args, copy_out_args):
+def _copy_data_out(copy_out_args):
     """
     copy data from ub to gm
     """
 
-    src_r2nd_lp_step_out = out_offset_args[2]
-    (tik_inst, dst_out_gm, out_ub, pln_dst_c_cnt, out_beg_idx,
-     out_end_idx, c1_pl_size, r2nd_pl_size, src_2_dst_flag, c_mod_c0, dtype_factor, ele_per_block) = copy_out_args
-
-    vnc_line_cnt = (out_end_idx - out_beg_idx) // pln_dst_c_cnt
-    left_c_cnt = (out_end_idx - out_beg_idx) % pln_dst_c_cnt
-    vnc_line_ub_offset = pln_dst_c_cnt * c1_pl_size * r2nd_pl_size * tdc.C0_16
-
-    r2nd_ub_offset = tik_inst.Scalar(name="r2nd_ub_offset")
-    left_axis_ub_offset = tik_inst.Scalar(name="left_axis_ub_offset")
-    with tik_inst.if_scope(src_2_dst_flag > 0):  # such as DC1HWNoNiC0 -> NDHWC, pln_dst_c_cnt is DHW
-        r2nd_ub_offset.set_as(pln_dst_c_cnt * c1_pl_size * tdc.C0_16)
-        left_axis_ub_offset.set_as(c1_pl_size * tdc.C0_16)
-    with tik_inst.else_scope():  # such as NC1HWC0 -> NHWC, pln_dst_c_cnt is N
-        r2nd_ub_offset.set_as(c1_pl_size * tdc.C0_16)
-        left_axis_ub_offset.set_as(r2nd_pl_size * c1_pl_size * tdc.C0_16)
-
-    with tik_inst.for_range(0, vnc_line_cnt) as vnc_line_idx:
-        with tik_inst.for_range(0, pln_dst_c_cnt) as c_idx:
-            ele_idx = vnc_line_idx * pln_dst_c_cnt + c_idx + out_beg_idx
-            out_offset = _update_output_offset(out_offset_args, ele_idx)
-            ub_offset = vnc_line_idx * vnc_line_ub_offset + c_idx * left_axis_ub_offset
-            with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
-                tik_inst.data_move(dst_out_gm[out_offset + r2nd_idx * src_r2nd_lp_step_out],
-                                   out_ub[ub_offset + r2nd_idx * r2nd_ub_offset], 0, 1, c1_pl_size * dtype_factor, 0, 0)
-
-    with tik_inst.if_scope(left_c_cnt > 0):
-        with tik_inst.for_range(0, left_c_cnt) as c_idx_1:
-            ele_idx_1 = vnc_line_cnt * pln_dst_c_cnt + c_idx_1 + out_beg_idx
-            out_offset_1 = _update_output_offset(out_offset_args, ele_idx_1)
-            ub_offset_1 = vnc_line_cnt * vnc_line_ub_offset + c_idx_1 * left_axis_ub_offset
-            with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx_1:
-                tik_inst.data_move(dst_out_gm[out_offset_1 + r2nd_idx_1 * src_r2nd_lp_step_out],
-                                   out_ub[ub_offset_1 + r2nd_idx_1 * r2nd_ub_offset],
-                                   0, 1, c1_pl_size * dtype_factor, 0, 0)
-
-
-def _copy_data_out_c_less_8c0(out_offset_args, copy_out_args):
-    """
-    copy data from ub to gm
-    """
-
-    (tik_inst, dst_out_gm, out_ub, pln_dst_c_cnt, out_beg_idx, out_end_idx,
-     c1_pl_size, r2nd_pl_size, src_2_dst_flag, c_mod_c0, dtype_factor, ele_per_block) = copy_out_args
-
-    vnc_line_cnt = (out_end_idx - out_beg_idx) // pln_dst_c_cnt
-    vnc_line_ub_offset = pln_dst_c_cnt * c1_pl_size * r2nd_pl_size * tdc.C0_16
-
-    left_axis_ub_offset = tik_inst.Scalar(name="left_axis_ub_offset")
-    with tik_inst.if_scope(src_2_dst_flag > 0):  # such as DC1HWNoNiC0 -> NDHWC, pln_dst_c_cnt is DHW
-        left_axis_ub_offset.set_as(c1_pl_size * tdc.C0_16)
-    with tik_inst.else_scope():  # such as NC1HWC0 -> NHWC, pln_dst_c_cnt is N
-        left_axis_ub_offset.set_as(r2nd_pl_size * c1_pl_size * tdc.C0_16)
+    (tik_inst, dst_out_gm, src_ub, left_pl_size, src_left_step_out, r2nd_pl_size, dst_r2nd_step_out,
+     c1_pl_size, sub_c_size, all_c_in, ele_per_block, c0_len, tiling_mode) = copy_out_args
 
     with tik_inst.new_stmt_scope():
-        sub_c_size = (c1_pl_size - 1) * tdc.C0_16 + c_mod_c0
-        tmp_reg = tik_inst.Scalar(dtype=dst_out_gm.dtype)
-        with tik_inst.for_range(0, vnc_line_cnt) as vnc_line_idx:
-            with tik_inst.for_range(0, pln_dst_c_cnt) as c_idx:
-                ele_idx = vnc_line_idx * pln_dst_c_cnt + c_idx + out_beg_idx
-                out_offset = _update_output_offset(out_offset_args, ele_idx)
-                ub_offset = vnc_line_idx * vnc_line_ub_offset + c_idx * left_axis_ub_offset
-                tik_inst.data_move(dst_out_gm[out_offset],
-                                   out_ub[ub_offset], 0, 1, r2nd_pl_size * sub_c_size // ele_per_block, 0, 0)
+        tmp_reg = [tik_inst.Scalar(dtype=src_ub.dtype) for i in tdc.REG_IDX_LIST[:ele_per_block]]
+        cur_idx = tik_inst.Scalar(name="cur_idx")
 
-                with tik_inst.if_scope(r2nd_pl_size * sub_c_size % ele_per_block > 0):
-                    with tik_inst.for_range(0, ele_per_block) as reg_idx:
-                        tmp_reg.set_as(out_ub[ub_offset + r2nd_pl_size * sub_c_size - ele_per_block + reg_idx])
-                        out_ub[reg_idx].set_as(tmp_reg)
-                    tik_inst.data_move(dst_out_gm[out_offset + r2nd_pl_size * sub_c_size - ele_per_block],
-                                       out_ub, 0, 1, 1, 0, 0)
+        def _inner_copy(gm_out_offset, ub_out_offset, nburst):
+            with tik_inst.if_scope(tik.all(nburst > ele_per_block, nburst % ele_per_block > 0)):
+                tik_inst.data_move(dst_out_gm[gm_out_offset], src_ub[ub_out_offset],
+                                   0, 1, nburst // ele_per_block, 0, 0)
+                for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                    tmp_reg[i].set_as(src_ub[nburst - ele_per_block + i + ub_out_offset])
+                for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                    src_ub[i:].set_as(tmp_reg[i])
+                tik_inst.data_move(dst_out_gm[nburst - ele_per_block + gm_out_offset],
+                                   src_ub, 0, 1, 1, 0, 0)
+            with tik_inst.else_scope():
+                tik_inst.data_move(dst_out_gm[gm_out_offset], src_ub[ub_out_offset],
+                                   0, 1, tdc.ceil_div(nburst, ele_per_block), 0, 0)
+
+        with tik_inst.if_scope(tiling_mode == 2012):
+            burst_len = left_pl_size * r2nd_pl_size * sub_c_size
+            _inner_copy(0, 0, burst_len)
+        with tik_inst.else_scope():
+            with tik_inst.if_scope(tik.all(tiling_mode == 2011, all_c_in == 1)):
+                with tik_inst.new_stmt_scope(disable_sync=True):
+                    with tik_inst.for_range(0, left_pl_size) as left_idx:
+                        left_gm_offset = left_idx * src_left_step_out
+                        left_ub_offset = left_idx * r2nd_pl_size * c1_pl_size * c0_len
+                        burst_len = r2nd_pl_size * sub_c_size
+                        tik_inst.data_move(dst_out_gm[left_gm_offset], src_ub[left_ub_offset],
+                                           0, 1, burst_len // ele_per_block, 0, 0)
+                with tik_inst.if_scope(burst_len % ele_per_block > 0):
+                    with tik_inst.for_range(0, left_pl_size) as left_idx:
+                        left_gm_offset = left_idx * src_left_step_out
+                        left_ub_offset = left_idx * r2nd_pl_size * c1_pl_size * c0_len
+                        burst_len = r2nd_pl_size * sub_c_size
+                        for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                            tmp_reg[i].set_as(src_ub[burst_len - ele_per_block + i + left_ub_offset])
+                        for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                            src_ub[i:].set_as(tmp_reg[i])
+                        tik_inst.data_move(dst_out_gm[burst_len - ele_per_block + left_gm_offset],
+                                           src_ub, 0, 1, 1, 0, 0)
+            with tik_inst.else_scope():
+                with tik_inst.if_scope(all_c_in == 0):
+                    with tik_inst.new_stmt_scope(disable_sync=True):
+                        with tik_inst.for_range(0, left_pl_size) as left_idx:
+                            left_gm_offset = left_idx * src_left_step_out
+                            left_ub_offset = left_idx * r2nd_pl_size * c1_pl_size * c0_len
+                            with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
+                                burst_len = sub_c_size
+                                out_gm_offset = r2nd_idx * dst_r2nd_step_out + left_gm_offset
+                                out_ub_offset = r2nd_idx * c1_pl_size * c0_len + left_ub_offset
+                                tik_inst.data_move(dst_out_gm[out_gm_offset], src_ub[out_ub_offset],
+                                                   0, 1, burst_len // ele_per_block, 0, 0)
+                    with tik_inst.if_scope(burst_len % ele_per_block > 0):
+                        with tik_inst.for_range(0, left_pl_size) as left_idx:
+                            left_gm_offset = left_idx * src_left_step_out
+                            left_ub_offset = left_idx * r2nd_pl_size * c1_pl_size * c0_len
+                            with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
+                                burst_len = sub_c_size
+                                out_gm_offset = r2nd_idx * dst_r2nd_step_out + left_gm_offset
+                                out_ub_offset = r2nd_idx * c1_pl_size * c0_len + left_ub_offset
+                                for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                                    tmp_reg[i].set_as(src_ub[burst_len - ele_per_block + i + out_ub_offset])
+                                for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                                    src_ub[i:].set_as(tmp_reg[i])
+                                tik_inst.data_move(dst_out_gm[burst_len - ele_per_block + out_gm_offset],
+                                                   src_ub, 0, 1, 1, 0, 0)
+                with tik_inst.else_scope():  # to deduct scalar operations
+                    last_idx = left_pl_size * r2nd_pl_size - 1
+                    burst_len = sub_c_size
+                    with tik_inst.new_stmt_scope(disable_sync=False):
+                        with tik_inst.for_range(0, left_pl_size) as left_idx:
+                            left_gm_offset = left_idx * src_left_step_out
+                            left_ub_offset = left_idx * r2nd_pl_size * c1_pl_size * c0_len
+                            with tik_inst.for_range(0, r2nd_pl_size) as r2nd_idx:
+                                cur_idx.set_as(left_idx * r2nd_pl_size + r2nd_idx)
+                                out_gm_offset = r2nd_idx * dst_r2nd_step_out + left_gm_offset
+                                out_ub_offset = r2nd_idx * c1_pl_size * c0_len + left_ub_offset
+                                with tik_inst.if_scope(cur_idx != last_idx):
+                                    tik_inst.data_move(dst_out_gm[out_gm_offset], src_ub[out_ub_offset],
+                                                       0, 1, tdc.ceil_div(burst_len, ele_per_block), 0, 0)
+                                with tik_inst.else_scope():
+                                    tik_inst.data_move(dst_out_gm[out_gm_offset], src_ub[out_ub_offset],
+                                                       0, 1, burst_len // ele_per_block, 0, 0)
+                    with tik_inst.if_scope(tik.all(cur_idx == last_idx, burst_len % ele_per_block > 0)):
+                        out_gm_offset = (r2nd_pl_size - 1) * dst_r2nd_step_out + (left_pl_size - 1) * src_left_step_out
+                        out_ub_offset = (left_pl_size * r2nd_pl_size - 1) * c1_pl_size * c0_len
+                        for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                            tmp_reg[i].set_as(src_ub[burst_len - ele_per_block + i + out_ub_offset])
+                        for i in tdc.REG_IDX_LIST[:ele_per_block]:
+                            src_ub[i:].set_as(tmp_reg[i])
+                        tik_inst.data_move(dst_out_gm[burst_len - ele_per_block + out_gm_offset], src_ub, 0, 1, 1, 0, 0)
 
 
 def _func_transform_201(tensor_args, tp_args):
@@ -479,91 +740,166 @@ def _func_transform_201(tensor_args, tp_args):
     transform function for tiling mode 201
     """
 
-    tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block = tensor_args
-    (ub_offset, mc_flag, used_core, core_step_in, core_step_out, nlc_r2nd_lp_cnt,
-     nlc_c1_lp_cnt, nlc_left_lp_cnt, nlc_r2nd_left, nlc_c1_left, lc_r2nd_lp_cnt, lc_c1_lp_cnt,
-     lc_left_lp_cnt, lc_r2nd_left, lc_c1_left, src_r2nd_lp_unit, src_r2nd_lp_step_in, src_r2nd_lp_step_out,
-     src_c1_step_in, src_c1_lp_unit, src_c1_lp_step_in, src_c1_lp_step_out, pln_dst_c_cnt, c_mod_c0, in_idx_0_size,
-     in_idx_0_dst_rsize, in_idx_0_src_asize, in_idx_1_size, in_idx_1_dst_rsize, in_idx_1_src_asize,
-     in_idx_2_size, in_idx_2_dst_rsize, in_idx_2_src_asize, out_idx_0_size, out_idx_0_dst_rsize,
-     out_idx_0_dst_asize, out_idx_1_size, out_idx_1_dst_rsize, out_idx_1_dst_asize, out_idx_2_size,
-     out_idx_2_dst_rsize, out_idx_2_dst_asize, src_2_dst_flag) = tp_args
-    r2nd_lp_cnt = tik_inst.Scalar(name="r2nd_lp_cnt")
-    c1_lp_cnt = tik_inst.Scalar(name="c1_lp_cnt")
-    c1_left = tik_inst.Scalar(name="c1_left")
-    r2nd_left = tik_inst.Scalar(name="r2nd_left")
-    sub_c_size = tik_inst.Scalar(name="sub_c_size")
-    dtype_factor = tdc.get_dtype_factor(src_ub.dtype)
+    tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block, in_dtype = tensor_args
+    (tiling_mode, ub_offset, mc_pos, used_core_cnt, srcr2nd_dstr2nd_same, c0_len, core_step_in, core_step_out,
+     nlc_dst_r2nd_lp_cnt, nlc_src_c1_lp_cnt, nlc_src_left_lp_cnt, nlc_dst_r2nd_left, nlc_src_c1_left,
+     nlc_src_left_left, lc_dst_r2nd_lp_cnt, lc_src_c1_lp_cnt, lc_src_left_lp_cnt, lc_dst_r2nd_left, lc_src_c1_left,
+     lc_src_left_left, dst_r2nd_lp_unit, dst_r2nd_step_in, dst_r2nd_step_out, dst_r2nd_lp_step_in, dst_r2nd_lp_step_out,
+     src_c1_lp_unit, all_c_in, src_c1_step_in, src_c1_step_out, src_c1_lp_step_in, src_c1_lp_step_out,
+     c_mod_c0, src_left_lp_unit, src_left_step_in, src_left_step_out, src_left_lp_step_in, src_left_lp_step_out,
+     dst_r2nd_in_0_size, dst_r2nd_in_0_src_rsize, dst_r2nd_in_0_src_asize, dst_r2nd_in_1_size, dst_r2nd_in_1_src_rsize,
+     dst_r2nd_in_1_src_asize, dst_r2nd_dims) = tp_args
 
-    def _inner_func(begin_idx, end_idx):
+    def _inner_func(args):
+        src_left_lp_cnt, src_left_left, src_c1_lp_cnt, src_c1_left, dst_r2nd_lp_cnt, dst_r2nd_left = args
         r2nd_pl_size = tik_inst.Scalar(name="r2nd_pl_size")
+        r2nd_beg = tik_inst.Scalar(name="r2nd_beg")
         c1_pl_size = tik_inst.Scalar(name="c1_pl_size")
+        left_pl_size = tik_inst.Scalar(name="left_pl_size")
+        sub_c_size = tik_inst.Scalar(name="sub_c_size")
         is_last_c1 = tik_inst.Scalar(name="is_last_c1")
-        out_beg_idx = tik_inst.Scalar(name="out_beg_idx")
-        out_end_idx = tik_inst.Scalar(name="out_end_idx")
-        with tik_inst.for_range(0, r2nd_lp_cnt) as r2nd_lp_idx:
-            with tik_inst.if_scope(tik.any(r2nd_lp_idx != r2nd_lp_cnt - 1, r2nd_left == 0)):
-                r2nd_pl_size.set_as(src_r2nd_lp_unit)
-            with tik_inst.else_scope():
-                r2nd_pl_size.set_as(lc_r2nd_left)
-
-            with tik_inst.for_range(0, c1_lp_cnt) as c1_lp_idx:
-                with tik_inst.if_scope(tik.any(c1_lp_idx != c1_lp_cnt - 1, c1_left == 0)):
-                    c1_pl_size.set_as(src_c1_lp_unit)
-                    with tik_inst.if_scope(c1_lp_idx == c1_lp_cnt - 1):
-                        is_last_c1.set_as(1)
-                    with tik_inst.else_scope():
-                        is_last_c1.set_as(0)
+        is_c1_back = tik_inst.Scalar(name="is_c1_back")
+        is_r2nd_back = tik_inst.Scalar(name="is_r2nd_back")
+        is_left_back = tik_inst.Scalar(name="is_left_back")
+        with tik_inst.for_range(0, src_c1_lp_cnt) as c1_lp_idx:
+            with tik_inst.if_scope(tik.any(c1_lp_idx != src_c1_lp_cnt - 1, src_c1_left == 0)):
+                with tik_inst.if_scope(tik.any(tik.all(mc_pos == 1, block_idx == used_core_cnt - 1,
+                                                       c1_lp_idx == src_c1_lp_cnt - 2, lc_src_c1_left == 1,
+                                                       c_mod_c0 > 0, c_mod_c0 < ele_per_block),
+                                               tik.all(mc_pos == 1, block_idx == used_core_cnt - 2,
+                                                       c1_lp_idx == src_c1_lp_cnt - 1, lc_src_c1_lp_cnt == 1,
+                                                       lc_src_c1_left == 1, c_mod_c0 > 0, c_mod_c0 < ele_per_block),
+                                               tik.all(mc_pos != 1, c1_lp_idx == src_c1_lp_cnt - 2, lc_src_c1_left == 1,
+                                                       c_mod_c0 > 0, c_mod_c0 < ele_per_block))):
+                    c1_pl_size.set_as(src_c1_lp_unit - 1)
                 with tik_inst.else_scope():
-                    c1_pl_size.set_as(lc_c1_left)
+                    c1_pl_size.set_as(src_c1_lp_unit)
+                # check last c1
+                with tik_inst.if_scope(tik.any(tik.all(c1_lp_idx == src_c1_lp_cnt - 1, mc_pos != 1),
+                                               tik.all(c1_lp_idx == src_c1_lp_cnt - 1, mc_pos == 1,
+                                                       block_idx == used_core_cnt - 1))):
                     is_last_c1.set_as(1)
+                with tik_inst.else_scope():
+                    is_last_c1.set_as(0)
+                is_c1_back.set_as(0)
+            with tik_inst.else_scope():
+                with tik_inst.if_scope(tik.all(used_core_cnt > 1, lc_src_c1_left == 1,
+                                               c_mod_c0 > 0, c_mod_c0 < ele_per_block)):
+                    c1_pl_size.set_as(lc_src_c1_left + 1)
+                    is_c1_back.set_as(1)
+                with tik_inst.else_scope():
+                    c1_pl_size.set_as(lc_src_c1_left)
+                    is_c1_back.set_as(0)
+                is_last_c1.set_as(1)
+            c1_backend = is_c1_back
+            with tik_inst.if_scope(tik.all(is_last_c1 == 1, c_mod_c0 > 0)):
+                sub_c_size.set_as((c1_pl_size - 1) * c0_len + c_mod_c0)
+            with tik_inst.else_scope():
+                sub_c_size.set_as(c1_pl_size * c0_len)
 
-                with tik_inst.for_range(begin_idx, end_idx) as ele_idx:
-                    vnc_pl_c_cnt = tdc.VNC_LINES * pln_dst_c_cnt
-                    with tik_inst.if_scope((ele_idx - begin_idx) % vnc_pl_c_cnt == 0):
-                        out_beg_idx.set_as(ele_idx)
-                    in_offset_args = (r2nd_lp_idx, src_r2nd_lp_step_in, c1_lp_idx, src_c1_lp_step_in,
-                                      in_idx_0_size, in_idx_0_dst_rsize, in_idx_0_src_asize,
-                                      in_idx_1_size, in_idx_1_dst_rsize, in_idx_1_src_asize,
-                                      in_idx_2_size, in_idx_2_dst_rsize, in_idx_2_src_asize, ele_idx,
-                                      block_idx * core_step_in)
-                    in_gm_offset = _update_input_offset(in_offset_args)
-                    in_ub_offset = (ele_idx - begin_idx) % vnc_pl_c_cnt * c1_pl_size * r2nd_pl_size * tdc.C0_16
-                    copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, in_ub_offset,
-                                    src_c1_step_in, c1_pl_size, r2nd_pl_size, dtype_factor)
-                    _copy_data_in(copy_in_args)
-                    with tik_inst.if_scope(tik.any((ele_idx - begin_idx + 1) % vnc_pl_c_cnt == 0,
-                                                   ele_idx == end_idx - 1)):
-                        out_end_idx.set_as(ele_idx + 1)
-                        vnc_args = (tik_inst, src_ub, ub_offset, c1_lp_cnt, c1_pl_size, r2nd_pl_size, pln_dst_c_cnt,
-                                    src_2_dst_flag, c_mod_c0, dtype_factor)
-                        _twice_vnchwconv_no_invert(vnc_args)
-                        out_gm_args = (r2nd_lp_idx, src_r2nd_lp_unit, src_r2nd_lp_step_out,
-                                       c1_lp_idx, src_c1_lp_step_out,
-                                       out_idx_0_size, out_idx_0_dst_rsize, out_idx_0_dst_asize,
-                                       out_idx_1_size, out_idx_1_dst_rsize, out_idx_1_dst_asize,
-                                       out_idx_2_size, out_idx_2_dst_rsize, out_idx_2_dst_asize,
-                                       block_idx * core_step_out)
-                        copy_out_args = (tik_inst, dst_out_gm, src_ub[ub_offset], pln_dst_c_cnt, out_beg_idx,
-                                         out_end_idx, c1_pl_size, r2nd_pl_size, src_2_dst_flag, c_mod_c0,
-                                         dtype_factor, ele_per_block)
-                        with tik_inst.if_scope(c1_lp_cnt > 1):
-                            _copy_data_out(out_gm_args, copy_out_args)
+            with tik_inst.for_range(0, dst_r2nd_lp_cnt) as r2nd_lp_idx:
+                with tik_inst.if_scope(tik.any(r2nd_lp_idx != dst_r2nd_lp_cnt - 1, dst_r2nd_left == 0)):
+                    with tik_inst.if_scope(tik.any(tik.all(mc_pos == 2, block_idx == used_core_cnt - 2,
+                                                           lc_dst_r2nd_lp_cnt == 1, r2nd_lp_idx == dst_r2nd_lp_cnt - 1,
+                                                           lc_dst_r2nd_left > 0,
+                                                           lc_dst_r2nd_left * sub_c_size < ele_per_block),
+                                                   tik.all(mc_pos == 2, block_idx == used_core_cnt - 1,
+                                                           r2nd_lp_idx == dst_r2nd_lp_cnt - 2, lc_dst_r2nd_left > 0,
+                                                           lc_dst_r2nd_left * sub_c_size < ele_per_block),
+                                                   tik.all(mc_pos != 2, r2nd_lp_idx == dst_r2nd_lp_cnt - 2,
+                                                           lc_dst_r2nd_left > 0,
+                                                           lc_dst_r2nd_left * sub_c_size < ele_per_block))):
+                        r2nd_pl_size.set_as(dst_r2nd_lp_unit - ele_per_block)
+                    with tik_inst.else_scope():
+                        r2nd_pl_size.set_as(dst_r2nd_lp_unit)
+                    is_r2nd_back.set_as(0)
+                with tik_inst.else_scope():
+                    with tik_inst.if_scope(tik.all(used_core_cnt > 1, lc_dst_r2nd_left * sub_c_size < ele_per_block)):
+                        r2nd_pl_size.set_as(lc_dst_r2nd_left + ele_per_block)
+                        is_r2nd_back.set_as(1)
+                    with tik_inst.else_scope():
+                        r2nd_pl_size.set_as(lc_dst_r2nd_left)
+                        is_r2nd_back.set_as(0)
+                r2nd_backend = is_r2nd_back * ele_per_block
+                with tik_inst.if_scope(mc_pos == 2):
+                    r2nd_beg.set_as((r2nd_lp_idx + block_idx * nlc_dst_r2nd_lp_cnt) * dst_r2nd_lp_unit - r2nd_backend)
+                with tik_inst.else_scope():
+                    r2nd_beg.set_as(r2nd_lp_idx * dst_r2nd_lp_unit - r2nd_backend)
+
+                r2nd_c_size = dst_r2nd_in_0_size * dst_r2nd_in_1_size * sub_c_size
+                with tik_inst.for_range(0, src_left_lp_cnt) as left_lp_idx:
+                    with tik_inst.if_scope(tik.any(left_lp_idx != src_left_lp_cnt - 1, src_left_left == 0)):
+                        with tik_inst.if_scope(tik.any(tik.all(mc_pos == 0, block_idx == used_core_cnt - 2,
+                                                               lc_src_left_lp_cnt == 1, lc_src_left_left > 0,
+                                                               left_lp_idx == src_left_lp_cnt - 1,
+                                                               lc_src_left_left * r2nd_c_size < ele_per_block),
+                                                       tik.all(mc_pos == 0, block_idx == used_core_cnt - 1,
+                                                               left_lp_idx == src_left_lp_cnt - 2,
+                                                               lc_src_left_left > 0,
+                                                               lc_src_left_left * r2nd_c_size < ele_per_block),
+                                                       tik.all(mc_pos != 0, left_lp_idx == src_left_lp_cnt - 2,
+                                                               lc_src_left_left > 0,
+                                                               lc_src_left_left * r2nd_c_size < ele_per_block))):
+                            left_pl_size.set_as(src_left_lp_unit - ele_per_block)
                         with tik_inst.else_scope():
-                            _copy_data_out_c_less_8c0(out_gm_args, copy_out_args)
+                            left_pl_size.set_as(src_left_lp_unit)
+                        is_left_back.set_as(0)
+                    with tik_inst.else_scope():
+                        with tik_inst.if_scope(tik.all(used_core_cnt > 1, lc_src_left_left > 0,
+                                                       lc_src_left_left * r2nd_c_size < ele_per_block)):
+                            left_pl_size.set_as(lc_src_left_left + ele_per_block)
+                            is_left_back.set_as(1)
+                        with tik_inst.else_scope():
+                            left_pl_size.set_as(lc_src_left_left)
+                            is_left_back.set_as(0)
+                    left_backend = is_left_back * ele_per_block
 
-    with tik_inst.if_scope(block_idx != used_core - 1):
-        r2nd_lp_cnt.set_as(nlc_r2nd_lp_cnt)
-        c1_lp_cnt.set_as(nlc_c1_lp_cnt)
-        r2nd_left.set_as(nlc_r2nd_left)
-        c1_left.set_as(nlc_c1_left)
-        _inner_func(mc_flag * block_idx * nlc_left_lp_cnt, (mc_flag * block_idx + 1) * nlc_left_lp_cnt)
+                    with tik_inst.if_scope(srcr2nd_dstr2nd_same == 1):  # such as NC1HWC0 -> NHWC
+                        in_offset_args = (left_lp_idx, src_left_lp_step_in, left_backend, src_left_step_in, c1_lp_idx,
+                                          src_c1_lp_step_in, c1_backend, src_c1_step_in, r2nd_lp_idx,
+                                          dst_r2nd_lp_step_in, r2nd_backend, dst_r2nd_step_in, block_idx * core_step_in)
+                        in_gm_offset = _update_input_offset_0(in_offset_args)
+                        copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, left_pl_size, src_left_step_in,
+                                        c1_pl_size, src_c1_step_in, r2nd_pl_size, c0_len, ele_per_block)
+                        _copy_data_in_0(copy_in_args)
+                    with tik_inst.else_scope():  # such as DC1HWNoNiC0 -> NDHWC
+                        in_offset_args = (left_lp_idx, src_left_lp_step_in, left_backend, src_left_step_in,
+                                          c1_lp_idx, src_c1_lp_step_in, c1_backend, src_c1_step_in,
+                                          r2nd_beg, block_idx * core_step_in,
+                                          dst_r2nd_in_0_size, dst_r2nd_in_0_src_rsize, dst_r2nd_in_0_src_asize,
+                                          dst_r2nd_in_1_size, dst_r2nd_in_1_src_rsize, dst_r2nd_in_1_src_asize)
+                        in_gm_offset = _update_input_offset_1(in_offset_args)
+                        copy_in_args = (tik_inst, src_in_gm, src_ub, in_gm_offset, ub_offset, left_pl_size,
+                                        c1_pl_size, src_c1_step_in, r2nd_beg, r2nd_pl_size,
+                                        dst_r2nd_in_0_size, dst_r2nd_in_0_src_asize, dst_r2nd_in_1_src_asize,
+                                        c0_len, ele_per_block)
+                        _copy_data_in_1(copy_in_args)
+
+                    with tik_inst.if_scope(tiling_mode == 2010):  # use ubuf_2_ubuf
+                        ubuf_args = (tik_inst, src_ub, ub_offset, left_pl_size,
+                                     c1_pl_size, r2nd_pl_size, c0_len, ele_per_block)
+                        _ubuf_2_ubuf_convert(ubuf_args)
+                    with tik_inst.else_scope():  # use twice vnchwconv
+                        vnc_args = (tik_inst, src_ub, ub_offset, left_pl_size, c1_pl_size, r2nd_pl_size, c0_len,
+                                    ele_per_block, in_dtype, tiling_mode, all_c_in, sub_c_size)
+                        _twice_vnchwconv_no_invert(vnc_args)
+                    out_gm_args = (r2nd_lp_idx, dst_r2nd_lp_step_out, r2nd_backend, dst_r2nd_step_out,
+                                   c1_lp_idx, src_c1_lp_step_out, c1_backend * c0_len, left_lp_idx,
+                                   src_left_lp_step_out, left_backend, src_left_step_out, block_idx * core_step_out)
+                    out_gm_offset = _update_output_offset(out_gm_args)
+                    copy_out_args = (tik_inst, dst_out_gm[out_gm_offset], src_ub[ub_offset],
+                                     left_pl_size, src_left_step_out, r2nd_pl_size, dst_r2nd_step_out,
+                                     c1_pl_size, sub_c_size, all_c_in, ele_per_block, c0_len, tiling_mode)
+                    _copy_data_out(copy_out_args)
+
+    with tik_inst.if_scope(block_idx != used_core_cnt - 1):
+        nlc_args = (nlc_src_left_lp_cnt, nlc_src_left_left, nlc_src_c1_lp_cnt,
+                    nlc_src_c1_left, nlc_dst_r2nd_lp_cnt, nlc_dst_r2nd_left)
+        _inner_func(nlc_args)
     with tik_inst.else_scope():
-        r2nd_lp_cnt.set_as(lc_r2nd_lp_cnt)
-        c1_lp_cnt.set_as(lc_c1_lp_cnt)
-        r2nd_left.set_as(lc_r2nd_left)
-        c1_left.set_as(lc_c1_left)
-        _inner_func(mc_flag * block_idx * nlc_left_lp_cnt, mc_flag * block_idx * nlc_left_lp_cnt + lc_left_lp_cnt)
+        lc_args = (lc_src_left_lp_cnt, lc_src_left_left, lc_src_c1_lp_cnt,
+                   lc_src_c1_left, lc_dst_r2nd_lp_cnt, lc_dst_r2nd_left)
+        _inner_func(lc_args)
 
 
 def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name="trans_data_negative_target_tc"):
@@ -599,7 +935,7 @@ def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name=
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 
     # get tiling parameters
-    args = in_shape, out_shape, src_format, dst_format, block_elem_cnt, ub_size
+    args = in_shape, out_shape, src_format, dst_format, block_elem_cnt, ub_size, in_dtype
     tiling_params = _get_tiling_params_func(args)
 
     tik_inst = tik.Tik()
@@ -607,14 +943,12 @@ def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name=
     dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm")
     src_ub = tik_inst.Tensor(in_dtype, (ub_size,), tik.scope_ubuf, "total_ub")
 
-    tiling_mode = tiling_params[0]
     used_core_cnt = tiling_params[3]
     with tik_inst.for_range(0, tdc.CORE_DIM_NUM, block_num=tdc.CORE_DIM_NUM) as block_idx:
         with tik_inst.if_scope(block_idx < used_core_cnt):
-            if tiling_mode == 201:
-                tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt]
-                tp_args = tiling_params[1:]
-                _func_transform_201(tensor_args, tp_args)
+            tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, in_dtype]
+            tp_args = tiling_params
+            _func_transform_201(tensor_args, tp_args)
 
     # build cce
     tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[src_in_gm], outputs=[dst_out_gm])
