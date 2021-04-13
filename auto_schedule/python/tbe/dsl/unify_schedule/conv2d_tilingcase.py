@@ -363,7 +363,7 @@ def calc_conv2d(outs, option=None):
     tiling_dict["dynamic_shape_flag"] = True
     add_compile_info("fmap_c1", tiling_dict["a_shape"][1])
 
-    tiling_op = Conv2dTiling(tiling_dict, ConvParam.dynamic_para)
+    tiling_op = Conv2dTiling(tiling_dict, ConvParam.dynamic_para, outs[0])
     seletor = TilingSelection(tiling_op)
     tiling_cases = []
     for tgt in tgt_list:
@@ -379,7 +379,7 @@ def calc_conv2d(outs, option=None):
 
 
 class Conv2dTiling(CubeTilingOp):
-    def __init__(self, tiling_info, dynamic_para):
+    def __init__(self, tiling_info, dynamic_para, res):
         super().__init__(tiling_info, None, dynamic_para.get("var_map"))
         self.a_info = tiling_info['a_shape']
         self.a_5hd_info = tiling_info['placeholder_fmap_5hd_shape']
@@ -389,6 +389,12 @@ class Conv2dTiling(CubeTilingOp):
         self.key = 'A_shape'
         self.op_type = "conv2d"
         self.w_type = tiling_info.get("b_dtype")
+        self._quant_fusion_muti_groups_in_cl0 = False
+        self._l1_fusion_type = ConvParam.fusion_para.get("l1_fusion_type")
+        self._input_memory_type = ConvParam.fusion_para.get("input_memory_type")
+        if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
+           ("virtual_res" in res.op.name or res.dtype == "int8"):
+            self._quant_fusion_muti_groups_in_cl0 = True
 
     def get_repo_tiling(self):
         tiling_list = get_tiling(self.tiling_info)
@@ -463,15 +469,21 @@ class Conv2dTiling(CubeTilingOp):
 
         tiling = {}
 
+        if self._quant_fusion_muti_groups_in_cl0:
+            tiling_n = ConvParam.para_dict["cout1_opt"]
+            group_cl0 = 2
+        else:
+            tiling_n = 2
+            group_cl0 = 1
         tiling_m = 1
         tiling_k = 1
-        tiling_n = 1
+
         reduce_k0 = CUBE_INFO["reduce_k0"][self.w_type]
         tiling["AL1_shape"] = [self.b_info[2] * self.b_info[3] * reduce_k0, 1, 1, 1]
         tiling["BL1_shape"] = None
         tiling["AL0_matrix"] = [tiling_m, tiling_k, utils.FP16_M, reduce_k0, 1, 1]
         tiling["BL0_matrix"] = [tiling_k, tiling_n, utils.FP16_N, reduce_k0, 1, 1]
-        tiling["CL0_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
+        tiling["CL0_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, group_cl0]
         tiling["CUB_matrix"] = [tiling_n, tiling_m, utils.FP16_M, utils.FP16_N, 1, 1]
         tiling["AUB_shape"] = tiling["AL1_shape"]
         tiling["manual_pingpong_buffer"] = {'AL1_pbuffer': 1,
@@ -487,6 +499,10 @@ class Conv2dTiling(CubeTilingOp):
         tiling["CUB_channel_wise_flag"] = True
         tiling["n_bef_batch_flag"] = False
         _handle_block_dim()
+        if self._l1_fusion_type == 1:
+            tiling["AL1_shape"] = []
+        if self._input_memory_type[0] == 1:
+            tiling["AL1_shape"] = []
 
         return tiling
 

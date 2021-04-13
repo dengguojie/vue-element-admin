@@ -1325,6 +1325,8 @@ class CceConvOp:
                     avoid cyclomatic complexity, handle block_dim
                     """
                     tiling["block_dim"] = [1, 1, 1, 1]
+                    if self._var_map and ("batch_n" in self._var_map):
+                        return
                     device_core_num = self._corenum
                     if (ConvParam.batch > 1) and (device_core_num > 1):
                         if ConvParam.batch <= device_core_num:
@@ -1350,16 +1352,18 @@ class CceConvOp:
                                "uint4": 1.0 / 2, "int4": 1.0 / 2}
                 input_data_type = in_dtype
                 w_out = ConvParam.w_out
-
-                for m_target in range(32, 0, -1):
-                    tmp1 = ((m_target*m_bit_length['float16']) +
-                            w_out - 1) // w_out
-                    tmp2 = ((tmp1*ConvParam.stride_h) +
-                            kh_dilate)*ConvParam.w_in
-                    max_feature_map = 1*ci0*tmp2*2*m_bit_ratio[input_data_type]
-                    if max_feature_map < l1_buffer_size:
-                        break
-                tiling_m = fmap2_read_select(m_target)
+                if self._var_map:
+                    tiling_m = 1
+                else:
+                    for m_target in range(32, 0, -1):
+                        tmp1 = ((m_target*m_bit_length['float16']) +
+                                w_out - 1) // w_out
+                        tmp2 = ((tmp1*ConvParam.stride_h) +
+                                kh_dilate)*ConvParam.w_in
+                        max_feature_map = 1*ci0*tmp2*2*m_bit_ratio[input_data_type]
+                        if max_feature_map < l1_buffer_size:
+                            break
+                    tiling_m = fmap2_read_select(m_target)
                 tiling_k = 1
                 if self._quant_fusion_muti_groups_in_cl0:
                     tiling_n = ConvParam.para_dict["cout1_opt"]
