@@ -39,6 +39,9 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
  private:
   ge::GeTensorPtr ProcessLSTMWxh(ge::NodePtr fusedNode, bool &failStatus, const InputIndexInfo &inputIndexInfo, int32_t &hiddenSize);
   ge::GeTensorPtr ProcessLSTMBias(ge::NodePtr fusedNode, bool &failStatus, const InputIndexInfo &inputIndexInfo, bool hasBias, int32_t hiddenSize);
+  Status AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
+                        ge::GeTensorDesc dynamicRnnOutputDesc, vector<ge::NodePtr> &newNodes, std::string nodeName,
+                        int nodeIndex);
   const string FUSED_OP_TYPE = "CommonLSTM";
 };
 }  // namespace fe

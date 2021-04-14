@@ -257,6 +257,42 @@ ge::GeTensorPtr CommonLSTMFusionPass::ProcessLSTMBias(ge::NodePtr fusedNode, boo
   }
 }
 
+Status CommonLSTMFusionPass::AddReshapeNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
+                                            ge::GeTensorDesc dynamicRnnOutputDesc, vector<ge::NodePtr> &newNodes,
+                                            std::string nodeName, int nodeIndex) {
+  ge::OpDescPtr fusedDesc = fusedNode->GetOpDesc();
+  std::string operatorName = fusedDesc->GetName() + "/Reshape" + nodeName;
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(operatorName.c_str(), "Reshape");
+  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error"),
+                    return FAILED);
+  auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
+  reshapeOp.BreakConnect();
+
+  ge::GeTensorDesc originTensorDesc = fusedDesc->GetOutputDesc(0);
+  reshape_desc->UpdateInputDesc("x", dynamicRnnOutputDesc);
+  reshape_desc->UpdateInputDesc("shape", originTensorDesc);
+  reshape_desc->UpdateOutputDesc("y", originTensorDesc);
+
+  ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
+  FUSION_PASS_CHECK(myReshape_node == nullptr,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "myReshape_node node is null, fusion failed."), return FAILED);
+  FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(dynamicRnnNode->GetOutDataAnchor(nodeIndex),
+                                                        myReshape_node->GetInDataAnchor(0)),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion myReshape_node x failed."),
+                    return FAILED);
+
+  newNodes.push_back(myReshape_node);
+  // Get Output Node
+  for (InDataAnchorPtr oriTopPeerAnchorPtri : fusedNode->GetOutDataAnchor(nodeIndex)->GetPeerInDataAnchors()) {
+    oriTopPeerAnchorPtri->UnlinkAll();
+    FUSION_PASS_CHECK(
+        SUCCESS != ge::GraphUtils::AddEdge(myReshape_node->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
+        OP_LOGE(FUSED_OP_TYPE.c_str(), "add Reshape Node edge to fusion node output %s failed.", nodeName.c_str()),
+        return FAILED);
+  }
+  return SUCCESS;
+}
+
 Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, vector<ge::NodePtr> &newNodes)
 {
   // get the NodePtr of LSTM
@@ -408,58 +444,14 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
   dynamicRnnDesc->UpdateOutputDesc("o", outputYDesc);
   dynamicRnnDesc->UpdateOutputDesc("tanhc", outputYDesc);
 
-  auto reshapeOp = ge::OperatorFactory::CreateOperator(fusedDesc->GetName() + "/Reshape", "Reshape");
-  FUSION_PASS_CHECK(reshapeOp.IsEmpty(),
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "create Reshape Op operator error"),
-  return FAILED);
-  auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
-  reshapeOp.BreakConnect();
+  FUSION_PASS_CHECK(AddReshapeNode(graph, fusedNode, dynamicRnnNode, outputYDesc, newNodes, "Y", 0) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ReshapeY Op operator error"), return FAILED);
 
-  ge::GeTensorDesc originTensorDesc = fusedDesc->GetOutputDesc(0);
+  FUSION_PASS_CHECK(AddReshapeNode(graph, fusedNode, dynamicRnnNode, outputYDesc, newNodes, "H", 1) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ReshapeH Op operator error"), return FAILED);
 
-  reshape_desc->UpdateInputDesc("x", outputYDesc);
-  reshape_desc->UpdateInputDesc("shape", originTensorDesc);
-  reshape_desc->UpdateOutputDesc("y", originTensorDesc);
-
-  ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
-  FUSION_PASS_CHECK(myReshape_node == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "myReshape_node node is null, fusion failed."),
-  return FAILED);
-
-  ge::NodePtr myReshape_node1 = graph.AddNode(reshape_desc);
-  FUSION_PASS_CHECK(myReshape_node1 == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "myReshape_node node is null, fusion failed."),
-  return FAILED);
-
-  ge::NodePtr myReshape_node2 = graph.AddNode(reshape_desc);
-  FUSION_PASS_CHECK(myReshape_node2 == nullptr,
-                    OP_LOGE(FUSED_OP_TYPE.c_str(), "myReshape_node node is null, fusion failed."),
-  return FAILED);
-
-  // connect x
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(dynamicRnnNode->GetOutDataAnchor(0), myReshape_node->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion myReshape_node x failed."), return FAILED);
-
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(dynamicRnnNode->GetOutDataAnchor(1), myReshape_node1->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion myReshape_node x failed."), return FAILED);
-
-  FUSION_PASS_CHECK(
-      SUCCESS != ge::GraphUtils::AddEdge(dynamicRnnNode->GetOutDataAnchor(2), myReshape_node2->GetInDataAnchor(0)),
-      OP_LOGE(FUSED_OP_TYPE.c_str(), "add DynamicRNN edge to fusion myReshape_node x failed."), return FAILED);
-
-  newNodes.push_back(myReshape_node);
-  newNodes.push_back(myReshape_node1);
-  newNodes.push_back(myReshape_node2);
-
-  ge::OutDataAnchorPtr outputY = fusedNode->GetOutDataAnchor(0);
-  auto hOriTopPeerAnchors = outputY->GetPeerInDataAnchors();
-
-  ge::OutDataAnchorPtr outputH = fusedNode->GetOutDataAnchor(1);
-  auto htOriTopPeerAnchors = outputH->GetPeerInDataAnchors();
-  ge::OutDataAnchorPtr outputC = fusedNode->GetOutDataAnchor(2);
-  auto ctOriTopPeerAnchors = outputC->GetPeerInDataAnchors();
+  FUSION_PASS_CHECK(AddReshapeNode(graph, fusedNode, dynamicRnnNode, outputYDesc, newNodes, "C", 2) != SUCCESS,
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "create ReshapeC Op operator error"), return FAILED);
 
   // unlink all control input of DynamicRNN
   if (fusedNode->GetInControlAnchor() != nullptr) {
@@ -478,31 +470,6 @@ Status CommonLSTMFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping, v
     if (outAnchor != nullptr) {
       outAnchor->UnlinkAll();
     }
-  }
-
-  // Get Output Node
-  for (uint64_t i = 0; i < hOriTopPeerAnchors.size(); i++) {
-    ge::InDataAnchorPtr oriTopPeerAnchorPtri = hOriTopPeerAnchors.at(i);
-    ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-    FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(myReshape_node->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add Reshape Node edge to fusion node output y failed."), return FAILED);
-  }
-
-  for (uint64_t i = 0; i < htOriTopPeerAnchors.size(); i++) {
-    ge::InDataAnchorPtr oriTopPeerAnchorPtri = htOriTopPeerAnchors.at(i);
-    ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-    FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(myReshape_node1->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add Reshape Node edge to fusion node output H failed."), return FAILED);
-  }
-
-  for (uint64_t i = 0; i < ctOriTopPeerAnchors.size(); i++) {
-    ge::InDataAnchorPtr oriTopPeerAnchorPtri = ctOriTopPeerAnchors.at(i);
-    ge::NodePtr outputNode = oriTopPeerAnchorPtri->GetOwnerNode();
-    FUSION_PASS_CHECK(
-        SUCCESS != ge::GraphUtils::AddEdge(myReshape_node2->GetOutDataAnchor(0), oriTopPeerAnchorPtri),
-        OP_LOGE(FUSED_OP_TYPE.c_str(), "add Reshape Node edge to fusion node output C failed."), return FAILED);
   }
 
   // remove LSTM from graph
