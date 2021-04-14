@@ -35,6 +35,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 from impl.util import util_common
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.strided_slice_d import make_perf_params
 
 
 BURST_LEN = 65535
@@ -545,81 +546,6 @@ def _get_end(shape, begin, size):
             end.append(begin_i + size_i)
 
     return end
-
-
-def _make_perf_params(output_shape, input_shape, input_begin, input_end, input_strides):
-    last_same = False
-    perf_size = 0
-    perf_output_shape = []
-    perf_input_shape = []
-    perf_input_begin = []
-    perf_input_end = []
-    perf_input_strides = []
-    for i, _ in enumerate(input_shape):
-        if input_shape[i] != output_shape[i]:
-            last_same = False
-            perf_output_shape.append(output_shape[i])
-            perf_input_shape.append(input_shape[i])
-            perf_input_begin.append(input_begin[i])
-            perf_input_end.append(input_end[i])
-            perf_input_strides.append(input_strides[i])
-            perf_size += 1
-            continue
-
-        if not last_same:
-            last_same = True
-            perf_output_shape.append(output_shape[i])
-            perf_input_shape.append(input_shape[i])
-            perf_input_begin.append(input_begin[i])
-            perf_input_end.append(input_end[i])
-            perf_input_strides.append(input_strides[i])
-            perf_size += 1
-            continue
-
-        index = perf_size - 1
-        perf_output_shape[index] *= output_shape[i]
-        perf_input_shape[index] *= input_shape[i]
-        perf_input_begin[index] = 0
-        perf_input_end[index] = perf_input_shape[index]
-        perf_input_strides[index] = 1
-
-    if len(perf_input_shape) > 1 and perf_input_shape[-1] == perf_output_shape[-1] and perf_input_strides[-2] == 1:
-        index = -2
-        perf_output_shape[index] *= perf_output_shape[-1]
-        perf_input_shape[index] *= perf_input_shape[-1]
-        perf_input_begin[index] *= perf_input_shape[-1]
-        perf_input_end[index] *= perf_input_shape[-1]
-        perf_input_strides[index] = 1
-
-        perf_output_shape.pop(-1)
-        perf_input_shape.pop(-1)
-        perf_input_begin.pop(-1)
-        perf_input_end.pop(-1)
-        perf_input_strides.pop(-1)
-
-    if (perf_output_shape[0] == perf_input_shape[0] and
-            perf_output_shape[0] % AICORE_NUM == 0 and
-            perf_output_shape[0] != AICORE_NUM):
-        first_dim = perf_output_shape[0]
-        perf_output_shape.insert(0, AICORE_NUM)
-        perf_input_shape.insert(0, AICORE_NUM)
-        perf_input_begin.insert(0, 0)
-        perf_input_end.insert(0, AICORE_NUM)
-        perf_input_strides.insert(0, 1)
-        loop = first_dim // AICORE_NUM
-        perf_output_shape[1] = loop
-        perf_input_shape[1] = loop
-        perf_input_begin[1] = 0
-        perf_input_end[1] = loop
-        perf_input_strides[1] = 1
-
-    output_shape = perf_output_shape
-    input_shape = perf_input_shape
-    input_begin = perf_input_begin
-    input_end = perf_input_end
-    input_strides = perf_input_strides
-
-    return output_shape, input_shape, input_begin
 
 
 def _update_params(shape, begin, size):
@@ -6279,7 +6205,9 @@ def _move_n_64_392_392(dst, data, t_begin):
 
 
 def _move_for_last_two_diff_fp16(args):
-
+    """
+    move for last two diff fp16
+    """
     tvm_ib, data, dst, data_ub, data_tail, reg, c_begin, r_begin,\
     cp_align_len, core_index, col_new_before, col_new_now = args
 
@@ -6355,6 +6283,9 @@ def _move_for_last_two_diff_fp16(args):
 
 
 def _func_last_two_diff_fp16(args):
+    """
+    func last two diff fp16
+    """
     tvm_ib, data, dst, data_ub, data_tail, reg, ub_ele, c_begin, r_begin,\
     device_core_num, block_index, cp_align_len, num_g = args
 
@@ -7987,7 +7918,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
         else:
             strides = [1] * len(begin_new)
             end_new = list(map(lambda x, y: x + y, begin_new, size_new))
-            size_new, shape_new, begin_new = _make_perf_params(size_new, shape_new, begin_new, end_new, strides)
+            size_new, shape_new, begin_new, _, _ = make_perf_params(size_new, shape_new, begin_new, end_new, strides)
             data = tvm.placeholder(shape_new, dtype=dtype, name='data')
             sch, res = slice_d_compute(data, y, begin_new, size_new,
                                        kernel_name)

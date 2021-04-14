@@ -40,7 +40,7 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 SHRINK_AXIS = -1
 NEW_AXIS = -2
-CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+AICORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
 # pylint: disable = unused-argument,too-many-arguments,too-many-locals
@@ -98,7 +98,10 @@ def _fill_list_with_ones(length):
 
 
 def _build_dense_spec(sparse: dict, dense: dict):
-    # Build expanded begin, end, strides, begin_mask, end_mask
+    """
+    Build expanded begin, end, strides, begin_mask, end_mask
+    """
+
     # to remove any ellipsis
     if len(dense["begin"]) < dense["dims"]:
         pad = [0] * (dense["dims"] - len(dense["begin"]))
@@ -159,6 +162,14 @@ def _build_dense_spec(sparse: dict, dense: dict):
 
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
 def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask):
+    """
+    inference output shape, begin value, end value and strides.
+
+    Returns
+    -------
+    output shape, input shape, begin value, end value, stride value. Except the output shape, the other return value
+    has the same length.
+    """
     sparse_spec = {
         "dims": len(begin),
         "num_add_axis_after_ellipsis": 0,
@@ -332,12 +343,14 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
 
     return tuple(final_shape), final_input_shape, final_input_begin, final_input_end, final_input_stride
 
-
 # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
 # pylint: disable=unused-variable
 def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
                     begin_mask, end_mask, ellipsis_mask, new_axis_mask,
                     shrink_axis_mask):
+    """
+    initialize params
+    """
     output_shape, final_input_shape, final_input_begin, final_input_end, final_input_stride = \
         _infer_shape(shape=input_list,
                      begin=begin_shape,
@@ -559,7 +572,7 @@ def _get_align_axis(out_shape):
 
 
 def _get_target_core_num(first_axis_size):
-    cloud_core_num = CORE_NUM
+    cloud_core_num = AICORE_NUM
     target_core_num = cloud_core_num
     for i in reversed(list(range(1, cloud_core_num + 1))):
         if first_axis_size % i == 0:
@@ -954,6 +967,101 @@ def op_select_format(input_x,
     return param_dynamic_in_json
 
 
+def make_perf_params(output_shape, input_shape, input_begin, input_end, input_strides):
+    """
+    fused the no sliced dims to make better performance
+
+    Parameters
+    ----------
+    output_shape : list or tuple
+        origin output shape
+    input_shape : list or tuple
+        origin input shape
+    input_begin : list or tuple
+        origin begin values
+    input_end : list or tuple
+        origin end values
+    input_strides : list or tuple
+        origin stride values
+    Returns
+    -------
+    list or tuple
+        the new params of fused the no sliced dims: output_shape, input_shape, input_begin, input_end, input_strides.
+    """
+    last_same = False
+    perf_size = 0
+    perf_output_shape = []
+    perf_input_shape = []
+    perf_input_begin = []
+    perf_input_end = []
+    perf_input_strides = []
+    for i, _ in enumerate(input_shape):
+        if input_shape[i] != output_shape[i]:
+            last_same = False
+            perf_output_shape.append(output_shape[i])
+            perf_input_shape.append(input_shape[i])
+            perf_input_begin.append(input_begin[i])
+            perf_input_end.append(input_end[i])
+            perf_input_strides.append(input_strides[i])
+            perf_size += 1
+            continue
+
+        if not last_same:
+            last_same = True
+            perf_output_shape.append(output_shape[i])
+            perf_input_shape.append(input_shape[i])
+            perf_input_begin.append(input_begin[i])
+            perf_input_end.append(input_end[i])
+            perf_input_strides.append(input_strides[i])
+            perf_size += 1
+            continue
+
+        index = perf_size - 1
+        perf_output_shape[index] *= output_shape[i]
+        perf_input_shape[index] *= input_shape[i]
+        perf_input_begin[index] = 0
+        perf_input_end[index] = perf_input_shape[index]
+        perf_input_strides[index] = 1
+
+    if len(perf_input_shape) > 1 and perf_input_shape[-1] == perf_output_shape[-1] and perf_input_strides[-2] == 1:
+        index = -2
+        perf_output_shape[index] *= perf_output_shape[-1]
+        perf_input_shape[index] *= perf_input_shape[-1]
+        perf_input_begin[index] *= perf_input_shape[-1]
+        perf_input_end[index] *= perf_input_shape[-1]
+        perf_input_strides[index] = 1
+
+        perf_output_shape.pop(-1)
+        perf_input_shape.pop(-1)
+        perf_input_begin.pop(-1)
+        perf_input_end.pop(-1)
+        perf_input_strides.pop(-1)
+
+    if (perf_output_shape[0] == perf_input_shape[0] and
+            perf_output_shape[0] % AICORE_NUM == 0 and
+            perf_output_shape[0] != AICORE_NUM):
+        first_dim = perf_output_shape[0]
+        perf_output_shape.insert(0, AICORE_NUM)
+        perf_input_shape.insert(0, AICORE_NUM)
+        perf_input_begin.insert(0, 0)
+        perf_input_end.insert(0, AICORE_NUM)
+        perf_input_strides.insert(0, 1)
+        loop = first_dim // AICORE_NUM
+        perf_output_shape[1] = loop
+        perf_input_shape[1] = loop
+        perf_input_begin[1] = 0
+        perf_input_end[1] = loop
+        perf_input_strides[1] = 1
+
+    output_shape = perf_output_shape
+    input_shape = perf_input_shape
+    input_begin = perf_input_begin
+    input_end = perf_input_end
+    input_strides = perf_input_strides
+
+    return output_shape, input_shape, input_begin, input_end, input_strides
+
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -1083,6 +1191,7 @@ def strided_slice_d(input_x,
             output_x["shape"] = (1,)
         copy_only.copy_only(input_x, output_x, kernel_name)
         return
+
     output_shape_one = list(output_shape)
     if ellipsis_mask == 0 and shrink_axis_mask != 0:
         for i, _ in enumerate(list(input_shape)):
@@ -1152,6 +1261,43 @@ def strided_slice_d(input_x,
                                                                      kernel_name)
         if res1:
             return
+
+    output_shape = list(map(lambda x, y, z: (x - y) // z, end, begin, strides))
+    output_shape, input_shape, begin, end, strides = make_perf_params(
+        output_shape, input_shape_new, begin, end, strides)
+    input_tensor = tvm.placeholder(input_shape,
+                                   dtype=input_dtype,
+                                   name='input_tensor')
+
+    [output, out_shape] = strided_slice_d_compute(input_tensor,
+                                                  output_x,
+                                                  begin,
+                                                  end,
+                                                  strides,
+                                                  begin_mask,
+                                                  end_mask,
+                                                  ellipsis_mask,
+                                                  new_axis_mask,
+                                                  shrink_axis_mask,
+                                                  kernel_name=kernel_name)
+
+    # pylint: disable=locally-disabled,unnecessary-lambda
+    out_tensor = tvm.compute(out_shape,
+                             lambda *i: output(*i),
+                             name='out_tensor',
+                             tag='strided_slice_d|3')
+
+    # for RL tune getting res
+    tbe_platform.fusion_manager.set_op_res(out_tensor)
+
+    ret, sch = rl_bank.query_rl_bank([out_tensor])
+    if ret and sch:
+        with tbe_platform.build_config:
+            tvm.build(sch, [input_tensor, out_tensor], "cce", name=kernel_name)
+        return
+
+    sch = tvm.create_schedule(out_tensor.op)
+    sch[output].set_scope(tbe_platform.scope_ubuf)
 
     split_axis, split_factor = _tilling_axis(out_shape, dtype=input_dtype)
     core_state = _get_multicore(out_shape, input_dtype, split_axis,
