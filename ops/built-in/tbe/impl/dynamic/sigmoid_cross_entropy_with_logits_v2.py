@@ -63,7 +63,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
     """
     predict_dtype = predict.dtype
 
-    is_support_float32 = tbe_platform.api_check_support("tbe.vmul", "float32")
+    is_support_float32 = tbe_platform.api_check_support("te.lang.cce.vmul", "float32")
 
     if is_support_float32:
         if predict_dtype == "float16":
@@ -118,9 +118,6 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
     if weight is not None:
         weight = tbe.broadcast(weight, shape_predict)
         loss = tbe.vmul(loss, weight)
-
-    if predict_dtype == "float16":
-        loss = tbe.cast_to(loss, "float16")
 
     return loss
 

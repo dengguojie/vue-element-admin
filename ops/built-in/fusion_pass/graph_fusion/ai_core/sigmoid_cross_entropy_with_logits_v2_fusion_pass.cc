@@ -51,17 +51,17 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
 
   // create sigmoid_none desc
   ge::OpDescPtr sigmoidNoneDesc = AttrUtils::CloneOpDesc(sigmoidDesc);
-  std::map<string, uint32_t> input_name_idx;
+  std::map<string, uint32_t> input_name_id;
   // update node inputname
-  input_name_idx["predict"] = 0;
-  input_name_idx["target"] = 1;
-  input_name_idx["weight"] = 2;
-  input_name_idx["pos_weight"] = 3;
-  sigmoidNoneDesc->UpdateInputName(input_name_idx);
-  std::map<string, uint32_t> out_name_id;
+  input_name_id["predict"] = 0;
+  input_name_id["target"] = 1;
+  input_name_id["weight"] = 2;
+  input_name_id["pos_weight"] = 3;
+  sigmoidNoneDesc->UpdateInputName(input_name_id);
+  std::map<string, uint32_t> out_name_idx;
   // update node output name
-  out_name_id["loss"] = 0;
-  sigmoidNoneDesc->UpdateOutputName(out_name_id);
+  out_name_idx["loss"] = 0;
+  sigmoidNoneDesc->UpdateOutputName(out_name_idx);
   // input
   ge::GeTensorDesc siginputTensorDesc = sigmoidNoneDesc->GetInputDesc(0);
 
@@ -70,13 +70,13 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddSigmoidNoneNode(ge::No
   sigoutputTensorDesc.SetOriginShape(siginputTensorDesc.GetShape());
   sigoutputTensorDesc.SetShape(siginputTensorDesc.GetShape());
   sigmoidNoneDesc->UpdateOutputDesc("loss", sigoutputTensorDesc);
+  ge::AttrUtils::SetStr(sigmoidNoneDesc, "reduction", "none");
 
   // create sigmoid_none node
   ge::NodePtr sigmoidNoneNode = graph.AddNode(sigmoidNoneDesc);
 
   FUSION_PASS_CHECK(sigmoidNoneNode == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusionNode:%s is null, fusion failed.",
                     sigmoidNoneNode->GetName().c_str()), failStatus=true);
-  AttrUtils::SetStr(sigmoidNoneNode->GetOpDesc(), "reduction", "none");
 
   newNodes.push_back(sigmoidNoneNode);
 
@@ -113,10 +113,12 @@ ge::NodePtr SigmoidCrossEntropyWithLogitsV2FusionPass::AddReduceNode(ge::NodePtr
 
   // input
   ge::GeTensorDesc inputTensorDesc = sigmoidNoneNode->GetOpDesc()->GetOutputDesc(0).Clone();
+  inputTensorDesc.SetDataType(ge::DT_FLOAT);
   reduceDesc->AddInputDesc("x", inputTensorDesc);
 
   // output
   ge::GeTensorDesc outputTensorDesc = sigmoidNode->GetOpDesc()->GetOutputDesc(0).Clone();
+  outputTensorDesc.SetDataType(ge::DT_FLOAT);
   reduceDesc->AddOutputDesc("y", outputTensorDesc);
 
   // attr
@@ -164,7 +166,7 @@ Status SigmoidCrossEntropyWithLogitsV2FusionPass::Fusion(ge::ComputeGraph& graph
   if (reduction == reductionNone) {
     return SUCCESS;
   }
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "attr reduction is %s", reduction.c_str());
+
   ge::NodePtr sigmoidNoneNode = AddSigmoidNoneNode(sigmoidNode, graph, newNodes, failStatus);
   FUSION_PASS_CHECK(failStatus, OP_LOGE(FUSED_OP_TYPE.c_str(), 
                     "AddSigmoidNoneNode:check failed, fusion failed."), return FAILED);

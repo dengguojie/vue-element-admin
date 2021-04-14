@@ -1677,6 +1677,8 @@ COMMON_INFER_FUNC_REG(StridedSlice, StridedSliceInferShape);
 
 // ----------------ReverseV2 Op Begin-----------------
 IMPLEMT_COMMON_INFERFUNC(ReverseV2InferShape) {
+  const vector<string> depend_names = {"axis"};
+  PREPARE_DYNAMIC_SHAPE(depend_names);
   if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
     return GRAPH_SUCCESS;
   }
