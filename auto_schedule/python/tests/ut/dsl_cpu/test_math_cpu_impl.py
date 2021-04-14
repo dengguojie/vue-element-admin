@@ -3,10 +3,12 @@ from sch_test_frame.ut import OpUT
 import numpy as np
 import operator
 import random
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
 
+warnings.filterwarnings("ignore")
 ut_case = OpUT("math_cpu", "dsl_cpu.test_math_cpu_impl")
 
 

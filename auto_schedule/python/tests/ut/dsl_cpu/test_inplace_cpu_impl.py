@@ -2,11 +2,13 @@
 from sch_test_frame.ut import OpUT
 import numpy as np
 import operator
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
 from tbe.common.testing.testing import debug
 
+warnings.filterwarnings("ignore")
 ut_case = OpUT("inplace_cpu", "dsl_cpu.test_inplace_cpu_impl")
 
 

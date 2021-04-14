@@ -1,10 +1,12 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
 import numpy as np
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
 
+warnings.filterwarnings("ignore")
 ut_case = OpUT("array_cpu", "dsl_cpu.test_array_cpu_impl")
 
 

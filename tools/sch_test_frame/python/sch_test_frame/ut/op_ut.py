@@ -104,7 +104,7 @@ DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
-def get_trace_info() -> str:
+def get_trace_info():
     """
     get exception trace info
     :return: exception trace info str
@@ -250,6 +250,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             if not os.path.exists(input_data_path):
                 raise IOError("data_path is not exist, please check your case param, data_path: %s" % input_data_path)
             data_type = str(param_info.get("dtype")).strip()
+            if data_type in (np.bool, "bool",):
+                data_type = np.int8
             data_from_file = np.fromfile(input_data_path, data_type)
             data_from_file_size = len(data_from_file)
             param_shape = param_info.get("run_shape")

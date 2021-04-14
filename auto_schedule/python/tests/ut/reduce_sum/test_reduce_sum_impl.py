@@ -2,9 +2,12 @@
 from sch_test_frame.ut import OpUT
 from sch_test_frame.common import precision_info
 import numpy as np
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
+
+warnings.filterwarnings("ignore")
 
 
 def dsl_reduce_sum(x, _, axis, keep_dim, kernel_name='dsl_reduce_sum'):

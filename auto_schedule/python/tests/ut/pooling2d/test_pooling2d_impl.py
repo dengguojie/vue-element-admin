@@ -1,10 +1,11 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
-from sch_test_frame.common import precision_info
-import numpy as np
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
+
+warnings.filterwarnings("ignore")
 
 
 def dsl_pooling2d(x, _, window, stride, pooling_mode, padding_mode, pad, dilation, data_mode, ceil_mode,
@@ -475,4 +476,3 @@ if __name__ == '__main__':
     simulator_lib_path = Path(os.environ.get(_ASCEND_TOOLCHAIN_PATH_ENV,
                                              "/usr/local/Ascend/toolkit")).joinpath("tools/simulator")
     ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
-

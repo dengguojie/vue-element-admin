@@ -37,6 +37,89 @@ def dsl_concat(x, _, axis, kernel_name='dsl_concat'):
 
 ut_case = OpUT("concat", "concat.test_concat_impl", "dsl_concat")
 
+
+def test_axis_is_not_int(_):
+    try:
+        input1 = tvm.placeholder((16, ), dtype="float16", name="input1")
+        input2 = tvm.placeholder((16, ), dtype="float16", name="input2")
+        tbe.concat([input1, input2], 1.0)
+    except RuntimeError as e:
+        print(e)
+    return True
+
+
+def test_axis_large_than_len_tensor0_shape(_):
+    try:
+        input1 = tvm.placeholder((16, ), dtype="float16", name="input1")
+        input2 = tvm.placeholder((16, ), dtype="float16", name="input2")
+        tbe.concat([input1, input2], 3)
+    except RuntimeError as e:
+        print(e)
+    return True
+
+
+def test_tensor0_is_not_tensor(_):
+    try:
+        input1 = tvm.const(16, dtype="float16")
+        input2 = tvm.placeholder((16, ), dtype="float16", name="input2")
+        tbe.concat([input1, input2], 3)
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+    return True
+
+
+def test_tensor1_is_not_tensor(_):
+    try:
+        input1 = tvm.placeholder((16, ), dtype="float16", name="input2")
+        input2 = tvm.const(16, dtype="float16")
+        tbe.concat([input1, input2], 0)
+    except RuntimeError as e:
+        print(e)
+    return True
+
+
+def test_tensor0_shape_value_less_than_zero(_):
+    try:
+        input1 = tvm.placeholder((-1, ), dtype="float16", name="input1")
+        input2 = tvm.placeholder((16, ), dtype="float16", name="input2")
+        tbe.concat([input1, input2], 0)
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+    return True
+
+
+def test_tensor0_dim_is_not_same_tensor1_dim(_):
+    try:
+        input1 = tvm.placeholder((16, ), dtype="float16", name="input1")
+        input2 = tvm.placeholder((16, 16), dtype="float32", name="input2")
+        tbe.concat([input1, input2], 0)
+    except RuntimeError as e:
+        print(e)
+    return True
+
+
+def test_tensor0_shape_value_is_not_same_tensor1_shape_value(_):
+    try:
+        input1 = tvm.placeholder((16, 16), dtype="float16", name="input1")
+        input2 = tvm.placeholder((16, 17), dtype="float16", name="input2")
+        tbe.concat([input1, input2], 0)
+    except RuntimeError as e:
+        print(e)
+    return True
+
+
+test_func_list = [
+    test_axis_is_not_int,
+    test_axis_large_than_len_tensor0_shape,
+    test_tensor0_is_not_tensor,
+    test_tensor1_is_not_tensor,
+    test_tensor0_shape_value_less_than_zero,
+    test_tensor0_dim_is_not_same_tensor1_dim,
+    test_tensor0_shape_value_is_not_same_tensor1_shape_value
+]
+for item in test_func_list:
+    ut_case.add_cust_test_func(test_func=item)
+
 case1 = {"params": [[{"shape": (5, 1024), "dtype": "float16", "format": "ND"},
                      {"shape": (5, 1024), "dtype": "float16", "format": "ND"}
                      ],

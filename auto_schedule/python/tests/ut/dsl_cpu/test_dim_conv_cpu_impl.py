@@ -2,11 +2,13 @@
 from sch_test_frame.ut import OpUT
 import numpy as np
 import math
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
 from tbe.common.testing.testing import debug
 
+warnings.filterwarnings("ignore")
 ut_case = OpUT("dim_cpu", "dsl_cpu.test_dim_cpu_impl")
 
 
@@ -15,18 +17,18 @@ def _four2five(input_data, shape_info):
     c1 = int(math.ceil(c / 16.0))
     output = np.zeros((n * c1 * h * w * c0), input_data.dtype)
     for nIdx in range(n):
-        nF = nIdx * c1 * h * w * c0
-        for c1Idx in range(c1):
-            c1F = nF + c1Idx * h * w * c0
+        n_factor = nIdx * c1 * h * w * c0
+        for c1_index in range(c1):
+            c1_factor = n_factor + c1_index * h * w * c0
             for hIdx in range(h):
-                hF = c1F + hIdx * w * c0
+                h_factor = c1_factor + hIdx * w * c0
                 for wIdx in range(w):
-                    wF = hF + wIdx * c0
-                    for c0Idx in range(c0):
-                        idx = wF + c0Idx
-                        cIdx = c0Idx + c1Idx * c0
-                        if cIdx < c:
-                            output[idx] = input_data[nIdx, c0Idx + c1Idx * c0, hIdx, wIdx]
+                    w_factor = h_factor + wIdx * c0
+                    for c0_index in range(c0):
+                        idx = w_factor + c0_index
+                        c_index = c0_index + c1_index * c0
+                        if c_index < c:
+                            output[idx] = input_data[nIdx, c0_index + c1_index * c0, hIdx, wIdx]
     return output.reshape(n, c1, h, w, c0)
 
 
@@ -34,17 +36,17 @@ def _five2four(input_data, shape_info):
     n, c, h, w, c0 = shape_info[0], shape_info[1], shape_info[2], shape_info[3], 16
     output = np.zeros((n * c * h * w), input_data.dtype)
     for nIdx in range(n):
-        nF = nIdx * c * h * w
-        for cIdx in range(c):
-            cF = nF + cIdx * h * w
+        n_factor = nIdx * c * h * w
+        for c_index in range(c):
+            c_factor = n_factor + c_index * h * w
             for hIdx in range(h):
-                hF = cF + hIdx * w
+                h_factor = c_factor + hIdx * w
                 for wIdx in range(w):
-                    wF = hF + wIdx
-                    c1Idx = int(cIdx / c0)
-                    c0Idx = cIdx % c0
-                    if cIdx < c:
-                        output[wF] = input_data[nIdx, c1Idx, hIdx, wIdx, c0Idx]
+                    w_factor = h_factor + wIdx
+                    c1_index = int(c_index / c0)
+                    c0_index = c_index % c0
+                    if c_index < c:
+                        output[w_factor] = input_data[nIdx, c1_index, hIdx, wIdx, c0_index]
     return output.reshape(n, c, h, w)
 
 

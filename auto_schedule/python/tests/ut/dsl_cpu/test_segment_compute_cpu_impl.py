@@ -1,10 +1,12 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
 import numpy as np
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
 
+warnings.filterwarnings("ignore")
 ut_case = OpUT("segment_cpu", "dsl_cpu.test_segment_cpu_impl")
 
 
@@ -94,7 +96,7 @@ def test_segment_cpu_api_segment_id_is_tensor(_):
         try:
             tvm.testing.assert_allclose(c.asnumpy(), result)
         except AssertionError as e:
-            print("\nsegmnet_op is ", op_name)
+            print("\nsegment_op is ", op_name)
             print(e)
             return False
     return True

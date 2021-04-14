@@ -1,11 +1,13 @@
 # # -*- coding:utf-8 -*-
 from sch_test_frame.ut import OpUT
 import numpy as np
+import warnings
 
 from te import tvm
 import te.lang.cce as tbe
 from tbe.common.testing.testing import debug
 
+warnings.filterwarnings("ignore")
 ut_case = OpUT("pooling2d_cpu", "dsl_cpu.test_pooling2d_cpu_impl")
 
 
