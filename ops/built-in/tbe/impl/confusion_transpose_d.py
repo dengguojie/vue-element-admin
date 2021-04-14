@@ -554,7 +554,7 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
                         return True
             elif soc_version == "Ascend710":
                 if not transpose_first:
-                    batch_supported = [1, 4, 8, 16, 32, 64]
+                    batch_supported = [1, 8, 16, 32, 64]
                     if list(y.get("shape"))[1:] == [12, 4, 8, 16, 16] and list(shape)[1:] ==  [128, 12, 64] and \
                         y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
                         return True

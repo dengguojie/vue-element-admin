@@ -143,11 +143,12 @@ def _set_tensor_scope(sch, des_tensor):
 
 
 def _get_tiling(res):
+    k_dims = res.shape[0].value
     tiling = \
         {'L1_shape': [1, 1, 16, 16],
          "AL1_shape" : [1, 1],
-         'CL0_matrix': [64, 1, 16, 16],
-         'CUB_matrix': [64, 1, 16, 16]
+         'CL0_matrix': [k_dims, 1, 16, 16],
+         'CUB_matrix': [k_dims, 1, 16, 16]
          }
     batch_m = res.shape[1].value
     core_num = get_soc_spec(CORE_NUM)

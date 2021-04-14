@@ -22,7 +22,7 @@ case1 = {"params": [{"shape": (-1, -1, -1), "dtype": "float16", "format": "NCHW"
          "format_expect": [],
          "support_expect": True}
 
-ut_case.add_case(["Ascend910A"], case1)
+# ut_case.add_case(["Ascend910A"], case1)
 
 if __name__ == "__main__":
     with tbe.common.context.op_context.OpContext("dynamic"):

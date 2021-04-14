@@ -306,22 +306,23 @@ def _broadcast_nz(tensor, shape):
     return tensor
 
 
-def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis):
+def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mode):
     """
     judge case using cube to handle reducesum
-    only supported follow case in cloud:
-        ori_shape: (128m, 1024), "shape": (64, m, 16, 16), "dtype": fp16
+    only supported follow case in Ascend910 and Ascend710:
+        ori_shape: (128m, 1024), "shape": (64, 8m, 16, 16), "dtype": fp16
+        ori_shape: (128m, 768), "shape": (48, 8m, 16, 16), "dtype": fp16
     """
     def _check_shape():
-        if len(ori_shape_x) != 2 or ori_shape_x[-1] != 1024 or ori_shape_x[-2] % 128 != 0:
+        if len(ori_shape_x) != 2 or ori_shape_x[-1] not in (1024, 768) or ori_shape_x[-2] % 128 != 0:
             return False
-        if len(shape_x) != 4 or list(shape_x[0:1] + shape_x[2:]) != [64, 16, 16] or shape_x[1] % 8 != 0:
+        if len(shape_x) != 4 or shape_x[0] not in (64, 48) or shape_x[1] % 8 != 0:
             return False
         if "Ascend910" not in get_soc_spec(SOC_VERSION):
             return False
         return True
 
-    return (dtype == "float16" and begin_norm_axis == 1 and _check_shape())
+    return (dtype == "float16" and begin_norm_axis == 1 and impl_mode == "high_performance" and _check_shape())
 
 
 def layer_norm_compute_nz(input_x, input_gamma, input_beta,
@@ -641,7 +642,7 @@ def layer_norm(input_x, input_gamma, input_beta,
             begin_norm_axis = shape_util.axis_check(len(ori_shape_x), begin_norm_axis)
             begin_params_axis = shape_util.axis_check(len(ori_shape_x), begin_params_axis)
 
-            flag_vector2cube = _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis)
+            flag_vector2cube = _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mode)
             if input_gamma_format == "FRACTAL_NZ" or \
                     input_beta_format == "FRACTAL_NZ":
                 error_detail = "gamma and beta not support Nz in bert"
