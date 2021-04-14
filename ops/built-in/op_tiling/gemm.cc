@@ -255,7 +255,7 @@ bool GEMMTiling(const std::string &op_type, const TeOpParas &op_paras, const jso
   if (compile_info.type() == json::value_t::object) {
     tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info, run_info);
   }else {
-    for (int i = 0; i < compile_info.size(); i++) {
+    for (std::size_t i = 0; i < compile_info.size(); i++) {
       tiling_id = GEMMTilingSelect(op_type, op_paras, compile_info[i], run_info);
       if (tiling_id != "-1") {
         break;

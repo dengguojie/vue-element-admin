@@ -94,8 +94,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_arr) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = R"([{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}},
-                            {"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 4, 7]}, "block_dim": {"10001": 2}, "attrs":{"transpose_a": false, "transpose_b": false}}])";
+  std::string compileInfo = R"([{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}},{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10001": [1, 3, 1, 3, 4, 7]}, "block_dim": {"10001": 2}, "attrs":{"transpose_a": false, "transpose_b": false}}])";
 
   std::vector<std::vector<int64_t>> ori_inputs {
     {2, 3},
@@ -139,7 +138,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_arr) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "Matmul";
+  op_compile_info.key = "GEMM_op_tiling_arr";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
