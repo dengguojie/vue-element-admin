@@ -62,10 +62,25 @@ Status ROIAlignFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(fused_desc == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
 
-  auto input_desc = fused_desc->GetInputDesc(1);
-  if (input_desc.GetShape().GetDimNum() == 2 && input_desc.GetShape().GetDim(1) == 5) {
-    return SUCCESS;
+  bool is_have_roin_n = fused_desc->MutableInputDesc("rois_n") != nullptr;
+  if (!is_have_roin_n) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "Input dont have rois_n, so dont change.");
+    return NOT_CHANGED;
   }
+
+  auto input_shape = fused_desc->GetInputDesc(1).GetShape();
+  auto input_shape1 = fused_desc->GetInputDesc(2).GetShape();
+  if (input_shape.GetDimNum() != 2) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "input rois shape dim is not 2 dont need fusion.");
+    return NOT_CHANGED;
+  } else if (input_shape1.GetDimNum() != 1) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "input rois_n shape dim is not 1 dont need fusion.");
+    return NOT_CHANGED;
+  } else if (input_shape.GetDim(0) != input_shape1.GetDim(0)) {
+    OP_LOGW(FUSED_OP_TYPE.c_str(), "input rois and rois_n shape dim 0 not equal.");
+    return NOT_CHANGED;
+  }
+
   ge::NodePtr cast_node = nullptr;
   FUSION_PASS_CHECK(MakeCastNode(graph, fused_node, cast_node) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "MakeCastNode failed."), return FAILED);
