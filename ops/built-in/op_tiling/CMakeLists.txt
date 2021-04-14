@@ -40,6 +40,7 @@ set(_optiling_files
   conv2d_backprop_input.cc
   conv3d_backprop_input.cc
   conv3d_transpose.cc
+  sigmoid_cross_entropy_with_logits_grad_v2.cc
   conv2d.cc
   conv2d_transpose.cc
   depthwise_conv2d.cc

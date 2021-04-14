@@ -48,6 +48,7 @@ TEST_F(SigmoidCrossEntropyWithLogitsGradV2, scewlg_infer_shape_fp16) {
   op.UpdateInputDesc("pos_weight", tensor_desc);
   op.SetAttr("reduction", "mean");
 
+
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("gradient");

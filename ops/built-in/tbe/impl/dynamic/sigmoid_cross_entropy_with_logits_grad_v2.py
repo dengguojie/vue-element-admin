@@ -25,7 +25,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
-
+from impl.util.platform_adapter import tbe_context
 
 def _broadcast_shape_check(input_shape, predict_shape):
     """
@@ -114,7 +114,8 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
         num = functools.reduce(lambda x, y: x * y, predict_shape[:])
         norm = 1.0 / num
         if  predict_bool:
-            norm = -1
+            norm = tbe.var("cof", dtype=precision_dtype)
+            tbe_context.get_context().add_compile_info("reduce_mean_cof_dtype", precision_dtype)
         grad_output = tbe.vmuls(grad_output, norm)
 
     grad_output = tbe.cast_to(grad_output, predict_dtype)
