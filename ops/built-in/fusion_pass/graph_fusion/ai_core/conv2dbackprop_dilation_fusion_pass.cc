@@ -81,7 +81,7 @@ vector<int64_t> post_get_pad_value(
   int pad_down = dx_shape[pos_y_h] - post_dilation_hw[0];
   int pad_right = dx_shape[pos_y_w] - post_dilation_hw[1];
   vector<int64_t> post_pad_hw;
-  post_pad_hw.push_back(pad_down),
+  post_pad_hw.push_back(pad_down);
   post_pad_hw.push_back(pad_right);
   return post_pad_hw;
 }
@@ -202,7 +202,7 @@ static Status generate_pad_node(
   prev_out_ori_shape[pos_h] -= pad_down;
   prev_out_ori_shape[pos_w] -= pad_after;
   prev_out_desc->SetOriginShape(ge::GeShape(prev_out_ori_shape));
-  pad_desc->AddOutputDesc("x", *prev_out_desc);
+  pad_desc->AddInputDesc("x", *prev_out_desc);
 
   vector<vector<int64_t>> pads;
   pads.push_back({0, 0});
@@ -383,7 +383,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   // get shape
   auto filter_ori_shape = filter_desc.GetOriginShape().GetDims();
   auto out_backprop_ori_shape = conv2dbp_input_outbackprop_desc.GetOriginShape().GetDims();
-  auto y_shape = conv2dbp_input_outbackprop_desc.GetOriginShape().GetDims();
+  auto y_shape = conv2dbp_input_y_desc.GetOriginShape().GetDims();
   vector<int64_t> dilation_hw;
   vector<int64_t> pad_hw;
   std::string backprop_out_fmt_str;
@@ -398,7 +398,7 @@ Status Conv2DbpInputDilationFusionPass::Fusion(
   size_t pos_y_w = y_fmt_str.find('W');
  
   dilation_hw = post_get_hw_not_pad(out_backprop_ori_shape,strides, pos_backprop_out_h, pos_backprop_out_w);
-  pad_hw = post_get_hw_not_pad(dilation_hw, y_shape, pos_y_h, pos_y_w);
+  pad_hw = post_get_pad_value(dilation_hw, y_shape, pos_y_h, pos_y_w);
 
   bool pre_dilation = false;
   bool need_dilation_flag = false;
