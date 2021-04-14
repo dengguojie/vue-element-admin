@@ -249,9 +249,9 @@ class RoiClassOneC0FML1(roi_pooling_base.RoiClass):
                             ((self.pooled_h + self.res_pad) * self.pooled_w) * self.fm_c0 * \
                             roi_pooling_base.TYPELEN_DICT[self.dtype] // 256,
                             8)
-                        with self.tik_instance.if_scope(self.dtype == "float32"):
+                        if self.dtype == "float32":
                             self.proposal_pooling_w_float32(proposal_id)
-                        with self.tik_instance.else_scope():
+                        else:
                             self.proposal_pooling_w_float16(proposal_id)
 
                         self.tik_instance.data_move(self.y
