@@ -101,51 +101,30 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     axis = [0, 2, 3]
 
     if grads.dtype == "float16":
-        grads1 = tbe.cast_to(grads, "float32")
-        grads2 = tbe.cast_to(grads, "float32")
-        if x.dtype == "float16":
-            x = tbe.cast_to(x, "float32")
-        batch_mean_inverse = tbe.vmuls(batch_mean, tvm.const(-1, dtype=batch_mean.dtype))
-        input_mean = tbe.broadcast(batch_mean_inverse, shape_x)
-        x_sub = tbe.vadd(x, input_mean)
+        grads = tbe.cast_to(grads, "float32")
 
-        data_adds = tbe.vadds(batch_variance, epsilon)
-        data_rsqrt = tbe.vsqrt(data_adds)
-        shape_var = shape_util.shape_to_list(batch_variance.shape)
-        data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_var)
-        data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
-        rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
-        x_norm = tbe.vmul(x_sub, rsqrts_broadcast)
+    if x.dtype == "float16":
+        x = tbe.cast_to(x, "float32")
 
-        scale_mul = tbe.vmul(grads1, x_norm)
+    batch_mean_inverse = tbe.vmuls(batch_mean, tvm.const(-1, dtype=batch_mean.dtype))
+    input_mean = tbe.broadcast(batch_mean_inverse, shape_x)
+    x_sub = tbe.vadd(x, input_mean)
 
-        diff_scale = tbe.reduce_sum(scale_mul, axis, True)
-        diff_offset = tbe.reduce_sum(grads2, axis, True)
+    data_adds = tbe.vadds(batch_variance, epsilon)
+    data_rsqrt = tbe.vsqrt(data_adds)
+    shape_var = shape_util.shape_to_list(batch_variance.shape)
+    data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_var)
+    data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
+    rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
+    x_norm = tbe.vmul(x_sub, rsqrts_broadcast)
 
-        res_list = [diff_scale, diff_offset]
-        return res_list
-    else:
-        if x.dtype == "float16":
-            x = tbe.cast_to(x, "float32")
-        batch_mean_inverse = tbe.vmuls(batch_mean, tvm.const(-1, dtype=batch_mean.dtype))
-        input_mean = tbe.broadcast(batch_mean_inverse, shape_x)
-        x_sub = tbe.vadd(x, input_mean)
+    scale_mul = tbe.vmul(grads, x_norm)
 
-        data_adds = tbe.vadds(batch_variance, epsilon)
-        data_rsqrt = tbe.vsqrt(data_adds)
-        shape_var = shape_util.shape_to_list(batch_variance.shape)
-        data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_var)
-        data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
-        rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
-        x_norm = tbe.vmul(x_sub, rsqrts_broadcast)
+    diff_scale = tbe.reduce_sum(scale_mul, axis, True)
+    diff_offset = tbe.reduce_sum(grads, axis, True)
 
-        scale_mul = tbe.vmul(grads, x_norm)
-
-        diff_scale = tbe.reduce_sum(scale_mul, axis, True)
-        diff_offset = tbe.reduce_sum(grads, axis, True)
-
-        res_list = [diff_scale, diff_offset]
-        return res_list
+    res_list = [diff_scale, diff_offset]
+    return res_list
 
 @register_operator("BNTrainingUpdateGrad", pattern=Pattern.BN_TRAINING_UPDATE_GRAD)
 def bn_training_update_grad(grads, x, batch_mean, batch_variance,
@@ -251,8 +230,8 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
 
             dim_0_0 = operation.var("dim_0_0")
             dim_0_1 = operation.var("dim_0_1")
-            dim_0_2 = operation.var("dim_0_2", (1, 30))
-            dim_0_3 = operation.var("dim_0_3", (1, 30))
+            dim_0_2 = operation.var("dim_0_2")
+            dim_0_3 = operation.var("dim_0_3")
 
             shape1 = [dim_0_0, dim_0_1, dim_0_2, dim_0_3, 16]
             shape2 = [1, dim_0_1, 1, 1, 16]
