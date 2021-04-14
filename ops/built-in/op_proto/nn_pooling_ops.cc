@@ -1372,52 +1372,46 @@ IMPLEMT_VERIFIER(AvgPool, AvgPoolVerify) {
   bool unknownRank = IsUnknownRankShape(xShape);
   bool invalidParam = ((!unknownRank && xShape.size() != 4) || ksize.size() != 4 || strides.size() != 4);
   if (invalidParam) {
-    InferShapeOtherErrReport(op.GetName(), "xShape size != 4 or kSize size() != 4, strides size() != 4, please check!");
-    OP_LOGE(op.GetName().c_str(), "xShape size != 4 or kSize size() != 4, strides size() != 4, please check!");
+    std::string err_msg = OtherErrMsg("xShape size != 4 or kSize size() != 4, strides size() != 4");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::string dataFormat;
   if (GRAPH_SUCCESS == op.GetAttr("data_format", dataFormat)) {
     if (dataFormat != "NHWC" && dataFormat != "NCHW" && dataFormat != "NC1HWC0") {
       string expected_format_list = ConcatString("NHWC,NCHW,NC1HWC0");
-      OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, dataFormat);
-      OP_LOGE(op.GetName().c_str(),
-              "dataFormat only "
-              "support 'NHWC', 'NCHW' and 'NC1HWC0'.");
+      std::string err_msg = GetInputFormatNotSupportErrMsg("dataFormat", expected_format_list, dataFormat);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     } else {
       if (dataFormat == "NHWC") {
         if (ksize[0] != 1 || ksize[3] != 1) {
-          InferShapeOtherErrReport(
-              op.GetName(), "Only supports pooling across width/height, and other ksize dimension should be one");
-          OP_LOGE(op.GetName().c_str(),
-                  "Only supports pooling across "
-                  "width/height, and other ksize dimension should be one");
+          string expected_pool_list = ConcatString("width,height");
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(),dataFormat, expected_pool_list);
+          std::string err_msg = ConcatString(err_msg1,"and other ksize dimension should be one");
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
         if (strides[0] != 1 || strides[3] != 1) {
-          InferShapeOtherErrReport(
-              op.GetName(), "Only supports pooling across width/height, and other strides dimension should be one");
-          OP_LOGE(op.GetName().c_str(),
-                  "Only supports pooling across "
-                  "width/height, and other strides dimension should be one");
-          return GRAPH_FAILED;
+          string expected_pool_list = ConcatString("width,height");
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), dataFormat, expected_pool_list);
+          std::string err_msg = ConcatString(err_msg1,"and other strides dimension should be one");
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+         return GRAPH_FAILED;
         }
       } else {
         if (ksize[0] != 1 || ksize[1] != 1) {
-          InferShapeOtherErrReport(
-              op.GetName(), "Only supports pooling across width/height, and other ksize dimension should be one");
-          OP_LOGE(op.GetName().c_str(),
-                  "Only supports pooling across "
-                  "width/height, and other ksize dimension should be one");
+          string expected_pool_list = ConcatString("width,height");
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(), dataFormat, expected_pool_list);
+          std::string err_msg = ConcatString(err_msg1,"and other ksize dimension should be one");
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
         if (strides[0] != 1 || strides[1] != 1) {
-          InferShapeOtherErrReport(
-              op.GetName(), "Only supports pooling across width/height, and other strides dimension should be one");
-          OP_LOGE(op.GetName().c_str(),
-                  "Only supports pooling across "
-                  "width/height, and other strides dimension should be one");
+          string expected_pool_list = ConcatString("width,height");
+          std::string err_msg1 = GetAttrSizeErrMsg(op.GetName().c_str(),dataFormat, expected_pool_list);
+          std::string err_msg = ConcatString(err_msg1,"and other strides dimension should be one");
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
       }
@@ -1545,61 +1539,52 @@ IMPLEMT_INFERFUNC(AvgPool, AvgPoolInferShape) {
   // get input ksize
   std::vector<int32_t> ksizeList;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
-    OpsGetAttrErrReport(op.GetName(), "ksize");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr ksizeList failed!");
+    std::string err_msg = GetInputInvalidErrMsg("ksizeList");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (ksizeList.size() != DIM_SIZE4) {
-    OpsAttrValueErrReport(op.GetName(), "length of ksize", ConcatString(DIM_SIZE4),
-                          ConcatString((size_t)ksizeList.size()));
-    OP_LOGE(op.GetName().c_str(),
-            "length of ksize must be equal to the "
-            "length of shape!");
+    std::string err_msg1 = GetAttrValueErrMsg("ksizeList", std::to_string(ksizeList.size()), ConcatString(DIM_SIZE4));
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input strides
   std::vector<int32_t> stridesList;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stridesList)) {
-    OpsGetAttrErrReport(op.GetName(), "strides");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr stridesList failed!");
+    std::string err_msg = GetInputInvalidErrMsg("stridesList");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (stridesList.size() != DIM_SIZE4) {
-    OpsAttrValueErrReport(op.GetName(), "length of strides", ConcatString(DIM_SIZE4),
-                          ConcatString((size_t)stridesList.size()));
-    OP_LOGE(op.GetName().c_str(),
-            "length of strides must be equal to "
-            "the length of shape!");
+    std::string err_msg = GetAttrValueErrMsg("stridesList", std::to_string(stridesList.size()), ConcatString(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input data_format
   std::string dataFormat;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
-    OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(),
-            "The AvgPool op GetOpAttr data_format "
-            "failed!");
+    std::string err_msg = GetInputInvalidErrMsg("data_format");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input paddingMode
   std::string paddingMode;
   if (GRAPH_SUCCESS != op.GetAttr("padding", paddingMode)) {
-    OpsGetAttrErrReport(op.GetName(), "padding");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr padding failed!");
+    std::string err_msg = GetInputInvalidErrMsg("padding");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (paddingMode != "SAME" && paddingMode != "VALID") {
     string expected_format_list = ConcatString("SAME,VALID");
-    OpsInputFormatErrReport(op.GetName(), "padding", expected_format_list, paddingMode);
-    OP_LOGE(op.GetName().c_str(),
-            "AvgPool can only support SAME or VALID "
-            "padding mode!");
+    std::string err_msg = GetInputFormatNotSupportErrMsg(op.GetName().c_str(), expected_format_list, paddingMode);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1779,88 +1764,98 @@ IMPLEMT_VERIFIER(AvgPoolV2, AvgPoolV2Verify) {
   // get input kszie
   std::vector<int32_t> ksizeList;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
-    OpsGetAttrErrReport(op.GetName(), "ksize");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr ksize");
+    std::string err_msg = GetInputInvalidErrMsg("ksize");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (ksizeList.size() != DIM_SIZE4) {
-    AttrSizeErrReport("ksize", op.GetName(), ConcatString(ksizeList.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Size[%d] of attr ksize is invalid.", ksizeList.size());
+    std::string err_msg = GetAttrSizeErrMsg("ksizeList", std::to_string(ksizeList.size()), std::to_string(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input strides
   std::vector<int32_t> stridesList;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stridesList)) {
-    OpsGetAttrErrReport(op.GetName(), "strides");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr strides");
+    std::string err_msg = GetInputInvalidErrMsg("strides");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (stridesList.size() != DIM_SIZE4) {
-    AttrSizeErrReport("strides", op.GetName(), ConcatString(stridesList.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Size[%d] of attr strides is invalid.", stridesList.size());
+    std::string err_msg = GetAttrSizeErrMsg("stridesList()", std::to_string(stridesList.size()), std::to_string(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input paddingMode
   std::string paddingMode;
   if (GRAPH_SUCCESS != op.GetAttr("padding_mode", paddingMode)) {
-    OpsGetAttrErrReport(op.GetName(), "padding_mode");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr padding_mode");
+    std::string err_msg = GetInputInvalidErrMsg("padding_mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (paddingMode != "SAME" && paddingMode != "VALID" && paddingMode != "CALCULATED") {
-    OpsAttrValueErrReport(op.GetName(), "padding_mode", "SAME, VALID and CALCULATED", paddingMode);
-    OP_LOGE(op.GetName().c_str(), "padding_mode[%s] is invalid.", paddingMode.c_str());
+    string expected_padding_list = ConcatString("SAME, VALID, CALCULATED");
+    std::string err_msg = GetAttrValueErrMsg("paddingMode", paddingMode, expected_padding_list);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input pads
   std::vector<int32_t> padVec;
   if (GRAPH_SUCCESS != op.GetAttr("pads", padVec)) {
-    OpsGetAttrErrReport(op.GetName(), "pads");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr pads");
+    std::string err_msg = GetInputInvalidErrMsg("pads");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (padVec.size() != DIM_SIZE4) {
-    AttrSizeErrReport("pads", op.GetName(), ConcatString(padVec.size()), "4");
-    OP_LOGE(op.GetName().c_str(), "Size[%d] of attr pads is invalid.", padVec.size());
+    std::string err_msg = GetAttrSizeErrMsg("padVec", std::to_string(padVec.size()), std::to_string(DIM_SIZE4));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input data_format
   std::string dataFormat;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
-    OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr data_format");
+    std::string err_msg = GetInputInvalidErrMsg("data_format");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dataFormat != "NHWC" && dataFormat != "NCHW" && dataFormat != "NC1HWC0") {
-    OpsAttrValueErrReport(op.GetName(), "data_format", "NHWC, NCHW and NC1HWC0", dataFormat);
-    OP_LOGE(op.GetName().c_str(), "data_format[%s] is invalid.", dataFormat.c_str());
+    string expected_dataformat_list = ConcatString("NHWC, VALID,NCHW NC1HWC0");
+    std::string err_msg = GetAttrValueErrMsg("dataFormat", dataFormat, expected_dataformat_list);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dataFormat == "NHWC") {
     if (ksizeList[0] != 1 || ksizeList[3] != 1) {
-      OpsAttrValueErrReport(op.GetName(), "ksize", "1", ConcatString(ksizeList[0], ",", ksizeList[3]));
-      OP_LOGE(op.GetName().c_str(), "ksize[%d,%d] of NC is invalid", ksizeList[0], ksizeList[3]);
+      string expected_ksizeList_list = ConcatString("ksizeList[0]=1", ",", "ksizeList[3]=1");
+      string ksizeList_list = ConcatString(ksizeList[0], ",", ksizeList[3]);
+      std::string err_msg = GetAttrValueErrMsg("ksizeList", ksizeList_list, expected_ksizeList_list);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (stridesList[0] != 1 || stridesList[3] != 1) {
-      OpsAttrValueErrReport(op.GetName(), "strides", "1", ConcatString(stridesList[0], ",", stridesList[3]));
-      OP_LOGE(op.GetName().c_str(), "strides[%d,%d] of NC is invalid", stridesList[0], stridesList[3]);
+      string expected_stridesList_list = ConcatString("stridesList[0]=1", ",", "stridesList[3]=1");
+      string stridesList_list = ConcatString(stridesList[0], ",", stridesList[3]);
+      std::string err_msg = GetAttrValueErrMsg("stridesList", stridesList_list, expected_stridesList_list);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
   if (dataFormat == "NCHW" || dataFormat == "NC1HWC0") {
     if (ksizeList[0] != 1 || ksizeList[1] != 1) {
-      OpsAttrValueErrReport(op.GetName(), "ksize", "1", ConcatString(ksizeList[0], ",", ksizeList[1]));
-      OP_LOGE(op.GetName().c_str(), "ksize[%d,%d] of NC is invalid", ksizeList[0], ksizeList[1]);
+      string expected_ksizeList_list = ConcatString("ksizeList[0]=1", ",", "ksizeList[3]=1");
+      string ksizeList_list = ConcatString(ksizeList[0], ",", ksizeList[3]);
+      std::string err_msg = GetAttrValueErrMsg("ksizeList", ksizeList_list, expected_ksizeList_list);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     if (stridesList[0] != 1 || stridesList[1] != 1) {
-      OpsAttrValueErrReport(op.GetName(), "strides", "1", ConcatString(stridesList[0], ",", stridesList[1]));
-      OP_LOGE(op.GetName().c_str(), "strides[%d,%d] of NC is invalid", stridesList[0], stridesList[1]);
+      string expected_stridesList_list = ConcatString("stridesList[0]=1", ",", "stridesList[3]=1");
+      string stridesList_list = ConcatString(stridesList[0], ",", stridesList[3]);
+      std::string err_msg = GetAttrValueErrMsg("stridesList", stridesList_list, expected_stridesList_list);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1879,63 +1874,65 @@ IMPLEMT_COMMON_INFERFUNC(AvgPoolV2InferShape) {
   // get input kszie
   std::vector<int32_t> ksizeList;
   if (GRAPH_SUCCESS != op.GetAttr("ksize", ksizeList)) {
-    OpsGetAttrErrReport(op.GetName(), "ksize");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr ksize");
+    std::string err_msg = GetInputInvalidErrMsg("ksize");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input strides
   std::vector<int32_t> stridesList;
   if (GRAPH_SUCCESS != op.GetAttr("strides", stridesList)) {
-    OpsGetAttrErrReport(op.GetName(), "strides");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr strides");
+    std::string err_msg = GetInputInvalidErrMsg("strides");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input data_format
   std::string dataFormat;
   if (GRAPH_SUCCESS != op.GetAttr("data_format", dataFormat)) {
-    OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr data_format");
+    std::string err_msg = GetInputInvalidErrMsg("data_format");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input paddingMode
   std::string paddingMode;
   if (GRAPH_SUCCESS != op.GetAttr("padding_mode", paddingMode)) {
-    OpsGetAttrErrReport(op.GetName(), "padding_mode");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr padding_mode");
+    std::string err_msg = GetInputInvalidErrMsg("padding_mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+ 
     return GRAPH_FAILED;
   }
 
   // get input strides
   std::vector<int32_t> padVec;
   if (GRAPH_SUCCESS != op.GetAttr("pads", padVec)) {
-    OpsGetAttrErrReport(op.GetName(), "pads");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr pads");
+    std::string err_msg = GetInputInvalidErrMsg("pads");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input global_padding
   bool globalPooling;
   if (GRAPH_SUCCESS != op.GetAttr("global_pooling", globalPooling)) {
-    OpsGetAttrErrReport(op.GetName(), "global_pooling");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr global_pooling");
+    std::string err_msg = GetInputInvalidErrMsg("global_pooling");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get input ceilMode
   bool ceilMode;
   if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceilMode)) {
-    OpsGetAttrErrReport(op.GetName(), "ceil_mode");
-    OP_LOGE(op.GetName().c_str(), "Failed to get attr ceil_mode");
+    std::string err_msg = GetInputInvalidErrMsg("ceil_mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // input format mast equals to data_format
   if ((input_format == FORMAT_NCHW && dataFormat != "NCHW") || (input_format == FORMAT_NHWC && dataFormat != "NHWC")) {
-    InferShapeOtherErrReport(op.GetName(), "Input format and dataFormat is not same.");
-    OP_LOGE(op.GetName().c_str(), "Input format and dataFormat is not same.");
+    string err_msg1 = ConcatString("Input format and dataFormat is not same. input_format:",input_format, ", dataFormat:",dataFormat);
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2955,7 +2952,7 @@ IMPLEMT_VERIFIER(MaxPool, MaxPoolVerify) {
   }
   if ((data_format == "NCHW") || (data_format == "NC1HWC0")) {
     if ((ksize[0] != 1) || (ksize[1] != 1) || (strides[0] != 1) || (strides[1] != 1)) {
-      std::string err_msg = OtherErrMsg("Pooling across width/height and other ksize dimension should be one");
+      string err_msg = ConcatString("Pooling across width/height and other ksize dimension should be one, ksize[0]:",ksize[0], ", ksize[1]:",ksize[0],", strides[0]:",strides[1],", strides[1]:",strides[1]);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -3505,7 +3502,6 @@ IMPLEMT_VERIFIER(MaxPool3DGradGrad, MaxPool3DGradGradVerify) {
     string excepted_size = ConcatString("1 or 3 or 5");
     std::string err_msg = GetAttrSizeErrMsg("ksize", ConcatString(ksize.size()), excepted_size);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-
     return GRAPH_FAILED;
   }
   std::vector<int64_t> strides;
@@ -3584,7 +3580,7 @@ IMPLEMT_INFERFUNC(MaxPool3DGradGrad, MaxPool3DGradGradInferShape) {
     return GRAPH_FAILED;
   }
   if ((strd == 0) || (strh == 0) || (strw == 0)) {
-    std::string err_msg = OtherErrMsg("strd/strh/strw should not be zero");
+    string err_msg = ConcatString("strd/strh/strw should not be zero, strd:",strd, ", strh:",strh,", strw:",strw);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -3594,7 +3590,6 @@ IMPLEMT_INFERFUNC(MaxPool3DGradGrad, MaxPool3DGradGradInferShape) {
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 
@@ -4286,7 +4281,6 @@ IMPLEMT_INFERFUNC(MaxPoolWithArgmax, MaxPoolWithArgmaxInferShape) {
   if (op.GetAttr("strides", stridesList) != ge::GRAPH_SUCCESS) {
     std::string err_msg = GetInputInvalidErrMsg("strides");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-
     return GRAPH_FAILED;
   }
 
@@ -4651,7 +4645,6 @@ IMPLEMT_INFERFUNC(MaxPoolGradGradWithArgmax, MaxPoolGradGradWithArgmaxInferShape
     std::string err_msg = UpdateParamErrMsg("OutputDesc run");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
-
   return GRAPH_SUCCESS;
 }
 
@@ -6460,7 +6453,6 @@ IMPLEMT_VERIFIER(MaxPoolV3, MaxPoolV3Verify) {
       return GRAPH_FAILED;
     }
   }
-
   if (data_format == "NHWC") {
     if (ksize[0] != 1 || ksize[3] != 1 || strides[0] != 1 || strides[3] != 1) {
       std::string err_msg = OtherErrMsg("MaxPoolV3 only supports pooling across width/height"
@@ -6479,9 +6471,10 @@ IMPLEMT_VERIFIER(MaxPoolV3, MaxPoolV3Verify) {
   // input format mast equals to data_format
   if ((input_format == FORMAT_NCHW && data_format != "NCHW") ||
       (input_format == FORMAT_NHWC && data_format != "NHWC")) {
-    std::string err_msg = OtherErrMsg("Format of input must be same with dataFormat!");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_FAILED;
+      string err_msg1 = ConcatString("Format of input must be same with dataFormat! input_format:",input_format, ", data_format:",data_format);
+      std::string err_msg = OtherErrMsg(err_msg1);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
   }
 
   if(ceilMode && padding_mode == "VALID") {

@@ -880,24 +880,25 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
     if (dimNum == 4) {
       oShapeVector.push_back(shapeVector[3]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "4", "4", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 4 when NHWC.", shapeVector.size());
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 4 when NHWC."));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NCHW) {
     if (dimNum >= 2 && dimNum <= 4) {
       oShapeVector.push_back(shapeVector[1]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "4", "2", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 2-4 when NCHW.", shapeVector.size());
+      string err_msg1 = ConcatString("Input x rank[", shapeVector.size(),"] can only support 2-4 when NCHW.");
+      std::string err_msg = OtherErrMsg(err_msg1);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NDHWC) {
     if (dimNum == 5) {
       oShapeVector.push_back(shapeVector[4]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "5", "5", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 5 when NDHWC.", shapeVector.size());
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NDHWC."));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NDC1HWC0) {
@@ -909,21 +910,22 @@ IMPLEMT_COMMON_INFERFUNC(BNTrainingReduceInferShape) {
       oShapeVector.push_back(1);
       oShapeVector.push_back(shapeVector[5]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "6", "6", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 5 when NDC1HWC0.", shapeVector.size());
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NDC1HWC0."));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else if (format == FORMAT_NCDHW) {
     if (dimNum == 5) {
       oShapeVector.push_back(shapeVector[1]);
     } else {
-      OpsInputShapeDimErrReport(op.GetName(), "x", "5", "5", ConcatString(dimNum));
-      OP_LOGE(op.GetName().c_str(), "Input x rank[%d] can only support 5 when NCDHW.", shapeVector.size());
+      std::string err_msg = OtherErrMsg(ConcatString("Input x rank[",shapeVector.size(),"] can only support 5 when NCDHW."));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else {
-    OpsInputFormatErrReport(op.GetName().c_str(), "inputFormat", "NCHW or NHWC or NCDHW or NDHWC", ConcatString(format));
-    OP_LOGE(op.GetName().c_str(), "This op can only support NCHW , NHWC, NDHWC, NCDHW, NDC1HWC0");
+    string expected_format_list = ConcatString("NCHW, NHWC, NDHWC, NCDHW, NDC1HWC0");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("format", expected_format_list, ConcatString(format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1617,17 +1619,16 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingReduceInferShape) {
   Format input_format = inputTensorDesc.GetFormat();
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
-    OP_LOGE(op.GetName().c_str(),
-            "data_format only "
-            "support 'NHWC' and 'NCHW'.");
+    string expected_format_list = ConcatString("NHWC, NCHW");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t num = 2;
   if (GRAPH_SUCCESS != op.GetAttr("num_groups", num)) {
-    OpsGetAttrErrReport(op.GetName(), "num_groups");
-    OP_LOGE(op.GetName().c_str(), "Use default num_groups value!");
-    op.SetAttr("num_groups", num);
+    std::string err_msg = GetInputInvalidErrMsg("num_groups");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
 
   std::vector<int64_t> dims_input;
@@ -1683,17 +1684,16 @@ IMPLEMT_COMMON_INFERFUNC(GNTrainingUpdateInferShape) {
   Format input_format = inputTensorDesc.GetFormat();
 
   if (input_format != FORMAT_NHWC && input_format != FORMAT_NCHW) {
-    OP_LOGE(op.GetName().c_str(),
-            "data_format only "
-            "support 'NHWC' and 'NCHW'.");
+    string expected_format_list = ConcatString("NHWC, NCHW");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t num = 2;
   if (GRAPH_SUCCESS != op.GetAttr("num_groups", num)) {
-    OpsGetAttrErrReport(op.GetName(), "num_groups");
-    OP_LOGE(op.GetName().c_str(), "Use default num_groups value!");
-    op.SetAttr("num_groups", num);
+    std::string err_msg = GetInputInvalidErrMsg("num_groups");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   TensorDesc td = op.GetOutputDesc("y");
   td.SetShape(shape);

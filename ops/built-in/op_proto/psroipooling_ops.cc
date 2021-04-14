@@ -45,7 +45,8 @@ IMPLEMT_INFERFUNC(PSROIPooling, PSROIPoolingInferShape) {
 
     int64_t c_output_dim = x_shape.GetDim(1) / (group_size * group_size);
     if (c_output_dim != output_dim) {
-        std::string err_msg = OtherErrMsg("c_output_dim shoule be equal to output_dim");
+        string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
     }
@@ -110,7 +111,8 @@ IMPLEMT_INFERFUNC(PSROIPoolingV2, PSROIPoolingV2InferShape) {
     int64_t pool_w = group_size;
     int64_t c_output_dim = x_shape.GetDim(1) / (group_size * group_size);
     if (c_output_dim != output_dim) {
-        std::string err_msg = OtherErrMsg("c_output_dim shoule be equal to output_dim");
+        string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
     }
@@ -181,7 +183,8 @@ IMPLEMT_INFERFUNC(PSROIPoolingGradV2D, PSROIPoolingGradV2DInferShape) {
 
     int64_t c_output_dim = x_shape.GetDim(1);
     if (c_output_dim != output_dim) {
-        std::string err_msg = OtherErrMsg("c_output_dim shoule be equal to output_dim");
+        string err_msg1 = ConcatString("c_output_dim shoule be equal to output_dim, c_output_dim:",c_output_dim, ", output_dim:",output_dim);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
     }

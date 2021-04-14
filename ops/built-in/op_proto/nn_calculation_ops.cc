@@ -1807,41 +1807,32 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddGradInferShape) {
   }
   std::string data_format;
   if (ge::GRAPH_SUCCESS != op.GetAttr("data_format", data_format)) {
-    OpsGetAttrErrReport(op.GetName(), "data_format");
-    printf(
-        "[Plugin][ERROR]The bias add grad op GetOpAttr"
-        "data_format failed!");
+    std::string err_msg = GetInputInvalidErrMsg("data_format");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   std::vector<int64_t> dim_vec;
   if (data_format == "NHWC") {
     if (dim_num < DIM_SIZE2 || dim_num > DIM_SIZE8) {
-      OpsInputShapeDimErrReport(op.GetName(), "x", ConcatString(DIM_SIZE8), ConcatString(DIM_SIZE2),
-                                ConcatString(dim_num));
-      OP_LOGE(
-          "[Plugin][ERROR]The bias add grad op dimension(%lu) is not"
-          "supported when format is NHWC!",
-          dim_num);
+      string err_msg1 = ConcatString("The bias add grad op dimension(", dim_num, ") is not supported when format is NHWC!");
+      std::string err_msg = OtherErrMsg(err_msg1);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     dim_vec.push_back(input_shape[dim_num - 1]);
   } else if (data_format == "NCHW") {
     if (dim_num < DIM_SIZE2) {
-      OP_LOGE(
-          "[Plugin][ERROR]The bias add grad op dimension(%lu) is not"
-          "supported when format is NCHW!",
-          dim_num);
+      string err_msg1 = ConcatString("The bias add grad op dimension(", dim_num, ") is not supported when format is NCHW!");
+      std::string err_msg = OtherErrMsg(err_msg1);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     dim_vec.push_back(input_shape[1]);
   } else {
     string expected_format_list = ConcatString("NHWC, NCHW");
-    OpsInputFormatErrReport(op.GetName(), "x", expected_format_list, data_format);
-    OP_LOGE(
-        "[Plugin][ERROR]The bias add grad op data format(%s) is not"
-        "supported!",
-        data_format.c_str());
+    std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format.c_str());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

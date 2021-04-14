@@ -683,16 +683,16 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDDInferShape) {
   // get attr block_shape
   std::vector<int64_t> block_shape;
   if (op.GetAttr("block_shape", block_shape) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "block_shape");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_shape failed!");
+    std::string err_msg = GetInputInvalidErrMsg("block_shape");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get attr crops
   std::vector<int64_t> crops;
   if (op.GetAttr("crops", crops) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "crops");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr crops failed!");
+    std::string err_msg = GetInputInvalidErrMsg("crops");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1276,34 +1276,33 @@ IMPLEMT_VERIFIER(DepthToSpace, DepthToSpaceVerify) {
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
   if (!IsUnknownRankShape(input_dims) && (input_dims.size() < 4)) {
-    OpsAttrValueErrReport(op.GetName(), "input shape size", "greater than or equal to 4",
-                          ConcatString(input_dims.size()));
-    OP_LOGE(op.GetName().c_str(), "Input shape size must be greater than or equal to 4, but got %d.", input_dims.size());
+    std::string err_msg = GetAttrValueErrMsg("input_dims", std::to_string(input_dims.size()), ConcatString(">=4"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   // verify block size
   int64_t block_size;
   if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    std::string err_msg = GetInputInvalidErrMsg("block_size");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (block_size < 2) {
-    OpsAttrValueErrReport(op.GetName(), "block_size", "greater than or equal to 2", ConcatString(block_size));
-    OP_LOGE(op.GetName().c_str(), "The block_size must be greater than or equal to 2, but got %d.", block_size);
+     std::string err_msg = GetAttrValueErrMsg("block_size", std::to_string(block_size), ConcatString("=<2"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   // verify data_format
   std::string data_format;
   if (op.GetAttr("data_format", data_format) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr data_format failed!");
+    std::string err_msg = GetInputInvalidErrMsg("data_format");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NC1HWC0") {
     string expected_format_list = ConcatString("NHWC, NCHW, NC1HWC0");
-    OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-    OP_LOGE(op.GetName().c_str(), "The data_format only support 'NHWC', 'NCHW' or 'NC1HWC0'.");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("data_format", expected_format_list, data_format);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1323,8 +1322,8 @@ IMPLEMT_COMMON_INFERFUNC(DepthToSpaceInfer) {
   // get attr block_size
   int64_t block_size;
   if (GRAPH_SUCCESS != op.GetAttr("block_size", block_size)) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    std::string err_msg = GetInputInvalidErrMsg("block_size");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2004,16 +2003,16 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceDInferShape) {
   // get attr block_size
   int64_t block_size;
   if (op.GetAttr("block_size", block_size) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "block_size");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr block_size failed!");
+    std::string err_msg = GetInputInvalidErrMsg("block_size");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get attr crops
   std::vector<int64_t> crops;
   if (op.GetAttr("crops", crops) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "crops");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr crops failed!");
+    std::string err_msg = GetInputInvalidErrMsg("crops");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2665,20 +2664,20 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeDInferShape) {
   Shape input_shape = op.GetInputDesc("x").GetShape();
   std::vector<int64_t> perm_list;
   if (GRAPH_SUCCESS != op.GetAttr("perm", perm_list)) {
-    OpsGetAttrErrReport(op.GetName(), "perm");
-    OP_LOGE("GetOpAttr perm failed!");
+    std::string err_msg = GetInputInvalidErrMsg("perm");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> shape_list;
   if (GRAPH_SUCCESS != op.GetAttr("shape", shape_list)) {
-    OpsGetAttrErrReport(op.GetName(), "shape");
-    OP_LOGE("GetOpAttr shape failed!");
+    std::string err_msg = GetInputInvalidErrMsg("shape");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool transpose_first;
   if (GRAPH_SUCCESS != op.GetAttr("transpose_first", transpose_first)) {
-    OpsGetAttrErrReport(op.GetName(), "transpose_first");
-    OP_LOGE("GetOpAttr transpose_first failed!");
+    std::string err_msg = GetInputInvalidErrMsg("transpose_first");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

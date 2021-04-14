@@ -1391,40 +1391,37 @@ COMMON_INFER_FUNC_REG(ToAbsoluteBBox, ELMTWISE_INFER_SHAPEANDTYPE("normalized_bo
 IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
   // check shape
   auto box_predictions_shape = op.GetInputDesc("boxes").GetShape().GetDims();
-  CHECK(box_predictions_shape.empty(), OP_LOGE(op.GetName().c_str(), "can not get boxes shape.");
-    OpsMissInputErrReport(op.GetName(), "box_predictions shape"),
+  CHECK(box_predictions_shape.empty(), 
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("box_predictions shape")),
         return GRAPH_FAILED);
   auto anchors_shape = op.GetInputDesc("anchors").GetShape().GetDims();
-  CHECK(anchors_shape.empty(), OP_LOGE(op.GetName().c_str(), "can not get anchors shape.");
-        OpsMissInputErrReport(op.GetName(), "anchors shape"), return GRAPH_FAILED);
+  CHECK(anchors_shape.empty(), 
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("anchors shape")), 
+        return GRAPH_FAILED);
 
   // check attr decode_clip
   float decode_clip = 0;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("decode_clip", decode_clip),
-        OP_LOGE(op.GetName().c_str(), "get attr decode_clip failed");
-        OpsGetAttrErrReport(op.GetName(), "decode_clip"), return GRAPH_FAILED);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("decode_clip")),
+        return GRAPH_FAILED);
   CHECK(decode_clip > 10 || decode_clip < 0,
-        OP_LOGE(op.GetName().c_str(), "decode_clip should in [0, 10]");
-        OpsAttrValueErrReport(op.GetName(), "decode_clip", "in [0, 10]", ConcatString(decode_clip)),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetParamOutRangeErrMsg("decode_clip", ConcatString(0, 10), std::to_string(decode_clip))),
         return GRAPH_FAILED);
 
   // check attr reversed_box
   bool reversed_box = false;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("reversed_box", reversed_box),
-        OP_LOGE(op.GetName().c_str(), "get attr reversed_box failed");
-        OpsGetAttrErrReport(op.GetName(), "reversed_box"),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("reversed_box")),
         return GRAPH_FAILED);
 
   // check attr scales
   std::vector<float> scales_list;
   CHECK(ge::GRAPH_SUCCESS != op.GetAttr("scales", scales_list),
-        OP_LOGE(op.GetName().c_str(), "get attr scales failed");
-        OpsGetAttrErrReport(op.GetName(), "scales"),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("scales")),
         return GRAPH_FAILED);
 
   CHECK(scales_list.size() != 4,
-        OP_LOGE(op.GetName().c_str(), "scales list dimension should be 4");
-        OpsAttrValueErrReport(op.GetName(), "scales_list dimension", "4", ConcatString(scales_list.size())),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetAttrValueErrMsg("scales_list.size()", std::to_string(scales_list.size()), ConcatString("4"))),
         return GRAPH_FAILED);
   // check shape
   int64_t box_predictions_shape_n = 1;
@@ -1436,9 +1433,7 @@ IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
     anchors_shape_n = anchors_shape_n * anchors_shape[i];
   }
   CHECK(box_predictions_shape_n != anchors_shape_n,
-        OP_LOGE(op.GetName().c_str(), "first dimension of inputs should be equal");
-        OpsInputShapeErrReport(op.GetName(), "the first dimension of anchors and box_predictions should be equal",
-                               "box_predictions", ConcatString(box_predictions_shape_n)),
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("first dimension of inputs should be equal, box_predictions_shape_n:",box_predictions_shape_n, ", anchors_shape_n:",anchors_shape_n))),
         return GRAPH_FAILED);
   int64_t box_predictions_shape_D = box_predictions_shape[box_predictions_shape.size() - 1];
   int64_t box_predictions_shape_N = box_predictions_shape[0];
@@ -1446,13 +1441,14 @@ IMPLEMT_VERIFIER(DecodeBboxV2, DecodeBboxV2Verify) {
   int64_t anchors_shape_N = anchors_shape[0];
   if (reversed_box == false) {
     CHECK(box_predictions_shape_D != 4 || anchors_shape_D != 4,
-          OP_LOGE(op.GetName().c_str(), "The input shape not in {(N4), (N4)}"), return GRAPH_FAILED);
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString( "The input shape not in {(N4), (N4)}"))),
+          return GRAPH_FAILED);
   }
   if (reversed_box == true) {
     CHECK(box_predictions_shape_N != 4 || anchors_shape_N != 4,
-         OP_LOGE(op.GetName().c_str(), "The input shape not in {(4N), (4N)}"), return GRAPH_FAILED);
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("The input shape not in {(4N), (4N)}"))), 
+          return GRAPH_FAILED);
   }
-
   return GRAPH_SUCCESS;
 }
 

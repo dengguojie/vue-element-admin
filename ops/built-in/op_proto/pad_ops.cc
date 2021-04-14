@@ -540,7 +540,8 @@ IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
 
   auto node = NodeUtils::GetNodeFromOperator(op);
   if (node == nullptr) {
-    OP_LOGE(op.GetName().c_str(), "get null node ptr");
+    std::string err_msg = GetInputInvalidErrMsg("node");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_PARAM_INVALID;
   }
 
@@ -581,8 +582,8 @@ IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
     } else if (data_type == DT_INT64) {
       CaclDims<int64_t>(data, vec_dim);
     } else {
-      GeInfershapeErrReport(op.GetName(), op.GetOpType(), "const dtype", "it must DT_INT32 or DT_INT64");
-      GE_OP_LOGE(op.GetName().c_str(), "Get constValue failed of [dims], the dtype must DT_INT32 or DT_INT64");
+      std::string err_msg = GetInputInvalidErrMsg("constValue");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_PARAM_INVALID;
     }
 
@@ -617,15 +618,15 @@ COMMON_INFER_FUNC_REG(Fill, FillInferShape);
 IMPLEMT_COMMON_INFERFUNC(FillDInferShape) {
   std::vector<int64_t> vec_dim;
   if (ge::GRAPH_SUCCESS != op.GetAttr("dims", vec_dim)) {
-    OpsGetAttrErrReport(op.GetName(), "dims");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of FillD!");
+    std::string err_msg = GetInputInvalidErrMsg("dims");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (vec_dim.size() < DIM_SIZE1 || vec_dim.size() > DIM_SIZE8) {
-    OpsInputShapeDimErrReport(op.GetName(), "dims", ConcatString(DIM_SIZE8), ConcatString(DIM_SIZE1),
-                              ConcatString(vec_dim.size()));
-    OP_LOGE(op.GetName().c_str(), "dims must be between 1 and 8.");
+    string size_range = ConcatString("1, 8");
+    std::string err_msg = GetParamOutRangeErrMsg("vec_dim.size()", size_range, std::to_string(vec_dim.size()));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -701,14 +702,13 @@ IMPLEMT_INFERFUNC(BroadcastToD, BroadcastToDInferShape) {
   DataType input_dtype = op.GetInputDesc("x").GetDataType();
   std::vector<int64_t> shape_out;
   if (ge::GRAPH_SUCCESS != op.GetAttr("shape", shape_out)) {
-    OpsGetAttrErrReport(op.GetName(), "shape");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of BroadcastToD!");
+    std::string err_msg = GetInputInvalidErrMsg("shape_out");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (shape_out.size() < DIM_SIZE1 || shape_out.size() > DIM_SIZE8) {
-    OpsInputShapeDimErrReport(op.GetName(), "shape", ConcatString(DIM_SIZE8), ConcatString(DIM_SIZE1),
-                              ConcatString(shape_out.size()));
-    OP_LOGE(op.GetName().c_str(), "shape must be between 1 and 8.");
+    std::string err_msg = GetParamOutRangeErrMsg(op.GetName().c_str(), ConcatString("1,8"), std::to_string(shape_out.size()));    
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   TensorDesc td = op.GetOutputDesc("y");

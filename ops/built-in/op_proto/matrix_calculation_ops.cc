@@ -61,9 +61,8 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
 
   // check axis
   if (axis_new != 1 && axis_new != 2) {
-    OP_LOGE(op.GetName().c_str(), "Attr axis is wrong, the original value of axis %d is not supported.", axis);
-    string realvalue = ConcatString(axis_new);
-    OpsAttrValueErrReport(op.GetName().c_str(), "axis", "1 or 2", realvalue);
+    std::string err_msg = OtherErrMsg(ConcatString("Attr axis is wrong, the original value of axis ",axis," is not supported."));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -80,8 +79,8 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
 
   // check wShape size
   if (wShape.size() != 2) {
-    string realvalue = ConcatString(wShape.size());
-    OpsAttrValueErrReport(op.GetName().c_str(), "wShape size", "2", realvalue);
+    std::string err_msg = GetAttrValueErrMsg("wShape.size()", std::to_string(wShape.size()), "2");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -89,14 +88,16 @@ IMPLEMT_VERIFIER(FullyConnection, FullyConnectionVerify) {
   if (wShape.size() == 2) {
     if (!transpose) {
       if (kShape != wShape[1]) {
-        OP_LOGE(op.GetName().c_str(), "weight K must equal to input K!\n");
-        OpsTwoInputShapeErrReport(op.GetName(), "X Shape", "W Shape", "weight K must equal to input K!");
+        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[1]:",wShape[1]); 
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     } else {
       if (kShape != wShape[0]) {
-        OpsTwoInputShapeErrReport(op.GetName(), "X Shape", "W Shape", "weight K must equal to input K!");
-        OP_LOGE(op.GetName().c_str(), "weight K must equal to input K!\n");
+        string err_msg1 = ConcatString("weight K must equal to input K! kShape:",kShape, ", wShape[0]:",wShape[0]); 
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
@@ -124,8 +125,8 @@ IMPLEMT_INFERFUNC(FullyConnection, FullyConnectionInfer) {
     axis_new = axis;
   }
   if (axis_new != 1 && axis_new != 2) {
-    OpsAttrValueErrReport(op.GetName(), "axis", "1 or 2", ConcatString(axis_new));
-    OP_LOGE(op.GetName().c_str(), "Attr axis is wrong, this axis is not supported!\n");
+    std::string err_msg = GetAttrValueErrMsg("axis_new", std::to_string(axis_new), "1 or 2");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   op.SetAttr("axis", axis_new);
@@ -1841,7 +1842,8 @@ IMPLEMT_VERIFIER(MatrixDiagD, MatrixDiagDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
-    std::string err_msg = OtherErrMsg( "the inputs of diagonal and help should be the same dtype!\n");
+    string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_diagonal_dtype:",input_diagonal_dtype); 
+    std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -1922,7 +1924,8 @@ IMPLEMT_VERIFIER(MatrixDiagPartD, MatrixDiagPartDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(0).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(1).GetDataType();
   if (input_diagonal_dtype != input_help_dtype) {
-    std::string err_msg = OtherErrMsg( "the inputs of diagonal and help should be the same dtype!\n");
+    string err_msg1 = ConcatString("the inputs of diagonal and help should be the same dtype! input_diagonal_dtype:",input_diagonal_dtype, ", input_help_dtype:",input_help_dtype); 
+    std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -1968,7 +1971,8 @@ IMPLEMT_VERIFIER(MatrixSetDiagD, MatrixSetDiagDVerify) {
   DataType input_diagonal_dtype = op.GetInputDesc(1).GetDataType();
   DataType input_help_dtype = op.GetInputDesc(2).GetDataType();
   if ((input_matrix_dtype != input_diagonal_dtype) || (input_matrix_dtype != input_help_dtype)) {
-    std::string err_msg = OtherErrMsg( "the inputs of matrix and diagonal should be the same dtype!\n");
+    string err_msg1 = ConcatString("the inputs of matrix and diagonal should be the same dtype! input_matrix_dtype:",input_matrix_dtype, ", input_diagonal_dtype:",input_diagonal_dtype,", input_help_dtype:",input_help_dtype); 
+    std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
@@ -2207,13 +2211,13 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionMatrixInferShape) {
   auto output_dtype = DT_FLOAT;
   std::string output_dtype_str = "float32";
   if (op.GetAttr("num_classes", num_classes) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "num_classes");
-    OP_LOGE(op.GetName().c_str(), "Op get attr num_classes failed");
+    std::string err_msg = GetInputInvalidErrMsg("num_classes");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (op.GetAttr("dtype", output_dtype_str) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "dtype");
-    OP_LOGE(op.GetName().c_str(), "Op get attr dtype failed");
+    std::string err_msg = GetInputInvalidErrMsg("dtype");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (output_dtype_str == "float32") {
@@ -2228,8 +2232,8 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionMatrixInferShape) {
     output_dtype = DT_UINT8;
   } else {
     string expected_data_type_list = ConcatString("float32, int32, int8, float16, uint8");
-    OpsInputDtypeErrReport(op.GetName(), "dtype", expected_data_type_list, output_dtype_str);
-    OP_LOGE(" don't supports this dtype.");
+    std::string err_msg = GetInputDtypeNotSupportErrMsg("dtype", expected_data_type_list, output_dtype_str);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> out_shape;

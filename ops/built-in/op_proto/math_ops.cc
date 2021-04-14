@@ -535,21 +535,21 @@ IMPLEMT_COMMON_INFERFUNC(HistogramFixedWidthDInferShape) {
   std::string dtype_attr;
   if (op.GetAttr("dtype", dtype_attr) == GRAPH_SUCCESS) {
     if (dtype_attr != "int32") {
-      OpsInputDtypeErrReport(op.GetName(), "dtype", "int32", dtype_attr);
-      OP_LOGE(op.GetName().c_str(),
-              "dtype_attr only "
-              "support int32.");
+      string expected_dtype_list = ConcatString("int32");
+      std::string err_msg = GetInputDtypeNotSupportErrMsg("dtype", expected_dtype_list, dtype_attr);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
   int64_t nbins;
   if (ge::GRAPH_SUCCESS != op.GetAttr("nbins", nbins)) {
-    OpsGetAttrErrReport(op.GetName(), "nbins");
+    std::string err_msg = GetInputInvalidErrMsg("nbins");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (nbins <= 0) {
-    OpsAttrValueErrReport(op.GetName(), "nbins", ">0", ConcatString(nbins));
-    OP_LOGE(op.GetName().c_str(), "the nbins must be > 0");
+    std::string err_msg = GetAttrValueErrMsg("dims_x", std::to_string(nbins), ConcatString(nbins,">",0));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> temp_nbins;

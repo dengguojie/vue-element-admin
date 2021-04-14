@@ -839,10 +839,8 @@ IMPLEMT_VERIFIER(DataFormatDimMap, DataFormatDimMapVerify) {
   std::string src_format;
   if (op.GetAttr("src_format", src_format) == GRAPH_SUCCESS) {
     if (src_format.size() != 4) {
-      OpsAttrValueErrReport(op.GetName(), "src_format", "4", ConcatString(src_format.size()));
-      OP_LOGE(op.GetName().c_str(),
-              "The length of src_format"
-              "must be 4.");
+      std::string err_msg = GetAttrValueErrMsg("src_format", std::to_string(src_format.size()), ConcatString("4"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else {
@@ -851,10 +849,8 @@ IMPLEMT_VERIFIER(DataFormatDimMap, DataFormatDimMapVerify) {
   std::string dst_format;
   if (op.GetAttr("dst_format", dst_format) == GRAPH_SUCCESS) {
     if (dst_format.size() != 4) {
-      OpsAttrValueErrReport(op.GetName(), "dst_format", "4", ConcatString(dst_format.size()));
-      OP_LOGE(op.GetName().c_str(),
-              "The length of dst_format"
-              "must be 4.");
+      std::string err_msg = GetAttrValueErrMsg("dst_format", std::to_string(dst_format.size()), ConcatString("4"));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   } else {

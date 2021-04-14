@@ -360,8 +360,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellCStateGrad, BasicLSTMCellCStateGradInferShape) {
     batch_size = inputCShape.GetDims().at(0);
     hidden_size = inputCShape.GetDims().at(1);
   } else {
-    OpsAttrValueErrReport(op.GetName(), "c's dim", "2", ConcatString(dim_num));
-    OP_LOGE(op.GetName().c_str(), "The input shape of C is not right, please check!");
+    std::string err_msg = GetAttrValueErrMsg("dim_num", std::to_string(dim_num), ConcatString("c's dim is 2"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -409,8 +409,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
     inputSize = inputXShape.GetDims().at(1);
     hiddenSize = inputHShape.GetDims().at(1);
   } else {
-    OpsTwoInputShapeErrReport(op.GetName(), "X Shape Dim", "H Shape Dim", "The input shape of X and H should be 2!");
-    OP_LOGE(op.GetName().c_str(), "The input shape of X and H should be 2, please check!");
+    std::string err_msg = OtherErrMsg(ConcatString("dim_num_x:",dim_num_x, "&&", "dim_num_h:",dim_num_h, "The input shape of X and H should be 2"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -433,8 +433,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellWeightGrad, BasicLSTMCellWeightGradInferShape) {
     dbDims = {hiddenSize * 4, 1, 1, 1};
   } else {
     string expected_format_list = ConcatString("FORMAT_HWCN, FORMAT_NCHW, FORMAT_NHWC, FORMAT_ND");
-    OpsInputFormatErrReport(op.GetName(), "dw", expected_format_list, ConcatString(outputdw_format));
-    OP_LOGE(op.GetName().c_str(), "Not supported the format of dw");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("outputdw_format", expected_format_list, ConcatString(outputdw_format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
 
   outputDwTensorDesc.SetShape(ge::Shape(dwDims));
@@ -470,8 +470,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
     batchSize = inputDgateShape.GetDims().at(0);
     hiddenSize = inputDgateShape.GetDims().at(1) / 4;
   } else {
-    OpsAttrValueErrReport(op.GetName(), "Dgate's dim", "2", ConcatString(dim_num));
-    OP_LOGE(op.GetName().c_str(), "The input shape of Dgate is not right, please check!");
+    std::string err_msg = GetAttrValueErrMsg("dim_num", std::to_string(dim_num), ConcatString("Dgate's dim is 2"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -479,8 +479,8 @@ IMPLEMT_INFERFUNC(BasicLSTMCellInputGrad, BasicLSTMCellInputGradInferShape) {
   if (dim_num_w == 2) {
     inputSize = inputWShape.GetDims().at(0) - hiddenSize;
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "W Shape Dim", "The input shape of W should be 2, please check!");
-    OP_LOGE(op.GetName().c_str(), "The input shape of W should be 2, please check!");
+    std::string err_msg = OtherErrMsg(ConcatString("dim_num_w:",dim_num_w,"The input shape of W should be 2, please check!"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);   
     return GRAPH_FAILED;
   }
 
@@ -525,8 +525,8 @@ IMPLEMT_INFERFUNC(RNN, RNNInferShape) {
   if (dimNumsX == 3) {
     batchSize = shapeX.GetDims().at(1);
   } else {
-    OpsAttrValueErrReport(op.GetName(), "x's dim'", "3", ConcatString(dimNumsX));
-    OP_LOGE(op.GetName().c_str(), "The input shape of x is not right, please check!");
+    std::string err_msg = GetAttrValueErrMsg("dimNumsX", std::to_string(dimNumsX), ConcatString("x's shape is 3"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -578,8 +578,8 @@ IMPLEMT_INFERFUNC(BasicRNNCell, BasicRNNCellInferShape) {
   if (dimNumsX == 2) {
     batchSize = shapeX.GetDims().at(0);
   } else {
-    OpsOneInputShapeErrReport(op.GetName(), "X Shape Dim", "The input shape of X should be 2!");
-    OP_LOGE(op.GetName().c_str(), "The input shape of X should be 2, please check!");
+    std::string err_msg = GetAttrValueErrMsg("dimNumsX", std::to_string(dimNumsX), ConcatString("x's shape is 3"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   vector<int64_t> dimsOt = {batchSize, hiddenSize};

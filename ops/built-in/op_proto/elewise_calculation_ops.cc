@@ -273,16 +273,16 @@ IMPLEMT_VERIFIER(FusedMulAdd, FusedMulAddVerify) {
   DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
   DataType input_type_x3 = op.GetInputDesc("x3").GetDataType();
   if (input_type_x1 != input_type_x2) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "x1", "x2", ConcatString(input_type_x1), ConcatString(input_type_x2));
-    OP_LOGE(op.GetName().c_str(), "The %s op dtype is not same, type1:%d, type2:%d", op.GetName().c_str(),
-            input_type_x1, input_type_x2);
+    string err_msg1 = ConcatString("The ",op.GetName().c_str()," op dtype is not same, type1:",input_type_x1, ", type2:",input_type_x2);
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return false;
   }
 
   if (input_type_x2 != input_type_x3) {
-    OpsTwoInputDtypeErrReport(op.GetName(), "x2", "x3", ConcatString(input_type_x2), ConcatString(input_type_x3));
-    OP_LOGE(op.GetName().c_str(), "The %s op dtype is not same, type2:%d, type3:%d", op.GetName().c_str(),
-            input_type_x2, input_type_x3);
+    string err_msg1 = ConcatString("The ",op.GetName().c_str()," op dtype is not same, type2:",input_type_x2, ", type3:",input_type_x3);
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return false;
   }
 
@@ -998,8 +998,8 @@ VERIFY_FUNC_REG(Assign, AssignVerify);
 int64_t GetAddNConstValue(const ge::Operator& op) {
   int64_t tensor_num;
   if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
-    OpsGetAttrErrReport(op.GetName(), "N");
-    OP_LOGE(op.GetName().c_str(), "The add_n op GetOpAttr failed!");
+    std::string err_msg = GetInputInvalidErrMsg("N");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   return tensor_num;
 }
@@ -1278,13 +1278,13 @@ COMMON_INFER_FUNC_REG(AtanGrad, AtanGradInferShape);
 IMPLEMT_VERIFIER(ApproximateEqual, ApproximateEqualVerify) {
   float tolerance_data;
   if (ge::GRAPH_SUCCESS != op.GetAttr("tolerance", tolerance_data)) {
-    OpsGetAttrErrReport(op.GetName(), "tolerance");
-    OP_LOGE(op.GetName().c_str(), "GetOpAttr failed of ApproximateEqual!");
+    std::string err_msg = GetInputInvalidErrMsg("tolerance");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (tolerance_data < 0) {
-    OpsAttrValueErrReport(op.GetName(), "tolerance", ">= 0", ConcatString(tolerance_data));
-    OP_LOGE(op.GetName().c_str(), "tolerance should >= 0!");
+    std::string err_msg = GetAttrValueErrMsg("tolerance_data", std::to_string(tolerance_data), ConcatString("tolerance_data >= 0"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1314,8 +1314,8 @@ bool CheckInputSize(const Operator& op) {
   OP_LOGI(op.GetName().c_str(), "The op begin verify");
   auto input_size = op.GetInputsSize();
   if (input_size == 0) {
-    OpsMissInputErrReport(op.GetName(), "x");
-    OP_LOGE(op.GetName().c_str(), "The op input size is zero");
+    std::string err_msg  = string("The op input size is zero");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return false;
   }
   return true;
@@ -1327,11 +1327,8 @@ bool CheckDynamicInputDtype(const Operator& op, const string& input_name1) {
   for (size_t i = 0; i < input_dynamic_size; ++i) {
     DataType input_dtype = op.GetDynamicInputDesc(input_name1, i).GetDataType();
     if (first_input_dtype != input_dtype) {
-      OpsInputDtypeErrReport(op.GetName(), "x", ConcatString(first_input_dtype), ConcatString(input_dtype));
-      OP_LOGE(op.GetName().c_str(),
-              "the op type is not same,"
-              "type1:%d,type2:%d",
-              input_dtype, first_input_dtype);
+      std::string err_msg = OtherErrMsg(ConcatString("the op type is not same,type1:",input_dtype,",type2:",first_input_dtype));
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return false;
     }
   }
@@ -1347,14 +1344,14 @@ IMPLEMT_VERIFIER(AccumulateNV2, AccumulateNV2Verify) {
   }
   int64_t num;
   if (GRAPH_SUCCESS != op.GetAttr("N", num)) {
-    OpsGetAttrErrReport(op.GetName(), "N");
-    OP_LOGE(op.GetName().c_str(), "GetAttr of N failed.");
+    std::string err_msg = GetInputInvalidErrMsg("N");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   } else {
     if (op.GetInputsSize() != static_cast<uint64_t>(num)) {
-      OpsInputShapeErrReport(op.GetName(), "input size and N must be same.", "N",
-                             ConcatString(static_cast<uint64_t>(num)));
-      OP_LOGE(op.GetName().c_str(), "input size and N must be same.");
+      string err_msg1 = ConcatString("The ",op.GetName().c_str()," op size is not same, op.GetInputsSize():",op.GetInputsSize(), ", num:",static_cast<uint64_t>(num));
+      std::string err_msg = OtherErrMsg(err_msg1);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1364,8 +1361,8 @@ IMPLEMT_VERIFIER(AccumulateNV2, AccumulateNV2Verify) {
 int64_t GetAccumulateNV2ConstValue(const ge::Operator& op) {
   int64_t tensor_num;
   if (ge::GRAPH_SUCCESS != op.GetAttr("N", tensor_num)) {
-    OpsGetAttrErrReport(op.GetName(), "N");
-    OP_LOGE(op.GetName().c_str(), "The add_n op GetOpAttr failed!");
+    std::string err_msg = GetInputInvalidErrMsg("N");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   return tensor_num;
 }
@@ -1495,8 +1492,8 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
                 shape_vector = Broadcast(shape_vector, temp_vector);
                 for (int64_t j = 0; j < shape_vector.size(); j++) {
                     if (shape_vector[j] == -1) {
-                        OP_LOGE(op.GetName().c_str(),
-                            "Operands could not be broadcast together with these shapes."); 
+                        std::string err_msg = OtherErrMsg("Operands could not be broadcast together with these shapes.");
+                        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
                         return GRAPH_FAILED;
                     }
                 }
@@ -1630,19 +1627,20 @@ COMMON_INFER_FUNC_REG(LogicalAnd, LogicalAndInferShape);
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsPerChannel, FakeQuantWithMinMaxVarsPerChannelVerify) {
   int64_t num_bits;
   if (ge::GRAPH_SUCCESS != op.GetAttr("num_bits", num_bits)) {
-    OpsGetAttrErrReport(op.GetName(), "num_bits");
-    LOG_ERROR("[ERROR]op [%s] Attr num_bits is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("num_bits");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool narrow_range;
   if (ge::GRAPH_SUCCESS != op.GetAttr("narrow_range", narrow_range)) {
-    OpsGetAttrErrReport(op.GetName(), "narrow_range");
-    LOG_ERROR("[ERROR]op [%s] Attr narrow_range is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("narrow_range");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (num_bits < 2 || num_bits > 16) {
-    OpsAttrValueErrReport(op.GetName(), "num_bits", "between 2 and 16", ConcatString(num_bits));
-    LOG_ERROR("[ERROR]op [%s] num_bits is between 2 and 16\n", op.GetName().c_str());
+    string num_bits_range = ConcatString("2,16");
+    std::string err_msg = GetParamOutRangeErrMsg("num_bits", num_bits_range, std::to_string(num_bits));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape shape_x = op.GetInputDesc("x").GetShape();
@@ -1652,28 +1650,27 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsPerChannel, FakeQuantWithMinMaxVarsPerCh
   std::vector<int64_t> dims_min = shape_min.GetDims();
   std::vector<int64_t> dims_max = shape_max.GetDims();
   if (dims_x.size() < 1) {
-    OpsAttrValueErrReport(op.GetName(), "x'shape", "equal or greater than 1", ConcatString(dims_x.size()));
-    OP_LOGE(op.GetName().c_str(), "shape of x must greater 1");
+    std::string err_msg = GetAttrValueErrMsg("dims_x", std::to_string(dims_x.size()), ConcatString("dims_x.size()",">=",1));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if ((dims_min.size() != 1) || (dims_max.size() != 1)) {
-    string input_value = ConcatString("[", dims_min.size(), "] and [", dims_max.size(), "]");
-    OpsAttrValueErrReport(op.GetName(), "min's and max's shape", "rank 1", input_value);
-    OP_LOGE(op.GetName().c_str(), "shape of min and max must be rank 1");
+    string input = ConcatString("dims_min.size(),","dims_max.size()");
+    string expected_list = ConcatString("shape of min and max must be rank 1");
+    string input_list = ConcatString("dims_min.size():",dims_min.size(),",","dims_max.size():",dims_max.size());
+    std::string err_msg = GetAttrValueErrMsg(input, input_list, expected_list);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dims_min[0] != dims_max[0]) {
-    string excepted_value = ConcatString("same as max[", dims_max[0], "]");
-    OpsAttrValueErrReport(op.GetName(), "min'shape", excepted_value, ConcatString(dims_min[0]));
-    OP_LOGE(op.GetName().c_str(), "shape of min and max must be same");
+    std::string err_msg = GetAttrValueErrMsg("dims_min[0]", std::to_string(dims_min[0]), std::to_string(dims_max[0]));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dims_x[dims_x.size() - 1] != dims_min[0]) {
     string excepted_value = ConcatString("same as min[", dims_min[0], "]");
-    OpsAttrValueErrReport(op.GetName(), "x'last dimension", excepted_value, ConcatString(dims_x[dims_x.size() - 1]));
-    OP_LOGE(op.GetName().c_str(),
-            "The last dimension of x must"
-            " be the same as min");
+    std::string err_msg = GetAttrSizeErrMsg("dims_x", std::to_string(dims_x[dims_x.size() - 1]), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1714,15 +1711,13 @@ IMPLEMT_COMMON_INFERFUNC(BiasAddInferShape) {
   }
   std::string data_format;
   if (op.GetAttr("data_format", data_format) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "data_format");
-    OP_LOGE(op.GetName().c_str(), "get attr N failed");
+    std::string err_msg = GetInputInvalidErrMsg("data_format");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   if (data_format != "NHWC" && data_format != "NCHW" && data_format != "NDHWC" && data_format != "NCDHW") {
     string expected_format_list = ConcatString("NHWC, NCHW, NDHWC, NCDHW");
-    OpsInputFormatErrReport(op.GetName(), "data_format", expected_format_list, data_format);
-    OP_LOGE(op.GetName().c_str(),
-            "data_format only "
-            "support 'NHWC', 'NCHW', 'NDHWC' and 'NCDHW'.");
+    std::string err_msg = GetInputFormatNotSupportErrMsg(op.GetName().c_str(), expected_format_list, data_format);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1772,33 +1767,38 @@ COMMON_INFER_FUNC_REG(BitwiseXor, BitwiseXorInferShape);
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxArgs, FakeQuantWithMinMaxArgsVerify) {
   float min;
   if (GetConstValue(op, "min", min) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr min is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("min");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   float max;
   if (GetConstValue(op, "max", max) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr max is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("max");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t numBits;
   if (GetConstValue(op, "num_bits", numBits) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr num_bits is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("mub_bits");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool narrow_range;
   if (GetConstValue(op, "narrow_range", narrow_range) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr narrow_range is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("narrow_range");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (min >= max) {
     string excepted_value = ConcatString("less than max[", max, "]");
-    OpsAttrValueErrReport(op.GetName(), "min", excepted_value, ConcatString(min));
-    LOG_ERROR("[ERROR]op [%s] min must be less than max !\n", op.GetName().c_str());
+    std::string err_msg = GetAttrValueErrMsg("min", std::to_string(min), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (numBits < 2 || numBits > 16) {
-    OpsAttrValueErrReport(op.GetName(), "numBits", "between 2 and 16", ConcatString(numBits));
-    LOG_ERROR("[ERROR]op [%s] numBits is between 2 and 16\n", op.GetName().c_str());
+    string numBits_range = ConcatString("2,16");
+    std::string err_msg = GetParamOutRangeErrMsg("numBits", numBits_range, std::to_string(numBits));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1823,33 +1823,38 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxArgs, FakeQuantWithMinMaxArgsVerify);
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxArgsGradient, FakeQuantWithMinMaxArgsGradientVerify) {
   float min;
   if (GetConstValue(op, "min", min) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr min is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("min");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   float max;
   if (GetConstValue(op, "max", max) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr max is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("max");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t num_bits;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr num_bits is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("num_bits");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool narrow_range;
   if (GetConstValue(op, "narrow_range", narrow_range) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr narrow_range is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("narrow_range");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (min >= max) {
     string excepted_value = ConcatString("less than max[", max, "]");
-    OpsAttrValueErrReport(op.GetName(), "min", excepted_value, ConcatString(min));
-    LOG_ERROR("[ERROR]op [%s] min must be less than max !\n", op.GetName().c_str());
+    std::string err_msg = GetAttrValueErrMsg("min", std::to_string(min), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (num_bits < 2 || num_bits > 16) {
-    OpsAttrValueErrReport(op.GetName(), "num_bits", "between 2 and 16", ConcatString(num_bits));
-    LOG_ERROR("[ERROR]op [%s] num_bits is between 2 and 16\n", op.GetName().c_str());
+    string num_bits_range = ConcatString("2, 16");
+    std::string err_msg = GetParamOutRangeErrMsg("num_bits", num_bits_range, std::to_string(num_bits));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (!CheckTwoInputDtypeSame(op, "x", "gradients")) {
@@ -1861,15 +1866,16 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxArgsGradient, FakeQuantWithMinMaxArgsGradien
   std::vector<int64_t> dims_y = shape_y.GetDims();
   if (dims_x.size() != dims_y.size()) {
     string excepted_value = ConcatString("same as gradients[", dims_y.size(), "]");
-    OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(dims_x.size()));
-    OP_LOGE(op.GetName().c_str(), "two input shape not same");
+    std::string err_msg = GetAttrSizeErrMsg("x'shape", std::to_string(dims_x.size()), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+
     return GRAPH_FAILED;
   } else {
     for (size_t i = 0; i < dims_x.size(); i++) {
       if (dims_x[i] != dims_y[i]) {
         string excepted_value = ConcatString("same as gradients[", dims_y[i], "]");
-        OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(dims_x[i]));
-        OP_LOGE(op.GetName().c_str(), "two input shape not same");
+        std::string err_msg = GetAttrSizeErrMsg("x'shape", std::to_string(dims_x[i]), excepted_value);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
@@ -1895,12 +1901,14 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxArgsGradient, FakeQuantWithMinMaxArgsGradient
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsVerify) {
   int64_t num_bits;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr num_bits is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("num_bits");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool narrow_range;
   if (GetConstValue(op, "narrow_range", narrow_range) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr narrow_range is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("narrow_range");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (!CheckTwoInputDtypeSame(op, "x", "min")) {
@@ -1910,8 +1918,9 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsVerify) {
     return GRAPH_FAILED;
   }
   if (num_bits < 2 || num_bits > 16) {
-    OpsAttrValueErrReport(op.GetName(), "num_bits", "between 2 and 16", ConcatString(num_bits));
-    LOG_ERROR("[ERROR]op [%s] num_bits is between 2 and 16\n", op.GetName().c_str());
+    string num_bits_range = ConcatString("2, 16");
+    std::string err_msg = GetParamOutRangeErrMsg("num_bits", num_bits_range, std::to_string(num_bits));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -1935,12 +1944,14 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxVars, FakeQuantWithMinMaxVarsVerify);
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradientVerify) {
   int64_t num_bits;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr num_bits is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("num_bits");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool narrow_range;
   if (GetConstValue(op, "narrow_range", narrow_range) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr narrow_range is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("narrow_range");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (!CheckTwoInputDtypeSame(op, "x", "gradients")) {
@@ -1953,8 +1964,9 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradien
     return GRAPH_FAILED;
   }
   if (num_bits < 2 || num_bits > 16) {
-    OpsAttrValueErrReport(op.GetName(), "num_bits", "between 2 and 16", ConcatString(num_bits));
-    LOG_ERROR("[ERROR]op [%s] num_bits is between 2 and 16\n", op.GetName().c_str());
+    string num_bits_range = ConcatString("2, 16");
+    std::string err_msg = GetParamOutRangeErrMsg("num_bits", num_bits_range, std::to_string(num_bits));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape shape_x = op.GetInputDesc("x").GetShape();
@@ -1962,16 +1974,16 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradien
   std::vector<int64_t> dims_x = shape_x.GetDims();
   std::vector<int64_t> dims_y = shape_y.GetDims();
   if (dims_x.size() != dims_y.size()) {
-    string excepted_value = ConcatString("same as gradients[", dims_y.size(), "]");
-    OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(dims_x.size()));
-    OP_LOGE(op.GetName().c_str(), "two input shape not same");
+    string err_msg1 = ConcatString("The dim size is not same, dims_x.size():",dims_x.size(), ", dims_y.size():",dims_y.size());
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   } else {
     for (size_t i = 0; i < dims_x.size(); i++) {
       if (dims_x[i] != dims_y[i]) {
-        string excepted_value = ConcatString("same as gradients[", dims_y[i], "]");
-        OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(dims_x[i]));
-        OP_LOGE(op.GetName().c_str(), "two input shape not same");
+        string err_msg1 = ConcatString("The dim size is not same, dims_x:",dims_x[i], ", dims_y:",dims_y[i]);
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
@@ -2000,7 +2012,6 @@ IMPLEMT_COMMON_INFERFUNC(FakeQuantWithMinMaxVarsGradientInferShape) {
   (void)op.UpdateOutputDesc("backprops_wrt_max", tensordesc_output_max);
   return GRAPH_SUCCESS;
 }
-
 COMMON_INFER_FUNC_REG(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradientInferShape);
 VERIFY_FUNC_REG(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradientVerify);
 // ----------------FakeQuantWithMinMaxVarsGradient END---------------------
@@ -2009,12 +2020,14 @@ VERIFY_FUNC_REG(FakeQuantWithMinMaxVarsGradient, FakeQuantWithMinMaxVarsGradient
 IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsPerChannelGradient, FakeQuantWithMinMaxVarsPerChannelGradientVerify) {
   int64_t num_bits;
   if (GetConstValue(op, "num_bits", num_bits) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr num_bits is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("num_bits");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   bool narrow_range;
   if (GetConstValue(op, "narrow_range", narrow_range) == false) {
-    LOG_ERROR("[ERROR]op [%s] Attr narrow_range is empty !\n", op.GetName().c_str());
+    std::string err_msg = GetInputInvalidErrMsg("narrow_range");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (!CheckTwoInputDtypeSame(op, "x", "gradients")) {
@@ -2026,9 +2039,11 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsPerChannelGradient, FakeQuantWithMinMaxV
   if (!CheckTwoInputDtypeSame(op, "max", "gradients")) {
     return GRAPH_FAILED;
   }
+  
   if (num_bits < 2 || num_bits > 16) {
-    OpsAttrValueErrReport(op.GetName(), "num_bits", "between 2 and 16", ConcatString(num_bits));
-    LOG_ERROR("[ERROR]op [%s] num_bits is between 2 and 16\n", op.GetName().c_str());
+    string num_bits_range = ConcatString("2, 16");
+    std::string err_msg = GetParamOutRangeErrMsg("num_bits", num_bits_range, std::to_string(num_bits));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   Shape shape_x = op.GetInputDesc("x").GetShape();
@@ -2040,38 +2055,36 @@ IMPLEMT_VERIFIER(FakeQuantWithMinMaxVarsPerChannelGradient, FakeQuantWithMinMaxV
   std::vector<int64_t> dims_max = shape_max.GetDims();
   std::vector<int64_t> dims_y = shape_y.GetDims();
   if (dims_x.size() != dims_y.size()) {
-    string excepted_value = ConcatString("same as gradients[", dims_y.size(), "]");
-    OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(dims_x.size()));
-    OP_LOGE(op.GetName().c_str(), "two input shape not same");
+      string err_msg1 = ConcatString("The dim size is not same, dims_x.size():",dims_x.size(), ", dims_y.size():",dims_y.size()); 
+      std::string err_msg = OtherErrMsg(err_msg1);
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   } else {
     for (size_t i = 0; i < dims_x.size(); i++) {
       if (dims_x[i] != dims_y[i]) {
-        string excepted_value = ConcatString("same as gradients[", dims_y[i], "]");
-        OpsAttrValueErrReport(op.GetName(), "x'shape", excepted_value, ConcatString(dims_x[i]));
-        OP_LOGE(op.GetName().c_str(), "two input shape not same");
+        string err_msg1 = ConcatString("The dim size is not same, dims_x:",dims_x[i], ", dims_y:",dims_y[i]); 
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
   }
   if ((dims_min.size() != 1) || (dims_max.size() != 1)) {
-    string input_value = ConcatString("[", dims_min.size(), "] and [", dims_max.size(), "]");
-    OpsAttrValueErrReport(op.GetName(), "min's and max's shape", "rank 1", input_value);
-    OP_LOGE(op.GetName().c_str(), "shape of min and max must be rank 1");
+    string err_msg1 = ConcatString("shape of min and max must be rank 1 ,dims_min.size():",dims_min.size(), ", dims_max.size():",dims_max.size()); 
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dims_min[0] != dims_max[0]) {
-    string excepted_value = ConcatString("same as max[", dims_max[0], "]");
-    OpsAttrValueErrReport(op.GetName(), "min'shape", excepted_value, ConcatString(dims_min[0]));
-    OP_LOGE(op.GetName().c_str(), "shape of min and max must be same");
+    string err_msg1 = ConcatString("shape of min and max must be same ,dims_min[0]:",dims_min[0], ", dims_max[0]:",dims_max[0]); 
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dims_x[dims_x.size() - 1] != dims_min[0]) {
-    string excepted_value = ConcatString("same as min[", dims_min[0], "]");
-    OpsAttrValueErrReport(op.GetName(), "x'last dimension", excepted_value, ConcatString(dims_x[dims_x.size() - 1]));
-    OP_LOGE(op.GetName().c_str(),
-            "The last dimension of x "
-            "must be the same as min");
+    string err_msg1 = ConcatString("The last dimension of x must be the same as min ,dims_min[0]:",dims_min[0], ", dims_x[dims_x.size() - 1]:",dims_x[dims_x.size() - 1]); 
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;
@@ -2273,8 +2286,8 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinDInferShape) {
 
   int64_t dimension;
   if (GRAPH_SUCCESS != op.GetAttr("dimension", dimension)) {
-    OpsGetAttrErrReport(op.GetName(), "dimension");
-    OP_LOGE(op.GetName().c_str(), "GetAttr dimension failed.");
+    std::string err_msg = GetInputInvalidErrMsg("dimension");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dimension < 0) {
@@ -2296,7 +2309,6 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinDInferShape) {
 
   return GRAPH_SUCCESS;
 }
-
 COMMON_INFER_FUNC_REG(ArgMinD, ArgMinDInferShape);
 // ------------------------------ArgMinD----------------------------------------
 
@@ -2414,8 +2426,8 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
 
   int64_t dimension;
   if (GRAPH_SUCCESS != op.GetAttr("dimension", dimension)) {
-    OpsGetAttrErrReport(op.GetName(), "dimension");
-    OP_LOGE(op.GetName().c_str(), "GetAttr dimension failed.");
+    std::string err_msg = GetInputInvalidErrMsg("dimension");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dimension < 0) {
@@ -2437,7 +2449,6 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxDInferShape) {
 
   return GRAPH_SUCCESS;
 }
-
 COMMON_INFER_FUNC_REG(ArgMaxD, ArgMaxDInferShape);
 // ------------------------------ArgMaxD----------------------------------------
 
@@ -2462,25 +2473,24 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxWithValueInferShape) {
   // get dimension
   int64_t dimension;
   if (op.GetAttr("dimension", dimension) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "dimension");
-    OP_LOGE(op.GetName().c_str(), "GetAttr dimension failed.");
+    std::string err_msg = GetInputInvalidErrMsg("dimension");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dimension < 0) {
     dimension += input_shape.size();
   }
   if (dimension >= input_shape.size()) {
-    OP_LOGE(op.GetName().c_str(),
-            "The dimension value must be range at input shape size, but got dimension value %d, input shape size %d.",
-            dimension, input_shape.size());
+    std::string err_msg = GetInputInvalidErrMsg(std::to_string(input_shape.size()));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get keep_dims
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
-    OpsGetAttrErrReport(op.GetName(), "keep_dims");
-    OP_LOGE(op.GetName().c_str(), "GetAttr of keep_dims failed.");
+    std::string err_msg = GetInputInvalidErrMsg("keep_dims");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -2533,25 +2543,24 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinWithValueInferShape) {
   // get dimension
   int64_t dimension;
   if (op.GetAttr("dimension", dimension) != GRAPH_SUCCESS) {
-    OpsGetAttrErrReport(op.GetName(), "dimension");
-    OP_LOGE(op.GetName().c_str(), "GetAttr dimension failed.");
+    std::string err_msg = GetInputInvalidErrMsg("dimension");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (dimension < 0) {
     dimension += input_shape.size();
   }
   if (dimension >= input_shape.size()) {
-    OP_LOGE(op.GetName().c_str(),
-            "The dimension value must be range at input shape size, but got dimension value %d, input shape size %d.",
-            dimension, input_shape.size());
+    std::string err_msg = GetInputInvalidErrMsg(std::to_string(input_shape.size()));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   // get keep_dims
   bool keep_dims;
   if (GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
-    OpsGetAttrErrReport(op.GetName(), "keep_dims");
-    OP_LOGE(op.GetName().c_str(), "GetAttr of keep_dims failed.");
+    std::string err_msg = GetInputInvalidErrMsg("keep_dims");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3365,18 +3374,18 @@ IMPLEMT_INFERFUNC(Bias, BiasInferShape) {
   int64_t num_axes;
   bool bias_from_blob;
   if (GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
-    OP_LOGE("[ERROR] GetOpAttr axis failed!");
-    OpsGetAttrErrReport(op.GetName(), "axis");
+    std::string err_msg = GetInputInvalidErrMsg("axis");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("num_axes", num_axes)) {
-    OP_LOGE("[ERROR] GetOpAttr num_axes failed!");
-    OpsGetAttrErrReport(op.GetName(), "num_axes");
+    std::string err_msg = GetInputInvalidErrMsg("num_axes");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("bias_from_blob", bias_from_blob)) {
-    OP_LOGE("[ERROR] GetOpAttr bias_from_blob failed!");
-    OpsGetAttrErrReport(op.GetName(), "bias_from_blob");
+    std::string err_msg = GetInputInvalidErrMsg("bias_from_blob");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3450,18 +3459,18 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
   int64_t num_axes;
   bool bias_from_blob;
   if (GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
-    OP_LOGE("[ERROR] GetOpAttr axis failed!");
-    OpsGetAttrErrReport(op.GetName(), "axis");
+    std::string err_msg = GetInputInvalidErrMsg("axis");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("num_axes", num_axes)) {
-    OP_LOGE("[ERROR] GetOpAttr num_axes failed!");
-    OpsGetAttrErrReport(op.GetName(), "num_axes");
+    std::string err_msg = GetInputInvalidErrMsg("num_axes");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (GRAPH_SUCCESS != op.GetAttr("bias_from_blob", bias_from_blob)) {
-    OP_LOGE("[ERROR] GetOpAttr bias_from_blob failed!");
-    OpsGetAttrErrReport(op.GetName(), "bias_from_blob");
+    std::string err_msg = GetInputInvalidErrMsg("bias_from_blob");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3469,16 +3478,16 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
   int64_t length_bias = dims_bias.size();
 
   if ((axis >= length_x) || (axis < (-length_x))) {
-    OP_LOGE("[ERROR] axis out of range index");
-    string minvalue = ConcatString(-length_x);
-    string maxvalue = ConcatString(length_x - 1);
+    string minvalue = std::to_string(-length_x);
+    string maxvalue = std::to_string(length_x - 1);
     string excepted_value = ConcatString("in the range of [", minvalue,",", maxvalue,"]");
-    OpsAttrValueErrReport(op.GetName(), "axis", excepted_value, ConcatString(axis));
+    std::string err_msg = GetAttrValueErrMsg("axis", std::to_string(axis), excepted_value);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (num_axes < -1) {
-    OP_LOGE("[ERROR] num_axes must be non-negative or -1");
-    OpsAttrValueErrReport(op.GetName(), "num_axes", "non-negative or -1", ConcatString(num_axes));
+    std::string err_msg = GetAttrValueErrMsg("num_axes", std::to_string(num_axes), ConcatString("num_axes >= -1"));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3493,28 +3502,30 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
     if (num_axes == -1) {
       int64_t bias_num = length_x - axis_;
       if (length_bias != bias_num) {
-        OP_LOGE("[ERROR] length_bias and bias_num must be equal");
-        OpsInputShapeErrReport(op.GetName(), "length_bias and bias_num must be equal",
-                              "length_bias", ConcatString(length_bias));
+        string err_msg1 = ConcatString("length_bias and bias_num must be equal, length_bias:",length_bias, ", bias_num:",bias_num); 
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     } else if (num_axes == 0) {
       if (bias_dim_num != 0) {
-        OP_LOGE("[ERROR] bias must be a scalar ");
-        OpsAttrValueErrReport(op.GetName(), "bias", "scalar", ConcatString(bias_dim_num));
+        string err_msg1 = ConcatString("bias must be a scalar, bias_dim_num:",bias_dim_num); 
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     } else if (num_axes > 0) {
       int64_t num_axis = axis_ + num_axes;
       if (num_axis > length_x) {
-        OP_LOGE("[ERROR] bias shape extends x shape when applied");
-        OpsOneInputShapeErrReport(op.GetName(), "bias", "Bias shape extends x_shape when applied.");
+        string err_msg1 = ConcatString("bias shape extends x shape when applied, num_axis:",num_axis, ", length_x:",length_x); 
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       if (length_bias != num_axes) {
-        OP_LOGE("[ERROR] length_bias and num_axes must be equal");
-        OpsInputShapeErrReport(op.GetName(), "length_bias and bias_num must be equal",
-                              "length_bias", ConcatString(length_bias));
+        string err_msg1 = ConcatString("length_bias and bias_num must be equal, length_bias:",length_bias, ", num_axes:",num_axes); 
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
@@ -3522,8 +3533,9 @@ IMPLEMT_VERIFIER(Bias, BiasVerify) {
     if (bias_dim_num != 0) {
       int64_t bias_num = axis_ + length_bias;
       if (bias_num > length_x) {
-        OP_LOGE("[ERROR] bias shape extends x shape when applied");
-        OpsOneInputShapeErrReport(op.GetName(), "bias", "Bias shape extends x_shape when applied");
+        string err_msg1 = ConcatString("bias shape extends x shape when applied, bias_num:",bias_num, ", length_x:",length_x);
+        std::string err_msg = OtherErrMsg(err_msg1);
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
@@ -3571,17 +3583,15 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionMulGradInferShape) {
   int64_t dimNum = shape1.GetDimNum();
   std::vector<int64_t> axis;
   if (ge::GRAPH_SUCCESS != op.GetAttr("axes", axis)) {
-    OpsGetAttrErrReport(op.GetName(), "axes");
-    OP_LOGE(op.GetName().c_str(),
-            "The input_size op GetOpAttr"
-            "ConstValue failed!");
+    std::string err_msg = GetInputInvalidErrMsg("axes");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   bool keep_dims;
   if (ge::GRAPH_SUCCESS != op.GetAttr("keep_dims", keep_dims)) {
-    OpsGetAttrErrReport(op.GetName(), "keep_dims");
-    OP_LOGE(op.GetName().c_str(), "get keep_dims op GetOpAttr failed!");
+    std::string err_msg = GetInputInvalidErrMsg("keep_dims");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3744,7 +3754,8 @@ IMPLEMT_VERIFIER(MulNoNan, MulNoNanVerify) {
   DataType input_type_x1 = op.GetInputDesc("x1").GetDataType();
   DataType input_type_x2 = op.GetInputDesc("x2").GetDataType();
   if (input_type_x1 != input_type_x2) {
-    std::string err_msg = OtherErrMsg("the dtype of input_type_x1 and input_type_x2 must be same!");
+    string err_msg1 = ConcatString("the dtype of input_type_x1 and input_type_x2 must be same! input_type_x1:",input_type_x1, ", input_type_x2:",input_type_x2); 
+    std::string err_msg = OtherErrMsg(err_msg1);
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
 	}
@@ -3788,14 +3799,18 @@ IMPLEMT_VERIFIER(CosineEmbeddingLoss, CosineEmbeddingLossVerify) {
   Shape shape_x1 = op.GetInputDesc("x1").GetShape();
   Shape shape_x2 = op.GetInputDesc("x2").GetShape();
   if ((shape_x1.GetDimNum() < 2) && (shape_x2.GetDimNum() < 2)) {
-    OP_LOGE(op.GetName().c_str(), "input x1 or x2 dims must bigger than 1");
+    string err_msg1 = ConcatString("input x1 or x2 dims must bigger than 1, shape_x1.GetDimNum():",shape_x1.GetDimNum(), ", shape_x2.GetDimNum():",shape_x2.GetDimNum()); 
+    std::string err_msg = OtherErrMsg(err_msg1);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   std::string reduction;
   op.GetAttr("reduction", reduction);
   if ((reduction != "mean") && (reduction != "sum") && (reduction != "none")) {
-    OP_LOGE(op.GetName().c_str(), "reduction only support \"mean\", \"sum\" and \"none\"");
+    string expected_reduction_list = ConcatString("mean, sum, reduction");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("reduction", expected_reduction_list, reduction);
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3811,7 +3826,8 @@ IMPLEMT_COMMON_INFERFUNC(CosineEmbeddingLossInferShape) {
   vector<int64_t> tgt_dims_broadcast;
 
   if (!BroadCastTwoShape(op, shape_x1, shape_x2, x_dims_broadcast)) {
-    OP_LOGE(op.GetName().c_str(), "input x1 and x2 shape can't broadcast");
+    std::string err_msg = OtherErrMsg("input x1 and x2 shape can't broadcast");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -3820,7 +3836,8 @@ IMPLEMT_COMMON_INFERFUNC(CosineEmbeddingLossInferShape) {
 
   Shape shape_x_broadcast(x_dims_broadcast);
   if (!BroadCastTwoShape(op, shape_x_broadcast, shape_tgt, tgt_dims_broadcast)) {
-    OP_LOGE(op.GetName().c_str(), "input target shape can't broadcast to x shape");
+    std::string err_msg = OtherErrMsg("input target shape can't broadcast to x shape");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

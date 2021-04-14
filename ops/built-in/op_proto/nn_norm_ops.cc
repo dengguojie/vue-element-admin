@@ -179,8 +179,8 @@ COMMON_INFER_FUNC_REG(SmoothL1Loss, SmoothL1LossInferShape);
 IMPLEMT_COMMON_INFERFUNC(BinaryCrossEntropyInferShape) {
   std::string reduceType = "mean";
   if (op.GetAttr("reduction", reduceType) == GRAPH_FAILED) {
-    OpsGetAttrErrReport(op.GetName(), "reduction");
-    OP_LOGE(op.GetName().c_str(), "get attr reduction failed");
+    std::string err_msg = GetInputInvalidErrMsg("reduction");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (reduceType == "none") {
@@ -194,7 +194,8 @@ IMPLEMT_COMMON_INFERFUNC(BinaryCrossEntropyInferShape) {
     // if reduction == "mean" or reduction == "sum" , output a scalar
     auto op_info = OpDescUtils::GetOpDescFromOperator(op);
     if (op_info == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "op_info should not be nullptr");
+      std::string err_msg = GetAttrValueErrMsg("op_info", ConcatString(op_info), "not be nullptr");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     auto outputTensordesc = op_info->MutableOutputDesc("output");
@@ -653,7 +654,8 @@ IMPLEMT_INFERFUNC(Scale, ScaleInferShape) {
   if ((!scale_from_blob) && (scale_dim_num != 0)) {
     int64_t scale_check_num = axis_ + length_scale;
     if (scale_check_num > length_x) {
-      std::string err_msg = OtherErrMsg("scale shape extends x shape when check applied");
+      string err_msg1 = ConcatString("scale shape extends x shape when check applied, scale_check_num:",scale_check_num, ", length_x:",length_x);
+      std::string err_msg = OtherErrMsg(err_msg1);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -797,7 +799,8 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
   if ((!scale_from_blob) && (scale_dim_num != 0)) {
     int64_t scale_check_num = axis_ + length_scale;
     if (scale_check_num > length_x) {
-      std::string err_msg = OtherErrMsg("scale shape extends x shape when check applied");
+      string err_msg1 = ConcatString("scale shape extends x shape when check applied, scale_check_num:",scale_check_num, ", length_x:",length_x);
+      std::string err_msg = OtherErrMsg(err_msg1);
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
@@ -823,15 +826,17 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
     if (num_axes == -1) {
       int64_t scale_num = length_x - axis_;
       if (length_scale != scale_num) {
-        std::string err_msg = OtherErrMsg("length_scale and scale_num must be equal");
+        string err_msg1 = ConcatString("length_scale and scale_num must be equal, length_scale:",length_scale, ", scale_num:",scale_num);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < scale_num; i++) {
         if (dims_x[axis_ + i] != dims_scale[i]) {
-          std::string err_msg = OtherErrMsg("The dimensions of shape_x and shape_scale must be equal.");
+        string err_msg1 = ConcatString("length_scale and scale_num must be equal, dims_x[axis_ + i]:",dims_x[axis_ + i], ", dims_scale[i]:",dims_scale[i]);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-          return GRAPH_FAILED;
+        return GRAPH_FAILED;
         }
       }
     } else if (num_axes == 0) {
@@ -843,18 +848,21 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
     } else if (num_axes > 0) {
       int64_t num_axis = axis_ + num_axes;
       if (num_axis > length_x) {
-        std::string err_msg = OtherErrMsg("scale shape extends x shape when applied");
+        string err_msg1 = ConcatString("scale shape extends x shape when applied, num_axis:",num_axis, ", length_x:",length_x);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       if (length_scale != num_axes) {
-        std::string err_msg = OtherErrMsg("length_scale and num_axes must be equal");
+        string err_msg1 = ConcatString("length_scale and num_axes must be equal, length_scale:",length_scale, ", num_axes:",num_axes);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < num_axes; i++) {
         if (dims_x[axis_ + i] != dims_scale[i]) {
-          std::string err_msg = OtherErrMsg("dimensions shape_x and shape_scale must be equal");
+          string err_msg1 = ConcatString("dimensions shape_x and shape_scale must be equal, dims_x[axis_ + i]:",dims_x[axis_ + i], ", dims_scale[i]:",dims_scale[i]);
+          std::string err_msg = OtherErrMsg(err_msg1);
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
@@ -866,13 +874,15 @@ IMPLEMT_VERIFIER(Scale, ScaleVerify) {
     if (scale_dim_num_new != 0) {
       int64_t scale_num = axis_ + length_scale_new;
       if (scale_num > length_x) {
-        std::string err_msg = OtherErrMsg("scale shape extends x shape when applied");
+        string err_msg1 = ConcatString("scale shape extends x shape when applied, scale_num:",scale_num, ", length_x:",length_x);
+        std::string err_msg = OtherErrMsg(err_msg1);
         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       for (int64_t i = 0; i < length_scale_new; i++) {
         if (dims_x[axis_ + i] != scale_shape_new[i]) {
-          std::string err_msg = OtherErrMsg("dimensions shape_x and shape_scale must be equal");
+          string err_msg1 = ConcatString("dimensions shape_x and shape_scale must be equal, dims_x[axis_ + i]:",dims_x[axis_ + i], ", scale_shape_new[i]:",scale_shape_new[i]);
+          std::string err_msg = OtherErrMsg(err_msg1);
           VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
           return GRAPH_FAILED;
         }
