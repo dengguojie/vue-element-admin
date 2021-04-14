@@ -203,7 +203,8 @@ class MaxpoolGard(argmax_cut_one_h.MaxpoolGradCustom):
         mask_one_window = ((dyh * dyw + 15) // 16 + 1) * 16
         mask_stride = (mask_one_window - col2img_dyw) // 16
         if col2img_w * channel * col2img_h * dtype_size > self.ub_limit:
-            raise RuntimeError("The shape or ksize or stride is too large, please check!")
+            error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmax",
+                                                          "The shape or ksize or stride is too large, please check!")
 
         # fp32 to fp16
         v_rep_time_col = (2 * col2img_w * channel * col2img_h * dtype_size + (ONE_REPEAT - 1)) // ONE_REPEAT
@@ -541,7 +542,9 @@ class MaxpoolGard(argmax_cut_one_h.MaxpoolGradCustom):
 
         if windowh > 2 * strideh or windoww > 2 * stridew:
             if col2img_w * col2img_one_h * channel * dtype_size > self.ub_limit:
-                raise RuntimeError("The shape or ksize or stride is too large, please check!")
+                error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmax",
+                                                              "The shape or ksize or stride is \
+                                                              too large, please check!")
             return self.tik_instance_cut_nc1_cut_one_h(kernel_name)
         if batch * c1 >= self.blocknum or dyh <= self.blocknum:
             if col2img_w * col2img_h * channel * dtype_size > self.ub_limit:
@@ -629,7 +632,10 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize
         dyw = (input_weight - windoww + strides[2]) // strides[2]
 
     if dyh != output_height or dyw != output_weight or input_batch != dyn or xc1 != dyc1 or xc0 != dyc0:
-        raise RuntimeError("dimentions of dx dy padMode window stride is wrong,please check!")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmax",
+                                                      "dimentions of dx dy \
+                                                      padMode window stride \
+                                                      is wrong, please check!")
 
 
 def check_param(x, grad, argmax, y, ksize, strides, padding, kernel_name):

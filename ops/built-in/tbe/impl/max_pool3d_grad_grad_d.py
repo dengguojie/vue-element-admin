@@ -19,6 +19,7 @@ max_pool3d_grad_grad_d
 # pylint: disable=unreachable
 import te.lang.cce as tbe
 from te import tvm
+from te.utils.error_manager import error_manager_vector
 
 # shape limit
 # int32's max value
@@ -134,7 +135,7 @@ def _get_ksize(ksize, data_format):
         return ksize[1], ksize[2], ksize[3]
     if data_format == "NCDHW" and len(ksize) == 5:
         return ksize[2], ksize[3], ksize[4]
-    raise RuntimeError("Invalid ksize")
+    error_manager_vector.raise_err_specific_reson("max_pool3d_grad_grad_d", "Invalid ksize")
 
 
 def _get_stride(strides, data_format):
@@ -146,4 +147,4 @@ def _get_stride(strides, data_format):
         return strides[1], strides[2], strides[3]
     if data_format == "NCDHW" and len(strides) == 5:
         return strides[2], strides[3], strides[4]
-    raise RuntimeError("Invalid strides")
+    error_manager_vector.raise_err_specific_reson("max_pool3d_grad_grad_d", "Invalid strides")

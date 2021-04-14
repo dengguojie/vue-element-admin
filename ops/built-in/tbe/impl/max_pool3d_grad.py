@@ -21,6 +21,7 @@ max_pool3d_grad
 import math
 from te import tik
 from te import platform as tbe_platform
+from te.utils.error_manager import error_manager_vector
 from topi.cce import util
 
 # available number of cores
@@ -191,7 +192,7 @@ class MaxPool3DGradCompute:
         self.sh = self.strides[2]
         self.sw = self.strides[3]
 
-        if self.pads in ["CALCULATED", ]:
+        if self.pads in ["CALCULATED",]:
             # Pytorch
             self.pads = "SAME"
             self.pad = [[params[2][0], params[2][1]],
@@ -445,7 +446,7 @@ class MaxPool3DGradCompute:
         # "tiling_do": 1
         # "tiling_do_ho": 2
         # "tiling_do_ho_wo": 3
-        branch_list = ["not_tiling",  "tiling_do",
+        branch_list = ["not_tiling", "tiling_do",
                        "tiling_do_ho", "tiling_do_ho_wo"]
 
         if cut_model == [True, False, False]:
@@ -507,7 +508,7 @@ class MaxPool3DGradCompute:
         cut_model = [split_do, split_ho, split_wo]
         split_model = [do, ho, wo]
         if cut_model == [False, False, False]:
-            raise RuntimeError("kernel is too larger")
+            error_manager_vector.raise_err_specific_reson("MaxPoolGRAD", "kernel is too larger")
 
         # avoid hardware bugs that load3dv1 can't
         # support wo=1 and ho != 1 in cloud_v100
@@ -1038,48 +1039,48 @@ class MaxPool3DGradCompute:
     def _set_buf_tensor(self, tik_instance, param):
 
         l1_in_buf = tik_instance.Tensor(self.dtype,
-                                        [param.l1_in_size, ],
+                                        [param.l1_in_size,],
                                         name="l1_in_buf",
                                         scope=tik.scope_cbuf)
         forward_ou_buf = tik_instance.Tensor(self.dtype,
-                                             [param.forward_ou_size, ],
+                                             [param.forward_ou_size,],
                                              name="forward_ou_buf",
                                              scope=tik.scope_ubuf)
         grad_buf = tik_instance.Tensor(self.dtype,
-                                       [param.grad_size, ],
+                                       [param.grad_size,],
                                        name="grad_buf",
                                        scope=tik.scope_ubuf)
         col_in_buf = tik_instance.Tensor(self.dtype,
-                                         [param.col_in_size, ],
+                                         [param.col_in_size,],
                                          name="col_in_buf",
                                          scope=tik.scope_ubuf)
         mask_buf = tik_instance.Tensor("uint16",
-                                       [param.mask_size, ],
+                                       [param.mask_size,],
                                        name='mask_buf',
                                        scope=tik.scope_ubuf)
         mask_or_buf = tik_instance.Tensor("uint16",
-                                          [param.mask_size, ],
+                                          [param.mask_size,],
                                           name='mask_or_buf',
                                           scope=tik.scope_ubuf)
         mask_not_buf = tik_instance.Tensor("uint16",
-                                           [param.mask_size, ],
+                                           [param.mask_size,],
                                            name='mask_not_buf',
                                            scope=tik.scope_ubuf)
         zero_buf = tik_instance.Tensor(self.dtype,
-                                       [param.zero_size, ],
+                                       [param.zero_size,],
                                        name='zero_buf',
                                        scope=tik.scope_ubuf)
 
         grad_sel_fp16_buf = tik_instance.Tensor(self.dtype,
-                                                [param.grad_sel_fp16_size, ],
+                                                [param.grad_sel_fp16_size,],
                                                 name='grad_sel_fp16_buf',
                                                 scope=tik.scope_ubuf)
         grad_sel_fp32_buf = tik_instance.Tensor("float32",
-                                                [param.grad_sel_fp32_size, ],
+                                                [param.grad_sel_fp32_size,],
                                                 name='grad_sel_fp32_buf',
                                                 scope=tik.scope_ubuf)
         f_map_fp32_buf = tik_instance.Tensor("float32",
-                                             [param.f_map_fp32_size, ],
+                                             [param.f_map_fp32_size,],
                                              name='f_map_fp32_buf',
                                              scope=tik.scope_ubuf)
 
@@ -1378,7 +1379,9 @@ class MaxPool3DGradCompute:
         c0 = self.c0
         c1 = self.c1
         if loop_do <= 0:
-            raise RuntimeError("loop_do must >= 1")
+            error_manager_vector.raise_err_input_value_invalid("MaxPoolGRAD", "loop_do",
+                                                               "more than or equal to 1",
+                                                               str(loop_do))
         do_tail = self.do % do_batch
         di_tail, hi_tail, wi_tail = self._infer_dim_return(do_tail, ho, wo, True)
         if do_tail == 0:
@@ -1980,8 +1983,8 @@ class MaxPool3DGradCompute:
         c1 = self.c1
 
         if do_batch != ho_batch != 1:
-            raise RuntimeError("In the branch, do_batch and "
-                               "ho_batch should be 1.")
+            error_manager_vector.raise_err_input_value_invalid("MaxPoolGRAD", "do_batch and ho_batch",
+                                                               "1", str(do_batch) + str(" and ") + str(ho_batch))
 
         loop_do = self.do // do_batch
         loop_ho = self.ho // ho_batch
@@ -2684,8 +2687,8 @@ class MaxPool3DGradCompute:
         c1 = self.c1
 
         if do_batch != ho_batch != 1:
-            raise RuntimeError("In the branch, do_batch and "
-                               "ho_batch should be 1.")
+            error_manager_vector.raise_err_input_value_invalid("MaxPoolGRAD", "do_batch and ho_batch",
+                                                               "1", str(do_batch) + str(" and ") + str(ho_batch))
 
         loop_do = self.core_ou_shape[0] // do_batch
         loop_ho = self.core_ou_shape[1] // ho_batch
@@ -3536,8 +3539,9 @@ class MaxPool3DGradCompute:
         c1 = self.c1
 
         if do_batch != ho_batch != 1:
-            raise RuntimeError("In the branch of 'tiling_do_ho', do_batch and "
-                               "ho_batch should be 1.")
+            error_manager_vector.raise_err_input_value_invalid("MaxPoolGRAD",
+                                                               "In the branch of 'tiling_do_ho' do_batch and ho_batch",
+                                                               "1", str(do_batch) + str(" and ") + str(ho_batch))
 
         # size of input_data
         loop_do = self.core_ou_shape[0] // do_batch
@@ -4087,43 +4091,54 @@ def check_param(ori_input, ori_output, grad, ksize, strides,
     util.check_dtype_rule(ori_input_dtype, ("float16",))
     # the format of input_x must be NDC1HWC0
     if len(ori_input_shape) != 6:
-        raise RuntimeError("invalid shape params, input feature map must be "
-                           "6D format in kernel.")
+        error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                      "invalid shape params, \
+                                                       input feature map must \
+                                                       be 6D format in kernel.")
     if len(ori_output_shape) != 6:
-        raise RuntimeError("invalid shape params, forward output must be "
-                           "6D format in kernel.")
+        error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                      "invalid shape params, \
+                                                      forward output must be \
+                                                      6D format in kernel.")
     if len(grad_shape) != 6:
-        raise RuntimeError("invalid shape params, update grad must be "
-                           "6D format in kernel.")
+        error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                      "invalid shape params, \
+                                                      update grad must be 6D \
+                                                      format in kernel.")
 
     if grad_shape != ori_output_shape:
-        raise RuntimeError(
-            "invalid shape params, update grad must be same shape as forward output")
+        error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                      "invalid shape params, \
+                                                       update grad must be same \
+                                                       shape as forward output.")
 
     if len(ksize) != 5 or len(strides) != 5:
-        raise RuntimeError("Invalid ksize or strides params,"
-                           " ksize dim must be 5.")
+        error_manager_vector.raise_err_specific_reson("MaxPoolGRAD", "ksize dim must be 5.")
     if data_format == "NDHWC":
         if ksize[0] != 1 or ksize[4] != 1:
-            raise RuntimeError("MaxPoolGRAD only supports pooling "
-                               "across depth/width/heigh, and other ksize "
-                               "dimension should be one")
+            error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                          "MaxPoolGRAD only supports pooling "
+                                                          "across depth/width/heigh, and other ksize "
+                                                          "dimension should be one")
 
         if strides[0] != 1 or strides[4] != 1:
-            raise RuntimeError("MaxPoolGRAD only supports pooling across "
-                               "depth/width/height, and other strides dimension "
-                               "should be one")
+            error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                          "MaxPoolGRAD only supports pooling across "
+                                                          "depth/width/height, and other strides dimension "
+                                                          "should be one")
     else:
         # NCDHW
         if ksize[0] != 1 or ksize[1] != 1:
-            raise RuntimeError("MaxPoolGRAD only supports pooling "
-                               "across depth/width/heigh and other ksize "
-                               "dimension should be one")
+            error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                          "MaxPoolGRAD only supports pooling "
+                                                          "across depth/width/heigh and other ksize "
+                                                          "dimension should be one")
 
         if strides[0] != 1 or strides[1] != 1:
-            raise RuntimeError("MaxPoolGRAD only supports pooling across "
-                               "depth/width/heigh, and other strides dimension "
-                               "should be one")
+            error_manager_vector.raise_err_specific_reson("MaxPoolGRAD",
+                                                          "MaxPoolGRAD only supports pooling across "
+                                                          "depth/width/heigh, and other strides dimension "
+                                                          "should be one")
 
 
 # pylint: disable=invalid-name,unused-argument
@@ -4174,7 +4189,8 @@ def max_pool3d_grad(orig_x, orig_y, grads, y,
         ksize = [ksize[0], ksize[2], ksize[3], ksize[4], ksize[1]]
         strides = [strides[0], strides[2], strides[3], strides[4], strides[1]]
     if data_format not in ["NCDHW", "NDHWC"]:
-        raise RuntimeError("data_format should be NDHWC or NCDHW")
+        error_manager_vector.raise_err_input_format_invalid("MaxPoolGRAD", "data_format",
+                                                            "NDHWC or NCDHW", str(data_format))
 
     params = [ksize, strides, list(pads), dtype, kernel_name, padding]
     result = MaxPool3DGradCompute(shape_list, params)

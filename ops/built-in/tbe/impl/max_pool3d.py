@@ -22,6 +22,7 @@ import te.lang.cce
 from te import platform as cce
 from te import tvm
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from te.platform.fusion_manager import fusion_manager
 from te.platform.cce_build import build_config
 from te.platform.cce_conf import CceProductParams
@@ -68,42 +69,44 @@ def check_window_rule(ksize, strides):
     check ksize and strides of window in pooling3d
     """
     if len(ksize) != 1 and len(ksize) != 3 and len(ksize) != 5:
-        raise RuntimeError("Invalid ksize params, "
-                           "ksize dim must be 1 or 3 or 5.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "ksize dim must be 1, 3 or 5")
 
     if len(strides) != 1 and len(strides) != 3 and len(strides) != 5:
-        raise RuntimeError("Invalid strides params, "
-                           "strides dim must be 1 or 3 or 5.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "strides dim must be 1, 3 or 5")
 
     # check support shape
     if len(ksize) == 1 and ksize[0] != 2:
-        raise RuntimeError("Invalid ksize params, "
-                           "ksize D H W value only support 2.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "ksize D H W value only support 2.")
 
     if len(ksize) == 3 and (ksize[0] != 2 or ksize[1] != 2 or ksize[1] != 2):
-        raise RuntimeError("Invalid ksize params, "
-                           "ksize D H W value only support 2.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "ksize D H W value only support 2.")
 
     ksize_check = ksize[0] != 1 or ksize[1] != 2 or \
                   ksize[2] != 2 or ksize[3] != 2 or ksize[4] != 1
     if len(ksize) == 5 and ksize_check:
-        raise RuntimeError("Invalid ksize params, ksize D H W value "
-                           "only support 2, and N C only support 1.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "ksize D H W value only support 2, "
+                                                      "and N C only support 1.")
 
     if len(strides) == 1 and strides[0] != 2:
-        raise RuntimeError("Invalid strides params, "
-                           "strides D H W value only support 2.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "strides D H W value only support 2.")
 
     if len(strides) == 3 and (strides[0] != 2 or
                               strides[1] != 2 or strides[1] != 2):
-        raise RuntimeError("Invalid strides params, "
-                           "strides D H W value only support 2.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "strides D H W value only support 2.")
 
     strides_check = strides[0] != 1 or strides[1] != 2 or \
                     strides[2] != 2 or strides[3] != 2 or strides[4] != 1
     if len(strides) == 5 and strides_check:
-        raise RuntimeError("Invalid strides params, strides D H W value "
-                           "only support 2, and N C only support 1.")
+        error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                      "strides D H W value only support 2, \
+                                                      and N C only support 1.")
 
 
 def check_padding(padding):
@@ -111,8 +114,7 @@ def check_padding(padding):
     check padding in pooling3d
     """
     if padding not in ("SAME", "VALID"):
-        raise RuntimeError("max_pool3d can only "
-                           "support SAME or VALID padding mode.")
+        error_manager_vector.raise_err_pad_mode_invalid("max_pool3d", "SAME or VALID", str(padding))
 
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
@@ -153,17 +155,21 @@ def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides, data_fo
     if data_format == "NDHWC":
         if len(ksize) == 5:
             if ksize[0] != 1 or ksize[4] != 1:
-                raise RuntimeError("ksize N and C must be 1")
+                error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                              "ksize N and C must be 1")
         if len(strides) == 5:
             if strides[0] != 1 or strides[4] != 1:
-                raise RuntimeError("strides N and C must be 1")
+                error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                              "strides N and C must be 1")
     else:
         if len(ksize) == 5:
             if ksize[0] != 1 or ksize[1] != 1:
-                raise RuntimeError("ksize N and C must be 1")
+                error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                              "ksize N and C must be 1")
         if len(strides) == 5:
             if strides[0] != 1 or strides[1] != 1:
-                raise RuntimeError("strides N and C must be 1")
+                error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                              "strides N and C must be 1")
 
 # pylint: disable=too-many-locals,too-many-arguments
 # pylint: disable=unused-argument,invalid-name
@@ -231,7 +237,8 @@ def max_pool3d_tiling(shape):
         if tensor_in_size * 2 < ub_size // 2:
             return i
 
-    raise RuntimeError("cannot find tiling in H")
+    error_manager_vector.raise_err_specific_reson("max_pool3d",
+                                                  "cannot find tiling in H")
 
 
 def max_pool3d_schedule(res, sch):
@@ -362,7 +369,7 @@ def get_ksize(ksize, data_format):
         return ksize[1], ksize[2], ksize[3]
     if data_format == "NCDHW" and len(ksize) == 5:
         return ksize[2], ksize[3], ksize[4]
-    raise RuntimeError("Invalid ksize")
+    error_manager_vector.raise_err_specific_reson("max_pool3d", "Invalid ksize")
 
 
 def get_stride(strides, data_format):
@@ -377,7 +384,7 @@ def get_stride(strides, data_format):
         return strides[1], strides[2], strides[3]
     if data_format == "NCDHW" and len(strides) == 5:
         return strides[2], strides[3], strides[4]
-    raise RuntimeError("Invalid strides")
+    error_manager_vector.raise_err_specific_reson("max_pool3d", "Invalid strides")
 
 
 # pylint: disable=too-many-arguments,invalid-name

@@ -19,6 +19,7 @@ max_pool_grad_with_argmaxv2
 """
 import math
 from te.utils import para_check
+from te.utils.error_manager import error_manager_vector
 from impl import max_pool_grad_with_argmax_cut_h_v2 as argmax_cut_h_v2
 from impl import max_pool_grad_with_argmax_v2_resnet50 as resnet50
 
@@ -155,20 +156,21 @@ class MaxpoolGard(argmax_cut_h_v2.MaxpoolGradBase):
         col2img_h = ho_max * strideh if hoverlap == 0 else (ho_max - 1) * strideh + windowh
 
         if windowh > 2 * strideh or windoww > 2 * stridew:
-            raise RuntimeError(
-                "windowh > 2*strideh or windoww > 2*stridew not support yet!!")
+            error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                          "windowh > 2*strideh or \
+                                                          windoww > 2*stridew not support yet!!")
         if batch * c1 >= self.blocknum or dyh <= self.blocknum:
             if col2img_w * col2img_h * channel * dtype_size > self.ub_limit:
                 length = col2img_w * col2img_h * channel * dtype_size
-                raise RuntimeError(
-                    "length is bigger than ub_limit!", length, self.ub_limit)
+                error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                              "length is bigger than ub_limit!")
             return self.tik_instance_cut_nc1_cut_h(kernel_name)  # support
         if batch * c1 * dyh < self.blocknum:
             self.change_blocknum(batch * c1 * dyh)
         if col2img_w * col2img_h * channel * dtype_size > self.ub_limit:
             length = col2img_w * col2img_h * channel * dtype_size
-            raise RuntimeError(
-                "length is bigger than ub_limit!", length, self.ub_limit)
+            error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                          "length is bigger than ub_limit!")
         return self.tik_instance_cut_nc1h_cut_h(kernel_name)  # support
 
 
@@ -178,14 +180,14 @@ def check_shape_5hd(shape):
     """
     para_check.check_shape_rule(shape)
     if len(shape) != DIM_5HD:
-        raise RuntimeError(
-            "The dim of tensor must be %d"
-            ", actual dim is %d" % (DIM_5HD, len(shape)))
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "The dim of tensor must be " + str(DIM_5HD) +
+                                                      ", actual dim is " + str(len(shape)))
 
     if shape[DIM_5HD - 1] != C0:
-        raise RuntimeError(
-            "The value of C0 must be %d,"
-            " actual input is (%d)" % (C0, shape[DIM_5HD - 1]))
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "The value of C0 must be " + str(C0) +
+                                                      ", actual input is " + str(shape[DIM_5HD - 1]))
 
 
 def check_padding(padding, check_list):
@@ -193,7 +195,8 @@ def check_padding(padding, check_list):
     The common check rule for padding
     """
     if padding not in check_list:
-        raise RuntimeError("The padding only support SAME, VALID")
+        error_manager_vector.raise_err_pad_mode_invalid("max_pool_grad_with_argmaxv2",
+                                                        "SAME or VALID", str(padding))
 
 
 def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
@@ -224,26 +227,34 @@ def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
                         pad_h, pad_w, dilation_h, dilation_w, output_h,
                         output_w):
     if kernel_w <= 0 or kernel_h <= 0:
-        raise RuntimeError("kernel size should be greater than zero, but \
-            got ", "kH: ", kernel_h, " kW: ", kernel_w)
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_with_argmaxv2",
+                                                           "kernel_w or kernel_h",
+                                                           "greater than zero",
+                                                           str(kernel_w) + str("and") + str(kernel_h))
 
     if stride_h <= 0 or stride_w <= 0:
-        raise RuntimeError("stride should be greater than zero, but got ",
-                           "dH= ", stride_h, "dW= ", stride_w)
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_with_argmaxv2",
+                                                           "stride_h or stride_w",
+                                                           "greater than zero",
+                                                           str(stride_h) + str("and") + str(stride_w))
 
     if dilation_h <= 0 or dilation_w <= 0:
-        raise RuntimeError("dilation should be greater than 0, but got",
-                           "dilationH= ", dilation_h, ", dilationW= ",
-                           dilation_w)
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_with_argmaxv2",
+                                                           "dilation_h or dilation_w",
+                                                           "greater than zero",
+                                                           str(dilation_h) + str("and") + str(dilation_w))
 
     if (kernel_w // 2) < pad_w or (kernel_h // 2) < pad_h:
-        raise RuntimeError("pad should be smaller than half of kernel "
-                           "size, but got", "padW=", pad_w, ", padH= ",
-                           pad_h, ", kW= ", kernel_w, ", kH= ", kernel_h)
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_with_argmaxv2",
+                                                           "pad_w or pad_h",
+                                                           "smaller than half of kernel",
+                                                           str(pad_w) + str("and") + str(pad_h))
 
     if output_h < 1 or output_w < 1:
-        raise RuntimeError("Output size is too small ", "outW= ",
-                           output_w, "outH= ", output_h)
+        error_manager_vector.raise_err_input_value_invalid("max_pool_grad_with_argmaxv2",
+                                                           "output_h or output_w",
+                                                           "greater than or equal to 1",
+                                                           str(output_h) + str("and") + str(output_w))
 
 
 # pylint: disable=locally-disabled,too-many-locals
@@ -255,19 +266,19 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape,
     para_check.check_tensor_shape_size(ksize)
     para_check.check_tensor_shape_size(strides)
     if len(ksize) < ATTR_SHAPE_MIN or len(strides) < ATTR_SHAPE_MIN:
-        raise RuntimeError(
-            "The shape length of ksize or strides must be more than 4")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "The shape length of ksize or strides must be more than 4")
     if ksize[0] != 1 or ksize[3] != 1:
-        raise RuntimeError(
-            "MaxPoolGradWithArgmax only supports pooling across width/height,"
-            "and other ksize dimension should be one")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "MaxPoolGradWithArgmax only supports pooling across width/height,"
+                                                      "and other ksize dimension should be one")
     if strides[0] != 1 or strides[3] != 1:
-        raise RuntimeError(
-            "MaxPoolGradWithArgmax only supports pooling across width/height,"
-            "and other strides dimension should be one")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "MaxPoolGradWithArgmax only supports pooling across width/height,"
+                                                      "and other strides dimension should be one")
     if ksize[1] * ksize[2] > 255:
-        raise RuntimeError(
-            "invalid window params, window_h*window_w should be <=255")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "invalid window params, window_h*window_w should be <=255")
 
     input_height = y_shape[2]
     input_width = y_shape[3]
@@ -295,8 +306,9 @@ def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape,
 
     if dyh != output_height or dyw != output_width or \
             input_batch != dyn or xc1 != dyc1 or xc0 != dyc0:
-        raise RuntimeError("dimentions of dx dy \
-                padMode window stride is wrong,please check!")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "dimentions of dx dy \
+                                                       padMode window stride is wrong,please check!")
 
 
 def check_param(x, grad, argmax, y, ksize, strides, padding, dtype, dilation,
@@ -340,12 +352,12 @@ def check_param(x, grad, argmax, y, ksize, strides, padding, dtype, dilation,
     para_check.check_dtype_rule(y_dtype, ("float16", "float32", "int32"))
 
     if y_dtype != grad_dtype or y_dtype_arg != y_dtype:
-        raise RuntimeError(
-            "The dtype of tensor must be same")
+        error_manager_vector.raise_err_specific_reson("max_pool_grad_with_argmaxv2",
+                                                      "The dtype of tensor must be same")
 
     if dtype not in (DT_INT32, DT_INT64):
-        raise RuntimeError(
-            "The dtype of input max indice must be int32 or int64")
+        error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad_with_argmaxv2",
+                                                                 "dtype", "int32 or int64", str(dtype))
 
     check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape,
                                        ksize, strides,
