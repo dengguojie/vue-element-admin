@@ -65,7 +65,14 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
     -------
     output tensor
     """
-    shape = shape_util.shape_to_list(x.shape)
+    x_shape = shape_util.shape_to_list(x.shape)
+    grad_shape = shape_util.shape_to_list(grad_output.shape)
+    x_shape, grad_shape, shape_max = shape_util.unify_broadcast_shapes([x_shape, grad_shape])
+    x = tbe.broadcast(x, shape_max)
+    y = tbe.broadcast(y, shape_max)
+    grad_output = tbe.broadcast(grad_output, shape_max)
+    if weight is not None:
+        weight = tbe.broadcast(weight, shape_max)
     dtype = x.dtype
     support = tbe_platform.api_check_support(
         "te.lang.cce.vmul", "float32")
@@ -77,10 +84,6 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
         if weight is not None:
             weight = tbe.cast_to(weight, "float32")
     calc_dtype = x.dtype
-
-    # if grad_output is scaler will boradcast to predict tensor
-    # else not changed
-    grad_output = tbe.broadcast(grad_output, shape)
 
     val1 = tbe.vsub(x, y)
     if support is True:
@@ -106,7 +109,7 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
 
     if reduction == "mean":
         reduce_elts = 1.0
-        for i in shape:
+        for i in x_shape:
             reduce_elts *= i
         if isinstance(reduce_elts, float):
             cof = reduce_elts ** (-1)
