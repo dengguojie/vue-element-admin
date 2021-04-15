@@ -429,5 +429,3 @@ from .deformable_offsets import deformable_offsets
 from .deformable_offsets_grad import deformable_offsets_grad
 from .fill import fill
 from .strided_slice_grad import strided_slice_grad
-
-from . import build_pass
