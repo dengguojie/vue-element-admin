@@ -19,14 +19,14 @@ OP_TEST(Pooling, Test_Pooling_001_case_001)
     std::string opType = "Pooling";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 64, 112, 112}, {}, {}};
+    opTestDesc.inputShape = {{1, 2, 64, 64, 16}, {}, {}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_DT_UNDEFINED, ACL_DT_UNDEFINED};
-    opTestDesc.inputFormat = {(aclFormat)0, (aclFormat)-1, (aclFormat)-1};
+    opTestDesc.inputFormat = {(aclFormat)3, (aclFormat)-1, (aclFormat)-1};
     opTestDesc.inputFilePath = {"test_data/data/Test_Pooling_001_case_001_input_0", "", ""};
     // output parameter init
-    opTestDesc.outputShape = {{1, 64, 56, 56}};
+    opTestDesc.outputShape = {{1, 2, 64, 64, 16}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
-    opTestDesc.outputFormat = {(aclFormat)0};
+    opTestDesc.outputFormat = {(aclFormat)3};
     opTestDesc.outputFilePath = {"result_files/Test_Pooling_001_case_001_output_0"};
     // attr parameter init
         OpTestAttr attr0 = {OP_LIST_INT, "window"};

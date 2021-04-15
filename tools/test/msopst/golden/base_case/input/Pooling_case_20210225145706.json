@@ -2,15 +2,18 @@
     {
         "case_name": "Test_Pooling_001",
         "op": "Pooling",
+        "st_mode": "",
         "input_desc": [
             {
                 "format": [
-                    "NCHW"
+                    "NC1HWC0"
                 ],
+                "ori_format": ["NCHW"],
                 "type": [
                     "float16"
                 ],
-                "shape": [1,64,112,112],
+                "shape": [1,2,64,64,16],
+                "ori_shape": [1,32,64,64],
                 "data_distribute": [
                     "uniform"
                 ],
@@ -64,12 +67,14 @@
         "output_desc": [
             {
                 "format": [
-                    "NCHW"
+                    "NC1HWC0"
                 ],
+                "ori_format": ["NCHW"],
                 "type": [
                     "float16"
                 ],
-                "shape": [1,64,56,56],
+                "shape": [1,2,64,64,16],
+                "ori_shape": [1,32,64,64],
                 "name": "y"
             }
         ],

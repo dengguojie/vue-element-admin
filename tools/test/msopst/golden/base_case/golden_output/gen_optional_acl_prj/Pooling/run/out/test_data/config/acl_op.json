@@ -60,13 +60,21 @@
     ],
     "input_desc": [
       {
-        "format": "NCHW",
+        "format": "NC1HWC0",
         "name": "x",
+        "origin_format": "NCHW",
+        "origin_shape": [
+          1,
+          32,
+          64,
+          64
+        ],
         "shape": [
           1,
+          2,
           64,
-          112,
-          112
+          64,
+          16
         ],
         "type": "float16"
       },
@@ -86,13 +94,21 @@
     "op": "Pooling",
     "output_desc": [
       {
-        "format": "NCHW",
+        "format": "NC1HWC0",
         "name": "y",
+        "origin_format": "NCHW",
+        "origin_shape": [
+          1,
+          32,
+          64,
+          64
+        ],
         "shape": [
           1,
+          2,
           64,
-          56,
-          56
+          64,
+          16
         ],
         "type": "float16"
       }
