@@ -707,7 +707,8 @@ IMPLEMT_INFERFUNC(IsInf, IsInfInfer)
     TensorDesc out_desc = op.GetOutputDesc("y");
     out_desc.SetDataType(DT_BOOL);
     if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "update y failed");
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                           string("update output[y] failed."));
         return GRAPH_FAILED;
     }
     return UnchangedShape(op, "x", "y");

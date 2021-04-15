@@ -1119,68 +1119,77 @@ INFER_FUNC_REG(NonMaxSuppressionV3, NonMaxSuppressionV3Infer);
 
 IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-
+  const char *op_name = op.GetName().c_str();
   // unknwon shape support
   std::vector<std::string> input_infer_depends = {"max_output_size"};
   op_desc->SetOpInferDepends(input_infer_depends);
 
   GeShape boxes_shape;
   auto boxes_desc = op_desc->MutableInputDesc(0);
-  const char* op_name = op.GetName().c_str();
   if (WithRank(boxes_desc, 2, boxes_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2, real rank is %lld",
-            boxes_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(0, DebugString(boxes_desc->GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
+
 
   GeShape scores_shape;
   auto scores_desc = op_desc->MutableInputDesc(1);
   if (WithRank(scores_desc, 1, scores_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1, real rank is %lld",
-            scores_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(1, DebugString(scores_desc->GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape max_output_size_shape;
   auto max_output_size_desc = op_desc->MutableInputDesc(2);
   if (WithRank(max_output_size_desc, 0, max_output_size_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0, real rank is %lld",
-            max_output_size_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(2, DebugString(max_output_size_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape iou_threshold_shape;
   auto iou_threshold_desc = op_desc->MutableInputDesc(3);
   if (WithRank(iou_threshold_desc, 0, iou_threshold_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0, real rank is %lld",
-            iou_threshold_desc->GetShape().GetDimNum());
+     std::string err_msg = GetShapeErrMsg(3, DebugString(iou_threshold_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   GeShape score_threshold_shape;
   auto score_threshold_desc = op_desc->MutableInputDesc(4);
   if (WithRank(score_threshold_desc, 0, score_threshold_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0, real rank is %lld",
-            score_threshold_desc->GetShape().GetDimNum());
+    std::string err_msg = GetShapeErrMsg(4, DebugString(score_threshold_desc->GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t unused_dim;
   if (Merge(boxes_shape.GetDim(0), scores_shape.GetDim(0), unused_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0]=%lld and scores[0]=%lld.",
-            boxes_shape.GetDim(0), scores_shape.GetDim(0));
+    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
+                                       boxes_shape.GetDim(0), "] of input[boxes] not equal 0th dim[",
+                                       scores_shape.GetDim(0), "] of input[scores]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   if (WithValue(boxes_shape.GetDim(1), 4, unused_dim, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4, real dim is %lld",
-              boxes_shape.GetDim(1));
-      return GRAPH_FAILED;
+    std::string err_msg = ConcatString("failed to call WithValue function, 1th dim[",
+                                       boxes_shape.GetDim(1), "] of input[boxes] not equal 4");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
   }
 
   std::vector<int64_t> selected_indices_dims{UNKNOWN_DIM};
   bool pad_to_max = false;
   if (op.GetAttr("pad_to_max_output_size", pad_to_max) != ge::GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The tile op GetOpAttr ConstValue failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[pad_to_max_output_size] failed"));
     return GRAPH_FAILED;
   }
   if (pad_to_max) {
@@ -1190,19 +1199,19 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV4, NonMaxSuppressionV4Infer) {
           reinterpret_cast<const int32_t*>(selected_indices_tensor.GetData());
       int32_t selected_indices_data_0 = *selected_indices_data;
       if (selected_indices_data_0 < 0) {
-        OP_LOGE(op.GetName().c_str(),
-                "The tensor value of max_output_size must be non-negative, real value is %d",
-                selected_indices_data_0);
+        std::string err_msg = ConcatString("0th data[", selected_indices_data_0, 
+                                           "] of input[max_output_size] at least 0.");
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       selected_indices_dims[0] = selected_indices_data_0;
     }
   }
   auto selected_indices_desc = op_desc->MutableOutputDesc("selected_indices");
-  (void)FillOpDesc(selected_indices_desc, GeShape(selected_indices_dims), DT_INT32);
+  (void)FillOpDesc(selected_indices_desc, GeShape(selected_indices_dims), ge::DT_INT32);
 
   auto valid_outputs_desc = op_desc->MutableOutputDesc("valid_outputs");
-  (void)FillOpDesc(valid_outputs_desc, GeShape(), DT_INT32);
+  (void)FillOpDesc(valid_outputs_desc, GeShape(), ge::DT_INT32);
 
   return GRAPH_SUCCESS;
 }
@@ -1999,52 +2008,68 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
   Shape softNmsSigma;
 
   if (WithRank(op.GetInputDesc(0), 2, boxes, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of boxes must be 2");
+    std::string err_msg = GetShapeErrMsg(0, DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(1), 1, scores, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of scores must be 1");
+    std::string err_msg = GetShapeErrMsg(1, DebugString(op.GetInputDesc(1).GetShape().GetDims()), "1D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(2), 0, max_output_size, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of max_output_size must be 0");
+    std::string err_msg = GetShapeErrMsg(2, DebugString(op.GetInputDesc(2).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(3), 0, iouThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of iou_threshold must be 0");
+    std::string err_msg = GetShapeErrMsg(3, DebugString(op.GetInputDesc(3).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(4), 0, scoreThreshold, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of score_threshold must be 0");
+    std::string err_msg = GetShapeErrMsg(4, DebugString(op.GetInputDesc(4).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (WithRank(op.GetInputDesc(5), 0, softNmsSigma, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "The rank of soft_nms_sigma must be 0");
+    std::string err_msg = GetShapeErrMsg(5, DebugString(op.GetInputDesc(5).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t un_used;
 
   if (Merge(boxes.GetDim(0), scores.GetDim(0), un_used) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Failed to merge dim of boxes[0] and scores[0].");
+    std::string err_msg = ConcatString("failed to call Merge function, 0th dim[",
+                                       boxes.GetDim(0), "] of input[boxes] not equal 0th dim[",
+                                       scores.GetDim(0), "] of input[scores]");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   if (boxes.GetDim(1) != 4) {
     if (boxes.GetDim(1) != UNKNOWN_DIM) {
-      OP_LOGE(op.GetName().c_str(), "The dim of boxes[1] is not 4, real value is %ld.", boxes.GetDim(1));
+      std::string err_msg = ConcatString("1th dim[", boxes.GetDim(1), "] of input[boxes] not equal 4 or -1.");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
 
   bool pad_to_max;
   if (ge::GRAPH_SUCCESS != op.GetAttr("pad_to_max_output_size", pad_to_max)) {
-    OP_LOGE(op.GetName().c_str(), "The tile op GetOpAttr ConstValue failed!");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[pad_to_max_output_size] failed"));
     return GRAPH_FAILED;
   }
 
@@ -2053,61 +2078,47 @@ IMPLEMT_INFERFUNC(NonMaxSuppressionV5, NonMaxSuppressionV5Infer) {
   out_desc.SetDataType(DT_INT32);
   DataType type;
   if (op.GetAttr("T", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr T error.");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[T] failed"));
     return GRAPH_FAILED;
   }
   out_desc_scores.SetDataType(type);
 
   if (!pad_to_max) {
-    out_desc.SetShape(Shape({UNKNOWN_DIM}));
-    out_desc_scores.SetShape(Shape({UNKNOWN_DIM}));
+    out_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
+    out_desc_scores.SetShape(Shape({ge::UNKNOWN_DIM}));
     if (op.UpdateOutputDesc("selected_indices", out_desc) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "fail to update output selected_indices.");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[selected_indices] failed"));
       return GRAPH_FAILED;
     }
     if (op.UpdateOutputDesc("selected_scores", out_desc_scores) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "fail to update output selected_scores.");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[selected_scores] failed"));
       return GRAPH_FAILED;
     }
   } else {
     Tensor in_tensor;
     if (op.GetInputConstData("max_output_size", in_tensor) != GRAPH_SUCCESS) {
-      out_desc.SetShape(Shape({UNKNOWN_DIM}));
-      out_desc_scores.SetShape(Shape({UNKNOWN_DIM}));
-      if (op.UpdateOutputDesc("selected_indices", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "fail to update output selected_indices.");
-        return GRAPH_FAILED;
-      }
-      if (op.UpdateOutputDesc("selected_scores", out_desc_scores) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "fail to update output selected_scores.");
-        return GRAPH_FAILED;
-      }
+      out_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
+      out_desc_scores.SetShape(Shape({ge::UNKNOWN_DIM}));
+      (void)op.UpdateOutputDesc("selected_indices", out_desc); 
+      (void)op.UpdateOutputDesc("selected_scores", out_desc_scores);
     } else {
       const int32_t* size_data = reinterpret_cast<const int32_t*>(in_tensor.GetData());
       if (*size_data < 0) {
-        OP_LOGE(op.GetName().c_str(), "The dim size of max_output_size must be non-negative");
+        std::string err_msg = ConcatString("0th data[", *size_data, "] of input[max_output_size] at least 0");
+        AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
       out_desc.SetShape(Shape({*size_data}));
-      if (op.UpdateOutputDesc("selected_indices", out_desc) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "fail to update output selected_indices.");
-        return GRAPH_FAILED;
-      }
+      (void)op.UpdateOutputDesc("selected_indices", out_desc);
       out_desc_scores.SetShape(Shape({*size_data}));
-      if (op.UpdateOutputDesc("selected_scores", out_desc_scores) != GRAPH_SUCCESS) {
-        OP_LOGE(op.GetName().c_str(), "fail to update output selected_scores.");
-        return GRAPH_FAILED;
-      }
+      (void)op.UpdateOutputDesc("selected_scores", out_desc_scores);
     }
   }
 
   TensorDesc out_desc1 = op.GetOutputDesc("valid_outputs");
   out_desc1.SetShape(Shape());
-  out_desc1.SetDataType(DT_INT32);
-  if (op.UpdateOutputDesc("valid_outputs", out_desc1) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "fail to update output valid_outputs.");
-    return GRAPH_FAILED;
-  }
+  out_desc1.SetDataType(ge::DT_INT32);
+  (void)op.UpdateOutputDesc("valid_outputs", out_desc1);
   return GRAPH_SUCCESS;
 }
 

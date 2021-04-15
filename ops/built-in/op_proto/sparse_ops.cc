@@ -674,7 +674,8 @@ INFER_FUNC_REG(SparseSparseMinimum, SparseSparseMinimumInfer);
 IMPLEMT_INFERFUNC(SparseReduceMax, SparseReduceMaxInfer) {
   bool keep_dim = false;
   if (op.GetAttr("keep_dims", keep_dim) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Get attr keep_dims failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[keep_dims] failed"));
     return GRAPH_FAILED;
   }
   DataType x_values_type = op.GetInputDesc("x_values").GetDataType();
@@ -800,20 +801,13 @@ IMPLEMT_INFERFUNC(SparseSplit, SparseSplitInfer) {
   Shape output_indices;
   Shape output_values;
   auto output_shape = shape_shape;
-  auto result = Matrix(ge::UNKNOWN_DIM, shape_shape.GetShapeSize(), output_indices);
-  if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate output_indices failed !");
-    return GRAPH_FAILED;
-  }
-  result = Vector(ge::UNKNOWN_DIM, output_values);
-  if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate output_values failed !");
-    return GRAPH_FAILED;
-  }
+  Matrix(ge::UNKNOWN_DIM, shape_shape.GetShapeSize(), output_indices);
+  Vector(ge::UNKNOWN_DIM, output_values);
 
   uint32_t num_splits = 0;
   if (op.GetAttr("num_split", num_splits) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr num_split failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[num_split] failed"));
     return GRAPH_FAILED;
   }
   for (uint32_t i = 0; i < num_splits; i++) {
@@ -821,7 +815,8 @@ IMPLEMT_INFERFUNC(SparseSplit, SparseSplitInfer) {
     y_tensor.SetShape(output_indices);
     y_tensor.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("y_indices", i, y_tensor) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update y_indices_%d desc failed", i);
+      std::string err_msg = ConcatString("update description for output y_indices[", i, "] failed");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -830,7 +825,8 @@ IMPLEMT_INFERFUNC(SparseSplit, SparseSplitInfer) {
     y_tensor.SetShape(output_values);
     y_tensor.SetDataType(values_tensor.GetDataType());
     if (op.UpdateDynamicOutputDesc("y_values", i, y_tensor) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update y_values_%d desc failed", i);
+      std::string err_msg = ConcatString("update description for output y_values[", i, "] failed");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -839,7 +835,8 @@ IMPLEMT_INFERFUNC(SparseSplit, SparseSplitInfer) {
     y_tensor.SetShape(output_shape);
     y_tensor.SetDataType(DT_INT64);
     if (op.UpdateDynamicOutputDesc("y_shape", i, y_tensor) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update y_shape_%d desc failed", i);
+      std::string err_msg = ConcatString("update description for output y_shape[", i, "] failed");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }

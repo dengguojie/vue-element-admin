@@ -64,29 +64,33 @@ INFER_FUNC_REG(MatrixBandPart, MatrixBandPartInfer);
 IMPLEMT_INFERFUNC(UniqueWithCounts, UniqueWithCountsInfer) {
   DataType y_type = op.GetInputDesc("x").GetDataType();
   TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(Shape({UNKNOWN_DIM}));
+  output_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
   output_desc.SetDataType(y_type);
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[y] failed"));
     return GRAPH_FAILED;
   }
 
   DataType type;
   if (op.GetAttr("out_idx", type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op get attr out_idx failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[out_idx] failed"));
     return GRAPH_FAILED;
   }
 
   output_desc = op.GetOutputDesc("count");
-  output_desc.SetShape(Shape({UNKNOWN_DIM}));
+  output_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
   output_desc.SetDataType(type);
 
   if (op.UpdateOutputDesc("count", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[count] failed"));
     return GRAPH_FAILED;
   }
 
   output_desc = op.GetOutputDesc("idx");
   output_desc.SetDataType(type);
   if (op.UpdateOutputDesc("idx", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[idx] failed"));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "idx");
@@ -289,15 +293,17 @@ INFER_FUNC_REG(UpperBound, UpperBoundInfer);
 IMPLEMT_INFERFUNC(UniqueWithCountsExt2, UniqueWithCountsExt2Infer) {
   DataType y_type = op.GetInputDesc("x").GetDataType();
   TensorDesc output_desc = op.GetOutputDesc("y");
-  output_desc.SetShape(Shape({UNKNOWN_DIM}));
+  output_desc.SetShape(Shape({ge::UNKNOWN_DIM}));
   output_desc.SetDataType(y_type);
   if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[y] failed"));
     return GRAPH_FAILED;
   }
 
   DataType type;
   if (op.GetAttr("out_idx", type) != GRAPH_SUCCESS) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Op get attr out_idx failed");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(),
+                                       string("get attr[out_idx] failed"));
     return GRAPH_FAILED;
   }
 
@@ -306,12 +312,14 @@ IMPLEMT_INFERFUNC(UniqueWithCountsExt2, UniqueWithCountsExt2Infer) {
   output_desc.SetDataType(type);
 
   if (op.UpdateOutputDesc("count", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[count] failed"));
     return GRAPH_FAILED;
   }
 
   output_desc = op.GetOutputDesc("idx");
   output_desc.SetDataType(type);
   if (op.UpdateOutputDesc("idx", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("update description for output[idx] failed"));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "idx");
