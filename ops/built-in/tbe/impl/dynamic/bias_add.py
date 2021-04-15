@@ -23,6 +23,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=too-many-locals,unused-argument
@@ -119,78 +120,85 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     para_check.check_format(data_format, data_format_tuple, param_name='input_format')
 
     if dtype_x != dtype_bias:
-        raise RuntimeError("The dtype of x and bias must be the same")
+        error_manager_vector.raise_err_inputs_dtype_not_equal("BiasAdd", "x", "bias",
+                                                              str(dtype_x), str(dtype_bias))
 
     if x.get("format") is not None and x.get("format").upper() == "NC1HWC0":
         ori_format_x = x.get("ori_format").upper()
         ori_shape_x = x.get("ori_shape")
         if len(shape_x) != 5:
-            raise RuntimeError("bias_add only support shape 5D, when input format is NC1HWC0")
+            error_manager_vector.raise_err_specific_reson("BiasAdd",
+                                                          "bias_add only support shape 5D, \
+                                                          when input format is NC1HWC0")
 
         if ori_format_x != data_format:
-            raise RuntimeError("the input ori_format and data_format must be the same")
+            error_manager_vector.raise_err_two_input_format_invalid("BiasAdd", "ori_format", "data_format",
+                                                                    "the input ori_format and data_format \
+                                                                    must be the same")
         if bias.get("format") is not None and bias.get("format").upper() == "NC1HWC0":
             ori_shape_bias = bias.get("ori_shape")
             if ori_format_x == "NCHW" and not check_equal(ori_shape_x[1], ori_shape_bias[0]):
-                raise RuntimeError("data_format is NCHW, shape_bias must "
-                                   "be equal to the second axis of shape_x")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NCHW, shape_bias must "
+                                                              "be equal to the second axis of shape_x")
             if ori_format_x == "NHWC" and not check_equal(ori_shape_x[-1], ori_shape_bias[0]):
-                raise RuntimeError("data_format is NHWC, shape_bias must "
-                                   "be equal to the last axis of shape_x")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NHWC, shape_bias must "
+                                                              "be equal to the last axis of shape_x")
         else:
             if ori_format_x == "NCHW" and not check_equal(ori_shape_x[1], shape_bias[0]):
-                raise RuntimeError("data_format is NCHW, shape_bias must "
-                                   "be equal to the second axis of shape_x")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NCHW, shape_bias must "
+                                                              "be equal to the second axis of shape_x")
             if ori_format_x == "NHWC" and not check_equal(ori_shape_x[-1], shape_bias[0]):
-                raise RuntimeError("data_format is NHWC, shape_bias must "
-                                   "be equal to the last axis of shape_x")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NHWC, shape_bias must "
+                                                              "be equal to the last axis of shape_x")
         shape_bias = (1, shape_x[1], 1, 1, shape_x[4])
         range_bias = ((1, 1), range_x[1], (1, 1), (1, 1), range_x[4])
 
     elif x.get("format") is not None and x.get("format").upper() == "NDHWC":
         if len(shape_x) != 5:
-            raise RuntimeError("bias_add only support shape 5D, when input format is NDHWC")
+            error_manager_vector.raise_err_specific_reson("BiasAdd", "bias_add only support shape 5D, \
+                                                          when input format is NDHWC")
 
         if not check_equal(shape_x[4], shape_bias[0]):
-            raise RuntimeError("data_format is NDHWC, shape_bias must"
-                               "be equal to the fifth axis of shape_x")
+            error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NDHWC, shape_bias must"
+                                                          "be equal to the fifth axis of shape_x")
         shape_bias = (1, ) * (len(shape_x) - 1) + (shape_x[-1], )
         range_bias = ((1, 1), ) * (len(shape_x) - 1) + (range_x[-1], )
 
     elif x.get("format") is not None and x.get("format").upper() == "NCDHW":
         if len(shape_x) != 5:
-            raise RuntimeError("bias_add only support shape 5D, "
-                               "when input format is NCDHW")
+            error_manager_vector.raise_err_specific_reson("BiasAdd", "bias_add only support shape 5D, "
+                                                          "when input format is NCDHW")
         if not check_equal(shape_x[1], shape_bias[0]):
-            raise RuntimeError("data_format is NCDHW, shape_bias must "
-                               "be equal to the second axis of shape_x")
+            error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NCDHW, shape_bias must "
+                                                          "be equal to the second axis of shape_x")
         shape_bias = (1, shape_x[1]) + (1, ) * (len(shape_x) - 2)
         range_bias = ((1, 1), range_x[1]) + ((1, 1), ) * (len(shape_x) - 2)
 
     elif x.get("format") is not None and x.get("format").upper() == "NDC1HWC0":
         if len(shape_x) != 6:
-            raise RuntimeError("bias_add only support shape 6D"
-                               "when input format is NDC1HWC0")
+            error_manager_vector.raise_err_specific_reson("BiasAdd", "bias_add only support shape 6D"
+                                                          "when input format is NDC1HWC0")
         ori_shape_x = x.get("ori_shape")
         if x.get("ori_format").upper() == "NDHWC":
             if not check_equal(ori_shape_x[4], shape_bias[0]):
-                raise RuntimeError("data_format is NDHWC, shape_bias must "
-                                   "be equal to the fifth axis of shape_x")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NDHWC, shape_bias must "
+                                                              "be equal to the fifth axis of shape_x")
         elif x.get("ori_format").upper() == "NCDHW":
             if not check_equal(ori_shape_x[1], shape_bias[0]):
-                raise RuntimeError("data_format is NCDHW, shape_bias must "
-                                   "be equal to the second axis of shape_x")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NCDHW, shape_bias must "
+                                                              "be equal to the second axis of shape_x")
         shape_bias = (1, 1, shape_x[2], 1, 1, shape_x[5])
         range_bias = ((1, 1), (1, 1), range_x[2], (1, 1), (1, 1), range_x[5])
 
     else:
         if data_format == "NCHW":
             if len(shape_x) < 2 or len(shape_x) > 4:
-                raise RuntimeError("bias_add only support shape 2D to 4D when input format is NCHW")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "bias_add only support shape \
+                                                              2D to 4D when input format is NCHW")
             if not check_equal(shape_x[1], shape_bias[0]):
-                raise RuntimeError("data_format is NCHW, shape_bias must"
-                                   " be equal to the second axis of shape_x"
-                                   ", but {} and {}".format(shape_bias[0], shape_x[1]))
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NCHW, shape_bias must"
+                                                              " be equal to the second axis of shape_x"
+                                                              ", but {} and {}".format(shape_bias[0], shape_x[1]))
             shape_bias = (1, shape_x[1],)
             range_bias = ((1, 1), range_x[1],)
             for i in range(2, len(shape_x)):
@@ -198,10 +206,10 @@ def bias_add(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
                 range_bias = range_bias + ((1, 1),)
         else:
             if len(shape_x) < 2:
-                raise RuntimeError("bias_add only support shape larger than 2D")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "bias_add only support shape larger than 2D")
             if not check_equal(shape_x[-1], shape_bias[0]):
-                raise RuntimeError("data_format is NHWC, shape_bias must be "
-                                   "equal to the last axis of shape_x")
+                error_manager_vector.raise_err_specific_reson("BiasAdd", "data_format is NHWC, shape_bias must be "
+                                                              "equal to the last axis of shape_x")
             shape_bias = ()
             range_bias = (())
             for i in range(0, len(shape_x)):

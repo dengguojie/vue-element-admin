@@ -24,6 +24,7 @@ from impl.util import util_common
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=unused-argument
@@ -85,7 +86,8 @@ def bias_add_grad_compute_nz(x, y, data_format, kernel_name="bias_add_grad"):
                 shape_list = shape_list + [i]
     else:
         if len(shape) < 4:
-            raise RuntimeError("cce_bias_add_grad_nz_2_nhwc only support shape larger than 4D")
+            error_manager_vector.raise_err_specific_reson("bias_add_grad", "cce_bias_add_grad_nz_2_nhwc \
+                                                          only support shape larger than 4D")
         for i in range(-1 * len(shape), 0):
             if i not in (-1, -4):
                 shape_list += [i + len(shape)]
@@ -175,7 +177,8 @@ def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
         result = tbe.sum(x, shape_list)
     else:
         if len(shape) < 2:
-            raise RuntimeError("cce_bias_add_grad only support shape larger than 2D")
+            error_manager_vector.raise_err_specific_reson("bias_add_grad", "cce_bias_add_grad \
+                                                          only support shape larger than 2D")
         result = tbe.sum(x, [x for x in range(len(shape) - 1)])
 
     result = tbe.cast_to(result, y_dtype)
@@ -215,7 +218,8 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
     input_data_format = x.get("format").upper()
 
     if data_format not in data_format_tuple:
-        raise RuntimeError("The data_format only support NCHW, NHWC, NDHWC, NCDHW")
+        error_manager_vector.raise_err_input_format_invalid("bias_add_grad", "data_format",
+                                                            "NCHW, NHWC, NDHWC, NCDHW", str(data_format))
 
     data = tvm.placeholder(shape, dtype, name="data")
 

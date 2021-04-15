@@ -21,7 +21,7 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
@@ -114,11 +114,10 @@ def diag_d(x, assist, y, kernel_name="diag_d"):
         if element != shape_help[i] or \
                 element != shape_help[i + len(shape_x)] or \
                 len(shape_help) != 2 * len(shape_x):
-            raise RuntimeError(
-                "shape mismatch of x and assist : "
-                "the correct shapes should be "
-                "x.shape = [D1,...,Dn],"
-                "assist.shape = [D1,...,Dn,D1,...Dn]")
+            error_manager_vector.raise_err_specific_reson("diag_d", "shape mismatch of x and assist : "
+                                                          "the correct shapes should be "
+                                                          "x.shape = [D1,...,Dn],"
+                                                          "assist.shape = [D1,...,Dn,D1,...Dn]")
     shape_x, shape_y = shape_util.refine_shapes_for_broadcast(shape_list[0], shape_list[1])
     data_x = tvm.placeholder(shape_x, dtype=dtype.lower(), name="data_x")
     data_y = tvm.placeholder(shape_y, dtype=dtype_help.lower(),

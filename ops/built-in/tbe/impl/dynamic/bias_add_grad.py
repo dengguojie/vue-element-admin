@@ -67,7 +67,9 @@ def _infer_axes(input_data_format, data_format, shape):
                     g_shape_list = g_shape_list + [i]
         else:
             if len(shape) < 4:
-                raise RuntimeError("cce_bias_add_grad_nz_2_nhwc only support shape larger than 4D")
+                error_manager_vector.raise_err_specific_reson("bias_add_grad",
+                                                              "cce_bias_add_grad_nz_2_nhwc \
+                                                              only support shape larger than 4D")
             for i in range(-1 * len(shape), 0):
                 if i not in (-1, -4):
                     g_shape_list += [i + len(shape)]
@@ -91,7 +93,8 @@ def _infer_axes(input_data_format, data_format, shape):
                 g_shape_list = g_shape_list + [i]
         else:
             if len(shape) < 2:
-                raise RuntimeError("cce_bias_add_grad only support shape larger than 2D")
+                error_manager_vector.raise_err_specific_reson("bias_add_grad", "cce_bias_add_grad \
+                                                              only support shape larger than 2D")
             g_shape_list = [x for x in range(len(shape) - 1)]
 
     return g_shape_list

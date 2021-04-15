@@ -27,6 +27,7 @@ from te.utils.error_manager import error_manager_util as err_man
 from impl.util import util_select_op_base
 from impl.conv2d import conv2d
 from impl.conv2d import conv2d_compute
+from impl.util.platform_adapter import error_manager_vector
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVG_KERNEL_SIZE = 20 # maximum ksieze
@@ -271,78 +272,24 @@ def _check_window_rule(ksize, strides, data_format):
     ksize_c = ksize[3] if data_format in ("NHWC",) else ksize[1]
     strides_c = strides[3] if data_format in ("NHWC",) else strides[1]
     if len(ksize) != 4:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'ksize'
-        error_info['min_value'] = '4'
-        error_info['max_value'] = '4'
-        error_info['real_value'] = len(ksize)
-        raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s]"
-                           "should be in the range of [%s, %s],"
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("avg_pool", "ksize",
+                                                                 "4", "4", str(len(ksize)))
 
     if len(strides) != 4:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'strides'
-        error_info['min_value'] = '4'
-        error_info['max_value'] = '4'
-        error_info['real_value'] = len(strides)
-        raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s]"
-                           "should be in the range of [%s, %s],"
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['min_value'], error_info['max_value'],
-                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("avg_pool", "strides",
+                                                                 "4", "4", str(len(strides)))
 
     if ksize[0] != 1 or (ksize_c != 1):
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_000
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = ",".join(("ksize[1]", "ksize[3]"))
-        error_info['expected_value'] = '1'
-        error_info['real_value'] = ",".join((str(ksize[1]), str(ksize[3])))
-        raise RuntimeError("In op[%s], the parameter[%s] should be [%s], "
-                           "but actually is [%s]." %
-                           (error_info['op_name'], error_info['param_name'],
-                            error_info['expected_value'],
-                            error_info['real_value']))
-
+        error_manager_vector.raise_err_input_value_invalid("avg_pool", "ksize[1], ksize[3]",
+                                                           "1", str(ksize[1]) + ", " + str(ksize[3]))
 
     if strides[0] != 1 or strides_c != 1:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_000
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = ",".join(("strides[1]", "strodes[3]"))
-        error_info['expected_value'] = '1'
-        error_info['real_value'] = ",".join((str(strides[1]), str(strides[3])))
-        raise RuntimeError("In op[%s], the parameter[%s] should be [%s],"
-                           "but actually is [%s]." % (error_info['op_name'],
-                                                      error_info['param_name'],
-                                                      error_info['expected_value'],
-                                                      error_info['real_value']))
+        error_manager_vector.raise_err_input_value_invalid("avg_pool", "strides[1], strides[3]",
+                                                           "1", str(strides[1]) + ", " + str(strides[3]))
 
     if data_format not in("NCHW", "NHWC", "NC1HWC0"):
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_015
-        error_info['op_name'] = 'avg_pool'
-        error_info['param_name'] = 'x'
-        error_info['excepted_format_list'] = ",".join(("NC1HWC0",
-                                                       "NCHW", "NHWC"))
-        error_info['format'] = data_format
-        raise RuntimeError(error_info, "In op[%s], the format[%s] of input"
-                                       "should be one of [%s],"
-                                       "but actually is [%s]."
-                           % (error_info['op_name'], error_info['param_name'],
-                              error_info['excepted_format_list'],
-                              error_info['format']))
+        error_manager_vector.raise_err_input_format_invalid("avg_pool", "x",
+                                                            "NC1HWC0, NCHW, NHWC", str(data_format))
 
 
 def _get_pad(input_pad):

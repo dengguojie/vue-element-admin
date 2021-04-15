@@ -18,6 +18,7 @@ strided_slice_grad
 from impl.dynamic.pad import PadInit
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_vector
 
 
 def _check_mask(input_mask, is_shrink=False):
@@ -34,10 +35,11 @@ def _check_mask(input_mask, is_shrink=False):
     """
     if is_shrink:
         if input_mask not in (0, 2):
-            raise RuntimeError("shrink_axis_mask only support 0/2 currently")
+            error_manager_vector.raise_err_input_value_invalid("strided_slice_grad", "shrink_axis_mask",
+                                                               "(0, 2)", str(input_mask))
     elif input_mask != 0:
-        raise RuntimeError("new_axis_mask"
-                           " only support 0 currently")
+        error_manager_vector.raise_err_input_value_invalid("strided_slice_grad", "new_axis_mask",
+                                                               "0", str(input_mask))
 
 
 # pylint: disable=locally-disabled,too-many-arguments,invalid-name

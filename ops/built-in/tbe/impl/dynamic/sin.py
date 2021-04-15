@@ -24,6 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_vector
 
 # define a string name of "float16"
 FLOAT_16 = "float16"
@@ -160,21 +161,8 @@ def sin(x, y, kernel_name="sin"):
 
     # check input x and output y dtype
     if x_dtype != y_dtype:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_018
-        error_info['op_name'] = 'sin'
-        error_info['param_name1'] = 'x_dtype'
-        error_info['param_name2'] = 'y_dtype'
-        error_info['param1_dtype'] = str(x_dtype)
-        error_info['param2_dtype'] = str(y_dtype)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] are not equal in "
-                           "dtype with dtype[%s][%s]." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param_name2'],
-                               error_info['param1_dtype'],
-                               error_info['param2_dtype']))
+        error_manager_vector.raise_err_inputs_dtype_not_equal("sin", "x", "y",
+                                                              str(x_dtype), str(y_dtype))
 
     # op compute and schedule
     ins = classify([x], OpPatternMode.ELEWISE)

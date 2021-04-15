@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements
@@ -93,37 +94,11 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
     # check inputs num
     input_num = len(inputs)
     if input_num < 2:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'add_n'
-        error_info['param_name'] = 'input_num'
-        error_info['max_value'] = '8'
-        error_info['min_value'] = '2'
-        error_info['real_value'] = str(input_num)
-        raise RuntimeError(error_info,
-                           "In op[%s], the num of dimensions of input[%s] "
-                           "should be in the range of [%s, %s], but actually "
-                           "is [%s]." % (
-                               error_info['op_name'], error_info['param_name'],
-                               error_info['min_value'],
-                               error_info['max_value'],
-                               error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("add_n", "input_num",
+                                                                 "8", "2", str(input_num))
     if input_num != tensor_num:
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_017
-        error_info['op_name'] = 'add_n'
-        error_info['param_name1'] = 'input_num'
-        error_info['param_name2'] = 'tensor_num'
-        error_info['param1_shape'] = str(input_num)
-        error_info['param2_shape'] = str(tensor_num)
-        raise RuntimeError(error_info,
-                           "In op[%s], the parameter[%s][%s] is not match with"
-                           "the parameter[%s][%s],it should be the same." % (
-                               error_info['op_name'],
-                               error_info['param_name1'],
-                               error_info['param1_shape'],
-                               error_info['param_name2'],
-                               error_info['param2_shape']))
+        error_manager_vector.raise_err_inputs_shape_not_equal("add_n", "input_num", "tensor_num",
+                                                              str(input_num), str(tensor_num), str(input_num))
 
     dtype_0 = inputs[0].get("dtype").lower()
     for index in range(0, tensor_num):
@@ -133,21 +108,8 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
         check_list = ("float16", "float32", "int32")
         para_check.check_dtype(dtype_input, check_list, param_name="inputs")
         if dtype_input != dtype_0:
-            error_info = {}
-            error_info['errCode'] = para_check.OP_ERROR_CODE_018
-            error_info['op_name'] = 'add_n'
-            error_info['param_name1'] = 'dtype_input'
-            error_info['param_name2'] = 'dtype_0'
-            error_info['param1_dtype'] = str(dtype_input)
-            error_info['param2_dtype'] = str(dtype_0)
-            raise RuntimeError(error_info, "In op[%s], the parameter"
-                                           "[%s][%s] are not equal in "
-                                           "dtype with dtype[%s][%s]." % (
-                                   error_info['op_name'],
-                                   error_info['param_name1'],
-                                   error_info['param_name2'],
-                                   error_info['param1_dtype'],
-                                   error_info['param2_dtype']))
+            error_manager_vector.raise_err_inputs_shape_not_equal("add_n", "inputs[" + str(index) + "]", "inputs[0]",
+                                                                  str(dtype_input), str(dtype_0))
 
     # help pipeline by adding concurrence node
     redundant_coe = 1 if input_num > 2 else 0

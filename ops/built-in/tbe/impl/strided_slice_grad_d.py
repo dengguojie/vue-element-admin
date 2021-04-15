@@ -152,7 +152,8 @@ class StridedSliceGradLastDimCompute(object):
         schedule for strided_slice_grad
         """
         if not self.check_result:
-            raise RuntimeError("conditions of SliceLastDimCompute are not fulfilled")
+            error_manager.raise_err_specific_reson("strided_slice_grad_d",
+                                                   "conditions of SliceLastDimCompute are not fulfilled")
         can_do_with_vnchwconv = self.can_do_with_vnchwconv()
         if can_do_with_vnchwconv:
             obj = StridedSliceGradLastDimWithVnchwConv(self.input_dim_last, self.output_dim_last, self.dim_product,
@@ -283,7 +284,8 @@ class StridedSliceGradLastDimCompute(object):
         self.input_dim_last, self.input_dim_last and self.begin_last should divided by block size
         """
         if not self.check_result:
-            raise RuntimeError("conditions of SliceLastDimCompute are not fullfilled")
+            error_manager.raise_err_specific_reson("strided_slice_grad_d",
+                                                   "conditions of SliceLastDimCompute are not fullfilled")
 
         tik_instance = tik.Tik()
         self.tik_instance = tik_instance
@@ -939,7 +941,7 @@ def _check_shape_parameter(shape_x, shape_dy, begin, end, strides):
     if not (len(end) == len(begin) and \
             len(shape_x) == len(begin) and \
             len(shape_x) == len(strides)):
-        raise RuntimeError("shape length mismatch!")
+        error_manager.raise_err_specific_reson("strided_slice_grad_d", "shape length mismatch!")
 
     # value of begin must less equal to end, and it's range is (0, shape_x_i).
     for i, (shape_x_i, begin_i, end_i) in enumerate(zip(shape_x, begin, end)):
@@ -949,13 +951,16 @@ def _check_shape_parameter(shape_x, shape_dy, begin, end, strides):
             end_i += shape_x_i
         if not ((begin_i >= 0) and (end_i <= shape_x_i)
                 and (begin_i <= end_i)):
-            raise RuntimeError("Bound Over: begin[%d]:%d, end[%d]:%d, shape_x[%d]:%d\n" \
-                               % (i, begin[i], i, end[i], i, shape_x_i))
+            error_manager.raise_err_specific_reson("strided_slice_grad_d",
+                                                    "Bound Over: begin[" + str(i) + "]:" + str(begin[i]) +
+                                                    ", end[" + str(i) + "]:" + str(end[i]) + ", shape_x[" +
+                                                    str(i) + "]:" + str(shape_x_i))
 
     # value of strides must all be 1.
     for i, strides_i in enumerate(strides):
         if strides_i != 1:
-            raise RuntimeError("Value of the strides[%d]:%d must be 1!" % (i, strides_i))
+            error_manager.raise_err_input_value_invalid("strided_slice_grad_d", "strides[" + str(i) + "]",
+                                                        "1", str(strides_i))
 
 
 def _check_mask(input_mask, is_shrink=False):
@@ -974,9 +979,11 @@ def _check_mask(input_mask, is_shrink=False):
     if is_shrink:
         supported_shrink_masks = {0, 2, 4}
         if input_mask != 0 and input_mask not in supported_shrink_masks:
-            raise RuntimeError("shrink_axis_mask only support {} currently".format(str(supported_shrink_masks)))
+            error_manager.raise_err_input_value_invalid("strided_slice_grad_d", "shrink_axis_mask",
+                                                        str(supported_shrink_masks), str(input_mask))
     elif input_mask != 0:
-        raise RuntimeError("new_axis_mask only support 0 currently")
+        error_manager.raise_err_specific_reson("strided_slice_grad_d",
+                                               "new_axis_mask only support 0 currently")
 
 
 def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):

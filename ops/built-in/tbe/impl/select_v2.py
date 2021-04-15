@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
+from impl.util.platform_adapter import error_manager_vector
 
 
 # define a VALUE, value = 1
@@ -128,7 +129,8 @@ def select_v2(condition, x1, x2, y, kernel_name="select_v2"):
     check_list = ("float16", "float32", "int32", "int8", "uint8")
     para_check.check_dtype_rule(dtype_x1, check_list)
     if dtype_x1 != dtype_x2:
-        raise RuntimeError("Dtype of tensor x1 and x2 must be equal!")
+        error_manager_vector.raise_err_inputs_dtype_not_equal("select_v2", "x1", "x2",
+                                                              str(dtype_x1), str(dtype_x2))
 
     bool_dtype = bool_dtype.lower()
     bool_check_list = ("bool", "int8", "uint8")

@@ -22,6 +22,7 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
+from impl.util.platform_adapter import error_manager_vector
 
 MAX_SUPPORT_SHAPE = 1 << 30 # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000 # Limit of one dim
@@ -98,8 +99,8 @@ def _int8_uint8_process(data, dst_type):
         abs_fp16 = tbe.vabs(data_fp16)
         return tbe.cast_to(abs_fp16, "uint8")
 
-    raise RuntimeError("The cast_cce_aicore only support int8/uint8"
-                       "cast to float16,float32,int32,uint8.")
+    error_manager_vector.raise_err_specific_reson("cast", "The cast_cce_aicore only support int8/uint8"
+                                                  "cast to float16,float32,int32,uint8.")
 
 
 def _int32_process(data, dst_type):
@@ -141,8 +142,8 @@ def _int32_process(data, dst_type):
     if dst_type == "float16":
         return tbe.cast_to(data, "float16")
 
-    raise RuntimeError("The cast_cce_aicore only support int32"
-                       "cast to bool,int8,uint8,float32,float16.")
+    error_manager_vector.raise_err_specific_reson("cast", "The cast_cce_aicore only support int32"
+                                                  "cast to bool,int8,uint8,float32,float16.")
 
 
 def _float32_process(data, dst_type):
@@ -155,8 +156,8 @@ def _float32_process(data, dst_type):
     if dst_type == "float16":
         return tbe.cast_to(data, "float16")
 
-    raise RuntimeError("The cast_cce_aicore only support float32"
-                       "cast to int32,float16.")
+    error_manager_vector.raise_err_specific_reson("cast", "The cast_cce_aicore only support float32"
+                                                  "cast to int32,float16.")
 
 
 def _float16_process(data, dst_type):
@@ -184,8 +185,8 @@ def _float16_process(data, dst_type):
         result = tbe.cast_to(result, "float16")
         return tbe.cast_to(result, "uint8", True)
 
-    raise RuntimeError("The cast_cce_aicore only support float16"
-                       "cast to float32,int32,uint8.")
+    error_manager_vector.raise_err_specific_reson("cast", "The cast_cce_aicore only support float16"
+                                                  "cast to float32,int32,uint8.")
 
 
 def _cast_dsttype_conversion(dst_type):
@@ -296,7 +297,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     if src_data_type == "int32":
         return _int32_process(data, dst_type)
 
-    raise RuntimeError("The cast_cce_aicore don't support this situation")
+    error_manager_vector.raise_err_specific_reson("cast", "The cast_cce_aicore don't support this situation")
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

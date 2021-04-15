@@ -415,7 +415,8 @@ def strided_slice_d_compute(input_data,
     stride_shape = copy.deepcopy(stride_shape)
     input_list = _shape_to_list(input_data.shape)
     if stride_shape[-1] != 1:
-        raise RuntimeError("Only support strides with 1 at last value.")
+        error_manager_vector.raise_err_input_value_invalid("strided_slice_d", "stride_shape[-1]",
+                                                           "1", str(stride_shape[-1]))
 
     # Estimate the value of shrink_axis_mask, to avoid the dimension of output with size 0
     shrink_axis_mask_temp = 0
@@ -1137,7 +1138,7 @@ def strided_slice_d(input_x,
 
     if not _check_parameter(input_ori_shape, begin, end, strides, ellipsis_mask,
                             new_axis_mask, shrink_axis_mask):
-        raise RuntimeError("Parameter Invalid!")
+        error_manager_vector.raise_err_specific_reson("strided_slice_d", "Parameter Invalid!")
 
     # update input_shape, begin_shape, end_shape
     input_shape_new, begin, end, strides = _init_parameter(input_ori_shape, begin, end,

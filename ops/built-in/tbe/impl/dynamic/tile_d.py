@@ -23,6 +23,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import error_manager_vector
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -102,17 +103,9 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
         if multiples_i == 1:
             axis_not_multiple += 1
     if axis_not_multiple == len(origin_multiples):
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_005
-        error_info['op_name'] = 'tile_d'
-        error_info['param_name'] = 'axis_not_multiple'
-        error_info['min_len'] = '1'
-        error_info['max_len'] = str(len(origin_multiples) - 1)
-        error_info['length'] = str(axis_not_multiple)
-        raise RuntimeError(error_info, "In op[%s], the length of parameter[%s] be in the range of [%s, %s], but"
-                                       "actually is [%s]." % (error_info['op_name'], error_info['param_name'],
-                                                              error_info['min_len'], error_info['max_len'],
-                                                              error_info['length']))
+        error_manager_vector.raise_err_input_param_range_invalid("tile_d", "axis_not_multiple",
+                                                                 "1", str(len(origin_multiples) - 1),
+                                                                 str(axis_not_multiple))
 
     # Check support dtype
     input_dtype = input_x.get("dtype").lower()
@@ -131,19 +124,9 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
 
     # Check len between input and multiples, the multiples len must not be less than input len
     if len(input_shape) > len(multiples):
-        error_info = {}
-        error_info['errCode'] = para_check.OP_ERROR_CODE_012
-        error_info['op_name'] = 'tile_d'
-        error_info['param_name'] = 'input_shape'
-        error_info['max_value'] = str(len(multiples))
-        error_info['min_value'] = '1'
-        error_info['real_value'] = str(len(input_shape))
-        raise RuntimeError(error_info, "In op[%s], the num of dimensions of input[%s] should be in the range of "
-                                       "[%s, %s], but actually is [%s]." % (error_info['op_name'],
-                                                                            error_info['param_name'],
-                                                                            error_info['min_value'],
-                                                                            error_info['max_value'],
-                                                                            error_info['real_value']))
+        error_manager_vector.raise_err_input_param_range_invalid("tile_d", "input_x_shape",
+                                                                 "1", str(len(multiples)),
+                                                                 str(input_shape))
     if len(input_shape) < len(multiples):
         len_diff = len(multiples) - len(input_shape)
         input_shape = [1] * len_diff + input_shape
