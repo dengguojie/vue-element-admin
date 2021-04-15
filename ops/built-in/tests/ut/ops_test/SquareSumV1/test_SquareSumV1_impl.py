@@ -78,3 +78,25 @@ ut_case.add_precision_case("Ascend910", precision_case1)
 ut_case.add_precision_case("Ascend910", precision_case2)
 ut_case.add_precision_case("Ascend910", precision_case3)
 ut_case.add_precision_case("Ascend910", precision_case4)
+
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.square_sum_v1 import op_select_format
+    op_select_format({"shape": (1, 1, 16, 16), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 16),
+                      "ori_format": "HWCN"},
+                     {"shape": (1, 1, 16, 16), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 16),
+                      "ori_format": "HWCN"},
+                     [0,1,2,3],
+                     attr2=True,
+                     kernel_name="test_square_sum_v1_op_select_format_1")
+    op_select_format({"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
+                      "ori_format": "ND"},
+                     {"shape": (16, 16), "dtype": "float16", "format": "ND", "ori_shape": (16, 16),
+                      "ori_format": "ND"},
+                     [0,1],
+                     attr2=True,
+                     kernel_name="test_square_sum_v1_op_select_format_2")
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)

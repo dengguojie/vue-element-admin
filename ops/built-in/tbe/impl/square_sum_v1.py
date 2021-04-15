@@ -83,7 +83,11 @@ def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"
         dtype = "float16, float, float16, float"
         input_format = "ND, ND, FRACTAL_Z, FRACTAL_Z"
         output_format = "ND, ND, ND, ND"
-
+    if len(ori_shape) >= 2 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and \
+       list(attr1) == [i for i in range(len(ori_shape))]:
+        dtype = dtype + ", float16, float"
+        input_format = input_format + ", FRACTAL_NZ, FRACTAL_NZ"
+        output_format = output_format + ", ND, ND"
     input0 = gen_param(classify="input0", name="input_x", datatype=dtype, format=input_format)
     output0 = gen_param(classify="output0", name="output1", datatype=dtype, format=output_format)
 
