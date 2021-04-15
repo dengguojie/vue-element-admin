@@ -50,6 +50,7 @@ class VectorScheduleBase(ABC):
         self._calc_storage_align()
         self._calc_compute_at()
         self._calc_emit_insn()
+        self._calc_pragma()
         # DB is currently unavailable
         self._calc_double_buffer()
 
@@ -63,6 +64,7 @@ class VectorScheduleBase(ABC):
         self._do_storage_align()
         self._do_compute_at()
         self._do_emit_insn()
+        self._do_pragma()
         # DB is currently unavailable
         self._do_double_buffer()
 
@@ -111,6 +113,10 @@ class VectorScheduleBase(ABC):
         pass
 
     @abstractmethod
+    def _calc_pragma(self):
+        pass
+
+    @abstractmethod
     def _calc_double_buffer(self):
         pass
 
@@ -148,6 +154,10 @@ class VectorScheduleBase(ABC):
 
     @abstractmethod
     def _do_emit_insn(self):
+        pass
+
+    @abstractmethod
+    def _do_pragma(self):
         pass
 
     @abstractmethod

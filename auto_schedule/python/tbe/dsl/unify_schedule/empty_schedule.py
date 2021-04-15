@@ -54,3 +54,6 @@ class EmptySchedule(VectorSchedule):
 
     def _calc_reduced_axis_indices(self):
         pass
+
+    def _calc_pragma(self):
+        pass

@@ -143,6 +143,17 @@ class VectorSchedule(VectorScheduleBase, ABC):
             self.insn = insn
             self.attr = attr
 
+    class PragmaInfo:
+        def __init__(self,
+                     tensor: Union[Tensor, "VectorSchedule.Placeholder"] = None,
+                     axis_idx: Union[int, "VectorSchedule.Placeholder"] = None,
+                     pragma: str = None,
+                     value: Any = None):
+            self.tensor = tensor
+            self.axis_index = axis_idx
+            self.pragma = pragma
+            self.value = value
+
     def __init__(self,
                  graph_info: ComputeGraphInfo,
                  scope: str = "local.UB"):
@@ -198,6 +209,8 @@ class VectorSchedule(VectorScheduleBase, ABC):
         self.compute_at_map: Dict[Tensor, Tensor] = {}
         # EmitInsn - Calculate
         self.emit_insn_list: List[VectorSchedule.EmitInsnInfo] = []
+        # Pragma - Calculate
+        self.pragma_list: List[VectorSchedule.PragmaInfo] = []
 
     def _do_create_schedule(self) -> NoReturn:
         self.schedule: Schedule = tvm.create_schedule([tensor.op for tensor in self.graph_info.output_tensor_set])
@@ -405,6 +418,15 @@ class VectorSchedule(VectorScheduleBase, ABC):
                 stage.emit_insn(emitinsn_itervar, emitinsninfo.insn, attrs=dict(storage_bound=[extra_space]))
             else:
                 stage.emit_insn(emitinsn_itervar, emitinsninfo.insn)
+
+    def _do_pragma(self):
+        for pragmainfo in self.pragma_list:
+            tensor: Tensor = self.solve_placeholder(pragmainfo.tensor)
+            stage: Stage = self.schedule[tensor]
+            itervar: IterVar = self.solve_placeholder(pragmainfo.axis_index)
+            if isinstance(itervar, int):
+                itervar = self.get_itervar_by_original_index(pragmainfo.tensor, itervar)
+            stage.pragma(itervar, pragmainfo.pragma, pragmainfo.value)
 
     def _do_double_buffer(self):
         pass
@@ -615,6 +637,13 @@ class VectorSchedule(VectorScheduleBase, ABC):
                                        tiling_mode=VectorSchedule.TilingInfo.TilingMode.FUSE,
                                        fuse_axis_list=fuse_axis_list)
         return VectorSchedule.Placeholder(VectorSchedule.Placeholder.PlaceholderType.FUSE_RESULT, tiling_index)
+
+    def pragma(self,
+               tensor: Union[Tensor, Placeholder],
+               axis_index: Union[int, Placeholder],
+               pragma: str,
+               value: Any) -> NoReturn:
+        self.pragma_list.append(VectorSchedule.PragmaInfo(tensor, axis_index, pragma, value))
 
     def is_tiling_axis_index(self,
                              tensor: Union[Placeholder, Tensor],

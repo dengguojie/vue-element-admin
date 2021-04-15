@@ -204,6 +204,7 @@ class ReduceSchedule(VectorSchedule):
                 self.multi_core_bind_axis = fuse_axis_list[0]
 
     def _calc_reorder(self):
+        # For zero compute mode, skip reorder stage
         compute = get_context().get_current_compute()
         if compute.get("_mode") == "zero":
             return
@@ -524,6 +525,67 @@ class ReduceSchedule(VectorSchedule):
             else:
                 self.emit_insn_list.append(VectorSchedule.EmitInsnInfo(tensor, emit_insn_axis_index,
                                                                        INSN_MAPPING[insn]))
+
+    def _calc_pragma(self):
+        # For zero compute mode, skip pragma stage
+        if get_context().get_current_compute().get("_mode") == "zero":
+            return
+        # Initialization
+        reduce_ub_tensor = self.get_buffers_of(self.reduce_info.reduce_tensor)[0]
+        before_reduce_tensors = self.get_all_producer_stages(reduce_ub_tensor)
+        reduce_axis_indexes: List[Union[VectorSchedule.Placeholder, int]] = self.reduce_info.reduce_axis_indices[:]
+        # For tensor before reduce, try to fuse all continuous reordered axis, Search in reversed order.
+        for tensor in before_reduce_tensors:
+            # Do not pragma placeholder
+            if tensor in self.graph_info.input_tensor_set:
+                continue
+            # Pragma reordered tensor only
+            if tensor in self._tensor_to_reorder_map:
+                reordered_shape_indexes = self._tensor_to_reorder_map[tensor]
+            else:
+                continue
+            # Last pragma axis index
+            start_index = None
+            # UB Split axis index
+            ub_split_axis_index_in_reordered_shape = \
+                reordered_shape_indexes.index(self.ub_tiling_info.tiling_axis_index)
+            # Reversed order axis search, add continuous axis to axis_group for dma_copy, add all axis for vector
+            for reversed_idx, axis in zip(range(len(reordered_shape_indexes) - 1, -1, -1),
+                                          reversed(reordered_shape_indexes)):
+                if (start_index is None or axis + 1 == start_index or get_dsl_insn(tensor) != "") and \
+                        reversed_idx >= ub_split_axis_index_in_reordered_shape:
+                    self.pragma(tensor, axis, "axis_group", 0)
+                    start_index = axis
+                else:
+                    break
+        # For reduce tensor, if reduce tensor is not reordered, skip the procedure
+        if reduce_ub_tensor in self._tensor_to_reorder_map:
+            reordered_shape_indexes = self._tensor_to_reorder_map[reduce_ub_tensor]
+        else:
+            return
+        start_index = None
+        skip_once = None
+        ub_split_axis_index_in_reordered_shape = \
+            reordered_shape_indexes.index(self.ub_tiling_result_pair[1])
+        # Reversed order axis search
+        for reversed_idx, axis in zip(range(len(reordered_shape_indexes) - 1, -1, -1),
+                                      reversed(reordered_shape_indexes)):
+            # Skip last axis if it is nlast reduce
+            if self.reduce_info.is_reduce_not_last_axis() and not skip_once:
+                skip_once = True
+                continue
+            # Add ub_tiling axis directly if ub_tiling axis is reduce axis
+            if axis is self.ub_tiling_result_pair[1]:
+                if self.ub_tiling_info.tiling_axis_index in reduce_axis_indexes:
+                    self.pragma(reduce_ub_tensor, axis, "axis_group", 0)
+                    break
+            elif not isinstance(axis, self.Placeholder):
+                if (start_index is None or axis + 1 == start_index) and \
+                        reversed_idx >= ub_split_axis_index_in_reordered_shape and axis in reduce_axis_indexes:
+                    self.pragma(reduce_ub_tensor, axis, "axis_group", 0)
+                    start_index = axis
+                else:
+                    break
 
     @staticmethod
     def _contains_zero_axis():
