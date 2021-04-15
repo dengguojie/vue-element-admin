@@ -31,14 +31,15 @@ Status ParseParamsReverse(const Message* op_src, ge::Operator& op_dest) {
 
   const caffe::ReverseParameter& reverse_param = layer->reverse_param();
 
-  if (reverse_param.axis_size() == 0) {
-    return FAILED;
-  }
-
   vector<int> v_axis;
-  for (int i = 0; i < reverse_param.axis_size(); ++i) {
-    v_axis.push_back(reverse_param.axis(i));
+  if (reverse_param.axis_size() == 0) {
+    v_axis.push_back(0);
+  } else {
+    for (int i = 0; i < reverse_param.axis_size(); ++i) {
+      v_axis.push_back(reverse_param.axis(i));
+    }
   }
+  
   op_dest.SetAttr("axis", v_axis);
 
   return SUCCESS;
