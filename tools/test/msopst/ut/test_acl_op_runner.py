@@ -1,9 +1,15 @@
 import unittest
 import pytest
+import os
+import sys
 from unittest import mock
 from op_test_frame.st.interface import utils
 from op_test_frame.st.interface.st_report import OpSTReport
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
+from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
+
+sys.path.append(os.path.dirname(__file__) + "/../../")
+MSOPST_CONF_INI = './msopst/golden/base_case/input/msopst.ini'
 
 class Process():
     def __init__(self, return_code=1):
@@ -68,6 +74,54 @@ class TestUtilsMethods(unittest.TestCase):
                     runner = AclOpRunner('/home', 'ddd', report)
                     runner.process()
 
+    def test_run4(self):
+        report = OpSTReport()
+        with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
+            with mock.patch(
+                    'op_test_frame.st.interface.acl_op_runner.AclOpRunner._execute_command'):
+                with mock.patch('os.path.exists',
+                                return_value=True), mock.patch('os.chdir'):
+                    advance = AdvanceIniParser(MSOPST_CONF_INI)
+                    runner = AclOpRunner('/home', 'ddd', report, advance)
+                    runner.process()
+
+    def test_get_atc_cmd(self):
+        report = OpSTReport()
+        advance = AdvanceIniParser(MSOPST_CONF_INI)
+        runner = AclOpRunner('/home', 'ddd', report, advance)
+        runner._get_atc_cmd()
+
+    def test_set_log_level_env(self):
+        report = OpSTReport()
+        advance = AdvanceIniParser(MSOPST_CONF_INI)
+        runner = AclOpRunner('/home', 'ddd', report, advance)
+        runner.set_log_level_env()
+
+    def test_prof_run1(self):
+        with mock.patch('os.getenv', return_value="/home"):
+            with mock.patch('os.path.exists', return_value=True):
+                with mock.patch(
+                        'op_test_frame.st.interface.acl_op_runner.AclOpRunner._execute_command'):
+                    report = OpSTReport()
+                    advance = AdvanceIniParser(MSOPST_CONF_INI)
+                    runner = AclOpRunner('/home', 'ddd', report, advance)
+                    runner.prof_run('/home')
+
+    def test_prof_run2(self):
+        with mock.patch('os.getenv', return_value="/home"):
+            with mock.patch('os.path.exists', return_value=False):
+                report = OpSTReport()
+                advance = AdvanceIniParser(MSOPST_CONF_INI)
+                runner = AclOpRunner('/home', 'ddd', report, advance)
+                runner.prof_run('/home')
+
+    def test_prof_get_op_time_from_csv_file_1(self):
+        report = OpSTReport()
+        runner = AclOpRunner('/home', 'ddd', report)
+        runner._prof_get_op_time_from_csv_file(None, ["add"], "soc")
+        runner._prof_get_op_time_from_csv_file("file", None, "soc")
+        runner._prof_get_op_time_from_csv_file("file", ["add"], None)
+        runner._prof_get_op_time_from_csv_file("file", ["add"], "soc")
 
 if __name__ == '__main__':
     unittest.main()

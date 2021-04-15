@@ -94,8 +94,8 @@ def _write_content_to_file(content, file_path):
                                utils.WRITE_MODES), 'w+') as file_object:
             file_object.write(content)
     except OSError as err:
-        utils.print_error_log("Unable to write file(%s): %s." % file_path %
-                              str(err))
+        utils.print_error_log("Unable to write file(%s): %s." % (file_path,
+                              str(err)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
     utils.print_info_log("Successfully Generated file %s." % file_path)
 
@@ -105,8 +105,8 @@ def _append_content_to_file(content, file_path):
         with open(file_path, 'a+') as file_object:
             file_object.write(content)
     except OSError as err:
-        utils.print_error_log("Unable to write file(%s): %s." % file_path %
-                              str(err))
+        utils.print_error_log("Unable to write file(%s): %s." % (file_path,
+                              str(err)))
         raise utils.OpTestGenException(utils.OP_TEST_GEN_WRITE_FILE_ERROR)
     utils.print_info_log("Successfully appended content to " + file_path)
 
