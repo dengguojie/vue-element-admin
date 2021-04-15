@@ -1008,8 +1008,14 @@ class ElewiseSchedule(VectorSchedule):
                         self._less_32_core_middle_broadcast_scene = True
                     elif self._is_mix_broadcast_out_scene(block_split_axis,
                                                           block_split_inner_size):
-                        ub_split_axis = -2
-                        ub_split_inner = shape[-2]
+                        tmp_size = shape[-2] * shape[-1]
+                        if tmp_size > max_ub_count:
+                            ub_split_axis, ub_split_inner = self._get_ub_tiling(
+                                shape, block_split_axis, block_split_inner_size,
+                                max_ub_count)
+                        else:
+                            ub_split_axis = -2
+                            ub_split_inner = shape[-2]
                         self._special_mix_broadcast_scene = True
                     elif self._is_non_32align_broadcast_out_scene(block_split_axis,
                                                                   block_split_inner_size,
