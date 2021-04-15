@@ -24,9 +24,10 @@ from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
-from tbe.dsl.base.operation import register_schedule
 
 from . import util
+from .broadcast_tilingcase import TilingStrategy
+from .constants import BroadcastPattern
 from .constants import CompileInfo
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import FAKE_NODE_TAG
@@ -34,7 +35,9 @@ from .constants import INSN_MAPPING
 from .constants import Pattern
 from .constants import SUPPORT_SCALAR_INSNS
 from .constants import TERNARY_INSNS
-from .broadcast_tilingcase import TilingStrategy
+from .schedule import Schedule
+
+DEFAULT = "default"
 
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
@@ -65,21 +68,27 @@ TYPE_DOUNDS = {
 BA_KEY = 221000001
 
 
-@register_schedule(pattern=Pattern.BROADCAST)
-def schedule(outs, tiling_case):
-    """
-    :param outs:
-    :param tiling_case:
-    :return:
-    """
-    return BroadcastSchedule(outs, tiling_case).do_schedule()
-
-
 # 'pylint: disable=R0902, R0903
-class BroadcastSchedule:
+class BroadcastSchedule(Schedule):
     """
     ElewiseSchedule
     """
+
+    @classmethod
+    def get_instance(cls, outs, tiling_case):
+        return cls(outs, tiling_case)
+
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
+
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.BROADCAST]
+
+    @classmethod
+    def get_supported_sub_pattern(cls):
+        return [BroadcastPattern.B_0]
 
     def __init__(self, outs, tiling_case):
         self._out = None  # type: Optional[tvm.tensor.Tensor]
@@ -599,11 +608,11 @@ class BroadcastSchedule:
         if self._is_db:
             # pass double buffer error, avoid it in schedule
             # double buffer IR:
-            #' for i:a
-            #'   if i * 2 < cond_limit:
-            #'     do()
-            #'   if i * 2 + 1 < cond_limit:
-            #'     do()
+            # ' for i:a
+            # '   if i * 2 < cond_limit:
+            # '     do()
+            # '   if i * 2 + 1 < cond_limit:
+            # '     do()
             cond_limit = 2
         for tensor_i in self._broadcast_store_predicate:
             sch[self._get_ub_tensor(tensor_i)].set_store_predicate(self._compute_at_axis < cond_limit)
@@ -677,7 +686,7 @@ class BroadcastSchedule:
         for tensor_i, param in self._emit_insn_map.items():
             if len(param) > 2:
                 sch[tensor_i].emit_insn(param[0], param[2])
-            compile_broadcast_no_inline = (param[1] == "unified_broadcast" and \
+            compile_broadcast_no_inline = (param[1] == "unified_broadcast" and
                                            self._broadcast_axis_num.get(tensor_i, 0) > 1)
             if param[1] == "unknown_broadcast" or compile_broadcast_no_inline:
                 u_idx = 0
@@ -803,7 +812,7 @@ class BroadcastSchedule:
 
         for tensor_i in self._all_pre_node_broadcast:
             common_tensor = self._in_out_map[tensor_i] - \
-                    (self._all_pre_node_broadcast | self._broadcast_store_predicate)
+                            (self._all_pre_node_broadcast | self._broadcast_store_predicate)
             if len(common_tensor) > 0:
                 self._store_predicate_common_tensors.update(common_tensor)
 
@@ -827,7 +836,7 @@ class BroadcastSchedule:
                 _current_space = len(dependent_map) + 1
             for tensor_i in dependent_map.keys():
                 if tensor_i in self._absorbable_broadcast_tensors and \
-                    len(tensor_i.op.input_tensors) == 1 and tensor_i.op.input_tensors[0] in dependent_map:
+                        len(tensor_i.op.input_tensors) == 1 and tensor_i.op.input_tensors[0] in dependent_map:
                     _current_space -= 1
             if util.need_extent_node(_tensor) and _tensor not in self._compute_inline_broadcast:
                 _current_space += 1

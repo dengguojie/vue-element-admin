@@ -42,6 +42,33 @@ class Pattern:
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
 
 
+class ElewisePattern:
+    """
+    Elewise sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    E_0 = "E_0"
+
+
+class BroadcastPattern:
+    """
+    Broadcast sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    B_0 = "B_0"
+
+
+class ReducePattern:
+    """
+    Reduce sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    R_0 = "R_0"
+
+
 class CompileInfo:
     """
     Built-in Compilation Info Keys

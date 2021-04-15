@@ -23,13 +23,15 @@ from typing import Optional
 
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
-from tbe.dsl.base.operation import register_tiling_case
 
 from . import util
+from .computation import Computation
+from .constants import BroadcastPattern
 from .constants import CompileInfo
 from .constants import DTYPE_BYTE_MAPPING
 from .constants import Pattern
 
+DEFAULT = "default"
 COMMON = "common"
 BROADCAST = "broadcast"
 SCALAR = "scalar"
@@ -56,191 +58,193 @@ class TilingStrategy(Enum):
     EMPTY = auto()
 
 
-# noinspection PyUnusedLocal
-@register_tiling_case(pattern=Pattern.BROADCAST)
-def calc(outs, option=None):
-    """
-    :param outs:
-    :param option:
-    :return:
-    """
-    # ###############TILING KEY RULE################
-    # use int32, max value 2147483647
-    # 0~1: dim len
+# noinspection PyMethodMayBeStatic
+class BroadcastComputation(Computation):
+    def __init__(self, outs, option):
+        self.outs = outs
+        self.option = option
 
-    mode = operation.get_context().get("_mode")
-    redundant_coe = _get_option_v(option, "redundant_coe", 0)
+    def do_tiling_case(self):
+        mode = operation.get_context().get("_mode")
+        redundant_coe = self._get_option_v(self.option, "redundant_coe", 0)
 
-    def calc_base_key():
+        def calc_base_key():
+            if mode == SPECIAL:
+                pattern = operation.get_context().get_current_compute().get("_pattern")
+                _base_key = 200000000
+                base = 10000000
+                for axis in pattern:
+                    if axis == COMMON:
+                        _base_key += base
+                    if axis == BROADCAST:
+                        _base_key += (base * 2)
+                    base //= 10
+            elif mode == CONST:
+                _base_key = operation.get_context().get("_const_base_key")
+                if _base_key is None:
+                    _base_key = 100000000
+                else:
+                    _base_key += 1
+                operation.get_context().add("_const_base_key", _base_key)
+            elif mode == SPECIAL_SCALAR:
+                pattern = operation.get_context().get_current_compute().get("_pattern")
+                _base_key = 200000000
+                base = 10000000
+                for axis in pattern:
+                    if axis == SCALAR:
+                        _base_key += (base * 3)
+                    if axis == BROADCAST:
+                        _base_key += (base * 2)
+                    base //= 10
+            elif mode == EMPTY:
+                _base_key = EMPTY_KEY
+            else:
+                _base_key = 0
+            return _base_key
+
+        base_key = calc_base_key()
+        if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
+            cases = self._const_tiling(base_key)
+            for case in cases:
+                case["redundant_coe"] = redundant_coe
+            return cases
+
+        # db handle
+        enable_db_func = self._default_db_func
         if mode == SPECIAL:
             pattern = operation.get_context().get_current_compute().get("_pattern")
-            _base_key = 200000000
-            base = 10000000
-            for axis in pattern:
-                if axis == COMMON:
-                    _base_key += base
-                if axis == BROADCAST:
-                    _base_key += (base * 2)
-                base //= 10
-        elif mode == CONST:
-            _base_key = operation.get_context().get("_const_base_key")
-            if _base_key is None:
-                _base_key = 100000000
-            else:
-                _base_key += 1
-            operation.get_context().add("_const_base_key", _base_key)
-        elif mode == SPECIAL_SCALAR:
-            pattern = operation.get_context().get_current_compute().get("_pattern")
-            _base_key = 200000000
-            base = 10000000
-            for axis in pattern:
-                if axis == SCALAR:
-                    _base_key += (base*3)
-                if axis == BROADCAST:
-                    _base_key += (base * 2)
-                base //= 10
-        elif mode == EMPTY:
-            _base_key = EMPTY_KEY
-        else:
-            _base_key = 0
-        return _base_key
 
-    base_key = calc_base_key()
-    if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
-        cases = _const_tiling(base_key)
+            pattern = tuple(pattern) if pattern else None
+
+            if pattern == (COMMON,):
+                enable_db_func = self._pure_eletwise_db_func
+            elif pattern == (COMMON, BROADCAST):
+                enable_db_func = self._special_last_broadcast_db_func
+
+        outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
+        out = outs[0]
+        shape = util.shape_to_list(out.shape)
+        dim_len = len(shape)
+
+        if dim_len == 1:
+            cases = self._calc_one_dim(outs, base_key, enable_db_func)
+        else:
+            cases = self._calc_general(outs, base_key, enable_db_func)
+
         for case in cases:
             case["redundant_coe"] = redundant_coe
+
         return cases
 
-    # db handle
-    enable_db_func = _default_db_func
-    if mode == SPECIAL:
-        pattern = operation.get_context().get_current_compute().get("_pattern")
+    def get_sub_pattern(self):
+        return BroadcastPattern.B_0
 
-        pattern = tuple(pattern) if pattern else None
+    @classmethod
+    def get_instance(cls, outs, option):
+        return cls(outs, option)
 
-        if pattern == (COMMON,):
-            enable_db_func = _pure_eletwise_db_func
-        elif pattern == (COMMON, BROADCAST):
-            enable_db_func = _special_last_broadcast_db_func
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.BROADCAST]
 
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    out = outs[0]
-    shape = util.shape_to_list(out.shape)
-    dim_len = len(shape)
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
 
-    if dim_len == 1:
-        cases = _calc_one_dim(outs, base_key, enable_db_func)
-    else:
-        cases = _calc_general(outs, base_key, enable_db_func)
+    def _get_option_v(self, option, k, default_v=None):
+        # type: (Optional[Dict[str, Any]], str, Any) -> Any
+        return option.get(k, default_v) if option else default_v
 
-    for case in cases:
-        case["redundant_coe"] = redundant_coe
+    def _default_db_func(self, db_params=None):
+        return False
 
-    return cases
-
-
-def _get_option_v(option, k, default_v=None):
-    # type: (Optional[Dict[str, Any]], str, Any) -> Any
-
-    return option.get(k, default_v) if option else default_v
-
-
-def _default_db_func(db_params=None):
-    return False
-
-
-def _pure_eletwise_db_func():
-    return True
-
-
-def _special_last_broadcast_db_func(db_params):
-
-    if db_params.get("ub_tiling_axis") == (db_params.get("dim_len") - 1):
+    def _pure_eletwise_db_func(self):
         return True
 
-    return False
+    def _special_last_broadcast_db_func(self, db_params):
 
+        if db_params.get("ub_tiling_axis") == (db_params.get("dim_len") - 1):
+            return True
 
-def _const_tiling(base_key):
-    cases = [{"key": base_key, "tiling_strategy": TilingStrategy.CONST}]
-    return cases
+        return False
 
+    def _const_tiling(self, base_key):
+        cases = [{"key": base_key, "tiling_strategy": TilingStrategy.CONST}]
+        return cases
 
-def _calc_one_dim(outs, base_key, enable_db_func=_default_db_func):
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    out = outs[0]
-    dtype = out.dtype
+    def _calc_one_dim(self, outs, base_key, enable_db_func=_default_db_func):
+        outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
+        out = outs[0]
+        dtype = out.dtype
 
-    # schedule in var bound
-    c_bounds = {
-        0.125: (1, 32767),
-        1: (1, 32767),
-        2: (1, 32767),
-        4: (1, 16383),
-        8: (1, 8191),
-    }
+        # schedule in var bound
+        c_bounds = {
+            0.125: (1, 32767),
+            1: (1, 32767),
+            2: (1, 32767),
+            4: (1, 16383),
+            8: (1, 8191),
+        }
 
-    cases = [{"key": base_key,
-              "block_tiling_axis": 0,
-              "ub_tiling_axis": 0,
-              "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
-              "tiling_strategy": TilingStrategy.ONE_CUT,
-              "is_need_db": False,
-              "is_one_dim": True
-              }]
+        cases = [{"key": base_key,
+                  "block_tiling_axis": 0,
+                  "ub_tiling_axis": 0,
+                  "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
+                  "tiling_strategy": TilingStrategy.ONE_CUT,
+                  "is_need_db": False,
+                  "is_one_dim": True
+                  }]
 
-    if enable_db_func():
-        cases.append({"key": base_key + DB_KEY,
-                      "block_tiling_axis": 0,
-                      "ub_tiling_axis": 0,
-                      "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
-                      "tiling_strategy": TilingStrategy.ONE_CUT,
-                      "is_need_db": True,
-                      "is_one_dim": True
-                      })
+        if enable_db_func():
+            cases.append({"key": base_key + DB_KEY,
+                          "block_tiling_axis": 0,
+                          "ub_tiling_axis": 0,
+                          "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
+                          "tiling_strategy": TilingStrategy.ONE_CUT,
+                          "is_need_db": True,
+                          "is_one_dim": True
+                          })
 
-    return cases
+        return cases
 
+    def _calc_general(self, outs, base_key, enable_db_func=_default_db_func):
+        outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
+        cases = []
+        out = outs[0]
+        shape = util.shape_to_list(out.shape)
+        dim_len = len(shape)
 
-def _calc_general(outs, base_key, enable_db_func=_default_db_func):
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    cases = []
-    out = outs[0]
-    shape = util.shape_to_list(out.shape)
-    dim_len = len(shape)
+        # methodology 1:
+        # general, no split: no block tiling, no ub tiling, no db
+        cases.append({"key": base_key, "tiling_strategy": TilingStrategy.NONE_CUT})
 
-    # methodology 1:
-    # general, no split: no block tiling, no ub tiling, no db
-    cases.append({"key": base_key, "tiling_strategy": TilingStrategy.NONE_CUT})
-
-    # methodology 2:
-    # split special axis for block tiling and ub tiling
-    # block tiling: fused the axis(which before multi-core axis)
-    # and multi-core axis
-    # ub tiling axis >= block tiling axis
-    base = base_key + 1
-    for i in range(dim_len):
-        for j in range(i, dim_len):
-            cases.append({
-                "key": base + i * dim_len + j,
-                "block_tiling_axis": i,
-                "ub_tiling_axis": j,
-                "tiling_strategy": TilingStrategy.ONE_CUT,
-            })
-
-            db_params = {"ub_tiling_axis": j, "dim_len": dim_len}
-            if enable_db_func(db_params):
+        # methodology 2:
+        # split special axis for block tiling and ub tiling
+        # block tiling: fused the axis(which before multi-core axis)
+        # and multi-core axis
+        # ub tiling axis >= block tiling axis
+        base = base_key + 1
+        for i in range(dim_len):
+            for j in range(i, dim_len):
                 cases.append({
-                    "key": base + i * dim_len + j + DB_KEY,
+                    "key": base + i * dim_len + j,
                     "block_tiling_axis": i,
                     "ub_tiling_axis": j,
                     "tiling_strategy": TilingStrategy.ONE_CUT,
-                    "is_need_db": True,
-                    "is_one_dim": False
                 })
 
-    return cases
+                db_params = {"ub_tiling_axis": j, "dim_len": dim_len}
+                if enable_db_func(db_params):
+                    cases.append({
+                        "key": base + i * dim_len + j + DB_KEY,
+                        "block_tiling_axis": i,
+                        "ub_tiling_axis": j,
+                        "tiling_strategy": TilingStrategy.ONE_CUT,
+                        "is_need_db": True,
+                        "is_one_dim": False
+                    })
+
+        return cases
 
 
 def _pre_build(schedules_list):
@@ -274,9 +278,9 @@ def _pre_build(schedules_list):
                 if axis == COMMON:
                     _pattern_key += base
                 elif axis == BROADCAST:
-                    _pattern_key += (base*2)
+                    _pattern_key += (base * 2)
                 else:
-                    _pattern_key += (base*3)
+                    _pattern_key += (base * 3)
         return str(_pattern_key).ljust(3, '0')
 
     # add build config
@@ -302,13 +306,13 @@ def _pre_build(schedules_list):
         is_const_shapes = True
         operation.add_compile_info_inner(CompileInfo.CONST_SHAPES, const_shapes)
         operation.add_compile_info_inner(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
-        flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
+        flag_info = [only_const_tiling, is_const_shapes, support_broadcast,
                      use_special_pattern, support_absorbable_broadcast, unknown_rank]
         operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
         return
     else:
         is_const_shapes = False
-    flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
+    flag_info = [only_const_tiling, is_const_shapes, support_broadcast,
                  use_special_pattern, support_absorbable_broadcast, unknown_rank]
     operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
 

@@ -18,17 +18,17 @@ elewise tiling case
 from enum import Enum  # pylint: disable=E0611
 from enum import auto
 from typing import Any
-from typing import Dict
-from typing import Optional
 
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import register_build_pointcut
-from tbe.dsl.base.operation import register_tiling_case
 
+from .computation import Computation
 from .constants import CompileInfo
 from .constants import DTYPE_BYTE_MAPPING
+from .constants import ElewisePattern
 from .constants import Pattern
 
+DEFAULT = "default"
 SPECIAL = "special"
 COMMON = "common"
 CONST = "const"
@@ -49,111 +49,116 @@ class TilingStrategy(Enum):
     EMPTY = auto()
 
 
-# noinspection PyUnusedLocal
-@register_tiling_case(pattern=Pattern.ELEMWISE)
-def calc(outs, option=None):
-    """
-    :param outs:
-    :param option:
-    :return:
-    """
-    # ###############TILING KEY RULE################
-    # use int32, max value 2147483647
-    # 0~1: dim len
+# noinspection PyMethodMayBeStatic
+class ElewiseComputation(Computation):
+    def __init__(self, outs, option):
+        self.outs = outs
+        self.option = option
 
-    mode = operation.get_context().get("_mode")
-    redundant_coe = _get_option_v(option, "redundant_coe", 0)
+    def do_tiling_case(self):
+        mode = operation.get_context().get("_mode")
+        redundant_coe = self._get_option_v("redundant_coe", 0)
 
-    def calc_base_key():
-        if mode == SPECIAL:
-            _base_key = 210000000
-        elif mode == CONST:
-            _base_key = operation.get_context().get("_const_base_key")
-            if _base_key is None:
-                _base_key = 100000000
+        def calc_base_key():
+            if mode == SPECIAL:
+                _base_key = 210000000
+            elif mode == CONST:
+                _base_key = operation.get_context().get("_const_base_key")
+                if _base_key is None:
+                    _base_key = 100000000
+                else:
+                    _base_key += 1
+                operation.get_context().add("_const_base_key", _base_key)
+            elif mode == EMPTY:
+                _base_key = EMPTY_KEY
             else:
-                _base_key += 1
-            operation.get_context().add("_const_base_key", _base_key)
-        elif mode == EMPTY:
-            _base_key = EMPTY_KEY
-        else:
-            _base_key = 0
-        return _base_key
+                _base_key = 0
+            return _base_key
 
-    base_key = calc_base_key()
-    if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
-        cases =  _const_tiling(base_key)
+        base_key = calc_base_key()
+        if mode in (CONST, EMPTY) or operation.get_context().get_mode() == STATIC:
+            cases = self._const_tiling(base_key)
+            for case in cases:
+                case["redundant_coe"] = redundant_coe
+            return cases
+
+        # db handle
+        enable_db_func = self._default_db_func
+        if mode == SPECIAL:
+            enable_db_func = self._pure_eletwise_db_func
+
+        outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
+        cases = self._calc_elewise(outs, base_key, enable_db_func)
+
         for case in cases:
             case["redundant_coe"] = redundant_coe
+
         return cases
 
-    # db handle
-    enable_db_func = _default_db_func
-    if mode == SPECIAL:
-        enable_db_func = _pure_eletwise_db_func
+    def get_sub_pattern(self):
+        return ElewisePattern.E_0
 
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    cases = _calc_elewise(outs, base_key, enable_db_func)
+    @classmethod
+    def get_instance(cls, outs, option):
+        return cls(outs, option)
 
-    for case in cases:
-        case["redundant_coe"] = redundant_coe
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.ELEMWISE]
 
-    return cases
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
 
+    def _get_option_v(self, k, default_v=None):
+        # type: (str, Any) -> Any
+        return self.option.get(k, default_v) if self.option else default_v
 
-def _get_option_v(option, k, default_v=None):
-    # type: (Optional[Dict[str, Any]], str, Any) -> Any
+    def _default_db_func(self, db_params=None):
+        return False
 
-    return option.get(k, default_v) if option else default_v
+    def _pure_eletwise_db_func(self):
+        return True
 
+    def _const_tiling(self, base_key):
+        cases = [{"key": base_key, "tiling_strategy": TilingStrategy.CONST}]
+        return cases
 
-def _default_db_func(db_params=None):
-    return False
+    def _calc_elewise(self, outs, base_key, enable_db_func=_default_db_func):
+        outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
+        out = outs[0]
+        dtype = out.dtype
 
+        # schedule in var bound
+        c_bounds = {
+            0.125: (1, 32767),
+            1: (1, 32767),
+            2: (1, 32767),
+            4: (1, 16383),
+            8: (1, 8191),
+        }
 
-def _pure_eletwise_db_func():
-    return True
+        cases = [{"key": base_key,
+                  "block_tiling_axis": 0,
+                  "ub_tiling_axis": 0,
+                  "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
+                  "tiling_strategy": TilingStrategy.ONE_CUT,
+                  "is_need_db": False,
+                  "is_one_dim": True
+                  }]
 
+        if enable_db_func():
+            cases.append({"key": base_key + DB_KEY,
+                          "block_tiling_axis": 0,
+                          "ub_tiling_axis": 0,
+                          "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
+                          "tiling_strategy": TilingStrategy.ONE_CUT,
+                          "is_need_db": True,
+                          "is_one_dim": True
+                          })
 
-def _const_tiling(base_key):
-    cases = [{"key": base_key, "tiling_strategy": TilingStrategy.CONST}]
-    return cases
+        return cases
 
-
-def _calc_elewise(outs, base_key, enable_db_func=_default_db_func):
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    out = outs[0]
-    dtype = out.dtype
-
-    # schedule in var bound
-    c_bounds = {
-        0.125: (1, 32767),
-        1: (1, 32767),
-        2: (1, 32767),
-        4: (1, 16383),
-        8: (1, 8191),
-    }
-
-    cases = [{"key": base_key,
-              "block_tiling_axis": 0,
-              "ub_tiling_axis": 0,
-              "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
-              "tiling_strategy": TilingStrategy.ONE_CUT,
-              "is_need_db": False,
-              "is_one_dim": True
-              }]
-
-    if enable_db_func():
-        cases.append({"key": base_key + DB_KEY,
-                      "block_tiling_axis": 0,
-                      "ub_tiling_axis": 0,
-                      "ub_factor_bound": c_bounds[DTYPE_BYTE_MAPPING[dtype]],
-                      "tiling_strategy": TilingStrategy.ONE_CUT,
-                      "is_need_db": True,
-                      "is_one_dim": True
-                      })
-
-    return cases
 
 def _pre_build(schedules_list):
     def _flatten_sch(_schedules: list):
@@ -208,13 +213,13 @@ def _pre_build(schedules_list):
         is_const_shapes = True
         operation.add_compile_info_inner(CompileInfo.CONST_SHAPES, const_shapes)
         operation.add_compile_info_inner(CompileInfo.CONST_BLOCK_DIMS, const_block_dims)
-        flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
+        flag_info = [only_const_tiling, is_const_shapes, support_broadcast,
                      use_special_pattern, support_absorbable_broadcast, unknown_rank]
         operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
         return
     else:
         is_const_shapes = False
-    flag_info = [only_const_tiling, is_const_shapes, support_broadcast, \
+    flag_info = [only_const_tiling, is_const_shapes, support_broadcast,
                  use_special_pattern, support_absorbable_broadcast, unknown_rank]
     operation.add_compile_info_inner(CompileInfo.FLAG_INFO, flag_info)
 

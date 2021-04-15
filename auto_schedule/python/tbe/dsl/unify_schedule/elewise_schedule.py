@@ -24,17 +24,20 @@ from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import get_compile_info
-from tbe.dsl.base.operation import register_schedule
 
 from . import util
 from .constants import CompileInfo
 from .constants import DTYPE_BYTE_MAPPING
+from .constants import ElewisePattern
 from .constants import FAKE_NODE_TAG
 from .constants import INSN_MAPPING
 from .constants import Pattern
 from .constants import SUPPORT_SCALAR_INSNS
 from .constants import TERNARY_INSNS
 from .elewise_tilingcase import TilingStrategy
+from .schedule import Schedule
+
+DEFAULT = "default"
 
 # block size in D architecture
 BLOCK_SIZE_BYTE = 32
@@ -58,21 +61,27 @@ TYPE_DOUNDS = {
 }
 
 
-@register_schedule(pattern=Pattern.ELEMWISE)
-def schedule(outs, tiling_case):
-    """
-    :param outs:
-    :param tiling_case:
-    :return:
-    """
-    return ElewiseSchedule(outs, tiling_case).do_schedule()
-
-
 # 'pylint: disable=R0902, R0903
-class ElewiseSchedule:
+class ElewiseSchedule(Schedule):
     """
     ElewiseSchedule
     """
+
+    @classmethod
+    def get_instance(cls, outs, tiling_case):
+        return cls(outs, tiling_case)
+
+    @classmethod
+    def get_supported_soc(cls):
+        return [DEFAULT]
+
+    @classmethod
+    def get_supported_pattern(cls):
+        return [Pattern.ELEMWISE]
+
+    @classmethod
+    def get_supported_sub_pattern(cls):
+        return [ElewisePattern.E_0]
 
     def __init__(self, outs, tiling_case):
         self._out = None  # type: Optional[tvm.tensor.Tensor]
@@ -441,7 +450,6 @@ class ElewiseSchedule:
         for tensor_i, param in self._compute_at_map.items():
             sch[tensor_i].compute_at(sch[param[0]], param[1])
 
-
     def _calc_emit_insn(self):
         def get_insn(tensor_):
             tag = tensor_.op.tag
@@ -587,7 +595,7 @@ class ElewiseSchedule:
                 _need_space.append(_r_coexisting(_tensor_i))
 
             _current_space = _calc_current_space(_tensor)
-            
+
             # correct ub size in vcmp or vsel or vcmpsel
             _correct_ub_size_by_cmp_sel(_tensor)
 
