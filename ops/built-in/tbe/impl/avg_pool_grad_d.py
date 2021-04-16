@@ -91,8 +91,7 @@ def _parameter_check(shape_in, shape_k, shape_out, dtype, strides, padding):
                                                           'input must be equal with out on N-dim and C-dim', 'input',
                                                           shape_in)
     if shape_in[DIM_C1] != shape_k[DIM_W_C1]:
-        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
-                                                          'input must be equal with kernel on C-dim',
+        error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d', 'input must be equal with kernel on C-dim',
                                                           'input', shape_in)
     if shape_k[DIM_W_H] > 255 or shape_k[DIM_W_W] > 255:
         error_manager_vector.raise_err_check_params_rules('avg_pool_grad_d',
@@ -265,7 +264,7 @@ def avg_pool_grad_compute(input_shape, weight, out, vealuemean, k_sizes, strides
 
 
 # pylint: disable=too-many-locals,too-many-locals
-def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
+def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride, l1_load_kernel):
     """
     tiling plan, cut of batch and ci;
                  cut of output height and weight;
@@ -275,6 +274,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     filter_shape: C1, Hf*Wf, 1, C0, C0
     dout_shape: N, Co1, 1, Ho, Wo, C0
     stride: strideH, strideW
+    l1_load_kernel: whether to move the kernel to L1
     """
     # float16
     data_size = 2
@@ -291,6 +291,7 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     dilated_pad_top = res.op.attrs['dilated_pad'][0].value
     dilated_pad_bottom = res.op.attrs['dilated_pad'][1].value
     k_height = res.op.attrs['weight_height'].value
+    w_height = res.op.attrs['weight_width'].value
 
     # tiling in UB
     # out : out_n, out_cgroup, out_c1, out_h, out_w, dout_c0
@@ -312,24 +313,39 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     # It is certain that max_h_in_l1 is grater
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. L1 SIZE = 1M, UB SIZE = 256K;
-    max_h_in_ub = ((ub_size // data_size - (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
-                   (stride[0] - 1) * dila_w) // (3 * out_w + stride[0] * dila_w)
-    tile_dile_h_ub = max_h_in_ub * stride[0] - (stride[0] - 1)
-    tile_hd = tile_dile_h_ub
-    tile_input_h = tile_hd + dilated_pad_top + dilated_pad_bottom - k_height + 1
     max_tile_input_h = l1_size // (input_w * BLOCK_SIZE * 2)
     dout_l1_size = input_w * (k_height + stride[0]) * BLOCK_SIZE * 2
     tile_k_o = dout_l1_size // l1_size + 1 if dout_l1_size > l1_size else 0
-    tile_input_h = min(tile_input_h, max_tile_input_h)
-    if tile_input_h < 1:
-        tile_input_h = 1
-        tile_hd = tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom
-        tile_dile_h_ub = tile_hd
-    # if tile_input_h > input_h, input_h no tiling
-    if tile_input_h >= input_h:
-        tile_input_h = input_h
-        tile_hd = tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom
-        tile_dile_h_ub = tile_hd
+
+    max_h_in_ub = ((ub_size // data_size - (max_l0a_m * BLOCK_SIZE)) // BLOCK_SIZE +
+                   (stride[0] - 1) * dila_w) // (3 * out_w + stride[0] * dila_w)
+
+    def _compute_tile_h(max_h_in_ub):
+        tile_dile_h_ub = max_h_in_ub * stride[0] - (stride[0] - 1)
+        if k_height > stride[0]:
+            tile_input_h = (max_h_in_ub - 1) * stride[0] + k_height
+        else:
+            tile_input_h = max_h_in_ub * stride[0]
+
+        tile_input_h = min(tile_input_h, max_tile_input_h)
+        if tile_input_h < 1:
+            tile_input_h = 1
+            tile_dile_h_ub = tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom
+
+        # if tile_input_h > input_h, input_h no tiling
+        if tile_input_h >= input_h:
+            tile_input_h = input_h
+            tile_dile_h_ub = tile_input_h - 1 + k_height - dilated_pad_top - dilated_pad_bottom
+
+        return tile_input_h, tile_dile_h_ub
+
+    tile_input_h, tile_dile_h_ub = _compute_tile_h(max_h_in_ub)
+
+    out_h = tile_input_h + k_height - 1
+    dila_h = out_h * stride[0] - (stride[0] - 1)
+    if dila_h * dila_w * BLOCK_SIZE * data_size > l1_size:
+        tile_input_h, tile_dile_h_ub = _compute_tile_h(1)
+
     # tiling in L0;
     tile_m = min(max_l0a_m, _ceil(tile_input_h * input_w))
     tile_k = 1
@@ -339,7 +355,12 @@ def _avg_pool_grad_tiling(input_w, input_h, out_shape, res, stride):
     if res_l1 < input_h * input_w:
         res_l1 = max(res_l1 // BLOCK_SIZE * BLOCK_SIZE, BLOCK_SIZE)
 
-    return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o
+    out_h = tile_input_h + k_height - 1
+    dila_h = out_h * stride[0] - (stride[0] - 1)
+    if (k_height * w_height * BLOCK_SIZE * BLOCK_SIZE * data_size + dila_h * dila_w * BLOCK_SIZE * data_size) > l1_size:
+        l1_load_kernel = False
+
+    return res_l1, tile_input_h, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o, l1_load_kernel
 
 
 # pylint: disable=too-many-locals,too-many-statements
@@ -403,8 +424,8 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     mad_res_shape = [int(i.value) for i in mad_res.shape]
     res_block_n, res_block_cgroup, _, _, _ = mad_res_shape
     #tiling
-    res_l1, _, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o = _avg_pool_grad_tiling(input_w, input_h,
-                                                                                        dout_shape, res, stride)
+    res_l1, _, tile_dile_h_ub, tile_m, tile_k, tile_n, tile_k_o, l1_load_kernel = _avg_pool_grad_tiling(
+        input_w, input_h, dout_shape, res, stride, l1_load_kernel)
 
     mad_cc_n_cut_o, mad_cc_n_cut_i = s[mad_cc].split(mad_cc_axis_n, factor=1)
     mad_cc_mcut_o, mad_cc_mcut_i = s[mad_cc].split(mad_cc_axis_howomad, factor=tile_m)
@@ -414,8 +435,8 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     mad_cc_ncut_o, mad_cc_ncut_i = s[mad_cc].split(mad_cc_axis_co1, factor=tile_n)
     if tile_k_o != 0:
         s[mad_cc].reorder(mad_cc_kcut_o_o, mad_cc_n_cut_o, mad_cc_axis_cg, mad_cc_ncut_o, mad_cc_mcut_o,
-                          mad_cc_kcut_o_i, mad_cc_n_cut_i,
-                          mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0, mad_cc_kcut_i, mad_cc.op.reduce_axis[1])
+                          mad_cc_kcut_o_i, mad_cc_n_cut_i, mad_cc_ncut_i, mad_cc_mcut_i, mad_cc_axis_co0, mad_cc_kcut_i,
+                          mad_cc.op.reduce_axis[1])
         s[dout_ca].compute_at(s[mad_cc], mad_cc_kcut_o_i)
         s[weight_cb].compute_at(s[mad_cc], mad_cc_kcut_o_i)
     else:
@@ -491,9 +512,13 @@ def _avg_pool_grad_schedule(res, l1_load_kernel):
     s[weight_cbuf].emit_insn(weight_cbuf.op.axis[0], tbe_platform.DMA_COPY)
     s[weight_cb].emit_insn(weight_cb.op.axis[3], tbe_platform.DMA_COPY)
     s[mad_ubuf].emit_insn(mad_ubuf_n_cut_i, tbe_platform.DMA_COPY)
-    mad_dict = {"mad_pattern": tbe_platform.CONV_MODE,
-                "k_outer": [mad_cc_kcut_o, mad_cc_kcut_o_o]} if tile_k_o != 0 else {
-        "mad_pattern": tbe_platform.CONV_MODE, "k_outer": mad_cc_kcut_o}
+    mad_dict = {
+        "mad_pattern": tbe_platform.CONV_MODE,
+        "k_outer": [mad_cc_kcut_o, mad_cc_kcut_o_o]
+    } if tile_k_o != 0 else {
+        "mad_pattern": tbe_platform.CONV_MODE,
+        "k_outer": mad_cc_kcut_o
+    }
     s[mad_cc].emit_insn(mad_cc_n_cut_i, tbe_platform.MAD, mad_dict)
     s[res].emit_insn(conv_n_cut_i, tbe_platform.DMA_COPY)
 
