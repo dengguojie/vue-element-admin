@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from topi import generic
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+from tbe.common.utils.errormgr import error_manager_cube as err_man_cube
 
 NoneType = type(None)
 
@@ -223,12 +224,10 @@ def fully_connection_check_rule(x, w, compress_index, b, offset_w, y,
 
 
     if shape_x[-1] not in (16, 32):
-        error_info = {}
-        error_info['errCode'] = 'E81012'
-        error_info['op_name'] = 'fully_connection'
-        raise RuntimeError(error_info, "In op[%s],for axis = 1: C0 must be 16 when non-quant condition!, "
-                        "C0 must be 32 when quant condition! for axis = 2: the last dim must be 16!"
-                        % (error_info['op_name']))
+        err_man_cube.raise_err_specific("compress_fully_connection",
+                                        "for axis = 1: C0 must be 16 when non-quant condition!, \
+                                        C0 must be 32 when quant condition! \
+                                        for axis = 2: the last dim must be 16!")
 
     para_check.check_dtype(dtype_x, ['float16', 'int8'], param_name="x")
     para_check.check_format(format_x, ('NC1HWC0', 'FRACTAL_NZ', 'FRACTAL_Z'), param_name="x")
@@ -243,27 +242,26 @@ def fully_connection_check_rule(x, w, compress_index, b, offset_w, y,
     para_check.check_format(format_w, ["FRACTAL_Z"], param_name="w")
     # format shape info
     if dtype_x == 'float16' and (shape_w[2] != 16 or shape_w[3] != 16):
-        raise RuntimeError("for no quant, w last two dims must be 16!")
+        err_man_cube.raise_err_three_paras("E62305", 
+                                           "compress_fully_connection",
+                                           "w last two dims for no quant", 
+                                           "16", "shape_w={}".format(shape_w))
     if dtype_x == 'int8' and (shape_w[2] != 16 or shape_w[3] != 32):
-        raise RuntimeError("for quant, w last two dims must be 16 and 32!")
+        err_man_cube.raise_err_three_paras("E62305", 
+                                           "compress_fully_connection",
+                                           "w last two dims for quant", 
+                                           "16 or 32", "shape_w={}".format(shape_w))
 
     kn_shape = shape_w[0] * shape_w[3]
     n_shape = shape_w[1] * shape_w[2]
 
     # Check shape
     if km_shape != kn_shape:
-        error_info = {}
-        error_info['errCode'] = 'E80017'
-        error_info['op_name'] = 'fully_connection'
-        error_info['param_name1'] = "km_shape"
-        error_info['param_name2'] = "kn_shape"
-        error_info['param1_shape'] = km_shape
-        error_info['param2_shape'] = kn_shape
-        raise RuntimeError(error_info, "In op[%s], the parameter[%s][%s] "
-                                      "are not equal in shape with parameter[%s][%s]"
-                           % (error_info['op_name'], error_info['param_name1'], \
-                              error_info['param1_shape'], error_info['param_name2'], \
-                              error_info['param2_shape']))
+        err_man_cube.raise_err_three_paras("E62305", 
+                                           "compress_fully_connection",
+                                           "km_shape and kn_shape", "equal", 
+                                           "km_shape={}, kn_shape={}".format(km_shape, kn_shape))
+
     # b info
     if b is not None:
         shape_b = b.get('shape')
@@ -275,11 +273,15 @@ def fully_connection_check_rule(x, w, compress_index, b, offset_w, y,
         para_check.check_dtype(dtype_b, ['float16', 'int32'], param_name="b")
         para_check.check_format(format_b, ('NC1HWC0'), param_name="b")
         if b_size != n_shape:
-            raise RuntimeError("For bias, the C1*C0 must equal to aligned_Cout!")
+            err_man_cube.raise_err_three_paras("E62305", 
+                                               "compress_fully_connection",
+                                               "b_size and n_shape", "equal", 
+                                               "b_size={}, n_shape={}".format(b_size, n_shape))
 
     # axis info
     if axis not in (1, 2):
-        raise RuntimeError("axis only support 1, 2 when reduce from channel!")
+        err_man_cube.raise_err_one_para("E62006", "compress_fully_connection", 
+                                        "axis only support 1, 2 when reduce from channel!")
 
 
 @fusion_manager.register("compress_fully_connection")
@@ -332,7 +334,8 @@ def compress_fully_connection_compute(
     if format_out is not None:
         out_format = format_out
     if offset_w is not None:
-        raise RuntimeError("For CompressFullyConnection, tensor offset_w must be None!")
+        err_man_cube.raise_err_one_para("E62006", "compress_fully_connection", 
+                                        "tensor offset_w must be None!")
 
     para_dict = {
             "trans_a": trans_a,
@@ -439,7 +442,8 @@ def compress_fully_connection(x, w, compress_index, b, offset_w, y,
     if offset_w is None:
         tensor_offset_w = None
     else:
-        raise RuntimeError("offset_w must be None!")
+        err_man_cube.raise_err_one_para("E62006", "compress_fully_connection", 
+                                        "tensor offset_w must be None!")
 
     index_size = tvm.var("index_size", dtype="int32")
     compress_index = tvm.placeholder([index_size, ],

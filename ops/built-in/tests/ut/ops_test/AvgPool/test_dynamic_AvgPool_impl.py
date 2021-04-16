@@ -242,6 +242,135 @@ case20 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC
          "expect": RuntimeError,
          "support_expect": True}
 
+case21 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [3,1,-1,2,1], [3,1,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case22 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [3,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case23 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [3,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case24 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case25 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,2,-1,2], [1,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case26 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,2,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case27 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,-1,2], [3,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case28 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,2,-1,2], [1,1,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
+case29 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,-1,2], [1,2,1,1], "FRACTAL_Z", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+case30 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,32,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,-1,2], [1,1,1,1], "VALID", "FRACTAL_Z"],
+         "expect": RuntimeError,
+         "support_expect": True}
+case31 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,2,2], [1,1,1,1], "VALID", "NCHW", 1],
+         "expect": RuntimeError,
+         "support_expect": True}
+case32 = {"params": [{"shape": (1,2,-1,-1,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1,-1,-1,-1), "ori_format": "NCHW",
+                     "range":[(1, 1), (32, 32), (3, 100), (3, 100)]},
+                    {"shape": (8,1,16,16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (32, 1, 2, 2),"ori_format": "NCHW",
+                     "range":[(32, 32), (1, 1), (2, 2), (2, 2)]},
+                    None,
+                    {"shape": (1, 2, -1, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 32, -1, -1),"ori_format": "FRACTAL_Z",
+                     "range":[(1, 1), (32, 32), (2, 99), (2, 99)]},
+                    [1,1,2,2], [1,1,1,1], "VALID", "NCHW"],
+         "expect": RuntimeError,
+         "support_expect": True}
+
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
@@ -262,6 +391,18 @@ ut_case.add_case(["Ascend910A"], case17)
 ut_case.add_case(["Ascend910A"], case18)
 ut_case.add_case(["Ascend910A"], case19)
 ut_case.add_case(["Ascend910A"], case20)
+ut_case.add_case(["Ascend910A"], case21)
+ut_case.add_case(["Ascend910A"], case22)
+ut_case.add_case(["Ascend910A"], case23)
+ut_case.add_case(["Ascend910A"], case24)
+ut_case.add_case(["Ascend910A"], case25)
+ut_case.add_case(["Ascend910A"], case26)
+ut_case.add_case(["Ascend910A"], case27)
+ut_case.add_case(["Ascend910A"], case28)
+ut_case.add_case(["Ascend910A"], case29)
+ut_case.add_case(["Ascend910A"], case30)
+ut_case.add_case(["Ascend910A"], case31)
+ut_case.add_case(["Ascend910A"], case32)
 
 
 if __name__ == '__main__':

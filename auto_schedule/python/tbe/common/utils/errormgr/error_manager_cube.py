@@ -75,13 +75,22 @@ def raise_err_three_paras(err_code, op_name, para1, para2, para3):
     E62507: "In op[%s], the [%s] dim of Filter(after dilation) must be less than
             the corresponding dim of input(after padding), they are [%s] and [%s]."
     """
-    args_dict = {
-        "errCode": err_code,
-        "op_name": op_name,
-        "para1": para1,
-        "para2": para2,
-        "para3": para3
-    }
+    if err_code == "E62305":
+        args_dict = {
+            "errCode": err_code,
+            "op_name": op_name,
+            "param_name": para1,
+            "expect_value": para2,
+            "value": para3
+        }
+    else:
+        args_dict = {
+            "errCode": err_code,
+            "op_name": op_name,
+            "para1": para1,
+            "para2": para2,
+            "para3": para3
+        }
     msg = get_error_message(args_dict)
     raise RuntimeError(args_dict, msg)
 

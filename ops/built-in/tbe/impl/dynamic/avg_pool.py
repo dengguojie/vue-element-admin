@@ -25,7 +25,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVG_KERNEL_SIZE = 20 # maximum ksize
 MAX_CUBE_STRIDE = 63 # maximum cube stride
