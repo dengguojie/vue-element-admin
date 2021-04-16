@@ -44,7 +44,7 @@ class RnnGenMask(object):
         self.batch_size = int(self.shape[0])
         self.hidden_size = hidden_size
 
-        self.block = 8
+        self.block = 16 # for float16
         self.hidden_size_block = (self.hidden_size + self.block - 1) // self.block * self.block
         self.repeat = self.hidden_size_block // self.block
 
@@ -65,7 +65,7 @@ class RnnGenMask(object):
     def para_rule(self):
         """para_rule"""
         para_check.check_dtype(self.dtype, ("int32"), param_name="seq_length")
-        para_check.check_dtype(self.dtype_out, ("int32"), param_name="seq_mask")
+        para_check.check_dtype(self.dtype_out, ("float16"), param_name="seq_mask")
 
         para_check.check_shape(self.shape, param_name="seq_length")
         para_check.check_shape(self.shape_out, param_name="seq_mask")

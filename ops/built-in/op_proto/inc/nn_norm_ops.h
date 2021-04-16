@@ -1453,12 +1453,12 @@ REG_OP(PoissonNllLoss)
  *
  * 
  * @par Output:
- * y: A mutable Tensor of type int32, with the shape of [num_step, batch_size, hidden_size]. \n
+ * y: A mutable Tensor of type float16, with the shape of [num_step, batch_size, hidden_size]. \n
  *
  */
 REG_OP(RnnGenMask)
     .INPUT(seq_length, TensorType({DT_INT32}))
-    .OUTPUT(seq_mask, TensorType({DT_INT32}))
+    .OUTPUT(seq_mask, TensorType({DT_FLOAT16}))
     .REQUIRED_ATTR(num_step, Int)
     .REQUIRED_ATTR(hidden_size, Int)
     .OP_END_FACTORY_REG(RnnGenMask)

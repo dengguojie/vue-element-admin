@@ -19,7 +19,7 @@ ut_case = OpUT("rnn_gen_mask")
 ut_case.add_case("all", {
     "params": [{"shape": (32,), "dtype": "int32", "format": "ND", "ori_shape": (32,),"ori_format": "ND",
                 "param_type":"input"},
-                {"shape": (6, 32, 16), "dtype": "int32", "format": "ND", "ori_shape": (6, 32, 16),"ori_format": "ND",
+                {"shape": (6, 32, 16), "dtype": "float16", "format": "ND", "ori_shape": (6, 32, 16),"ori_format": "ND",
                 "param_type":"outputput"}, 6, 16],
     "case_name": "test_1",
     "expect": "success",
@@ -29,7 +29,7 @@ ut_case.add_case("all", {
 ut_case.add_case("all", {
     "params": [{"shape": (32,), "dtype": "int32", "format": "ND", "ori_shape": (32,),"ori_format": "ND",
                 "param_type":"input"},
-                {"shape": (6, 32, 7), "dtype": "int32", "format": "ND", "ori_shape": (6, 32, 7),"ori_format": "ND",
+                {"shape": (6, 32, 7), "dtype": "float16", "format": "ND", "ori_shape": (6, 32, 7),"ori_format": "ND",
                 "param_type":"outputput"}, 6, 7],
     "case_name": "test_2",
     "expect": "success",
@@ -39,7 +39,7 @@ ut_case.add_case("all", {
 ut_case.add_case("all", {
     "params": [{"shape": (12,), "dtype": "int32", "format": "ND", "ori_shape": (12,),"ori_format": "ND",
                 "param_type":"input"},
-                {"shape": (6, 12, 7), "dtype": "int32", "format": "ND", "ori_shape": (6, 12, 7),"ori_format": "ND",
+                {"shape": (6, 12, 7), "dtype": "float16", "format": "ND", "ori_shape": (6, 12, 7),"ori_format": "ND",
                 "param_type":"outputput"}, 6, 7],
     "case_name": "test_3",
     "expect": "success",

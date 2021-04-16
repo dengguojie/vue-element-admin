@@ -1639,18 +1639,12 @@ IMPLEMT_COMMON_INFERFUNC(RnnGenMaskInferShape) {
   std::vector<int64_t> dim_mask = {num_step, batch_size, hidden_size};
 
   tensordesc_output.SetShape(Shape(dim_mask));
-  tensordesc_output.SetDataType(tensordesc_input.GetDataType());
+  tensordesc_output.SetDataType(DT_FLOAT16);
   tensordesc_output.SetFormat(tensordesc_input.GetFormat());
   (void)op.UpdateOutputDesc("seq_mask", tensordesc_output);
   return GRAPH_SUCCESS;
 }
  IMPLEMT_VERIFIER(RnnGenMask, RnnGenMaskVerify) {
-    DataType input_type_input = op.GetInputDesc("seq_length").GetDataType();
-    DataType input_type_target = op.GetInputDesc("seq_mask").GetDataType();
-    if (input_type_input != input_type_target) {
-        OP_LOGE(op.GetName().c_str(), "Input dtypes are not the same.");
-        return GRAPH_FAILED;
-    }
     return GRAPH_SUCCESS;
 }
 //Registered inferfunction

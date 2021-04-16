@@ -30,7 +30,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_1) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     // compare
     auto output_desc = rnn_gen_mask_op.GetOutputDesc("seq_mask");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {2, 3, 4};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -51,7 +51,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_2) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     // compare
     auto output_desc = rnn_gen_mask_op.GetOutputDesc("seq_mask");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {12, 4, 4};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -72,7 +72,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_3) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     // compare
     auto output_desc = rnn_gen_mask_op.GetOutputDesc("seq_mask");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {12, 4, 34};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
@@ -93,7 +93,7 @@ TEST_F(RnnGenMaskTest, rnn_gen_mask_tsest_4) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     // compare
     auto output_desc = rnn_gen_mask_op.GetOutputDesc("seq_mask");
-    EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
+    EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {12, 4, 16};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
