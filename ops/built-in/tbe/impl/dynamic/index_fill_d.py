@@ -16,13 +16,19 @@
 index_fill_d
 """
 
-import te.lang.cce as tbe
-from te import tvm
-from te.platform.fusion_manager import fusion_manager
-from te.utils import para_check
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
-@fusion_manager.register("index_fill_d")
+
+@register_operator_compute("IndexFillD",op_mode="dynamic",support_fusion=True)
 def index_fill_d_compute(x, assist1, assist2):
     """
     Main compute logic of index_fill
@@ -54,10 +60,10 @@ def index_fill_d_compute(x, assist1, assist2):
     output_y = tbe.vadd(temp, assist2)
     return output_y
 
-
+@register_operator("IndexFillD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_STR)
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 #pylint: disable=unused-argument
 def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     """
@@ -95,42 +101,46 @@ def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     -------
     None
     """
-    shape_x = x.get("shape")
-    shape_assist1 = assist1.get("shape")
-    shape_assist2 = assist2.get("shape")
+    x_shape = x.get("shape")
+    assist1_shape = assist1.get("shape")
+    assist2_shape = assist2.get("shape")
 
     dtype_x = x.get("dtype").lower()
     dtype_assist1 = assist1.get("dtype").lower()
     dtype_assist2 = assist2.get("dtype").lower()
 
-    para_check.check_shape_rule(shape_x)
-    para_check.check_shape(shape_x)
-    para_check.check_shape_rule(shape_assist1)
-    para_check.check_shape(shape_assist1)
-    para_check.check_shape_rule(shape_assist2)
-    para_check.check_shape(shape_assist2)
+    para_check.check_shape(x_shape)
+    para_check.check_shape(assist1_shape)
+    para_check.check_shape(assist2_shape)
     para_check.check_kernel_name(kernel_name)
 
     # check dim
-    shape_x_length = len(shape_x)
+    shape_x_length = len(x_shape)
     if dim < -shape_x_length or dim >= shape_x_length:
         raise RuntimeError("Out of range, dim should be in[%d,%d], which is [%d]" %(-shape_x_length, shape_x_length - 1, dim))
 
-    data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_x)
-    data_input_as1 = tvm.placeholder(
-        shape_assist1, name="data_input_as1", dtype=dtype_assist1)
-    data_input_as2 = tvm.placeholder(
-        shape_assist2, name="data_input_as2", dtype=dtype_assist2)
+    schedules = []
+    tensors = []
+    ins =classify([x, assist1, assist2], OpPatternMode.ELEWISE)
 
-    res = index_fill_d_compute(data_input_x, data_input_as1, data_input_as2)
+    for (_x, _assist1, _assist2) in ins:
+        with tbe.compute():
+            shape_x, shape_assist1, shape_assist2= shape_util.variable_shape([_x, _assist1, _assist2])
+
+            data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_x)
+            data_input_as1 = tvm.placeholder(
+                shape_assist1, name="data_input_as1", dtype=dtype_assist1)
+            data_input_as2 = tvm.placeholder(
+                shape_assist2, name="data_input_as2", dtype=dtype_assist2)
+
+            res = index_fill_d_compute(data_input_x, data_input_as1, data_input_as2)
+            tensors.append([data_input_x, data_input_as1, data_input_as2, res])
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)
+    schedules.append(schedule)
 
     config = {"name": kernel_name,
-              "tensor_list": [data_input_x,
-                              data_input_as1,
-                              data_input_as2,
-                              res]}
+              "tensor_list": tensors}
 
-    tbe.cce_build_code(schedule, config)
+    tbe.build(schedules, config)

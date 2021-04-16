@@ -307,3 +307,4 @@ from .bn_training_update_grad import bn_training_update_grad
 from .lp_loss import lp_loss
 from .masked_scale import masked_scale
 from .scatter_non_aliasing_add import scatter_non_aliasing_add
+from .index_fill_d import index_fill_d
