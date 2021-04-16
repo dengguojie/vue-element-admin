@@ -267,9 +267,8 @@ def avg_pool(x, filter, bias, y, ksize, strides,
                                               "output_format should be 'NCHW or 'NHWC'")
 
     if list(input_shape) == UNKNOWN_RANK_SHAPE:
-        input_shape = [-1, -1, -1, -1]
-        x["range"] = [(1, None)] * 4
-
+        error_manager_cube.raise_err_specific_user("avg_pool",
+                                                   "unknwon rank is not supported.")
     _avg_pool_check_rule(input_shape, input_dtype, output_dtype, ksize, strides, padding,
                          data_format, offset_x, kernel_name)
     if data_format == "NCHW":
@@ -285,8 +284,8 @@ def avg_pool(x, filter, bias, y, ksize, strides,
         dim_c = input_format.index("C")
         group = filter.get("ori_shape")[0]
         if input_shape[dim_c] == -1:
-            input_shape[dim_c] = group
-            x["ori_shape"] = input_shape
+            error_manager_cube.raise_err_specific_user("avg_pool",
+                                                       "dynamic c is not supported.")
         dilations = (1, 1, 1, 1)
         _check_filter_window(x, filter, window, stride)
 

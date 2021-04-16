@@ -85,10 +85,12 @@ def _ceil(x_1, x_2):
 def _align(x_1, x_2):
     return _ceil(x_1, x_2) * x_2
 
+def _get_output(x_in, k_size, pads, stride, dilation):
+        return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
 
 def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
     if value is None:
-        return 
+        return
     if not isinstance(value, int):
         error_manager_cube.raise_err_one_para("E62006", "depthwise_conv2d_backprop_filter",
                                     name + " must be int.")
@@ -164,17 +166,30 @@ def _check_stride(strides, dim_n, dim_c):
                                          "stride only support 1 on N axis and C axis.")
 
 
-def _get_dynamic_shape(fmap, dedy, dedw, fmap_range, dedy_range):
+def _get_dynamic_shape(fmap, dedy, dedw, fmap_range, dedy_range, strides, pads, dilations):
 
     fmap_n, fmap_c, fmap_h, fmap_w = fmap
     dedy_n, dedy_c, dedy_h, dedy_w = dedy
-    dedw_n, dedw_c, _, _ = dedw
+    dedw_n, dedw_c, kernel_h, kernel_w = dedw
     if fmap_n != DYNAMIC_FLAG and fmap_h != DYNAMIC_FLAG and fmap_w != DYNAMIC_FLAG:
         error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
                                          "no dynamic shape found in fmap.")
-    if fmap_n * dedy_n < 0 or fmap_c * dedy_c < 0 or fmap_h * dedy_h < 0 or fmap_w * dedy_w < 0:
-        error_manager_cube.raise_err_specific_user("depthwise_conv2d_backprop_filter",
-                                         "dynamic dim in fmap and dedy should be consistant.")
+    if fmap_n * dedy_n < 0:
+        fmap_n = fmap_n if fmap_n > 0 else dedy_n
+        dedy_n = fmap_n
+    if fmap_h * dedy_h < 0:
+        if dedy_h == DYNAMIC_FLAG:
+            calculated_dedy_h = _ceil(fmap_h, strides[0])
+            if pads[0] != DYNAMIC_FLAG and pads[1] != DYNAMIC_FLAG:
+                calculated_dedy_h = _get_output(fmap_h, kernel_h, [pads[0], pads[1]], strides[0], dilations[2])
+            dedy_h = calculated_dedy_h
+    if fmap_w * dedy_w < 0:
+        if dedy_w == DYNAMIC_FLAG:
+            calculated_dedy_w = _ceil(fmap_w, strides[1])
+            if pads[2] != DYNAMIC_FLAG and pads[3] != DYNAMIC_FLAG:
+                calculated_dedy_w = _get_output(fmap_w, kernel_w, [pads[2], pads[3]], strides[1], dilations[3])
+            dedy_w = calculated_dedy_w
+
     if fmap_c == DYNAMIC_FLAG:
         fmap_c = dedw_c
         dedy_c = fmap_c * dedw_n
@@ -196,8 +211,6 @@ def _get_dynamic_shape(fmap, dedy, dedw, fmap_range, dedy_range):
 
 
 def  _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
-    def _get_output(x_in, k_size, pads, stride, dilation):
-        return (x_in + pads[0] + pads[1] - dilation * (k_size - 1) - 1) // stride + 1
     ranges = [*fmap_range[0], *fmap_range[2], *fmap_range[3]]
     if None in ranges:
         return fmap_range
@@ -265,7 +278,8 @@ def _depthwise_conv2dbp_filter_compute(input_fm, filter_size, out_backprop, filt
     elif input_ori_format == 'NHWC':
         shape_in = [shape_in[dim_n], shape_in[dim_c], shape_in[dim_h], shape_in[dim_w]]
         shape_dedy = [shape_dedy[dim_n], shape_dedy[dim_c], shape_dedy[dim_h], shape_dedy[dim_w]]
-    shape_in, shape_dedy = _get_dynamic_shape(shape_in, shape_dedy, shape_dedw, in_range, dedy_range)
+    shape_in, shape_dedy = _get_dynamic_shape(shape_in, shape_dedy, shape_dedw, in_range, dedy_range, 
+                                              [strides[dim_h], strides[dim_w]], pads, dilations)
 
     para_check.check_dtype(in_dtype.lower(), ('float16',), param_name='input_fm')
     para_check.check_dtype(dedy_dtype.lower(), ('float16',), param_name='out_backprop')

@@ -33,8 +33,12 @@ dynamic_conv2d_bp_filter_op_testcase = [
     ((3, 40, 9, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_13"),
     # -2
     ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 1, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_14"),
-    # -1
+    # C -1
     ((3, -1, 200, 75), (3, -1, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0, 2, 3], "success", "dynamic_conv2d_bp_filter_op_testcase_15"),
+    # dynamic_nh in input, dynamic_hw in dedy
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[0,2],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_16"),
+    # dynamic_w in input, dynamic_hw in dedy
+    ((3, 40, 200, 75), (3, 40, 200, 75), (9, 9, 40, 1), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [[3],[2,3]], "success", "dynamic_conv2d_bp_filter_op_testcase_17"),
 ]
 
 
@@ -65,7 +69,7 @@ def _shape_to_C1HWNCoC0(shape, data_format, dtype):
     return (c1, h, w, n, c0, c0)
 
 
-def _get_range_from_shape(shape, dynamic_dim=[]):
+def _get_range_from_shape(shape, dynamic_dim):
     ori_range = [(dim, dim) for dim in shape]
     if dynamic_dim:
         for dim in dynamic_dim:
@@ -73,16 +77,16 @@ def _get_range_from_shape(shape, dynamic_dim=[]):
     return ori_range
 
 
-def _trans_dynamic_shape(shape, format, dynamic_dim):
+def _trans_dynamic_shape(shape, data_format, dynamic_dim):
     shape = list(shape)
     if 0 in dynamic_dim:
-        n_dim = format.index("N")
+        n_dim = data_format.index("N")
         shape[n_dim] = -1
     if 2 in dynamic_dim:
-        h_dim = format.index("H")
+        h_dim = data_format.index("H")
         shape[h_dim] = -1
     if 3 in dynamic_dim:
-        w_dim = format.index("W")
+        w_dim = data_format.index("W")
         shape[w_dim] = -1
     return tuple(shape)
 
@@ -102,28 +106,30 @@ def _gen_case(param):
     out_backprop_shape = _shape_to_NC1HWC0(out_backprop_ori_shape, data_format, dtype)
     filter_grad_shape = _shape_to_C1HWNCoC0(filter_size, "HWCN", dtype)
     x = {
-        "shape": _trans_dynamic_shape(input_shape, "NC1HWC0", dynamic_dim),
+        "shape": _trans_dynamic_shape(input_shape, "NC1HWC0", dynamic_dim[0] if isinstance(dynamic_dim[0], list) else dynamic_dim),
         "format": "NC1HWC0",
-        "ori_shape": [-2] if unknown_rank_flag else _trans_dynamic_shape(input_ori_shape, data_format, dynamic_dim),
+        "ori_shape": [-2] if unknown_rank_flag else _trans_dynamic_shape(input_ori_shape, data_format,
+                     dynamic_dim[0] if isinstance(dynamic_dim[0], list) else dynamic_dim),
         "ori_format": data_format,
         "dtype": dtype,
-        "range": _get_range_from_shape(input_shape, dynamic_dim)
+        "range": _get_range_from_shape(input_shape, dynamic_dim[0] if isinstance(dynamic_dim[0], list) else dynamic_dim)
     }
-    filter = {
+    filter_shape = {
         "shape": [1,1,1,1],
         "ori_shape": [1,1,1,1],
         "ori_format": "HWCN",
         "format": "C1HWNCoC0",
         "dtype": "int32",
-        "range": _get_range_from_shape(filter_size)
+        "range": _get_range_from_shape(filter_size, [])
     }
     out_backprop = {
-        "shape": _trans_dynamic_shape(out_backprop_shape, "NC1HWC0", dynamic_dim),
+        "shape": _trans_dynamic_shape(out_backprop_shape, "NC1HWC0", dynamic_dim[1] if isinstance(dynamic_dim[0], list) else dynamic_dim),
         "format": "NC1HWC0",
-        "ori_shape": _trans_dynamic_shape(out_backprop_ori_shape, data_format, dynamic_dim),
+        "ori_shape": _trans_dynamic_shape(out_backprop_ori_shape, data_format,
+                     dynamic_dim[1] if isinstance(dynamic_dim[0], list) else dynamic_dim),
         "ori_format": data_format,
         "dtype": dtype,
-        "range": _get_range_from_shape(out_backprop_shape, dynamic_dim)
+        "range": _get_range_from_shape(out_backprop_shape, dynamic_dim[1] if isinstance(dynamic_dim[0], list) else dynamic_dim)
     }
     filter_grad = {
         "shape": filter_grad_shape,
@@ -131,12 +137,12 @@ def _gen_case(param):
         "ori_shape": filter_size,
         "ori_format": "HWCN",
         "dtype": "float32",
-        "range": _get_range_from_shape(filter_grad_shape)
+        "range": _get_range_from_shape(filter_grad_shape, [])
     }
 
     kernel_name = kernel_name
     return {
-        "params": [x, filter, out_backprop, filter_grad, strides, dilations, pads, data_format],
+        "params": [x, filter_shape, out_backprop, filter_grad, strides, dilations, pads, data_format],
         "case_name": kernel_name,
         "expect": expect_result,
         "format_expect": [],

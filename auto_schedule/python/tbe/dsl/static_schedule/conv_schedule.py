@@ -2579,7 +2579,8 @@ class CceConvOp:
                         if "mean_matrix" in tensor_map:
                             sch[mean_matrix].emit_insn(mean_matrix.op.axis[-1], "vector_dup")
                             sch[mean_matrix_fp16].emit_insn(mean_matrix_fp16.op.axis[0], "vector_conv")
-                            sch[mean_matrix].reused_by(c_ub_avg)
+                            if 'fmap_h' in self._var_map or 'fmap_w' in self._var_map:
+                                sch[mean_matrix].reused_by(c_ub_avg)
                             if get_soc_spec("SOC_VERSION") == "Ascend310":
                                 sch[mean_matrix].reused_by(mean_matrix_fp16, mean_matrix_rec)
                                 sch[mean_matrix_rec].emit_insn(mean_matrix_rec.op.axis[0], "vector_rec")

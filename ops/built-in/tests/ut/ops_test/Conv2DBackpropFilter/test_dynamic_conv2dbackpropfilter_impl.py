@@ -274,5 +274,44 @@ ut_case.add_case(
                                         "dynamic_conv2d_backprop_filter_case2_1",
                                         RuntimeError))
 
+# dynamic_h in x, dynamic_hw in dedy
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [128, 64, -1, -1], [128, 64, -1, 120],
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(64, 64), (64, 64), (1, 1), (1, 1)],
+                                        [(128, 128), (64, 64), (56, 71), (56, 71)],
+                                        [(128, 128), (64, 64), (112, 142), (120, 120)],
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case3_1",
+                                        "success"))
+
+# dynamic_w in x, dynamic_hw in dedy
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [128, 64, -1, -1], [128, 64, 120, -1],
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(64, 64), (64, 64), (1, 1), (1, 1)],
+                                        [(128, 128), (64, 64), (56, 71), (56, 71)],
+                                        [(128, 128), (64, 64), (120, 120), (112, 142)],
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case3_2",
+                                        "success"))
+
+# dynamic_hw in x, dynamic_w in dedy
+ut_case.add_case(
+    "all",
+    gen_dynamic_conv2d_backprop_filter_case([64, 64, 1, 1], [128, 64, 60, -1], [128, 64, -1, -1],
+                                        "float32", "float16", "float16",
+                                        "NCHW", "NCHW", "NCHW",
+                                        [(64, 64), (64, 64), (1, 1), (1, 1)],
+                                        [(128, 128), (64, 64), (60, 60), (56, 71)],
+                                        [(128, 128), (64, 64), (112, 142), (112, 142)],
+                                        (1, 1, 2, 2), [0, 0, 0, 0], (1, 1, 1, 1),
+                                        "dynamic_conv2d_backprop_filter_case3_3",
+                                        "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
