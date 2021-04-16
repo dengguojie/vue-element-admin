@@ -362,6 +362,7 @@ from .roi_pooling import roi_pooling
 from .fsr_detection_output import fsr_detection_output
 # fused op
 from .fused_mul_apply_momentum import fused_mul_apply_momentum
+from .fused_mul_apply_keras_momentum import fused_mul_apply_keras_momentum
 from .fused_mul_add_n import fused_mul_add_n
 from .fused_mul_addn_l2_loss import fused_mul_addn_l2loss
 from .yolo_v2_detection_output_d import yolo_v2_detection_output_d

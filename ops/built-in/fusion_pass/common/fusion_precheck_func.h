@@ -28,6 +28,7 @@ namespace fe {
 Status ApplyRmsPropPreCheck(ge::NodePtr node);
 Status FusedMulApplyMomentumPreCheck(ge::NodePtr node);
 Status FusedMulApplyMomentumExternPreCheck(ge::NodePtr node);
+Status FusedMulApplyKerasMomentumPreCheck(ge::NodePtr node);
 Status ApplyAdagradV2PreCheck(ge::NodePtr node);
 Status ApplyKerasMomentumPreCheck(ge::NodePtr node);
 Status SparseApplyFtrlPreCheck(ge::NodePtr node);

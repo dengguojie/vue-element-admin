@@ -100,6 +100,9 @@ REGISTER_ADDOUTPUT("FusedMulApplyMomentum").SetAddOutput(1, "accum").SetPreCheck
 REGISTER_ADDOUTPUT("FusedMulApplyMomentumExtern")
     .SetAddOutput(1, "accum")
     .SetPreCheckFunc(FusedMulApplyMomentumExternPreCheck);
+REGISTER_ADDOUTPUT("FusedMulApplyKerasMomentum")
+    .SetAddOutput(1, "accum")
+    .SetPreCheckFunc(FusedMulApplyKerasMomentumPreCheck);
 REGISTER_ADDOUTPUT("ApplyAdagrad").SetAddOutput(1, "accum");
 REGISTER_ADDOUTPUT("ApplyAdagradDA")
     .SetAddOutput(1, "gradient_accumulator")

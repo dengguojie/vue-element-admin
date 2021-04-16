@@ -54,6 +54,16 @@ Status FusedMulApplyMomentumExternPreCheck(ge::NodePtr node) {
   return SUCCESS;
 }
 
+Status FusedMulApplyKerasMomentumPreCheck(ge::NodePtr node) {
+  OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
+  ge::OpDescPtr fused_mul_apply_keras_momentum_op = node->GetOpDesc();
+
+  if (fused_mul_apply_keras_momentum_op->GetInputDesc("var").GetDataType() != ge::DT_FLOAT) {
+    return NOT_CHANGED;
+  }
+  return SUCCESS;
+}
+
 Status SparseApplyRmsPropPreCheck(ge::NodePtr node) {
   OP_LOGI(node->GetType().c_str(), "Current Node name is :%s", node->GetName().c_str());
   ge::OpDescPtr apply_rms_prop_op = node->GetOpDesc();

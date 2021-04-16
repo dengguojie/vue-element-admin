@@ -1658,6 +1658,35 @@ COMMON_INFER_FUNC_REG(FusedMulApplyMomentumExtern, FusedMulApplyMomentumExternIn
 
 VERIFY_FUNC_REG(FusedMulApplyMomentumExtern, FusedMulApplyMomentumExternVerify);
 
+// ----------------FusedMulApplyKerasMomentum-------------------
+// Check the dtype and attr of the input tensor description.
+IMPLEMT_VERIFIER(FusedMulApplyKerasMomentum, FusedMulApplyKerasMomentumVerify) {
+  const std::map<std::string, std::vector<DataType>> kInputTensorMap = {
+      {"var", {DT_FLOAT16, DT_FLOAT}}, {"accum", {DT_FLOAT16, DT_FLOAT}}, {"x1", {DT_FLOAT16, DT_FLOAT}}};
+  const std::map<std::string, std::vector<DataType>> kInputScalarMap = {{"lr", {DT_FLOAT16, DT_FLOAT}},
+                                                                        {"momentum", {DT_FLOAT16, DT_FLOAT}}};
+
+  if (!CheckInputDataType(op, "x2", {DT_FLOAT16, DT_FLOAT})) {
+    return GRAPH_FAILED;
+  }
+  // input tensor params, must have same shape and dtype
+  if (!CheckInputDtypeAndShape(op, kInputTensorMap) || !CheckInputDtypeAndShape(op, kInputScalarMap)) {
+    return GRAPH_FAILED;
+  }
+
+  OP_LOGI(op.GetName().c_str(), "The op verify end");
+  return GRAPH_SUCCESS;
+}
+IMPLEMT_COMMON_INFERFUNC(FusedMulApplyKerasMomentumInferShape) {
+  OP_LOGI(op.GetName().c_str(), "Enter FusedMulApplyKerasMomentum op_proto inferfunction!");
+  if (!TwoInOneOutDynamicInferNoBroadcast(op, "var", "accum", {"var", "accum"})) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+COMMON_INFER_FUNC_REG(FusedMulApplyKerasMomentum, FusedMulApplyKerasMomentumInferShape);
+VERIFY_FUNC_REG(FusedMulApplyKerasMomentum, FusedMulApplyKerasMomentumVerify);
+
 // ----------------LarsV2 Begin------------------
 // Check the dtype and attr of the input tensor description.
 IMPLEMT_VERIFIER(LarsV2, LarsV2InferVerify) {
