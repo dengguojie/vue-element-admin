@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+from op_test_frame.ut import OpUT
+
+ut_case = OpUT("SoftmaxCrossEntropyWithLogits", "impl.dynamic.softmax_cross_entropy_with_logits", "softmax_cross_entropy_with_logits")
+
+case1 = {"params": [{"shape": (-1, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))},
+                    {"shape": (-1, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))},
+                    {"shape": (-1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (-1, ),"ori_format": "NCHW",
+                     "range": ((1, None),)},
+                    {"shape": (-1, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))}],
+         "case_name": "softmax_cross_entropy_with_logits_1",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case2 = {"params": [{"shape": (-1, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))},
+                    {"shape": (-1, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))},
+                    {"shape": (-1,), "dtype": "float16", "format": "NCHW", "ori_shape": (-1,),"ori_format": "NCHW",
+                     "range": ((1, None),)},
+                    {"shape": (-1, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))}],
+         "case_name": "softmax_cross_entropy_with_logits_2",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case3 = {"params": [{"shape": (-1, 2, 3), "dtype": "float32", "format": "NCHW", "ori_shape": (-1, 2, 3),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2), (3, 3))},
+                    {"shape": (-1, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))},
+                    {"shape": (-1, ), "dtype": "float32", "format": "NCHW", "ori_shape": (-1,),"ori_format": "NCHW",
+                     "range": ((1, None),)},
+                    {"shape": (-1, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (-1, 2),"ori_format": "NCHW",
+                     "range": ((1, None), (2, 2))}],
+         "case_name": "softmax_cross_entropy_with_logits_3",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+ut_case.add_case(["Ascend910A"], case1)
+ut_case.add_case(["Ascend910A"], case2)
+ut_case.add_case(["Ascend910A"], case3)
+
+if __name__ == "__main__":
+    ut_case.run("Ascend910A")

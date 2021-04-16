@@ -85,6 +85,7 @@ set(_optiling_files
   scatter_nd_sub.cc
   scatter_nd_update.cc
   slice.cc
+  softmax_cross_entropy_with_logits.cc
   sparse_apply_ftrl_d.cc
   sparse_apply_proximal_adagrad_d.cc
   split_d.cc

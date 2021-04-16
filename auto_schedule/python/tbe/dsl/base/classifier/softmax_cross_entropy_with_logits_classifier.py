@@ -13,8 +13,16 @@
 # limitations under the License.
 # ============================================================================
 """
-shape classifier
+classifier of shape in oftmax_cross_entropy_with_logits op
 """
-from .elewise_classifier import classify as classify_elewise
-from .reduce_classifier import classify as classify_reduction
-from .softmax_cross_entropy_with_logits_classifier import classify as classify_softmax_cross_entropy_with_logits
+from .with_reduce_softmax_cross_entropy_with_logits_classifier import WithReduceSoftmaxCrossEnTropyWithLogitsClassifier
+
+
+def classify(ins: list, support_reduce: bool = False):
+    """
+    classify
+    :param ins:
+    :param support_reduce:
+    :return:
+    """
+    return WithReduceSoftmaxCrossEnTropyWithLogitsClassifier(ins).classify()

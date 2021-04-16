@@ -22,17 +22,20 @@ from typing import Optional
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.classifier import classify_elewise
 from tbe.dsl.base.classifier import classify_reduction
+from tbe.dsl.base.classifier import classify_softmax_cross_entropy_with_logits
 
 
 ELEWISE = "elewise"
 BROADCAST = "broadcast"
 REDUCE = "reduce"
+SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entopy_with_logits_with_reduce"
 
 
 CLASSIFY_SAME_PATTERN_MAP = {
     "ElemWise": ELEWISE,
     "Broadcast": BROADCAST,
-    "CommReduce": REDUCE
+    "CommReduce": REDUCE,
+    "SoftmaxCrossEntropyWithLogitsWithReduce": SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE
 }
 
 
@@ -64,5 +67,7 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         return classify_reduction(ins, extra_params.get("keepdims"))
+    if mode == SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE:
+        return classify_softmax_cross_entropy_with_logits(ins, support_reduce=True)
 
     return [ins]

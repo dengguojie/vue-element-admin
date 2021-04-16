@@ -37,6 +37,7 @@ class Pattern:
     CONV3D_BACKPROP_INPUT = "Conv3d_backprop_input"
     CONV3D_BACKPROP_FILTER = "Conv3d_backprop_filter"
     BN_UPDATE = "BNTrainingUpdate"
+    SOFTMAX_CROSS_ENTROPY_WITH_LOGITS = "SoftmaxCrossEntropyWithLogits"
     LayerNorm = "LayerNorm"
     BN_TRAINING_UPDATE_GRAD = "BNTrainingUpdateGrad"
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
