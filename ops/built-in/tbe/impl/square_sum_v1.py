@@ -72,12 +72,21 @@ def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"
                 format transformer:
                     input_x              shape = [25,1,16,16]          format = 'FRACTAL_Z'
                     output1              shape = []                    format = 'ND'
+                ---------------------------------------------------------------------------
+                ori:
+                    input_x              shape = [16,16]           format = 'ND'
+                    output1              shape = []                    format = 'ND'
+                format transformer:
+                    input_x              shape = [1,1,16,16]          format = 'FRACTAL_NZ'
+                    output1              shape = []                    format = 'ND'
     """
     dtype = "float16, float"
     input_format = "ND, ND"
     output_format = "ND, ND"
     ori_shape = input_x.get("ori_shape")
     ori_format = input_x.get("ori_format")
+    if attr1 is None:
+        attr1 = [i for i in range(len(ori_shape))]
     if ori_format in ("HWCN",) and len(ori_shape) == 4 and ori_shape[-1] % 16 == 0 and ori_shape[-2] % 16 == 0 and list(
             attr1) == [0, 1, 2, 3]:
         dtype = "float16, float, float16, float"
@@ -196,7 +205,11 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
     shape = input_x.get("shape")
     dtype = input_x.get("dtype")
 
+    x_format = input_x.get("format")
     input_dtype = dtype.lower()
+    # because op_select_format infer out x_format can support NZ, so axis is all.
+    if x_format == "FRACTAL_NZ":
+        attr1 = [i for i in range(len(shape))]
 
     para_check.check_shape(shape, param_name="input_x")
 
