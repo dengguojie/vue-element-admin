@@ -364,8 +364,8 @@ def variable_shape(inputs: list, op_mode="elewise"):
     if op_mode == "cube":
         return _cube_variable_shape(inputs)
 
-    if op_mode == "reduce":
-        return _reduce_variable_shape(inputs)
+    if op_mode in ("reduce", "norm"):
+        return _reduce_and_norm_variable_shape(inputs)
 
     def _get_range_intersection(ranges):
         def _range_intersection(range_a, range_b):
@@ -525,7 +525,7 @@ def variable_shape(inputs: list, op_mode="elewise"):
     return d_shapes
 
 
-def _reduce_variable_shape(inputs: list):
+def _reduce_and_norm_variable_shape(inputs: list):
     """
     variable shape for reduce ops
     """

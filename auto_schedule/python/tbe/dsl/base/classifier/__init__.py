@@ -17,4 +17,5 @@ shape classifier
 """
 from .elewise_classifier import classify as classify_elewise
 from .reduce_classifier import classify as classify_reduction
+from .norm_classifier import classify as classify_norm
 from .softmax_cross_entropy_with_logits_classifier import classify as classify_softmax_cross_entropy_with_logits

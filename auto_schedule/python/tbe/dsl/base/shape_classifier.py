@@ -21,12 +21,14 @@ from typing import Optional
 
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base.classifier import classify_elewise
+from tbe.dsl.base.classifier import classify_norm
 from tbe.dsl.base.classifier import classify_reduction
 from tbe.dsl.base.classifier import classify_softmax_cross_entropy_with_logits
 
 
 ELEWISE = "elewise"
 BROADCAST = "broadcast"
+NORM = "norm"
 REDUCE = "reduce"
 SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entopy_with_logits_with_reduce"
 
@@ -69,5 +71,6 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_reduction(ins, extra_params.get("keepdims"))
     if mode == SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE:
         return classify_softmax_cross_entropy_with_logits(ins, support_reduce=True)
-
+    if mode == NORM:
+        return classify_norm(ins)
     return [ins]
