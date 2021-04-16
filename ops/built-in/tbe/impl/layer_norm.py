@@ -314,11 +314,11 @@ def _check_vector_to_cube(dtype, ori_shape_x, shape_x, begin_norm_axis, impl_mod
         ori_shape: (128m, 768), "shape": (48, 8m, 16, 16), "dtype": fp16
     """
     def _check_shape():
-        if len(ori_shape_x) != 2 or ori_shape_x[-1] not in (1024, 768) or ori_shape_x[-2] % 128 != 0:
+        if len(ori_shape_x) != 2 or ori_shape_x[-1] not in (1024, 768):
             return False
-        if len(shape_x) != 4 or shape_x[0] not in (64, 48) or shape_x[1] % 8 != 0:
+        if len(shape_x) != 4 or shape_x[0] not in (64, 48):
             return False
-        if "Ascend910" not in get_soc_spec(SOC_VERSION):
+        if "Ascend910" not in get_soc_spec(SOC_VERSION) and "Ascend710" not in get_soc_spec(SOC_VERSION):
             return False
         return True
 
