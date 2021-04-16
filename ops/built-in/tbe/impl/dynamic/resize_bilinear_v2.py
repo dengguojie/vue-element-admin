@@ -15,10 +15,11 @@
 """
 resize_bilinear_v2.py
 """
-from te import tik
-from te import platform as tbe_platform
-import te.lang.dynamic
-from te.utils import para_check
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import tbe_context
 
 # max uint16
 MAX_UINT16 = 2 ** 16 - 1
@@ -49,8 +50,8 @@ class ResizeBilinearV2:
         para_check.check_dtype(self.images_dtype, ("float32", "float16"), param_name="images")
 
         self.kernel_name = kernel_name
-        self.ai_core_num = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) - RESERVED_UB_SIZE)
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
 
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
@@ -70,7 +71,7 @@ class ResizeBilinearV2:
         self.out_gm = self.tik_instance.Tensor(self.images_dtype, [MAX_INT64],
                                                name="out_gm", scope=tik.scope_gm)
         self.stride_threshold = MAX_UINT16 if self.images_dtype in ("float16",) else MAX_UINT16 // 2
-        self.is_suport_vdiv = tbe_platform.cce_conf.api_check_support("tik.vdiv", self.images_dtype)
+        self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", self.images_dtype)
         # init tiling data
         self.resize_scale_h = self.tik_instance.Scalar("float32", name="resize_scale_h")
         self.resize_scale_w = self.tik_instance.Scalar("float32", name="resize_scale_w")
@@ -851,16 +852,16 @@ class ResizeBilinearV2:
                                    outputs=(self.out_gm,),
                                    flowtable=(self.tiling_gm,), config=opt_config)
 
-        te.op.add_compile_info("vars", {"ub_size": self.ub_size_bytes,
-                                        "core_num": self.ai_core_num,
-                                        "max_w_len": self.ub_max_num // self.images_shape_c0,
-                                        "align_corners": int(self.align_corners),
-                                        "half_pixel_centers": int(self.half_pixel_centers)})
+        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
+                                                            "core_num": self.ai_core_num,
+                                                            "max_w_len": self.ub_max_num // self.images_shape_c0,
+                                                            "align_corners": int(self.align_corners),
+                                                            "half_pixel_centers": int(self.half_pixel_centers)})
 
         return self.tik_instance
 
 
-@te.op.register_operator("ResizeBilinearV2")
+@register_operator("ResizeBilinearV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,
