@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,19 +15,26 @@
 """
 smooth_l1_loss_grad_v2
 """
-import te.lang.cce as tbe
-from te import tvm
-from te.utils import para_check
-import te.platform as tbe_platform
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import shape_util
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import register_operator_compute
 
 
 # pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
-@tbe_platform.fusion_manager.fusion_manager.register("smooth_l1_loss_grad_v2")
+@register_operator_compute("SmoothL1LossGradV2", op_mode="dynamic", support_fusion=True)
 def smooth_l1_loss_grad_v2_compute(input_predict,
                                    input_label,
                                    input_dout,
+                                   gradient,
                                    sigma,
-                                   reduction):
+                                   reduction,
+                                   kernel_name):
     """
     calculating data
 
@@ -39,6 +46,8 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
        the placeholder of input_label
     input_dout : TVM tensor
         the placeholder of input_dout
+    gradient : dict
+        shape and dtype of output, should be same shape and type as predict
     sigma : float
         default value is 1.0
     reduction: str
@@ -56,7 +65,7 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     all_dtype = "float32"
 
     # vcmpsel of Ascend310 only support float16
-    cce_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
+    cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cce_product == "Ascend310":
         all_dtype = "float16"
 
@@ -100,33 +109,58 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     return res
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR,
+# pylint: disable=too-many-arguments,too-many-locals
+@register_operator("SmoothL1LossGradV2")
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
-def smooth_l1_loss_grad_v2(predict, label, dout, gradient, sigma=1.0, reduction='mean',
+def smooth_l1_loss_grad_v2(predict,
+                           label,
+                           dout,
+                           gradient,
+                           sigma=1.0,
+                           reduction='mean',
                            kernel_name="smooth_l1_loss_grad_v2"):
     """
-    smooth_l1_loss_grad_v2
+    calculating data
+
+    Parameters
+    ----------
+    predict : dict
+        shape and dtype of input
+    label : dict
+        shape and dtype of input
+    dout : dict
+        shape and dtype of input
+    gradient : dict
+        shape and dtype of output, should be same shape and type as predict
+    sigma : float
+        sigma
+    reduction : str
+        default value is "mean"
+    kernel_name : str
+        kernel name, default value is "smooth_l1_loss_grad_v2"
+
+    Returns
+    -------
+    None
     """
+
     # check input: predict label dout
     check_list = ("float16", "float32")
 
-    shape_predict = predict.get("shape")
     dtype_predict = predict.get("dtype").lower()
     para_check.check_dtype(dtype_predict, check_list, param_name="predict")
 
-    shape_label = label.get("shape")
     dtype_label = label.get("dtype").lower()
     para_check.check_dtype(dtype_label, check_list, param_name="label")
 
-    shape_dout = dout.get("shape")
     dtype_dout = dout.get("dtype").lower()
     para_check.check_dtype(dtype_dout, check_list, param_name="dout")
-
-    para_check.check_shape(shape_predict, param_name="predict")
-    para_check.check_shape(shape_label, param_name="label")
-    para_check.check_shape(shape_dout, param_name="dout")
 
     # check reduction
     check_list_reduction = ("none", "mean", "sum")
@@ -134,21 +168,22 @@ def smooth_l1_loss_grad_v2(predict, label, dout, gradient, sigma=1.0, reduction=
 
     para_check.check_dtype(reduction_type, check_list_reduction, param_name="reduction")
 
-    input_predict = tvm.placeholder(
-        shape_predict, name="predict", dtype=dtype_predict)
-    input_label = tvm.placeholder(
-        shape_label, name="label", dtype=dtype_label)
-    input_dout = tvm.placeholder(
-        shape_dout, name="dout", dtype=dtype_dout)
+    # do compute
+    ins = classify([predict, label, dout], OpPatternMode.ELEWISE)
+    schedules, tensors = [], []
+    for (_predict, _label, _dout) in ins:
+        with tbe.compute():
+            shape_predict, shape_label, shape_dout = shape_util.variable_shape([_predict, _label, _dout])
+            tensor_predict = tvm.placeholder(shape_predict, name="tensor_predict", dtype=dtype_predict)
+            tensor_label = tvm.placeholder(shape_label, name="tensor_label", dtype=dtype_label)
+            tensor_dout = tvm.placeholder(shape_dout, name="tensor_dout", dtype=dtype_dout)
 
-    res = smooth_l1_loss_grad_v2_compute(input_predict, input_label, input_dout, sigma, reduction_type)
+            res = smooth_l1_loss_grad_v2_compute(tensor_predict, tensor_label, tensor_dout, gradient, 
+                                                 sigma, reduction_type, kernel_name)
+            tensors.append([tensor_predict, tensor_label, tensor_dout, res])
+        with tvm.target.cce():
+            sch = tbe.auto_schedule(res)
+        schedules.append(sch)
 
-    with tvm.target.cce():
-        sch = tbe.auto_schedule(res)
-
-    config = {
-        "name": kernel_name,
-        "tensor_list": [input_predict, input_label, input_dout, res]
-    }
-
-    tbe.cce_build_code(sch, config)
+    config = {"name": kernel_name, "tensor_list": tensors}
+    tbe.build(schedules, config)

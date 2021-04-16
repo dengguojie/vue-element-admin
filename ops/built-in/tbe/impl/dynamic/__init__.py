@@ -75,6 +75,7 @@ from .rsqrt_grad import rsqrt_grad
 from .inv import inv
 from .gelu import gelu
 from .smooth_l1_loss_grad import smooth_l1_loss_grad
+from .smooth_l1_loss_grad_v2 import smooth_l1_loss_grad_v2
 from .fast_gelu import fast_gelu
 from .axpy import axpy
 from .axpy_v2 import axpy_v2

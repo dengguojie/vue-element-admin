@@ -1414,62 +1414,20 @@ VERIFY_FUNC_REG(SigmoidCrossEntropyWithLogitsGradV2,
 
 // ----------------SmoothL1LossGradV2 Begin-------------------
 IMPLEMT_INFERFUNC(SmoothL1LossGradV2, SmoothL1LossGradV2InferShape) {
-  TensorDesc tensordesc_input1 = op.GetInputDesc("predict");
-  Shape input_shape1 = tensordesc_input1.GetShape();
-  DataType input_dtype1 = tensordesc_input1.GetDataType();
-  std::vector<int64_t> dims_input1 = input_shape1.GetDims();
-
-  TensorDesc tensordesc_input2 = op.GetInputDesc("label");
-  Shape input_shape2 = tensordesc_input2.GetShape();
-  DataType input_dtype2 = tensordesc_input2.GetDataType();
-  std::vector<int64_t> dims_input2 = input_shape2.GetDims();
-
-  TensorDesc tensordesc_input3 = op.GetInputDesc("dout");
-  Shape input_shape3 = tensordesc_input3.GetShape();
-  DataType input_dtype3 = tensordesc_input3.GetDataType();
-  std::vector<int64_t> dims_input3 = input_shape3.GetDims();
-
-  if (input_dtype1 != input_dtype2) {
-    OP_LOGE(op.GetName().c_str(), "Input Type Unmatch.");
-    return GRAPH_FAILED;
-  }
-
-  if (input_dtype1 != input_dtype3) {
-    OP_LOGE(op.GetName().c_str(), "Input Type Unmatch.");
-    return GRAPH_FAILED;
-  }
-
-  if (dims_input1.size() != dims_input2.size()) {
-    OP_LOGE(op.GetName().c_str(), "Input Dims Unmatch.");
-    return GRAPH_FAILED;
-  }
-
-  if (dims_input1.size() != dims_input3.size()) {
-    OP_LOGE(op.GetName().c_str(), "Input Dims Unmatch.");
-    return GRAPH_FAILED;
-  }
-  TensorDesc tensordesc_output = op.GetOutputDesc("gradient");
   std::string reduction = "mean";
-  if (GRAPH_SUCCESS != op.GetAttr("reduction", reduction)) {
-    OP_LOGE(op.GetName().c_str(), "Failed to get the val of reduction.");
-    return GRAPH_FAILED;
+  if (GRAPH_SUCCESS == op.GetAttr("reduction", reduction)) {
+    if (reduction != "mean" && reduction != "sum" && reduction != "none") {
+      OP_LOGE(op.GetName().c_str(), "The val of reduction is invalid.");
+      return GRAPH_FAILED;
+    }
   }
 
-  if (reduction != "mean" && reduction != "sum" && reduction != "none") {
-    OP_LOGE(op.GetName().c_str(), "The val of reduction is invalid.");
-    return GRAPH_FAILED;
+  if (OneInOneOutDynamicInfer(op, "predict", {"gradient"})) {
+    return GRAPH_SUCCESS;
   }
 
-  if (reduction == "none") {
-    tensordesc_output.SetShape(input_shape1);
-  } else {
-    std::vector<int64_t> dimVec = {1};
-    Shape shape_one_tensor = Shape(dimVec);
-    tensordesc_output.SetShape(shape_one_tensor);
-  }
-  tensordesc_output.SetDataType(input_dtype1);
-  (void)op.UpdateOutputDesc("gradient", tensordesc_output);
-  return GRAPH_SUCCESS;
+  OP_LOGE(op.GetName().c_str(), "Infer Failed.");
+  return GRAPH_FAILED;
 }
 
 INFER_FUNC_REG(SmoothL1LossGradV2, SmoothL1LossGradV2InferShape);
