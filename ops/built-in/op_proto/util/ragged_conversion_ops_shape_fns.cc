@@ -22,6 +22,8 @@
 #include <unordered_map>
 #include "op_log.h"
 #include "common_shape_fns.h"
+#include "./error_util.h"
+
 namespace ge {
 namespace {
 int64_t MultiplyWithoutOverflow(const int64_t x, const int64_t y) {
@@ -40,7 +42,7 @@ int64_t MultiplyWithoutOverflow(const int64_t x, const int64_t y) {
 graphStatus GetRowPartitionTypes(Operator& op, std::vector<RowPartitionType>& row_partition_types) {
   std::vector<std::string> partition_types;
   if (op.GetAttr("row_partition_types", partition_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Op get attr row_partition_types failed");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), GetInputInvalidErrMsg("row_partition_types"));
     return GRAPH_FAILED;
   }
 
@@ -55,7 +57,7 @@ graphStatus GetRowPartitionTypes(Operator& op, std::vector<RowPartitionType>& ro
   for (const std::string& type_str : partition_types) {
     const auto iter = string_to_type->find(type_str);
     if (iter == string_to_type->end()) {
-      OP_LOGE(op.GetName().c_str(), "Unknown string for partition info type.");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("Unknown string for partition info type."));
       return GRAPH_FAILED;
     }
     row_partition_types.push_back(iter->second);
@@ -80,14 +82,14 @@ graphStatus ValidateDefaultValueShape(const TensorShape& default_value_shape, co
   }
 
   if (default_value_shape.dims.size() > value_shape.dims.size()) {
-    OP_LOGE(op_name, "default_value_shape must have no more dimensions than the value.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("default_value_shape.dims:", default_value_shape.dims.size(), " must have no more dimensions than the value_shape.dims:", value_shape.dims.size())));
     return GRAPH_FAILED;
   }
 
   for (size_t i = 0; i < std::min(default_value_shape.dims.size(), value_shape.dims.size() - 1); ++i) {
     if (default_value_shape.dims[i].size >= 0 && value_shape.dims[i + 1].size >= 0 &&
         default_value_shape.dims[i].size != 1 && default_value_shape.dims[i].size != value_shape.dims[i + 1].size) {
-      OP_LOGE(op_name, "default_value_shape and value_shape do not match on dimension.");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("default_value_shape.dims:", default_value_shape.dims[i].size, " and value_shape:", value_shape.dims[i + 1].size, " do not match on dimension.")));
       return GRAPH_FAILED;
     }
   }
@@ -104,7 +106,7 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(const Tensor& tens
 
   size_t rank_size = 1;
   if (!((dims.size() <= rank_size) || (dims == ge::UNKNOWN_SHAPE))) {
-    OP_LOGE(op_name, "Shape's rank must be at most %lld, but it is %u", rank_size, dims.size());
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("Shape's rank must be at most ", rank_size, ", but it is ", dims.size())));
     return GRAPH_FAILED;
   }
 
@@ -112,17 +114,17 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(const Tensor& tens
     if (data_type == DT_INT32) {
       const int32_t* shape_data = reinterpret_cast<const int32_t*>(tensor.GetData());
       if (shape_data[0] != -1) {
-        OP_LOGE(op_name, "if its rank 0 it must have value -1");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg("if its rank 0 it must have value -1"));
         return GRAPH_FAILED;
       }
     } else if (data_type == DT_INT64) {
       const int64_t* shape_data = reinterpret_cast<const int64_t*>(tensor.GetData());
       if (shape_data[0] != -1) {
-        OP_LOGE(op_name, "if its rank 0 it must have value -1");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("if its rank 0 it must have value -1,but shape_data[0] is ", shape_data[0])));
         return GRAPH_FAILED;
       }
     } else {
-      OP_LOGE(op_name, "Data type invalid, should be DT_INT32 or DT_INT64");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("Data type:", data_type, " invalid, should be DT_INT32 or DT_INT64")));
       return GRAPH_FAILED;
     }
     out = Shape(ge::UNKNOWN_SHAPE);
@@ -130,7 +132,7 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(const Tensor& tens
   }
 
   if (MakeShapeFromShapeTensor(tensor, out, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name, "MakeShapeFromShapeTensor failed");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg("MakeShapeFromShapeTensor failed"));
     return GRAPH_FAILED;
   }
 
@@ -178,7 +180,7 @@ graphStatus CombineRaggedTensorToTensorShapes(int32_t ragged_rank, const TensorS
   }
 
   if (ragged_rank + value_shape.dims.size() != output_shape.dims.size()) {
-    OP_LOGE(op_name, "Value shape and ragged_rank dont have a consistent number of dimensions.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("Value shape dims:", value_shape.dims.size(), " and ragged_rank:", ragged_rank, " dont have a consistent number of dimensions.")));
     return GRAPH_FAILED;
   }
 
@@ -189,7 +191,7 @@ graphStatus CombineRaggedTensorToTensorShapes(int32_t ragged_rank, const TensorS
     if (value_dim.size >= 0) {
       if (output_shape_dim.size >= 0) {
         if (output_shape_dim.size != value_dim.size) {
-          OP_LOGE(op_name, "Value and shape dimension are inconsistent.");
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg("Value and shape dimension are inconsistent."));
           return GRAPH_FAILED;
         }
       } else {
@@ -205,7 +207,7 @@ graphStatus IsValidShape(const TensorShape& shape, const char* op_name) {
   int64_t num_elements = 1;
   size_t max_dimensions = 254;
   if (shape.dims.size() > max_dimensions) {
-    OP_LOGE(op_name, "Shape has too many dimensions.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("shape.dims:", shape.dims.size(), "Shape has too many dimensions.")));
     return GRAPH_FAILED;
   }
   for (const auto& d : shape.dims) {
@@ -214,7 +216,7 @@ graphStatus IsValidShape(const TensorShape& shape, const char* op_name) {
     } else {
       num_elements = MultiplyWithoutOverflow(num_elements, d.size);
       if (num_elements < 0) {
-        OP_LOGE(op_name, "Shape is too large (more than 2**63 - 1 entries).");
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("num_elements:", num_elements, "Shape is too large (more than 2**63 - 1 entries).")));
         return GRAPH_FAILED;
       }
     }
@@ -224,7 +226,7 @@ graphStatus IsValidShape(const TensorShape& shape, const char* op_name) {
 
 graphStatus MakeShapeFromTensorShape(const TensorShape& input_shape, Shape& out, const char* op_name) {
   if (IsValidShape(input_shape, op_name) != GRAPH_SUCCESS) {
-    OP_LOGE(op_name, "check input shape is valid shape failed.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg("check input shape is valid shape failed."));
     return GRAPH_FAILED;
   }
   if (input_shape.unknown_rank) {
@@ -245,12 +247,12 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
     Shape shape_handle;
     Tensor tensor;
     if (op.GetInputConstData("shape", tensor) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "input orig_input_tensor_shape GetInputConstData failed");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("input orig_input_tensor_shape GetInputConstData failed"));
       return GRAPH_FAILED;
     }
     if (MakeShapeFromShapeTensorTreatScalarAsUnknownShape(tensor, shape_handle, op.GetName().c_str()) !=
         GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "makeShapeFromShapeTensorTreatScalarAsUnknownShape failed");
+      VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("makeShapeFromShapeTensorTreatScalarAsUnknownShape failed"));
       return GRAPH_FAILED;
     }
 
@@ -259,7 +261,7 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
 
   std::vector<RowPartitionType> row_partition_types;
   if (GetRowPartitionTypes(op, row_partition_types) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetRowPartitionTypes failed");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("GetRowPartitionTypes failed"));
     return GRAPH_FAILED;
   }
 
@@ -272,20 +274,20 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   ShapeHandleToTensorShape(op.GetInputDesc("default_value").GetShape(), default_value_shape);
 
   if (ValidateDefaultValueShape(default_value_shape, value_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Validate default value shape failed");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg(ConcatString("Validate default value shape failed")));
     return GRAPH_FAILED;
   }
 
   TensorShape output_shape;
   if (CombineRaggedTensorToTensorShapes(ragged_rank, shape, value_shape, output_shape, op.GetName().c_str()) !=
       GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "CombineRaggedTensorToTensorShapes failed");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("CombineRaggedTensorToTensorShapes failed"));
     return GRAPH_FAILED;
   }
 
   Shape output_shape_handle;
   if (MakeShapeFromTensorShape(output_shape, output_shape_handle, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "MakeShapeFromShapeProto failed");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("MakeShapeFromShapeProto failed"));
     return GRAPH_FAILED;
   }
 
@@ -293,7 +295,7 @@ graphStatus RaggedTensorToTensorShapeFn(Operator& op) {
   out_desc.SetShape(output_shape_handle);
   out_desc.SetDataType(op.GetInputDesc("values").GetDataType());
   if (op.UpdateOutputDesc("result", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update result desc failed.");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), OtherErrMsg("update result desc failed."));
     return GRAPH_FAILED;
   }
 
