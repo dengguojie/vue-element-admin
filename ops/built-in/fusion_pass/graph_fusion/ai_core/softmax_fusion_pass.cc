@@ -101,7 +101,6 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   ge::GeTensorDesc softmaxInputOpDesc = softmaxOpDesc->GetInputDesc(0);
   ge::GeTensorDesc softmaxOutputOpDesc = softmaxOpDesc->GetOutputDesc(0);
 
-  ge::Format softmaxOriginFormat = softmaxInputOpDesc.GetOriginFormat();
   ge::GeShape softmaxInputShape = softmaxInputOpDesc.GetShape();
   vector<int64_t> dimInfo = softmaxInputShape.GetDims();
   vector<int64_t> axes;
@@ -120,7 +119,7 @@ Status SoftmaxFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   }
   bool isUsePattern = false;
   isUsePattern = CheckISUsePattern(inputW, inputC);
-  if (axes[0] == 2 && softmaxOriginFormat == ge::FORMAT_NCHW && isUsePattern) {
+  if (axes[0] == 2 && isUsePattern) {
     vector<int64_t> inputDimInfo = {inputH, inputC, inputW};
     ge::GeShape assitShape(inputDimInfo);
     ge::GeShape assitShapeOrigin(inputDimInfo);
