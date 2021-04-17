@@ -77,7 +77,7 @@ class LayerNormalizeBase(object):
             self.variance = self.tik_inst.Tensor(self.gm_type, batch_shape, self.tik.scope_gm,
                                                  "variance", is_atomic_add=is_atomic_add)
             if self.gm_type != self.ub_type:
-                batch_shape_align = (self.batch_num + self.gm_block_data_num, )
+                batch_shape_align = (self.batch_num + self.gm_block_data_num,)
                 self.mean_ub_type = self.tik_inst.Tensor(self.ub_type, batch_shape_align, self.tik.scope_gm,
                                                          "mean_ub_type", is_workspace=True, is_atomic_add=True)
                 self.variance_ub_type = self.tik_inst.Tensor(self.ub_type, batch_shape_align, self.tik.scope_gm,
@@ -207,8 +207,8 @@ class LayerNormalizeBase(object):
         if self.output_mean_var:
             self.tik_inst.set_atomic_add(1)
             block_num = self._ceil_div(batch_num, self.ub_block_data_num)
-            self.data_move(mean_gm[batch_index_start, ], batch_mean_ub, 0, 1, block_num, 0, 0)
-            self.data_move(variance_gm[batch_index_start, ], batch_variance_ub, 0, 1, block_num, 0, 0)
+            self.data_move(mean_gm[batch_index_start,], batch_mean_ub, 0, 1, block_num, 0, 0)
+            self.data_move(variance_gm[batch_index_start,], batch_variance_ub, 0, 1, block_num, 0, 0)
             self.tik_inst.set_atomic_add(0)
 
     def _mean_var_move_out_fp16(self, batch_index_start, batch_num):
@@ -234,14 +234,14 @@ class LayerNormalizeBase(object):
                      VecCmd(cmd_name="vconv", dst_name="var_gm_type_ub",
                             src0_name="var_ub_type_ub", round_mode="")
                      ]
-        self.data_move(mean_ub_type_ub, self.mean_ub_type[batch_index_start, ],
+        self.data_move(mean_ub_type_ub, self.mean_ub_type[batch_index_start,],
                        0, 1, block_num_move_in, 0, 0)
-        self.data_move(var_ub_type_ub, self.variance_ub_type[batch_index_start, ],
+        self.data_move(var_ub_type_ub, self.variance_ub_type[batch_index_start,],
                        0, 1, block_num_move_in, 0, 0)
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_vconv, "mean_ub_type_ub")
-        self.data_move(self.mean[batch_index_start, ], mean_gm_type_ub,
+        self.data_move(self.mean[batch_index_start,], mean_gm_type_ub,
                        0, 1, block_num_move_out, 0, 0)
-        self.data_move(self.variance[batch_index_start, ], var_gm_type_ub,
+        self.data_move(self.variance[batch_index_start,], var_gm_type_ub,
                        0, 1, block_num_move_out, 0, 0)
 
     def _count_rec_std_ne_mean(self, buf_mean_all):
@@ -253,7 +253,7 @@ class LayerNormalizeBase(object):
             VecCmd(cmd_name="vsqrt", dst_name="batch_variance_ub", src0_name="batch_variance_ub"),  # std(x)
             VecCmd(cmd_name="vector_dup", dst_name="batch_mean_square_ub", scalar=1),  # 1
             VecCmd(cmd_name="vdiv", dst_name="batch_variance_ub",
-                   src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"), ] # 1/std(x)
+                   src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"), ]  # 1/std(x)
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_count_rec_std_ne_mean, "batch_mean_ub")
 
     def data_move(self, dst, src, sid, nburst, burst, src_stride, dst_stride):
@@ -446,7 +446,8 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
             VecCmd(cmd_name="vmul", dst_name="batch_variance_ub",
                    src0_name="batch_mean_ub", src1_name="batch_mean_ub"),  # E(x)^2
             VecCmd(cmd_name="vsub", dst_name="batch_variance_ub",
-                   src0_name="batch_mean_square_ub", src1_name="batch_variance_ub")  # E(x)^2 - E(x)^2
+                   src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"),  # E(x)^2 - E(x)^2
+            VecCmd(cmd_name="vabs", dst_name="batch_variance_ub", src0_name="batch_variance_ub")  # abs(var)
         ]
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_count_mean_var, "batch_mean_ub")
 
@@ -741,7 +742,8 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
             VecCmd(cmd_name="vmul", dst_name="batch_variance_ub",
                    src0_name="batch_mean_ub", src1_name="batch_mean_ub"),  # E(x)^2
             VecCmd(cmd_name="vsub", dst_name="batch_variance_ub",
-                   src0_name="batch_mean_square_ub", src1_name="batch_variance_ub")  # E(x^2) - E(x)^2
+                   src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"),  # E(x^2) - E(x)^2
+            VecCmd(cmd_name="vabs", dst_name="batch_variance_ub", src0_name="batch_variance_ub")  # abs(var)
         ]
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_count_mean_var, "batch_mean_ub")
 
