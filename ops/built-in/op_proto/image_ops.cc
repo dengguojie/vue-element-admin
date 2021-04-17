@@ -583,18 +583,23 @@ IMPLEMT_INFERFUNC(ResizeBicubicGrad, ResizeBicubicGradInfer) {
   vector<int64_t> grads_shape = op.GetInputDesc(0).GetShape().GetDims();
   vector<int64_t> org_images_shape = op.GetInputDesc(1).GetShape().GetDims();
   vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC && grads_shape.size() > 3 && org_images_shape.size() > 2) {
+  if (input_format == FORMAT_NHWC && grads_shape.size() > 3
+      && org_images_shape.size() > 2) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(org_images_shape[1]);
     y_shape.push_back(org_images_shape[2]);
     y_shape.push_back(grads_shape[3]);
-  } else if (input_format == FORMAT_NCHW && grads_shape.size() > 1 && org_images_shape.size() > 3) {
+  } else if (input_format == FORMAT_NCHW && grads_shape.size() > 1
+             && org_images_shape.size() > 3) {
     y_shape.push_back(grads_shape[0]);
     y_shape.push_back(grads_shape[1]);
     y_shape.push_back(org_images_shape[2]);
     y_shape.push_back(org_images_shape[3]);
   } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format %d", input_format);
+    std::string str_input_format = ge::TypeUtils::FormatToSerialString(input_format);
+    std::string err_msg = ConcatString(
+        "only supporting NCHW and NHWC, current format is [", str_input_format, "]");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
   }
   desc.SetShape(ge::Shape(y_shape));
   auto type = op.GetInputDesc(1).GetDataType();
@@ -1954,13 +1959,18 @@ INFER_FUNC_REG(EncodeJpeg, EncodeJpegInfer);
 
 IMPLEMT_INFERFUNC(ExtractJpegShape, ExtractJpegShapeInfer) {
   Shape unused_shape;
-  if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "the first input must be 0-D .");
+  if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   DataType output_type;
   if (op.GetAttr("output_type", output_type) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get attr output_type failed");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("get attr[output_type] failed"));
     return GRAPH_FAILED;
   }
   Shape output_shape;
@@ -1969,8 +1979,10 @@ IMPLEMT_INFERFUNC(ExtractJpegShape, ExtractJpegShapeInfer) {
   image_shape_desc.SetShape(output_shape);
   image_shape_desc.SetDataType(output_type);
   image_shape_desc.SetFormat(FORMAT_NHWC);
-  if (op.UpdateOutputDesc("image_shape", image_shape_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update image_shape desc failed");
+  if (op.UpdateOutputDesc("image_shape", image_shape_desc)
+      != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("update output[image_shape] desc failed"));
     return GRAPH_FAILED;
   }
   return GRAPH_SUCCESS;

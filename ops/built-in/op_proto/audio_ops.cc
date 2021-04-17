@@ -21,6 +21,7 @@
 #include "inc/audio_ops.h"
 #include "op_log.h"
 #include "util/common_shape_fns.h"
+#include "util/error_util.h"
 
 namespace ge {
 IMPLEMT_INFERFUNC(Mfcc, MfccInfer) {
@@ -150,21 +151,26 @@ INFER_FUNC_REG(AudioSpectrogram, AudioSpectrogramInfer);
 IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
   Shape unused_shape;
   if (WithRank(op.GetInputDesc(0), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "input must be scalar.");
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
   int64_t channels_dim = 0;
   int32_t desired_channels = 0;
   if (op.GetAttr("desired_channels", desired_channels) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr desired_channels error.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), string("get attr[desired_channels] failed."));
     return GRAPH_FAILED;
   }
   if (desired_channels == -1) {
     channels_dim = ge::UNKNOWN_DIM;
   } else {
     if (desired_channels < 0) {
-      OP_LOGE(op.GetName().c_str(), "channels must be non-negative.");
+      std::string err_msg = ConcatString(
+          "attr[desired_channels] must be non-negative, current desired_channels is [", desired_channels, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
 
@@ -173,14 +179,17 @@ IMPLEMT_INFERFUNC(DecodeWav, DecodeWavInfer) {
   int64_t samples_dim;
   int32_t desired_samples;
   if (op.GetAttr("desired_samples", desired_samples) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "GetAttr desired_samples error.");
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(),
+                                      string("get attr[desired_samples] failed."));
     return GRAPH_FAILED;
   }
   if (desired_samples == -1) {
     samples_dim = ge::UNKNOWN_DIM;
   } else {
     if (desired_samples < 0) {
-      OP_LOGE(op.GetName().c_str(), "samples must be non-negative.");
+      std::string err_msg = ConcatString(
+          "attr[desired_samples] must be non-negative, current desired_samples is [", desired_channels, "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
     samples_dim = static_cast<int64_t>(desired_samples);
@@ -203,12 +212,20 @@ INFER_FUNC_REG(DecodeWav, DecodeWavInfer);
 
 IMPLEMT_INFERFUNC(EncodeWav, EncodeWavInfer) {
   Shape unused_shape;
-  if (WithRank(op.GetInputDesc(0), 2, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input audio must be rank 2.");
+  if (WithRank(op.GetInputDesc(0), 2, unused_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(0,
+        DebugString(op.GetInputDesc(0).GetShape().GetDims()), "2D");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
-  if (WithRank(op.GetInputDesc(1), 0, unused_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "Input sample_rate must be scalar.");
+  if (WithRank(op.GetInputDesc(1), 0, unused_shape, op.GetName().c_str())
+      != GRAPH_SUCCESS) {
+    std::string err_msg = GetShapeErrMsg(1,
+        DebugString(op.GetInputDesc(1).GetShape().GetDims()), "scalar");
+    err_msg = string("failed to call WithRank, ") + err_msg;
+    AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

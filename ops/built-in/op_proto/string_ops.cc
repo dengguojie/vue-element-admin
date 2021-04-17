@@ -849,10 +849,11 @@ IMPLEMT_INFERFUNC(AsString, AsStringInfer) {
 INFER_FUNC_REG(AsString, AsStringInfer);
 
 IMPLEMT_INFERFUNC(EncodeBase64, EncodeBase64Infer) {
-  TensorDesc out_desc = op.GetOutputDesc("y");
-  out_desc.SetDataType(DT_STRING);
-  if (op.UpdateOutputDesc("y", out_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "update y failed");
+  TensorDesc output_desc = op.GetOutputDesc("y");
+  output_desc.SetDataType(DT_STRING);
+  if (op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(
+        op.GetName(), string("update output[y] desc failed"));
     return GRAPH_FAILED;
   }
   return UnchangedShape(op, "x", "y");

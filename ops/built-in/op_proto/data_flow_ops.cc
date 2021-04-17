@@ -1037,9 +1037,13 @@ IMPLEMT_INFERFUNC(DynamicPartition, DynamicPartitionInfer) {
     }
     return GRAPH_SUCCESS;
   }
-  auto result = WithRankAtLeast(data_tensor, rank_of_partitions, data_shape, op.GetName().c_str());
+  auto result = WithRankAtLeast(data_tensor, rank_of_partitions, data_shape,
+                                op.GetName().c_str());
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "rank of x must >= rank of partitions !");
+      std::string err_msg = ConcatString("failed to call WithRankAtLeast function, "
+          "the rank of intput[x] must >= intput[partitions], ",
+           rank_of_data, " and " , rank_of_partitions);
+     AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   std::vector<int64_t> dims;
@@ -1047,22 +1051,29 @@ IMPLEMT_INFERFUNC(DynamicPartition, DynamicPartitionInfer) {
   dims.resize(rank_of_partitions);
   for (uint8_t i = 0; i < rank_of_partitions; i++) {
     if (Merge(data_dims[i], partitions_dims[i], dims[i]) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "shape of x must start with shape of partitions !");
+      std::string err_msg = ConcatString("failed to call Merge function to merge the 0th input[x]'s dim",
+          "[" , data_dims[i], "]" , "and the 1st intput[partitions]'s dim", "[" , partitions_dims[i], "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
   vector<int64_t> output_dim0({ge::UNKNOWN_DIM});
   Shape output_unknown_dim0 = Shape(output_dim0);
   Shape data_suffix_shape;
-  result = SubShape(data_shape, rank_of_partitions, rank_of_data, 1, data_suffix_shape, op.GetName().c_str());
+  result = SubShape(data_shape, rank_of_partitions, rank_of_data, 1,
+                    data_suffix_shape, op.GetName().c_str());
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "get suffix shape of x error ! ");
-    return GRAPH_FAILED;
+      std::string err_msg = ConcatString("failed to call SubShape function to subshape, the 0th input[x]'s shape",
+                     DebugString(data_dims), " and the 1st input[partitions]'s shape", DebugString(partitions_dims));
+      return GRAPH_FAILED;
   }
   Shape output_shape;
   result = Concatenate(output_unknown_dim0, data_suffix_shape, output_shape);
   if (result != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate output_shape error! ");
+      std::string err_msg = ConcatString("failed to call Concatenate function to concatenate data suffix shape, "
+       "which is from function SubShape result, it's shape", DebugString(data_suffix_shape.GetDims()), " and unkonw shape",
+        DebugString(output_unknown_dim0.GetDims()));
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   for (int64_t i = 0; i < num_partitions; ++i) {
@@ -1070,7 +1081,8 @@ IMPLEMT_INFERFUNC(DynamicPartition, DynamicPartitionInfer) {
     y_tensor.SetDataType(data_tensor.GetDataType());
     y_tensor.SetShape(output_shape);
     if (op.UpdateDynamicOutputDesc("y", i, y_tensor) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "update y_%ld desc failed", i);
+    std::string err_msg = ConcatString("update desc of ", i, "th output of dynamic output[y] failed.");
+        AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
   }
@@ -1082,7 +1094,8 @@ INFER_FUNC_REG(DynamicPartition, DynamicPartitionInfer);
 IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
   auto num_incides = op.get_attr_N();
   if (num_incides < 1) {
-    OP_LOGE(op.GetName().c_str(), "Attr N < 1");
+    std::string err_msg = ConcatString("invalid value", "[" , num_incides ,"]", " of attr[N], it should be not less than 1");
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 
@@ -1105,7 +1118,7 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
 
     Tensor unused_tensor;
     if (op.GetInputConstData(indices_tensor_name, unused_tensor) != GRAPH_SUCCESS) {
-      OP_LOGW(op.GetName().c_str(), "try get indices %ld failed !", i);
+      OP_LOGW(op.GetName().c_str(), "try get indices %ld failed .", i);
       all_indices_constant = false;
     }
 
@@ -1124,7 +1137,10 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
     const auto rank_of_indices = indices_shape.GetDimNum();
     const auto rank_of_data = data_shape.GetDimNum();
     if (rank_of_indices > rank_of_data) {
-      OP_LOGE(op.GetName().c_str(), "shape of x must start with shape of indices !");
+      std::string err_msg = ConcatString(
+          "the 0th intput[indices]'s rank must > the 1st intput[x], ",
+          rank_of_indices, " and ", rank_of_data);
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
 
@@ -1135,19 +1151,26 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
     for (uint8_t i = 0; i < rank_of_indices; ++i) {
       if (data_dims[i] != UNKNOWN_DIM && indices_dims[i] != UNKNOWN_DIM &&
           (Merge(data_dims[i], indices_dims[i], dims[i]) != GRAPH_SUCCESS)) {
-        OP_LOGE(op.GetName().c_str(), "shape of x must start with shape of indices !");
+      std::string err_msg = ConcatString("failed to call Merge function to merge the 0th input[indices]'s dim",
+          "[" , indices_dims[i], "]" , "and the 1st input[indices]'s dim", "[", data_dims[i], "]");
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
         return GRAPH_FAILED;
       }
     }
 
     GeShape data_suffix_shape;
-    if (SubShape(data_shape, rank_of_indices, rank_of_data, 1, data_suffix_shape, op.GetName().c_str()) !=
-        GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "get suffix shape of x error !");
+    if (SubShape(data_shape, rank_of_indices, rank_of_data, 1, data_suffix_shape,
+                 op.GetName().c_str()) != GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString("failed to call SubShape function, the 1th input[x]'s shape",
+                     DebugString(data_dims));
       return GRAPH_FAILED;
     }
-    if (Merge(last_suffix_shape, data_suffix_shape, last_suffix_shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
-      OP_LOGE(op.GetName().c_str(), "Failed to merge suffixShape and data_suffix_shape !");
+
+    if (Merge(last_suffix_shape, data_suffix_shape, last_suffix_shape,
+              op.GetName().c_str()) != GRAPH_SUCCESS) {
+      std::string err_msg = ConcatString("failed to call Merge function to merge unknow shape",
+          DebugString(last_suffix_shape.GetDims()), " and 1th input[x]'s SubShape", DebugString(data_suffix_shape.GetDims()));
+      AICPU_INFER_SHAPE_CALL_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
 
@@ -1166,7 +1189,9 @@ IMPLEMT_INFERFUNC(DynamicStitch, DynamicStitchInfer) {
   GeShape output_shape_prefix({output_dim0});
   GeShape output_shape;
   if (Concatenate(output_shape_prefix, last_suffix_shape, output_shape) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "generate output_shape error! ");
+      std:: string err_msg = ConcatString("failed to call Concatenate function to concatenate, prefix output shape",
+                     DebugString(output_shape_prefix.GetDims()), " and last suffix shape", DebugString(last_suffix_shape.GetDims()));
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
 

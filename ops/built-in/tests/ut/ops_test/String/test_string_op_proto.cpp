@@ -119,6 +119,15 @@ TEST_F(StringOp, decode_base64_infer_shape) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(StringOp, encode_base64_infer_shape) {
+  ge::op::EncodeBase64 op;
+  op.UpdateInputDesc("x", create_desc({2}, ge::DT_STRING));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+
 TEST_F(StringOp, string_join_infer_shape) {
   ge::op::StringJoin op;
   std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 2}, {100, 200}, {4, 8}};
