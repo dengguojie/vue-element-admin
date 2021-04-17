@@ -120,7 +120,7 @@ graphStatus MakeShapeFromShapeTensorTreatScalarAsUnknownShape(const Tensor& tens
     } else if (data_type == DT_INT64) {
       const int64_t* shape_data = reinterpret_cast<const int64_t*>(tensor.GetData());
       if (shape_data[0] != -1) {
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("if its rank 0 it must have value -1,but shape_data[0] is ", shape_data[0])));
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, OtherErrMsg(ConcatString("if its rank 0 it must have value -1, but shape_data[0] is ", shape_data[0])));
         return GRAPH_FAILED;
       }
     } else {
