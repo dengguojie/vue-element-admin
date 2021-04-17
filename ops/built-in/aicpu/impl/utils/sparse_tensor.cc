@@ -43,7 +43,9 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *vals,
   int64_t dims = (ix->GetTensorShape()->GetDims() == 0)
                      ? 1
                      : ix->GetTensorShape()->GetDimSize(0);
-  int64_t vals_dim0 = vals->GetTensorShape()->GetDimSize(0);
+  int64_t vals_dim0 = (vals->GetTensorShape()->GetDims() == 0)
+                     ? 1
+                     : vals->GetTensorShape()->GetDimSize(0);
   if (dims != vals_dim0) {
     KERNEL_LOG_ERROR("Ix dim_size_0 [%lld] != vals dim_size_0 [%lld]", dims,
                      vals_dim0);
