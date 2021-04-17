@@ -367,7 +367,7 @@ def l2loss_mul_addn_schedule(res, input_tensors):
                   cache_write_buffer_map, phony_tensor)
     sch = sch_list[0]
 
-    sch[res_ub_rf].emit_insn(ub_inner, "reduce_last_axis_reduce_sum")
+    sch[res_ub_rf].emit_insn(ub_inner, "vector_reduce_sum")
     sch[new_res_global].emit_insn(new_res_global.op.axis[0], "dma_copy")
     sch[new_res].emit_insn(sch[new_res].op.axis[0], "phony_insn")
 
