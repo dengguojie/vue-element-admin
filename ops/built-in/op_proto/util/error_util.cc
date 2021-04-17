@@ -72,7 +72,7 @@ std::string GetShapeSizeErrMsg(uint32_t index, const std::string& wrong_shape_si
 
 std::string GetInputFormatNotSupportErrMsg(const std::string& param_name, const std::string& expected_format_list,
                                            const std::string& data_format) {
-  std::string msg = ConcatString("[", param_name, "], has wrong format[", data_format, "], it should be in ",
+  std::string msg = ConcatString("[", param_name, "], has wrong format [", data_format, "], it should be in ",
                                  expected_format_list);
   return msg;
 }
@@ -80,21 +80,21 @@ std::string GetInputFormatNotSupportErrMsg(const std::string& param_name, const 
 std::string GetInputDtypeNotSupportErrMsg(const std::string& param_name, const std::string& expected_dtype_list,
                                           const std::string& data_dtype) {
   std::string msg =
-      ConcatString("[", param_name, "], has wrong dtype[", data_dtype, "], it should be in ", expected_dtype_list);
+      ConcatString("[", param_name, "], has wrong dtype [", data_dtype, "], it should be in ", expected_dtype_list);
   return msg;
 }
 
 std::string GetInputDTypeErrMsg(const std::string& param_name, const std::string& expected_dtype,
                                 const std::string& data_dtype) {
   std::string msg =
-      ConcatString("[", param_name, "], has wrong dtype[", data_dtype, "], it should be ", expected_dtype);
+      ConcatString("[", param_name, "], has wrong dtype [", data_dtype, "], it should be ", expected_dtype);
   return msg;
 }
 
 std::string GetInputFormatErrMsg(const std::string& param_name, const std::string& expected_format,
                                  const std::string& data_format) {
   std::string msg =
-      ConcatString("[", param_name, "], has wrong dtype[", data_format, "], it should be in ", expected_format);
+      ConcatString("[", param_name, "], has wrong format [", data_format, "], it should be in ", expected_format);
   return msg;
 }
 
@@ -110,8 +110,8 @@ std::string UpdateParamErrMsg(const std::string& param_name) {
 
 std::string GetParamOutRangeErrMsg(const std::string& param_name, const std::string& range,
                                    const std::string& real_value) {
-  std::string msg = ConcatString("the parameter[", param_name, "] should be in the range of [", range,
-                                 "],but actually is ", real_value);
+  std::string msg = ConcatString("the parameter [", param_name, "] should be in the range of [", range,
+                                 "], but actually is ", real_value);
   return msg;
 }
 
