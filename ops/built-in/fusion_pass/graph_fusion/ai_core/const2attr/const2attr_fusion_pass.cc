@@ -77,19 +77,22 @@ Status Const2AttrFusionPass::Run(ge::ComputeGraph& graph, OpsKernelInfoStorePtr 
       }
     }
 
-    if (needCheck) {
+    bool fuzz_build = false;
+    auto op_desc_ptr = node->GetOpDesc();
+    bool is_fuzz_build = (ge::AttrUtils::GetBool(op_desc_ptr, ge::ATTR_NAME_FUZZ_BUILD, fuzz_build) && fuzz_build);
+    bool need_support_check = (needCheck || is_fuzz_build);
+
+    if (need_support_check) {
       bool unknownShape = false;
-      bool fuzz_build = false;
-      auto op_desc_ptr = node->GetOpDesc();
-      bool is_dynamic = ((ge::AttrUtils::GetBool(op_desc_ptr, ge::ATTR_NAME_FUZZ_BUILD, fuzz_build) && fuzz_build) ||
-                         (ge::NodeUtils::GetNodeUnknownShapeStatus(*(node.get()), unknownShape) == ge::GRAPH_SUCCESS &&
-                         unknownShape));
+      bool is_dynamic = ((ge::NodeUtils::GetNodeUnknownShapeStatus(*(node.get()), unknownShape) == ge::GRAPH_SUCCESS &&
+                         unknownShape) || is_fuzz_build);
       if (is_dynamic) {
         std::string oriUnSupportedReason;
         bool isOriSupported = opsKernelInfoStorePtr->CheckSupported(node->GetOpDesc(), oriUnSupportedReason);
         bool fuzz_build_use_accurate = false;
         (void)ge::AttrUtils::GetBool(op_desc_ptr, "fuzz_build_use_accurate", fuzz_build_use_accurate);
-        if (isOriSupported && !fuzz_build_use_accurate) {
+        bool support_status = (isOriSupported && !fuzz_build_use_accurate);
+        if (support_status) {
           OP_LOGD(opType.c_str(), "Op[name:%s,type:%s] is supported", node->GetOpDesc()->GetName().c_str(),
                   opType.c_str());
           continue;
