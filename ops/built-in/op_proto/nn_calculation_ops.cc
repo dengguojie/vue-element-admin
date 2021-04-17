@@ -9515,6 +9515,7 @@ IMPLEMT_INFERFUNC(DeformableOffsets, DeformableOffsetsInfer) {
     CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
       "Input_offsets h/w should be same as h/w after convolution, offsets: [h:%d, w:%d], conv_out: [h:%d, w:%d].",
       offsets_h, offsets_w, conv_out_h, conv_out_w);
+    return GRAPH_FAILED;
   }
 
   std::vector<int64_t> y_shape(x_shape);
@@ -9589,7 +9590,9 @@ IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
     return GRAPH_FAILED;
   }
   if (offsets_format_str != grad_offsets_format_str) {
-    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Grad_x format should be same as input x format");
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(),
+                          "Grad_offsets format should be same as offsets format, actually grad_offsets: [%s], offsets: [%s]",
+                          grad_offsets_format_str.c_str(), offsets_format_str.c_str());
     return GRAPH_FAILED;
   }
 
@@ -9622,6 +9625,19 @@ IMPLEMT_INFERFUNC(DeformableOffsetsGrad, DeformableOffsetsGradInfer) {
 }
 
 IMPLEMT_VERIFIER(DeformableOffsetsGrad, DeformableOffsetsGradVerify) {
+  auto grad_desc = op.GetInputDesc("grad");
+  auto x_desc = op.GetInputDesc("x");
+  auto offsets_desc = op.GetInputDesc("offsets");
+
+  auto grad_dims = grad_desc.GetShape().GetDims();
+  auto x_dims = x_desc.GetShape().GetDims();
+  auto offsets_dims = offsets_desc.GetShape().GetDims();
+
+  if (grad_dims.size() != 4 || x_dims.size() != 4 || offsets_dims.size() != 4) {
+    CUBE_INNER_ERR_REPORT(op.GetName().c_str(), "Grad, x and offsets dimension should all be 4, actually [%zu, %zu, %zu]",
+                          grad_dims.size(), x_dims.size(), offsets_dims.size());
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 

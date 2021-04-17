@@ -28,6 +28,7 @@
 #include "util/error_util.h"
 #include "op_log.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/type_utils.h"
 #include "axis_util.h"
 #include "inc/graph/utils/type_utils.h"
 namespace ge {
@@ -2517,10 +2518,12 @@ IMPLEMT_INFERFUNC(DenseImageWarp, DenseImageWarpInfer) {
   auto image_desc = op.GetInputDesc("image");
   auto image_shape = image_desc.GetShape();
   auto image_dtype = image_desc.GetDataType();
+  auto image_format = image_desc.GetFormat();
 
   auto y_desc = op.GetOutputDesc("y");
   y_desc.SetShape(image_shape);
   y_desc.SetDataType(image_dtype);
+  y_desc.SetFormat(image_format);
 
   std::vector<std::pair<int64_t, int64_t>> image_range;
   if (image_desc.GetShapeRange(image_range) != GRAPH_SUCCESS) {
@@ -2542,28 +2545,47 @@ IMPLEMT_VERIFIER(DenseImageWarp, DenseImageWarpVerify) {
   auto flow_desc = op.GetInputDesc("flow");
   auto image_shape = image_desc.GetShape().GetDims();
   auto flow_shape = flow_desc.GetShape().GetDims();
+  auto image_format = image_desc.GetFormat();
 
-  if (image_shape.size() != 4 || flow_shape.size() != 4) {
-    OP_LOGE(op.GetName().c_str(),
-            "Input image and flow both should be 4d, actual are [image:%d, flow:%d]",
-            (int)image_shape.size(), (int)flow_shape.size());
+  if (image_format != FORMAT_NHWC && image_format != FORMAT_NCHW) {
+    OP_LOGE(op.GetName().c_str(), "Input image should be NHWC or NCHW format, actual is [%s]",
+            TypeUtils::FormatToSerialString(image_format).c_str());
     return GRAPH_FAILED;
   }
 
-  if (flow_shape[3] != 2) {
+  if (image_shape.size() != 4 || flow_shape.size() != 4) {
+    OP_LOGE(op.GetName().c_str(),
+            "Input image and flow both should be 4d, actual are [image:%zu, flow:%zu]",
+            image_shape.size(), flow_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  std::string image_format_str;
+  if (image_format == FORMAT_NHWC) {
+    image_format_str = "NHWC";
+  } else {
+    image_format_str = "NCHW";
+  }
+  int32_t pos_h = image_format_str.find("H");
+  int32_t pos_w = image_format_str.find("W");
+  int32_t pos_c = image_format_str.find("C");
+
+  if (flow_shape[pos_c] != 2) {
     OP_LOGE(op.GetName().c_str(),
             "Input flow channel should be 2, actual is %d", flow_shape[3]);
     return GRAPH_FAILED;
   }
 
-  if (flow_shape[0] != image_shape[0] || flow_shape[1] != image_shape[1] ||
-      flow_shape[2] != image_shape[2]) {
+  if (flow_shape[0] != image_shape[0] || flow_shape[pos_h] != image_shape[pos_h] ||
+      flow_shape[pos_w] != image_shape[pos_w]) {
     OP_LOGE(op.GetName().c_str(),
-            "Input flow batch, height and width should be same as input image");
+            "Input flow batch, height and width should be same as image, actually flow:[%d, %d, %d], image:[%d, %d, %d]",
+            flow_shape[0], flow_shape[pos_h], flow_shape[pos_w],
+            image_shape[0], image_shape[pos_h], image_shape[pos_w]);
     return GRAPH_FAILED;
   }
 
-  if (image_shape[1] < 2 || image_shape[2] < 2) {
+  if (image_shape[pos_h] < 2 || image_shape[pos_w] < 2) {
     OP_LOGE(op.GetName().c_str(),
             "Input image height and width should not be less than 2");
     return GRAPH_FAILED;
@@ -2610,6 +2632,33 @@ IMPLEMT_INFERFUNC(DenseImageWarpGrad, DenseImageWarpGradInfer) {
 }
 
 IMPLEMT_VERIFIER(DenseImageWarpGrad, DenseImageWarpGradVerify) {
+  auto grad_desc = op.GetInputDesc("grad");
+  auto grad_shape = grad_desc.GetShape().GetDims();
+  auto grad_format = grad_desc.GetFormat();
+
+  auto image_desc = op.GetInputDesc("image");
+  auto image_shape = image_desc.GetShape().GetDims();
+  auto image_format = image_desc.GetFormat();
+
+  if (grad_format != image_format) {
+    OP_LOGE(op.GetName().c_str(), "Grad format should be same as image format, actually grad: [%s], image: [%s]",
+            TypeUtils::FormatToSerialString(grad_format).c_str(), TypeUtils::FormatToSerialString(image_format).c_str());
+    return GRAPH_FAILED;
+  }
+
+  if (grad_shape.size() != 4 || image_shape.size() != 4) {
+    OP_LOGE(op.GetName().c_str(), "Grad shape and image shape should both be 4d, acutally grad: [%zu], image: [%zu]",
+            grad_shape.size(), image_shape.size());
+    return GRAPH_FAILED;
+  }
+
+  if (grad_shape != image_shape) {
+    OP_LOGE(op.GetName().c_str(),
+            "The shape of grad and image should be the same, acutally grad:[%d, %d, %d, %d], image[%d, %d, %d, %d]",
+            grad_shape[0], grad_shape[1], grad_shape[2], grad_shape[3],
+            image_shape[0], image_shape[1], image_shape[2], image_shape[3]);
+    return GRAPH_FAILED;
+  }
   return GRAPH_SUCCESS;
 }
 
